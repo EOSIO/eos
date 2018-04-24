@@ -164,8 +164,9 @@ int main( int argc, char** argv ) {
       wlog( "end push c2 blocks to c1" );
       wlog( "now push dan's block to c1 but first corrupt it so it is a bad block" );
       auto bad_block = *b;
-      bad_block.producer = N(sam);
-      // bad_block.transaction_mroot = bad_block.action_mroot; // TODO/BUG: why did this not cause block rejection?
+      //bad_block.producer = N(sam);
+      //bad_block.schedule_version = 12;
+      bad_block.transaction_mroot = bad_block.previous;
       c.control->push_block( std::make_shared<signed_block>(bad_block) );
 
    } FC_CAPTURE_AND_RETHROW()

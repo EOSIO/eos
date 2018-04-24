@@ -54,4 +54,5 @@ FC_REFLECT( eosio::chain::block_header_state,
             (id)(block_num)(header)(dpos_last_irreversible_blocknum)
             (pending_schedule_lib_num)(pending_schedule_hash)
             (pending_schedule)(active_schedule)(blockroot_merkle)
-            (producer_to_last_produced) )
+            (producer_to_last_produced)(block_signing_key)
+            (bft_irreversible_blocknum)(confirmations) )

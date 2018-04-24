@@ -80,7 +80,7 @@ namespace eosio { namespace chain {
     result.producer_to_last_produced             = producer_to_last_produced;
     result.producer_to_last_produced[prokey.producer_name] = result.block_num;
     result.dpos_last_irreversible_blocknum       = result.calc_dpos_last_irreversible();
-    result.bft_irreversible_blocknum             = 
+    result.bft_irreversible_blocknum             =
                 std::max(bft_irreversible_blocknum,result.dpos_last_irreversible_blocknum);
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
@@ -134,13 +134,11 @@ namespace eosio { namespace chain {
   block_header_state block_header_state::next( const signed_block_header& h )const {
     FC_ASSERT( h.timestamp != block_timestamp_type(), "", ("h",h) );
 
-    auto result = generate_next( h.timestamp );
-    FC_ASSERT( result.header.producer = h.producer, "wrong producer specified" );
-    FC_ASSERT( h.previous == id, "block must link to current state" );
     FC_ASSERT( h.timestamp > header.timestamp, "block must be later in time" );
-
-    FC_ASSERT( result.header.producer   == h.producer, "producer is not scheduled for this time slot" );
-
+    FC_ASSERT( h.previous == id, "block must link to current state" );
+    auto result = generate_next( h.timestamp );
+    FC_ASSERT( result.header.producer == h.producer, "wrong producer specified" );
+    FC_ASSERT( result.header.schedule_version == h.schedule_version, "schedule_version in signed block is corrupted" );
 
     // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mistmatch block merkle root" );
 
@@ -153,7 +151,7 @@ namespace eosio { namespace chain {
     result.header.action_mroot       = h.action_mroot;
     result.header.transaction_mroot  = h.transaction_mroot;
     result.header.producer_signature = h.producer_signature;
-    result.id                        = h.id();
+    result.id                        = result.header.id();
 
     FC_ASSERT( result.block_signing_key == result.signee(), "block not signed by expected key",
                ("result.block_signing_key", result.block_signing_key)("signee", result.signee() ) );

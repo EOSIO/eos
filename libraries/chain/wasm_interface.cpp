@@ -147,6 +147,7 @@ class privileged_api : public context_aware_api {
          std::set<account_name> unique_producers;
          for (const auto& p: psch.producers) {
             EOS_ASSERT(context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account");
+            // TODO: Assert that p.block_signing_key is valid
             unique_producers.insert(p.producer_name);
          }
          EOS_ASSERT(psch.producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule");
