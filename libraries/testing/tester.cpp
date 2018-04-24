@@ -78,19 +78,17 @@ namespace eosio { namespace testing {
    void base_tester::open() {
       control.reset( new controller(cfg) );
       chain_transactions.clear();
-      /*
-      control->applied_block.connect([this]( const block_trace& trace ){
-         for( const auto& region : trace.block.regions) {
-            for( const auto& cycle : region.cycles_summary ) {
-               for ( const auto& shard : cycle ) {
-                  for( const auto& receipt: shard.transactions ) {
-                     chain_transactions.emplace(receipt.id, receipt);
-                  }
-               }
-            }
-         }
+      control->accepted_block.connect([this]( const block_state_ptr& block_state ){
+          for ( const auto& receipt : block_state->block->transactions ) {
+              if( receipt.trx.contains<packed_transaction>() ) {
+                  auto &pt = receipt.trx.get<packed_transaction>();
+                  chain_transactions.emplace(pt.get_transaction().id(), receipt);
+              } else {
+                  auto& id = receipt.trx.get<transaction_id_type>();
+                  chain_transactions.emplace(id, receipt);
+              }
+          }
       });
-      */
    }
 
    signed_block_ptr base_tester::push_block(signed_block_ptr b) {
