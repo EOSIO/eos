@@ -596,6 +596,7 @@ struct register_producer_subcommand {
       register_producer->add_option("max_storage_size", max_storage_size, localized("The max storage size"), true);
       register_producer->add_option("percent_of_max_inflation_rate", percent_of_max_inflation_rate, localized("Percent of max inflation rate"), true);
       register_producer->add_option("storage_reserve_ratio", storage_reserve_ratio, localized("Storage Reserve Ratio"), true);
+      add_standard_transaction_options(register_producer);
 
 
       register_producer->set_callback([this] {
@@ -616,7 +617,7 @@ struct unregister_producer_subcommand {
    unregister_producer_subcommand(CLI::App* actionRoot) {
       auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
       unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
-
+      add_standard_transaction_options(unregister_producer);
 
       unregister_producer->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -635,7 +636,7 @@ struct vote_producer_proxy_subcommand {
       auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote using a proxy"));
       vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
-
+      add_standard_transaction_options(vote_proxy);
 
       vote_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -655,7 +656,7 @@ struct vote_producers_subcommand {
       auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
       vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_producers->add_option("producers", producers, localized("The account(s) to vote for"))->required();
-
+      add_standard_transaction_options(vote_producers);
 
       vote_producers->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -681,7 +682,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
       delegate_bandwidth->add_option("stake_storage_quantity", stake_storage_amount, localized("The amount of EOS to stake for storage"))->required();
-
+      add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -709,7 +710,7 @@ struct undelegate_bandwidth_subcommand {
       undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to unstake for network bandwidth"))->required();
       undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to unstake for CPU bandwidth"))->required();
       undelegate_bandwidth->add_option("unstake_storage_bytes", unstake_storage_bytes, localized("The amount of byte storage to unstake"))->required();
-
+      add_standard_transaction_options(undelegate_bandwidth);
 
       undelegate_bandwidth->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -729,7 +730,7 @@ struct claimrewards_subcommand {
    claimrewards_subcommand(CLI::App* actionRoot) {
       auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Claim producer rewards"));
       claim_rewards->add_option("owner", owner, localized("The account to claim rewards for"))->required();
-
+      add_standard_transaction_options(claim_rewards);
 
       claim_rewards->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -745,7 +746,7 @@ struct regproxy_subcommand {
    regproxy_subcommand(CLI::App* actionRoot) {
       auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register proxy account"));
       register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
-
+      add_standard_transaction_options(register_proxy);
 
       register_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -761,7 +762,7 @@ struct unregproxy_subcommand {
    unregproxy_subcommand(CLI::App* actionRoot) {
       auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Register proxy account"));
       unregister_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
-
+      add_standard_transaction_options(unregister_proxy);
 
       unregister_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -781,7 +782,7 @@ struct postrecovery_subcommand {
       post_recovery->add_option("account", account, localized("The account to post the recovery for"))->required();
       post_recovery->add_option("data", json_str_or_file, localized("The authority to post the recovery with as EOS public key, JSON string, or filename"))->required();
       post_recovery->add_option("memo", memo, localized("A memo describing the post recovery request"))->required();
-
+      add_standard_transaction_options(post_recovery);
 
       post_recovery->set_callback([this] {
          authority data_auth = parse_json_authority_or_key(json_str_or_file);
@@ -800,7 +801,7 @@ struct vetorecovery_subcommand {
    vetorecovery_subcommand(CLI::App* actionRoot) {
       auto veto_recovery = actionRoot->add_subcommand("vetorecovery", localized("Veto a posted recovery"));
       veto_recovery->add_option("account", account, localized("The account to veto the recovery for"))->required();
-
+      add_standard_transaction_options(veto_recovery);
 
       veto_recovery->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -820,6 +821,7 @@ struct canceldelay_subcommand {
       cancel_delay->add_option("cancelling_account", cancelling_account, localized("Account from authorization on the original delayed transaction"))->required();
       cancel_delay->add_option("cancelling_permission", cancelling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
       cancel_delay->add_option("trx_id", trx_id, localized("The transaction id of the original delayed transaction"))->required();
+      add_standard_transaction_options(cancel_delay);
 
       cancel_delay->set_callback([this] {
          const auto cancelling_auth = permission_level{cancelling_account, cancelling_permission};
