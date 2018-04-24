@@ -76,7 +76,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
           "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
-         ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Minimum size MB of database shared memory file")
+         ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Maximum size MB of database shared memory file")
 
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),

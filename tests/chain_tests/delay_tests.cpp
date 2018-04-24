@@ -2089,23 +2089,23 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    chain.set_code(config::system_account_name, eosio_system_wast);
    chain.set_abi(config::system_account_name, eosio_system_abi);
 
-   chain.create_account(N(currency));
-   chain.set_code(N(currency), currency_wast);
-   chain.set_abi(N(currency), currency_abi);
+   chain.create_account(N(eosio.token));
+   chain.set_code(N(eosio.token), eosio_token_wast);
+   chain.set_abi(N(eosio.token), eosio_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
    chain.produce_blocks(10);
 
    chain.produce_blocks();
-   chain.push_action(N(currency), N(create), N(currency), mutable_variant_object()
-           ("issuer", "currency" )
+   chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
+           ("issuer", "eosio.token" )
            ("maximum_supply", "9000000.0000 CUR" )
            ("can_freeze", 0)
            ("can_recall", 0)
            ("can_whitelist", 0)
    );
-   chain.push_action(N(currency), name("issue"), N(currency), fc::mutable_variant_object()
+   chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
            ("to",       "tester")
            ("quantity", "100.0000 CUR")
            ("memo", "for stuff")
@@ -2123,7 +2123,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 
    chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
                      ("account", "tester")
-                     ("code", "currency")
+                     ("code", "eosio.token")
                      ("type", "transfer")
                      ("requirement", "first"));
 
@@ -2134,9 +2134,9 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
                                                 });
 
    //should be able to create transaction with delay 60 sec, despite permission delay being 30 days, because max_transaction_delay is 60 sec
-   trace = chain.push_action(N(currency), name("transfer"), N(tester), fc::mutable_variant_object()
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
                              ("from", "tester")
-                             ("to", "currency")
+                             ("to", "eosio.token")
                              ("quantity", "9.0000 CUR")
                              ("memo", "" ),
                              120, 60
@@ -2146,9 +2146,9 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    //check that the delayed transaction executed after after 60 sec
    chain.produce_block( fc::seconds(60) );
    auto traces = chain.control->push_deferred_transactions(true);
-   BOOST_CHECK_EQUAL( 1, traces.size() );
-   BOOST_CHECK_EQUAL( 1, traces.at(0).action_traces.size() );
-   BOOST_CHECK_EQUAL( transaction_receipt::executed, traces.at(0).status );
+   BOOST_REQUIRE_EQUAL( 1, traces.size() );
+   BOOST_REQUIRE( 1 <= traces.at(0).action_traces.size() );
+   BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces.at(0).status );
 
    //check that the transfer really happened
    auto liquid_balance = get_currency_balance(chain, N(tester));
