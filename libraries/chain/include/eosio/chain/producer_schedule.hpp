@@ -56,6 +56,11 @@ namespace eosio { namespace chain {
          return result;
       }
 
+      void clear() {
+         version = 0;
+         producers.clear();
+      }
+
       uint32_t                                       version = 0; ///< sequentially incrementing version number
       shared_vector<producer_key>                    producers;
    };

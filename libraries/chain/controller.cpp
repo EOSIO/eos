@@ -181,10 +181,6 @@ struct controller_impl {
       resource_limits.add_indices();
    }
 
-   void abort_pending_block() {
-      pending.reset();
-   }
-
    void clear_all_undo() {
       // Rewind the database to the last irreversible block
       db.with_write_lock([&] {
@@ -402,7 +398,7 @@ struct controller_impl {
 
    void push_unapplied_transaction( fc::time_point deadline ) {
       auto itr = unapplied_transactions.begin();
-      if( itr == unapplied_transactions.end() )  
+      if( itr == unapplied_transactions.end() )
          return;
 
       push_transaction( itr->second, deadline );
@@ -414,8 +410,8 @@ struct controller_impl {
     *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
     *  the pending block.
     */
-   void push_transaction( const transaction_metadata_ptr& trx, 
-                          fc::time_point deadline = fc::time_point::maximum(), 
+   void push_transaction( const transaction_metadata_ptr& trx,
+                          fc::time_point deadline = fc::time_point::maximum(),
                           bool implicit = false ) {
       if( deadline == fc::time_point() ) {
          unapplied_transactions[trx->id] = trx;
@@ -464,21 +460,40 @@ struct controller_impl {
 
 
    void start_block( block_timestamp_type when ) {
-     FC_ASSERT( !pending );
+      FC_ASSERT( !pending );
 
-     FC_ASSERT( db.revision() == head->block_num, "",
+      FC_ASSERT( db.revision() == head->block_num, "",
                 ("db_head_block", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-     pending = db.start_undo_session(true);
-     pending->_pending_block_state = std::make_shared<block_state>( *head, when );
-     pending->_pending_block_state->in_current_chain = true;
+      pending = db.start_undo_session(true);
+      pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
+      pending->_pending_block_state->in_current_chain = true;
 
-     try {
-        auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
-        push_transaction( onbtrx, fc::time_point::maximum(), true );
-     } catch ( ... ) {
-        ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-     }
+      const auto& gpo = db.get<global_property_object>();
+      if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
+          ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_last_irreversible_blocknum ) && // ... that has now become irreversible ...
+          pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
+          head->pending_schedule.producers.size() == 0 // ... and not just because it was promoted to active at the start of this block, then:
+        )
+      {
+         // Promote proposed schedule to pending schedule.
+         ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+               ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
+               ("lib", pending->_pending_block_state->dpos_last_irreversible_blocknum)
+               ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+         pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
+         db.modify( gpo, [&]( auto& gp ) {
+            gp.proposed_schedule_block_num = optional<block_num_type>();
+            gp.proposed_schedule.clear();
+         });
+      }
+
+      try {
+         auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+         push_transaction( onbtrx, fc::time_point::maximum(), true );
+      } catch ( ... ) {
+         ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+      }
    } // start_block
 
 
@@ -545,7 +560,7 @@ struct controller_impl {
             throw;
          }
       } else if( new_head->id != head->id ) {
-         wlog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
+         ilog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
@@ -565,7 +580,7 @@ struct controller_impl {
             }
             catch (const fc::exception& e) { except = e; }
             if (except) {
-               wlog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
+               elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
 
                while (ritr != branches.first.rend() ) {
                   fork_db.set_validity( *ritr, false );
@@ -589,7 +604,7 @@ struct controller_impl {
                throw *except;
             } // end if exception
          } /// end for each block in branch
-         wlog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
+         ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
       }
    } /// push_block
 
@@ -831,7 +846,7 @@ transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx
 
 void controller::push_next_scheduled_transaction( fc::time_point deadline ) {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-   if( idx.begin() != idx.end() ) 
+   if( idx.begin() != idx.end() )
       my->push_scheduled_transaction( *idx.begin(), deadline );
 }
 void controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
@@ -908,18 +923,40 @@ void controller::pop_block() {
    my->pop_block();
 }
 
-void controller::set_active_producers( const producer_schedule_type& sch ) {
-   FC_ASSERT( !my->pending->_pending_block_state->header.new_producers, "this block has already set new producers" );
-   FC_ASSERT( !my->pending->_pending_block_state->pending_schedule.producers.size(), "there is already a pending schedule, wait for it to become active" );
-   my->pending->_pending_block_state->set_new_producers( sch );
+void controller::set_proposed_producers( const producer_schedule_type& sch ) {
+   const auto& gpo = get_global_properties();
+   auto cur_block_num = head_block_num() + 1;
+   FC_ASSERT( !gpo.proposed_schedule_block_num.valid() || *gpo.proposed_schedule_block_num == cur_block_num,
+              "there is already a proposed schedule set in a previous block, wait for it to become pending" );
+   uint32_t next_proposed_schedule_version = 0;
+   if( my->pending->_pending_block_state->pending_schedule.producers.size() == 0 ) {
+      next_proposed_schedule_version = my->pending->_pending_block_state->active_schedule.version + 1;
+   } else {
+      next_proposed_schedule_version = my->pending->_pending_block_state->pending_schedule.version + 1;
+   }
+   FC_ASSERT( sch.version == next_proposed_schedule_version, "wrong producer schedule version specified" );
+   my->db.modify( gpo, [&]( auto& gp ) {
+      gp.proposed_schedule_block_num = cur_block_num;
+      gp.proposed_schedule = sch;
+   });
 }
-const producer_schedule_type& controller::active_producers()const {
+
+const producer_schedule_type&    controller::active_producers()const {
    return my->pending->_pending_block_state->active_schedule;
 }
 
-const producer_schedule_type& controller::pending_producers()const {
+const producer_schedule_type&    controller::pending_producers()const {
    return my->pending->_pending_block_state->pending_schedule;
 }
+
+optional<producer_schedule_type> controller::proposed_producers()const {
+   const auto& gpo = get_global_properties();
+   if( !gpo.proposed_schedule_block_num.valid() )
+      return optional<producer_schedule_type>();
+
+   return gpo.proposed_schedule;
+}
+
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
 {

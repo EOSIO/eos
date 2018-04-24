@@ -14,7 +14,6 @@ struct block_header_state {
     signed_block_header               header;
     uint32_t                          dpos_last_irreversible_blocknum = 0;
     uint32_t                          pending_schedule_lib_num = 0; /// last irr block num
-    digest_type                       prior_pending_schedule_hash;
     digest_type                       pending_schedule_hash;
     producer_schedule_type            pending_schedule;
     producer_schedule_type            active_schedule;

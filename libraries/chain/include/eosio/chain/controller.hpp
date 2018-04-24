@@ -71,7 +71,7 @@ namespace eosio { namespace chain {
 
 
          /**
-          *  
+          *
           */
          void push_transaction( const transaction_metadata_ptr& trx = transaction_metadata_ptr(),
                                 fc::time_point deadline = fc::time_point::maximum() );
@@ -131,8 +131,9 @@ namespace eosio { namespace chain {
          account_name         head_block_producer()const;
          const block_header&  head_block_header()const;
 
-         const producer_schedule_type& active_producers()const;
-         const producer_schedule_type& pending_producers()const;
+         const producer_schedule_type&    active_producers()const;
+         const producer_schedule_type&    pending_producers()const;
+         optional<producer_schedule_type> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
 
@@ -144,7 +145,7 @@ namespace eosio { namespace chain {
          void validate_tapos( const transaction& t )const;
          uint64_t validate_net_usage( const transaction_metadata_ptr& trx )const;
 
-         void set_active_producers( const producer_schedule_type& sch );
+         void set_proposed_producers( const producer_schedule_type& sch );
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
