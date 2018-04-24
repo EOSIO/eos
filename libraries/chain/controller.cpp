@@ -919,11 +919,12 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
 }
 
 signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
+   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
+   if( blk_state ) return blk_state->block;
+
    optional<signed_block> b = my->blog.read_block_by_num(block_num);
    if( b ) return std::make_shared<signed_block>( move(*b) );
 
-   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
-   if( blk_state ) return blk_state->block;
    return signed_block_ptr();
 }
 
