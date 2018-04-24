@@ -30,6 +30,7 @@ namespace eosiosystem {
       uint32_t                                  schedule_version;
       eosio::optional<eosio::producer_schedule> new_producers;
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)
                                      (producer)(schedule_version)(new_producers))
    };
@@ -39,6 +40,7 @@ namespace eosiosystem {
       uint32_t          percent_of_max_inflation_rate = 0;
       uint32_t          storage_reserve_ratio = 1000;      // ratio * 1000
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_storage_size)(percent_of_max_inflation_rate)(storage_reserve_ratio) )
    };
 
@@ -52,6 +54,7 @@ namespace eosiosystem {
       time                 last_bucket_fill_time = 0;
       eosio::asset         eos_bucket;
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake)
                                 (payment_per_block)(payment_to_eos_bucket)(first_block_time_in_cycle)(blocks_per_cycle)
                                 (last_bucket_fill_time)(eos_bucket) )
@@ -71,6 +74,7 @@ namespace eosiosystem {
       uint128_t   by_votes()const    { return total_votes; }
       bool active() const { return 0 < packed_key.size(); }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)
                         (per_block_payments)(last_rewards_claim)
                         (time_became_active)(last_produced_block_time) )

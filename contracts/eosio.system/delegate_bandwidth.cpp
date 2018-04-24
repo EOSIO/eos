@@ -38,6 +38,7 @@ namespace eosiosystem {
 
       uint64_t primary_key()const { return owner; }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( total_resources, (owner)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )
    };
 
@@ -55,6 +56,7 @@ namespace eosiosystem {
 
       uint64_t  primary_key()const { return to; }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )
 
    };
@@ -66,6 +68,7 @@ namespace eosiosystem {
 
       uint64_t  primary_key()const { return owner; }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(amount) )
    };
 

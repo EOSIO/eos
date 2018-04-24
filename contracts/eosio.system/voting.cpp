@@ -45,6 +45,7 @@ namespace eosiosystem {
 
       uint64_t primary_key()const { return owner; }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(last_update)(is_proxy)(staked)(unstaking)(unstake_per_week)(proxied_votes)(producers)(deferred_trx_id)(last_unstake_time) )
    };
 
