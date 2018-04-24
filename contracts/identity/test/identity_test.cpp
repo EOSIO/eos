@@ -3,7 +3,7 @@
 #include <eosiolib/singleton.hpp>
 #include <eosiolib/vector.hpp>
 
-#include <identity/identity.hpp>
+#include <identity/interface.hpp>
 
 namespace identity_test {
    
@@ -15,9 +15,8 @@ namespace identity_test {
    class contract {
       public:
          static const uint64_t code = N(identitytest);
-         typedef identity::contract< N(identity) > identity_contract;
-         typedef identity_contract::identity_name identity_name;
-         typedef identity_contract::property_name property_name;
+         typedef identity::identity_name identity_name;
+         typedef identity::property_name property_name;
 
          struct get_owner_for_identity : public action_meta< code, N(getowner) >
          {
@@ -36,12 +35,14 @@ namespace identity_test {
          typedef singleton<N(result), uint64_t> result_table;
 
          static void on( uint64_t receiver, const get_owner_for_identity& c ) {
-            account_name owner = identity_contract::get_owner_for_identity(receiver, c.identity);
+            identity::interface iface( N(identity) );
+            account_name owner = iface.get_owner_for_identity(receiver, c.identity);
             result_table( code, 0 ).set( owner, code ); //use scope = 0 for simplicity
          }
 
          static void on( uint64_t receiver, const get_identity_for_account& c ) {
-            identity_name idnt = identity_contract::get_identity_for_account(receiver, c.account);
+            identity::interface iface( N(identity) );
+            identity_name idnt = iface.get_identity_for_account(receiver, c.account);
             result_table( code, 0 ).set(idnt, code ); //use scope = 0 for simplicity
          }
 
