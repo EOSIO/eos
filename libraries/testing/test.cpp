@@ -7,15 +7,27 @@
 using namespace eosio::chain;
 using namespace eosio::testing;
 
+private_key_type get_private_key( name keyname, string role ) {
+   return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
+}
+
+public_key_type  get_public_key( name keyname, string role ){
+   return get_private_key( keyname, role ).get_public_key();
+}
+
 int main( int argc, char** argv ) {
    try { try {
       tester c;
       c.produce_block();
       c.produce_block();
-      c.produce_block();
       auto r = c.create_accounts( {N(dan),N(sam),N(pam)} );
       wdump((fc::json::to_pretty_string(r)));
-      c.set_producers( {N(dan),N(sam),N(pam)}, 1 );
+      c.produce_block();
+      auto res = c.set_producers( {N(dan),N(sam),N(pam)} );
+      vector<producer_key> sch = { {N(dan),get_public_key(N(dan), "active")},
+                                   {N(sam),get_public_key(N(sam), "active")},
+                                   {N(pam),get_public_key(N(pam), "active")}};
+      wdump((fc::json::to_pretty_string(res)));
       wlog("set producer schedule to [dan,sam,pam]");
       c.produce_blocks(30);
 
@@ -69,7 +81,7 @@ int main( int argc, char** argv ) {
                 ("n", b->block_num())("expected_producer", expected_producer.to_string())("actual_producer", b->producer.to_string()) );
       c.produce_blocks(10);
       c.create_accounts( {N(cam)} );
-      c.set_producers( {N(dan),N(sam),N(pam),N(cam)}, 2 );
+      c.set_producers( {N(dan),N(sam),N(pam),N(cam)} );
       wlog("set producer schedule to [dan,sam,pam,cam]");
       c.produce_block();
       // The next block should be produced by pam.

@@ -631,19 +631,16 @@ namespace eosio { namespace testing {
       //produce_block();
    }
 
-   producer_schedule_type base_tester::set_producers(const vector<account_name>& producer_names, const uint32_t version) {
+   transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
       // Create producer schedule
-      producer_schedule_type schedule;
-      schedule.version = version;
+      vector<producer_key> schedule;
       for (auto& producer_name: producer_names) {
          producer_key pk = { producer_name, get_public_key( producer_name, "active" )};
-         schedule.producers.emplace_back(pk);
+         schedule.emplace_back(pk);
       }
 
-      push_action(N(eosio), N(setprods), N(eosio),
-                  fc::mutable_variant_object()("version", schedule.version)("producers", schedule.producers));
-
-      return schedule;
+      return push_action( N(eosio), N(setprods), N(eosio),
+                          fc::mutable_variant_object()("schedule", schedule));
    }
 
    const table_id_object* base_tester::find_table( name code, name scope, name table ) {

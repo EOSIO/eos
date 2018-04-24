@@ -265,15 +265,15 @@ namespace eosiosystem {
             std::array<uint32_t, 21> percent_of_max_inflation_rate;
             std::array<uint32_t, 21> storage_reserve_ratio;
 
-            eosio::producer_schedule schedule;
-            schedule.producers.reserve(21);
+            std::vector<eosio::producer_key> schedule;
+            schedule.reserve(21);
             size_t n = 0;
             for ( auto it = idx.crbegin(); it != idx.crend() && n < 21 && 0 < it->total_votes; ++it ) {
                if ( it->active() ) {
-                  schedule.producers.emplace_back();
-                  schedule.producers.back().producer_name = it->owner;
-                  eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
-                  std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data );
+                  schedule.emplace_back();
+                  schedule.back().producer_name = it->owner;
+                  eosio_assert( sizeof(schedule.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
+                  std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.back().block_signing_key.data );
 
                   base_per_transaction_net_usage[n] = it->prefs.base_per_transaction_net_usage;
                   base_per_transaction_cpu_usage[n] = it->prefs.base_per_transaction_cpu_usage;
@@ -329,7 +329,6 @@ namespace eosiosystem {
                std::sort( percent_of_max_inflation_rate.begin(), percent_of_max_inflation_rate.begin()+n );
             }
 
-            // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
             bytes packed_schedule = pack(schedule);
             set_active_producers( packed_schedule.data(),  packed_schedule.size() );
             size_t median = n/2;
@@ -368,7 +367,7 @@ namespace eosiosystem {
             auto other_half_of_percentage = parameters.percent_of_max_inflation_rate - half_of_percentage;
             parameters.payment_per_block = payment_per_block(half_of_percentage);
             parameters.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
-            parameters.blocks_per_cycle = common<SystemAccount>::blocks_per_producer * schedule.producers.size();
+            parameters.blocks_per_cycle = common<SystemAccount>::blocks_per_producer * schedule.size();
 
             if ( parameters.max_storage_size < parameters.total_storage_bytes_reserved ) {
                parameters.max_storage_size = parameters.total_storage_bytes_reserved;

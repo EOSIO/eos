@@ -50,11 +50,4 @@ namespace eosio {
       EOSLIB_SERIALIZE( producer_key, (producer_name)(block_signing_key) )
    };
 
-   struct producer_schedule {
-      uint32_t             version = 0; ///< sequentially incrementing version number
-      std::vector<producer_key> producers;
-
-      EOSLIB_SERIALIZE( producer_schedule, (version)(producers) )
-   };
-
 }

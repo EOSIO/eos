@@ -101,8 +101,8 @@ namespace eosio { namespace testing {
             return traces;
          }
 
-         void                 push_genesis_block();
-         producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
+         void                  push_genesis_block();
+         transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
 
          void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
          void unlink_authority( account_name account, account_name code, action_name type = "" );

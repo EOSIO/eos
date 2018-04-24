@@ -6,6 +6,7 @@
 
 #include "delegate_bandwidth.hpp"
 #include "native.hpp"
+#include <eosiolib/producer_schedule.hpp>
 #include <eosiolib/optional.hpp>
 
 #include <eosiolib/generic_currency.hpp>

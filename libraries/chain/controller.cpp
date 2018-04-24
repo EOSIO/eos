@@ -451,6 +451,8 @@ struct controller_impl {
          trx_context.squash();
       } catch ( const fc::exception& e ) {
          trace->soft_except = e;
+         //wlog( "caught exception in push_transaction" );
+         //wdump((trace));
       }
 
       if( trx->on_result ) {
@@ -839,7 +841,7 @@ void controller::push_unapplied_transaction( fc::time_point deadline ) {
 
 transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx ) {
    transaction_trace_ptr trace;
-   trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; }; 
+   trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; };
    my->push_transaction( trx );
    return trace;
 }
@@ -923,22 +925,46 @@ void controller::pop_block() {
    my->pop_block();
 }
 
-void controller::set_proposed_producers( const producer_schedule_type& sch ) {
+bool controller::set_proposed_producers( vector<producer_key> producers ) {
    const auto& gpo = get_global_properties();
    auto cur_block_num = head_block_num() + 1;
-   FC_ASSERT( !gpo.proposed_schedule_block_num.valid() || *gpo.proposed_schedule_block_num == cur_block_num,
-              "there is already a proposed schedule set in a previous block, wait for it to become pending" );
-   uint32_t next_proposed_schedule_version = 0;
-   if( my->pending->_pending_block_state->pending_schedule.producers.size() == 0 ) {
-      next_proposed_schedule_version = my->pending->_pending_block_state->active_schedule.version + 1;
-   } else {
-      next_proposed_schedule_version = my->pending->_pending_block_state->pending_schedule.version + 1;
+
+   if( gpo.proposed_schedule_block_num.valid() ) {
+      if( *gpo.proposed_schedule_block_num != cur_block_num )
+         return false; // there is already a proposed schedule set in a previous block, wait for it to become pending
+
+      if( std::equal( producers.begin(), producers.end(),
+                      gpo.proposed_schedule.producers.begin(), gpo.proposed_schedule.producers.end() ) )
+         return false; // the proposed producer schedule does not change
    }
-   FC_ASSERT( sch.version == next_proposed_schedule_version, "wrong producer schedule version specified" );
+
+   producer_schedule_type sch;
+
+   decltype(sch.producers.cend()) end;
+   decltype(end)                  begin;
+
+   if( my->pending->_pending_block_state->pending_schedule.producers.size() == 0 ) {
+      const auto& active_sch = my->pending->_pending_block_state->active_schedule;
+      begin = active_sch.producers.begin();
+      end   = active_sch.producers.end();
+      sch.version = active_sch.version + 1;
+   } else {
+      const auto& pending_sch = my->pending->_pending_block_state->pending_schedule;
+      begin = pending_sch.producers.begin();
+      end   = pending_sch.producers.end();
+      sch.version = pending_sch.version + 1;
+   }
+
+   if( std::equal( producers.begin(), producers.end(), begin, end ) )
+      return false; // the producer schedule would not change
+
+   sch.producers = std::move(producers);
+
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;
-      gp.proposed_schedule = sch;
+      gp.proposed_schedule = std::move(sch);
    });
+   return true;
 }
 
 const producer_schedule_type&    controller::active_producers()const {

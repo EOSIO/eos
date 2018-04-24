@@ -145,7 +145,7 @@ namespace eosio { namespace chain {
          void validate_tapos( const transaction& t )const;
          uint64_t validate_net_usage( const transaction_metadata_ptr& trx )const;
 
-         void set_proposed_producers( const producer_schedule_type& sch );
+         bool set_proposed_producers( vector<producer_key> producers );
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;

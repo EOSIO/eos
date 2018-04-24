@@ -139,19 +139,19 @@ class privileged_api : public context_aware_api {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
-      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+      bool set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
-         producer_schedule_type psch;
-         fc::raw::unpack(ds, psch);
+         vector<producer_key> producers;
+         fc::raw::unpack(ds, producers);
          // check that producers are unique
          std::set<account_name> unique_producers;
-         for (const auto& p: psch.producers) {
-            EOS_ASSERT(context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account");
+         for (const auto& p: producers) {
+            EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
             EOS_ASSERT( p.block_signing_key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
             unique_producers.insert(p.producer_name);
          }
-         EOS_ASSERT(psch.producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule");
-         context.mutable_controller.set_proposed_producers( psch );
+         EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
+         return context.mutable_controller.set_proposed_producers( std::move(producers) );
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
@@ -1454,7 +1454,7 @@ REGISTER_INTRINSICS(privileged_api,
    (activate_feature,                 void(int64_t)                         )
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
-   (set_active_producers,             void(int,int)                         )
+   (set_active_producers,             int(int,int)                          )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
