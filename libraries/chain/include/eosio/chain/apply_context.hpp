@@ -587,6 +587,8 @@ class apply_context {
       generic_index<contracts::index_long_double_object> idx_long_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
+      
+      void add_cpu_usage( const uint64_t usage );
 
    private:
       iterator_cache<key_value_object> keyval_cache;

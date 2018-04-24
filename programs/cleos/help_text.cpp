@@ -219,10 +219,11 @@ const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_
 const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
 const char* error_advice_3140001 =  "Try to use different wallet name.";
-const char* error_advice_3140002 =  "Are you sure you typed the name correctly?";
+const char* error_advice_3140002 =  "Are you sure you typed the wallet name correctly?";
 const char* error_advice_3140003 =  "Ensure that your wallet is unlocked before using it!";
 const char* error_advice_3140004 =  "Ensure that you have the relevant private key imported!";
 const char* error_advice_3140005 =  "Are you sure you are using the right password?";
+const char* error_advice_3140006 =  "Ensure that you have created a wallet and have it open";
 
 
 const std::map<int64_t, std::string> error_advice = {
@@ -264,7 +265,8 @@ const std::map<int64_t, std::string> error_advice = {
    { 3140002, error_advice_3140002 },
    { 3140003, error_advice_3140003 },
    { 3140004, error_advice_3140004 },
-   { 3140005, error_advice_3140005 }
+   { 3140005, error_advice_3140005 },
+   { 3140006, error_advice_3140006 }
 };
 
 

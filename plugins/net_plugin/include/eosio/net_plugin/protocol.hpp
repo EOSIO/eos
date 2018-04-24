@@ -15,7 +15,7 @@ namespace eosio {
    typedef std::chrono::system_clock::duration::rep tstamp;
 
    struct handshake_message {
-      int16_t                    network_version = 0; ///< derived from git commit hash, not sequential
+      uint16_t                   network_version = 0; ///< incremental value above a computed base
       chain_id_type              chain_id; ///< used to identify chain
       fc::sha256                 node_id; ///< used to identify peers and prevent self-connect
       chain::public_key_type     key; ///< authentication key; may be a producer or peer key, or empty
