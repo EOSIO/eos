@@ -36,7 +36,8 @@ struct genesis_state_type {
       .max_authority_depth            = config::default_max_auth_depth,
       .max_inline_depth               = config::default_max_inline_depth,
       .max_inline_action_size         = config::default_max_inline_action_size,
-      .max_generated_transaction_count = config::default_max_gen_trx_count
+      .max_generated_transaction_count = config::default_max_gen_trx_count,
+      .max_transaction_delay          = config::default_max_trx_delay
    };
 
    time_point                               initial_timestamp = fc::time_point::from_iso_string( "2018-03-01T12:00:00" );;
