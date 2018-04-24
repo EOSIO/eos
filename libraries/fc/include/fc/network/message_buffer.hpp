@@ -9,7 +9,7 @@
 #include <deque>
 #include <array>
 
-namespace eosio {
+namespace fc {
   template <uint32_t buffer_len>
   class mb_datastream;
 
@@ -299,4 +299,4 @@ namespace eosio {
     return mb_datastream<buffer_len>(*this);
   }
 
-} // namespace eosio
+} // namespace fc

@@ -244,8 +244,8 @@ namespace eosio { namespace testing {
       }
       validating_tester(controller::config::runtime_limits limits = controller::config::runtime_limits()) {
          controller::config vcfg;
-         vcfg.block_log_dir      = tempdir.path() / "blocklog";
-         vcfg.shared_memory_dir  = tempdir.path() / "shared";
+         vcfg.block_log_dir      = tempdir.path() / "vblocklog";
+         vcfg.shared_memory_dir  = tempdir.path() / "vshared";
          vcfg.shared_memory_size = 1024*1024*8;
 
          vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
@@ -275,8 +275,8 @@ namespace eosio { namespace testing {
       }
 
       bool validate() {
-        auto hbh = control->head_block_header();
-        auto vn_hbh = validating_node->head_block_header();
+        auto hbh = control->head_block_state()->header;
+        auto vn_hbh = validating_node->head_block_state()->header;
         return control->head_block_id() == validating_node->head_block_id() &&
                hbh.previous == vn_hbh.previous &&
                hbh.timestamp == vn_hbh.timestamp &&
