@@ -106,6 +106,8 @@ extern "C" {
     */
    void require_auth2( account_name name, permission_name permission );
 
+   bool is_account( account_name name );
+
    /**
     *  Send an inline action in the context of this action's parent transaction
     * @param serialized_action - serialized action
