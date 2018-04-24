@@ -16,9 +16,11 @@ int main( int argc, char** argv ) {
       auto r = c.create_accounts( {N(dan),N(sam),N(pam)} );
       wdump((fc::json::to_pretty_string(r)));
       c.set_producers( {N(dan),N(sam),N(pam)}, 1 );
+      wlog("set producer schedule to [dan,sam,pam]");
       c.produce_blocks(30);
 
-      c.create_accounts( {N(eosio.token)} );
+      auto r2 = c.create_accounts( {N(eosio.token)} );
+      wdump((fc::json::to_pretty_string(r2)));
       c.set_code( N(eosio.token), eosio_token_wast );
       c.set_abi( N(eosio.token), eosio_token_abi );
       c.produce_blocks(10);
@@ -65,7 +67,11 @@ int main( int argc, char** argv ) {
       FC_ASSERT( b->producer == expected_producer,
                  "expected block ${n} to be produced by ${expected_producer} but was instead produced by ${actual_producer}",
                 ("n", b->block_num())("expected_producer", expected_producer.to_string())("actual_producer", b->producer.to_string()) );
-      c.produce_blocks(11);
+      c.produce_blocks(10);
+      c.create_accounts( {N(cam)} );
+      c.set_producers( {N(dan),N(sam),N(pam),N(cam)}, 2 );
+      wlog("set producer schedule to [dan,sam,pam,cam]");
+      c.produce_block();
       // The next block should be produced by pam.
 
       // Sync second chain with first chain.
@@ -106,6 +112,21 @@ int main( int argc, char** argv ) {
          c.control->push_block( fb );
       }
       wlog( "end push c2 blocks to c1" );
+
+      wlog( "c1 blocks:" );
+      c.produce_blocks(24);
+
+      b = c.produce_block(); // Switching active schedule to version 2 happens in this block.
+      expected_producer = N(pam);
+      FC_ASSERT( b->producer == expected_producer,
+                 "expected block ${n} to be produced by ${expected_producer} but was instead produced by ${actual_producer}",
+                ("n", b->block_num())("expected_producer", expected_producer.to_string())("actual_producer", b->producer.to_string()) );
+
+      b = c.produce_block();
+      expected_producer = N(cam);
+      FC_ASSERT( b->producer == expected_producer,
+                 "expected block ${n} to be produced by ${expected_producer} but was instead produced by ${actual_producer}",
+                ("n", b->block_num())("expected_producer", expected_producer.to_string())("actual_producer", b->producer.to_string()) );
 
 
    } FC_CAPTURE_AND_RETHROW()

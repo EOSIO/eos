@@ -74,8 +74,7 @@ namespace eosio { namespace chain {
     result.block_signing_key                     = prokey.block_signing_key;
     result.header.producer                       = prokey.producer_name;
 
-
-    result.prior_pending_schedule_hash           = pending_schedule_hash;
+    result.pending_schedule_lib_num              = pending_schedule_lib_num;
     result.pending_schedule_hash                 = pending_schedule_hash;
     result.block_num                             = block_num + 1;
     result.producer_to_last_produced             = producer_to_last_produced;

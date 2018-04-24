@@ -16,14 +16,6 @@
 
 namespace eosio { namespace chain {
 
-   struct blocknum_producer_schedule {
-      blocknum_producer_schedule( allocator<char> a )
-      :second(a){}
-
-      block_num_type                first;
-      shared_producer_schedule_type second;
-   };
-
    /**
     * @class global_property_object
     * @brief Maintains global state information (committee_member list, current fees)
@@ -34,10 +26,12 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object)
+      OBJECT_CTOR(global_property_object, (proposed_schedule))
 
-      id_type                                                  id;
-      chain_config                                             configuration;
+      id_type                           id;
+      optional<block_num_type>          proposed_schedule_block_num;
+      shared_producer_schedule_type     proposed_schedule;
+      chain_config                      configuration;
    };
 
 
@@ -56,7 +50,7 @@ namespace eosio { namespace chain {
         OBJECT_CTOR(dynamic_global_property_object)
 
         id_type    id;
-        uint64_t   global_action_sequence = 0;        
+        uint64_t   global_action_sequence = 0;
    };
 
    using global_property_multi_index = chainbase::shared_multi_index_container<
@@ -88,5 +82,5 @@ FC_REFLECT(eosio::chain::dynamic_global_property_object,
           )
 
 FC_REFLECT(eosio::chain::global_property_object,
-           (configuration)
+           (proposed_schedule_block_num)(proposed_schedule)(configuration)
           )

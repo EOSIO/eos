@@ -150,7 +150,7 @@ class privileged_api : public context_aware_api {
             unique_producers.insert(p.producer_name);
          }
          EOS_ASSERT(psch.producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule");
-         context.mutable_controller.set_active_producers( psch );
+         context.mutable_controller.set_proposed_producers( psch );
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
