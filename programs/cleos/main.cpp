@@ -633,7 +633,7 @@ struct vote_producer_proxy_subcommand {
    string proxy_str;
 
    vote_producer_proxy_subcommand(CLI::App* actionRoot) {
-      auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote using a proxy"));
+      auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote your stake through a proxy"));
       vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
       add_standard_transaction_options(vote_proxy);
@@ -655,7 +655,7 @@ struct vote_producers_subcommand {
    vote_producers_subcommand(CLI::App* actionRoot) {
       auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
       vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_producers->add_option("producers", producers, localized("The account(s) to vote for"))->required();
+      vote_producers->add_option("producers", producers, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
       add_standard_transaction_options(vote_producers);
 
       vote_producers->set_callback([this] {
@@ -678,7 +678,7 @@ struct delegate_bandwidth_subcommand {
    delegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
       delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
-      delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receiver the delegate bandwidth"))->required();
+      delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
       delegate_bandwidth->add_option("stake_storage_quantity", stake_storage_amount, localized("The amount of EOS to stake for storage"))->required();
@@ -705,11 +705,11 @@ struct undelegate_bandwidth_subcommand {
 
    undelegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto undelegate_bandwidth = actionRoot->add_subcommand("undelegatebw", localized("Undelegate bandwidth"));
-      undelegate_bandwidth->add_option("from", from_str, localized("The account to undelegate bandwidth from"))->required();
+      undelegate_bandwidth->add_option("from", from_str, localized("The account undelegating bandwidth"))->required();
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
-      undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to unstake for network bandwidth"))->required();
-      undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to unstake for CPU bandwidth"))->required();
-      undelegate_bandwidth->add_option("unstake_storage_bytes", unstake_storage_bytes, localized("The amount of byte storage to unstake"))->required();
+      undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to undelegate for network bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to undelegate for CPU bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_storage_bytes", unstake_storage_bytes, localized("The amount of byte storage to undelegate"))->required();
       add_standard_transaction_options(undelegate_bandwidth);
 
       undelegate_bandwidth->set_callback([this] {
@@ -744,7 +744,7 @@ struct regproxy_subcommand {
    string proxy;
 
    regproxy_subcommand(CLI::App* actionRoot) {
-      auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register proxy account"));
+      auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
       register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
       add_standard_transaction_options(register_proxy);
 
@@ -760,8 +760,8 @@ struct unregproxy_subcommand {
    string proxy;
 
    unregproxy_subcommand(CLI::App* actionRoot) {
-      auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Register proxy account"));
-      unregister_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
+      auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
+      unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
       add_standard_transaction_options(unregister_proxy);
 
       unregister_proxy->set_callback([this] {
@@ -1721,8 +1721,8 @@ int main( int argc, char** argv ) {
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
 
-   auto delegateBandwitdh = delegate_bandwidth_subcommand(system);
-   auto undelegateBandwitdh = undelegate_bandwidth_subcommand(system);
+   auto delegateBandWidth = delegate_bandwidth_subcommand(system);
+   auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
 
