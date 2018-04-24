@@ -7,11 +7,10 @@ namespace  eosio {
    /**
     *  This wrapper uses a single table to store named objects various types.
     *
-    *  @tparam Code - the name of the code which has write permission
     *  @tparam SingletonName - the name of this singlton variable
     *  @tparam T - the type of the singleton
     */
-   template<account_name Code, uint64_t SingletonName, account_name BillToAccount, typename T>
+   template<uint64_t SingletonName, typename T>
    class singleton
    {
       constexpr static uint64_t pk_value = SingletonName;
@@ -26,50 +25,48 @@ namespace  eosio {
       typedef eosio::multi_index<SingletonName, row> table;
 
       public:
-         //static const uint64_t singleton_table_name = N(singleton);
 
-         static bool exists( scope_name scope = Code ) {
-            table t( Code, scope );
-            return t.find( pk_value ) != t.end();
+         singleton( account_name code, scope_name scope ) : _t( code, scope ) /*_code(code), _scope(scope)*/ {}
+
+         bool exists() {
+            return _t.find( pk_value ) != _t.end();
          }
 
-         static T get( scope_name scope = Code ) {
-            table t( Code, scope );
-            auto itr = t.find( pk_value );
-            eosio_assert( itr != t.end(), "singleton does not exist" );
+         T get() {
+            auto itr = _t.find( pk_value );
+            eosio_assert( itr != _t.end(), "singleton does not exist" );
             return itr->value;
          }
 
-         static T get_or_default( scope_name scope = Code, const T& def = T() ) {
-            table t( Code, scope );
-            auto itr = t.find( pk_value );
-            return itr != t.end() ? itr->value : def;
+         T get_or_default( const T& def = T() ) {
+            auto itr = _t.find( pk_value );
+            return itr != _t.end() ? itr->value : def;
          }
 
-         static T get_or_create( scope_name scope = Code, const T& def = T() ) {
-            table t( Code, scope );
-            auto itr = t.find( pk_value );
-            return itr != t.end() ? itr->value
-               : t.emplace(BillToAccount, [&](row& r) { r.value = def; });
+         T get_or_create( account_name bill_to_account, const T& def = T() ) {
+            auto itr = _t.find( pk_value );
+            return itr != _t.end() ? itr->value
+               : _t.emplace(bill_to_account, [&](row& r) { r.value = def; });
          }
 
-         static void set( const T& value = T(), scope_name scope = Code, account_name b = BillToAccount ) {
-            table t( Code, scope );
-            auto itr = t.find( pk_value );
-            if( itr != t.end() ) {
-               t.modify(itr, b, [&](row& r) { r.value = value; });
+         void set( const T& value, account_name bill_to_account ) {
+            auto itr = _t.find( pk_value );
+            if( itr != _t.end() ) {
+               _t.modify(itr, bill_to_account, [&](row& r) { r.value = value; });
             } else {
-               t.emplace(b, [&](row& r) { r.value = value; });
+               _t.emplace(bill_to_account, [&](row& r) { r.value = value; });
             }
          }
 
-         static void remove( scope_name scope = Code ) {
-            table t( Code, scope );
-            auto itr = t.find( pk_value );
-            if( itr != t.end() ) {
-               t.erase(itr);
+         void remove( ) {
+            auto itr = _t.find( pk_value );
+            if( itr != _t.end() ) {
+               _t.erase(itr);
             }
          }
+
+      private:
+         table _t;
    };
 
 } /// namespace eosio

@@ -1,4 +1,6 @@
 #include <boost/test/unit_test.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
@@ -363,7 +365,6 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
 
 // test softfloat conversion operations
 BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
-
    int count = 0;
    auto check = [&](const char *wast_template, const char *op, const char *param) -> bool {
       count+=16;
@@ -462,6 +463,40 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    // max value below 2^64 in IEEE float64
    BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709549568"));  
    BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709551616")); 
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
+   produce_blocks(2);
+   create_accounts( {N(aligncheck)} );
+   produce_block();
+   
+   auto check_aligned = [&]( auto wast ) { 
+      set_code(N(aligncheck), wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(aligncheck);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(aligncheck),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(aligncheck), "active" ), chain_id_type());
+      push_transaction(trx);
+      auto sb = produce_block();
+      block_trace trace(sb);
+      
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   };
+
+   check_aligned(aligned_ref_wast);
+   check_aligned(misaligned_ref_wast);
+   check_aligned(aligned_const_ref_wast);
+   check_aligned(misaligned_const_ref_wast);
+   check_aligned(aligned_ptr_wast);
+   check_aligned(misaligned_ptr_wast);
+   check_aligned(misaligned_const_ptr_wast);
 } FC_LOG_AND_RETHROW()
 
 // test cpu usage
