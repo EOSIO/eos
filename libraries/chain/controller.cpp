@@ -522,6 +522,9 @@ struct controller_impl {
                auto mtrx = std::make_shared<transaction_metadata>(pt);
                push_transaction( mtrx );
             }
+            else if( receipt.trx.contains<transaction_id_type>() ) {
+               self.push_scheduled_transaction( receipt.trx.get<transaction_id_type>() );
+            }
          }
 
          finalize_block();
@@ -858,6 +861,7 @@ void controller::push_next_scheduled_transaction( fc::time_point deadline ) {
       my->push_scheduled_transaction( *idx.begin(), deadline );
 }
 void controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
+   FC_ASSERT( !"not implemented" );
    /// lookup scheduled trx and then apply it...
 }
 
