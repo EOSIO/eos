@@ -330,6 +330,8 @@ struct controller_impl {
 
       optional<fc::exception> soft_except;
       optional<fc::exception> hard_except;
+      std::exception_ptr soft_except_ptr;
+      std::exception_ptr hard_except_ptr;
 
       transaction_trace_ptr trace;
       uint32_t apply_cpu_usage = 0;
@@ -361,6 +363,8 @@ struct controller_impl {
          self.applied_transaction( trx_context.trace );
       } catch( const fc::exception& e ) {
          soft_except = e;
+         soft_except_ptr = std::current_exception();
+
       }
       if( soft_except && gto.sender != account_name() ) { /// TODO: soft errors should not go to error handlers (deadline error)
          edump((soft_except->to_detail_string()));
@@ -370,6 +374,7 @@ struct controller_impl {
             self.applied_transaction( trace );
          } catch ( const fc::exception& e ) {
             hard_except = e;
+            trace->hard_except_ptr = std::current_exception();
          }
       }
 
@@ -378,6 +383,8 @@ struct controller_impl {
       trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+999)/1000, 0 );
       trace->soft_except = soft_except;
       trace->hard_except = hard_except;
+      trace->soft_except_ptr = soft_except_ptr;
+      trace->hard_except_ptr = hard_except_ptr;
       self.applied_transaction( trace );
    } /// push_scheduled_transaction
 
@@ -436,8 +443,6 @@ struct controller_impl {
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-
-         const auto& trace = trx_context.trace;
          if( !implicit ) {
             if( trx_context.delay == fc::seconds(0) ) {
                trace->receipt = push_receipt( trx->packed_trx, transaction_receipt::executed, trace->kcpu_usage(), trx_context.net_usage );
@@ -451,6 +456,7 @@ struct controller_impl {
          trx_context.squash();
       } catch ( const fc::exception& e ) {
          trace->soft_except = e;
+         trace->hard_except_ptr = std::current_exception();
          //wlog( "caught exception in push_transaction" );
          //wdump((trace));
       }
