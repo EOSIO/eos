@@ -26,7 +26,7 @@ namespace  eosio {
 
       public:
 
-         singleton( account_name code, scope_name scope ) : _t( code, scope ) /*_code(code), _scope(scope)*/ {}
+         singleton( account_name code, scope_name scope ) : _t( code, scope ) {}
 
          bool exists() {
             return _t.find( pk_value ) != _t.end();
