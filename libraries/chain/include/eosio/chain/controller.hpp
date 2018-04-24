@@ -85,7 +85,7 @@ namespace eosio { namespace chain {
           *
           */
          void push_scheduled_transaction( const transaction_id_type& scheduled,
-                                                           fc::time_point deadline = fc::time_point::maximum() );
+                                          fc::time_point deadline = fc::time_point::maximum() );
 
          /**
           * Attempt to execute the oldest unexecuted deferred transaction

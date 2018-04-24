@@ -14,7 +14,8 @@ namespace eosio { namespace chain {
          executed  = 0, ///< succeed, no error handler executed
          soft_fail = 1, ///< objectively failed (not executed), error handler executed
          hard_fail = 2, ///< objectively failed and error handler objectively failed thus no state change
-         delayed   = 3 ///< transaction delayed/deferred/scheduled for future execution
+         delayed   = 3, ///< transaction delayed/deferred/scheduled for future execution
+         expired   = 4  ///< transaction expired and storage space refuned to user
       };
 
       transaction_receipt_header():status(hard_fail){}
@@ -65,7 +66,7 @@ namespace eosio { namespace chain {
 } } /// eosio::chain
 
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
-                 (executed)(soft_fail)(hard_fail)(delayed) )
+                 (executed)(soft_fail)(hard_fail)(delayed)(expired) )
 
 FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(kcpu_usage)(net_usage_words) )
 FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
