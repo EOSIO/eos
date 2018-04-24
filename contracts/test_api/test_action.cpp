@@ -179,12 +179,6 @@ void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64
    eosio_assert( receiver == cur_rec, "the current receiver does not match" );
 }
 
-void test_action::test_current_sender() {
-   account_name cur_send;
-   read_action_data(&cur_send, sizeof(account_name));
-   eosio_assert( current_sender() == cur_send, "the current sender does not match" );
-}
-
 void test_action::now() {
    uint32_t tmp = 0;
    uint32_t total = read_action_data(&tmp, sizeof(uint32_t));
