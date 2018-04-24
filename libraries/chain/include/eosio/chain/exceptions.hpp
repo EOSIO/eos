@@ -100,6 +100,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           eosio::chain::wallet_exception, 3140003, "Locked wallet" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  eosio::chain::wallet_exception, 3140004, "Missing public key" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, eosio::chain::wallet_exception, 3140005, "Invalid wallet password" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_not_available_exception,    eosio::chain::wallet_exception, 3140006, "No available wallet" )
 
    FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent,  eosio::chain::rate_limiting_invariant_exception, 3150001, "internal state is no longer consistent" )
    FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_overcommitment,      eosio::chain::rate_limiting_invariant_exception, 3150002, "chain resource limits are overcommitted" )
