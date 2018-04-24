@@ -14,7 +14,6 @@ struct block_header_state {
     signed_block_header               header;
     uint32_t                          dpos_last_irreversible_blocknum = 0;
     uint32_t                          pending_schedule_lib_num = 0; /// last irr block num
-    digest_type                       prior_pending_schedule_hash;
     digest_type                       pending_schedule_hash;
     producer_schedule_type            pending_schedule;
     producer_schedule_type            active_schedule;
@@ -26,6 +25,12 @@ struct block_header_state {
     block_header_state   generate_next( block_timestamp_type when )const;
 
     void set_new_producers( producer_schedule_type next_pending );
+
+
+    void add_confirmation( const header_confirmation& c );
+    uint32_t                     bft_irreversible_blocknum = 0;
+    vector<header_confirmation>  confirmations;
+
 
     bool                 has_pending_producers()const { return pending_schedule.producers.size(); }
     uint32_t             calc_dpos_last_irreversible()const;
