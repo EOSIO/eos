@@ -275,8 +275,8 @@ namespace eosio { namespace testing {
       }
 
       bool validate() {
-        auto hbh = control->head_block_header();
-        auto vn_hbh = validating_node->head_block_header();
+        auto hbh = control->head_block_state()->header;
+        auto vn_hbh = validating_node->head_block_state()->header;
         return control->head_block_id() == validating_node->head_block_id() &&
                hbh.previous == vn_hbh.previous &&
                hbh.timestamp == vn_hbh.timestamp &&
