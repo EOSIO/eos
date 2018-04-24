@@ -418,11 +418,12 @@ struct controller_impl {
          return;
       }
 
+      transaction_trace_ptr trace;
       try {
          unapplied_transactions.erase( trx->signed_id );
 
          transaction_context trx_context( self, trx->trx, trx->id );
-         trx->trace = trx_context.trace;
+         trace = trx_context.trace;
 
          auto required_delay = authorization.check_authorization( trx->trx.actions, trx->recover_keys() );
 
@@ -449,12 +450,11 @@ struct controller_impl {
          self.accepted_transaction(trx);
          trx_context.squash();
       } catch ( const fc::exception& e ) {
-         trx->trace->soft_except = e;
+         trace->soft_except = e;
       }
 
       if( trx->on_result ) {
-         (*trx->on_result)();
-         trx->on_result.reset();
+         (*trx->on_result)(trace);
       }
    } /// push_transaction
 
@@ -825,8 +825,10 @@ void controller::push_unapplied_transaction( fc::time_point deadline ) {
 }
 
 transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx ) {
+   transaction_trace_ptr trace;
+   trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; }; 
    my->push_transaction( trx );
-   return trx->trace;
+   return trace;
 }
 
 void controller::push_next_scheduled_transaction( fc::time_point deadline ) {

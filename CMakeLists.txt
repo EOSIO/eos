@@ -187,6 +187,7 @@ add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
 add_subdirectory( tests )
+add_subdirectory( unittests )
 add_subdirectory( tools )
 add_subdirectory( debian )
 
