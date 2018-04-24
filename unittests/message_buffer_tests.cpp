@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eosio/net_plugin/message_buffer.hpp>
+#include <fc/network/message_buffer.hpp>
 #include <boost/test/unit_test.hpp>
 #include <iostream>
 
@@ -36,7 +36,7 @@ constexpr auto     def_buffer_size = 1024*1024*def_buffer_size_mb;
 BOOST_AUTO_TEST_CASE(message_buffer_construction)
 {
   try {
-    eosio::message_buffer<def_buffer_size> mb;
+    fc::message_buffer<def_buffer_size> mb;
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_construction)
 BOOST_AUTO_TEST_CASE(message_buffer_growth)
 {
   try {
-    eosio::message_buffer<def_buffer_size> mb;
+    fc::message_buffer<def_buffer_size> mb;
     mb.add_buffer_to_chain();
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size);
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_peek_read)
   try {
     {
       const uint32_t small = 32;
-      eosio::message_buffer<small> mb;
+      fc::message_buffer<small> mb;
       BOOST_CHECK_EQUAL(mb.total_bytes(), small);
       BOOST_CHECK_EQUAL(mb.bytes_to_write(), small);
       BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_write_ptr_to_end)
   try {
     {
       const uint32_t small = 32;
-      eosio::message_buffer<small> mb;
+      fc::message_buffer<small> mb;
       BOOST_CHECK_EQUAL(mb.total_bytes(), small);
       BOOST_CHECK_EQUAL(mb.bytes_to_write(), small);
       BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);

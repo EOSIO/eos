@@ -6,7 +6,6 @@
 
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
-#include <eosio/net_plugin/message_buffer.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
@@ -14,6 +13,7 @@
 #include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/contracts/types.hpp>
 
+#include <fc/network/message_buffer.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/raw.hpp>
@@ -399,7 +399,7 @@ namespace eosio {
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
       socket_ptr              socket;
 
-      message_buffer<1024*1024>    pending_message_buffer;
+      fc::message_buffer<1024*1024>    pending_message_buffer;
       vector<char>            blk_buffer;
 
       struct queued_write {
