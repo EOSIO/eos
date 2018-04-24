@@ -99,9 +99,9 @@
 		if [ ${tester} ${testee} ]; then
 			# check boost version, it should be 1_66
 			if [ "${brewname}" = "boost" ]; then
-				BVERSION=`cat "${testee}" 2>/dev/null | grep BOOST_LIB_VERSION | tail -1 \
-				| tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9_]//g'`
-				if [ "${BVERSION}" != "1_66" ]; then
+				BVERSION=`cat "${testee}" 2>/dev/null | grep "#define BOOST_VERSION" | tail -1 \
+				| tr -s ' ' | cut -d\  -f3`
+				if [ ${BVERSION} < 106600 ]; then
 					BOOST_CHECK=1
 					DEP=$DEP"${brewname} "
 					DISPLAY="${DISPLAY}${COUNT}. ${name}\n\t"

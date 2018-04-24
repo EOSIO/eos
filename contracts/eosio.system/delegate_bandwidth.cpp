@@ -38,6 +38,7 @@ namespace eosiosystem {
 
       uint64_t primary_key()const { return owner; }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( total_resources, (owner)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )
    };
 
@@ -55,6 +56,7 @@ namespace eosiosystem {
 
       uint64_t  primary_key()const { return to; }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )
 
    };
@@ -66,6 +68,7 @@ namespace eosiosystem {
 
       uint64_t  primary_key()const { return owner; }
 
+      // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(amount) )
    };
 
@@ -74,8 +77,8 @@ namespace eosiosystem {
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
    void system_contract::delegatebw( const account_name from, const account_name receiver,
-                                            const asset stake_net_quantity, const asset stake_cpu_quantity,
-                                            const asset stake_storage_quantity )
+                                     const asset stake_net_quantity, const asset stake_cpu_quantity,
+                                     const asset stake_storage_quantity )
    {
       eosio_assert( stake_cpu_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_net_quantity.amount >= 0, "must stake a positive amount" );
