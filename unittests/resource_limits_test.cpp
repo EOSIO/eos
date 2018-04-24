@@ -1,12 +1,12 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/test/chainbase_fixture.hpp>
+#include <eosio/testing/chainbase_fixture.hpp>
 
 #include <algorithm>
 
 using namespace eosio::chain::resource_limits;
-using namespace eosio::chain::test;
+using namespace eosio::testing;
 using namespace eosio::chain;
 
 
@@ -19,7 +19,6 @@ class resource_limits_fixture: private chainbase_fixture<512*1024>, public resou
       ,resource_limits_manager(*chainbase_fixture::_db)
       {
          initialize_database();
-         initialize_chain();
       }
 
       ~resource_limits_fixture() {}
@@ -246,11 +245,9 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
          add_pending_account_ram_usage(account, increment);
-         synchronize_account_ram_usage( );
       }
 
-      add_pending_account_ram_usage(account, increment);
-      BOOST_REQUIRE_THROW(synchronize_account_ram_usage( ), tx_resource_exhausted);
+      BOOST_REQUIRE_THROW(add_pending_account_ram_usage(account, increment), tx_resource_exhausted);
    } FC_LOG_AND_RETHROW();
 
    BOOST_FIXTURE_TEST_CASE(enforce_account_ram_commitment, resource_limits_fixture) try {
@@ -265,7 +262,6 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       set_account_limits(account, limit, -1, -1 );
       process_account_limit_updates();
       add_pending_account_ram_usage(account, commit);
-      synchronize_account_ram_usage( );
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
          set_account_limits(account, limit - increment * idx, -1, -1);
