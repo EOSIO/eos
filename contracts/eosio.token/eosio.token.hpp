@@ -10,6 +10,10 @@
 
 #include <string>
 
+namespace eosiosystem {
+   class system_contract;
+}
+
 namespace eosio {
 
    using std::string;
@@ -31,6 +35,10 @@ namespace eosio {
                         account_name to,
                         asset        quantity,
                         string       memo );
+
+      private:
+
+         friend eosiosystem::system_contract;
 
          inline asset get_supply( symbol_name sym )const;
          
