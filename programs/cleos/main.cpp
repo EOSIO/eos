@@ -1717,7 +1717,7 @@ int main( int argc, char** argv ) {
    auto unregisterProducer = unregister_producer_subcommand(system);
 
    auto voteProducer = system->add_subcommand("voteproducer", localized("Vote for a producer"));
-   system->require_subcommand();
+   voteProducer->require_subcommand();
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
 
