@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
 
 #include <dice/dice.wast.hpp>
 #include <dice/dice.abi.hpp>
@@ -20,7 +21,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 using namespace std;
@@ -98,7 +98,7 @@ struct dice_tester : TESTER {
 
    template<typename IndexType, typename Scope>
    const auto& get_index() {
-      return control->get_database().get_index<IndexType,Scope>();
+      return control->db().get_index<IndexType,Scope>();
    }
 
    void offer_bet(account_name account, asset amount, const checksum_type& commitment) {
@@ -108,7 +108,8 @@ struct dice_tester : TESTER {
       trx.actions.push_back(act);
       set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
-      control->push_transaction(packed_transaction(trx,packed_transaction::none));
+      auto ptrx = packed_transaction(trx,packed_transaction::none);
+      push_transaction(ptrx);
    }
 
    void cancel_offer(account_name account, const checksum_type& commitment) {
@@ -118,7 +119,8 @@ struct dice_tester : TESTER {
       trx.actions.push_back(act);
       set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
-      control->push_transaction(packed_transaction(trx,packed_transaction::none));
+      auto ptrx = packed_transaction(trx,packed_transaction::none);
+      push_transaction(ptrx);
    }
 
    void deposit(account_name account, asset amount) {
@@ -128,7 +130,8 @@ struct dice_tester : TESTER {
       trx.actions.push_back(act);
       set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
-      control->push_transaction(packed_transaction(trx,packed_transaction::none));
+      auto ptrx = packed_transaction(trx,packed_transaction::none);
+      push_transaction(ptrx);
    }
 
    void withdraw(account_name account, asset amount) {
@@ -138,7 +141,8 @@ struct dice_tester : TESTER {
       trx.actions.push_back(act);
       set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
-      control->push_transaction(packed_transaction(trx,packed_transaction::none));
+      auto ptrx = packed_transaction(trx,packed_transaction::none);
+      push_transaction(ptrx);
    }
 
    void reveal(account_name account, const checksum_type& commitment, const checksum_type& source ) {
@@ -148,14 +152,15 @@ struct dice_tester : TESTER {
       trx.actions.push_back(act);
       set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
-      control->push_transaction(packed_transaction(trx,packed_transaction::none));
+      auto ptrx = packed_transaction(trx,packed_transaction::none);
+      push_transaction(ptrx);
    }
 
    bool dice_account(account_name account, account_t& acnt) {
       auto* maybe_tid = find_table(N(dice), N(dice), N(account));
       if(maybe_tid == nullptr) return false;
 
-      auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, account));
+      auto* o = control->db().find<key_value_object, by_scope_primary>(boost::make_tuple(maybe_tid->id, account));
       if(o == nullptr) {
          return false;
       }
