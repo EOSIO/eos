@@ -618,7 +618,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
            30, 10);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
+   BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
@@ -645,7 +645,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
+   BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
@@ -679,7 +679,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(0, gen_size);
+   BOOST_CHECK_EQUAL(2, gen_size);
 
    chain.produce_blocks();
 
@@ -817,7 +817,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
+   BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
@@ -844,7 +844,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
+   BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
@@ -878,7 +878,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(0, gen_size);
+   BOOST_CHECK_EQUAL(2, gen_size);
 
    chain.produce_blocks();
 
@@ -1015,7 +1015,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
+   BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
@@ -1042,8 +1042,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
-   BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
+   BOOST_CHECK_EQUAL(3, gen_size);
+   BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
 
@@ -1076,7 +1076,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(0, gen_size);
+   BOOST_CHECK_EQUAL(2, gen_size);
 
    chain.produce_blocks();
 
@@ -1219,8 +1219,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
-   BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
+   BOOST_CHECK_EQUAL(2, gen_size);
+   BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
 
@@ -1246,8 +1246,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
-   BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
+   BOOST_CHECK_EQUAL(3, gen_size);
+   BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
 
@@ -1280,7 +1280,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(0, gen_size);
+   BOOST_CHECK_EQUAL(2, gen_size);
 
    chain.produce_blocks();
 
@@ -1311,7 +1311,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("16.0000 CUR"), liquid_balance);
 
-} FC_LOG_AND_RETHROW() }/// schedule_test
+} FC_LOG_AND_RETHROW() } /// link_delay_link_change_heirarchy_test
 
 // test delay_sec field imposing unneeded delay
 BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
@@ -1450,8 +1450,6 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
 
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
-#if 0 // todo
-
 // test canceldelay action cancelling a delayed transaction
 BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    TESTER chain;
@@ -1523,13 +1521,16 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   ids.push_back(trace.id);
+   ids.push_back(trace->id);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
-   BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
+   BOOST_CHECK_EQUAL(1, gen_size);
+   BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
-   const auto sender_id_to_cancel = trace.deferred_transaction_requests[0].get<deferred_transaction>().sender_id;
+   const auto& idx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+   auto itr = idx.find( trace->id );
+   if (itr == idx.end()) BOOST_TEST(false);
+   const auto sender_id_to_cancel = itr->sender_id;
 
    chain.produce_blocks();
 
@@ -1549,11 +1550,11 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
            ("delay", 0),
            30, 10
    );
-   ids.push_back(trace.id);
+   ids.push_back(trace->id);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
-   BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
+   BOOST_CHECK_EQUAL(2, gen_size);
+   BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
 
@@ -1577,11 +1578,11 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   ids.push_back(trace.id);
+   ids.push_back(trace->id);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
-   BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
+   BOOST_CHECK_EQUAL(3, gen_size);
+   BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
    chain.produce_blocks();
 
@@ -1601,10 +1602,14 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(1, gen_size);
+   BOOST_CHECK_EQUAL(1, gen_size);
 
-   const auto sender_id_canceled = trace.deferred_transaction_requests[0].get<deferred_reference>().sender_id;
-   BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
+   const auto& cidx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+   auto citr = cidx.find( ids[0] );
+   if (citr == cidx.end()) BOOST_TEST(false);
+   const auto sender_id_canceled = citr->sender_id;
+
+   BOOST_CHECK_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
 
    chain.produce_blocks();
 
@@ -1630,7 +1635,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(0, gen_size);
+   BOOST_CHECK_EQUAL(0, gen_size);
 
    chain.produce_blocks();
 
@@ -1661,7 +1666,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("15.0000 CUR"), liquid_balance);
 } FC_LOG_AND_RETHROW() }
-
+#if 0
 // test canceldelay action under different permission levels
 BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    TESTER chain;
@@ -1743,7 +1748,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
           ("memo", "hi" ),
           30, 5
       );
-      auto trx_id = trace.id;
+      auto trx_id = trace->id;
       BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(1, gen_size);
@@ -1762,7 +1767,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       {
          signed_transaction trx;
          trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                                  chain::contracts::canceldelay{{N(tester), config::active_name}, trx_id});
+                                  chain::canceldelay{{N(tester), config::active_name}, trx_id});
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
          BOOST_REQUIRE_THROW( chain.push_transaction(trx), transaction_exception );
@@ -1772,7 +1777,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       {
          signed_transaction trx;
          trx.actions.emplace_back(vector<permission_level>{{N(tester), N(second)}},
-                                  chain::contracts::canceldelay{{N(tester), N(first)}, trx_id});
+                                  chain::canceldelay{{N(tester), N(first)}, trx_id});
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "second"), chain_id_type());
          BOOST_REQUIRE_THROW( chain.push_transaction(trx), tx_irrelevant_auth );
@@ -1781,7 +1786,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       // canceldelay with "active" permission for delayed transfer of 1.0000 CUR
       signed_transaction trx;
       trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               chain::contracts::canceldelay{{N(tester), N(first)}, trx_id});
+                               chain::canceldelay{{N(tester), N(first)}, trx_id});
       chain.set_transaction_headers(trx);
       trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
       trace = chain.push_transaction(trx);
@@ -1803,7 +1808,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
    ilog("reset minimum permission of transfer to second permission");
 
-   chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
+   chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
            ("code", "currency")
            ("type", "transfer")
@@ -1824,10 +1829,11 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
           ("memo", "hi" ),
           30, 5
       );
-      auto trx_id = trace.id;
+      auto trx_id = trace->id;
       BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
-      BOOST_REQUIRE_EQUAL(1, chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size());
-      BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
+      auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
+      BOOST_CHECK_EQUAL(1, gen_size);
+      BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
       const auto sender_id_to_cancel = trace.deferred_transaction_requests[0].get<deferred_transaction>().sender_id;
 
@@ -1841,7 +1847,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       // canceldelay with "first" permission for delayed transfer of 5.0000 CUR
       signed_transaction trx;
       trx.actions.emplace_back(vector<permission_level>{{N(tester), N(first)}},
-                               chain::contracts::canceldelay{{N(tester), N(second)}, trx_id});
+                               chain::canceldelay{{N(tester), N(second)}, trx_id});
       chain.set_transaction_headers(trx);
       trx.sign(chain.get_private_key(N(tester), "first"), chain_id_type());
       trace = chain.push_transaction(trx);
@@ -1872,7 +1878,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
           ("memo", "hi" ),
           30, 5
       );
-      auto trx_id = trace.id;
+      auto trx_id = trace->id;
       BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(1, gen_size);
@@ -1891,7 +1897,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       {
          signed_transaction trx;
          trx.actions.emplace_back(vector<permission_level>{{N(tester), N(active)}},
-                                  chain::contracts::canceldelay{{N(tester), config::owner_name}, trx_id});
+                                  chain::canceldelay{{N(tester), config::owner_name}, trx_id});
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
          BOOST_REQUIRE_THROW( chain.push_transaction(trx), tx_irrelevant_auth );
@@ -1900,7 +1906,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       // canceldelay with "owner" permission for delayed transfer of 10.0000 CUR
       signed_transaction trx;
       trx.actions.emplace_back(vector<permission_level>{{N(tester), config::owner_name}},
-                               chain::contracts::canceldelay{{N(tester), config::owner_name}, trx_id});
+                               chain::canceldelay{{N(tester), config::owner_name}, trx_id});
       chain.set_transaction_headers(trx);
       trx.sign(chain.get_private_key(N(tester), "owner"), chain_id_type());
       trace = chain.push_transaction(trx);
@@ -1921,7 +1927,5 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    }
 
 } FC_LOG_AND_RETHROW() }
-
 #endif
-
 BOOST_AUTO_TEST_SUITE_END()
