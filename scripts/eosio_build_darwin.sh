@@ -172,7 +172,7 @@
 		
 	printf "\n\tChecking boost library installation.\n"
 	BVERSION=`cat "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null | grep BOOST_LIB_VERSION | tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9_]//g'`
-	if [ "${BVERSION}" != "1_67" ]; then
+	if [ "${BVERSION}" != "1_66" ]; then
 		if [ ! -z "${BVERSION}" ]; then
 			printf "\tFound Boost Version ${BVERSION}.\n"
 			printf "\tEOS.IO requires Boost version 1.66.\n"
