@@ -67,8 +67,11 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
    fc::raw::pack( enc, *this );
-   if( cfd.size() )
-      fc::raw::pack( enc, cfd );
+   if( cfd.size() ) {
+      fc::raw::pack( enc, digest_type::hash(cfd) );
+   } else {
+      fc::raw::pack( enc, digest_type() );
+   }
    return enc.result();
 }
 
@@ -127,8 +130,15 @@ uint32_t packed_transaction::get_billable_size()const {
 }
 
 digest_type packed_transaction::packed_digest()const {
+   digest_type::encoder prunable;
+   fc::raw::pack( prunable, signatures );
+   fc::raw::pack( prunable, packed_context_free_data );
+
    digest_type::encoder enc;
-   fc::raw::pack( enc, *this );
+   fc::raw::pack( enc, compression );
+   fc::raw::pack( enc, packed_trx  );
+   fc::raw::pack( enc, prunable.result() );
+
    return enc.result();
 }
 

@@ -884,10 +884,11 @@ bool controller::push_next_unapplied_transaction( fc::time_point deadline ) {
    return my->push_next_unapplied_transaction( deadline );
 }
 
-transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx ) {
+transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx, time_point deadline ) {
+   FC_ASSERT( deadline != fc::time_point() );
    transaction_trace_ptr trace;
    trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; };
-   my->push_transaction( trx );
+   my->push_transaction( trx, deadline );
    return trace;
 }
 
@@ -913,6 +914,12 @@ uint32_t controller::head_block_num()const {
 }
 block_id_type controller::head_block_id()const {
    return my->head->id;
+}
+account_name  controller::head_block_producer()const {
+   return my->head->header.producer;
+}
+uint32_t controller::last_irreversible_block_num() const {
+   return my->head->bft_irreversible_blocknum;
 }
 
 time_point controller::head_block_time()const {
