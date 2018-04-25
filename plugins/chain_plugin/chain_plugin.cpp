@@ -205,17 +205,8 @@ chain_apis::read_write chain_plugin::get_read_write_api() {
    return chain_apis::read_write(chain());
 }
 
-bool chain_plugin::accept_block(const signed_block& block, bool currently_syncing) {
-   if (currently_syncing && block.block_num() % 10000 == 0) {
-      ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
-           ("t", block.timestamp)
-           ("n", block.block_num())
-           ("p", block.producer));
-   }
-
-#warning TODO: This used to be sync now it isnt?
-   chain().push_block( std::make_shared<signed_block>(block) );
-   return true;
+void chain_plugin::accept_block(const signed_block_ptr& block ) {
+   chain().push_block( block );
 }
 
 void chain_plugin::accept_transaction(const packed_transaction& trx) {
@@ -385,8 +376,8 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
       abi_serializer::from_variant(params, pretty_input, resolver);
    } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto trx_trace_ptr = db.push_transaction( std::make_shared<transaction_metadata>(move(pretty_input)) );
-#warning TODO: get transaction results asynchronously
+   auto trx_trace_ptr = db.sync_push( std::make_shared<transaction_metadata>(move(pretty_input)) );
+
    fc::variant pretty_output;
    abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
    return read_write::push_transaction_results{ trx_trace_ptr->id, pretty_output };

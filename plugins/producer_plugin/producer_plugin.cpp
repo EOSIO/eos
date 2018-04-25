@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/chain/producer_object.hpp>
 
 #include <fc/io/json.hpp>
@@ -193,7 +192,7 @@ void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   chain.applied_block.connect( [&]( const auto& bsp ){ my->on_block( bsp ); } );
+   chain.accepted_block.connect( [&]( const auto& bsp ){ my->on_block( bsp ); } );
 
    if (!my->_producers.empty())
    {
@@ -367,7 +366,12 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::lag;
    }
 
+   chain.finalize_block();
+   chain.sign_block( [&]( const digest_type& d ) { return private_key_itr->second.sign(d); } );
+   chain.commit_block();
+   chain.start_block();
 
+   /*
    auto block = chain.generate_block(
       scheduled_time,
       scheduled_producer.producer_name,
@@ -376,8 +380,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       );
 
    capture("n", block.block_num())("t", block.timestamp)("c", now)("count",block.input_transactions.size())("id",string(block.id()).substr(8,8));
-
-   app().get_plugin<net_plugin>().broadcast_block(block);
+      */
    return block_production_condition::produced;
 }
 
