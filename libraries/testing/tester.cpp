@@ -301,9 +301,9 @@ namespace eosio { namespace testing {
       signed_transaction trx;
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
-      wdump((trx));
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, chain_id_type() );
+      wdump((trx));
       return push_transaction( trx );
    }
 

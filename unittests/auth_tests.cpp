@@ -2,6 +2,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -62,9 +63,22 @@ BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
                             { .permission = {N(bob),config::active_name}, .weight = 1}
                           });
 
+   auto original_auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
+   wdump((original_auth));
+
    set_authority( N(alice), config::active_name,  delegated_auth );
 
-   produce_block( fc::hours(2) ); ///< skip 2 hours
+   auto new_auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
+   wdump((new_auth));
+   BOOST_CHECK_EQUAL(new_auth == delegated_auth, true);
+
+   //produce_block( fc::hours(2) ); ///< skip 2 hours
+   //produce_block( fc::milliseconds(config::block_interval_ms) ); // auth stays as new_auth (i.e. set_authority transaction was included in generated block)
+   produce_block( fc::milliseconds(config::block_interval_ms*2) ); // auth reverts back to original_auth (i.e. set_authority transaction was dropped from generated block)
+
+   auto auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
+   wdump((auth));
+   BOOST_CHECK_EQUAL((new_auth == auth), true);
 
    /// execute nonce from alice signed by bob
    auto trace = push_reqauth(N(alice), {permission_level{N(alice), config::active_name}}, { get_private_key(N(bob), "active") } );
