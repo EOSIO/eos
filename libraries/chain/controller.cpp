@@ -679,6 +679,9 @@ struct controller_impl {
 
    void finalize_block()
    { try {
+      if( !pending ) self.start_block();
+
+      /*
       ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} ${np}",
             ("n",pending->_pending_block_state->block_num)
             ("id",pending->_pending_block_state->header.id())
@@ -689,6 +692,7 @@ struct controller_impl {
             ("lib",pending->_pending_block_state->dpos_last_irreversible_blocknum)
             ("np",pending->_pending_block_state->header.new_producers)
             );
+            */
 
       set_action_merkle();
       set_trx_merkle();
@@ -698,27 +702,12 @@ struct controller_impl {
 
       create_block_summary();
 
-
-      /* TODO RESTORE
-      const auto& b = trace.block;
-      update_global_properties( b );
-      update_global_dynamic_data( b );
-      update_signing_producer(signing_producer, b);
-
-      create_block_summary(b);
-      clear_expired_transactions();
-
-      update_last_irreversible_block();
-
-      resource_limits.process_account_limit_updates();
-
       const auto& chain_config = self.get_global_properties().configuration;
       resource_limits.set_block_parameters(
          {EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct), chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}},
          {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}}
       );
 
-      */
    } FC_CAPTURE_AND_RETHROW() }
 
 

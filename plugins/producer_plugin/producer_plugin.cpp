@@ -222,14 +222,19 @@ void producer_plugin_impl::schedule_production_loop() {
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
    fc::time_point now = fc::time_point::now();
    int64_t time_to_next_block_time = (config::block_interval_us) - (now.time_since_epoch().count() % (config::block_interval_us) );
+
    if(time_to_next_block_time < config::block_interval_us/10 ) {     // we must sleep for at least 50ms
       ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}us",
            ("t", config::block_interval_us/10)("bt", time_to_next_block_time));
       time_to_next_block_time += config::block_interval_us;
    }
 
-   //_timer.expires_from_now(boost::posix_time::microseconds(time_to_next_block_time));
-   _timer.expires_from_now( boost::posix_time::microseconds(time_to_next_block_time) );
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+   chain.abort_block();
+   chain.start_block( now + fc::microseconds(time_to_next_block_time) );
+
+   _timer.expires_from_now( boost::posix_time::microseconds(time_to_next_block_time)  );
    //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
    _timer.async_wait( [&](const boost::system::error_code&){ block_production_loop(); } );
 }
@@ -267,9 +272,10 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
          case block_production_condition::produced: {
             const auto& db = app().get_plugin<chain_plugin>().chain();
             auto producer  = db.head_block_producer();
-            //          auto pending   = db.pending().size();
+            auto pending   = db.head_block_state();
 
-            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}", ("p", producer)("lib",db.last_irreversible_block_num())(capture) );
+            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}", 
+                 ("t",pending->block->timestamp)("p", producer)("id",fc::variant(pending->id).as_string().substr(0,16))("n",pending->block_num)("count",pending->block->transactions.size())("lib",db.last_irreversible_block_num())(capture) );
             break;
          }
          case block_production_condition::not_synced:
@@ -366,21 +372,13 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::lag;
    }
 
+  // idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
    chain.sign_block( [&]( const digest_type& d ) { return private_key_itr->second.sign(d); } );
    chain.commit_block();
-   chain.start_block();
+   auto hbt = chain.head_block_time();
+   //idump((fc::time_point::now() - hbt));
 
-   /*
-   auto block = chain.generate_block(
-      scheduled_time,
-      scheduled_producer.producer_name,
-      private_key_itr->second,
-      _production_skip_flags
-      );
-
-   capture("n", block.block_num())("t", block.timestamp)("c", now)("count",block.input_transactions.size())("id",string(block.id()).substr(8,8));
-      */
    return block_production_condition::produced;
 }
 
