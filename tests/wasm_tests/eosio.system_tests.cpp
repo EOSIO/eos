@@ -77,9 +77,9 @@ public:
       return push_action( name(from), N(delegatebw), mvo()
                           ("from",     from)
                           ("receiver", to)
-                          ("stake_net", net)
-                          ("stake_cpu", cpu)
-                          ("stake_storage", storage)
+                          ("stake_net_quantity", net)
+                          ("stake_cpu_quantity", cpu)
+                          ("stake_storage_quantity", storage)
       );
    }
 
@@ -91,9 +91,9 @@ public:
       return push_action( name(from), N(undelegatebw), mvo()
                           ("from",     from)
                           ("receiver", to)
-                          ("unstake_net", net)
-                          ("unstake_cpu", cpu)
-                          ("unstake_bytes", bytes)
+                          ("unstake_net_quantity", net)
+                          ("unstake_cpu_quantity", cpu)
+                          ("unstake_storage_bytes", bytes)
       );
    }
 
@@ -275,9 +275,9 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                         push_action( N(alice), N(delegatebw), mvo()
                                     ("from",     "alice")
                                     ("receiver", "bob")
-                                    ("stake_net", "10.0000 EOS")
-                                    ("stake_cpu", "10.0000 EOS")
-                                    ("stake_storage", "10.0000 EOS"),
+                                    ("stake_net_quantity", "10.0000 EOS")
+                                    ("stake_cpu_quantity", "10.0000 EOS")
+                                    ("stake_storage_quantity", "10.0000 EOS"),
                                     false
                         )
    );
@@ -286,9 +286,9 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                         push_action(N(alice), N(undelegatebw), mvo()
                                     ("from",     "alice")
                                     ("receiver", "bob")
-                                    ("unstake_net", "200.0000 EOS")
-                                    ("unstake_cpu", "100.0000 EOS")
-                                    ("unstake_bytes", 0)
+                                    ("unstake_net_quantity", "200.0000 EOS")
+                                    ("unstake_cpu_quantity", "100.0000 EOS")
+                                    ("unstake_storage_bytes", 0)
                                     ,false
                         )
    );
