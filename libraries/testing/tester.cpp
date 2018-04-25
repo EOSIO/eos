@@ -104,9 +104,16 @@ namespace eosio { namespace testing {
 
       if( !control->pending_block_state() ) {
          control->start_block( next_time );
+
+         while( control->push_next_scheduled_transaction() );
+
       } else if( control->pending_block_state()->header.timestamp != next_time ) {
+         wlog( "abort block... start new one" );
          control->abort_block();
          control->start_block( next_time );
+
+         elog( "push next scheduled trx" );
+         while( control->push_next_scheduled_transaction() );
          // TODO: Schedule all transactions in unapplied_transactions and deferred ones?
       }
 

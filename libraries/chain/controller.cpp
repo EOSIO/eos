@@ -297,6 +297,7 @@ struct controller_impl {
          FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
       }
 
+      //ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
       self.accepted_block( pending->_pending_block_state );
       pending->push();
       pending.reset();
@@ -317,7 +318,6 @@ struct controller_impl {
       trx_context.is_input  = false;
       trx_context.exec();
 
-      db.remove( gto );
       trx_context.squash();
 
       return move(trx_context.trace);
@@ -335,7 +335,7 @@ struct controller_impl {
    void push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline  ) {
       fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
 
-      FC_ASSERT( gto.delay_until <= self.pending_block_time() );
+      FC_ASSERT( gto.delay_until <= self.pending_block_time(), "this transaction isn't ready", ("gto.delay_until",gto.delay_until)("pbt",self.pending_block_time()) );
       if( gto.expiration <= self.pending_block_time() ) {
          expire_scheduled_transaction( gto );
          return;
@@ -345,6 +345,8 @@ struct controller_impl {
       optional<fc::exception> hard_except;
       std::exception_ptr soft_except_ptr;
       std::exception_ptr hard_except_ptr;
+
+      auto sender = gto.sender;
 
       transaction_trace_ptr trace;
       uint32_t apply_cpu_usage = 0;
@@ -372,14 +374,16 @@ struct controller_impl {
          trx_context.trace->receipt = push_receipt( gto.trx_id, transaction_receipt::executed, trx_context.trace->kcpu_usage(), 0 );
 
          db.remove( gto );
+
          trx_context.squash();
          self.applied_transaction( trx_context.trace );
+
+         return;
       } catch( const fc::exception& e ) {
          soft_except = e;
          soft_except_ptr = std::current_exception();
-
       }
-      if( soft_except && gto.sender != account_name() ) { /// TODO: soft errors should not go to error handlers (deadline error)
+      if( soft_except && sender != account_name() ) { /// TODO: soft errors should not go to error handlers (deadline error)
          edump((soft_except->to_detail_string()));
          try {
             auto trace = apply_onerror( gto, deadline, apply_cpu_usage  );
@@ -391,13 +395,21 @@ struct controller_impl {
          }
       }
 
-      edump((hard_except->to_detail_string()));
-      db.remove( gto );
+      /*
+      if( hard_except ) 
+         edump((hard_except->to_detail_string()));
+      if( soft_except ) 
+         edump((soft_except->to_detail_string()));
+       */
+
       trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+999)/1000, 0 );
       trace->soft_except = soft_except;
       trace->hard_except = hard_except;
       trace->soft_except_ptr = soft_except_ptr;
       trace->hard_except_ptr = hard_except_ptr;
+
+      db.remove( gto );
+
       self.applied_transaction( trace );
    } /// push_scheduled_transaction
 
@@ -525,7 +537,7 @@ struct controller_impl {
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
 
-   void apply_block( const signed_block_ptr& b ) {
+   void apply_block( const signed_block_ptr& b ) { try {
       try {
          start_block( b->timestamp );
 
@@ -554,7 +566,7 @@ struct controller_impl {
          abort_block();
          throw;
       }
-   } /// apply_block
+   } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
 
    void push_block( const signed_block_ptr& b ) {
@@ -868,14 +880,17 @@ transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx
    return trace;
 }
 
-void controller::push_next_scheduled_transaction( fc::time_point deadline ) {
+bool controller::push_next_scheduled_transaction( fc::time_point deadline ) {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-   if( idx.begin() != idx.end() )
-      my->push_scheduled_transaction( *idx.begin(), deadline );
+   auto itr = idx.begin();
+   if( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
+      my->push_scheduled_transaction( *itr, deadline );
+      return true;
+   }
+   return false;
 }
-void controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
-   FC_ASSERT( !"not implemented" );
 
+void controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_trx_id>();
    auto itr = idx.find( trxid );
    FC_ASSERT( itr != idx.end(), "unknown transaction" );

@@ -92,7 +92,7 @@ namespace eosio { namespace chain {
           *
           * @return nullptr if there is nothing pending
           */
-         void push_next_scheduled_transaction( fc::time_point deadline = fc::time_point::maximum() );
+         bool push_next_scheduled_transaction( fc::time_point deadline = fc::time_point::maximum() );
 
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
