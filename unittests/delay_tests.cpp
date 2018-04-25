@@ -1666,7 +1666,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("15.0000 CUR"), liquid_balance);
 } FC_LOG_AND_RETHROW() }
-#if 0
+
 // test canceldelay action under different permission levels
 BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    TESTER chain;
@@ -1754,7 +1754,10 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       BOOST_REQUIRE_EQUAL(1, gen_size);
       BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
-      const auto sender_id_to_cancel = trace.deferred_transaction_requests[0].get<deferred_transaction>().sender_id;
+      const auto& idx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+      auto itr = idx.find( trace->id );
+      if (itr == idx.end()) BOOST_TEST(false);
+      const auto sender_id_to_cancel = itr->sender_id;
 
       chain.produce_blocks();
 
@@ -1795,7 +1798,10 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(1, gen_size);
 
-      const auto sender_id_canceled = trace.deferred_transaction_requests[0].get<deferred_reference>().sender_id;
+      const auto& cidx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+      auto citr = cidx.find( ids[0] );
+      if (citr == cidx.end()) BOOST_TEST(false);
+      const auto sender_id_canceled = citr->sender_id;
       BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
 
       chain.produce_blocks(10);
@@ -1835,7 +1841,10 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       BOOST_CHECK_EQUAL(1, gen_size);
       BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
-      const auto sender_id_to_cancel = trace.deferred_transaction_requests[0].get<deferred_transaction>().sender_id;
+      const auto& idx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+      auto itr = idx.find( trace->id );
+      if (itr == idx.end()) BOOST_TEST(false);
+      const auto sender_id_to_cancel = itr->sender_id;
 
       chain.produce_blocks();
 
@@ -1856,7 +1865,10 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(1, gen_size);
 
-      const auto sender_id_canceled = trace.deferred_transaction_requests[0].get<deferred_reference>().sender_id;
+      const auto& cidx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+      auto citr = cidx.find( ids[0] );
+      if (citr == cidx.end()) BOOST_TEST(false);
+      const auto sender_id_canceled = citr->sender_id;
       BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
 
       chain.produce_blocks(10);
@@ -1884,7 +1896,10 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       BOOST_REQUIRE_EQUAL(1, gen_size);
       BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
-      const auto sender_id_to_cancel = trace.deferred_transaction_requests[0].get<deferred_transaction>().sender_id;
+      const auto& idx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+      auto itr = idx.find( trace->id );
+      if (itr == idx.end()) BOOST_TEST(false);
+      const auto sender_id_to_cancel = itr->sender_id;
 
       chain.produce_blocks();
 
@@ -1915,7 +1930,10 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(1, gen_size);
 
-      const auto sender_id_canceled = trace.deferred_transaction_requests[0].get<deferred_reference>().sender_id;
+      const auto& cidx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+      auto citr = cidx.find( ids[0] );
+      if (citr == cidx.end()) BOOST_TEST(false);
+      const auto sender_id_canceled = citr->sender_id;
       BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
 
       chain.produce_blocks(10);
@@ -1927,5 +1945,5 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    }
 
 } FC_LOG_AND_RETHROW() }
-#endif
+
 BOOST_AUTO_TEST_SUITE_END()
