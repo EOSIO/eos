@@ -297,9 +297,9 @@ struct controller_impl {
          FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
       }
 
+      self.accepted_block( pending->_pending_block_state );
       pending->push();
       pending.reset();
-      self.accepted_block( head );
    }
 
    transaction_trace_ptr apply_onerror( const generated_transaction_object& gto, fc::time_point deadline, uint32_t cpu_usage ) {
@@ -323,10 +323,23 @@ struct controller_impl {
       return move(trx_context.trace);
    }
 
+   void expire_scheduled_transaction( const generated_transaction_object& gto ) {
+      auto receipt = push_receipt( gto.trx_id, transaction_receipt::expired, 0, 0 );
+
+      resource_limits.add_pending_account_ram_usage(gto.payer, 
+               -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
+
+      db.remove( gto );
+   }
+
    void push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline  ) {
       fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
 
       FC_ASSERT( gto.delay_until <= self.pending_block_time() );
+      if( gto.expiration <= self.pending_block_time() ) {
+         expire_scheduled_transaction( gto );
+         return;
+      }
 
       optional<fc::exception> soft_except;
       optional<fc::exception> hard_except;
@@ -521,6 +534,9 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
                push_transaction( mtrx );
+            }
+            else if( receipt.trx.contains<transaction_id_type>() ) {
+               self.push_scheduled_transaction( receipt.trx.get<transaction_id_type>() );
             }
          }
 
@@ -858,7 +874,12 @@ void controller::push_next_scheduled_transaction( fc::time_point deadline ) {
       my->push_scheduled_transaction( *idx.begin(), deadline );
 }
 void controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
-   /// lookup scheduled trx and then apply it...
+   FC_ASSERT( !"not implemented" );
+
+   const auto& idx = db().get_index<generated_transaction_multi_index,by_trx_id>();
+   auto itr = idx.find( trxid );
+   FC_ASSERT( itr != idx.end(), "unknown transaction" );
+   my->push_scheduled_transaction( *itr, deadline );
 }
 
 uint32_t controller::head_block_num()const {
@@ -919,11 +940,12 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
 }
 
 signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
+   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
+   if( blk_state ) return blk_state->block;
+
    optional<signed_block> b = my->blog.read_block_by_num(block_num);
    if( b ) return std::make_shared<signed_block>( move(*b) );
 
-   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
-   if( blk_state ) return blk_state->block;
    return signed_block_ptr();
 }
 

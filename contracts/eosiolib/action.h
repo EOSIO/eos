@@ -144,13 +144,6 @@ extern "C" {
    time  publication_time();
 
    /**
-    *  Get the account which specifies the sender of the action
-    *  @brief Get the sender of the action
-    *  @return the account which specifies the sender of the action
-    */
-   account_name current_sender();
-
-   /**
     *  Get the current receiver of the action
     *  @brief Get the current receiver of the action
     *  @return the account which specifies the current receiver of the action

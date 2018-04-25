@@ -1,7 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
@@ -26,7 +25,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -56,7 +54,7 @@ public:
     }
 
     bootseq_tester() {
-        const auto &accnt = control->get_database().get<account_object, by_name>(config::system_account_name);
+        const auto &accnt = control->db().get<account_object, by_name>(config::system_account_name);
         abi_def abi;
         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
         abi_ser.set_abi(abi);

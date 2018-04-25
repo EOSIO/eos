@@ -235,10 +235,13 @@ namespace eosio { namespace chain {
    block_state_ptr   fork_database::get_block_in_current_chain_by_num( uint32_t n )const {
       const auto& numidx = my->index.get<by_block_num>();
       auto nitr = numidx.lower_bound( n );
-      FC_ASSERT( nitr != numidx.end() && (*nitr)->block_num == n,
-                 "could not find block in fork database with block number ${block_num}", ("block_num", n) );
-      FC_ASSERT( (*nitr)->in_current_chain == true,
-                 "block (with block number ${block_num}) found in fork database is not in the current chain", ("block_num", n) );
+      // following asserts removed so null can be returned
+      //FC_ASSERT( nitr != numidx.end() && (*nitr)->block_num == n,
+      //           "could not find block in fork database with block number ${block_num}", ("block_num", n) );
+      //FC_ASSERT( (*nitr)->in_current_chain == true,
+      //           "block (with block number ${block_num}) found in fork database is not in the current chain", ("block_num", n) );
+      if( nitr == numidx.end() || (*nitr)->block_num != n || (*nitr)->in_current_chain != true )
+         return block_state_ptr();
       return *nitr;
    }
 

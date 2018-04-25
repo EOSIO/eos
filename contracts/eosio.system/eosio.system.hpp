@@ -112,7 +112,8 @@ namespace eosiosystem {
 
          static void on(const claimrewards& cr) {
             require_auth(cr.owner);
-            eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
+            // TODO: current_sender() removed. Need to determine deferred transaction some other way.
+            // TODO: eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
             producers_table producers_tbl(SystemAccount, SystemAccount);
             auto prod = producers_tbl.find(cr.owner);
             eosio_assert(prod != producers_tbl.end(), "account name is not in producer list");
