@@ -1518,7 +1518,12 @@ class call_depth_api : public context_aware_api {
 };
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
-   (call_depth_assert, void()                )
+   (call_depth_assert,  void()               )
+   (call_depth_pop_i32, int(int, int)        )
+   (call_depth_pop_i64, int64_t(int64_t, int))
+   (call_depth_pop_f32, float(float ,int)    )
+   (call_depth_pop_f64, double(double, int)  )
+   (call_depth_pop,     void(int)            )
 );
 
 REGISTER_INTRINSICS(math_api,

@@ -208,24 +208,59 @@ namespace eosio { namespace chain { namespace wasm_injections {
       }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          if ( global_idx == -1 ) {
-            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32) eosio::chain::wasm_constraints::maximum_call_depth}});
+            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32)-1}}); // eosio::chain::wasm_constraints::maximum_call_depth}});
+            //arg.function_def->nonParameterLocalTypes.push_back(ValueType::i32);
+            /*
+            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32)0}});
+            arg.module->globals.defs.push_back({{ValueType::i64, true}, {(I64)0}});
+            arg.module->globals.defs.push_back({{ValueType::f32, true}, {(F32)0}});
+            arg.module->globals.defs.push_back({{ValueType::f64, true}, {(F64)0}});
+            */
+            //call_return_idx = arg.function_def->nonParameterLocalTypes.size() + arg.module->types[arg.function_def->type.index]->parameters.size()-1;
          }
+
          global_idx = arg.module->globals.size()-1;
+         /*
+         int32_t global_return_i32_idx = arg.module->globals.size()-4;
+         int32_t global_return_i64_idx = arg.module->globals.size()-3;
+         int32_t global_return_f32_idx = arg.module->globals.size()-2;
+         int32_t global_return_f64_idx = arg.module->globals.size()-1;
+         */
 
          wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
 
          int32_t assert_idx;
          injector_utils::add_import<ResultType::none>(*(arg.module), "call_depth_assert", assert_idx);
-         
+         int32_t pop_none_idx;
+         injector_utils::add_import<ResultType::none, ValueType::i32>(*(arg.module), "call_depth_pop", pop_none_idx);
+         int32_t pop_i32_idx;
+         injector_utils::add_import<ResultType::i32, ValueType::i32, ValueType::i32>(*(arg.module), "call_depth_pop_i32", pop_i32_idx);
+         int32_t pop_i64_idx;
+         injector_utils::add_import<ResultType::i64, ValueType::i64, ValueType::i32>(*(arg.module), "call_depth_pop_i64", pop_i64_idx);
+         int32_t pop_f32_idx;
+         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::i32>(*(arg.module), "call_depth_pop_f32", pop_f32_idx);
+         int32_t pop_f64_idx;
+         injector_utils::add_import<ResultType::f64, ValueType::f64, ValueType::i32>(*(arg.module), "call_depth_pop_f64", pop_f64_idx);
+
+         auto get_return_type = [&]( int idx ) {
+            return arg.module->types[arg.module->functions.getType(idx).index]->ret;
+         }; 
          wasm_ops::op_types<>::call_t call_assert;
+         wasm_ops::op_types<>::call_t call_pop;
          wasm_ops::op_types<>::get_global_t get_global_inst; 
          wasm_ops::op_types<>::set_global_t set_global_inst;
+
+         wasm_ops::op_types<>::get_global_t get_call_return_inst; 
+         wasm_ops::op_types<>::set_global_t set_call_return_inst;
+
          wasm_ops::op_types<>::i32_eqz_t eqz_inst; 
          wasm_ops::op_types<>::i32_const_t const_inst; 
          wasm_ops::op_types<>::i32_add_t add_inst;
          wasm_ops::op_types<>::end_t end_inst;
          wasm_ops::op_types<>::if__t if_inst; 
          wasm_ops::op_types<>::else__t else_inst; 
+         wasm_ops::op_types<>::block_t block_inst;
+         wasm_ops::op_types<>::block_t returning_block_inst;
 
          call_assert.field = assert_idx;
          get_global_inst.field = global_idx;
@@ -247,16 +282,67 @@ namespace eosio { namespace chain { namespace wasm_injections {
          INSERT_INJECTED(get_global_inst);
          INSERT_INJECTED(add_inst);
          INSERT_INJECTED(set_global_inst);
-         INSERT_INJECTED(end_inst);
-
+         
+         std::cout << "CALLING " << call_inst->field << " TYPE " << (int)get_return_type(call_inst->field) << std::endl;
          tmp = call_inst->pack();
          injected.insert( injected.end(), tmp.begin(), tmp.end() );
+         
+#if 1
+         if ( get_return_type(call_inst->field) == ResultType::i32 ) {
+            call_pop.field = pop_i32_idx;
+            INSERT_INJECTED(call_pop);
+         }
+         else if ( get_return_type(call_inst->field) == ResultType::i64 ) {
+            call_pop.field = pop_i64_idx;
+            INSERT_INJECTED(call_pop);
+         }
+         else if ( get_return_type(call_inst->field) == ResultType::f32 ) {
+            call_pop.field = pop_f32_idx;
+            INSERT_INJECTED(call_pop);
+         }
+         else if ( get_return_type(call_inst->field) == ResultType::f64 ) {
+            call_pop.field = pop_f64_idx;
+            INSERT_INJECTED(call_pop);
+         }
+         else {
+            call_pop.field = pop_none_idx;
+            INSERT_INJECTED(call_pop);
+         }
 
+#endif
+#if 0
          const_inst.field = 1;
-         INSERT_INJECTED(get_global_inst); 
+         INSERT_INJECTED(block_inst);
          INSERT_INJECTED(const_inst);
+         INSERT_INJECTED(get_global_inst); 
          INSERT_INJECTED(add_inst);
          INSERT_INJECTED(set_global_inst);
+         INSERT_INJECTED(end_inst);
+#endif
+
+#if 0
+         if ( get_return_type(call_inst->field) == ResultType::i32 ) {
+            std::cout << "I32 " << std::endl;
+            get_call_return_inst.field = global_return_i32_idx;
+            INSERT_INJECTED(get_call_return_inst);
+         }
+         else if ( get_return_type(call_inst->field) == ResultType::i64 ) {
+            std::cout << "I64 " << std::endl;
+            get_call_return_inst.field = global_return_i64_idx;
+            INSERT_INJECTED(get_call_return_inst);
+         }
+         else if ( get_return_type(call_inst->field) == ResultType::f32 ) {
+            std::cout << "F64 " << std::endl;
+            get_call_return_inst.field = global_return_f32_idx;
+            INSERT_INJECTED(get_call_return_inst);
+         }
+         else if ( get_return_type(call_inst->field) == ResultType::f64 ) {
+            std::cout << "F32 " << std::endl;
+            get_call_return_inst.field = global_return_f64_idx;
+            INSERT_INJECTED(get_call_return_inst);
+         }
+
+#endif
 #undef INSERT_INJECTED
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
@@ -853,6 +939,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
          void inject() {
             _module_injectors.inject( *_module );
             for ( auto& fd : _module->functions.defs ) {
+               // initialize call_return_local, for each function
+               // TODO clean this up
                wasm_ops::EOSIO_OperatorDecoderStream<pre_op_injectors> pre_decoder(fd.code);
                std::vector<U8> new_code;
                while ( pre_decoder ) {

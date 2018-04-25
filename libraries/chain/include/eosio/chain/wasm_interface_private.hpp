@@ -67,6 +67,7 @@ namespace eosio { namespace chain {
                bytes = outstream.getBytes();
                char* buff = new char[bytes.size()];
                memcpy(buff, bytes.data(), bytes.size());
+               std::cout << "WASM_FILE : " << "wasm_"+std::to_string(ii+1) << std::endl;
                std::ofstream output (std::string("wasm_")+std::to_string(ii++)+std::string(".wasm"));
                output.write(buff, bytes.size());
                delete[] buff;
