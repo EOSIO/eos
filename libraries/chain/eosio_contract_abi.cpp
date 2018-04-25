@@ -215,10 +215,12 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "authority", "", {
          {"threshold", "uint32"},
+         {"delay_sec", "uint32"},
          {"keys", "key_weight[]"},
          {"accounts", "permission_level_weight[]"}
       }
    });
+
    eos_abi.structs.emplace_back( struct_def {
          "clause_pair", "", {
             {"id", "string"},

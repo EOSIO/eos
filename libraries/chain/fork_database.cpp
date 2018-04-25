@@ -220,8 +220,11 @@ namespace eosio { namespace chain {
          my->index.erase(itr);
 
       auto& numidx = my->index.get<by_block_num>();
-      for( auto nitr = numidx.lower_bound( num ); nitr != numidx.end() && (*nitr)->block_num == num; ++nitr ) {
-         remove( (*nitr)->id );
+      auto nitr = numidx.lower_bound( num );
+      while( nitr != numidx.end() && (*nitr)->block_num == num ) {
+         auto itr_to_remove = nitr;
+         ++nitr;
+         remove( (*itr_to_remove)->id );
       }
    }
 
@@ -250,7 +253,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( b, "unable to find block id ${id}", ("id",c.block_id));
       b->add_confirmation( c );
 
-      if( b->bft_irreversible_blocknum < b->block_num && 
+      if( b->bft_irreversible_blocknum < b->block_num &&
          b->confirmations.size() > ((b->active_schedule.producers.size() * 2) / 3) ) {
          set_bft_irreversible( c.block_id );
       }

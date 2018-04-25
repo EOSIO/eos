@@ -30,7 +30,6 @@ struct pending_state {
    :_db_session( move(s) ){}
 
    database::session                  _db_session;
-   vector<transaction_metadata_ptr>   _applied_transaction_metas;
 
    block_state_ptr                    _pending_block_state;
 
@@ -326,7 +325,7 @@ struct controller_impl {
    void expire_scheduled_transaction( const generated_transaction_object& gto ) {
       auto receipt = push_receipt( gto.trx_id, transaction_receipt::expired, 0, 0 );
 
-      resource_limits.add_pending_account_ram_usage(gto.payer, 
+      resource_limits.add_pending_account_ram_usage(gto.payer,
                -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
 
       db.remove( gto );
@@ -396,9 +395,9 @@ struct controller_impl {
       }
 
       /*
-      if( hard_except ) 
+      if( hard_except )
          edump((hard_except->to_detail_string()));
-      if( soft_except ) 
+      if( soft_except )
          edump((soft_except->to_detail_string()));
        */
 
@@ -428,14 +427,22 @@ struct controller_impl {
       return r;
    }
 
-   void push_unapplied_transaction( fc::time_point deadline ) {
+   bool push_next_unapplied_transaction( fc::time_point deadline ) {
       auto itr = unapplied_transactions.begin();
       if( itr == unapplied_transactions.end() )
-         return;
+         return false;
 
-      push_transaction( itr->second, deadline );
+      // Intentionally copy transaction_metadata_ptr because it will be removed from unapplied_transactions and make the const& dangling.
+      push_transaction( transaction_metadata_ptr(itr->second), deadline );
+      return true;
    }
 
+   void transaction_trace_notify( const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace ) {
+      if( trx->on_result ) {
+         (*trx->on_result)(trace);
+         trx->on_result.reset();
+      }
+   }
 
    /**
     *  This is the entry point for new transactions to the block state. It will check authorization and
@@ -446,7 +453,7 @@ struct controller_impl {
                           fc::time_point deadline = fc::time_point::maximum(),
                           bool implicit = false ) {
       if( deadline == fc::time_point() ) {
-         unapplied_transactions[trx->id] = trx;
+         unapplied_transactions[trx->signed_id] = trx;
          return;
       }
 
@@ -476,19 +483,22 @@ struct controller_impl {
             }
          }
 
-         pending->_pending_block_state->trxs.emplace_back(trx);
+         transaction_trace_notify(trx, trace);
+
+         if( !implicit )
+            pending->_pending_block_state->trxs.emplace_back(trx);
+
          self.accepted_transaction(trx);
          trx_context.squash();
+         return;
       } catch ( const fc::exception& e ) {
          trace->soft_except = e;
          trace->hard_except_ptr = std::current_exception();
          //wlog( "caught exception in push_transaction" );
          //wdump((trace));
       }
+      transaction_trace_notify(trx, trace);
 
-      if( trx->on_result ) {
-         (*trx->on_result)(trace);
-      }
    } /// push_transaction
 
 
@@ -646,7 +656,7 @@ struct controller_impl {
 
    void abort_block() {
       if( pending ) {
-         for( const auto& t : pending->_applied_transaction_metas )
+         for( const auto& t : pending->_pending_block_state->trxs )
             unapplied_transactions[t->signed_id] = t;
          pending.reset();
       }
@@ -858,8 +868,9 @@ void controller::push_confirmation( const header_confirmation& c ) {
 void controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline ) {
    my->push_transaction(trx, deadline);
 }
-void controller::push_unapplied_transaction( fc::time_point deadline ) {
-   my->push_unapplied_transaction( deadline );
+
+bool controller::push_next_unapplied_transaction( fc::time_point deadline ) {
+   return my->push_next_unapplied_transaction( deadline );
 }
 
 transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx, time_point deadline ) {
