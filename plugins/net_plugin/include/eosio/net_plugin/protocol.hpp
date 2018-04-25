@@ -135,8 +135,7 @@ namespace eosio {
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      signed_block_summary,
-                                      signed_block,
+                                      signed_block_ptr,
                                       signed_transaction,
                                       packed_transaction>;
 
