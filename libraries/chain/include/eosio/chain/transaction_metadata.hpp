@@ -40,8 +40,11 @@ class transaction_metadata {
          signed_id = digest_type::hash(raw_packed_with_cfd);
       }
 
-      const flat_set<public_key_type>& recover_keys( chain_id_type cid = chain_id_type() ) {
-        return *(signing_keys = trx.get_signature_keys( cid )); 
+      const flat_set<public_key_type>& recover_keys() {
+         // TODO: Update caching logic below when we use a proper chain id setup for the particular blockchain rather than just chain_id_type()
+         if( !signing_keys )
+            signing_keys = trx.get_signature_keys( chain_id_type() );
+         return *signing_keys;
       }
 
       uint32_t total_actions()const { return trx.context_free_actions.size() + trx.actions.size(); }
@@ -50,4 +53,3 @@ class transaction_metadata {
 typedef std::shared_ptr<transaction_metadata> transaction_metadata_ptr;
 
 } } // eosio::chain
-
