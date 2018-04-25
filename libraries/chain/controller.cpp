@@ -401,7 +401,7 @@ struct controller_impl {
          edump((soft_except->to_detail_string()));
        */
 
-      trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+999)/1000, 0 );
+      trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+1023)/1024, 0 );
       trace->soft_except = soft_except;
       trace->hard_except = hard_except;
       trace->soft_except_ptr = soft_except_ptr;

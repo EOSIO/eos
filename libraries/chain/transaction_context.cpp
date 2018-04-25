@@ -13,7 +13,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( trx.max_kcpu_usage.value < UINT32_MAX / 1024UL, transaction_exception, "declared max_kcpu_usage overflows when expanded to max cpu usage" );
       EOS_ASSERT( trx.max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception, "declared max_net_usage_words overflows when expanded to max net usage" );
 
-      control.validate_tapos( trx ); 
+      control.validate_tapos( trx );
       control.validate_referenced_accounts( trx );
 
       if( is_input ) { /// signed transaction from user vs implicit transaction scheduled by contracts
@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
       }
 
       if( trx.max_kcpu_usage.value != 0 ) {
-         max_cpu = uint64_t(trx.max_kcpu_usage.value)*1000;
+         max_cpu = uint64_t(trx.max_kcpu_usage.value)*1024;
       } else {
          max_cpu = uint64_t(-1);
       }
@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
 
    }
 
-   void transaction_context::squash() { 
+   void transaction_context::squash() {
       undo_session.squash();
    }
 
@@ -90,7 +90,7 @@ namespace eosio { namespace chain {
         gto.set( trx );
       });
 
-      control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(cgto.payer, 
+      control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(cgto.payer,
                (config::billable_size_v<generated_transaction_object> + cgto.packed_trx.size()));
    }
 

@@ -37,7 +37,7 @@ namespace eosio { namespace chain {
       std::exception_ptr           soft_except_ptr;
       std::exception_ptr           hard_except_ptr;
 
-      uint32_t  kcpu_usage()const { return (cpu_usage + 999)/1000; }
+      uint32_t  kcpu_usage()const { return (cpu_usage + 1023)/1024; }
    };
    typedef std::shared_ptr<transaction_trace> transaction_trace_ptr;
 
@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
 
 } }  /// namespace eosio::chain
 
-FC_REFLECT( eosio::chain::action_trace, 
+FC_REFLECT( eosio::chain::action_trace,
                     (receipt)(act)(elapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
 FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(cpu_usage)(action_traces)(soft_except)(hard_except) )
 FC_REFLECT( eosio::chain::block_trace, (elapsed)(cpu_usage)(trx_traces) )
