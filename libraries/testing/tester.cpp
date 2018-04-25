@@ -79,7 +79,8 @@ namespace eosio { namespace testing {
       control.reset( new controller(cfg) );
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
-          for ( const auto& receipt : block_state->block->transactions ) {
+        FC_ASSERT( block_state->block );
+          for( const auto& receipt : block_state->block->transactions ) {
               if( receipt.trx.contains<packed_transaction>() ) {
                   auto &pt = receipt.trx.get<packed_transaction>();
                   chain_transactions.emplace(pt.get_transaction().id(), receipt);
