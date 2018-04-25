@@ -79,7 +79,8 @@ namespace eosio { namespace testing {
       control.reset( new controller(cfg) );
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
-          for ( const auto& receipt : block_state->block->transactions ) {
+        FC_ASSERT( block_state->block );
+          for( const auto& receipt : block_state->block->transactions ) {
               if( receipt.trx.contains<packed_transaction>() ) {
                   auto &pt = receipt.trx.get<packed_transaction>();
                   chain_transactions.emplace(pt.get_transaction().id(), receipt);
@@ -103,9 +104,16 @@ namespace eosio { namespace testing {
 
       if( !control->pending_block_state() ) {
          control->start_block( next_time );
+
+         while( control->push_next_scheduled_transaction() );
+
       } else if( control->pending_block_state()->header.timestamp != next_time ) {
+         wlog( "abort block... start new one" );
          control->abort_block();
          control->start_block( next_time );
+
+         elog( "push next scheduled trx" );
+         while( control->push_next_scheduled_transaction() );
          // TODO: Schedule all transactions in unapplied_transactions and deferred ones?
       }
 
@@ -293,9 +301,9 @@ namespace eosio { namespace testing {
       signed_transaction trx;
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
-      wdump((trx));
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, chain_id_type() );
+      wdump((trx));
       return push_transaction( trx );
    }
 

@@ -15,9 +15,9 @@ namespace eosio { namespace chain {
 
       control.validate_tapos( trx ); 
       control.validate_referenced_accounts( trx );
-      control.validate_expiration( trx );
 
-      if( is_input ) {
+      if( is_input ) { /// signed transaction from user vs implicit transaction scheduled by contracts
+         control.validate_expiration( trx );
          record_transaction( id, trx.expiration ); /// checks for dupes
       }
 
@@ -84,8 +84,8 @@ namespace eosio { namespace chain {
         gto.payer       = first_auth;
         gto.sender      = account_name(); /// auto-boxed trxs have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
-        gto.expiration  = trx.expiration;
         gto.published   = control.pending_block_time();
+        gto.expiration  = gto.published + delay + fc::seconds(60*10); // TODO: make 10 minutes configurable by system
         gto.delay_until = gto.published + delay;
         gto.set( trx );
       });

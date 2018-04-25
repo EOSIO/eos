@@ -179,7 +179,22 @@ int main( int argc, char** argv ) {
       //bad_block.producer = N(sam);
       //bad_block.schedule_version = 12;
       bad_block.transaction_mroot = bad_block.previous;
-      c.control->push_block( std::make_shared<signed_block>(bad_block) );
+      try {
+         c.control->push_block( std::make_shared<signed_block>(bad_block) );
+      } catch( const fc::exception& e ) {
+         elog(e.to_detail_string());
+      }
+
+      c.produce_blocks(3);
+
+      cr = c.push_action( N(eosio.token), N(issue), N(eosio), mutable_variant_object()
+                 ("to",       "unregistered" )
+                 ("quantity", "100.0000 EOS")
+                 ("memo", "")
+         );
+
+      wdump((fc::json::to_pretty_string(cr)));
+
 
    } FC_CAPTURE_AND_RETHROW()
    } catch ( const fc::exception& e ) {
