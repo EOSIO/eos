@@ -70,11 +70,9 @@ BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
 
    auto new_auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
    wdump((new_auth));
-   BOOST_CHECK_EQUAL(new_auth == delegated_auth, true);
+   BOOST_CHECK_EQUAL((new_auth == delegated_auth), true);
 
-   //produce_block( fc::hours(2) ); ///< skip 2 hours
-   //produce_block( fc::milliseconds(config::block_interval_ms) ); // auth stays as new_auth (i.e. set_authority transaction was included in generated block)
-   produce_block( fc::milliseconds(config::block_interval_ms*2) ); // auth reverts back to original_auth (i.e. set_authority transaction was dropped from generated block)
+   produce_block( fc::milliseconds(config::block_interval_ms*2) );
 
    auto auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
    wdump((auth));

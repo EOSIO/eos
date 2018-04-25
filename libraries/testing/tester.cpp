@@ -97,24 +97,24 @@ namespace eosio { namespace testing {
       return b;
    }
 
-   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, uint32_t skip_flag) {
+   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs, uint32_t skip_flag) {
       auto head = control->head_block_state();
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
 
       if( !control->pending_block_state() ) {
          control->start_block( next_time );
-
-         while( control->push_next_scheduled_transaction() );
-
       } else if( control->pending_block_state()->header.timestamp != next_time ) {
-         wlog( "abort block... start new one" );
+         wlog( "aborting current pending block and starting a new one" );
          control->abort_block();
          control->start_block( next_time );
+      }
 
-         elog( "push next scheduled trx" );
-         while( control->push_next_scheduled_transaction() );
-         // TODO: Schedule all transactions in unapplied_transactions and deferred ones?
+      if( !skip_pending_trxs ) {
+            //wlog( "pushing all input transactions in waiting queue" );
+            while( control->push_next_unapplied_transaction() );
+            //wlog( "pushing all available deferred transactions" );
+            while( control->push_next_scheduled_transaction() );
       }
 
       control->finalize_block();
@@ -129,9 +129,14 @@ namespace eosio { namespace testing {
       return control->head_block_state()->block;
    }
 
-   void base_tester::produce_blocks( uint32_t n ) {
-      for( uint32_t i = 0; i < n; ++i )
-         produce_block();
+   void base_tester::produce_blocks( uint32_t n, bool empty ) {
+      if( empty ) {
+         for( uint32_t i = 0; i < n; ++i )
+            produce_empty_block();
+      } else {
+         for( uint32_t i = 0; i < n; ++i )
+            produce_block();
+      }
    }
 
 
@@ -184,8 +189,8 @@ namespace eosio { namespace testing {
       auto r = control->sync_push( std::make_shared<transaction_metadata>(trx) );
       if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
       if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
+      if( r->hard_except)  throw *r->hard_except;
       if( r->soft_except ) throw *r->soft_except;
-      if( r->hard_except) throw *r->hard_except;
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
@@ -195,8 +200,8 @@ namespace eosio { namespace testing {
       auto r = control->sync_push( std::make_shared<transaction_metadata>(trx) );
       if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
       if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
+      if( r->hard_except)  throw *r->hard_except;
       if( r->soft_except ) throw *r->soft_except;
-      if( r->hard_except) throw *r->hard_except;
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
@@ -303,7 +308,6 @@ namespace eosio { namespace testing {
       set_transaction_headers(trx);
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, chain_id_type() );
-      wdump((trx));
       return push_transaction( trx );
    }
 

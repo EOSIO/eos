@@ -19,8 +19,6 @@ class transaction_metadata {
       transaction_id_type                   signed_id;
       signed_transaction                    trx;
       packed_transaction                    packed_trx;
-      bytes                                 raw_packed; /// fc::raw::pack(trx)
-      bytes                                 raw_packed_with_cfd; /// fc::raw::pack(trx)
       optional<flat_set<public_key_type>>   signing_keys;
 
       optional<std::function<void(const transaction_trace_ptr&)>>       on_result;
@@ -29,15 +27,15 @@ class transaction_metadata {
       transaction_metadata( const signed_transaction& t )
       :trx(t),packed_trx(t,packed_transaction::zlib) {
          id = trx.id();
-         raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
-         signed_id = digest_type::hash(raw_packed_with_cfd);
+         //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
+         signed_id = digest_type::hash(packed_trx);
       }
 
       transaction_metadata( const packed_transaction& ptrx )
       :trx( ptrx.get_signed_transaction() ), packed_trx(ptrx) {
-         raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
          id = trx.id();
-         signed_id = digest_type::hash(raw_packed_with_cfd);
+         //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
+         signed_id = digest_type::hash(packed_trx);
       }
 
       const flat_set<public_key_type>& recover_keys() {
