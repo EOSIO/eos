@@ -132,6 +132,17 @@ namespace eosiosystem {
 
          void claimrewards( const account_name& owner );
 
+         // functions defined in referendum.cpp
+         void propose( const account_name proposer,
+                       const account_name contract,
+                       const bytes&       contract_code );
+
+         void cancel( const uint64_t proposal_id );
+
+         void voteprop( const account_name voter, const uint64_t proposal_id, int8_t value );
+
+         void unvoteprop( const account_name voter, const uint64_t proposal_id );
+
       private:
          // Implementation details:
 
@@ -139,6 +150,10 @@ namespace eosiosystem {
          static eosio_global_state get_default_parameters();
 
          // defined in voting.cpp
+         eosio::asset get_voting_stake( account_name acnt );
+
+         //eosio::asset get_total_voting_stake();
+
          void increase_voting_power( account_name acnt, const eosio::asset& amount );
 
          void decrease_voting_power( account_name acnt, const eosio::asset& amount );
@@ -146,6 +161,8 @@ namespace eosiosystem {
          // defined in producer_pay.cpp
          bool update_cycle( time block_time );
 
+         // defined in referendum.cpp
+         void upgrade();
    };
 
 } /// eosiosystem

@@ -7,6 +7,7 @@
 #include <eosiolib/action.hpp>
 #include <eosiolib/public_key.hpp>
 #include <eosiolib/types.hpp>
+#include <eosiolib/print.hpp>
 
 namespace eosiosystem {
    using eosio::permission_level;
@@ -51,6 +52,16 @@ namespace eosiosystem {
                               const authority& owner,
                               const authority& active,
                               const authority& recovery*/ ) {}
+
+      void setcode( account_name  account,
+                    uint8_t       vmtype,
+                    uint8_t       vmversion,
+                    const bytes&         code )
+      {
+         eosio::print("setcode\n");
+      }
+
+      void setabi( /*account_name account, const bytes& abi*/ ) {}
 
       void updateauth( /*account_name     account,
                               permission_name  permission,

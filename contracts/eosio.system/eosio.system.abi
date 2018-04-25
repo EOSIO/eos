@@ -187,6 +187,35 @@
       "fields": [
         {"name":"owner",   "type":"account_name"}
       ]
+    },{
+      "name": "propose",
+      "base": "",
+      "fields": [
+        {"name":"proposer",      "type":"account_name"},
+        {"name":"contract",      "type":"account_name"},
+        {"name":"contract_code", "type":"bytes"}
+      ]
+    },{
+      "name": "cancel",
+      "base": "",
+      "fields": [
+        {"name":"proposal_id",   "type":"uint64"}
+      ]
+    },{
+      "name": "voteprop",
+      "base": "",
+      "fields": [
+        {"name":"voter",       "type":"account_name"},
+        {"name":"proposal_id", "type":"uint64"},
+        {"name":"value",       "type":"int8"}
+      ]
+    },{
+      "name": "unvoteprop",
+      "base": "",
+      "fields": [
+        {"name":"voter",       "type":"account_name"},
+        {"name":"proposal_id", "type":"uint64"}
+      ]
     }
   ],
   "actions": [{

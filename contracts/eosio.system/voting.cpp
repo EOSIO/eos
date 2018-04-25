@@ -96,6 +96,12 @@ namespace eosiosystem {
          });
    }
 
+   eosio::asset system_contract::get_voting_stake( account_name acnt ) {
+      voters_table voters_tbl( _self, _self );
+      auto it = voters_tbl.find( acnt );
+      return it != voters_tbl.end() ? it->staked : eosio::asset(0, system_token_symbol);
+   }
+
    void system_contract::increase_voting_power( account_name acnt, const eosio::asset& amount ) {
       voters_table voters_tbl( _self, _self );
       auto voter = voters_tbl.find( acnt );

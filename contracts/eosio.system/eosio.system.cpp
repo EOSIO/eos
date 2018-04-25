@@ -4,6 +4,7 @@
 #include "delegate_bandwidth.cpp"
 #include "producer_pay.cpp"
 #include "voting.cpp"
+#include "referendum.cpp"
 
 EOSIO_ABI( eosiosystem::system_contract,
            // delegate_bandwith.cpp
@@ -13,9 +14,10 @@ EOSIO_ABI( eosiosystem::system_contract,
            (unregproxy)(regproducer)(unregprod)(voteproducer)(onblock)
            // producer_pay.cpp
            (claimrewards)
+           //referendum.cpp
+           (propose)(cancel)(voteprop)(unvoteprop)(upgrade)
            // native.hpp
-           //XXX
-           (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
+           (newaccount)(setcode)(setabi)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
            // defined in eosio.system.hpp
            (nonce)
 )
