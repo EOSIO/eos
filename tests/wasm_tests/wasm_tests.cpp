@@ -148,11 +148,9 @@ BOOST_FIXTURE_TEST_CASE( call_depth_test, TESTER ) try {
 
    set_transaction_headers(trx);
    trx.sign(get_private_key( N(check), "active" ), chain_id_type());
-   push_transaction(trx);
+   BOOST_CHECK_THROW( push_transaction(trx), wasm_execution_error );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   const auto& receipt = get_transaction_receipt(trx.id());
-   BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
+   BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
 } FC_LOG_AND_RETHROW()
 
 /**
