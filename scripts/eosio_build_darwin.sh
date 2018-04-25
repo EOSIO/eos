@@ -101,7 +101,7 @@
 			if [ "${brewname}" = "boost" ]; then
 				BVERSION=`cat "${testee}" 2>/dev/null | grep "#define BOOST_VERSION" | tail -1 \
 				| tr -s ' ' | cut -d\  -f3`
-				if [ ${BVERSION} < 106600 ]; then
+				if [ ${BVERSION} -lt 106600 ]; then
 					BOOST_CHECK=1
 					DEP=$DEP"${brewname} "
 					DISPLAY="${DISPLAY}${COUNT}. ${name}\n\t"
