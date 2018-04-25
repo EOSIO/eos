@@ -35,12 +35,15 @@ namespace eosio { namespace chain {
       fc::static_variant<transaction_id_type, packed_transaction> trx;
 
       digest_type digest()const {
-         /* TODO
-         if( packed_trx ) {
-            return hash(status, usage, packed.trx().id(), packed.packed_digest() )
-         }
-         */
-         return digest_type::hash(*this);
+         digest_type::encoder enc;
+         fc::raw::pack( enc, status );
+         fc::raw::pack( enc, kcpu_usage );
+         fc::raw::pack( enc, net_usage_words );
+         if( trx.contains<transaction_id_type>() )
+            fc::raw::pack( enc, trx.get<transaction_id_type>() );
+         else
+            fc::raw::pack( enc, trx.get<packed_transaction>().packed_digest() );
+         return enc.result();
       }
    };
 
