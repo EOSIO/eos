@@ -28,10 +28,11 @@ namespace eosiosystem {
 
    struct authority {
       uint32_t                              threshold;
+      uint32_t                              delay_sec;
       std::vector<key_weight>               keys;
       std::vector<permission_level_weight>  accounts;
 
-      EOSLIB_SERIALIZE( authority, (threshold)(keys)(accounts) )
+      EOSLIB_SERIALIZE( authority, (threshold)(delay_sec)(keys)(accounts) )
    };
 
    template <account_name SystemAccount>
@@ -54,9 +55,9 @@ namespace eosiosystem {
             account_name                      account;
             permission_name                   permission;
             permission_name                   parent;
-            authority                         data;
+            authority                         auth;
 
-            EOSLIB_SERIALIZE( updateauth, (account)(permission)(parent)(data) )
+            EOSLIB_SERIALIZE( updateauth, (account)(permission)(parent)(auth) )
          };
 
          static void on( const updateauth& ) {
@@ -97,10 +98,10 @@ namespace eosiosystem {
 
          ACTION( SystemAccount, postrecovery ) {
             account_name       account;
-            authority          data;
+            authority          auth;
             std::string        memo;
 
-            EOSLIB_SERIALIZE( postrecovery, (account)(data)(memo) )
+            EOSLIB_SERIALIZE( postrecovery, (account)(auth)(memo) )
          };
 
          static void on( const postrecovery& ) {
