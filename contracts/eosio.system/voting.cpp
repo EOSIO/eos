@@ -389,7 +389,7 @@ namespace eosiosystem {
          auto old_proxy = voters_tbl.find( voter_it->proxy );
          eosio_assert( old_proxy != voters_tbl.end(), "old proxy not found" ); //data corruption
          voters_tbl.modify( old_proxy, 0, [&](auto& a) { a.proxied_votes -= uint64_t(voter_it->staked.amount); } );
-         if ( old_proxy->is_proxy ) { //if proxy stoped being proxy, the votes were already taken back from producers by on( const unregister_proxy& )
+         if ( old_proxy->is_proxy ) { //if proxy stopped being a proxy, the votes were already taken back from producers by on( const unregister_proxy& )
             old_producers = &old_proxy->producers;
          }
       } else {

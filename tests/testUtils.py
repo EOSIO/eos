@@ -1407,6 +1407,7 @@ class Cluster(object):
                 account.activePrivateKey=activePrivate
                 account.activePublicKey=activePublic
                 accounts.append(account)
+                Utils.Debug and Utils.Print("name: %s, key: ['%s', '%s]-owner; ['%s', '%s']-active" % (name, ownerPublic, ownerPrivate, activePublic, activePrivate))
 
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
