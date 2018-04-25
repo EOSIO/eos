@@ -229,6 +229,19 @@
         {"name":"voter",       "type":"account_name"},
         {"name":"proposal_id", "type":"uint64"}
       ]
+    },{
+      "name": "proposal",
+      "base": "",
+      "fields": [
+        {"name":"id",       "type":"uint64"},
+        {"name":"proposer", "type":"account_name"},
+        {"name":"contract", "type":"account_name"},
+        {"name":"contract_code", "type":"bytes"},
+        {"name":"yes_votes", "type":"uint128"},
+        {"name":"no_votes", "type":"uint128"},
+        {"name":"created", "type":"time"},
+        {"name":"above_threshold_since", "type":"time"}
+      ]
     }
   ],
   "actions": [{
@@ -279,6 +292,22 @@
       "name": "nonce",
       "type": "nonce",
       "ricardian_contract": ""
+    },{
+      "name": "propose",
+      "type": "propose",
+      "ricardian_contract": ""
+    },{
+      "name": "cancel",
+      "type": "cancel",
+      "ricardian_contract": ""
+    },{
+      "name": "voteprop",
+      "type": "voteprop",
+      "ricardian_contract": ""
+    },{
+      "name": "unvoteprop",
+      "type": "unvoteprop",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -305,6 +334,12 @@
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
+    },{
+      "name": "props",
+      "type": "proposal",
+      "index_type": "i64",
+      "key_names": ["id"],
+      "key_types": ["uint64"]
     }
   ],
   "ricardian_clauses": []

@@ -61,6 +61,7 @@ namespace eosiosystem {
       eosio::asset fee( proposal_fee, system_token_symbol );
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {proposer, N(active)},
                                                     { proposer, N(eosio), fee, std::string("system contract upgrade proposal fee") } );
+      eosio::print("proposal created\n");
    }
 
    void system_contract::cancel( const uint64_t proposal_id ) {

@@ -15,7 +15,7 @@ EOSIO_ABI( eosiosystem::system_contract,
            // producer_pay.cpp
            (claimrewards)
            //referendum.cpp
-           (propose)(cancel)(voteprop)(unvoteprop)(upgrade)
+           (propose)(cancel)(voteprop)(unvoteprop)
            // native.hpp
            (newaccount)(setcode)(setabi)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
            // defined in eosio.system.hpp

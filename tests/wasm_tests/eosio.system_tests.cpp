@@ -195,6 +195,21 @@ public:
                                 );
    }
 
+   action_result create_proposal( const account_name& proposer,
+                                  const account_name& contract,
+                                  const bytes&       contract_code ) {
+      return push_action( config::system_account_name, N(propose), mvo()
+                          ("proposer",  proposer )
+                          ("contract",  contract )
+                          ("contract_code", contract_code)
+      );
+   }
+
+   fc::variant get_proposal( const account_name& act ) {
+      vector<char> data = get_row_by_account( config::system_account_name, act, N(totalband), act );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "proposal", data );
+   }
+
    abi_serializer abi_ser;
 };
 
@@ -1501,6 +1516,13 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
    config = config_to_variant( control->get_global_properties().configuration );
    auto prod3_config = testing::filter_fields( config, producer_parameters_example( 3 ) );
    REQUIRE_EQUAL_OBJECTS(prod3_config, config);
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( propose_upgrade, eosio_system_tester ) try {
+   issue( "alice", "1000001.0000 EOS",  config::system_account_name );
+   string code = "XXX";
+   create_proposal( N(alice), config::system_account_name, vector<char>( code.begin(), code.end() ) );
 
 } FC_LOG_AND_RETHROW()
 
