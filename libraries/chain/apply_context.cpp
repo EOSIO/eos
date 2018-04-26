@@ -204,44 +204,42 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 
 /// TODO: rename this schedule_deferred it is not actually executed here
-void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) {
-   trx.sender = receiver;
-   EOS_ASSERT( trx.execute_after < trx.expiration,
-               transaction_exception,
-               "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
-               ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
+void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
 
    if( !privileged ) {
-      if (trx.payer != receiver) {
-         require_authorization(trx.payer); /// uses payer's storage
+      if (payer != receiver) {
+         require_authorization(payer); /// uses payer's storage
       }
    }
    auto id = trx.id();
 
-   /// TODO: validate authority and delay
-   const auto& tr = static_cast<const transaction&>(trx);
+   auto required_delay = control.get_authorization_manager().check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
+   auto delay = fc::seconds(trx.delay_sec);
+   EOS_ASSERT( delay >= required_delay, transaction_exception,
+               "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
+               ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
 
-   auto trx_size = fc::raw::pack_size(tr);
+   auto trx_size = fc::raw::pack_size(trx);
 
    auto& d = control.db();
    d.create<generated_transaction_object>( [&]( auto& gtx ) {
       gtx.trx_id      = id;
-      gtx.sender      = trx.sender;
-      gtx.sender_id   = trx.sender_id;
-      gtx.payer       = trx.payer;
-      gtx.delay_until = trx.execute_after;
-      gtx.expiration  = trx.expiration;
+      gtx.sender      = receiver;
+      gtx.sender_id   = sender_id;
+      gtx.payer       = payer;
       gtx.published   = control.pending_block_time();
+      gtx.delay_until = gtx.published + delay;
+      gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
 
       gtx.packed_trx.resize( trx_size );
       fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
-      fc::raw::pack( ds, tr );
+      fc::raw::pack( ds, trx );
    });
 
    auto& rl = control.get_mutable_resource_limits_manager();
-   rl.add_pending_account_ram_usage( trx.payer, config::billable_size_v<generated_transaction_object> + trx_size );
+   rl.add_pending_account_ram_usage( payer, config::billable_size_v<generated_transaction_object> + trx_size );
    checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
 
 #if 0
@@ -297,13 +295,15 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
 #endif
 }
 
-void apply_context::cancel_deferred_transaction( const uint128_t& sender_id ) {
+void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
-   const auto& gto = db.get<generated_transaction_object,by_sender_id>(sender_id);
-   FC_ASSERT( gto.sender == receiver, "you can only cancel the transactions you send" );
+   const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
+   EOS_ASSERT( gto != nullptr, transaction_exception,
+               "there is no generated transaction created by account ${sender} with sender id ${sender_id}",
+               ("sender", sender)("sender_id", sender_id) );
 
-   control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
-   generated_transaction_idx.remove(gto);
+   control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(gto->payer, -( config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()));
+   generated_transaction_idx.remove(*gto);
    checktime( 100 );
 }
 

@@ -1052,13 +1052,9 @@ class transaction_api : public context_aware_api {
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len ) {
          try {
-            deferred_transaction dtrx;
-            fc::raw::unpack<transaction>(data, data_len, dtrx);
-            dtrx.sender = context.receiver;
-            dtrx.sender_id = sender_id;
-            dtrx.execute_after = time_point_sec( (context.control.head_block_time() + fc::seconds(dtrx.delay_sec)) + fc::microseconds(999'999) ); // rounds up to nearest second
-            dtrx.payer = payer;
-            context.schedule_deferred_transaction(std::move(dtrx));
+            transaction trx;
+            fc::raw::unpack<transaction>(data, data_len, trx);
+            context.schedule_deferred_transaction(sender_id, payer, std::move(trx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 

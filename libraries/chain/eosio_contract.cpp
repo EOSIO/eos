@@ -454,17 +454,15 @@ void apply_eosio_postrecovery(apply_context& context) {
       ("update", update)
       ("memo", recover_act.memo);
 
-   deferred_transaction dtrx;
-   dtrx.sender    = config::system_account_name;
-   dtrx.sender_id = request_id;
-   dtrx.payer     = config::system_account_name; // NOTE: we pre-reserve capacity for this during create account
-   dtrx.execute_after = context.control.head_block_time() + delay_lock;
-   dtrx.set_reference_block(context.control.head_block_id());
-   dtrx.expiration = dtrx.execute_after + fc::seconds(60);
-   dtrx.actions.emplace_back(vector<permission_level>{{account,config::active_name}},
-                             passrecovery { account });
+   transaction trx;
+   trx.expiration = context.control.pending_block_time();
+   trx.delay_sec  = (delay_lock + fc::microseconds(999'999)).to_seconds(); // Rounds up to nearest second
+   trx.set_reference_block(context.control.head_block_id());
+   trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
+                             passrecovery { account } );
 
-   context.schedule_deferred_transaction(std::move(dtrx));
+   // NOTE: we pre-reserve capacity for this during create account
+   context.schedule_deferred_transaction(request_id, config::system_account_name, std::move(trx));
 
    auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
    const uint64_t id = account;
@@ -537,10 +535,10 @@ void apply_eosio_canceldelay(apply_context& context) {
    const auto& generated_transaction_idx = context.control.db().get_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
    const auto& itr = generated_index.lower_bound(trx_id);
-   FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->trx_id == trx_id,
+   FC_ASSERT (itr != generated_index.end() && itr->sender == account_name() && itr->trx_id == trx_id,
               "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
 
-   auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
+   auto dtrx = fc::raw::unpack<transaction>(itr->packed_trx.data(), itr->packed_trx.size());
    bool found = false;
    for( const auto& act : dtrx.actions ) {
       for( const auto& auth : act.authorization ) {
@@ -554,7 +552,7 @@ void apply_eosio_canceldelay(apply_context& context) {
 
    FC_ASSERT (found, "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction");
 
-   context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id));
+   context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 }
 
 } } // namespace eosio::chain

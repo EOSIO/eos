@@ -469,8 +469,9 @@ class apply_context {
 
       void execute_inline( action &&a );
       void execute_context_free_inline( action &&a );
-      void schedule_deferred_transaction( deferred_transaction &&trx );
-      void cancel_deferred_transaction( const uint128_t& sender_id );
+      void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction &&trx );
+      void cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
+      void cancel_deferred_transaction( const uint128_t& sender_id ) { cancel_deferred_transaction(sender_id, receiver); }
 
       /**
        * @brief Require @ref account to have approved of this message

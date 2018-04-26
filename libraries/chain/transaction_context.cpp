@@ -85,8 +85,8 @@ namespace eosio { namespace chain {
         gto.sender      = account_name(); /// auto-boxed trxs have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
         gto.published   = control.pending_block_time();
-        gto.expiration  = gto.published + delay + fc::seconds(60*10); // TODO: make 10 minutes configurable by system
         gto.delay_until = gto.published + delay;
+        gto.expiration  = gto.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
         gto.set( trx );
       });
 

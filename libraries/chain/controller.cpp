@@ -465,12 +465,15 @@ struct controller_impl {
          trace = trx_context.trace;
 
          auto required_delay = authorization.check_authorization( trx->trx.actions, trx->recover_keys() );
+         trx_context.delay = fc::seconds(trx->trx.delay_sec);
+         EOS_ASSERT( trx_context.delay >= required_delay, transaction_exception,
+                     "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
+                     ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );
 
          trx_context.deadline  = deadline;
          trx_context.published = self.pending_block_time();
          trx_context.net_usage = self.validate_net_usage( trx );
          trx_context.is_input  = !implicit;
-         trx_context.delay = std::max( fc::seconds(trx->trx.delay_sec), required_delay );
          trx_context.exec();
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
@@ -692,7 +695,7 @@ struct controller_impl {
       if( !pending ) self.start_block();
 
       /*
-      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} ${np}",
+      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
             ("n",pending->_pending_block_state->block_num)
             ("id",pending->_pending_block_state->header.id())
             ("t",pending->_pending_block_state->header.timestamp)
@@ -700,9 +703,10 @@ struct controller_impl {
             ("signing_key", pending->_pending_block_state->block_signing_key)
             ("v",pending->_pending_block_state->header.schedule_version)
             ("lib",pending->_pending_block_state->dpos_last_irreversible_blocknum)
+            ("ndtrxs",db.get_index<generated_transaction_multi_index,by_trx_id>().size())
             ("np",pending->_pending_block_state->header.new_producers)
             );
-            */
+      */
 
       set_action_merkle();
       set_trx_merkle();

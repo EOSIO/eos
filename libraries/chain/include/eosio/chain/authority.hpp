@@ -43,9 +43,9 @@ namespace config {
 }
 
 struct authority {
-   authority( public_key_type k ):threshold(1),keys({{k,1}}){}
-   authority( uint32_t t, vector<key_weight> k, vector<permission_level_weight> p = {} )
-   :threshold(t),keys(move(k)),accounts(move(p)){}
+   authority( public_key_type k, uint32_t delay = 0 ):threshold(1),delay_sec(delay),keys({{k,1}}){}
+   authority( uint32_t t, vector<key_weight> k, vector<permission_level_weight> p = {}, uint32_t delay = 0 )
+   :threshold(t),delay_sec(delay),keys(move(k)),accounts(move(p)){}
    authority(){}
 
    uint32_t                          threshold = 0;
