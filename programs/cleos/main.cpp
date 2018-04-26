@@ -895,7 +895,7 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-host", wallet_host, localized("the host where keosd is running"), true );
    app.add_option( "--wallet-port", wallet_port, localized("the port where keosd is running"), true );
 
-   if ( !port_busy( wallet_port ) ) {
+   if ( ( wallet_host.empty() || wallet_host == "localhost" || wallet_host == "127.0.0.1" ) && !port_busy( wallet_port ) ) {
       start_keosd( wallet_port );
    }
 
