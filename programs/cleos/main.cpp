@@ -912,12 +912,12 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
 
    auto parsed_url = parse_url( wallet_url );
-   uint16_t wallet_port_uint = std::stoul(parsed_url.port);
-   if ( 65535 < wallet_port_uint ) {
+   auto wallet_port_uint = std::stoi(parsed_url.port);
+   if ( wallet_port_uint < 0 || 65535 < wallet_port_uint ) {
       FC_THROW("port is not in valid range");
    }
-   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( wallet_port_uint ) ) {
-      start_keosd( wallet_port_uint );
+   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( uint16_t(wallet_port_uint) ) ) {
+      start_keosd( uint16_t(wallet_port_uint) );
    }
 
    bool verbose_errors = false;
