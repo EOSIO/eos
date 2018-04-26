@@ -189,7 +189,7 @@ void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) {
       if( a.account != receiver ) {
          const auto delay = control.get_authorization_manager().check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
-         FC_ASSERT( published_time + delay <= control.head_block_time(),
+         FC_ASSERT( published_time + delay <= control.pending_block_time(),
                     "inline action uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
                     ("delay", delay.to_seconds()) );
       }
@@ -220,7 +220,7 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
    }
    auto id = trx.id();
 
-   /// TODO: validate authority and delay 
+   /// TODO: validate authority and delay
    const auto& tr = static_cast<const transaction&>(trx);
 
    auto trx_size = fc::raw::pack_size(tr);

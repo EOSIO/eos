@@ -577,7 +577,7 @@ class apply_context {
       generic_index<index_double_object>                             idx_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
-      fc::time_point_sec                          published_time;
+      fc::time_point                              published_time;
       fc::time_point                              processing_deadline;
       uint64_t                                    max_cpu = uint64_t(-1);
 
