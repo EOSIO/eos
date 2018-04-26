@@ -27,3 +27,6 @@
 [submodule "externals/magic_get"]
 	path = externals/magic_get
 	url = https://github.com/EOSIO/magic_get
+[submodule "externals/soci"]
+	path = externals/soci
+	url = https://github.com/SOCI/soci.git
