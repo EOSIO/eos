@@ -100,10 +100,6 @@ namespace eosio { namespace client { namespace http {
       return res;
    }
 
-   string to_string( const parsed_url& url ) {
-      return url.scheme + "://" + url.server + ":" + url.port + url.path_prefix;
-   }
-
    fc::variant call( const std::string& server_url,
                      const std::string& path,
                      const fc::variant& postdata ) {
