@@ -21,7 +21,7 @@ class transaction_metadata {
       packed_transaction                    packed_trx;
       optional<flat_set<public_key_type>>   signing_keys;
 
-      optional<std::function<void(const transaction_trace_ptr&)>>       on_result;
+      std::function<void(const transaction_trace_ptr&)>       on_result;
 
 
       transaction_metadata( const signed_transaction& t )

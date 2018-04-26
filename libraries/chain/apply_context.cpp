@@ -205,23 +205,39 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 /// TODO: rename this schedule_deferred it is not actually executed here
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
+   trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
+
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
+
+   fc::microseconds required_delay;
 
    if( !privileged ) {
       if (payer != receiver) {
          require_authorization(payer); /// uses payer's storage
       }
+
+      // if a contract is deferring only actions to itself then there is no need
+      // to check permissions, it could have done everything anyway.
+      bool check_auth = false;
+      for( const auto& act : trx.actions ) {
+         if( act.account != receiver ) {
+            check_auth = true;
+            break;
+         }
+      }
+      if( check_auth ) {
+         required_delay = control.get_authorization_manager().check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
+      }
    }
    auto id = trx.id();
 
-   auto required_delay = control.get_authorization_manager().check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
    auto delay = fc::seconds(trx.delay_sec);
    EOS_ASSERT( delay >= required_delay, transaction_exception,
                "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
 
-   auto trx_size = fc::raw::pack_size(trx);
+   uint32_t trx_size = 0;
 
    auto& d = control.db();
    d.create<generated_transaction_object>( [&]( auto& gtx ) {
@@ -233,9 +249,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       gtx.delay_until = gtx.published + delay;
       gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
 
-      gtx.packed_trx.resize( trx_size );
-      fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
-      fc::raw::pack( ds, trx );
+      trx_size = gtx.set( trx );
    });
 
    auto& rl = control.get_mutable_resource_limits_manager();
