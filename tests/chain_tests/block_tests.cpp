@@ -231,6 +231,34 @@ BOOST_AUTO_TEST_CASE( push_invalid_block ) { try {
    BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_shard);
 } FC_LOG_AND_RETHROW() }/// push_invalid_block
 
+BOOST_AUTO_TEST_CASE( push_unexpected_signature_block ) { try {
+   vector<tester> producers(5);
+
+   char a = 'a';
+   vector<account_name> producer_names;
+   for( ; a <= 'a'+producers.size()-1; ++a) {
+      producer_names.emplace_back(std::string("init")+a);
+   }
+   producers[0].create_accounts(producer_names);
+   producers[0].set_producers(producer_names);
+
+   auto block = producers[0].produce_block();
+   producers[0].push_block(block);
+   block = producers[1].produce_block();
+   producers[1].push_block(block);
+
+   auto head_id = producers[0].control->head_block_num();
+
+   tester unscheduled_producer;
+   block = unscheduled_producer.produce_block();
+   unscheduled_producer.push_block(block);
+   BOOST_CHECK_EQUAL(head_id, producers[0].control->head_block_num());
+   block = producers[2].produce_block();
+   producers[2].push_block(block);
+   BOOST_CHECK_PREDICATE(std::not_equal_to<decltype(head_id)>(),
+                         (head_id)(producers[3].control->head_block_num()));
+} FC_LOG_AND_RETHROW() }/// push_unexpected_signature_block
+
 
 // Utility function to check expected irreversible block
 uint32_t calc_exp_last_irr_block_num(const base_tester& chain, const uint32_t& head_block_num) {
@@ -1120,8 +1148,22 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
 // Commitment for the shard itself is a merkle tree over the transactions commitments inside that shard.
 // The transaction commitment is digest of the concentanation of region_id, cycle_index, shard_index, tx_index,
 // transaction_receipt and packed_trx_digest (if the tx is an input tx, which doesn't include implicit/ deferred tx)
+
+// Deactivating this test. on_block transaction hash should not be hardcoded as the the work done following onblock action
+// can change. As chain controller is being refactored, this test will have to be changed. 
+#if 0
 BOOST_AUTO_TEST_CASE(transaction_mroot)
 { try {
+
+   // Utility function get on_block tx_mroot given the block_num
+   auto get_on_block_tx_mroot = [](uint32_t block_num) -> digest_type {
+      tester temp;
+      temp.produce_blocks(block_num - 1);
+      signed_block blk = temp.produce_block();
+      // Since the block is empty, its transaction_mroot should represent the onblock tx
+      return blk.transaction_mroot;
+   };
+
    validating_tester chain;
    // Finalize current block (which has set contract transaction for eosio)
    chain.produce_block();
@@ -1145,17 +1187,72 @@ BOOST_AUTO_TEST_CASE(transaction_mroot)
    }
    auto expected_shard_tx_root = merkle(tx_roots);
 
-   // Hardcoded on_block tx_root, since there's no easy way to calculate the tx_root with current interface
-   auto on_block_tx_root = digest_type("aa63d366cc2ef41746bb150258d1c0662c8133469f785425cb996dbe2a227086");
+   // Compare with head block tx mroot
+   chain.produce_block();
+
+   auto on_block_tx_root = get_on_block_tx_mroot(chain.control->head_block_num());
    // There is only 1 region, 2 cycle, 1 shard in first cycle, 1 shard in second cycle
    auto expected_tx_mroot = merkle({on_block_tx_root, expected_shard_tx_root});
 
-   // Compare with head block tx mroot
-   chain.produce_block();
    auto head_block_tx_mroot = chain.control->head_block_header().transaction_mroot;
    BOOST_TEST(expected_tx_mroot.str() == head_block_tx_mroot.str());
 
 } FC_LOG_AND_RETHROW() }
+#endif
 
+BOOST_AUTO_TEST_CASE(account_ram_limit) { try {
+
+   const int64_t ramlimit = 5000;
+   validating_tester chain;
+   resource_limits_manager mgr = chain.control->get_mutable_resource_limits_manager();
+
+   account_name acc1 = N(test1);
+   chain.create_account(acc1);
+
+   mgr.set_account_limits(acc1, ramlimit, -1, -1 );
+
+   transaction_trace trace = chain.create_account(N(acc2), acc1);
+   chain.produce_block();
+   BOOST_REQUIRE_EQUAL(trace.status, transaction_trace::executed);
+
+   trace = chain.create_account(N(acc3), acc1);
+   chain.produce_block();
+   BOOST_REQUIRE_EQUAL(trace.status, transaction_trace::executed);
+   
+   BOOST_REQUIRE_EXCEPTION(
+      chain.create_account(N(acc4), acc1), 
+      tx_resource_exhausted, 
+      [] (const tx_resource_exhausted &e)->bool {
+         BOOST_REQUIRE_EQUAL(std::string("transaction exhausted allowed resources"), e.what());
+         return true;
+      }
+   );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(producer_r1_key) { try {
+
+   // Use validating_tester to check that the block is synced properly
+   validating_tester chain;
+
+   // Set new producer
+   account_name tester_producer_name = "tester";
+   chain.create_account(tester_producer_name);
+   auto producer_r1_priv_key = chain.get_private_key<fc::crypto::r1::private_key_shim>( tester_producer_name, "active" );
+   auto producer_r1_pub_key = producer_r1_priv_key.get_public_key();
+   chain.push_action(N(eosio), N(setprods), N(eosio),
+                     fc::mutable_variant_object()("version", 1)("producers", vector<producer_key>{{ tester_producer_name, producer_r1_pub_key }}));
+
+   // Add signing key to the tester object, so it can sign with the correct key
+   chain.block_signing_private_keys[producer_r1_pub_key] = producer_r1_priv_key;
+         
+   // Wait until the current round ends
+   chain.produce_blocks_until_end_of_round();
+
+   // The next set of producers will be producing starting in the middle of next round
+   // This round should not throw any exception
+   BOOST_CHECK_NO_THROW(chain.produce_blocks_until_end_of_round());
+         
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

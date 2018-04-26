@@ -202,6 +202,9 @@ void apply_eosio_updateauth(apply_context& context) {
    else
       EOS_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
 
+   auto max_delay = context.controller.get_global_properties().configuration.max_transaction_delay;
+   EOS_ASSERT( update.delay <= max_delay, action_validate_exception, "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds", ("max_delay", max_delay) );
+
    validate_authority_precondition(context, update.data);
 
    auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));

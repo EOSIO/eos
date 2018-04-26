@@ -1,17 +1,21 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
+#include "eosio.system.hpp"
+#include <eosiolib/dispatcher.hpp>
 
-#include <eosio.system/eosio.system.hpp> 
+#include "delegate_bandwidth.cpp"
+#include "producer_pay.cpp"
+#include "voting.cpp"
 
-using namespace eosiosystem;
-
-extern "C" {
-
-    /// The apply method implements the dispatch of events to this contract
-    void apply( uint64_t receiver, uint64_t code, uint64_t act ) {
-       //print( eosio::name(code), "::", eosio::name(act) );
-       eosiosystem::contract<N(eosio)>::apply( receiver, code, act );
-    }
-}
+EOSIO_ABI( eosiosystem::system_contract,
+           // delegate_bandwith.cpp
+           (delegatebw)(undelegatebw)(refund)
+           (regproxy)
+           // voting.cpp
+           (unregproxy)(regproducer)(unregprod)(voteproducer)(onblock)
+           // producer_pay.cpp
+           (claimrewards)
+           // native.hpp
+           //XXX
+           (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
+           // defined in eosio.system.hpp
+           (nonce)
+)

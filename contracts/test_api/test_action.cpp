@@ -12,8 +12,8 @@
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/print.hpp>
 #include <eosiolib/compiler_builtins.h>
-
 #include "test_api.hpp"
+
 void test_action::read_action_normal() {
 
    char buffer[100];

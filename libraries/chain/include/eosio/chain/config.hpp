@@ -15,7 +15,7 @@ typedef __uint128_t uint128_t;
 
 const static auto default_block_log_dir     = "block_log";
 const static auto default_shared_memory_dir = "shared_mem";
-const static auto default_shared_memory_size = 1024*1024*1024ll;
+const static auto default_shared_memory_size = 32*1024*1024*1024ll;
 
 const static uint64_t system_account_name    = N(eosio);
 const static uint64_t nobody_account_name    = N(nobody);
@@ -58,6 +58,7 @@ const static uint16_t   default_max_inline_depth       = 4;
 const static uint32_t   default_max_inline_action_size = 4 * 1024;
 const static uint32_t   default_max_gen_trx_size       = 64 * 1024; ///
 const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
+const static uint32_t   default_max_trx_delay          = 45*24*3600; // 45 days
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
 const static uint32_t   producers_authority_threshold_pct  = 66 * config::percent_1;

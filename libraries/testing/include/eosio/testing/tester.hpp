@@ -133,8 +133,15 @@ namespace eosio { namespace testing {
             return control->get_database().find<ObjectType,IndexBy>( forward<Args>(args)... );
          }
 
-         public_key_type   get_public_key( name keyname, string role = "owner" ) const;
-         private_key_type  get_private_key( name keyname, string role = "owner" ) const;
+         template< typename KeyType = fc::ecc::private_key_shim >
+         private_key_type get_private_key( name keyname, string role = "owner" ) const {
+            return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
+         }
+
+         template< typename KeyType = fc::ecc::private_key_shim >
+         public_key_type get_public_key( name keyname, string role = "owner" ) const {
+            return get_private_key<KeyType>( keyname, role ).get_public_key();
+         }
 
          void              set_code( account_name name, const char* wast );
          void              set_code( account_name name, const vector<uint8_t> wasm );
@@ -142,6 +149,7 @@ namespace eosio { namespace testing {
 
 
          unique_ptr<chain_controller> control;
+         std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
 
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
