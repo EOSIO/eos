@@ -1234,8 +1234,6 @@ class Cluster(object):
             cmdArr.append("--nogen")
 
         nodeosArgs=""
-        if Utils.Debug:
-            nodeosArgs += "--log-level-net-plugin debug"
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
