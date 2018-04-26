@@ -176,11 +176,11 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
-   chain.create_account(N(currency));
+   chain.create_account(N(eosio.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(currency), currency_wast);
-   chain.set_abi(N(currency), currency_abi);
+   chain.set_code(N(eosio.token), eosio_token_wast);
+   chain.set_abi(N(eosio.token), eosio_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -212,30 +212,30 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    // link auth
    chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", "currency")
+           ("code", "eosio.token")
            ("type", "transfer")
            ("requirement", "first"));
 
-   // create currency
+   // create CUR token
    chain.produce_blocks();
-   chain.push_action(N(currency), N(create), N(currency), mutable_variant_object()
-           ("issuer", "currency" )
+   chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
+           ("issuer", "eosio.token" )
            ("maximum_supply", "9000000.0000 CUR" )
            ("can_freeze", 0)
            ("can_recall", 0)
            ("can_whitelist", 0)
    );
 
-   // issue to account "currency"
-   chain.push_action(N(currency), name("issue"), N(currency), fc::mutable_variant_object()
-           ("to",       "currency")
+   // issue to account "eosio.token"
+   chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
+           ("to",       "eosio.token")
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
-   // transfer from currency to tester
-   trace = chain.push_action(N(currency), name("transfer"), N(currency), fc::mutable_variant_object()
-       ("from", "currency")
+   // transfer from eosio.token to tester
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(eosio.token), fc::mutable_variant_object()
+       ("from", "eosio.token")
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -245,12 +245,12 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
 
    chain.produce_blocks();
 
-   auto liquid_balance = get_currency_balance(chain, N(currency));
+   auto liquid_balance = get_currency_balance(chain, N(eosio.token));
    BOOST_REQUIRE_EQUAL(asset::from_string("999900.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("100.0000 CUR"), liquid_balance);
 
-   trace = chain.push_action(N(currency), name("transfer"), N(tester), fc::mutable_variant_object()
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
        ("from", "tester")
        ("to", "tester2")
        ("quantity", "1.0000 CUR")
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
 
-   liquid_balance = get_currency_balance(chain, N(currency));
+   liquid_balance = get_currency_balance(chain, N(eosio.token));
    BOOST_REQUIRE_EQUAL(asset::from_string("999900.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
@@ -281,7 +281,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    // unlink auth
    trace = chain.push_action(config::system_account_name, contracts::unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", "currency")
+           ("code", "eosio.token")
            ("type", "transfer"));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
 
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
 
    chain.produce_blocks(1);;
 
-   trace = chain.push_action(N(currency), name("transfer"), N(tester), fc::mutable_variant_object()
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
        ("from", "tester")
        ("to", "tester2")
        ("quantity", "3.0000 CUR")
