@@ -59,6 +59,7 @@ namespace eosio { namespace chain {
             }
             wasm_injections::wasm_binary_injection injector(module);
             injector.inject();
+#if 0
             {
                std::vector<U8> bytes;
                static int ii=0;
@@ -72,7 +73,7 @@ namespace eosio { namespace chain {
                output.write(buff, bytes.size());
                delete[] buff;
             }
-            
+#endif
             std::vector<U8> bytes;
             try {
                Serialization::ArrayOutputStream outstream;

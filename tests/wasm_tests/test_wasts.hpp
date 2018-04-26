@@ -36,7 +36,6 @@ static const char call_depth_limit_wast[] = R"=====(
 
 static const char entry_wast[] = R"=====(
 (module
- (import "env" "require_auth" (func $require_auth (param i64)))
  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (import "env" "now" (func $now (result i32)))
  (table 0 anyfunc)
@@ -45,21 +44,24 @@ static const char entry_wast[] = R"=====(
  (export "entry" (func $entry))
  (export "apply" (func $apply))
  (func $entry
-  (i32.store offset=4
-   (i32.const 0)
-   (call $now)
+  (block
+   (i32.store offset=4
+    (i32.const 0)
+    (call $now)
+   )
   )
  )
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
-  (call $require_auth (i64.const 6121376101093867520))
-  (call $eosio_assert
-   (i32.eq
-    (i32.load offset=4
-     (i32.const 0)
+  (block
+   (call $eosio_assert
+    (i32.eq
+     (i32.load offset=4
+      (i32.const 0)
+     )
+     (call $now)
     )
-    (call $now)
+    (i32.const 0)
    )
-   (i32.const 0)
   )
  )
  (start $entry)
