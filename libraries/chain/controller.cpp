@@ -599,9 +599,11 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b ) {
-      auto new_header_state = fork_db.add( b );
-      self.accepted_block_header( new_header_state );
-      maybe_switch_forks();
+      try {
+         auto new_header_state = fork_db.add( b );
+         self.accepted_block_header( new_header_state );
+         maybe_switch_forks();
+      } FC_LOG_AND_RETHROW() 
    }
 
    void push_confirmation( const header_confirmation& c ) {
@@ -965,7 +967,7 @@ void controller::log_irreversible_blocks() {
    auto lib = my->head->dpos_last_irreversible_blocknum;
 
    if( lib > 1 ) {
-      while( log_head && log_head->block_num() < lib ) {
+      while( log_head && (log_head->block_num()+1) < lib ) {
          auto lhead = log_head->block_num();
          auto blk = my->fork_db.get_block_in_current_chain_by_num( lhead + 1 );
          FC_ASSERT( blk, "unable to find block state", ("block_num",lhead+1));
