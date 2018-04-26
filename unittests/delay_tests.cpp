@@ -994,7 +994,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
@@ -1071,6 +1070,9 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
+   // delay on minimum permission of transfer is finally removed
+   chain.produce_blocks();
+
    // this transfer is performed right away since delay is removed
    trace = chain.push_action(N(currency), name("transfer"), N(tester), fc::mutable_variant_object()
        ("from", "tester")
@@ -1080,23 +1082,15 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_CHECK_EQUAL(2, gen_size);
+   BOOST_CHECK_EQUAL(1, gen_size);
 
-   chain.produce_blocks();
-
-   liquid_balance = get_currency_balance(chain, N(tester));
-   BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
-   liquid_balance = get_currency_balance(chain, N(tester2));
-   BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
-
-   chain.produce_blocks(15);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
-   chain.produce_blocks();
+   chain.produce_blocks(16);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
@@ -1198,7 +1192,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
@@ -1275,6 +1268,9 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
+   // delay on minimum permission of transfer is finally removed
+   chain.produce_blocks();
+
    // this transfer is performed right away since delay is removed
    trace = chain.push_action(N(currency), name("transfer"), N(tester), fc::mutable_variant_object()
        ("from", "tester")
@@ -1284,23 +1280,14 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_CHECK_EQUAL(2, gen_size);
-
-   chain.produce_blocks();
+   BOOST_CHECK_EQUAL(1, gen_size);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
-   chain.produce_blocks(15);
-
-   liquid_balance = get_currency_balance(chain, N(tester));
-   BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
-   liquid_balance = get_currency_balance(chain, N(tester2));
-   BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
-
-   chain.produce_blocks();
+   chain.produce_blocks(16);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
