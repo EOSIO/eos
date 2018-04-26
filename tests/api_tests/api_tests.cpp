@@ -357,14 +357,14 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
    }
 
-   uint32_t now = control->head_block_time().sec_since_epoch();
-   CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now));
+   uint64_t now = static_cast<uint64_t>( control->head_block_time().time_since_epoch().count() );
+   CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now));
 
-   // test now
+   // test current_time
    produce_block();
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now)), transaction_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now)), transaction_exception,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "assertion failed: tmp == now");
+            return expect_assert_message(e, "assertion failed: tmp == current_time()");
          }
       );
 
@@ -376,7 +376,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    produce_block();
 
    // test_publication_time
-   uint32_t pub_time = control->head_block_time().sec_since_epoch();
+   uint64_t pub_time = static_cast<uint64_t>( control->pending_block_time().time_since_epoch().count() );
    CALL_TEST_FUNCTION( *this, "test_action", "test_publication_time", fc::raw::pack(pub_time) );
 
    // test test_abort

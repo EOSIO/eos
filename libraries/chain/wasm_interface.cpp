@@ -809,8 +809,8 @@ class system_api : public context_aware_api {
          throw wasm_exit{code};
       }
 
-      fc::time_point_sec now() {
-         return context.control.head_block_time();
+      uint64_t current_time() {
+         return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
       }
 };
 
@@ -830,8 +830,8 @@ class action_api : public context_aware_api {
          return context.act.data.size();
       }
 
-      fc::time_point_sec publication_time() {
-         return context.published_time;
+      uint64_t publication_time() {
+         return static_cast<uint64_t>( context.published_time.time_since_epoch().count() );
       }
 
       name current_receiver() {
@@ -1533,16 +1533,16 @@ REGISTER_INTRINSICS(string_api,
 );
 
 REGISTER_INTRINSICS(system_api,
-   (abort,        void())
-   (eosio_assert, void(int, int))
-   (eosio_exit,   void(int ))
-   (now,          int())
+   (abort,        void()         )
+   (eosio_assert, void(int, int) )
+   (eosio_exit,   void(int)      )
+   (current_time, int64_t()      )
 );
 
 REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
-   (publication_time,   int32_t()          )
+   (publication_time,   int64_t()          )
    (current_receiver,   int64_t()          )
 );
 
@@ -1573,7 +1573,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
    (get_action,             int (int, int, int, int) )
-   (check_auth,              void(int, int, int, int) )
+   (check_auth,             void(int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(transaction_api,
