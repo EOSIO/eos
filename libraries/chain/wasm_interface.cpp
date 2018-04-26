@@ -1515,6 +1515,30 @@ class call_depth_api : public context_aware_api {
       void call_depth_assert() { 
          FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
       }
+      int call_depth_pop_i32(int32_t ret, int32_t& counter) { 
+         counter--;
+         return ret;
+      }
+      int64_t call_depth_pop_i64(int64_t ret, int32_t& counter) { 
+         counter--;
+         return ret;
+      }
+      float call_depth_pop_f32(float ret, int32_t& counter) { 
+         counter--;
+         return ret;
+      }
+      double call_depth_pop_f64(double ret, int32_t& counter) { 
+         counter--;
+         return ret;
+      }
+      void call_depth_pop(int32_t& counter) { 
+         counter--;
+      }
+      void call_depth_push(int32_t& counter) { 
+         if (counter > 200 )
+            FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
+         counter++;
+      }
 };
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
@@ -1524,6 +1548,7 @@ REGISTER_INJECTED_INTRINSICS(call_depth_api,
    (call_depth_pop_f32, float(float ,int)    )
    (call_depth_pop_f64, double(double, int)  )
    (call_depth_pop,     void(int)            )
+   (call_depth_push,    void(int)            )
 );
 
 REGISTER_INTRINSICS(math_api,
