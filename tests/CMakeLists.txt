@@ -28,11 +28,9 @@ target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CM
 target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
 target_include_directories( chain_test PUBLIC ${CMAKE_SOURCE_DIR}/plugins/net_plugin/include )
 target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include )
-add_dependencies(chain_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange currency proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline multi_index_test noop dice eosio.msig)
+add_dependencies(chain_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline multi_index_test noop dice eosio.msig)
 
 #
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/llvm-gcov.sh ${CMAKE_CURRENT_BINARY_DIR}/../llvm-gcov.sh COPYONLY)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/dawn_515/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/dawn_515/test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trans_sync_across_mixed_cluster_test.sh ${CMAKE_CURRENT_BINARY_DIR}/trans_sync_across_mixed_cluster_test.sh COPYONLY)
@@ -63,8 +61,8 @@ endif()
 # TODO: add_test(NAME trans_sync_across_mixed_cluster_test COMMAND tests/trans_sync_across_mixed_cluster_test.sh -p 1 -n 2 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME distributed-transactions-remote-test COMMAND tests/distributed-transactions-remote-test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# TODO: add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p3 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# TODO: add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p3 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: add_test(NAME consensus-validation-malicious-producers COMMAND tests/consensus-validation-malicious-producers.py -w 80 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 if(ENABLE_COVERAGE_TESTING)
@@ -84,8 +82,8 @@ if(ENABLE_COVERAGE_TESTING)
   endif() # NOT GENHTML_PATH
 
   # no spaces allowed within tests list
-  set(ctest_tests 'chain_test_binaryen|chain_test_wavm|p2p_dawn515_test')
-  set(ctest_exclude_tests 'nodeos_run_test|nodeos_run_remote_test|nodeos_run_test-mongodb|distributed-transactions-test|distributed-transactions-remote-test')
+  set(ctest_tests 'chain_test_binaryen|chain_test_wavm|p2p_dawn515_test|nodeos_run_test|distributed-transactions-test|restart-scenarios-test_resync')
+  set(ctest_exclude_tests 'nodeos_run_remote_test|nodeos_run_test-mongodb|distributed-transactions-remote-test|restart-scenarios-test_replay')
 
   # Setup target
   add_custom_target(${Coverage_NAME}
@@ -95,7 +93,7 @@ if(ENABLE_COVERAGE_TESTING)
     COMMAND ctest -R ${ctest_tests} -E ${ctest_exclude_tests}
 
     COMMENT "Capturing lcov counters and generating report"
-    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tests/llvm-gcov.sh --output-file ${Coverage_NAME}.info
+    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
 
     COMMENT "Processing code coverage counters and generating report."
     COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info

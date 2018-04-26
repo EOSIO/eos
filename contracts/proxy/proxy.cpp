@@ -3,9 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <proxy/proxy.hpp>
-#include <eosio.system/eosio.system.hpp>
 #include <eosiolib/transaction.hpp>
-#include <eosiolib/currency.hpp>
+#include <eosio.token/eosio.token.hpp>
 
 namespace proxy {
    using namespace eosio;
@@ -51,7 +50,7 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(permission_level{self, N(active)}, N(currency), N(transfer), new_transfer);
+         out.actions.emplace_back(permission_level{self, N(active)}, N(eosio.token), N(transfer), new_transfer);
          out.delay_sec = code_config.delay;
          out.send(id, self);
       }
@@ -95,12 +94,10 @@ extern "C" {
        if ( code == N(eosio)) {
           if (action == N(onerror)) {
              apply_onerror(receiver, deferred_transaction::from_current_action());
-          } if( action == N(transfer) ) {
-             apply_transfer(receiver, code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
           }
-       } else if ( code == N(currency) ) {
+       } else if ( code == N(eosio.token) ) {
           if( action == N(transfer) ) {
-             apply_transfer(receiver, code, unpack_action_data<eosio::currency::transfer>());
+             apply_transfer(receiver, code, unpack_action_data<eosio::token::transfer_args>());
           }
        } else if (code == receiver ) {
           if ( action == N(setowner)) {

@@ -48,7 +48,11 @@ struct test_print {
   static void test_printi();
   static void test_printui();
   static void test_printi128();
+  static void test_printui128();
   static void test_printn();
+  static void test_printsf();
+  static void test_printdf();
+  static void test_printqf();
 };
 
 struct test_action {
@@ -109,6 +113,7 @@ struct test_multi_index {
    static void idx128_autoincrement_test_part2(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx256_general(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx_double_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_long_double_general(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_pk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_sk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_pk_iterator_exceed_begin(uint64_t receiver, uint64_t code, uint64_t action);

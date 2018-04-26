@@ -10,7 +10,6 @@
  *  @ingroup examplecontract
  *  
  *  @details
- *
  *  For the following tic-tac-toe game:
  *  - Each pair of player can have 2 unique game, one where player_1 become host and player_2 become challenger and vice versa
  *  - The game data is stored in the "host" scope and use the "challenger" as the key
@@ -53,7 +52,8 @@ namespace tic_tac_toe {
    static const uint32_t board_len = 9;
    struct game {
       game() { initialize_board(); }
-      game(account_name challenger, account_name host):challenger(challenger), host(host), turn(host) {
+      game(account_name challenger_account, account_name host_account)
+            : challenger(challenger_account), host(host_account), turn(host_account) {
          // Initialize board
          initialize_board();
       }

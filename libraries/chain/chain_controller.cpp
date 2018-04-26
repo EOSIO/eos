@@ -180,9 +180,15 @@ bool chain_controller::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = _skip_flags;
    if (!(skip&skip_fork_db)) {
-      /// TODO: if the block is greater than the head block and before the next maintenance interval
-      // verify that the block signer is in the current set of active producers.
-
+      if(new_block.block_num() > head_block_num()) {
+         if(!is_start_of_round(new_block.block_num())) {
+            auto schedule = get_global_properties().active_producers.producers;
+            if(std::find(schedule.begin(), schedule.end(),
+                         producer_key{new_block.producer, new_block.signee()}) == schedule.end()) {
+               return false; // Not forking and not pushing block with unexpected signature
+            }
+         }
+      }
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if (new_head->data.previous != head_block_id()) {
@@ -300,6 +306,10 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    validate_uniqueness(trx);
    if( should_check_authorization() ) {
       auto enforced_delay = check_transaction_authorization(trx, packed_trx.signatures, mtrx.context_free_data);
+      auto max_delay = fc::seconds( get_global_properties().configuration.max_transaction_delay );
+      if ( max_delay < enforced_delay ) {
+         enforced_delay = max_delay;
+      }
       EOS_ASSERT( mtrx.delay >= enforced_delay,
                   transaction_exception,
                   "authorization imposes a delay (${enforced_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
@@ -1552,7 +1562,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    auto expected_schedule_version = get_global_properties().active_producers.version;
-   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expectd ${y}",
+   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expected ${y}",
                ("x", next_block.schedule_version)("y",expected_schedule_version) );
 
    return producer;
@@ -1710,6 +1720,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
    _db.add_index<contracts::index_double_index>();
+   _db.add_index<contracts::index_long_double_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();
@@ -2068,7 +2079,7 @@ uint32_t chain_controller::get_slot_at_time( block_timestamp_type when )const
    auto first_slot_time = get_slot_time(1);
    if( when < first_slot_time )
       return 0;
-   return block_timestamp_type(when).slot - first_slot_time.slot + 1;
+   return when.slot - first_slot_time.slot + 1;
 }
 
 uint32_t chain_controller::producer_participation_rate()const

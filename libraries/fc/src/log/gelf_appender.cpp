@@ -116,7 +116,12 @@ namespace fc
     gelf_message["host"] = my->cfg.host;
     gelf_message["short_message"] = format_string(message.get_format(), message.get_data());
     
-    gelf_message["timestamp"] = context.get_timestamp().time_since_epoch().count() / 1000000.;
+    const auto time_ns = context.get_timestamp().time_since_epoch().count();
+    gelf_message["timestamp"] = time_ns / 1000000.;
+    gelf_message["_timestamp_ns"] = time_ns;
+
+    static unsigned long gelf_log_counter;
+    gelf_message["_log_id"] = fc::to_string(++gelf_log_counter);
 
     switch (context.get_log_level())
     {

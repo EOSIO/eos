@@ -972,7 +972,6 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    produce_blocks(1);
    set_code( N(testapi), test_api_multi_index_wast );
    produce_blocks(1);
-
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
@@ -984,6 +983,7 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_long_double_general", {});
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_end", {},
                                            transaction_exception, "cannot increment end iterator");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_end", {},
@@ -1320,9 +1320,55 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    // test printi128
    auto tx6_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printi128", {} );
    auto tx6_act_cnsl = tx6_trace.action_traces.front().console;
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(0, 39), U128Str(-1) );
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(39, 1), U128Str(0) );
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(40, 11), U128Str(87654323456) );
+   size_t start = 0;
+   size_t end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), U128Str(1) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), U128Str(0) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), "-" + U128Str(static_cast<unsigned __int128>(std::numeric_limits<__int128>::lowest())) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), "-" + U128Str(87654323456) );
+
+   // test printui128
+   auto tx7_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printui128", {} );
+   auto tx7_act_cnsl = tx7_trace.action_traces.front().console;
+   start = 0; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(std::numeric_limits<unsigned __int128>::max()) );
+   start = end + 1; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(0) );
+   start = end + 1; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(87654323456) );
+
+   // test printsf
+   auto tx8_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printsf", {} );
+   auto tx8_act_cnsl = tx8_trace.action_traces.front().console;
+   start = 0; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "5.000000e-01" );
+   start = end + 1; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "-3.750000e+00" );
+   start = end + 1; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "6.666667e-07" );
+
+   // test printdf
+   auto tx9_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printdf", {} );
+   auto tx9_act_cnsl = tx9_trace.action_traces.front().console;
+   start = 0; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "5.000000000000000e-01" );
+   start = end + 1; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "-3.750000000000000e+00" );
+   start = end + 1; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "6.666666666666666e-07" );
+
+   // test printqf
+   auto tx10_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printqf", {} );
+   auto tx10_act_cnsl = tx10_trace.action_traces.front().console;
+   start = 0; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "5.000000000000000000e-01" );
+   start = end + 1; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "-3.750000000000000000e+00" );
+   start = end + 1; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "6.666666666666666667e-07" );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }

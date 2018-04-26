@@ -10,8 +10,8 @@ namespace eosio {
 void token::create( account_name issuer,
                     asset        maximum_supply,
                     uint8_t      issuer_can_freeze,
-                    uint8_t      issuer_can_recall,  
-                    uint8_t      issuer_can_whitelist ) 
+                    uint8_t      issuer_can_recall,
+                    uint8_t      issuer_can_whitelist )
 {
     require_auth( _self );
 
@@ -35,7 +35,7 @@ void token::create( account_name issuer,
 }
 
 
-void token::issue( account_name to, asset quantity, string memo ) 
+void token::issue( account_name to, asset quantity, string memo )
 {
     print( "issue" );
     auto sym = quantity.symbol.name();
@@ -55,14 +55,14 @@ void token::issue( account_name to, asset quantity, string memo )
 
     if( to != st.issuer )
     {
-       dispatch_inline( permission_level{st.issuer,N(active)}, _self, N(transfer), &token::transfer, { st.issuer, to, quantity, memo } );
+       SEND_INLINE_ACTION( *this, transfer, {st.issuer,N(active)}, {st.issuer, to, quantity, memo} );
     }
 }
 
-void token::transfer( account_name from, 
+void token::transfer( account_name from,
                       account_name to,
                       asset        quantity,
-                      string       /*memo*/ ) 
+                      string       /*memo*/ )
 {
     print( "transfer" );
     require_auth( from );
@@ -79,7 +79,6 @@ void token::transfer( account_name from,
     sub_balance( from, quantity, st );
     add_balance( to, quantity, st, from );
 }
-
 
 void token::sub_balance( account_name owner, asset value, const currency_stats& st ) {
    accounts from_acnts( _self, owner );
