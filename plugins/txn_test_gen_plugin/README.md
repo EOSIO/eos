@@ -9,7 +9,7 @@ This general procedure was used when doing pre-dawn 3.0 performance testing as m
 The following instructions describe how to use the `txn_test_gen_plugin` plugin to generate 1,000 transaction per second load on a simple EOSIO node.
 
 ### Create config and data directories
-Make an empty directory for our configs & data, `mkdir ~/eos.data`, and define a logging.json that doesn't print debug information (which occurs for each txn) to the console
+Make an empty directory for our configs and data, `mkdir ~/eos.data`, and define a logging.json that doesn't print debug information (which occurs for each txn) to the console:
 ```bash
 cat << EOF > ~/eos.data/logging.json
 {
