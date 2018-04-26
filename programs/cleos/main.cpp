@@ -1742,9 +1742,9 @@ int main( int argc, char** argv ) {
       return 1;
    } catch (connection_exception& e) {
       auto errorString = e.to_detail_string();
-         if (errorString.find(fc::json::to_string(port)) != string::npos) {
+         if (errorString.find(host + ":" + fc::json::to_string(port)) != string::npos) {
             std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
-         } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
+         } else if (errorString.find(wallet_host + ":" + fc::json::to_string(wallet_port)) != string::npos) {
             std::cerr << localized("Failed to connect to keosd at ${ip}:${port}; is keosd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
             std::cerr << localized("Failed to connect") << std::endl;
