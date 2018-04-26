@@ -46,9 +46,15 @@ namespace eosio { namespace client { namespace http {
             endpoint_iterator = end;
          } catch( std::exception& e ) {
             ++endpoint_iterator;
-            if( endpoint_iterator != end )
+            if( endpoint_iterator != end ) {
                continue;
-            else throw;
+            } else {
+               throw connection_exception(fc::log_messages{
+                  FC_LOG_MESSAGE( error, "Connection to ${server}:${port}${path} is refused",
+                                  ("server", server)("port", port)("path", path) ),
+                  FC_LOG_MESSAGE( error, e.what())
+               });
+            }
          }
 
          // Form the request. We specify the "Connection: close" header so that the

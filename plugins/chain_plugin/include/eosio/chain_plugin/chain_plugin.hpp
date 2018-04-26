@@ -172,12 +172,15 @@ public:
    vector<asset> get_currency_balance( const get_currency_balance_params& params )const;
 
    struct get_currency_stats_params {
-      name             code;
-      optional<string> symbol;
+      name           code;
+      string         symbol;
    };
 
+
    struct get_currency_stats_result {
-      asset        supply;
+      asset          supply;
+      asset          max_supply;
+      account_name   issuer;
    };
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
@@ -359,7 +362,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
-FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply));
+FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(permissions) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )

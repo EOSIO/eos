@@ -75,8 +75,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
-   
-   // TODO add any clauses 
+
+   // TODO add any ricardian_clauses
    //
    // ACTION PAYLOADS
 
@@ -163,6 +163,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
+         {"canceling_auth", "permission_level"},
          {"trx_id", "transaction_id_type"},
       }
    });
@@ -270,7 +271,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
          "clause_pair", "", {
             {"id", "string"},
-            {"body", "string"} 
+            {"body", "string"}
          }
    });
    eos_abi.structs.emplace_back( struct_def {
@@ -304,7 +305,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"structs", "struct_def[]"},
          {"actions", "action_def[]"},
          {"tables", "table_def[]"},
-         {"clauses", "clause_pair[]"}
+         {"ricardian_clauses", "clause_pair[]"}
       }
    });
 
@@ -344,7 +345,7 @@ void chain_initializer::prepare_database( chain_controller& chain,
          a.privileged = true;
 
          if( name == config::system_account_name ) {
-            a.set_abi(abi_def());
+            a.set_abi(eos_contract_abi(abi_def()));
          }
       });
       const auto& owner = db.create<permission_object>([&](permission_object& p) {

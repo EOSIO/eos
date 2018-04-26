@@ -213,5 +213,5 @@
       "type": "account"
     }
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }

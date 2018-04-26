@@ -73,7 +73,7 @@ struct action_def {
 
    action_name name;
    type_name   type;
-   string      ricardian_contract; 
+   string      ricardian_contract;
 };
 
 struct table_def {
@@ -92,7 +92,7 @@ struct table_def {
 struct clause_pair {
    clause_pair() = default;
    clause_pair( const string& id, const string& body )
-   : id(id), body(body) 
+   : id(id), body(body)
    {}
 
    string id;
@@ -102,14 +102,14 @@ struct clause_pair {
 struct abi_def {
    abi_def() = default;
    abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses)
-   :types(types), structs(structs), actions(actions), tables(tables), clauses(clauses)
+   :types(types), structs(structs), actions(actions), tables(tables), ricardian_clauses(clauses)
    {}
 
    vector<type_def>     types;
    vector<struct_def>   structs;
    vector<action_def>   actions;
    vector<table_def>    tables;
-   vector<clause_pair>  clauses;
+   vector<clause_pair>  ricardian_clauses;
 };
 
 struct newaccount {
@@ -282,6 +282,7 @@ struct vetorecovery {
 };
 
 struct canceldelay {
+   permission_level      canceling_auth;
    transaction_id_type   trx_id;
 
    static account_name get_account() {
@@ -301,7 +302,7 @@ FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(b
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type)(ricardian_contract) )
 FC_REFLECT( eosio::chain::contracts::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::contracts::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables)(clauses) )
+FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables)(ricardian_clauses) )
 
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
@@ -313,4 +314,4 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
-FC_REFLECT( eosio::chain::contracts::canceldelay                      , (trx_id) )
+FC_REFLECT( eosio::chain::contracts::canceldelay                      , (canceling_auth)(trx_id) )
