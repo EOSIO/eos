@@ -22,11 +22,10 @@ Usage: programs/cleos/cleos [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit
-  -H,--host TEXT=localhost    the host where nodeos is running
-  -p,--port UINT=8888         the port where nodeos is running
-  --wallet-host TEXT=localhost
-                              the host where keosd is running
-  --wallet-port UINT=8888     the port where keosd is running
+  -u,--url TEXT=http://localhost:8888/
+                              the http/https URL where nodeos is running
+  --wallet-url TEXT=http://localhost:8888/
+                              the http/https URL where keosd is running
   -v,--verbose                output verbose actions on error
 
 Subcommands:
@@ -39,7 +38,8 @@ Subcommands:
   wallet                      Interact with local wallet
   sign                        Sign a transaction
   push                        Push arbitrary transactions to the blockchain
-
+  multisig                    Multisig contract commands
+  
 ```
 To get help with any particular subcommand, run it with no arguments as well:
 ```
@@ -146,13 +146,8 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
     FC_MULTILINE_MACRO_END \
   )
 
-string program = "eosc";
-string host = "localhost";
-uint32_t port = 8888;
-
-// restricting use of wallet to localhost
-string wallet_host = "localhost";
-uint16_t wallet_port = 8888;
+string url = "http://localhost:8888/";
+string wallet_url = "http://localhost:8888/";
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -206,16 +201,27 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
 }
 
 template<typename T>
-fc::variant call( const std::string& server, uint16_t port,
+fc::variant call( const std::string& url,
                   const std::string& path,
-                  const T& v ) { return eosio::client::http::call( server, port, path, fc::variant(v) ); }
+                  const T& v ) {
+   try {
+      return eosio::client::http::call( url, path, fc::variant(v) );
+   }
+   catch(boost::system::system_error& e) {
+      if(url == ::url)
+         std::cerr << localized("Failed to connect to nodeos at ${u}; is nodeos running?", ("u", url)) << std::endl;
+      else if(url == ::wallet_url)
+         std::cerr << localized("Failed to connect to keosd at ${u}; is keosd running?", ("u", url)) << std::endl;
+      throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, e.what())});
+   }
+}
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return eosio::client::http::call( host, port, path, fc::variant(v) ); }
+                  const T& v ) { return ::call( url, path, fc::variant(v) ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-  return call(host, port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
+   return ::call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_value() {
@@ -240,18 +246,18 @@ chain::action generate_nonce() {
 fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    //wdump((trx));
-   const auto& public_keys = call(wallet_host, wallet_port, wallet_public_keys);
+   const auto& public_keys = call(wallet_url, wallet_public_keys);
    auto get_arg = fc::mutable_variant_object
            ("transaction", (transaction)trx)
            ("available_keys", public_keys);
-   const auto& required_keys = call(host, port, get_required_keys, get_arg);
+   const auto& required_keys = call(get_required_keys, get_arg);
    return required_keys["required_keys"];
 }
 
 void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
    // TODO determine chain id
    fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id_type{})};
-   const auto& signed_trx = call(wallet_host, wallet_port, wallet_sign_trx, sign_args);
+   const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
    trx = signed_trx.as<signed_transaction>();
 }
 
@@ -632,6 +638,13 @@ void start_keosd( uint16_t wallet_port ) {
    }
 }
 
+CLI::callback_t old_host_port = [](CLI::results_t) {
+   std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
+                          "Use for example -u http://localhost:8888 or --url https://example.invalid/\n");
+   exit(1);
+   return false;
+};
+
 struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
@@ -890,13 +903,21 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, localized("the host where nodeos is running"), true );
-   app.add_option( "-p,--port", port, localized("the port where nodeos is running"), true );
-   app.add_option( "--wallet-host", wallet_host, localized("the host where keosd is running"), true );
-   app.add_option( "--wallet-port", wallet_port, localized("the port where keosd is running"), true );
+   app.add_option( "-H,--host", old_host_port, localized("the host where nodeos is running") )->group("hidden");
+   app.add_option( "-p,--port", old_host_port, localized("the port where nodeos is running") )->group("hidden");
+   app.add_option( "--wallet-host", old_host_port, localized("the host where keosd is running") )->group("hidden");
+   app.add_option( "--wallet-port", old_host_port, localized("the port where keosd is running") )->group("hidden");
 
-   if ( ( wallet_host.empty() || wallet_host == "localhost" || wallet_host == "127.0.0.1" ) && !port_busy( wallet_port ) ) {
-      start_keosd( wallet_port );
+   app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
+   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+
+   auto parsed_url = parse_url( wallet_url );
+   uint16_t wallet_port_uint = std::stoul(parsed_url.port);
+   if ( 65535 < wallet_port_uint ) {
+      FC_THROW("port is not in valid range");
+   }
+   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( wallet_port_uint ) ) {
+      start_keosd( wallet_port_uint );
    }
 
    bool verbose_errors = false;
@@ -1277,27 +1298,27 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
-      const auto& v = call(host, port, net_connect, new_host);
+      const auto& v = call(net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
-      const auto& v = call(host, port, net_disconnect, new_host);
+      const auto& v = call(net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"), false);
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->set_callback([&] {
-      const auto& v = call(host, port, net_status, new_host);
+      const auto& v = call(net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
    connections->set_callback([&] {
-      const auto& v = call(host, port, net_connections, new_host);
+      const auto& v = call(net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -1311,7 +1332,7 @@ int main( int argc, char** argv ) {
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
    createWallet->set_callback([&wallet_name] {
-      const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
+      const auto& v = call(wallet_url, wallet_create, wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
       std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
@@ -1322,8 +1343,7 @@ int main( int argc, char** argv ) {
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
+      call(wallet_url, wallet_open, wallet_name);
       std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
 
@@ -1331,17 +1351,14 @@ int main( int argc, char** argv ) {
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
+      call(wallet_url, wallet_lock, wallet_name);
       std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-
    });
 
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
    locakAllWallets->set_callback([] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
+      call(wallet_url, wallet_lock_all);
       std::cout << localized("Locked All Wallets") << std::endl;
    });
 
@@ -1360,9 +1377,8 @@ int main( int argc, char** argv ) {
 
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_unlock, vs);
+      call(wallet_url, wallet_unlock, vs);
       std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // import keys into wallet
@@ -1380,29 +1396,28 @@ int main( int argc, char** argv ) {
       public_key_type pubkey = wallet_key.get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
-      const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
+      call(wallet_url, wallet_import_key, vs);
       std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {
       std::cout << localized("Wallets:") << std::endl;
-      const auto& v = call(wallet_host, wallet_port, wallet_list);
+      const auto& v = call(wallet_url, wallet_list);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
    listKeys->set_callback([] {
-      const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
+      const auto& v = call(wallet_url, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
    stopKeosd->set_callback([] {
-      const auto& v = call(wallet_host, wallet_port, keosd_stop);
+      const auto& v = call(wallet_url, keosd_stop);
       if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
          std::cerr << fc::json::to_pretty_string(v) << std::endl;
       } else {
@@ -1800,18 +1815,9 @@ int main( int argc, char** argv ) {
    } catch (const explained_exception& e) {
       return 1;
    } catch (connection_exception& e) {
-      auto errorString = e.to_detail_string();
-         if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
-         } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << localized("Failed to connect to keosd at ${ip}:${port}; is keosd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
-         } else {
-            std::cerr << localized("Failed to connect") << std::endl;
-         }
-
-         if (verbose_errors) {
-            elog("connect error: ${e}", ("e", errorString));
-         }
+      if (verbose_errors) {
+         elog("connect error: ${e}", ("e", e.to_detail_string()));
+      }
    } catch (const fc::exception& e) {
       // attempt to extract the error code if one is present
       if (!print_recognized_errors(e, verbose_errors)) {
