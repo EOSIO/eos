@@ -256,15 +256,13 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    trx.expiration = info.head_block_time + tx_expiration;
 
    // Set tapos, default to last irreversible block if it's not specified by the user
-   block_id_type ref_block_id;
+   block_id_type ref_block_id = info.last_irreversible_block_id;
    try {
       fc::variant ref_block;
       if (!tx_ref_block_num_or_id.empty()) {
          ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
-      } else {
-         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", info.last_irreversible_block_num));
-      }
-      ref_block_id = ref_block["id"].as<block_id_type>();
+         ref_block_id = ref_block["id"].as<block_id_type>();
+      } 
    } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
    trx.set_reference_block(ref_block_id);
 
@@ -296,41 +294,50 @@ fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcp
    return push_transaction(trx, extra_kcpu, compression);
 }
 
-void print_result( const fc::variant& result ) {
+void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
-      const auto& status = processed["status"].as_string() ;
-      auto net = processed["net_usage"].as_int64();
-      auto cpu = processed["cpu_usage"].as_int64();
+      const auto& receipt = processed["receipt"].get_object() ;
+      const auto& status = receipt["status"].as_string() ;
+      auto net = receipt["net_usage_words"].as_int64()*8;
+      auto cpu = receipt["kcpu_usage"].as_int64();
 
-      cout << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << " cycles\n";
+      cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
 
-      const auto& actions = processed["action_traces"].get_array();
-      for( const auto& at : actions ) {
-         auto receiver = at["receiver"].as_string();
-         const auto& act = at["act"].get_object();
-         auto code = act["account"].as_string();
-         auto func = act["name"].as_string();
-         auto args = fc::json::to_string( act["data"] );
-         auto console = at["console"].as_string();
+      if( status == "hard_fail" ) {
+         auto soft_except = processed["soft_except"].as<optional<fc::exception>>();
+         if( soft_except ) {
+            edump((soft_except->to_detail_string()));
+         }
 
-         /*
-         if( code == "eosio" && func == "setcode" )
-            args = args.substr(40)+"...";
-         if( name(code) == config::system_account_name && func == "setabi" )
-            args = args.substr(40)+"...";
-         */
-         if( args.size() > 100 ) args = args.substr(0,100) + "...";
+      } else {
+         const auto& actions = processed["action_traces"].get_array();
+         for( const auto& at : actions ) {
+            const auto& receipt = at["receipt"];
+            auto receiver = receipt["receiver"].as_string();
+            const auto& act = at["act"].get_object();
+            auto code = act["account"].as_string();
+            auto func = act["name"].as_string();
+            auto args = fc::json::to_string( act["data"] );
+            auto console = at["console"].as_string();
 
-         cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
-         if( console.size() ) {
-            std::stringstream ss(console);
-            string line;
-            std::getline( ss, line );
-            cout << ">> " << line << "\n";
+            /*
+            if( code == "eosio" && func == "setcode" )
+               args = args.substr(40)+"...";
+            if( name(code) == config::system_account_name && func == "setabi" )
+               args = args.substr(40)+"...";
+            */
+            if( args.size() > 100 ) args = args.substr(0,100) + "...";
+            cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+            if( console.size() ) {
+               std::stringstream ss(console);
+               string line;
+               std::getline( ss, line );
+               cout << ">> " << line << "\n";
+            }
          }
       }
-}
+} FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {

@@ -205,6 +205,8 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 /// TODO: rename this schedule_deferred it is not actually executed here
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
+   trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
+
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
 

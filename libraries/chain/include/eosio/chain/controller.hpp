@@ -136,6 +136,7 @@ namespace eosio { namespace chain {
          optional<producer_schedule_type> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
+         block_id_type last_irreversible_block_id() const;
 
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
