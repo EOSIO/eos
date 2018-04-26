@@ -60,6 +60,7 @@
 
 	printf "\n\tBeginning build version: ${VERSION}\n"
 	printf "\t$( date -u )\n"
+	printf "\tUser: $( whoami )\n"
 	printf "\tgit head id: $( cat .git/refs/heads/master )\n"
 	printf "\tCurrent branch: $( git branch | grep \* )\n"
 	printf "\n\tARCHITECTURE: ${ARCH}\n"
@@ -141,6 +142,7 @@
 		FILE=${WORK_DIR}/scripts/eosio_build_darwin.sh
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
+		export BOOST_ROOT=/usr/local
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		export WASM_ROOT=/usr/local/wasm

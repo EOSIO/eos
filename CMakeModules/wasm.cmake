@@ -151,7 +151,7 @@ macro(add_wast_executable)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND $<TARGET_FILE:eosio-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 4096 ${MAX_MEMORY_PARAM} ${target}.s
+    COMMAND $<TARGET_FILE:eosio-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 8192 ${MAX_MEMORY_PARAM} ${target}.s
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
