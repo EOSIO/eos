@@ -376,6 +376,7 @@ struct controller_impl {
          transaction_context trx_context( self, dtrx, gto.trx_id );
          trace = trx_context.trace;
 
+         trx_context.trace->scheduled = true;
          trx_context.deadline  = deadline;
          trx_context.published = gto.published;
          trx_context.net_usage = 0;
@@ -421,6 +422,7 @@ struct controller_impl {
          edump((soft_except->to_detail_string()));
        */
 
+      FC_ASSERT( bool(trace), "failed to desirialize transaction" );
       trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+1023)/1024, 0 );
       trace->soft_except = soft_except;
       trace->hard_except = hard_except;
@@ -459,8 +461,8 @@ struct controller_impl {
 
    void transaction_trace_notify( const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace ) {
       if( trx->on_result ) {
-         (*trx->on_result)(trace);
-         trx->on_result.reset();
+         (trx->on_result)(trace);
+         trx->on_result = decltype(trx->on_result)(); //assign empty std::function
       }
    }
 

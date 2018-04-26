@@ -237,7 +237,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
 
-   auto trx_size = fc::raw::pack_size(trx);
+   uint32_t trx_size = 0;
 
    auto& d = control.db();
    d.create<generated_transaction_object>( [&]( auto& gtx ) {
@@ -249,9 +249,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       gtx.delay_until = gtx.published + delay;
       gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
 
-      gtx.packed_trx.resize( trx_size );
-      fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
-      fc::raw::pack( ds, trx );
+      trx_size = gtx.set( trx );
    });
 
    auto& rl = control.get_mutable_resource_limits_manager();
