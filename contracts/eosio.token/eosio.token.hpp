@@ -41,8 +41,29 @@ namespace eosio {
          friend eosiosystem::system_contract;
 
          inline asset get_supply( symbol_name sym )const;
-         
+
          inline asset get_balance( account_name owner, symbol_name sym )const;
+
+         static void inline_transfer( account_name from,
+                                      account_name to,
+                                      extended_asset quantity,
+                                      string memo = string(),
+                                      permission_name perm = N(active) ) {
+           action act(permission_level(from, perm),
+                      quantity.contract,
+                      N(transfer),
+                      transfer_t{from, to, quantity, memo});
+           act.send();
+         }
+
+         struct transfer_t {
+           account_name from;
+           account_name to;
+           asset        quantity;
+           string       memo;
+
+           EOSLIB_SERIALIZE(transfer_t, (from)(to)(quantity)(memo))
+         };
 
       private:
          struct account {
