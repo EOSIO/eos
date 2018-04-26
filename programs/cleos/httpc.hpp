@@ -5,7 +5,7 @@
 #pragma once
 
 namespace eosio { namespace client { namespace http {
-   fc::variant call( const std::string& server, uint16_t port,
+   fc::variant call( const std::string& server_url,
                      const std::string& path,
                      const fc::variant& postdata = fc::variant() );
 
