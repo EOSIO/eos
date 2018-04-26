@@ -77,6 +77,7 @@ namespace eosio { namespace testing {
 
    void base_tester::open() {
       control.reset( new controller(cfg) );
+      control->startup();
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );

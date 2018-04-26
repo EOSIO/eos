@@ -151,10 +151,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
-}
 
-void chain_plugin::plugin_startup()
-{ try {
    if( !fc::exists( my->genesis_file ) ) {
       wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
       genesis_state default_genesis;
@@ -184,6 +181,11 @@ void chain_plugin::plugin_startup()
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
    my->chain.emplace(*my->chain_config);
+}
+
+void chain_plugin::plugin_startup()
+{ try {
+   my->chain->startup();
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");

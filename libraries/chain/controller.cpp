@@ -336,6 +336,7 @@ struct controller_impl {
       trx_context.is_input  = false;
       trx_context.exec();
 
+      self.applied_transaction(trx_context.trace);
       trx_context.squash();
 
       return move(trx_context.trace);
@@ -393,8 +394,8 @@ struct controller_impl {
 
          db.remove( gto );
 
-         trx_context.squash();
          self.applied_transaction( trx_context.trace );
+         trx_context.squash();
 
          return;
       } catch( const fc::exception& e ) {
@@ -508,6 +509,7 @@ struct controller_impl {
             pending->_pending_block_state->trxs.emplace_back(trx);
 
          self.accepted_transaction(trx);
+         self.applied_transaction(trace);
          trx_context.squash();
          return;
       } catch ( const fc::exception& e ) {
@@ -825,7 +827,6 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
 {
-   my->init();
 }
 
 controller::~controller() {
@@ -833,16 +834,12 @@ controller::~controller() {
 
 
 void controller::startup() {
+   my->init();
+
+   /*
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
-   }
-
-   /*
-   auto head = my->blog.read_head();
-   if( head && head_block_num() < head->block_num() ) {
-      wlog( "\nDatabase in inconsistant state, replaying block log..." );
-      //replay();
    }
    */
 }
