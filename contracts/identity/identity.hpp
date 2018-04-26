@@ -162,11 +162,11 @@ namespace identity {
                                     eosio::indexed_by< N(bytuple), eosio::const_mem_fun<certrow, key256, &certrow::get_key> >
                                     > certs_table;
          typedef eosio::multi_index<N(ident), identrow> idents_table;
-         typedef singleton<code, N(account), code, identity_name>  accounts_table;
+         typedef singleton<N(account), identity_name>  accounts_table;
          typedef eosio::multi_index<N(trust), trustrow> trust_table;
 
          static identity_name get_claimed_identity( account_name acnt ) {
-            return accounts_table::get_or_default(acnt, 0);
+            return accounts_table( code, acnt ).get_or_default(0);
          }
 
          static account_name get_owner_for_identity( uint64_t receiver, identity_name ident ) {
@@ -249,7 +249,8 @@ namespace identity {
 
          static bool is_trusted( account_name acnt ) {
             account_name active_producers[21];
-            auto count = get_active_producers( active_producers, sizeof(active_producers) );
+            auto active_prod_size = get_active_producers( active_producers, sizeof(active_producers) );
+            auto count = active_prod_size / sizeof(account_name);
             for( size_t i = 0; i < count; ++i ) {
                if( active_producers[i] == acnt )
                   return true;
@@ -335,7 +336,7 @@ namespace identity {
                      eosio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
                      if (cert.certifier == acnt) { //only self-certitication affects accounts_table
-                        accounts_table::set( cert.identity, acnt );
+                        accounts_table( code, acnt ).set( cert.identity, acnt );
                      }
                   }
                } else {
@@ -357,7 +358,7 @@ namespace identity {
                      eosio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
                      if (cert.certifier == acnt) { //only self-certitication affects accounts_table
-                        accounts_table::remove( acnt );
+                        accounts_table( code, acnt ).remove();
                      }
                   }
                }

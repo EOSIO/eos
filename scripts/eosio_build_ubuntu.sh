@@ -3,9 +3,11 @@
 	OS_MIN=`echo "${OS_VER}" | cut -d'.' -f2`
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
-
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
+
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
 	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
@@ -52,10 +54,15 @@
 	fi
 
 	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev \
-	libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python3-dev autoconf libtool curl)
+	libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python2.7-dev python3-dev \
+	autoconf libtool curl zlib1g-dev doxygen graphviz)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
+
+	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
+		DEP_ARRAY+=(lcov)
+	fi
 
 	printf "\n\tChecking for installed dependencies.\n\n"
 
@@ -192,7 +199,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
@@ -221,7 +228,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE}
+		sudo make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -258,13 +265,13 @@ mongodconf
 			exit;
 		fi
 		./configure
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE} install
+		sudo make install
 		rm -rf cd ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found\n"
@@ -300,7 +307,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE} install
+		make -j${JOBS} install
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
@@ -310,3 +317,11 @@ mongodconf
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm/bin\n"
 	fi
+	
+	function print_instructions()
+	{
+		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
+		printf "\tcd ${HOME}/eos/build; make test\n\n"
+	return 0
+	}

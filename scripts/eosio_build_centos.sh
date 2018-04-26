@@ -2,18 +2,16 @@
 	| cut -d'.' -f1 )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
-
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
 	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
 	DISK_AVAIL_KB=`df . | tail -1 | awk '{print $4}'`
 	DISK_TOTAL=$(( $DISK_TOTAL_KB / 1048576 ))
 	DISK_AVAIL=$(( $DISK_AVAIL_KB / 1048576 ))
-
-	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
-	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"
@@ -126,7 +124,7 @@
 
 	printf "\n\tYUM repository successfully updated.\n"
 
-	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 \
+	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen graphviz-devel.x86_64 libicu-devel.x86_64 \
 	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64)
 	COUNT=1
 	DISPLAY=""
@@ -174,6 +172,44 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
+	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
+		printf "\n\tChecking perl installation."
+		perl_bin=$( which perl 2>/dev/null )
+		if [ $? -ne 0 ]; then
+			printf "\n\tInstalling perl."
+			yum -y install perl
+			if [ $? -ne 0 ]; then
+				printf "\n\tUnable to install perl at this time.\n"
+				printf "\n\tExiting now.\n"
+			fi
+		else
+			printf "\n\tPerl installation found at ${perl_bin}."
+		fi
+		printf "\n\tChecking LCOV installation."
+		if [ ! -e /usr/local/bin/lcov ]; then
+			printf "\n\tLCOV installation not found.\n"
+			printf "\tInstalling LCOV.\n"
+			cd ${TEMP_DIR}
+			git clone https://github.com/linux-test-project/lcov.git
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to clone LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			cd lcov
+			sudo make install
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to install LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			rm -rf ${TEMP_DIR}/lcov
+			printf "\tSuccessfully installed LCOV.\n"
+		else
+			printf "\n\tLCOV installation found @ /usr/local/bin/lcov.\n"
+		fi
+	fi
+
 	printf "\n\tChecking CMAKE installation.\n"
     if [ ! -e ${CMAKE} ]; then
 		printf "\tInstalling CMAKE\n"
@@ -181,7 +217,7 @@
 		cd ${HOME}/opt
 		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz)
 		if [ "${STATUS}" -ne 200 ]; then
-			printf "\tUnable to download Boost libraries at this time.\n"
+			printf "\tUnable to download CMAKE at this time.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -363,7 +399,7 @@ mongodconf
 			exit;
 		fi
 		./configure
-		make
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
@@ -407,12 +443,26 @@ mongodconf
 		fi
 		make -j${JOBS}
 		if [ $? -ne 0 ]; then
-			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
+			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support. 0\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		make install
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support. 1\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
 		rm -rf ${TEMP_DIR}/llvm-compiler 2>/dev/null
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"
 	fi
+
+	function print_instructions()
+	{
+		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+		printf "\tsource /opt/rh/python33/enable\n"
+		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
+		printf "\tcd ${HOME}/eos/build; make test\n\n"
+	return 0
+	}

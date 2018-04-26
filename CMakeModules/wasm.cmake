@@ -151,7 +151,7 @@ macro(add_wast_executable)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND $<TARGET_FILE:eosio-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 4096 ${MAX_MEMORY_PARAM} ${target}.s
+    COMMAND $<TARGET_FILE:eosio-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 8192 ${MAX_MEMORY_PARAM} ${target}.s
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
@@ -189,6 +189,14 @@ macro(add_wast_executable)
   set_property(TARGET ${target} PROPERTY INCLUDE_DIRECTORIES ${ARG_INCLUDE_FOLDERS})
 
   set(extra_target_dependency)
+
+  # For CLion code insight
+  include_directories(..)
+  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${target}.hpp)
+    set(HEADER_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${target}.hpp)
+  endif()
+  file(GLOB HEADER_FILES ${ARG_INCLUDE_FOLDERS}/*.hpp ${SYSTEM_INCLUDE_FOLDERS}/*.hpp)
+  add_executable(${target}.tmp EXCLUDE_FROM_ALL ${SOURCE_FILES} ${HEADER_FILE} ${HEADER_FILES})
 
   add_test(NAME "validate_${target}_abi"
            COMMAND ${CMAKE_BINARY_DIR}/scripts/abi_is_json.py ${ABI_FILES})

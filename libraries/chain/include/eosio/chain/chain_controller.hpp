@@ -92,7 +92,7 @@ namespace eosio { namespace chain {
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
          vector<transaction_trace> push_deferred_transactions( bool flush = false, uint32_t skip = skip_nothing );
-         
+
          uint128_t transaction_id_to_sender_id( const transaction_id_type& tid )const;
 
       /**
@@ -265,6 +265,7 @@ namespace eosio { namespace chain {
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const producer_object&                 get_producer(const account_name& ownername)const;
+         const permission_object*               find_permission( const permission_level& level )const;
          const permission_object&               get_permission( const permission_level& level )const;
 
          time_point           head_block_time()const;
@@ -299,6 +300,12 @@ namespace eosio { namespace chain {
                                                flat_set<account_name>           provided_accounts = flat_set<account_name>(),
                                                flat_set<permission_level>       provided_levels = flat_set<permission_level>()
                                              )const;
+
+         optional<fc::microseconds> check_updateauth_authorization( const contracts::updateauth& update, const vector<permission_level>& auths )const;
+         fc::microseconds check_deleteauth_authorization( const contracts::deleteauth& del, const vector<permission_level>& auths )const;
+         fc::microseconds check_linkauth_authorization( const contracts::linkauth& link, const vector<permission_level>& auths )const;
+         fc::microseconds check_unlinkauth_authorization( const contracts::unlinkauth& unlink, const vector<permission_level>& auths )const;
+         void             check_canceldelay_authorization( const contracts::canceldelay& cancel, const vector<permission_level>& auths )const;
 
          /**
           * @param account - the account owner of the permission
