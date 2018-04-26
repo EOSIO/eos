@@ -198,11 +198,25 @@ public:
    action_result create_proposal( const account_name& proposer,
                                   const account_name& contract,
                                   const bytes&       contract_code ) {
-      return push_action( config::system_account_name, N(propose), mvo()
-                          ("proposer",  proposer )
-                          ("contract",  contract )
-                          ("contract_code", contract_code)
+      /*
+      push_action( proposer, N(propose), mvo()
+                   ("proposer",  proposer )
+                   ("contract",  contract )
+                   ("contract_code", contract_code)
       );
+      */
+
+      action act;
+      act.account = config::system_account_name;
+      act.name = N(propose);
+      string action_type_name = abi_ser.get_action_type( act.name );
+      act.data = abi_ser.variant_to_binary( action_type_name, mvo()
+                                            ("proposer",  proposer )
+                                            ("contract",  contract )
+                                            ("contract_code", contract_code)
+      );
+
+      return base_tester::push_action( std::move(act), uint64_t(proposer)/* : signer == N(bob) ? N(alice) : N(bob)*/ );
    }
 
    fc::variant get_proposal( const account_name& act ) {
@@ -1522,6 +1536,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
 BOOST_FIXTURE_TEST_CASE( propose_upgrade, eosio_system_tester ) try {
    issue( "alice", "1000001.0000 EOS",  config::system_account_name );
    string code = "XXX";
+   std::cerr << "propose = " << N(propose) << std::endl;
    create_proposal( N(alice), config::system_account_name, vector<char>( code.begin(), code.end() ) );
 
 } FC_LOG_AND_RETHROW()
