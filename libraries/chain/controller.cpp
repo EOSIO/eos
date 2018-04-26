@@ -472,6 +472,9 @@ struct controller_impl {
    void push_transaction( const transaction_metadata_ptr& trx,
                           fc::time_point deadline = fc::time_point::maximum(),
                           bool implicit = false ) {
+      //if( !implicit )
+      //   idump((fc::json::to_pretty_string(trx->trx)));
+
       if( deadline == fc::time_point() ) {
          unapplied_transactions[trx->signed_id] = trx;
          return;
@@ -492,7 +495,7 @@ struct controller_impl {
 
          trx_context.deadline  = deadline;
          trx_context.published = self.pending_block_time();
-         trx_context.net_usage = self.validate_net_usage( trx );
+         trx_context.net_usage = self.validate_net_usage( trx ) / 8;
          trx_context.is_input  = !implicit;
          trx_context.exec();
 
@@ -937,6 +940,11 @@ uint32_t controller::last_irreversible_block_num() const {
    return my->head->bft_irreversible_blocknum;
 }
 
+block_id_type controller::last_irreversible_block_id() const {
+   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)my->head->bft_irreversible_blocknum);
+   return tapos_block_summary.block_id;
+}
+
 time_point controller::head_block_time()const {
    return my->head_block_time();
 }
@@ -980,19 +988,25 @@ void controller::log_irreversible_blocks() {
    }
 }
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
+   idump((id));
    auto state = my->fork_db.get_block(id);
    if( state ) return state->block;
+   edump((block_header::num_from_id(id)));
    auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
-   if( bptr->id() == id ) return bptr;
+   if( bptr && bptr->id() == id ) return bptr;
+   elog( "not found" );
    return signed_block_ptr();
 }
 
-signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
+signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  { try {
    auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
-   if( blk_state ) return blk_state->block;
+   if( blk_state ) {
+      return blk_state->block;
+   }
 
+   ilog( "blog read by number ${n}", ("n", block_num) );
    return my->blog.read_block_by_num(block_num);
-}
+} FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 void controller::pop_block() {
    my->pop_block();
