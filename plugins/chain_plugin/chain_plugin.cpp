@@ -42,7 +42,7 @@ public:
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
    fc::optional<controller::config> chain_config = controller::config();
-   fc::optional<controller>   chain;
+   fc::optional<controller>         chain;
    chain_id_type                    chain_id;
    int32_t                          max_reversible_block_time_ms;
    int32_t                          max_pending_transaction_time_ms;
