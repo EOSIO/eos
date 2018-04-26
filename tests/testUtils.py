@@ -91,6 +91,30 @@ class Utils:
         Utils.Print("ERROR:" if not raw else "", msg)
         exit(errorCode)
 
+    @staticmethod
+    def waitForObj(lam, timeout=None):
+        if timeout is None:
+            timeout=60
+
+        endTime=time.time()+timeout
+        while endTime > time.time():
+            ret=lam()
+            if ret is not None:
+                return ret
+            sleepTime=3
+            Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                        (sleepTime, endTime - time.time()))
+            time.sleep(sleepTime)
+
+        return None
+
+    @staticmethod
+    def waitForBool(lam, timeout=None):
+        myLam = lambda: True if lam() else None
+        ret=Utils.waitForObj(myLam)
+        return False if ret is None else ret
+
+
 ###########################################################################################
 class Table(object):
     def __init__(self, name):
@@ -123,12 +147,12 @@ class Account(object):
 ###########################################################################################
 class Node(object):
 
-    def __init__(self, host, port, pid=None, cmd=None, alive=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, host, port, pid=None, cmd=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
         self.host=host
         self.port=port
         self.pid=pid
         self.cmd=cmd
-        self.alive=alive
+        self.killed=False # marks node as killed
         self.enableMongo=enableMongo
         self.mongoSyncTime=None if Utils.mongoSyncTime < 1 else Utils.mongoSyncTime
         self.mongoHost=mongoHost
@@ -140,7 +164,7 @@ class Node(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def __str__(self):
-        #return "Host: %s, Port:%d, Pid:%s, Alive:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.alive, self.cmd)
+        #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
         return "Host: %s, Port:%d" % (self.host, self.port)
 
     @staticmethod
@@ -184,7 +208,6 @@ class Node(object):
         retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
         #retStr=subprocess.check_output(cmd).decode("utf-8")
         return retStr
-
 
     # Passes input to stdin, executes cmd. Returns tuple with return code(int),
     #  stdout(byte stream) and stderr(byte stream).
@@ -551,55 +574,20 @@ class Node(object):
         return None
 
     def waitForBlockNumOnNode(self, blockNum, timeout=None):
-        if timeout is None:
-            timeout=Utils.systemWaitTimeout
-
-        endTime=time.time()+timeout
-        while endTime > time.time():
-            if self.doesNodeHaveBlockNum(blockNum):
-                return True
-            sleepTime=3
-            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                        (sleepTime, endTime - time.time()))
-            time.sleep(sleepTime)
-
-        return False
+        lam = lambda: self.doesNodeHaveBlockNum(blockNum)
+        ret=Utils.waitForBool(lam, timeout)
+        return ret
 
     def waitForTransIdOnNode(self, transId, timeout=None):
-        if timeout is None:
-            timeout=Utils.systemWaitTimeout
-
-        endTime=time.time()+timeout
-        while endTime > time.time():
-            if self.doesNodeHaveTransId(transId):
-                return True
-            sleepTime=3
-            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                        (sleepTime, endTime - time.time()))
-            time.sleep(sleepTime)
-
-        return False
+        lam = lambda: self.doesNodeHaveTransId(transId)
+        ret=Utils.waitForBool(lam, timeout)
+        return ret
 
     def waitForNextBlock(self, timeout=None):
-        if timeout is None:
-            timeout=Utils.systemWaitTimeout
-
-        endTime=time.time()+timeout
         num=self.getIrreversibleBlockNum()
-        Utils.Debug and Utils.Print("Current block number: %s" % (num))
-
-        while endTime > time.time():
-            nextNum=self.getIrreversibleBlockNum()
-            if nextNum > num:
-                Utils.Debug and Utils.Print("Next block number: %s" % (nextNum))
-                return True
-
-            sleepTime=.5
-            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                        (sleepTime, endTime - time.time()))
-            time.sleep(sleepTime)
-
-        return False
+        lam = lambda: self.getIrreversibleBlockNum() > num
+        ret=Utils.waitForBool(lam, timeout)
+        return ret
 
     # Trasfer funds. Returns "transfer" json return object
     def transferFunds(self, source, destination, amount, memo="memo", force=False):
@@ -774,8 +762,8 @@ class Node(object):
             return None
         return trans
 
-    def getTable(self, account, contract, table):
-        cmd="%s %s get table %s %s %s" % (Utils.EosClientPath, self.endpointArgs, account, contract, table)
+    def getTable(self, contract, scope, table):
+        cmd="%s %s get table %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, scope, table)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
@@ -785,26 +773,26 @@ class Node(object):
             Utils.Print("ERROR: Exception during table retrieval. %s" % (msg))
             return None
 
-    def getTableRows(self, account, contract, table):
-        jsonData=self.getTable(account, contract, table)
+    def getTableRows(self, contract, scope, table):
+        jsonData=self.getTable(contract, scope, table)
         if jsonData is None:
             return None
         rows=jsonData["rows"]
         return rows
 
-    def getTableRow(self, account, contract, table, idx):
+    def getTableRow(self, contract, scope, table, idx):
         if idx < 0:
             Utils.Print("ERROR: Table index cannot be negative. idx: %d" % (idx))
             return None
-        rows=self.getTableRows(account, contract, table)
+        rows=self.getTableRows(contract, scope, table)
         if rows is None or idx >= len(rows):
             Utils.Print("ERROR: Retrieved table does not contain row %d" % idx)
             return None
         row=rows[idx]
         return row
 
-    def getTableColumns(self, account, contract, table):
-        row=self.getTableRow(account, contract, table, 0)
+    def getTableColumns(self, contract, scope, table):
+        row=self.getTableRow(contract, scope, table, 0)
         keys=list(row.keys())
         return keys
 
@@ -871,10 +859,8 @@ class Node(object):
     def checkPulse(self):
         info=self.getInfo(True)
         if info is not None:
-            self.alive=True
             return True
         else:
-            self.alive=False
             return False
 
     def getHeadBlockNum(self):
@@ -902,6 +888,88 @@ class Node(object):
                 return blockNum
         return None
 
+    def kill(self, killSignal):
+        try:
+            Utils.Debug and Utils.Print("Killing node: %s" % (self.cmd))
+            os.kill(self.pid, killSignal)
+
+            # wait for kill validation
+            def myFunc():
+                try:
+                    os.kill(self.pid, 0) #check if process with pid is running
+                except Exception as ex:
+                    return True
+                return False
+
+            lam = lambda: myFunc()
+            if not Utils.waitForBool(lam):
+                Utils.Print("ERROR: Failed to kill node (%s)." % (self.cmd), ex)
+                return False
+
+            # mark node as killed
+            self.killed=True
+            return True
+        except Exception as ex:
+            Utils.Print("ERROR: Failed to kill node (%d)." % (self.cmd), ex)
+
+        return False
+
+    # TBD: make nodeId an internal property
+    def relaunch(self, nodeId, chainArg):
+
+        running=True
+        try:
+            os.kill(self.pid, 0) #check if process with pid is running
+        except Exception as ex:
+            running=False
+
+        if running:
+            Utils.Print("WARNING: A process with pid (%d) is already running." % (self.pid))
+        else:
+            Utils.Debug and Utils.Print("Launching node process, Id: %d" % (nodeId))
+            dataDir="var/lib/node_%02d" % (nodeId)
+            dt = datetime.datetime.now()
+            dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
+                dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+            stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
+            stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
+            with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
+                cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
+                Utils.Print("cmd: %s" % (cmd))
+                popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+                self.pid=popen.pid
+
+        self.killed=False
+        return True
+
+    def relaunchEosInstances(self):
+
+        chainArg=self.__chainSyncStrategy.arg
+
+        for i in range(0, len(self.nodes)):
+            node=self.nodes[i]
+            running=True
+            try:
+                os.kill(node.pid, 0) #check if instance is running
+            except Exception as ex:
+                running=False
+
+            if running is False:
+                dataDir="var/lib/node_%02d" % (i)
+                dt = datetime.datetime.now()
+                dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
+                    dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+                stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
+                stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
+                with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
+                    cmd=node.cmd + ("" if chainArg is None else (" " + chainArg))
+                    Utils.Print("cmd: %s" % (cmd))
+                    popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+                    self.nodes[i].pid=popen.pid
+
+        return self.updateNodesStatus()
+
+    
 ###########################################################################################
 
 Wallet=namedtuple("Wallet", "name password host port")
@@ -1065,7 +1133,7 @@ class WalletMgr(object):
                 shutil.copyfileobj(f, sys.stdout)
 
     def killall(self):
-        cmd="pkill %s" % (Utils.EosWalletName)
+        cmd="pkill -9 %s" % (Utils.EosWalletName)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         subprocess.call(cmd.split())
 
@@ -1284,49 +1352,25 @@ class Cluster(object):
     # If a last transaction exists wait for it on root node, then collect its head block number.
     #  Wait on this block number on each cluster node
     def waitOnClusterSync(self, timeout=None):
-        if timeout is None:
-            timeout=Utils.systemWaitTimeout
-        startTime=time.time()
-        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (timeout))
-        if self.nodes[0].alive is False:
-            Utils.Print("ERROR: Root node is down.")
-            return False;
-
-        if self.__lastTrans is not None:
-            if self.nodes[0].waitForTransIdOnNode(self.__lastTrans) is False:
-                Utils.Print("ERROR: Failed to wait for last known transaction(%s) on root node." %
-                            (self.__lastTrans))
-                return False;
-
         targetHeadBlockNum=self.nodes[0].getHeadBlockNum() #get root nodes head block num
         Utils.Debug and Utils.Print("Head block number on root node: %d" % (targetHeadBlockNum))
         if targetHeadBlockNum == -1:
             return False
 
-        currentTimeout=timeout-(time.time()-startTime)
-        return self.waitOnClusterBlockNumSync(targetHeadBlockNum, currentTimeout)
+        return self.waitOnClusterBlockNumSync(targetHeadBlockNum)
 
     def waitOnClusterBlockNumSync(self, targetHeadBlockNum, timeout=None):
-        if timeout is None:
-            timeout=Utils.systemWaitTimeout
 
-        endTime=time.time()+timeout
-        while endTime > time.time():
-            synced=True
-            for node in self.nodes:
-                if node.alive:
-                    if node.doesNodeHaveBlockNum(targetHeadBlockNum) is False:
-                        synced=False
-                        break
+        def doNodesHaveBlockNum(nodes, targetHeadBlockNum):
+            for node in nodes:
+                if (not node.killed) and (not node.doesNodeHaveBlockNum(targetHeadBlockNum)):
+                    return False
 
-            if synced is True:
-                return True
-            sleepTime=3
-            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                        (sleepTime, endTime - time.time()))
-            time.sleep(sleepTime)
+            return True
 
-        return False
+        lam = lambda: doNodesHaveBlockNum(self.nodes, targetHeadBlockNum)
+        ret=Utils.waitForBool(lam, timeout)
+        return ret
 
     @staticmethod
     def createAccountKeys(count):
@@ -1363,6 +1407,7 @@ class Cluster(object):
                 account.activePrivateKey=activePrivate
                 account.activePublicKey=activePublic
                 accounts.append(account)
+                Utils.Debug and Utils.Print("name: %s, key: ['%s', '%s]-owner; ['%s', '%s']-active" % (name, ownerPublic, ownerPrivate, activePublic, activePrivate))
 
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
@@ -1443,7 +1488,7 @@ class Cluster(object):
             for n in range(0, count):
                 #Utils.Print("nextEosIdx: %d, n: %d" % (nextEosIdx, n))
                 nextEosIdx=(nextEosIdx + 1)%count
-                if self.nodes[nextEosIdx].alive:
+                if not self.nodes[nextEosIdx].killed:
                     #Utils.Print("nextEosIdx: %d" % (nextEosIdx))
                     nextInstanceFound=True
                     break
@@ -1487,7 +1532,7 @@ class Cluster(object):
 
     def validateSpreadFunds(self, expectedTotal):
         for node in self.nodes:
-            if node.alive:
+            if not node.killed:
                 Utils.Debug and Utils.Print("Validate funds on %s server port %d." %
                                             (Utils.EosServerName, node.port))
                 if node.validateSpreadFundsOnNode(self.initaAccount, self.accounts, expectedTotal) is False:
@@ -1701,6 +1746,13 @@ class Cluster(object):
             if not biosNode.waitForTransIdOnNode(transId):
                 return False
 
+            # wait for block production handover (essentially a block produced by anyone but eosio).
+            lam = lambda: biosNode.getInfo()["head_block_producer"] != "eosio"
+            ret=Utils.waitForBool(lam)
+            if not ret:
+                Utils.Print("ERROR: Block production handover failed.")
+                return False
+
             contract="eosio.system"
             contractDir="contracts/%s" % (contract)
             wastFile="contracts/%s/%s.wast" % (contract, contract)
@@ -1727,7 +1779,7 @@ class Cluster(object):
             transId=Node.getTransId(trans[1])
             biosNode.waitForTransIdOnNode(transId)
 
-            # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+            # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
             #  Uncomment when functional
             # expectedAmount=10000000000000
             # Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
@@ -1772,48 +1824,43 @@ class Cluster(object):
         if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
             pgrepOpts="-a"
 
-        endTime=time.time()+timeout
-        checkForNodes=True
+        cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
 
-        psOut=None
-        while checkForNodes:
+        def myFunc():
+            psOut=None
             try:
-                cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
                 Utils.Debug and Utils.Print("cmd: %s" % (cmd))
                 psOut=subprocess.check_output(cmd.split()).decode("utf-8")
-                Utils.Debug and Utils.Print("psOut: \"%s\"" % psOut)
-                break
+                return psOut
             except subprocess.CalledProcessError as ex:
                 pass
+            return None
 
-            checkForNodes= (endTime > time.time())
-            if checkForNodes:
-                sleepTime=3
-                Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                                        (sleepTime, endTime - time.time()))
-                time.sleep(sleepTime)
-
-        if psOut is not None:
-            for i in range(0, totalNodes):
-                pattern="[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
-                m=re.search(pattern, psOut, re.MULTILINE)
-                if m is None:
-                    Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
-                    break
-                instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), alive=True, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
-                instance.setWalletEndpointArgs(self.walletEndpointArgs)
-                Utils.Debug and Utils.Print("Node>", instance)
-                nodes.append(instance)
-        else:
+        lam = lambda:  myFunc()
+        psOut=Utils.waitForObj(lam)
+        if psOut is None:
             Utils.Print("ERROR: No nodes discovered.")
+            return nodes
+
+        Utils.Debug and Utils.Print("pgrep output: \"%s\"" % psOut)
+        for i in range(0, totalNodes):
+            pattern="[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
+            m=re.search(pattern, psOut, re.MULTILINE)
+            if m is None:
+                Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+                break
+            instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+            instance.setWalletEndpointArgs(self.walletEndpointArgs)
+            Utils.Debug and Utils.Print("Node>", instance)
+            nodes.append(instance)
 
         return nodes
 
     # Check state of running nodeos process and update EosInstanceInfos
     #def updateEosInstanceInfos(eosInstanceInfos):
-    def updateNodesStatus(self):
-        for node in self.nodes:
-            node.checkPulse()
+    # def updateNodesStatus(self):
+    #     for node in self.nodes:
+    #         node.checkPulse()
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
@@ -1824,17 +1871,16 @@ class Cluster(object):
 
         killedCount=0
         for node in reversed(self.nodes):
-            try:
-                os.kill(node.pid, killSignal)
-            except Exception as ex:
-                Utils.Print("ERROR: Failed to kill process pid %d." % (node.pid), ex)
+            if not node.kill(killSignal):
                 return False
+
             killedCount += 1
             if killedCount >= killCount:
                 break
 
         time.sleep(1) # Give processes time to stand down
-        return self.updateNodesStatus()
+        # return self.updateNodesStatus()
+        return True
 
     def relaunchEosInstances(self):
 
@@ -1842,34 +1888,26 @@ class Cluster(object):
 
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            running=True
-            try:
-                os.kill(node.pid, 0) #check if instance is running
-            except Exception as ex:
-                running=False
+            if not node.relaunch(i, chainArg):
+                return False
 
-            if running is False:
-                dataDir="var/lib/node_%02d" % (i)
-                dt = datetime.datetime.now()
-                dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
-                    dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-                stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
-                stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
-                with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-                    cmd=node.cmd + ("" if chainArg is None else (" " + chainArg))
-                    Utils.Print("cmd: %s" % (cmd))
-                    popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-                    self.nodes[i].pid=popen.pid
-
-        return self.updateNodesStatus()
+        return True
 
     def dumpErrorDetailImpl(self,fileName):
         Utils.Print("=================================================================")
         Utils.Print("Contents of %s:" % (fileName))
-        with open(fileName, "r") as f:
-            shutil.copyfileobj(f, sys.stdout)
+        if os.path.exists(fileName):
+            with open(fileName, "r") as f:
+                shutil.copyfileobj(f, sys.stdout)
+        else:
+            Utils.Print("File %s not found." % (fileName))
 
     def dumpErrorDetails(self):
+        fileName="etc/eosio/node_bios/config.ini"
+        self.dumpErrorDetailImpl(fileName)
+        fileName="var/lib/node_bios/stderr.txt"
+        self.dumpErrorDetailImpl(fileName)
+
         for i in range(0, len(self.nodes)):
             fileName="etc/eosio/node_%02d/config.ini" % (i)
             self.dumpErrorDetailImpl(fileName)
@@ -1883,7 +1921,7 @@ class Cluster(object):
             not silent and Utils.Print("Launcher failed to shut down eos cluster.")
 
         # ocassionally the launcher cannot kill the eos server
-        cmd="pkill %s" % (Utils.EosServerName)
+        cmd="pkill -9 %s" % (Utils.EosServerName)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             not silent and Utils.Print("Failed to shut down eos cluster.")

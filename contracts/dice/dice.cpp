@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <utility>
 #include <vector>
 #include <string>
