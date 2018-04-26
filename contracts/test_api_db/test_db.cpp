@@ -153,14 +153,15 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
       auto len = db_get_i64(itr, value, buffer_len);
       value[buffer_len] = '\0';
       std::string s(value);
-      eosio_assert(uint32_t(len) == strlen("bob's info"), "primary_i64_general - db_get_i64");
-      eosio_assert(s == "bob's", "primary_i64_general - db_get_i64");
+      eosio_assert(uint32_t(len) == buffer_len, "primary_i64_general - db_get_i64");
+      eosio_assert(s == "bob's", "primary_i64_general - db_get_i64  - 5");
 
       buffer_len = 20;
-      db_get_i64(itr, value, buffer_len);
-      value[buffer_len] = '\0';
+      len = db_get_i64(itr, value, 0);
+      len = db_get_i64(itr, value, len);
+      value[len] = '\0';
       std::string sfull(value);
-      eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64");
+      eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64 - full");
    }
 
    // update

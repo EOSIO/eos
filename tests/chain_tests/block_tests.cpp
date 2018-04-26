@@ -1154,6 +1154,16 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
 #if 0
 BOOST_AUTO_TEST_CASE(transaction_mroot)
 { try {
+
+   // Utility function get on_block tx_mroot given the block_num
+   auto get_on_block_tx_mroot = [](uint32_t block_num) -> digest_type {
+      tester temp;
+      temp.produce_blocks(block_num - 1);
+      signed_block blk = temp.produce_block();
+      // Since the block is empty, its transaction_mroot should represent the onblock tx
+      return blk.transaction_mroot;
+   };
+
    validating_tester chain;
    // Finalize current block (which has set contract transaction for eosio)
    chain.produce_block();
@@ -1177,13 +1187,13 @@ BOOST_AUTO_TEST_CASE(transaction_mroot)
    }
    auto expected_shard_tx_root = merkle(tx_roots);
 
-   // Hardcoded on_block tx_root, since there's no easy way to calculate the tx_root with current interface
-   auto on_block_tx_root = digest_type("aa63d366cc2ef41746bb150258d1c0662c8133469f785425cb996dbe2a227086");
+   // Compare with head block tx mroot
+   chain.produce_block();
+
+   auto on_block_tx_root = get_on_block_tx_mroot(chain.control->head_block_num());
    // There is only 1 region, 2 cycle, 1 shard in first cycle, 1 shard in second cycle
    auto expected_tx_mroot = merkle({on_block_tx_root, expected_shard_tx_root});
 
-   // Compare with head block tx mroot
-   chain.produce_block();
    auto head_block_tx_mroot = chain.control->head_block_header().transaction_mroot;
    BOOST_TEST(expected_tx_mroot.str() == head_block_tx_mroot.str());
 
