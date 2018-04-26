@@ -134,9 +134,11 @@ optional<block_id_type> account_history_plugin_impl::find_block_id(const chainba
 
 packed_transaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
 {
+   /* TODO: fix this
    for (const packed_transaction& trx : block.input_transactions)
       if (trx.get_transaction().id() == transaction_id)
          return trx;
+         */
 
    // ERROR in indexing logic
    FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block.id()));

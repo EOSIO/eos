@@ -41,11 +41,11 @@ namespace eosio { namespace chain {
          block_log(block_log&& other);
          ~block_log();
 
-         uint64_t append(const signed_block& b);
+         uint64_t append(const signed_block_ptr& b);
          void flush();
-         std::pair<signed_block, uint64_t> read_block(uint64_t file_pos)const;
-         optional<signed_block> read_block_by_num(uint32_t block_num)const;
-         optional<signed_block> read_block_by_id(const block_id_type& id)const {
+         std::pair<signed_block_ptr, uint64_t> read_block(uint64_t file_pos)const;
+         signed_block_ptr read_block_by_num(uint32_t block_num)const;
+         signed_block_ptr read_block_by_id(const block_id_type& id)const {
             return read_block_by_num(block_header::num_from_id(id));
          }
 
@@ -53,8 +53,8 @@ namespace eosio { namespace chain {
           * Return offset of block in file, or block_log::npos if it does not exist.
           */
          uint64_t get_block_pos(uint32_t block_num) const;
-         optional<signed_block> read_head()const;
-         const optional<signed_block>& head()const;
+         signed_block_ptr        read_head()const;
+         const signed_block_ptr& head()const;
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 

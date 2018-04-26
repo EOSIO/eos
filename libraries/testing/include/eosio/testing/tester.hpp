@@ -266,6 +266,7 @@ namespace eosio { namespace testing {
          }
 
          validating_node = std::make_unique<controller>(vcfg);
+         validating_node->startup();
          init(true, limits);
       }
 

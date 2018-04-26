@@ -52,6 +52,7 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
+   bool                           replaying = false;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -99,8 +100,6 @@ struct controller_impl {
     authorization( s, db ),
     conf( cfg )
    {
-      head = fork_db.head();
-
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
@@ -132,9 +131,6 @@ struct controller_impl {
       */
       if( !head ) {
          initialize_fork_db(); // set head to genesis state
-#warning What if head is empty because the user deleted forkdb.dat? Will this not corrupt the database?
-         db.set_revision( head->block_num );
-         initialize_database();
       }
 
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
@@ -209,13 +205,32 @@ struct controller_impl {
       genheader.block_num             = genheader.header.block_num();
 
       head = std::make_shared<block_state>( genheader );
-      signed_block genblock(genheader.header);
-
-      edump((genheader.header));
-      edump((genblock));
-      blog.append( genblock );
-
+      head->block = std::make_shared<signed_block>(genheader.header);
       fork_db.set( head );
+      db.set_revision( head->block_num );
+
+      initialize_database();
+         
+      auto end = blog.read_head();
+      if( end && end->block_num() > 1 ) {
+         replaying = true;
+         ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
+
+         auto start = fc::time_point::now();
+         while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+            self.push_block( next );
+            if( next->block_num() % 10 == 0 ) {
+               std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
+            }
+         }
+         std::cerr<< "\n";
+         auto end = fc::time_point::now();
+         ilog( "replayed blocks in ${n} seconds", ("n", (end-start).count()/1000000.0) );
+         replaying = false;
+
+      } else if( !end ) {
+         blog.append( head->block );
+      }
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
@@ -300,6 +315,10 @@ struct controller_impl {
       self.accepted_block( pending->_pending_block_state );
       pending->push();
       pending.reset();
+
+      if( !replaying ) {
+         self.log_irreversible_blocks();
+      }
    }
 
    transaction_trace_ptr apply_onerror( const generated_transaction_object& gto, fc::time_point deadline, uint32_t cpu_usage ) {
@@ -317,6 +336,7 @@ struct controller_impl {
       trx_context.is_input  = false;
       trx_context.exec();
 
+      self.applied_transaction(trx_context.trace);
       trx_context.squash();
 
       return move(trx_context.trace);
@@ -374,8 +394,8 @@ struct controller_impl {
 
          db.remove( gto );
 
-         trx_context.squash();
          self.applied_transaction( trx_context.trace );
+         trx_context.squash();
 
          return;
       } catch( const fc::exception& e ) {
@@ -492,6 +512,7 @@ struct controller_impl {
             pending->_pending_block_state->trxs.emplace_back(trx);
 
          self.accepted_transaction(trx);
+         self.applied_transaction(trace);
          trx_context.squash();
          return;
       } catch ( const fc::exception& e ) {
@@ -583,9 +604,11 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b ) {
-      auto new_header_state = fork_db.add( b );
-      self.accepted_block_header( new_header_state );
-      maybe_switch_forks();
+      try {
+         auto new_header_state = fork_db.add( b );
+         self.accepted_block_header( new_header_state );
+         maybe_switch_forks();
+      } FC_LOG_AND_RETHROW() 
    }
 
    void push_confirmation( const header_confirmation& c ) {
@@ -808,7 +831,6 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
 {
-   my->init();
 }
 
 controller::~controller() {
@@ -816,15 +838,12 @@ controller::~controller() {
 
 
 void controller::startup() {
-   my->head = my->fork_db.head();
-   if( !my->head ) {
-   }
+   my->init();
 
    /*
-   auto head = my->blog.read_head();
-   if( head && head_block_num() < head->block_num() ) {
-      wlog( "\nDatabase in inconsistant state, replaying block log..." );
-      //replay();
+   my->head = my->fork_db.head();
+   if( !my->head ) {
+      elog( "No head block in fork db, perhaps we need to replay" );
    }
    */
 }
@@ -863,6 +882,9 @@ void controller::abort_block() {
 
 void controller::push_block( const signed_block_ptr& b ) {
    my->push_block( b );
+   if( !my->replaying ) {
+      log_irreversible_blocks();
+   }
 }
 
 void controller::push_confirmation( const header_confirmation& c ) {
@@ -946,12 +968,12 @@ void controller::log_irreversible_blocks() {
    auto lib = my->head->dpos_last_irreversible_blocknum;
 
    if( lib > 1 ) {
-      while( log_head && log_head->block_num() < lib ) {
+      while( log_head && (log_head->block_num()+1) < lib ) {
          auto lhead = log_head->block_num();
          auto blk = my->fork_db.get_block_in_current_chain_by_num( lhead + 1 );
          FC_ASSERT( blk, "unable to find block state", ("block_num",lhead+1));
          irreversible_block( blk );
-         my->blog.append( *blk->block );
+         my->blog.append( blk->block );
          my->fork_db.prune( blk );
          my->db.commit( lhead );
       }
@@ -969,10 +991,7 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
    auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
    if( blk_state ) return blk_state->block;
 
-   optional<signed_block> b = my->blog.read_block_by_num(block_num);
-   if( b ) return std::make_shared<signed_block>( move(*b) );
-
-   return signed_block_ptr();
+   return my->blog.read_block_by_num(block_num);
 }
 
 void controller::pop_block() {
