@@ -455,7 +455,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       ("memo", recover_act.memo);
 
    transaction trx;
-   trx.expiration = context.control.pending_block_time();
+   trx.expiration = context.control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second
    trx.delay_sec  = (delay_lock + fc::microseconds(999'999)).to_seconds(); // Rounds up to nearest second
    trx.set_reference_block(context.control.head_block_id());
    trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
