@@ -45,7 +45,7 @@ auto make_vetorecovery(const TESTER &t, account_name account, permission_name ve
 BOOST_AUTO_TEST_SUITE(recovery_tests)
 
 BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, TESTER ) try {
-    produce_blocks(5);
+    produce_block();
     create_account(N(alice), config::system_account_name, true);
     produce_block();
 
@@ -81,7 +81,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( test_recovery_owner, TESTER ) try {
-   produce_blocks(5);
+   produce_block();
    create_account(N(alice));
    produce_block();
 
