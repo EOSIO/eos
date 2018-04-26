@@ -1100,7 +1100,11 @@ void controller::validate_referenced_accounts( const transaction& trx )const {
 void controller::validate_expiration( const transaction& trx )const { try {
    const auto& chain_configuration = get_global_properties().configuration;
 
-   EOS_ASSERT( time_point(trx.expiration) >= pending_block_time(), expired_tx_exception, "transaction has expired" );
+   EOS_ASSERT( time_point(trx.expiration) >= pending_block_time(),
+               expired_tx_exception,
+               "transaction has expired, "
+               "expiration is ${trx.expiration} and pending block time is ${pending_block_time}",
+               ("trx.expiration",trx.expiration)("pending_block_time",pending_block_time()));
    EOS_ASSERT( time_point(trx.expiration) <= pending_block_time() + fc::seconds(chain_configuration.max_transaction_lifetime),
                tx_exp_too_far_exception,
                "Transaction expiration is too far in the future relative to the reference time of ${reference_time}, "
