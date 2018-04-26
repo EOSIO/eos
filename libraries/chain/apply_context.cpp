@@ -208,14 +208,28 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
 
+   fc::microseconds required_delay;
+
    if( !privileged ) {
       if (payer != receiver) {
          require_authorization(payer); /// uses payer's storage
       }
+
+      // if a contract is deferring only actions to itself then there is no need
+      // to check permissions, it could have done everything anyway.
+      bool check_auth = false;
+      for( const auto& act : trx.actions ) {
+         if( act.account != receiver ) {
+            check_auth = true;
+            break;
+         }
+      }
+      if( check_auth ) {
+         required_delay = control.get_authorization_manager().check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
+      }
    }
    auto id = trx.id();
 
-   auto required_delay = control.get_authorization_manager().check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
    auto delay = fc::seconds(trx.delay_sec);
    EOS_ASSERT( delay >= required_delay, transaction_exception,
                "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
