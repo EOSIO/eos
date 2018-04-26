@@ -594,7 +594,7 @@ CLI::callback_t old_host_port = [](CLI::results_t) {
                           "Use for example -u http://localhost:8888 or --url https://example.invalid/\n");
    exit(1);
    return false;
-}
+};
 
 struct register_producer_subcommand {
    string producer_str;
