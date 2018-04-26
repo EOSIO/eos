@@ -158,7 +158,7 @@ class Node(object):
         self.mongoHost=mongoHost
         self.mongoPort=mongoPort
         self.mongoDb=mongoDb
-        self.endpointArgs="--host %s --port %d" % (self.host, self.port)
+        self.endpointArgs="--url http://%s:%d" % (self.host, self.port)
         self.mongoEndpointArgs=""
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
@@ -274,7 +274,7 @@ class Node(object):
         return arr.decode("utf-8")
 
     def setWalletEndpointArgs(self, args):
-        self.endpointArgs="--host %s --port %d %s" % (self.host, self.port, args)
+        self.endpointArgs="--url http://%s:%d %s" % (self.host, self.port, args)
 
     def getBlock(self, blockNum, retry=True, silentErrors=False):
         if not self.enableMongo:
@@ -986,10 +986,10 @@ class WalletMgr(object):
         self.host=host
         self.wallets={}
         self.__walletPid=None
-        self.endpointArgs="--host %s --port %d" % (self.nodeosHost, self.nodeosPort)
+        self.endpointArgs="--url http://%s:%d" % (self.nodeosHost, self.nodeosPort)
         self.walletEndpointArgs=""
         if self.walletd:
-            self.walletEndpointArgs += " --wallet-host %s --wallet-port %d" % (self.host, self.port)
+            self.walletEndpointArgs += " --wallet-url http://%s:%d" % (self.host, self.port)
             self.endpointArgs += self.walletEndpointArgs
 
     def launch(self):
@@ -1185,7 +1185,7 @@ class Cluster(object):
         self.walletPort=walletPort
         self.walletEndpointArgs=""
         if self.walletd:
-            self.walletEndpointArgs += " --wallet-host %s --wallet-port %d" % (self.walletHost, self.walletPort)
+            self.walletEndpointArgs += " --wallet-url http://%s:%d" % (self.walletHost, self.walletPort)
         self.mongoEndpointArgs=""
         self.mongoUri=""
         if self.enableMongo:
@@ -1407,6 +1407,7 @@ class Cluster(object):
                 account.activePrivateKey=activePrivate
                 account.activePublicKey=activePublic
                 accounts.append(account)
+                Utils.Debug and Utils.Print("name: %s, key: ['%s', '%s]-owner; ['%s', '%s']-active" % (name, ownerPublic, ownerPrivate, activePublic, activePrivate))
 
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")

@@ -155,14 +155,18 @@ class privileged_api : public context_aware_api {
          });
       }
 
-      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
          auto& gpo = context.controller.get_global_properties();
-         auto size = fc::raw::pack_size( gpo.configuration );
-         if ( size <= datalen ) {
-            datastream<char*> ds( packed_blockchain_parameters, datalen );
+
+         auto s = fc::raw::pack_size( gpo.configuration );
+         if( buffer_size == 0 ) return s;
+
+         if ( s <= buffer_size ) {
+            datastream<char*> ds( packed_blockchain_parameters, s );
             fc::raw::pack(ds, gpo.configuration);
+            return s;
          }
-         return size;
+         return 0;
       }
 
 
@@ -673,12 +677,17 @@ class producer_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+      int get_active_producers(array_ptr<chain::account_name> producers, size_t buffer_size) {
          auto active_producers = context.get_active_producers();
+
          size_t len = active_producers.size();
-         size_t cpy_len = std::min(datalen, len);
-         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name));
-         return len;
+         auto s = len * sizeof(chain::account_name);
+         if( buffer_size == 0 ) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( producers, active_producers.data(), copy_size );
+
+         return copy_size;
       }
 };
 
@@ -686,7 +695,6 @@ class crypto_api : public context_aware_api {
    public:
       explicit crypto_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
-
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
@@ -737,7 +745,6 @@ class crypto_api : public context_aware_api {
          auto result = fc::ripemd160::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
-
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
          hash_val = fc::sha1::hash( data, datalen );
@@ -821,11 +828,14 @@ class action_api : public context_aware_api {
    action_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
-      int read_action_data(array_ptr<char> memory, size_t size) {
-         FC_ASSERT(size > 0);
-         int minlen = std::min<size_t>(context.act.data.size(), size);
-         memcpy((void *)memory, context.act.data.data(), minlen);
-         return minlen;
+      int read_action_data(array_ptr<char> memory, size_t buffer_size) {
+         auto s = context.act.data.size();
+         if( buffer_size == 0 ) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( memory, context.act.data.data(), copy_size );
+
+         return copy_size;
       }
 
       int action_data_size() {
@@ -1178,12 +1188,16 @@ class context_free_transaction_api : public context_aware_api {
       context_free_transaction_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
-      int read_transaction( array_ptr<char> data, size_t data_len ) {
+      int read_transaction( array_ptr<char> data, size_t buffer_size ) {
          bytes trx = context.get_packed_transaction();
-         if (data_len >= trx.size()) {
-            memcpy(data, trx.data(), trx.size());
-         }
-         return trx.size();
+
+         auto s = trx.size();
+         if( buffer_size == 0) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( data, trx.data(), copy_size );
+
+         return copy_size;
       }
 
       int transaction_size() {

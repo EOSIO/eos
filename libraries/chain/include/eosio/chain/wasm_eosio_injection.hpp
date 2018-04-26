@@ -58,8 +58,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             if ( exp.kind == IR::ObjectKind::function )
                exports++;
 
-         next_function_index = module.functions.imports.size() + module.functions.defs.size() + registered_injected.size(); // + exports + registered_injected.size()-1;
-         ;
+         next_function_index = module.functions.imports.size() + module.functions.defs.size() + registered_injected.size();
          next_actual_index = next_injected_index++;
       }
 
@@ -76,10 +75,18 @@ namespace eosio { namespace chain { namespace wasm_injections {
             module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
             injected_index_mapping.emplace( index, actual_index ); 
             // shift all exported functions by 1
+            bool have_updated_start = false;
             for ( int i=0; i < module.exports.size(); i++ ) {
-               if ( module.exports[i].kind == IR::ObjectKind::function )
+               if ( module.exports[i].kind == IR::ObjectKind::function ) {
+                  // update the start function
+                  if ( !have_updated_start && module.exports[i].index == module.startFunctionIndex ) {
+                     module.startFunctionIndex++;
+                     have_updated_start = true;
+                  }
                   module.exports[i].index++;
+               }
             }
+
             // shift all table entries for call indirect
             for(TableSegment& ts : module.tableSegments) {
                for(auto& idx : ts.indices)
@@ -189,6 +196,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
          auto mapped_index = injector_utils::injected_index_mapping.find(call_inst->field);
+
          if ( mapped_index != injector_utils::injected_index_mapping.end() )  {
             call_inst->field = mapped_index->second;
          }
@@ -862,7 +870,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          void inject() {
             _module_injectors.inject( *_module );
             for ( auto& fd : _module->functions.defs ) {
-               // initialize call_return_local, for each function
                // TODO clean this up
                wasm_ops::EOSIO_OperatorDecoderStream<pre_op_injectors> pre_decoder(fd.code);
                std::vector<U8> new_code;

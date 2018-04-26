@@ -99,9 +99,9 @@ public:
         return push_action( name(from), name(from), N(delegatebw), mvo()
                 ("from",     from)
                 ("receiver", to)
-                ("stake_net", net)
-                ("stake_cpu", cpu)
-                ("stake_storage", storage)
+                ("stake_net_quantity", net)
+                ("stake_cpu_quantity", cpu)
+                ("stake_storage_quantity", storage)
         );
     }
 #if _READY

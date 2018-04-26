@@ -173,7 +173,7 @@ void chain_controller::push_block(const signed_block& new_block, uint32_t skip)
          } );
       });
    });
-   ilog( "\rpush block #${n} from ${pro} ${time}  ${id} lib: ${l} success", ("n",new_block.block_num())("pro",name(new_block.producer))("time",new_block.timestamp)("id",new_block.id())("l",last_irreversible_block_num()));
+   ilog( "push block #${n} from ${pro} ${time}  ${id} lib: ${l} success", ("n",new_block.block_num())("pro",name(new_block.producer))("time",new_block.timestamp)("id",new_block.id())("l",last_irreversible_block_num()));
 } FC_CAPTURE_AND_RETHROW((new_block)) }
 
 bool chain_controller::_push_block(const signed_block& new_block)
@@ -306,6 +306,10 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    validate_uniqueness(trx);
    if( should_check_authorization() ) {
       auto enforced_delay = check_transaction_authorization(trx, packed_trx.signatures, mtrx.context_free_data);
+      auto max_delay = fc::seconds( get_global_properties().configuration.max_transaction_delay );
+      if ( max_delay < enforced_delay ) {
+         enforced_delay = max_delay;
+      }
       EOS_ASSERT( mtrx.delay >= enforced_delay,
                   transaction_exception,
                   "authorization imposes a delay (${enforced_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
@@ -719,7 +723,7 @@ void chain_controller::pop_block()
    optional<signed_block> head_block = fetch_block_by_id( head_id );
 
    EOS_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
-   wlog( "\rpop block #${n} from ${pro} ${time}  ${id}", ("n",head_block->block_num())("pro",name(head_block->producer))("time",head_block->timestamp)("id",head_block->id()));
+   wlog( "pop block #${n} from ${pro} ${time}  ${id}", ("n",head_block->block_num())("pro",name(head_block->producer))("time",head_block->timestamp)("id",head_block->id()));
 
    _fork_db.pop_block();
    _db.undo();

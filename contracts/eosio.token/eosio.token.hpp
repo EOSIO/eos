@@ -4,11 +4,14 @@
  */
 #pragma once
 
-#include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/eosio.hpp>
 
 #include <string>
+
+namespace eosiosystem {
+   class system_contract;
+}
 
 namespace eosio {
 
@@ -31,6 +34,10 @@ namespace eosio {
                         account_name to,
                         asset        quantity,
                         string       memo );
+
+      private:
+
+         friend eosiosystem::system_contract;
 
          inline asset get_supply( symbol_name sym )const;
          
@@ -64,6 +71,14 @@ namespace eosio {
          void sub_balance( account_name owner, asset value, const currency_stats& st );
          void add_balance( account_name owner, asset value, const currency_stats& st,
                            account_name ram_payer );
+
+      public:
+         struct transfer_args {
+            account_name  from;
+            account_name  to;
+            asset         quantity;
+            string        memo;
+         };
    };
 
    asset token::get_supply( symbol_name sym )const
