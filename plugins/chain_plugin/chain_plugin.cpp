@@ -17,6 +17,7 @@
 #include <eosio/chain/contracts/eos_contract.hpp>
 
 #include <eosio/utilities/key_conversion.hpp>
+#include <eosio/utilities/common.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
@@ -277,15 +278,8 @@ namespace chain_apis {
 const string read_only::KEYi64 = "i64";
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
-   auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t)<<1) {
-    static const char* digits = "0123456789abcdef";
-    std::string r(hlen, '0');
-    for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
-      r[i] = digits[(n>>j) & 0x0f];
-    return r;
-  };
    return {
-      itoh(static_cast<uint32_t>(app().version())),
+      eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.head_block_id(),
