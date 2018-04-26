@@ -1691,7 +1691,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-   std::vector<transaction_id_type> ids;
    chain.set_code(config::system_account_name, eosio_system_wast);
    chain.set_abi(config::system_account_name, eosio_system_abi);
 
@@ -1774,9 +1773,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
       const auto& idx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
-      auto itr = idx.find( trace->id );
-      if (itr == idx.end()) BOOST_TEST(false);
-      const auto sender_id_to_cancel = itr->sender_id;
+      auto itr = idx.find( trx_id );
+      BOOST_CHECK_EQUAL( (itr != idx.end()), true );
 
       chain.produce_blocks();
 
@@ -1792,7 +1790,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
                                   chain::canceldelay{{N(tester), config::active_name}, trx_id});
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
-         BOOST_REQUIRE_THROW( chain.push_transaction(trx), transaction_exception );
+         BOOST_REQUIRE_THROW( chain.push_transaction(trx), fc::exception );
       }
 
       // attempt canceldelay with "second" permission for delayed transfer of 1.0000 CUR
@@ -1815,13 +1813,11 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-      BOOST_REQUIRE_EQUAL(1, gen_size);
+      BOOST_REQUIRE_EQUAL(0, gen_size);
 
       const auto& cidx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
-      auto citr = cidx.find( ids[0] );
-      if (citr == cidx.end()) BOOST_TEST(false);
-      const auto sender_id_canceled = citr->sender_id;
-      BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
+      auto citr = cidx.find( trx_id );
+      BOOST_REQUIRE_EQUAL( (citr == cidx.end()), true );
 
       chain.produce_blocks(10);
 
@@ -1841,7 +1837,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
            30, 5
    );
 
-   chain.produce_blocks(10);
+   chain.produce_blocks(11);
 
 
    ilog("attempting second delayed transfer");
@@ -1861,9 +1857,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       BOOST_CHECK_EQUAL(0, trace->action_traces.size());
 
       const auto& idx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
-      auto itr = idx.find( trace->id );
-      if (itr == idx.end()) BOOST_TEST(false);
-      const auto sender_id_to_cancel = itr->sender_id;
+      auto itr = idx.find( trx_id );
+      BOOST_CHECK_EQUAL( (itr != idx.end()), true );
 
       chain.produce_blocks();
 
@@ -1882,13 +1877,11 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-      BOOST_REQUIRE_EQUAL(1, gen_size);
+      BOOST_REQUIRE_EQUAL(0, gen_size);
 
       const auto& cidx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
-      auto citr = cidx.find( ids[0] );
-      if (citr == cidx.end()) BOOST_TEST(false);
-      const auto sender_id_canceled = citr->sender_id;
-      BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
+      auto citr = cidx.find( trx_id );
+      BOOST_REQUIRE_EQUAL( (citr == cidx.end()), true );
 
       chain.produce_blocks(10);
 
@@ -1916,9 +1909,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
       const auto& idx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
-      auto itr = idx.find( trace->id );
-      if (itr == idx.end()) BOOST_TEST(false);
-      const auto sender_id_to_cancel = itr->sender_id;
+      auto itr = idx.find( trx_id );
+      BOOST_CHECK_EQUAL( (itr != idx.end()), true );
 
       chain.produce_blocks();
 
@@ -1947,13 +1939,11 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-      BOOST_REQUIRE_EQUAL(1, gen_size);
+      BOOST_REQUIRE_EQUAL(0, gen_size);
 
       const auto& cidx = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
-      auto citr = cidx.find( ids[0] );
-      if (citr == cidx.end()) BOOST_TEST(false);
-      const auto sender_id_canceled = citr->sender_id;
-      BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
+      auto citr = cidx.find( trx_id );
+      BOOST_REQUIRE_EQUAL( (citr == cidx.end()), true );
 
       chain.produce_blocks(10);
 
