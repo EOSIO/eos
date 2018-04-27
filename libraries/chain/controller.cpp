@@ -1065,6 +1065,8 @@ bool controller::set_proposed_producers( vector<producer_key> producers ) {
 }
 
 const producer_schedule_type&    controller::active_producers()const {
+   if ( !(my->pending) )
+      return  my->head->active_schedule;
    return my->pending->_pending_block_state->active_schedule;
 }
 
