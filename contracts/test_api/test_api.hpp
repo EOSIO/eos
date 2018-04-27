@@ -73,16 +73,6 @@ struct test_action {
   static void test_publication_time();
 };
 
-struct test_math {
-  static void test_multeq();
-  static void test_diveq();
-  static void test_diveq_by_0();
-  static void test_double_api();
-  static void test_double_api_div_0();
-  static void test_i64_to_double();
-  static void test_double_to_i64();
-};
-
 struct test_db {
    static void primary_i64_general(uint64_t receiver, uint64_t code, uint64_t action);
    static void primary_i64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action);
@@ -191,14 +181,6 @@ struct test_fixedpoint {
    static void create_instances();
    static void test_addition();
    static void test_subtraction();
-   static void test_multiplication();
-   static void test_division();
-   static void test_division_by_0();
-};
-
-struct test_real {
-   static void create_instances();
-   static void test_addition();
    static void test_multiplication();
    static void test_division();
    static void test_division_by_0();
