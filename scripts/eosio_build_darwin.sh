@@ -172,7 +172,7 @@
 		
 	printf "\n\tChecking boost library installation.\n"
 	BVERSION=`cat "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null | grep "#define BOOST_VERSION" | tail -1 | tr -s ' ' | cut -d\  -f3`
-	if [ "${BVERSION}" -ne 106600 ]; then
+	if [ "${BVERSION}" != "106600" ]; then
 		if [ ! -z "${BVERSION}" ]; then
 			printf "\tFound Boost Version ${BVERSION}.\n"
 			printf "\tEOS.IO requires Boost version 1.66.\n"
@@ -219,7 +219,7 @@
 		tar xf ${TEMP_DIR}/boost_1_66_0.tar.bz2
 		rm -f  ${TEMP_DIR}/boost_1_66_0.tar.bz2
 		cd ${TEMP_DIR}/boost_1_66_0/
-		./bootstrap.sh "--prefix=$BOOST_ROOT"
+		./bootstrap.sh "--prefix=${BOOST_ROOT}"
 		if [ $? -ne 0 ]; then
 			printf "\n\tInstallation of boost libraries failed. 0\n"
 			printf "\n\tExiting now.\n"
@@ -374,6 +374,6 @@
 	{
 		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
 		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
-		printf "\tcd ${HOME}/eos/build; make test\n\n"
+		printf "\tcd ${BUILD_DIR}; make test\n\n"
 	return 0
 	}

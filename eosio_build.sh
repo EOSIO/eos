@@ -30,19 +30,67 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
-	VERSION=1.2
-	ULIMIT=$( ulimit -u )
-	WORK_DIR=$PWD
-	BUILD_DIR=${WORK_DIR}/build
-	TEMP_DIR=/tmp
+	CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+	if [ "${CWD}" != "${PWD}" ]; then
+		printf "\n\tThis script may only be executed from ${CWD}.\n \tExiting now.\n\n"
+		exit 1
+	fi
+
+   	function usage()
+   	{ 
+		printf "\tUsage: $0 [Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] [CodeCoverage -c ] [Doxygen -d]\n\n" 1>&2
+		exit 1
+	}
+
 	ARCH=$( uname )
+	BUILD_DIR="${PWD}/build"
+	CMAKE_BUILD_TYPE=Release
+# 	COMPILE_EOS=1
+# 	COMPILE_CONTRACTS=1
 	DISK_MIN=20
+	DOXYGEN=false
+	ENABLE_COVERAGE_TESTING=false
+	TEMP_DIR="/tmp"
 	TIME_BEGIN=$( date -u +%s )
-	DOXYGEN=false #set to true to build docs
+	ULIMIT=$( ulimit -u )
+	VERSION=1.2
 
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
+
+	if [ $# -ne 0 ]; then
+		while getopts ":cdo:" opt; do
+			case "${opt}" in
+				o )
+					if [ "${OPTARG}" = "Debug" ] || [ "${OPTARG}" = "Release" ] || \
+					[ "${OPTARG}" = "RelWithDebInfo" ] || [ "${OPTARG}" = "MinSizeRel" ]; then
+						CMAKE_BUILD_TYPE="${OPTARG}"
+					fi
+				;;
+				c )
+					ENABLE_COVERAGE_TESTING=true
+				;;
+				d )
+					DOXYGEN=true
+				;;
+				\? )
+					printf "\n\tInvalid Option: -${OPTARG}\n" 1>&2
+					usage
+					exit 1
+				;;		
+				: )
+					printf "\n\tInvalid Option: -${OPTARG} requires an argument\n" 1>&2
+					usage
+					exit 1
+				;;
+				* )
+					usage
+					exit 1
+				;;
+			esac
+		done
+	fi
 
 	if [ ! -d .git ]; then
 		printf "\n\tThis build script only works with sources cloned from git\n"
@@ -53,7 +101,7 @@
 
 	STALE_SUBMODS=$(( `git submodule status | grep -c "^[+\-]"` ))
 	if [ $STALE_SUBMODS -gt 0 ]; then
-		printf "\ngit submodules are not up to date\n"
+		printf "\n\tgit submodules are not up to date\n"
 		printf "\tPlease run the command 'git submodule update --init --recursive'\n"
 		exit 1
 	fi
@@ -63,6 +111,7 @@
 	printf "\tUser: $( whoami )\n"
 	printf "\tgit head id: $( cat .git/refs/heads/master )\n"
 	printf "\tCurrent branch: $( git branch | grep \* )\n"
+	printf "\tMake version: $( make --version )\n\n"
 	printf "\n\tARCHITECTURE: ${ARCH}\n"
 
 	if [ $ARCH == "Linux" ]; then
@@ -83,7 +132,7 @@
 	
 		case $OS_NAME in
 			"Amazon Linux AMI")
-				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
+				FILE="${PWD}/scripts/eosio_build_amazon.sh"
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
@@ -92,7 +141,7 @@
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"CentOS Linux")
-				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
+				FILE="${PWD}/scripts/eosio_build_centos.sh"
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
@@ -101,28 +150,28 @@
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"elementary OS")
-				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Fedora")
-				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
+				FILE="${PWD}/scripts/eosio_build_fedora.sh"
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				MONGOD_CONF=/etc/mongod.conf
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			"Linux Mint")
-				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Ubuntu")
-				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
@@ -134,43 +183,28 @@
 		esac
 
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
-		export OPENSSL_ROOT_DIR=/usr/include/openssl
-		export WASM_ROOT=${HOME}/opt/wasm
+		OPENSSL_ROOT_DIR=/usr/include/openssl
+		WASM_ROOT=${HOME}/opt/wasm
 	fi
 
 	if [ $ARCH == "Darwin" ]; then
-		FILE=${WORK_DIR}/scripts/eosio_build_darwin.sh
+		FILE="${PWD}/scripts/eosio_build_darwin.sh"
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
-		export BOOST_ROOT=/usr/local
 		MONGOD_CONF=/usr/local/etc/mongod.conf
+		export BOOST_ROOT=/usr/local
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-		export WASM_ROOT=/usr/local/wasm
+		WASM_ROOT=/usr/local/wasm
 	fi
 
 	. $FILE
 
 	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\n\n"
 
-	COMPILE_EOS=1
-	COMPILE_CONTRACTS=1
-
-# 	export EOS_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel|CodeCoverage] to enable
-	CMAKE_BUILD_TYPE=Release
-	CODE_COVERAGE_OPTS=
-	export ENABLE_CODE_COVERAGE=false
-	if [ ! -z $EOS_BUILD_TYPE ]; then
-            if [[ $EOS_BUILD_TYPE == "CodeCoverage" ]]; then
-                ENABLE_CODE_COVERAGE=true
-                EOS_BUILD_TYPE=Debug
-            fi
-
-	    CMAKE_BUILD_TYPE=$EOS_BUILD_TYPE
+	if [ ! -d "${BUILD_DIR}" ]; then
+		mkdir -p "${BUILD_DIR}"
 	fi
-
-	cd ${WORK_DIR}
-	mkdir -p ${BUILD_DIR}
-	cd ${BUILD_DIR}
+	cd "${BUILD_DIR}"
 
 	if [ -z $CMAKE ]; then
 		CMAKE=$( which cmake )
@@ -179,7 +213,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
-	-DENABLE_COVERAGE_TESTING=${ENABLE_CODE_COVERAGE} -DBUILD_DOXYGEN=${DOXYGEN} \
+	-DENABLE_COVERAGE_TESTING=${ENABLE_COVERAGE_TESTING} -DBUILD_DOXYGEN=${DOXYGEN} \
 	..
 	
 	if [ $? -ne 0 ]; then
@@ -187,7 +221,7 @@
 		exit -1
 	fi
 
-	make -j${CPU_CORE}
+	make -j${CPU_CORE} -s
 
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\n\n"
@@ -220,8 +254,7 @@
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
       -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
-      -DCMAKE_INSTALL_PREFIX=/usr ..
+      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DCMAKE_INSTALL_PREFIX=/usr ..
 
       if [ $? -ne 0 ]; then
          printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building eos.io package has exited with the above error.\n\n"
