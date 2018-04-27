@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
       }
       return res;
    };
-
+#if 0
    BOOST_FIXTURE_TEST_CASE( verify_producer_schedule, TESTER ) try {
 
       // Utility function to ensure that producer schedule work as expected
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
       BOOST_CHECK_THROW(set_producers(invalid_producers), wasm_execution_error);
 
    } FC_LOG_AND_RETHROW()
-#if 0
+
    BOOST_FIXTURE_TEST_CASE( verify_header_schedule_version, TESTER ) try {
 
       // Utility function to ensure that producer schedule version in the header is correct
