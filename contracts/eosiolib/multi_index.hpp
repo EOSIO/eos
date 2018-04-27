@@ -17,6 +17,7 @@
 
 #include <boost/multi_index/mem_fun.hpp>
 
+#include <eosiolib/action.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/datastream.hpp>
