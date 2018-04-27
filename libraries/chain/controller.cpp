@@ -164,6 +164,7 @@ struct controller_impl {
       db.add_index<index128_index>();
       db.add_index<index256_index>();
       db.add_index<index_double_index>();
+      db.add_index<index_long_double_index>();
 
       db.add_index<global_property_multi_index>();
       db.add_index<dynamic_global_property_multi_index>();
