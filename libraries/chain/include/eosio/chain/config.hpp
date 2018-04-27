@@ -70,7 +70,7 @@ const static uint32_t   producers_authority_threshold_pct  = 66 * config::percen
 
 const static uint16_t   max_recursion_depth = 6;
 
-const static uint32_t   default_base_per_transaction_net_usage  = 100;        // 100 bytes minimum (for signature and misc overhead)
+const static uint32_t   default_base_per_transaction_net_usage  = 48;        // 48 bytes minimum (for misc overhead)
 const static uint32_t   default_base_per_transaction_cpu_usage  = 500;        // TODO: is this reasonable?
 const static uint32_t   default_base_per_action_cpu_usage       = 1000;
 const static uint32_t   default_base_setcode_cpu_usage          = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental

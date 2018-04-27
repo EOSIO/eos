@@ -10,9 +10,7 @@
 #include "test_print.cpp"
 #include "test_types.cpp"
 #include "test_fixedpoint.cpp"
-#include "test_math.cpp"
 #include "test_compiler_builtins.cpp"
-#include "test_real.cpp"
 #include "test_crypto.cpp"
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
@@ -97,15 +95,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_print, test_printdf);
       WASM_TEST_HANDLER(test_print, test_printqf);
 
-      //test_math
-      WASM_TEST_HANDLER(test_math, test_multeq);
-      WASM_TEST_HANDLER(test_math, test_diveq);
-      WASM_TEST_HANDLER(test_math, test_i64_to_double);
-      WASM_TEST_HANDLER(test_math, test_double_to_i64);
-      WASM_TEST_HANDLER(test_math, test_diveq_by_0);
-      WASM_TEST_HANDLER(test_math, test_double_api);
-      WASM_TEST_HANDLER(test_math, test_double_api_div_0);
-
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_recover_key);
       WASM_TEST_HANDLER(test_crypto, test_recover_key_assert_true);
@@ -162,13 +151,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_fixedpoint, test_multiplication);
       WASM_TEST_HANDLER(test_fixedpoint, test_division);
       WASM_TEST_HANDLER(test_fixedpoint, test_division_by_0);
-
-      // test double
-      WASM_TEST_HANDLER(test_real, create_instances);
-      WASM_TEST_HANDLER(test_real, test_addition);
-      WASM_TEST_HANDLER(test_real, test_multiplication);
-      WASM_TEST_HANDLER(test_real, test_division);
-      WASM_TEST_HANDLER(test_real, test_division_by_0);
 
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);

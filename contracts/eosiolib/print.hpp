@@ -5,7 +5,6 @@
 #pragma once
 #include <eosiolib/print.h>
 #include <eosiolib/types.hpp>
-#include <eosiolib/math.hpp>
 #include <eosiolib/fixed_key.hpp>
 #include <utility>
 

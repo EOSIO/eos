@@ -57,6 +57,13 @@ bool transaction_header::verify_reference_block( const block_id_type& reference_
           ref_block_prefix == (decltype(ref_block_prefix))reference_block._hash[1];
 }
 
+void transaction_header::validate()const {
+   EOS_ASSERT( max_kcpu_usage.value < UINT32_MAX / 1024UL, transaction_exception,
+               "declared max_kcpu_usage overflows when expanded to max cpu usage" );
+   EOS_ASSERT( max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception,
+               "declared max_net_usage_words overflows when expanded to max net usage" );
+}
+
 transaction_id_type transaction::id() const {
    digest_type::encoder enc;
    fc::raw::pack( enc, *this );
