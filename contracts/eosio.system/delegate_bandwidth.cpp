@@ -232,7 +232,7 @@ namespace eosiosystem {
       //create or replace deferred transaction
       //refund act;
       //act.owner = from;
-      eosio::transaction out( now() + refund_delay + refund_expiration_time );
+      eosio::transaction out;
       out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
       out.delay_sec = refund_delay;
       out.send( from, receiver );
