@@ -131,6 +131,51 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
 } FC_LOG_AND_RETHROW() /// basic_test
 
 /**
+ * Make sure WASM doesn't allow function call depths greater than 250 
+ */
+BOOST_FIXTURE_TEST_CASE( call_depth_test, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {N(check)} );
+   produce_block();
+   // test that we can call to 249
+   {
+      set_code(N(check), call_depth_almost_limit_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(check);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(check),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(check), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+   // should fail at 250
+   {
+      set_code(N(check), call_depth_limit_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(check);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(check),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(check), "active" ), chain_id_type());
+      BOOST_CHECK_THROW( push_transaction(trx), wasm_execution_error );
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
+   }
+} FC_LOG_AND_RETHROW()
+
+/**
  * Prove the modifications to global variables are wiped between runs
  */
 BOOST_FIXTURE_TEST_CASE( prove_mem_reset, TESTER ) try {
