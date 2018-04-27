@@ -18,8 +18,6 @@
 
 #include <algorithm>
 
-#include "test_wasts.hpp"
-
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
