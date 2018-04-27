@@ -55,7 +55,7 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
       const auto& active_producers = control->head_block_state()->active_schedule;
 
       const auto& producers_active_authority = chain1_db.get<permission_object, by_owner>(boost::make_tuple(config::producers_account_name, config::active_name));
-      auto expected_threshold = EOS_PERCENT_CEIL(active_producers.producers.size(), config::producers_authority_threshold_pct);
+      auto expected_threshold = (active_producers.producers.size() * 2)/3 + 1;
       BOOST_CHECK_EQUAL(producers_active_authority.auth.threshold, expected_threshold);
       BOOST_CHECK_EQUAL(producers_active_authority.auth.accounts.size(), active_producers.producers.size());
       BOOST_CHECK_EQUAL(producers_active_authority.auth.keys.size(), 0);
@@ -78,6 +78,8 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
       BOOST_CHECK_EQUAL(producers_owner_authority.auth.threshold, 1);
       BOOST_CHECK_EQUAL(producers_owner_authority.auth.accounts.size(), 0);
       BOOST_CHECK_EQUAL(producers_owner_authority.auth.keys.size(), 0);
+
+      //TODO: Add checks on the other permissions of the producers account
 
 } FC_LOG_AND_RETHROW() }
 

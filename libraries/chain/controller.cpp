@@ -760,7 +760,41 @@ struct controller_impl {
 
    void update_producers_authority() {
       const auto& producers = pending->_pending_block_state->active_schedule.producers;
-      //TODO: Complete implementation
+
+      auto update_permission = [&]( auto& permission, auto threshold ) {
+         auto auth = authority( threshold, {}, {});
+         for( auto& p : producers ) {
+            auth.accounts.push_back({{p.producer_name, config::active_name}, 1});
+         }
+
+         if( static_cast<authority>(permission.auth) != auth ) { // TODO: use a more efficient way to check that authority has not changed
+            db.modify(permission, [&]( auto& po ) {
+               po.auth = auth;
+            });
+         }
+      };
+
+      uint32_t num_producers = producers.size();
+      auto calculate_threshold = [=]( uint32_t numerator, uint32_t denominator ) {
+         return ( (num_producers * numerator) / denominator ) + 1;
+      };
+
+      update_permission( authorization.get_permission({config::producers_account_name,
+                                                       config::active_name}),
+                         calculate_threshold( 2, 3 ) /* more than two-thirds */                      );
+
+      update_permission( authorization.get_permission({config::producers_account_name,
+                                                       config::majority_producers_permission_name}),
+                         calculate_threshold( 1, 2 ) /* more than one-half */                        );
+
+      update_permission( authorization.get_permission({config::producers_account_name,
+                                                       config::minority_producers_permission_name}),
+                         calculate_threshold( 1, 3 ) /* more than one-third */                       );
+
+      update_permission( authorization.get_permission({config::producers_account_name,
+                                                       config::any_producer_permission_name}), 1     );
+
+      //TODO: Add tests
    }
 
    void create_block_summary(const block_id_type& id) {
