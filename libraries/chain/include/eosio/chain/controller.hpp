@@ -144,6 +144,8 @@ namespace eosio { namespace chain {
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
 
+         block_id_type get_block_id_for_num( uint32_t block_num )const;
+
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
