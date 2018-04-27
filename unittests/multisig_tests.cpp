@@ -2,7 +2,6 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.msig/eosio.msig.wast.hpp>
 #include <eosio.msig/eosio.msig.abi.hpp>
@@ -17,7 +16,6 @@
 using namespace eosio::testing;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 
