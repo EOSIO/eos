@@ -1,21 +1,10 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/asset.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>
-
-#include <fc/utility.hpp>
-#include <fc/io/json.hpp>
-
-#include "WAST/WAST.h"
-#include "WASM/WASM.h"
-#include "IR/Module.h"
-#include "IR/Validate.h"
 
 namespace eosio { namespace testing {
 
@@ -652,13 +641,18 @@ namespace eosio { namespace testing {
       //produce_block();
    }
 
+   vector<producer_key> base_tester::get_producer_keys( const vector<account_name>& producer_names )const {
+       // Create producer schedule
+       vector<producer_key> schedule;
+       for (auto& producer_name: producer_names) {
+           producer_key pk = { producer_name, get_public_key( producer_name, "active" )};
+           schedule.emplace_back(pk);
+       }
+       return schedule;
+   }
+
    transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
-      // Create producer schedule
-      vector<producer_key> schedule;
-      for (auto& producer_name: producer_names) {
-         producer_key pk = { producer_name, get_public_key( producer_name, "active" )};
-         schedule.emplace_back(pk);
-      }
+      auto schedule = get_producer_keys( producer_names );
 
       return push_action( N(eosio), N(setprods), N(eosio),
                           fc::mutable_variant_object()("schedule", schedule));
