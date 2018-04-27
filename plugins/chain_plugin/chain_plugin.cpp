@@ -249,6 +249,7 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
       db.head_block_num(),
       db.last_irreversible_block_num(),
+      db.last_irreversible_block_id(),
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),

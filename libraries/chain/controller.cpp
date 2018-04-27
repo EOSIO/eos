@@ -376,6 +376,7 @@ struct controller_impl {
          transaction_context trx_context( self, dtrx, gto.trx_id );
          trace = trx_context.trace;
 
+         trx_context.trace->scheduled = true;
          trx_context.deadline  = deadline;
          trx_context.published = gto.published;
          trx_context.net_usage = 0;
@@ -421,6 +422,7 @@ struct controller_impl {
          edump((soft_except->to_detail_string()));
        */
 
+      FC_ASSERT( bool(trace), "failed to deserialize transaction" );
       trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+1023)/1024, 0 );
       trace->soft_except = soft_except;
       trace->hard_except = hard_except;
@@ -459,8 +461,8 @@ struct controller_impl {
 
    void transaction_trace_notify( const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace ) {
       if( trx->on_result ) {
-         (*trx->on_result)(trace);
-         trx->on_result.reset();
+         (trx->on_result)(trace);
+         trx->on_result = decltype(trx->on_result)(); //assign empty std::function
       }
    }
 
@@ -472,6 +474,9 @@ struct controller_impl {
    void push_transaction( const transaction_metadata_ptr& trx,
                           fc::time_point deadline = fc::time_point::maximum(),
                           bool implicit = false ) {
+      //if( !implicit )
+      //   idump((fc::json::to_pretty_string(trx->trx)));
+
       if( deadline == fc::time_point() ) {
          unapplied_transactions[trx->signed_id] = trx;
          return;
@@ -492,7 +497,7 @@ struct controller_impl {
 
          trx_context.deadline  = deadline;
          trx_context.published = self.pending_block_time();
-         trx_context.net_usage = self.validate_net_usage( trx );
+         trx_context.net_usage = self.validate_net_usage( trx ); // / 8; // <-- BUG? Needed to be removed to fix auth_tests/no_double_billing
          trx_context.is_input  = !implicit;
          trx_context.exec();
 
@@ -775,7 +780,6 @@ struct controller_impl {
 
    fc::microseconds limit_delay( fc::microseconds delay )const {
       auto max_delay = fc::seconds( self.get_global_properties().configuration.max_transaction_delay );
-      wdump((max_delay));
       //return std::min(delay, max_delay); // for some reason this currently breaks block verification
       //QUESTION: Do we actually want the max_delay limiting the (potentially larger) delays on existing permission authorities?
       return delay;
@@ -945,6 +949,12 @@ uint32_t controller::last_irreversible_block_num() const {
    return my->head->bft_irreversible_blocknum;
 }
 
+block_id_type controller::last_irreversible_block_id() const {
+   //QUESTION/BUG: What if lib has not advanced for over 2^16 blocks?
+   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)my->head->bft_irreversible_blocknum);
+   return tapos_block_summary.block_id;
+}
+
 time_point controller::head_block_time()const {
    return my->head_block_time();
 }
@@ -988,19 +998,25 @@ void controller::log_irreversible_blocks() {
    }
 }
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
+   idump((id));
    auto state = my->fork_db.get_block(id);
    if( state ) return state->block;
+   edump((block_header::num_from_id(id)));
    auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
-   if( bptr->id() == id ) return bptr;
+   if( bptr && bptr->id() == id ) return bptr;
+   elog( "not found" );
    return signed_block_ptr();
 }
 
-signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
+signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  { try {
    auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
-   if( blk_state ) return blk_state->block;
+   if( blk_state ) {
+      return blk_state->block;
+   }
 
+   ilog( "blog read by number ${n}", ("n", block_num) );
    return my->blog.read_block_by_num(block_num);
-}
+} FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 void controller::pop_block() {
    my->pop_block();
@@ -1111,7 +1127,11 @@ void controller::validate_referenced_accounts( const transaction& trx )const {
 void controller::validate_expiration( const transaction& trx )const { try {
    const auto& chain_configuration = get_global_properties().configuration;
 
-   EOS_ASSERT( time_point(trx.expiration) >= pending_block_time(), expired_tx_exception, "transaction has expired" );
+   EOS_ASSERT( time_point(trx.expiration) >= pending_block_time(),
+               expired_tx_exception,
+               "transaction has expired, "
+               "expiration is ${trx.expiration} and pending block time is ${pending_block_time}",
+               ("trx.expiration",trx.expiration)("pending_block_time",pending_block_time()));
    EOS_ASSERT( time_point(trx.expiration) <= pending_block_time() + fc::seconds(chain_configuration.max_transaction_lifetime),
                tx_exp_too_far_exception,
                "Transaction expiration is too far in the future relative to the reference time of ${reference_time}, "

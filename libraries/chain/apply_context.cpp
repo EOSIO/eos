@@ -214,6 +214,12 @@ void apply_context::execute_context_free_inline( action&& a ) {
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
 
+   //QUESTION: Do we need to validate other things about the transaction at this point such as:
+   //           * uniqueness?
+   //           * that there is at least one action and at least one authorization in the transaction?
+   //           * that the context free actions have no authorizations?
+   //           * that the max_kcpu_usage and max_net_usage fields do not cause overflow?
+
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
 
@@ -250,7 +256,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
 
-   auto trx_size = fc::raw::pack_size(trx);
+   uint32_t trx_size = 0;
 
    auto& d = control.db();
    d.create<generated_transaction_object>( [&]( auto& gtx ) {
@@ -262,66 +268,12 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       gtx.delay_until = gtx.published + delay;
       gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
 
-      gtx.packed_trx.resize( trx_size );
-      fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
-      fc::raw::pack( ds, trx );
+      trx_size = gtx.set( trx );
    });
 
    auto& rl = control.get_mutable_resource_limits_manager();
    rl.add_pending_account_ram_usage( payer, config::billable_size_v<generated_transaction_object> + trx_size );
    checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
-
-#if 0
-   try {
-      trx.set_reference_block(controller.head_block_id()); // No TaPoS check necessary
-      trx.sender = receiver;
-      controller.validate_transaction_without_state(trx);
-      // transaction_api::send_deferred guarantees that trx.execute_after is at least head block time, so no need to check expiration.
-      // Any other called of this function needs to similarly meet that precondition.
-
-      controller.validate_expiration_not_too_far(trx, trx.execute_after);
-      controller.validate_referenced_accounts(trx);
-
-      controller.validate_uniqueness(trx); // TODO: Move this out of here when we have concurrent shards to somewhere we can check for conflicts between shards.
-
-      const auto& gpo = controller.get_global_properties();
-      FC_ASSERT( results.deferred_transactions_count < gpo.configuration.max_generated_transaction_count );
-
-      fc::microseconds delay;
-
-      // privileged accounts can do anything, no need to check auth
-      if( !privileged ) {
-         // check to make sure the payer has authorized this deferred transaction's storage in RAM
-         // if a contract is deferring only actions to itself then there is no need
-         // to check permissions, it could have done everything anyway.
-         bool check_auth = false;
-         for( const auto& act : trx.actions ) {
-            if( act.account != receiver ) {
-               check_auth = true;
-               break;
-            }
-         }
-         if( check_auth ) {
-            delay = controller..get_authorization_manager().check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
-            FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                       "deferred transaction uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
-                       ("delay", delay.to_seconds()) );
-         }
-      }
-
-      auto now = controller.head_block_time();
-      if( delay.count() ) {
-         auto min_execute_after_time = time_point_sec(now + delay + fc::microseconds(999'999)); // rounds up nearest second
-         EOS_ASSERT( min_execute_after_time <= trx.execute_after,
-                     transaction_exception,
-                     "deferred transaction is specified to execute after ${trx.execute_after} which is earlier than the earliest time allowed by authorization checker",
-                     ("trx.execute_after",trx.execute_after)("min_execute_after_time",min_execute_after_time) );
-      }
-
-      results.deferred_transaction_requests.push_back(move(trx));
-      results.deferred_transactions_count++;
-   } FC_CAPTURE_AND_RETHROW((trx));
-#endif
 }
 
 void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
