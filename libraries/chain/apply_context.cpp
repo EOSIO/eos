@@ -256,17 +256,30 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    uint32_t trx_size = 0;
 
    auto& d = control.db();
-   d.create<generated_transaction_object>( [&]( auto& gtx ) {
-      gtx.trx_id      = id;
-      gtx.sender      = receiver;
-      gtx.sender_id   = sender_id;
-      gtx.payer       = payer;
-      gtx.published   = control.pending_block_time();
-      gtx.delay_until = gtx.published + delay;
-      gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
+   if ( auto ptr = d.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+      d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
+            gtx.sender      = receiver;
+            gtx.sender_id   = sender_id;
+            gtx.payer       = payer;
+            gtx.published   = control.pending_block_time();
+            gtx.delay_until = gtx.published + delay;
+            gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
 
-      trx_size = gtx.set( trx );
-   });
+            trx_size = gtx.set( trx );
+         });
+   } else {
+      d.create<generated_transaction_object>( [&]( auto& gtx ) {
+            gtx.trx_id      = id;
+            gtx.sender      = receiver;
+            gtx.sender_id   = sender_id;
+            gtx.payer       = payer;
+            gtx.published   = control.pending_block_time();
+            gtx.delay_until = gtx.published + delay;
+            gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
+
+            trx_size = gtx.set( trx );
+         });
+   }
 
    auto& rl = control.get_mutable_resource_limits_manager();
    rl.add_pending_account_ram_usage( payer, config::billable_size_v<generated_transaction_object> + trx_size );
