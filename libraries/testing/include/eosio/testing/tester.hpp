@@ -102,6 +102,7 @@ namespace eosio { namespace testing {
          }
 
          void                  push_genesis_block();
+         vector<producer_key>  get_producer_keys( const vector<account_name>& producer_names )const;
          transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
 
          void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );

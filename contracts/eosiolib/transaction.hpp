@@ -24,24 +24,23 @@ namespace eosio {
 
    class transaction_header {
    public:
-      transaction_header( time exp = now() + 60, region_id r = 0 )
-         :expiration(exp),region(r)
-      {}
+      transaction_header( time exp = now() + 60 )
+         :expiration(exp)
+      { eosio::print("now=", now(), " exp=", expiration, "\n"); }
 
       time            expiration;
-      region_id       region;
       uint16_t        ref_block_num;
       uint32_t        ref_block_prefix;
       unsigned_int    net_usage_words = 0UL; /// number of 8 byte words this transaction can serialize into after compressions
       unsigned_int    kcpu_usage = 0UL; /// number of CPU usage units to bill transaction for
       unsigned_int    delay_sec = 0UL; /// number of CPU usage units to bill transaction for
 
-      EOSLIB_SERIALIZE( transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(kcpu_usage)(delay_sec) )
+      EOSLIB_SERIALIZE( transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(net_usage_words)(kcpu_usage)(delay_sec) )
    };
 
    class transaction : public transaction_header {
    public:
-      transaction(time exp = now() + 60, region_id r = 0) : transaction_header( exp, r ) {}
+      transaction(time exp = now() + 60) : transaction_header( exp ) {}
 
       void send(uint64_t sender_id, account_name payer) const {
          auto serialize = pack(*this);

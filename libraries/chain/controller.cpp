@@ -290,6 +290,22 @@ struct controller_impl {
 
       create_native_account( config::nobody_account_name, empty_authority, empty_authority );
       create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
+      const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
+      const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
+                                                                             config::majority_producers_permission_name,
+                                                                             active_permission.id,
+                                                                             active_producers_authority,
+                                                                             conf.genesis.initial_timestamp );
+      const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
+                                                                             config::minority_producers_permission_name,
+                                                                             majority_permission.id,
+                                                                             active_producers_authority,
+                                                                             conf.genesis.initial_timestamp );
+      const auto& any_producer_permission = authorization.create_permission( config::producers_account_name,
+                                                                             config::any_producer_permission_name,
+                                                                             minority_permission.id,
+                                                                             active_producers_authority,
+                                                                             conf.genesis.initial_timestamp );
    }
 
    void set_pending_tapos() {
@@ -780,9 +796,7 @@ struct controller_impl {
 
    fc::microseconds limit_delay( fc::microseconds delay )const {
       auto max_delay = fc::seconds( self.get_global_properties().configuration.max_transaction_delay );
-      //return std::min(delay, max_delay); // for some reason this currently breaks block verification
-      //QUESTION: Do we actually want the max_delay limiting the (potentially larger) delays on existing permission authorities?
-      return delay;
+      return std::min(delay, max_delay);
    }
 
    /*
