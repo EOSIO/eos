@@ -1,6 +1,6 @@
 # EOSIO - The Most Powerful Infrastructure for Decentralized Applications
 
-[![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/)
+[![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
 
 Welcome to the EOSIO source code repository!  EOSIO software enables developers to create and deploy high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications can be built.
 

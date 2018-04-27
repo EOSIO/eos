@@ -56,7 +56,7 @@ action_trace apply_context::exec_one()
    executed.emplace_back( move(r) );
    total_cpu_usage += cpu_usage;
 
-   _pending_console_output = std::ostringstream();
+   reset_console();
 
    t.elapsed = fc::time_point::now() - start;
    return t;
@@ -187,11 +187,19 @@ void apply_context::require_recipient( account_name recipient ) {
  */
 void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) {
-      if( a.account != receiver ) {
-         const auto delay = control.get_authorization_manager().check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+      if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
+         const auto delay = control.limit_delay( control.get_authorization_manager()
+                                                        .check_authorization( {a},
+                                                                              flat_set<public_key_type>(),
+                                                                              false,
+                                                                              {receiver}                   ) );
          FC_ASSERT( published_time + delay <= control.pending_block_time(),
-                    "inline action uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
+                    "authorization for inline action imposes a delay of ${delay} seconds that is not met",
                     ("delay", delay.to_seconds()) );
+
+         //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
+         //          with sending an inline action that requires a delay even though the decision to send that inline
+         //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
       }
    }
    _inline_actions.emplace_back( move(a) );
@@ -203,9 +211,14 @@ void apply_context::execute_context_free_inline( action&& a ) {
 }
 
 
-/// TODO: rename this schedule_deferred it is not actually executed here
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
+
+   //QUESTION: Do we need to validate other things about the transaction at this point such as:
+   //           * uniqueness?
+   //           * that there is at least one action and at least one authorization in the transaction?
+   //           * that the context free actions have no authorizations?
+   //           * that the max_kcpu_usage and max_net_usage fields do not cause overflow?
 
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
@@ -227,9 +240,15 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          }
       }
       if( check_auth ) {
-         required_delay = control.get_authorization_manager().check_authorization( trx.actions, flat_set<public_key_type>(), false, {receiver} );
+         required_delay = control.limit_delay( control.get_authorization_manager()
+                                                      .check_authorization( trx.actions,
+                                                                            flat_set<public_key_type>(),
+                                                                            false,
+                                                                            {receiver}                   ) );
+
       }
    }
+
    auto id = trx.id();
 
    auto delay = fc::seconds(trx.delay_sec);
@@ -237,7 +256,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
 
-   auto trx_size = fc::raw::pack_size(trx);
+   uint32_t trx_size = 0;
 
    auto& d = control.db();
    d.create<generated_transaction_object>( [&]( auto& gtx ) {
@@ -249,66 +268,12 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       gtx.delay_until = gtx.published + delay;
       gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
 
-      gtx.packed_trx.resize( trx_size );
-      fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
-      fc::raw::pack( ds, trx );
+      trx_size = gtx.set( trx );
    });
 
    auto& rl = control.get_mutable_resource_limits_manager();
    rl.add_pending_account_ram_usage( payer, config::billable_size_v<generated_transaction_object> + trx_size );
    checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
-
-#if 0
-   try {
-      trx.set_reference_block(controller.head_block_id()); // No TaPoS check necessary
-      trx.sender = receiver;
-      controller.validate_transaction_without_state(trx);
-      // transaction_api::send_deferred guarantees that trx.execute_after is at least head block time, so no need to check expiration.
-      // Any other called of this function needs to similarly meet that precondition.
-
-      controller.validate_expiration_not_too_far(trx, trx.execute_after);
-      controller.validate_referenced_accounts(trx);
-
-      controller.validate_uniqueness(trx); // TODO: Move this out of here when we have concurrent shards to somewhere we can check for conflicts between shards.
-
-      const auto& gpo = controller.get_global_properties();
-      FC_ASSERT( results.deferred_transactions_count < gpo.configuration.max_generated_transaction_count );
-
-      fc::microseconds delay;
-
-      // privileged accounts can do anything, no need to check auth
-      if( !privileged ) {
-         // check to make sure the payer has authorized this deferred transaction's storage in RAM
-         // if a contract is deferring only actions to itself then there is no need
-         // to check permissions, it could have done everything anyway.
-         bool check_auth = false;
-         for( const auto& act : trx.actions ) {
-            if( act.account != receiver ) {
-               check_auth = true;
-               break;
-            }
-         }
-         if( check_auth ) {
-            delay = controller..get_authorization_manager().check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
-            FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                       "deferred transaction uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
-                       ("delay", delay.to_seconds()) );
-         }
-      }
-
-      auto now = controller.head_block_time();
-      if( delay.count() ) {
-         auto min_execute_after_time = time_point_sec(now + delay + fc::microseconds(999'999)); // rounds up nearest second
-         EOS_ASSERT( min_execute_after_time <= trx.execute_after,
-                     transaction_exception,
-                     "deferred transaction is specified to execute after ${trx.execute_after} which is earlier than the earliest time allowed by authorization checker",
-                     ("trx.execute_after",trx.execute_after)("min_execute_after_time",min_execute_after_time) );
-      }
-
-      results.deferred_transaction_requests.push_back(move(trx));
-      results.deferred_transactions_count++;
-   } FC_CAPTURE_AND_RETHROW((trx));
-#endif
 }
 
 void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
@@ -356,6 +321,11 @@ vector<account_name> apply_context::get_active_producers() const {
       accounts.push_back(producer.producer_name);
 
    return accounts;
+}
+
+void apply_context::reset_console() {
+   _pending_console_output = std::ostringstream();
+   _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
 }
 
 void apply_context::checktime(uint32_t instruction_count) {
@@ -409,15 +379,12 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    if( index >= trx.context_free_data.size() ) return -1;
 
    auto s = trx.context_free_data[index].size();
-
    if( buffer_size == 0 ) return s;
 
-   if( buffer_size < s )
-      memcpy( buffer, trx.context_free_data[index].data(), buffer_size );
-   else
-      memcpy( buffer, trx.context_free_data[index].data(), s );
+   auto copy_size = std::min( buffer_size, s );
+   memcpy( buffer, trx.context_free_data[index].data(), copy_size );
 
-   return s;
+   return copy_size;
 }
 
 void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
@@ -513,9 +480,14 @@ void apply_context::db_remove_i64( int iterator ) {
 
 int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
-   memcpy( buffer, obj.value.data(), std::min(obj.value.size(), buffer_size) );
 
-   return obj.value.size();
+   auto s = obj.value.size();
+   if( buffer_size == 0 ) return s;
+
+   auto copy_size = std::min( buffer_size, s );
+   memcpy( buffer, obj.value.data(), copy_size );
+
+   return copy_size;
 }
 
 int apply_context::db_next_i64( int iterator, uint64_t& primary ) {

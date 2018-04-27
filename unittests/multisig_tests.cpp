@@ -1,8 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.msig/eosio.msig.wast.hpp>
 #include <eosio.msig/eosio.msig.abi.hpp>
@@ -17,8 +16,6 @@
 using namespace eosio::testing;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
-using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -41,7 +38,7 @@ public:
       set_abi( N(eosio.msig), eosio_msig_abi );
 
       produce_blocks();
-      const auto& accnt = control->get_database().get<account_object,by_name>( N(eosio.msig) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -74,7 +71,6 @@ transaction eosio_msig_tester::reqauth( account_name from, const vector<permissi
    }
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
-      ("region", 0)
       ("ref_block_num", 2)
       ("ref_block_prefix", 3)
       ("max_net_usage_words", 0)
@@ -89,7 +85,7 @@ transaction eosio_msig_tester::reqauth( account_name from, const vector<permissi
                })
       );
    transaction trx;
-   contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver());
    return trx;
 }
 
@@ -120,16 +116,17 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
                                                 ("level",         permission_level{ N(alice), config::active_name })
                         ));
 
+   transaction_trace_ptr trace;
+   control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
                                                 ("proposer",      "alice")
                                                 ("proposal_name", "first")
                                                 ("executer",      "alice")
                         ));
 
-   auto traces = control->push_deferred_transactions( true );
-   BOOST_CHECK_EQUAL( 1, traces.size() );
-   BOOST_CHECK_EQUAL( 1, traces.at(0).action_traces.size() );
-   BOOST_CHECK_EQUAL( transaction_receipt::executed, traces.at(0).status );
+   BOOST_REQUIRE( bool(trace) );
+   BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
+   BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt.status );
 } FC_LOG_AND_RETHROW()
 
 
@@ -194,15 +191,19 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
                                                 ("proposal_name", "first")
                                                 ("level",         permission_level{ N(bob), config::active_name })
                         ));
+
+   transaction_trace_ptr trace;
+   control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
                                                 ("proposer",      "alice")
                                                 ("proposal_name", "first")
                                                 ("executer",      "alice")
                         ));
-   auto traces = control->push_deferred_transactions( true );
-   BOOST_CHECK_EQUAL( 1, traces.size() );
-   BOOST_CHECK_EQUAL( 1, traces.at(0).action_traces.size() );
-   BOOST_CHECK_EQUAL( transaction_receipt::executed, traces.at(0).status );
+
+   BOOST_REQUIRE( bool(trace) );
+   BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
+   BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt.status );
 } FC_LOG_AND_RETHROW()
 
 
@@ -225,7 +226,6 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
 
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
-      ("region", 0)
       ("ref_block_num", 2)
       ("ref_block_prefix", 3)
       ("max_net_usage_words", 0)
@@ -246,7 +246,7 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
       );
 
    transaction trx;
-   contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver());
 
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(propose), mvo()
                                                 ("proposer",      "alice")
@@ -267,15 +267,19 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
                                                 ("proposal_name", "first")
                                                 ("level",         permission_level{ N(bob), config::active_name })
                         ));
+
+   transaction_trace_ptr trace;
+   control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
                                                 ("proposer",      "alice")
                                                 ("proposal_name", "first")
                                                 ("executer",      "alice")
                         ));
-   auto traces = control->push_deferred_transactions( true );
-   BOOST_CHECK_EQUAL( 1, traces.size() );
-   BOOST_CHECK_EQUAL( 1, traces.at(0).action_traces.size() );
-   BOOST_CHECK_EQUAL( transaction_receipt::executed, traces.at(0).status );
+
+   BOOST_REQUIRE( bool(trace) );
+   BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
+   BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt.status );
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

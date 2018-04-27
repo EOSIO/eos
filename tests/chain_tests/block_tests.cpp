@@ -14,6 +14,134 @@ using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
+BOOST_AUTO_TEST_CASE( block_too_old_test ) { try {
+   vector<TESTER> producers(5);
+
+   vector<account_name> producer_names;
+   for (char i = 'a'; i <= 'a'+producers.size(); i++) {
+      producer_names.emplace_back(std::string("init")+i);
+   }
+   producers[0].create_accounts(producer_names);
+   producers[0].set_producers(producer_names);
+
+   signed_block old_block;
+   for ( int i=0; i < 12; i++ ) {
+      for ( int j=0; j < producers.size(); j++ ) {
+         auto block = producers[j].produce_block();
+         old_block = block;
+         producers[j].push_block( block );
+      }
+   }
+
+   for ( int i=0; i < producers.size()*2; i++ ) {
+      producers[i%producers.size()].produce_block();
+   }
+   BOOST_REQUIRE_THROW( producers[1].push_block(old_block), block_too_old_exception);
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( last_irreversible_update_bug_test ) { try {
+   tester producers;
+   tester disconnected;
+   vector<account_name> producer_names = {N(inita), N(initb), N(initc), N(initd)};
+   producers.create_accounts(producer_names);
+   producers.set_producers(producer_names);
+
+   auto block = producers.produce_block();
+   disconnected.push_block(block);
+   while (true) {
+      block = producers.produce_block();
+      disconnected.push_block(block);
+      if ( block.producer == N(inita) )
+         break;
+   }
+
+   auto produce_one_block = [&]( auto& t, int i, int offset, signed_block& sb ) {
+      signed_block new_block = t.control->generate_block( block_timestamp_type{sb.timestamp.slot + offset},
+                                                          producer_names[i],
+                                                          t.get_private_key( producer_names[i], "active" ) );
+      new_block.previous = sb.id();
+      t.push_block( new_block );
+      return new_block;
+   };
+
+   // lets start at inita
+   BOOST_CHECK_EQUAL( block.block_num(), 48 );
+   BOOST_CHECK_EQUAL( block.producer, N(inita) );
+
+   block = produce_one_block( producers, 1, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initb) );
+
+   block = produce_one_block( producers, 2, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initc) );
+
+   block = produce_one_block( producers, 3, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initd) );
+
+   // start here
+   block = produce_one_block( producers, 0, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.block_num(), 52 );
+   BOOST_CHECK_EQUAL( block.producer, N(inita) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 50 );
+
+   block = produce_one_block( producers, 1, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.block_num(), 53 );
+   BOOST_CHECK_EQUAL( block.producer, N(initb) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 51 );
+
+   block = produce_one_block( producers, 2, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initc) );
+   BOOST_CHECK_EQUAL( block.block_num(), 54 );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 52 );
+
+   auto left_fork = block;
+   auto right_fork = block;
+
+   left_fork = produce_one_block( disconnected, 3, 12, left_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 55 );
+   BOOST_CHECK_EQUAL( left_fork.producer, N(initd) );
+   BOOST_CHECK_EQUAL( disconnected.control->last_irreversible_block_num(), 53 );
+
+   right_fork = produce_one_block( producers, 1, 36, right_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 55 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(initb) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 52 );
+
+   left_fork = produce_one_block( disconnected, 2, 36, left_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 56 );
+   BOOST_CHECK_EQUAL( left_fork.producer, N(initc) );
+   BOOST_CHECK_EQUAL( disconnected.control->last_irreversible_block_num(), 53 );
+
+   left_fork = produce_one_block( disconnected, 3, 12, left_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 57 );
+   BOOST_CHECK_EQUAL( left_fork.producer, N(initd) );
+   BOOST_CHECK_EQUAL( disconnected.control->last_irreversible_block_num(), 53 );
+
+   right_fork = produce_one_block( producers, 0, 36, right_fork );
+   BOOST_CHECK_EQUAL( right_fork.block_num(), 56 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(inita) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 54 );
+
+   right_fork = produce_one_block( producers, 2, 24, right_fork );
+   BOOST_CHECK_EQUAL( right_fork.block_num(), 57 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(initc) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 55 );
+
+   right_fork = produce_one_block( producers, 3, 12, right_fork );
+   BOOST_CHECK_EQUAL( right_fork.block_num(), 58 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(initd) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 56 );
+
+
+   // TODO This should fail after chain_controller refactor, as this bug should not exist
+   BOOST_CHECK_THROW( producers.sync_with( disconnected ), assert_exception );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   TESTER test;
 
@@ -103,6 +231,34 @@ BOOST_AUTO_TEST_CASE( push_invalid_block ) { try {
    // Pushing this block should fail, since there should not be an empty shard inside a block
    BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_shard);
 } FC_LOG_AND_RETHROW() }/// push_invalid_block
+
+BOOST_AUTO_TEST_CASE( push_unexpected_signature_block ) { try {
+   vector<tester> producers(5);
+
+   char a = 'a';
+   vector<account_name> producer_names;
+   for( ; a <= 'a'+producers.size()-1; ++a) {
+      producer_names.emplace_back(std::string("init")+a);
+   }
+   producers[0].create_accounts(producer_names);
+   producers[0].set_producers(producer_names);
+
+   auto block = producers[0].produce_block();
+   producers[0].push_block(block);
+   block = producers[1].produce_block();
+   producers[1].push_block(block);
+
+   auto head_id = producers[0].control->head_block_num();
+
+   tester unscheduled_producer;
+   block = unscheduled_producer.produce_block();
+   unscheduled_producer.push_block(block);
+   BOOST_CHECK_EQUAL(head_id, producers[0].control->head_block_num());
+   block = producers[2].produce_block();
+   producers[2].push_block(block);
+   BOOST_CHECK_PREDICATE(std::not_equal_to<decltype(head_id)>(),
+                         (head_id)(producers[3].control->head_block_num()));
+} FC_LOG_AND_RETHROW() }/// push_unexpected_signature_block
 
 
 // Utility function to check expected irreversible block
@@ -287,6 +443,35 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
 
       // Check that it throws for irrelevant signatures
       BOOST_CHECK_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
+   } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(no_auth) {
+   try {
+      TESTER chain;
+      chain.create_account(name("joe"));
+
+      chain.produce_blocks();
+
+      // Use create account transaction as example
+      signed_transaction trx;
+      name new_account_name = name("alice");
+      authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                contracts::newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = new_account_name,
+                                      .owner    = owner_auth,
+                                      .active   = authority(),
+                                      .recovery = authority(),
+                                });
+      chain.set_transaction_headers(trx);
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+
+      // Check that it throws for no auth
+      BOOST_CHECK_THROW(chain.push_transaction( trx ), action_validate_exception);
+      chain.control->clear_pending();
 
       BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } FC_LOG_AND_RETHROW() }
@@ -969,8 +1154,22 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
 // Commitment for the shard itself is a merkle tree over the transactions commitments inside that shard.
 // The transaction commitment is digest of the concentanation of region_id, cycle_index, shard_index, tx_index,
 // transaction_receipt and packed_trx_digest (if the tx is an input tx, which doesn't include implicit/ deferred tx)
+
+// Deactivating this test. on_block transaction hash should not be hardcoded as the the work done following onblock action
+// can change. As chain controller is being refactored, this test will have to be changed.
+#if 0
 BOOST_AUTO_TEST_CASE(transaction_mroot)
 { try {
+
+   // Utility function get on_block tx_mroot given the block_num
+   auto get_on_block_tx_mroot = [](uint32_t block_num) -> digest_type {
+      tester temp;
+      temp.produce_blocks(block_num - 1);
+      signed_block blk = temp.produce_block();
+      // Since the block is empty, its transaction_mroot should represent the onblock tx
+      return blk.transaction_mroot;
+   };
+
    validating_tester chain;
    // Finalize current block (which has set contract transaction for eosio)
    chain.produce_block();
@@ -994,17 +1193,72 @@ BOOST_AUTO_TEST_CASE(transaction_mroot)
    }
    auto expected_shard_tx_root = merkle(tx_roots);
 
-   // Hardcoded on_block tx_root, since there's no easy way to calculate the tx_root with current interface
-   auto on_block_tx_root = digest_type("aa63d366cc2ef41746bb150258d1c0662c8133469f785425cb996dbe2a227086");
+   // Compare with head block tx mroot
+   chain.produce_block();
+
+   auto on_block_tx_root = get_on_block_tx_mroot(chain.control->head_block_num());
    // There is only 1 region, 2 cycle, 1 shard in first cycle, 1 shard in second cycle
    auto expected_tx_mroot = merkle({on_block_tx_root, expected_shard_tx_root});
 
-   // Compare with head block tx mroot
-   chain.produce_block();
    auto head_block_tx_mroot = chain.control->head_block_header().transaction_mroot;
    BOOST_TEST(expected_tx_mroot.str() == head_block_tx_mroot.str());
 
 } FC_LOG_AND_RETHROW() }
+#endif
 
+BOOST_AUTO_TEST_CASE(account_ram_limit) { try {
+
+   const int64_t ramlimit = 5000;
+   validating_tester chain;
+   resource_limits_manager mgr = chain.control->get_mutable_resource_limits_manager();
+
+   account_name acc1 = N(test1);
+   chain.create_account(acc1);
+
+   mgr.set_account_limits(acc1, ramlimit, -1, -1 );
+
+   transaction_trace trace = chain.create_account(N(acc2), acc1);
+   chain.produce_block();
+   BOOST_REQUIRE_EQUAL(trace.status, transaction_trace::executed);
+
+   trace = chain.create_account(N(acc3), acc1);
+   chain.produce_block();
+   BOOST_REQUIRE_EQUAL(trace.status, transaction_trace::executed);
+
+   BOOST_REQUIRE_EXCEPTION(
+      chain.create_account(N(acc4), acc1),
+      tx_resource_exhausted,
+      [] (const tx_resource_exhausted &e)->bool {
+         BOOST_REQUIRE_EQUAL(std::string("transaction exhausted allowed resources"), e.what());
+         return true;
+      }
+   );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(producer_r1_key) { try {
+
+   // Use validating_tester to check that the block is synced properly
+   validating_tester chain;
+
+   // Set new producer
+   account_name tester_producer_name = "tester";
+   chain.create_account(tester_producer_name);
+   auto producer_r1_priv_key = chain.get_private_key<fc::crypto::r1::private_key_shim>( tester_producer_name, "active" );
+   auto producer_r1_pub_key = producer_r1_priv_key.get_public_key();
+   chain.push_action(N(eosio), N(setprods), N(eosio),
+                     fc::mutable_variant_object()("version", 1)("producers", vector<producer_key>{{ tester_producer_name, producer_r1_pub_key }}));
+
+   // Add signing key to the tester object, so it can sign with the correct key
+   chain.block_signing_private_keys[producer_r1_pub_key] = producer_r1_priv_key;
+
+   // Wait until the current round ends
+   chain.produce_blocks_until_end_of_round();
+
+   // The next set of producers will be producing starting in the middle of next round
+   // This round should not throw any exception
+   BOOST_CHECK_NO_THROW(chain.produce_blocks_until_end_of_round());
+
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

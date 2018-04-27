@@ -87,7 +87,7 @@ void multisig::cancel( account_name proposer, name proposal_name, account_name c
    eosio_assert( prop_it != proptable.end(), "proposal not found" );
 
    if( canceler != proposer ) {
-      eosio_assert( unpack<transaction>( prop_it->packed_transaction ).expiration < now(), "cannot cancel until expiration" );
+      eosio_assert( unpack<transaction_header>( prop_it->packed_transaction ).expiration < now(), "cannot cancel until expiration" );
    }
 
    proptable.erase(prop_it);
@@ -99,6 +99,13 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    proposals proptable( _self, proposer );
    auto prop_it = proptable.find( proposal_name );
    eosio_assert( prop_it != proptable.end(), "proposal not found" );
+
+   transaction_header trx_header;
+   datastream<const char*> ds( prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
+   ds >> trx_header;
+   trx_header.expiration = now() + 60;
+   ds.seekp(0);
+   ds << trx_header;
 
    check_auth( prop_it->packed_transaction, prop_it->provided_approvals );
    send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );

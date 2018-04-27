@@ -274,8 +274,10 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
             auto producer  = db.head_block_producer();
             auto pending   = db.head_block_state();
 
-            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}", 
-                 ("t",pending->block->timestamp)("p", producer)("id",fc::variant(pending->id).as_string().substr(0,16))("n",pending->block_num)("count",pending->block->transactions.size())("lib",db.last_irreversible_block_num())(capture) );
+            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}",
+                 ("p",producer)("id",fc::variant(pending->id).as_string().substr(0,16))
+                 ("n",pending->block_num)("t",pending->block->timestamp)
+                 ("count",pending->block->transactions.size())("lib",db.last_irreversible_block_num())(capture) );
             break;
          }
          case block_production_condition::not_synced:

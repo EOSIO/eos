@@ -210,7 +210,7 @@ struct controller_impl {
       db.set_revision( head->block_num );
 
       initialize_database();
-         
+
       auto end = blog.read_head();
       if( end && end->block_num() > 1 ) {
          replaying = true;
@@ -284,8 +284,8 @@ struct controller_impl {
       authority system_auth(conf.genesis.initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true );
 
-      auto empty_authority = authority(0, {}, {});
-      auto active_producers_authority = authority(0, {}, {});
+      auto empty_authority = authority(1, {}, {});
+      auto active_producers_authority = authority(1, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
       create_native_account( config::nobody_account_name, empty_authority, empty_authority );
@@ -376,6 +376,7 @@ struct controller_impl {
          transaction_context trx_context( self, dtrx, gto.trx_id );
          trace = trx_context.trace;
 
+         trx_context.trace->scheduled = true;
          trx_context.deadline  = deadline;
          trx_context.published = gto.published;
          trx_context.net_usage = 0;
@@ -421,6 +422,7 @@ struct controller_impl {
          edump((soft_except->to_detail_string()));
        */
 
+      FC_ASSERT( bool(trace), "failed to deserialize transaction" );
       trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+1023)/1024, 0 );
       trace->soft_except = soft_except;
       trace->hard_except = hard_except;
@@ -459,8 +461,8 @@ struct controller_impl {
 
    void transaction_trace_notify( const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace ) {
       if( trx->on_result ) {
-         (*trx->on_result)(trace);
-         trx->on_result.reset();
+         (trx->on_result)(trace);
+         trx->on_result = decltype(trx->on_result)(); //assign empty std::function
       }
    }
 
@@ -487,7 +489,7 @@ struct controller_impl {
          transaction_context trx_context( self, trx->trx, trx->id );
          trace = trx_context.trace;
 
-         auto required_delay = authorization.check_authorization( trx->trx.actions, trx->recover_keys() );
+         auto required_delay = limit_delay( authorization.check_authorization( trx->trx.actions, trx->recover_keys() ) );
          trx_context.delay = fc::seconds(trx->trx.delay_sec);
          EOS_ASSERT( trx_context.delay >= required_delay, transaction_exception,
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
@@ -495,7 +497,7 @@ struct controller_impl {
 
          trx_context.deadline  = deadline;
          trx_context.published = self.pending_block_time();
-         trx_context.net_usage = self.validate_net_usage( trx ) / 8;
+         trx_context.net_usage = self.validate_net_usage( trx ); // / 8; // <-- BUG? Needed to be removed to fix auth_tests/no_double_billing
          trx_context.is_input  = !implicit;
          trx_context.exec();
 
@@ -611,7 +613,7 @@ struct controller_impl {
          auto new_header_state = fork_db.add( b );
          self.accepted_block_header( new_header_state );
          maybe_switch_forks();
-      } FC_LOG_AND_RETHROW() 
+      } FC_LOG_AND_RETHROW()
    }
 
    void push_confirmation( const header_confirmation& c ) {
@@ -774,6 +776,13 @@ struct controller_impl {
       while( (!generated_index.empty()) && (head_block_time() > generated_index.begin()->expiration) ) {
       // TODO:   destroy_generated_transaction(*generated_index.begin());
       }
+   }
+
+   fc::microseconds limit_delay( fc::microseconds delay )const {
+      auto max_delay = fc::seconds( self.get_global_properties().configuration.max_transaction_delay );
+      //return std::min(delay, max_delay); // for some reason this currently breaks block verification
+      //QUESTION: Do we actually want the max_delay limiting the (potentially larger) delays on existing permission authorities?
+      return delay;
    }
 
    /*
@@ -941,6 +950,7 @@ uint32_t controller::last_irreversible_block_num() const {
 }
 
 block_id_type controller::last_irreversible_block_id() const {
+   //QUESTION/BUG: What if lib has not advanced for over 2^16 blocks?
    const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)my->head->bft_irreversible_blocknum);
    return tapos_block_summary.block_id;
 }
@@ -1094,6 +1104,9 @@ const map<digest_type, transaction_metadata_ptr>&  controller::unapplied_transac
    return my->unapplied_transactions;
 }
 
+fc::microseconds controller::limit_delay( fc::microseconds delay )const {
+   return my->limit_delay( delay );
+}
 
 void controller::validate_referenced_accounts( const transaction& trx )const {
    for( const auto& a : trx.context_free_actions ) {

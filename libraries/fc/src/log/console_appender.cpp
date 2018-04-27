@@ -135,7 +135,7 @@ namespace fc {
          if (my->console_handle != INVALID_HANDLE_VALUE)
            SetConsoleTextAttribute(my->console_handle, get_console_color(text_color));
       #else
-         if(isatty(fileno(out))) fprintf( out, "\r%s", get_console_color( text_color ) );
+         if(isatty(fileno(out))) fprintf( out, "%s", get_console_color( text_color ) );
       #endif
 
       if( text.size() )
@@ -145,7 +145,7 @@ namespace fc {
       if (my->console_handle != INVALID_HANDLE_VALUE)
         SetConsoleTextAttribute(my->console_handle, CONSOLE_DEFAULT);
       #else
-      if(isatty(fileno(out))) fprintf( out, "\r%s", CONSOLE_DEFAULT );
+      if(isatty(fileno(out))) fprintf( out, "%s", CONSOLE_DEFAULT );
       #endif
 
       if( my->cfg.flush ) fflush( out );

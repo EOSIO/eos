@@ -125,6 +125,7 @@ namespace eosio { namespace chain {
       index128_object_type,
       index256_object_type,
       index_double_object_type,
+      index_long_double_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
       block_summary_object_type,
@@ -147,6 +148,8 @@ namespace eosio { namespace chain {
       resource_usage_object_type,
       resource_limits_state_object_type,
       resource_limits_config_object_type,
+      account_history_object_type,
+      action_history_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -183,6 +186,7 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (index128_object_type)
                 (index256_object_type)
                 (index_double_object_type)
+                (index_long_double_object_type)
                 (global_property_object_type)
                 (dynamic_global_property_object_type)
                 (block_summary_object_type)
@@ -205,6 +209,8 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (resource_usage_object_type)
                 (resource_limits_state_object_type)
                 (resource_limits_config_object_type)
+                (account_history_object_type)
+                (action_history_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )

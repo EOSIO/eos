@@ -28,9 +28,8 @@
       "base": "",
       "fields": [
          {"name": "expiration", "type": "time_point_sec"},
-         {"name": "region", "type": "uint16"},
-         {"name": "ref_block_num", "type": "uint32"},
-         {"name": "ref_block_prefix", "type": "uint16"},
+         {"name": "ref_block_num", "type": "uint16"},
+         {"name": "ref_block_prefix", "type": "uint32"},
          {"name": "max_net_usage_words", "type": "varuint32"},
          {"name": "max_kcpu_usage", "type": "varuint32"},
          {"name": "delay_sec", "type": "varuint32"}
@@ -125,5 +124,5 @@
       "key_types" : ["name"]
     } 
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }

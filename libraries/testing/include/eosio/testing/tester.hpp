@@ -74,6 +74,7 @@ namespace eosio { namespace testing {
 
          void              close();
          void              open();
+         bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
@@ -83,13 +84,11 @@ namespace eosio { namespace testing {
 
          transaction_trace_ptr    push_transaction( packed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing */ );
          transaction_trace_ptr    push_transaction( signed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing*/  );
-         action_result            push_action(action&& cert_act, uint64_t authorizer);
+         action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
 
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const vector<permission_level>& auths, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
-
-         void                 set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
 
          void                 set_transaction_headers(signed_transaction& trx,
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
@@ -140,8 +139,15 @@ namespace eosio { namespace testing {
             return control->db().find<ObjectType,IndexBy>( forward<Args>(args)... );
          }
 
-         public_key_type   get_public_key( name keyname, string role = "owner" ) const;
-         private_key_type  get_private_key( name keyname, string role = "owner" ) const;
+         template< typename KeyType = fc::ecc::private_key_shim >
+         private_key_type get_private_key( name keyname, string role = "owner" ) const {
+            return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
+         }
+
+         template< typename KeyType = fc::ecc::private_key_shim >
+         public_key_type get_public_key( name keyname, string role = "owner" ) const {
+            return get_private_key<KeyType>( keyname, role ).get_public_key();
+         }
 
          void              set_code( account_name name, const char* wast );
          void              set_code( account_name name, const vector<uint8_t> wasm );
@@ -149,6 +155,7 @@ namespace eosio { namespace testing {
 
 
          unique_ptr<controller> control;
+         std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
 
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;

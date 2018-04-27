@@ -10,9 +10,9 @@
 
 namespace eosio { namespace chain {
 
-   struct action_trace {
-      action_trace( const action_receipt& r ):receipt(r){}
-      action_trace(){}
+   struct base_action_trace {
+      base_action_trace( const action_receipt& r ):receipt(r){}
+      base_action_trace(){}
 
       action_receipt       receipt;
       action               act;
@@ -21,6 +21,12 @@ namespace eosio { namespace chain {
       string               console;
 
       uint64_t             total_inline_cpu_usage = 0; /// total of inline_traces[x].cpu_usage + cpu_usage
+
+   };
+
+   struct action_trace : public base_action_trace {
+      using base_action_trace::base_action_trace;
+
       vector<action_trace> inline_traces;
    };
 
@@ -50,7 +56,11 @@ namespace eosio { namespace chain {
 
 } }  /// namespace eosio::chain
 
-FC_REFLECT( eosio::chain::action_trace,
-                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
-FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(cpu_usage)(action_traces)(soft_except)(hard_except) )
+FC_REFLECT( eosio::chain::base_action_trace,
+                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_inline_cpu_usage) )
+
+FC_REFLECT_DERIVED( eosio::chain::action_trace,
+                    (eosio::chain::base_action_trace), (inline_traces) )
+
+FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(cpu_usage)(scheduled)(action_traces)(soft_except)(hard_except) )
 FC_REFLECT( eosio::chain::block_trace, (elapsed)(cpu_usage)(trx_traces) )

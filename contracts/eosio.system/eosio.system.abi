@@ -42,9 +42,9 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
-         {"name":"stake_net", "type":"asset"},
-         {"name":"stake_cpu", "type":"asset"},
-         {"name":"stake_storage", "type":"asset"}
+         {"name":"stake_net_quantity", "type":"asset"},
+         {"name":"stake_cpu_quantity", "type":"asset"},
+         {"name":"stake_storage_quantity", "type":"asset"}
       ]
     },{
       "name": "undelegatebw",
@@ -52,9 +52,9 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
-         {"name":"unstake_net", "type":"asset"},
-         {"name":"unstake_cpu", "type":"asset"},
-         {"name":"unstake_bytes", "type":"uint64"}
+         {"name":"unstake_net_quantity", "type":"asset"},
+         {"name":"unstake_cpu_quantity", "type":"asset"},
+         {"name":"unstake_storage_bytes", "type":"uint64"}
       ]
     },{
       "name": "refund",
@@ -68,9 +68,9 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
-         {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"},
-         {"name":"storage_stake", "type":"asset"},
+         {"name":"net_weight", "type":"uint64"},
+         {"name":"cpu_weight", "type":"uint64"},
+         {"name":"storage_stake", "type":"uint64"},
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
@@ -78,13 +78,21 @@
       "base": "",
       "fields": [
          {"name":"owner", "type":"account_name"},
-         {"name":"net_weight", "type":"uint64"},
-         {"name":"cpu_weight", "type":"uint64"},
-         {"name":"storage_stake", "type":"uint64"},
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"storage_stake", "type":"asset"},
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
-      "name": "eosio_parameters",
+      "name": "refund_request",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"request_time", "type":"time"},
+         {"name":"amount", "type":"uint64"}
+      ]
+    },{
+      "name": "blockchain_parameters",
       "base": "",
       "fields": [
          {"name":"base_per_transaction_net_usage", "type":"uint32"},
@@ -107,6 +115,13 @@
          {"name":"max_inline_depth", "type":"uint16"},
          {"name":"max_inline_action_size", "type":"uint32"},
          {"name":"max_generated_transaction_count", "type":"uint32"},
+         {"name":"max_transaction_delay", "type":"uint32"}
+      ]
+    },{
+      "name": "eosio_parameters",
+      "base": "blockchain_parameters",
+      "fields": [
+         {"name":"max_storage_size", "type":"uint64"},
          {"name":"percent_of_max_inflation_rate", "type":"uint32"},
          {"name":"storage_reserve_ratio", "type":"uint32"}
       ]
@@ -171,9 +186,9 @@
         {"name":"proxy",             "type":"account_name"},
         {"name":"last_update",       "type":"uint32"},
         {"name":"is_proxy",          "type":"uint32"},
-        {"name":"staked",            "type":"uint64"},
-        {"name":"unstaking",         "type":"uint64"},
-        {"name":"unstake_per_week",  "type":"uint64"},
+        {"name":"staked",            "type":"asset"},
+        {"name":"unstaking",         "type":"asset"},
+        {"name":"unstake_per_week",  "type":"asset"},
         {"name":"proxied_votes",     "type":"uint128"},
         {"name":"producers",         "type":"account_name[]"},
         {"name":"deferred_trx_id",   "type":"uint32"},
@@ -237,7 +252,31 @@
       "ricardian_contract": ""
     }
   ],
-  "tables": [
+  "tables": [{
+      "name": "producerinfo",
+      "type": "producer_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "totalband",
+      "type": "total_resources",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "delband",
+      "type": "delegated_bandwidth",
+      "index_type": "i64",
+      "key_names" : ["to"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "refunds",
+      "type": "refund_request",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    }
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }
