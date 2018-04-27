@@ -8,3 +8,5 @@ add_library(sql_db_plugin
     )
 target_link_libraries(sql_db_plugin chain_plugin)
 
+add_subdirectory(test)
+
