@@ -59,6 +59,8 @@ namespace eosio { namespace testing {
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
 
+   void copy_row(const chain::key_value_object& obj, vector<char>& data);
+
    /**
     *  @class tester
     *  @brief provides utility function to simplify the creation of unit tests
