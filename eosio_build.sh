@@ -32,7 +32,7 @@
 
 	CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 	if [ "${CWD}" != "${PWD}" ]; then
-		printf "\n\tThis script may only be executed from ${CWD}.\n \tExiting now.\n\n"
+		printf "\n\tPlease cd into directory ${CWD} to run this script.\n \tExiting now.\n\n"
 		exit 1
 	fi
 
@@ -45,8 +45,6 @@
 	ARCH=$( uname )
 	BUILD_DIR="${PWD}/build"
 	CMAKE_BUILD_TYPE=Release
-# 	COMPILE_EOS=1
-# 	COMPILE_CONTRACTS=1
 	DISK_MIN=20
 	DOXYGEN=false
 	ENABLE_COVERAGE_TESTING=false
@@ -63,9 +61,13 @@
 		while getopts ":cdo:" opt; do
 			case "${opt}" in
 				o )
-					if [ "${OPTARG}" = "Debug" ] || [ "${OPTARG}" = "Release" ] || \
-					[ "${OPTARG}" = "RelWithDebInfo" ] || [ "${OPTARG}" = "MinSizeRel" ]; then
+					options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
+					if [[ "${options[*]}" =~ "${OPTARG}" ]]; then
 						CMAKE_BUILD_TYPE="${OPTARG}"
+					else
+						printf "\n\tInvalid argument: ${OPTARG}\n" 1>&2
+						usage
+						exit 1
 					fi
 				;;
 				c )
