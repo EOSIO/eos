@@ -489,7 +489,10 @@ struct controller_impl {
          transaction_context trx_context( self, trx->trx, trx->id );
          trace = trx_context.trace;
 
-         auto required_delay = limit_delay( authorization.check_authorization( trx->trx.actions, trx->recover_keys() ) );
+         fc::microseconds required_delay(0);
+         if (!implicit) {
+            required_delay = limit_delay( authorization.check_authorization( trx->trx.actions, trx->recover_keys() ) );
+         }
          trx_context.delay = fc::seconds(trx->trx.delay_sec);
          EOS_ASSERT( trx_context.delay >= required_delay, transaction_exception,
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
