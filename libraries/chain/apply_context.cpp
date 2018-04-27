@@ -82,6 +82,7 @@ void apply_context::exec()
 
       ncontext.processing_deadline = processing_deadline;
       ncontext.published_time      = published_time;
+      ncontext.max_cpu = max_cpu - total_cpu_usage;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
@@ -95,6 +96,7 @@ void apply_context::exec()
       apply_context ncontext( mutable_controller, _inline_actions[i], trx, recurse_depth + 1 );
       ncontext.processing_deadline = processing_deadline;
       ncontext.published_time      = published_time;
+      ncontext.max_cpu = max_cpu - total_cpu_usage;
       ncontext.id = id;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
@@ -213,13 +215,8 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
-
-   //QUESTION: Do we need to validate other things about the transaction at this point such as:
-   //           * uniqueness?
-   //           * that there is at least one action and at least one authorization in the transaction?
-   //           * that the context free actions have no authorizations?
-   //           * that the max_kcpu_usage and max_net_usage fields do not cause overflow?
-
+   trx.validate();
+   FC_ASSERT( trx.context_free_actions.size() == 0, "context free actions are not currently allowed in generated transactions" );
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
 

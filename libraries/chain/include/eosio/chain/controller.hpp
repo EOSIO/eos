@@ -110,14 +110,6 @@ namespace eosio { namespace chain {
 
          chainbase::database& db()const;
 
-         uint32_t   head_block_num()const;
-
-         time_point head_block_time()const;
-         time_point pending_block_time()const;
-
-         block_state_ptr head_block_state()const;
-         block_state_ptr pending_block_state()const;
-
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
          const dynamic_global_property_object& get_dynamic_global_properties()const;
@@ -129,9 +121,15 @@ namespace eosio { namespace chain {
 
          fc::microseconds     limit_delay( fc::microseconds delay )const;
 
+         uint32_t             head_block_num()const;
+         time_point           head_block_time()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
          const block_header&  head_block_header()const;
+         block_state_ptr      head_block_state()const;
+
+         time_point      pending_block_time()const;
+         block_state_ptr pending_block_state()const;
 
          const producer_schedule_type&    active_producers()const;
          const producer_schedule_type&    pending_producers()const;

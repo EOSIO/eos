@@ -64,16 +64,6 @@ struct controller_impl {
     */
    map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
 
-   block_id_type head_block_id()const {
-      return head->id;
-   }
-   time_point head_block_time()const {
-      return head->header.timestamp;
-   }
-   const block_header& head_block_header()const {
-      return head->header;
-   }
-
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
       FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
@@ -308,18 +298,9 @@ struct controller_impl {
                                                                              conf.genesis.initial_timestamp );
    }
 
-   void set_pending_tapos() {
-      const auto& tapos_block_summary = db.get<block_summary_object>((uint16_t)pending->_pending_block_state->block_num);
-      db.modify( tapos_block_summary, [&]( auto& bs ) {
-        bs.block_id = pending->_pending_block_state->id;
-      });
-   }
+
 
    void commit_block( bool add_to_fork_db ) {
-      set_pending_tapos();
-      resource_limits.process_account_limit_updates();
-      resource_limits.process_block_usage( pending->_pending_block_state->block_num );
-
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
          auto new_bsp = fork_db.add( pending->_pending_block_state );
@@ -407,7 +388,10 @@ struct controller_impl {
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-         trx_context.trace->receipt = push_receipt( gto.trx_id, transaction_receipt::executed, trx_context.trace->kcpu_usage(), 0 );
+         trx_context.trace->receipt = push_receipt( gto.trx_id,
+                                                    transaction_receipt::executed,
+                                                    trx_context.trace->kcpu_usage(),
+                                                    0 );
 
          db.remove( gto );
 
@@ -513,7 +497,7 @@ struct controller_impl {
 
          trx_context.deadline  = deadline;
          trx_context.published = self.pending_block_time();
-         trx_context.net_usage = self.validate_net_usage( trx ); // / 8; // <-- BUG? Needed to be removed to fix auth_tests/no_double_billing
+         trx_context.net_usage = self.validate_net_usage( trx ); // Returns multiple of 8
          trx_context.is_input  = !implicit;
          trx_context.exec();
 
@@ -521,9 +505,9 @@ struct controller_impl {
 
          if( !implicit ) {
             if( trx_context.delay == fc::seconds(0) ) {
-               trace->receipt = push_receipt( trx->packed_trx, transaction_receipt::executed, trace->kcpu_usage(), trx_context.net_usage );
+               trace->receipt = push_receipt( trx->packed_trx, transaction_receipt::executed, trace->kcpu_usage(), trx_context.net_usage/8 );
             } else {
-               trace->receipt = push_receipt( trx->packed_trx, transaction_receipt::delayed, trace->kcpu_usage(), trx_context.net_usage );
+               trace->receipt = push_receipt( trx->packed_trx, transaction_receipt::delayed, trace->kcpu_usage(), trx_context.net_usage/8 );
             }
          }
 
@@ -582,6 +566,9 @@ struct controller_impl {
       } catch ( ... ) {
          ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
       }
+
+      clear_expired_input_transactions();
+      update_producers_authority();
    } // start_block
 
 
@@ -661,7 +648,7 @@ struct controller_impl {
             fork_db.mark_in_current_chain( *itr , false );
             pop_block();
          }
-         FC_ASSERT( head_block_id() == branches.second.back()->header.previous,
+         FC_ASSERT( self.head_block_id() == branches.second.back()->header.previous,
                     "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
@@ -685,7 +672,7 @@ struct controller_impl {
                   fork_db.mark_in_current_chain( *itr , false );
                   pop_block();
                }
-               FC_ASSERT( head_block_id() == branches.second.back()->header.previous,
+               FC_ASSERT( self.head_block_id() == branches.second.back()->header.previous,
                           "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
 
                // re-apply good blocks
@@ -752,45 +739,46 @@ struct controller_impl {
             );
       */
 
+      // Update resource limits:
+      resource_limits.process_account_limit_updates();
+      const auto& chain_config = self.get_global_properties().configuration;
+      resource_limits.set_block_parameters(
+         {EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct), chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}},
+         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}}
+      );
+      resource_limits.process_block_usage(pending->_pending_block_state->block_num);
+
       set_action_merkle();
       set_trx_merkle();
 
       auto p = pending->_pending_block_state;
       p->id = p->header.id();
 
-      create_block_summary();
-
-      const auto& chain_config = self.get_global_properties().configuration;
-      resource_limits.set_block_parameters(
-         {EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct), chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}},
-         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}}
-      );
+      create_block_summary(p->id);
 
    } FC_CAPTURE_AND_RETHROW() }
 
+   void update_producers_authority() {
+      const auto& producers = pending->_pending_block_state->active_schedule.producers;
+      //TODO: Complete implementation
+   }
 
-   void create_block_summary() {
-      auto p = pending->_pending_block_state;
-      auto sid = p->block_num & 0xffff;
+   void create_block_summary(const block_id_type& id) {
+      auto block_num = block_header::num_from_id(id);
+      auto sid = block_num & 0xffff;
       db.modify( db.get<block_summary_object,by_id>(sid), [&](block_summary_object& bso ) {
-          bso.block_id = p->id;
+          bso.block_id = id;
       });
    }
 
-   void clear_expired_transactions() {
+
+   void clear_expired_input_transactions() {
       //Look for expired transactions in the deduplication list, and remove them.
       auto& transaction_idx = db.get_mutable_index<transaction_multi_index>();
       const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
-      while( (!dedupe_index.empty()) && (head_block_time() > fc::time_point(dedupe_index.begin()->expiration) ) ) {
+      auto now = self.pending_block_time();
+      while( (!dedupe_index.empty()) && ( now > fc::time_point(dedupe_index.begin()->expiration) ) ) {
          transaction_idx.remove(*dedupe_index.begin());
-      }
-
-      // Look for expired transactions in the pending generated list, and remove them.
-      // TODO: expire these by sending error to handler
-      auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
-      const auto& generated_index = generated_transaction_idx.indices().get<by_expiration>();
-      while( (!generated_index.empty()) && (head_block_time() > generated_index.begin()->expiration) ) {
-      // TODO:   destroy_generated_transaction(*generated_index.begin());
       }
    }
 
@@ -825,12 +813,12 @@ struct controller_impl {
       on_block_act.account = config::system_account_name;
       on_block_act.name = N(onblock);
       on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
-      on_block_act.data = fc::raw::pack(head_block_header());
+      on_block_act.data = fc::raw::pack(self.head_block_header());
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(on_block_act));
-      trx.set_reference_block(head_block_id());
-      trx.expiration = head_block_time() + fc::seconds(1);
+      trx.set_reference_block(self.head_block_id());
+      trx.expiration = self.head_block_time() + fc::seconds(1);
       return trx;
    }
 
@@ -893,15 +881,6 @@ void controller::commit_block() {
    my->commit_block(true);
 }
 
-block_state_ptr controller::head_block_state()const {
-   return my->head;
-}
-
-block_state_ptr controller::pending_block_state()const {
-   if( my->pending ) return my->pending->_pending_block_state;
-   return block_state_ptr();
-}
-
 void controller::abort_block() {
    my->abort_block();
 }
@@ -953,29 +932,44 @@ void controller::push_scheduled_transaction( const transaction_id_type& trxid, f
 uint32_t controller::head_block_num()const {
    return my->head->block_num;
 }
+time_point controller::head_block_time()const {
+   return my->head->header.timestamp;
+}
 block_id_type controller::head_block_id()const {
    return my->head->id;
 }
 account_name  controller::head_block_producer()const {
    return my->head->header.producer;
 }
+const block_header& controller::head_block_header()const {
+   return my->head->header;
+}
+block_state_ptr controller::head_block_state()const {
+   return my->head;
+}
+
+block_state_ptr controller::pending_block_state()const {
+   if( my->pending ) return my->pending->_pending_block_state;
+   return block_state_ptr();
+}
+time_point controller::pending_block_time()const {
+   FC_ASSERT( my->pending, "no pending block" );
+   return my->pending->_pending_block_state->header.timestamp;
+}
+
 uint32_t controller::last_irreversible_block_num() const {
    return my->head->bft_irreversible_blocknum;
 }
 
 block_id_type controller::last_irreversible_block_id() const {
-   //QUESTION/BUG: What if lib has not advanced for over 2^16 blocks?
-   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)my->head->bft_irreversible_blocknum);
-   return tapos_block_summary.block_id;
-}
+   auto lib_num = my->head->bft_irreversible_blocknum;
+   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)lib_num);
 
-time_point controller::head_block_time()const {
-   return my->head_block_time();
-}
+   if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
+      return tapos_block_summary.block_id;
 
-time_point controller::pending_block_time()const {
-   FC_ASSERT( my->pending, "no pending block" );
-   return my->pending->_pending_block_state->header.timestamp;
+   return fetch_block_by_number(lib_num)->id();
+
 }
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
@@ -1161,10 +1155,15 @@ uint64_t controller::validate_net_usage( const transaction_metadata_ptr& trx )co
 
    actual_net_usage = ((actual_net_usage + 7)/8) * 8; // Round up to nearest multiple of 8
 
-   uint32_t net_usage_limit = trx->trx.max_net_usage_words.value * 8UL; // overflow checked in validate_transaction_without_state
-   EOS_ASSERT( net_usage_limit == 0 || actual_net_usage <= net_usage_limit, tx_resource_exhausted,
-               "declared net usage limit of transaction is too low: ${actual_net_usage} > ${declared_limit}",
-               ("actual_net_usage", actual_net_usage)("declared_limit",net_usage_limit) );
+   uint32_t net_usage_limit = cfg.max_transaction_net_usage;
+   // TODO: reduce net_usage_limit to the minimum of the amount that the paying accounts can afford to pay
+   uint32_t trx_specified_net_usage_limit = trx->trx.max_net_usage_words.value * 8UL; // overflow checked in transaction_header::validate()
+   if( trx_specified_net_usage_limit > 0 )
+      net_usage_limit = std::min( net_usage_limit, trx_specified_net_usage_limit );
+
+   EOS_ASSERT( actual_net_usage <= net_usage_limit, tx_resource_exhausted,
+               "net usage of transaction is too high: ${actual_net_usage} > ${net_usage_limit}",
+               ("actual_net_usage", actual_net_usage)("net_usage_limit",net_usage_limit) );
 
    return actual_net_usage;
 }
