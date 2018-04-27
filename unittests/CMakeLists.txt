@@ -15,7 +15,6 @@ set( CMAKE_CXX_STANDARD 14 )
 include_directories("${CMAKE_BINARY_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/libraries/testing/include")
-include_directories("${CMAKE_SOURCE_DIR}/plugins/chain_plugin/include")
 include_directories("${CMAKE_SOURCE_DIR}/libraries/appbase/include")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/config.hpp ESCAPE_QUOTES)
