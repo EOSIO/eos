@@ -864,8 +864,8 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-host", old_host_port, localized("the host where keosd is running") )->group("hidden");
    app.add_option( "--wallet-port", old_host_port, localized("the port where keosd is running") )->group("hidden");
 
-   app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
-   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+   app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true )->envname("NODEOS_URL");
+   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true )->envname("KEOSD_URL");
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
