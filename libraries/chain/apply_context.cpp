@@ -14,6 +14,23 @@
 using boost::container::flat_set;
 
 namespace eosio { namespace chain {
+
+static inline void print_debug(account_name receiver, const action_trace& ar) {
+   if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
+      if (!ar.console.empty()) {
+         auto prefix = fc::format_string(
+                                         "\n[(${a},${n})->${r}]",
+                                         fc::mutable_variant_object()
+                                         ("a", ar.act.account)
+                                         ("n", ar.act.name)
+                                         ("r", receiver));
+         dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+              + ar.console
+              + prefix + ": CONSOLE OUTPUT END   =====================" );
+      }
+   }
+}
+
 action_trace apply_context::exec_one()
 {
    const auto& gpo = control.get_global_properties();
@@ -52,6 +69,8 @@ action_trace apply_context::exec_one()
    t.cpu_usage = cpu_usage;
    t.total_inline_cpu_usage = cpu_usage;
    t.console = _pending_console_output.str();
+
+   print_debug(receiver, t);
 
    executed.emplace_back( move(r) );
    total_cpu_usage += cpu_usage;
