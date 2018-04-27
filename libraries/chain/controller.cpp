@@ -284,8 +284,8 @@ struct controller_impl {
       authority system_auth(conf.genesis.initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true );
 
-      auto empty_authority = authority(0, {}, {});
-      auto active_producers_authority = authority(0, {}, {});
+      auto empty_authority = authority(1, {}, {});
+      auto active_producers_authority = authority(1, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
       create_native_account( config::nobody_account_name, empty_authority, empty_authority );
