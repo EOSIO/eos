@@ -796,9 +796,7 @@ struct controller_impl {
 
    fc::microseconds limit_delay( fc::microseconds delay )const {
       auto max_delay = fc::seconds( self.get_global_properties().configuration.max_transaction_delay );
-      //return std::min(delay, max_delay); // for some reason this currently breaks block verification
-      //QUESTION: Do we actually want the max_delay limiting the (potentially larger) delays on existing permission authorities?
-      return delay;
+      return std::min(delay, max_delay);
    }
 
    /*
