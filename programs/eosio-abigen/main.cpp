@@ -89,7 +89,6 @@ int main(int argc, const char **argv) { abi_def output; try {
       result = Tool.run(create_factory(abi_verbose, abi_opt_sfs, abi_context, output, contract, actions).get());
       if(!result) {
          abi_serializer(output).validate();
-
          fc::variant vabi;
          to_variant(output, vabi);
 

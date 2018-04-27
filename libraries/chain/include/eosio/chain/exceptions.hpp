@@ -31,9 +31,10 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,          eosio::chain::database_query_exception, 3010004, "Contract Query Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eosio::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
-   FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
+   FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent execution without conflicts" )
    FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              eosio::chain::block_validate_exception, 3020003, "shard locks in block are incorrect or mal-formed" )
    FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          eosio::chain::block_validate_exception, 3020004, "block exhausted allowed resources" )
+   FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,           eosio::chain::block_validate_exception, 3020005, "block is too old to push" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   eosio::chain::transaction_exception, 3030001, "missing required authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   eosio::chain::transaction_exception, 3030002, "signatures do not satisfy declared authorizations" )
@@ -99,6 +100,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           eosio::chain::wallet_exception, 3140003, "Locked wallet" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  eosio::chain::wallet_exception, 3140004, "Missing public key" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, eosio::chain::wallet_exception, 3140005, "Invalid wallet password" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_not_available_exception,    eosio::chain::wallet_exception, 3140006, "No available wallet" )
 
    FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent,  eosio::chain::rate_limiting_invariant_exception, 3150001, "internal state is no longer consistent" )
    FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_overcommitment,      eosio::chain::rate_limiting_invariant_exception, 3150002, "chain resource limits are overcommitted" )

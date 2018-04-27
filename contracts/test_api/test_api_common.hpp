@@ -41,6 +41,8 @@ struct dummy_action {
 
 struct u128_action {
   unsigned __int128  values[3]; //16*3
+
+  EOSLIB_SERIALIZE( u128_action, (values) )
 };
 
 struct cf_action {

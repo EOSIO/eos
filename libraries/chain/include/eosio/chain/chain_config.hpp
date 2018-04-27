@@ -42,6 +42,7 @@ struct chain_config {
    uint16_t   max_inline_depth;
    uint32_t   max_inline_action_size;
    uint32_t   max_generated_transaction_count;
+   uint32_t   max_transaction_delay;
 
    static chain_config get_median_values( vector<chain_config> votes );
 
@@ -64,7 +65,8 @@ struct chain_config {
                  << "Max Authority Depth: " << c.max_authority_depth << ", "
                  << "Max Inline Depth: " << c.max_inline_depth << ", "
                  << "Max Inline Action Size: " << c.max_inline_action_size << ", "
-                 << "Max Generated Transaction Count: " << c.max_generated_transaction_count << "\n";
+                 << "Max Generated Transaction Count: " << c.max_generated_transaction_count << "\n"
+                 << "Max Transaction Delay: " << c.max_transaction_delay << "\n";
    }
 };
 
@@ -85,4 +87,5 @@ FC_REFLECT(eosio::chain::chain_config,
            (max_block_net_usage)(target_block_net_usage_pct)
            (max_transaction_lifetime)(max_transaction_exec_time)(max_authority_depth)
            (max_inline_depth)(max_inline_action_size)(max_generated_transaction_count)
+           (max_transaction_delay)
 )

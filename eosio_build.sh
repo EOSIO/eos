@@ -38,14 +38,29 @@
 	ARCH=$( uname )
 	DISK_MIN=20
 	TIME_BEGIN=$( date -u +%s )
+	DOXYGEN=false #set to true to build docs
 
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
+	if [ ! -d .git ]; then
+		printf "\n\tThis build script only works with sources cloned from git\n"
+		printf "\tPlease clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\n"
+		printf "\tSee the wiki for instructions: https://github.com/EOSIO/eos/wiki\n"
+		exit 1
+	fi
+
+	STALE_SUBMODS=$(( `git submodule status | grep -c "^[+\-]"` ))
+	if [ $STALE_SUBMODS -gt 0 ]; then
+		printf "\ngit submodules are not up to date\n"
+		printf "\tPlease run the command 'git submodule update --init --recursive'\n"
+		exit 1
+	fi
 
 	printf "\n\tBeginning build version: ${VERSION}\n"
 	printf "\t$( date -u )\n"
+	printf "\tUser: $( whoami )\n"
 	printf "\tgit head id: $( cat .git/refs/heads/master )\n"
 	printf "\tCurrent branch: $( git branch | grep \* )\n"
 	printf "\n\tARCHITECTURE: ${ARCH}\n"
@@ -85,6 +100,13 @@
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
+			"elementary OS")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
@@ -110,7 +132,7 @@
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
 				exit 1
 		esac
-		
+
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
@@ -120,6 +142,7 @@
 		FILE=${WORK_DIR}/scripts/eosio_build_darwin.sh
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
+		export BOOST_ROOT=/usr/local
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		export WASM_ROOT=/usr/local/wasm
@@ -132,10 +155,17 @@
 	COMPILE_EOS=1
 	COMPILE_CONTRACTS=1
 
-# 	export EOS_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel] to enable
+# 	export EOS_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel|CodeCoverage] to enable
 	CMAKE_BUILD_TYPE=Release
+	CODE_COVERAGE_OPTS=
+	export ENABLE_CODE_COVERAGE=false
 	if [ ! -z $EOS_BUILD_TYPE ]; then
-		CMAKE_BUILD_TYPE=$EOS_BUILD_TYPE
+            if [[ $EOS_BUILD_TYPE == "CodeCoverage" ]]; then
+                ENABLE_CODE_COVERAGE=true
+                EOS_BUILD_TYPE=Debug
+            fi
+
+	    CMAKE_BUILD_TYPE=$EOS_BUILD_TYPE
 	fi
 
 	cd ${WORK_DIR}
@@ -149,6 +179,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
+	-DENABLE_COVERAGE_TESTING=${ENABLE_CODE_COVERAGE} -DBUILD_DOXYGEN=${DOXYGEN} \
 	..
 	
 	if [ $? -ne 0 ]; then
@@ -162,25 +193,8 @@
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\n\n"
 		exit -1
 	fi
-
-# 	printf "\n\tVerifying MongoDB is running.\n"
-# 	MONGODB_PID=$( pgrep -x mongod )
-# 	if [ -z $MONGODB_PID ]; then
-# 		printf "\tMongoDB is not currently running.\n"
-# 		printf "\tStarting MongoDB.\n"
-# 		mongod -f ${MONGOD_CONF} &
-# 		if [ $? -ne 0 ]; then
-# 			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
-# 			exit -1
-# 		fi
-# 		MONGODB_PID=$( pgrep -x mongod )
-# 		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
-# 	else
-# 		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
-# 	fi
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
-
 
 	printf "\n\n${bldred}\t _______  _______  _______ _________ _______\n"
 	printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
@@ -193,17 +207,15 @@
 
 	printf "\n\tEOS.IO has been successfully built. %d:%d:%d\n\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 	printf "\tTo verify your installation run the following commands:\n"
-	printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
-	if [ "$OS_NAME" == "CentOS Linux" ]; then
-		printf "\tsource /opt/rh/python33/enable\n"
-	fi
-	printf "\tcd ${HOME}/eos/build; make test\n\n"
+	
+	print_instructions
+
 	printf "\tFor more information:\n"
 	printf "\tEOS.IO website: https://eos.io\n"
 	printf "\tEOS.IO Telegram channel @ https://t.me/EOSProject\n"
 	printf "\tEOS.IO resources: https://eos.io/resources/\n"
 	printf "\tEOS.IO wiki: https://github.com/EOSIO/eos/wiki\n\n\n"
-		 
+				
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \

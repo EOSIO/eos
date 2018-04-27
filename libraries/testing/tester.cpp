@@ -11,6 +11,7 @@
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
+#include <eosio/chain/producer_object.hpp>
 
 #include "WAST/WAST.h"
 #include "WASM/WASM.h"
@@ -26,6 +27,10 @@ namespace eosio { namespace testing {
          res( it->key(), it->value() );
       }
       return res;
+   }
+
+   bool base_tester::is_same_chain( base_tester& other ) {
+     return control->head_block_id() == other.control->head_block_id();
    }
 
    void base_tester::init(bool push_genesis, controller::config::runtime_limits limits) {
@@ -56,16 +61,6 @@ namespace eosio { namespace testing {
    void base_tester::init(controller::config config) {
       cfg = config;
       open();
-   }
-
-
-   public_key_type  base_tester::get_public_key( name keyname, string role ) const {
-      return get_private_key( keyname, role ).get_public_key();
-   }
-
-
-   private_key_type base_tester::get_private_key( name keyname, string role ) const {
-      return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
    }
 
 
@@ -111,6 +106,17 @@ namespace eosio { namespace testing {
          control->start_block( next_time );
       }
 
+      auto producer = control->pending_block_state()->get_scheduled_producer(next_time);
+      private_key_type priv_key;
+      // Check if signing private key exist in the list
+      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
+      if( private_key_itr == block_signing_private_keys.end() ) {
+         // If it's not found, default to active k1 key
+         priv_key = get_private_key( producer.producer_name, "active" );
+      } else {
+         priv_key = private_key_itr->second;
+      }
+
       if( !skip_pending_trxs ) {
             //wlog( "pushing all input transactions in waiting queue" );
             while( control->push_next_unapplied_transaction() );
@@ -120,8 +126,7 @@ namespace eosio { namespace testing {
 
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {
-                    auto priv = get_private_key( control->pending_block_state()->header.producer, "active" );
-                    return priv.sign(d);
+                    return priv_key.sign(d);
                     });
 
       control->commit_block();
@@ -561,9 +566,9 @@ namespace eosio { namespace testing {
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.template find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
+         const auto *obj = db.template find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.to_symbol_code().value));
          if (obj) {
-            //balance is the second field after symbol, so skip the symbol
+            //balance is the first field in the serialization
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }

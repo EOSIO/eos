@@ -16,6 +16,146 @@ static const char f32_add_wast[] = R"=====(
  )
 )=====";
 */
+
+static const char aligned_ref_wast[] = R"=====(
+(module
+ (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 16)
+  )
+ )
+)
+)=====";
+
+static const char aligned_ptr_wast[] = R"=====(
+(module
+ (import "env" "diveq_i128" (func $diveq_i128 (param i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 16) "random stuff")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $diveq_i128
+   (i32.const 16)
+   (i32.const 16)
+  )
+ )
+)
+)=====";
+
+
+static const char aligned_const_ref_wast[] = R"=====(
+(module
+ (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
+ (import "env" "assert_sha256" (func $assert_sha256 (param i32 i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (local $3 i32)
+  (call $sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 16)
+  )
+  (call $assert_sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 16)
+  )
+ )
+)
+)=====";
+
+static const char misaligned_ptr_wast[] = R"=====(
+(module
+ (import "env" "diveq_i128" (func $diveq_i128 (param i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 16) "random stuff")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $diveq_i128
+   (i32.const 17)
+   (i32.const 16)
+  )
+ )
+)
+)=====";
+
+static const char misaligned_const_ptr_wast[] = R"=====(
+(module
+ (import "env" "diveq_i128" (func $diveq_i128 (param i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 16) "random stuff")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $diveq_i128
+   (i32.const 16)
+   (i32.const 17)
+  )
+ )
+)
+)=====";
+
+static const char misaligned_ref_wast[] = R"=====(
+(module
+ (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 5)
+  )
+ )
+)
+)=====";
+
+static const char misaligned_const_ref_wast[] = R"=====(
+(module
+ (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
+ (import "env" "assert_sha256" (func $assert_sha256 (param i32 i32 i32)))
+ (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (local $3 i32)
+  (call $sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 16)
+  )
+  (set_local $3
+   (call $memcpy
+    (i32.const 17)
+    (i32.const 16)
+    (i32.const 64) 
+   )
+  )
+  (call $assert_sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 17)
+  )
+ )
+)
+)=====";
+
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
@@ -27,21 +167,25 @@ static const char entry_wast[] = R"=====(
  (export "entry" (func $entry))
  (export "apply" (func $apply))
  (func $entry
-  (i32.store offset=4
-   (i32.const 0)
-   (call $now)
+  (block
+   (i32.store offset=4
+    (i32.const 0)
+    (call $now)
+   )
   )
  )
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
-  (call $require_auth (i64.const 6121376101093867520))
-  (call $eosio_assert
-   (i32.eq
-    (i32.load offset=4
-     (i32.const 0)
+  (block
+   (call $require_auth (i64.const 6121376101093867520))
+   (call $eosio_assert
+    (i32.eq
+     (i32.load offset=4
+      (i32.const 0)
+     )
+     (call $now)
     )
-    (call $now)
+    (i32.const 0)
    )
-   (i32.const 0)
   )
  )
  (start $entry)

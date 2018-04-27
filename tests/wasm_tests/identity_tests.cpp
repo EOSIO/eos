@@ -85,7 +85,7 @@ public:
       get_owner_act.data = abi_ser_test.variant_to_binary("getowner", mutable_variant_object()
                                                           ("identity", identity)
       );
-      BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_owner_act), 0));
+      BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_owner_act), N(alice)));
       return get_result_uint64();
    }
 
@@ -97,7 +97,7 @@ public:
       get_identity_act.data = abi_ser_test.variant_to_binary("getidentity", mutable_variant_object()
                                                           ("account", account)
       );
-      BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_identity_act), 0));
+      BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_identity_act), N(alice)));
       return get_result_uint64();
    }
 
@@ -144,7 +144,9 @@ public:
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N( certs )));
-      FC_ASSERT(t_id != 0, "certrow not found");
+      if ( !t_id ) {
+         return fc::variant(nullptr);
+      }
 
       const auto& idx = db.get_index<index256_index, by_secondary>();
       auto key = key256::make_from_word_sequence<uint64_t>(string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str()));
@@ -401,8 +403,6 @@ BOOST_FIXTURE_TEST_CASE( trust_untrust, identity_tester ) try {
 
 } FC_LOG_AND_RETHROW() //trust_untrust
 
-// TODO: Anton please re-enable when finished with new db api changes
-#if 0
 BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
 
@@ -677,6 +677,5 @@ BOOST_FIXTURE_TEST_CASE( ownership_contradiction, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(0, get_identity_for_account("alice"));
 
 } FC_LOG_AND_RETHROW() //ownership_contradiction
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
