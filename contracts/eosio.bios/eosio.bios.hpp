@@ -1,3 +1,4 @@
+#pragma once
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/privileged.hpp>
 

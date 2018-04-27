@@ -1,3 +1,4 @@
+#pragma once
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/multi_index.hpp>
@@ -58,7 +59,7 @@ namespace eosio {
             bool     frozen    = false;
             bool     whitelist = true;
 
-            uint64_t primary_key()const { return balance.symbol; }
+            uint64_t primary_key()const { return balance.symbol.name(); }
 
             EOSLIB_SERIALIZE( account, (balance)(frozen)(whitelist) )
          };
@@ -211,7 +212,7 @@ namespace eosio {
           void sub_balance( account_name owner, asset value, const currency_stats& st ) {
              accounts from_acnts( _contract, owner );
 
-             const auto& from = from_acnts.get( value.symbol );
+             const auto& from = from_acnts.get( value.symbol.name() );
              eosio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
 
              if( has_auth( owner ) ) {
@@ -232,7 +233,7 @@ namespace eosio {
           void add_balance( account_name owner, asset value, const currency_stats& st, account_name ram_payer )
           {
              accounts to_acnts( _contract, owner );
-             auto to = to_acnts.find( value.symbol );
+             auto to = to_acnts.find( value.symbol.name() );
              if( to == to_acnts.end() ) {
                 eosio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
                 to_acnts.emplace( ram_payer, [&]( auto& a ){

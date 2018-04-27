@@ -92,14 +92,14 @@ struct clause_pair {
 struct abi_def {
    abi_def() = default;
    abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses)
-   :types(types), structs(structs), actions(actions), tables(tables), clauses(clauses)
+   :types(types), structs(structs), actions(actions), tables(tables), ricardian_clauses(clauses)
    {}
 
    vector<type_def>     types;
    vector<struct_def>   structs;
    vector<action_def>   actions;
    vector<table_def>    tables;
-   vector<clause_pair>  clauses;
+   vector<clause_pair>  ricardian_clauses;
 };
 
 struct newaccount {
@@ -295,7 +295,7 @@ FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields
 FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
 FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::abi_def                          , (types)(structs)(actions)(tables)(clauses) )
+FC_REFLECT( eosio::chain::abi_def                          , (types)(structs)(actions)(tables)(ricardian_clauses) )
 
 FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi

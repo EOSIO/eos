@@ -48,9 +48,9 @@ namespace eosio { namespace chain {
 
       FC_ASSERT( trace->cpu_usage <= max_cpu, "transaction consumed too many CPU cycles" );
 
-      auto& rl       = control.get_mutable_resource_limits_manager();
+      auto& rl = control.get_mutable_resource_limits_manager();
 
-      vector<account_name> bta( bill_to_accounts.begin(), bill_to_accounts.end() );
+      flat_set<account_name> bta( bill_to_accounts.begin(), bill_to_accounts.end() );
       rl.add_transaction_usage( bta, trace->cpu_usage, net_usage, block_timestamp_type(control.pending_block_time()).slot );
 
    }

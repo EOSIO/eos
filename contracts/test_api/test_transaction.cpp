@@ -149,6 +149,7 @@ void test_transaction::test_read_transaction() {
    auto size = transaction_size();
    char buf[size];
    uint32_t read = read_transaction( buf, size );
+   eosio_assert( size == read, "read_transaction failed");
    sha256(buf, read, &h);
    printhex( &h, sizeof(h) );
 }

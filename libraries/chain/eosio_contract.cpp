@@ -209,6 +209,11 @@ void apply_eosio_updateauth(apply_context& context) {
    else
       EOS_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
 
+   auto max_delay = context.control.get_global_properties().configuration.max_transaction_delay;
+   EOS_ASSERT( update.auth.delay_sec <= max_delay, action_validate_exception,
+               "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds",
+               ("max_delay", max_delay) );
+
    validate_authority_precondition(context, update.auth);
 
    auto permission = authorization.find_permission({update.account, update.permission});
@@ -538,9 +543,9 @@ void apply_eosio_canceldelay(apply_context& context) {
    FC_ASSERT (itr != generated_index.end() && itr->sender == account_name() && itr->trx_id == trx_id,
               "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
 
-   auto dtrx = fc::raw::unpack<transaction>(itr->packed_trx.data(), itr->packed_trx.size());
+   auto trx = fc::raw::unpack<transaction>(itr->packed_trx.data(), itr->packed_trx.size());
    bool found = false;
-   for( const auto& act : dtrx.actions ) {
+   for( const auto& act : trx.actions ) {
       for( const auto& auth : act.authorization ) {
          if( auth == cancel.canceling_auth ) {
             found = true;
