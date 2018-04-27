@@ -30,43 +30,45 @@ add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_api_m
 
 #Manually run chain_test for all supported runtimes
 #To run chain_test with all log from blockchain displayed, put --verbose after --, i.e. chain_test -- --verbose
-add_test(NAME unit_test_binaryen COMMAND chain_test --report_level=detailed --color_output -- --binaryen)
-add_test(NAME unit_test_wavm COMMAND chain_test --report_level=detailed --color_output -- --wavm)
+add_test(NAME unit_test_binaryen COMMAND unit_test --report_level=detailed --color_output -- --binaryen)
+add_test(NAME unit_test_wavm COMMAND unit_test --report_level=detailed --color_output -- --wavm)
 
 if(ENABLE_COVERAGE_TESTING)
 
-  set(Coverage_NAME ${PROJECT_NAME}_coverage)
-  set(Coverage_EXECUTABLE unit_test)
+  set(Coverage_NAME ${PROJECT_NAME}_ut_coverage)
 
   if(NOT LCOV_PATH)
     message(FATAL_ERROR "lcov not found! Aborting...")
+  endif() # NOT LCOV_PATH
+
+  if(NOT LLVMCOV_PATH)
+    message(FATAL_ERROR "llvm-cov not found! Aborting...")
   endif() # NOT LCOV_PATH
 
   if(NOT GENHTML_PATH)
     message(FATAL_ERROR "genhtml not found! Aborting...")
   endif() # NOT GENHTML_PATH
 
+  # no spaces allowed within tests list
+  set(ctest_tests 'unit_test_binaryen|unit_test_wavm')
+  set(ctest_exclude_tests '')
+
   # Setup target
   add_custom_target(${Coverage_NAME}
 
     # Cleanup lcov
     COMMAND ${LCOV_PATH} --directory . --zerocounters
-    # Create baseline to make sure untouched files show up in the report
-    COMMAND ${LCOV_PATH} -c -i -d . -o ${Coverage_NAME}.base
 
     # Run tests
-    COMMAND ${Coverage_EXECUTABLE}
+    COMMAND ./tools/ctestwrapper.sh -R ${ctest_tests} -E ${ctest_exclude_tests}
 
-    # Capturing lcov counters and generating report
-    COMMAND ${LCOV_PATH} --directory . --capture --output-file ${Coverage_NAME}.info
-    # add baseline counters
-    COMMAND ${LCOV_PATH} -a ${Coverage_NAME}.base -a ${Coverage_NAME}.info --output-file ${Coverage_NAME}.total
-    COMMAND ${LCOV_PATH} --remove ${Coverage_NAME}.total ${COVERAGE_EXCLUDES} --output-file ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned
-    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned
+    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
+
+    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info
     COMMAND ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.base ${Coverage_NAME}.info ${Coverage_NAME}.total ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned
 
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
+    COMMENT "Resetting code coverage counters to zero. Processing code coverage counters and generating report."
     )
 
   # Show info where to find the report
