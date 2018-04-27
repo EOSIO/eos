@@ -15,22 +15,10 @@ extern "C" {
        require_auth(code);
        if( code == N(asserter) ) {
           if( action == N(procassert) ) {
-             assertdef check;
-             read_action_data(&check, sizeof(assertdef));
-
-             unsigned char buffer[256];
-             size_t actsize = read_action_data(buffer, 256);
-             assertdef *def = reinterpret_cast<assertdef *>(buffer);
-
-             // make sure to null term the string
-             if (actsize < 255) {
-                buffer[actsize] = 0;
-             } else {
-                buffer[255] = 0;
-             }
+             assertdef def = eosio::unpack_action_data<assertdef>();
 
              // maybe assert?
-             eosio_assert((uint32_t)def->condition, def->message);
+             eosio_assert((uint32_t)def.condition, def.message.c_str());
           } else if( action == N(provereset) ) {
              eosio_assert(global_variable == 45, "Global Variable Initialized poorly");
              global_variable = 100;

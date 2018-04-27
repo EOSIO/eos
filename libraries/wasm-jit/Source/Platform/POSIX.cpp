@@ -278,7 +278,7 @@ namespace Platform
 
 	CallStack captureCallStack(Uptr numOmittedFramesFromTop)
 	{
-		#if defined __linux__ || defined __FreeBSD__
+		#if 0
 			// Unwind the callstack.
 			enum { maxCallStackSize = signalStackNumBytes / sizeof(void*) / 8 };
 			void* callstackAddresses[maxCallStackSize];

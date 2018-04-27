@@ -109,7 +109,9 @@ map<public_key_type,private_key_type> wallet_manager::list_keys() {
 
 flat_set<public_key_type> wallet_manager::get_public_keys() {
    check_timeout();
+   EOS_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
    flat_set<public_key_type> result;
+   bool is_all_wallet_locked = true;
    for (const auto& i : wallets) {
       if (!i.second->is_locked()) {
          const auto& keys = i.second->list_keys();
@@ -117,7 +119,9 @@ flat_set<public_key_type> wallet_manager::get_public_keys() {
             result.emplace(i.first);
          }
       }
+      is_all_wallet_locked &= i.second->is_locked();
    }
+   EOS_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
    return result;
 }
 

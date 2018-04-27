@@ -44,20 +44,22 @@ namespace fc
     try 
     {
       my->_sock->send_to(boost::asio::buffer(buffer, length), to);
+      return;
     } 
     catch(const boost::system::system_error& e)
     {
-      if(e.code() != boost::asio::error::would_block)
-        throw;
+      if(e.code() == boost::asio::error::would_block)
+      {
+          auto send_buffer_ptr = std::make_shared<std::vector<char>>(buffer, buffer+length);
+          my->_sock->async_send_to(boost::asio::buffer(send_buffer_ptr.get(), length), to,
+                                   [send_buffer_ptr](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
+          {
+            // Swallow errors.  Currently only used for GELF logging, so depend on local
+            // log to catch anything that doesn't make it across the network.
+          });
+       }
+       // All other exceptions ignored.
     }
-
-    auto send_buffer_ptr = std::make_shared<std::vector<char>>(buffer, buffer+length);
-    my->_sock->async_send_to(boost::asio::buffer(send_buffer_ptr.get(), length), to,
-                             [send_buffer_ptr](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
-    {
-      // Swallow errors.  Currently only used for GELF logging, so depend on local
-      // log to catch anything that doesn't make it across the network.
-    });
   }
 
   void udp_socket::send_to(const std::shared_ptr<const char>& buffer, size_t length,
@@ -66,20 +68,22 @@ namespace fc
     try
     {
       my->_sock->send_to(boost::asio::buffer(buffer.get(), length), to);
+      return;
     } 
     catch(const boost::system::system_error& e)
     {
-      if(e.code() != boost::asio::error::would_block)
-        throw;
+      if(e.code() == boost::asio::error::would_block)
+      {
+          auto preserved_buffer_ptr = buffer;
+          my->_sock->async_send_to(boost::asio::buffer(preserved_buffer_ptr.get(), length), to,
+                                   [preserved_buffer_ptr](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
+          {
+            // Swallow errors.  Currently only used for GELF logging, so depend on local
+            // log to catch anything that doesn't make it across the network.
+          });
+       }
+       // All other exceptions ignored.
     }
-
-    auto preserved_buffer_ptr = buffer;
-    my->_sock->async_send_to(boost::asio::buffer(preserved_buffer_ptr.get(), length), to,
-                             [preserved_buffer_ptr](const boost::system::error_code& /*ec*/, std::size_t /*bytes_transferred*/)
-    {
-      // Swallow errors.  Currently only used for GELF logging, so depend on local
-      // log to catch anything that doesn't make it across the network.
-    });
   }
 
   void udp_socket::open()

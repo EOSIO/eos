@@ -39,7 +39,7 @@ Subcommands:
   sign                        Sign a transaction
   push                        Push arbitrary transactions to the blockchain
   multisig                    Multisig contract commands
-  
+
 ```
 To get help with any particular subcommand, run it with no arguments as well:
 ```
@@ -1199,7 +1199,7 @@ int main( int argc, char** argv ) {
       {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
-      
+
       std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
       FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );

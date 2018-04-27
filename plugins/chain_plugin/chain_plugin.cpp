@@ -15,6 +15,7 @@
 #include <eosio/chain/eosio_contract.hpp>
 
 #include <eosio/utilities/key_conversion.hpp>
+#include <eosio/utilities/common.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
@@ -37,6 +38,7 @@ public:
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
    bool                             readonly = false;
+   uint64_t                         shared_memory_size;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
@@ -72,6 +74,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
           "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
+         ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Maximum size MB of database shared memory file")
+
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
@@ -123,6 +127,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       else
          my->block_log_dir = bld;
    }
+   if (options.count("shared-memory-size-mb")) {
+      my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
+   }
 
    if (options.at("replay-blockchain").as<bool>()) {
       ilog("Replay requested: wiping database");
@@ -160,6 +167,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->chain_config->block_log_dir = my->block_log_dir;
    my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
    my->chain_config->read_only = my->readonly;
+   my->chain_config->shared_memory_size = my->shared_memory_size;
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
@@ -237,15 +245,8 @@ namespace chain_apis {
 const string read_only::KEYi64 = "i64";
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
-   auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t)<<1) {
-    static const char* digits = "0123456789abcdef";
-    std::string r(hlen, '0');
-    for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
-      r[i] = digits[(n>>j) & 0x0f];
-    return r;
-  };
    return {
-      itoh(static_cast<uint32_t>(app().version())),
+      eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
@@ -287,19 +288,26 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
+
+   const abi_def abi = get_abi( db, p.code );
+   auto table_type = get_table_type( abi, "accounts" );
+
    vector<asset> results;
    walk_table<key_value_index, by_scope_primary>(p.code, p.account, N(accounts), [&](const key_value_object& obj){
-      share_type balance;
-      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-      fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
+      EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
 
-      if( !p.symbol || cursor.symbol_name().compare(*p.symbol) == 0 ) {
-         results.emplace_back(balance, symbol(obj.primary_key));
+      asset cursor;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, cursor);
+
+      EOS_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
+
+      if( !p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
+        results.emplace_back(cursor);
       }
 
       // return false if we are looking for one and found it, true otherwise
-      return !p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
+      return !(p.symbol && boost::iequals(cursor.symbol_name(), *p.symbol));
    });
 
    return results;
@@ -307,15 +315,23 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
    fc::mutable_variant_object results;
-   walk_table<key_value_index, by_scope_primary>(p.code, p.code, N(stat), [&](const key_value_object& obj){
-      share_type balance;
-      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-      fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
 
+   const abi_def abi = get_abi( db, p.code );
+   auto table_type = get_table_type( abi, "stat" );
+
+   uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
+
+   walk_table<key_value_index, by_scope_primary>(p.code, scope, N(stat), [&](const key_value_object& obj){
+      EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
+
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       read_only::get_currency_stats_result result;
-      result.supply = cursor;
-      results[cursor.symbol_name()] = result;
+
+      fc::raw::unpack(ds, result.supply);
+      fc::raw::unpack(ds, result.max_supply);
+      fc::raw::unpack(ds, result.issuer);
+
+      results[result.supply.symbol_name()] = result;
       return true;
    });
 
@@ -415,6 +431,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 
    abi_def abi;
    if( abi_serializer::to_abi(accnt.abi, abi) ) {
+
       result.abi = std::move(abi);
    }
 

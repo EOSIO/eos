@@ -8,6 +8,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/io/json.hpp>
+#include <fc/crypto/openssl.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
@@ -38,6 +39,7 @@ namespace eosio {
 
    namespace detail {
 
+      template<class T>
       struct asio_with_stub_log : public websocketpp::config::asio {
           typedef asio_with_stub_log type;
           typedef asio base;
@@ -51,14 +53,6 @@ namespace eosio {
           typedef base::con_msg_manager_type con_msg_manager_type;
           typedef base::endpoint_msg_manager_type endpoint_msg_manager_type;
 
-          /// Custom Logging policies
-          /*typedef websocketpp::log::syslog<concurrency_type,
-              websocketpp::log::elevel> elog_type;
-          typedef websocketpp::log::syslog<concurrency_type,
-              websocketpp::log::alevel> alog_type;
-          */
-          //typedef base::alog_type alog_type;
-          //typedef base::elog_type elog_type;
           typedef websocketpp::log::stub elog_type;
           typedef websocketpp::log::stub alog_type;
 
@@ -70,8 +64,7 @@ namespace eosio {
               typedef type::elog_type elog_type;
               typedef type::request_type request_type;
               typedef type::response_type response_type;
-              typedef websocketpp::transport::asio::basic_socket::endpoint
-                  socket_type;
+              typedef T socket_type;
           };
 
           typedef websocketpp::transport::asio::endpoint<transport_config>
@@ -81,12 +74,12 @@ namespace eosio {
       };
    }
 
-   using websocket_server_type = websocketpp::server<detail::asio_with_stub_log>;
+   using websocket_server_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
+   using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
+   using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
 
    class http_plugin_impl {
       public:
-         //shared_ptr<std::thread>  http_thread;
-         //asio::io_service         http_ios;
          map<string,url_handler>  url_handlers;
          optional<tcp::endpoint>  listen_endpoint;
          string                   access_control_allow_origin;
@@ -94,6 +87,114 @@ namespace eosio {
          bool                     access_control_allow_credentials = false;
 
          websocket_server_type    server;
+
+         optional<tcp::endpoint>  https_listen_endpoint;
+         string                   https_cert_chain;
+         string                   https_key;
+
+         websocket_server_tls_type https_server;
+
+         ssl_context_ptr on_tls_init(websocketpp::connection_hdl hdl) {
+            ssl_context_ptr ctx = websocketpp::lib::make_shared<websocketpp::lib::asio::ssl::context>(asio::ssl::context::sslv23_server);
+
+            try {
+               ctx->set_options(asio::ssl::context::default_workarounds |
+                                asio::ssl::context::no_sslv2 |
+                                asio::ssl::context::no_sslv3 |
+                                asio::ssl::context::no_tlsv1 |
+                                asio::ssl::context::no_tlsv1_1 |
+                                asio::ssl::context::single_dh_use);
+
+               ctx->use_certificate_chain_file(https_cert_chain);
+               ctx->use_private_key_file(https_key, asio::ssl::context::pem);
+
+               //going for the A+! Do a few more things on the native context to get ECDH in use
+
+               fc::ec_key ecdh = EC_KEY_new_by_curve_name(NID_secp384r1);
+               if (!ecdh)
+                  FC_THROW("Failed to set NID_secp384r1");
+               if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
+                  FC_THROW("Failed to set ECDH PFS");
+
+               if(SSL_CTX_set_cipher_list(ctx->native_handle(), \
+                  "EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:AES256:" \
+                  "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL") != 1)
+                  FC_THROW("Failed to set HTTPS cipher list");
+            } catch (const fc::exception& e) {
+               elog("https server initialization error: ${w}", ("w", e.to_detail_string()));
+            } catch(std::exception& e) {
+               elog("https server initialization error: ${w}", ("w", e.what()));
+            }
+
+            return ctx;
+         }
+
+         template<class T>
+         void handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+            try {
+               if (!access_control_allow_origin.empty()) {
+                  con->append_header("Access-Control-Allow-Origin", access_control_allow_origin);
+               }
+               if (!access_control_allow_headers.empty()) {
+                  con->append_header("Access-Control-Allow-Headers", access_control_allow_headers);
+               }
+               if (access_control_allow_credentials) {
+                  con->append_header("Access-Control-Allow-Credentials", "true");
+               }
+               con->append_header("Content-type", "application/json");
+               auto body = con->get_request_body();
+               auto resource = con->get_uri()->get_resource();
+               auto handler_itr = url_handlers.find(resource);
+               if(handler_itr != url_handlers.end()) {
+                  handler_itr->second(resource, body, [con](int code, string body) {
+                     con->set_body(body);
+                     con->set_status(websocketpp::http::status_code::value(code));
+                  });
+               } else {
+                  wlog("404 - not found: ${ep}", ("ep",resource));
+                  error_results results{websocketpp::http::status_code::not_found,
+                                          "Not Found", fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint"))};
+                  con->set_body(fc::json::to_string(results));
+                  con->set_status(websocketpp::http::status_code::not_found);
+               }
+            } catch( const fc::exception& e ) {
+               elog( "http: ${e}", ("e",e.to_detail_string()));
+               error_results results{websocketpp::http::status_code::internal_server_error,
+                                       "Internal Service Error", e};
+               con->set_body(fc::json::to_string(results));
+               con->set_status(websocketpp::http::status_code::internal_server_error);
+            } catch( const std::exception& e ) {
+               elog( "http: ${e}", ("e",e.what()));
+               error_results results{websocketpp::http::status_code::internal_server_error,
+                                       "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, e.what()))};
+               con->set_body(fc::json::to_string(results));
+               con->set_status(websocketpp::http::status_code::internal_server_error);
+            } catch( ... ) {
+               error_results results{websocketpp::http::status_code::internal_server_error,
+                                       "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, "Unknown Exception"))};
+               con->set_body(fc::json::to_string(results));
+               con->set_status(websocketpp::http::status_code::internal_server_error);
+            }
+         }
+
+         template<class T>
+         void create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<detail::asio_with_stub_log<T>>& ws) {
+            try {
+               ws.clear_access_channels(websocketpp::log::alevel::all);
+               ws.init_asio(&app().get_io_service());
+               ws.set_reuse_addr(true);
+
+               ws.set_http_handler([&](connection_hdl hdl) {
+                  handle_http_request<T>(ws.get_con_from_hdl(hdl));
+               });
+            } catch ( const fc::exception& e ){
+               elog( "http: ${e}", ("e",e.to_detail_string()));
+            } catch ( const std::exception& e ){
+               elog( "http: ${e}", ("e",e.what()));
+            } catch (...) {
+               elog("error thrown from http io service");
+            }
+         }
    };
 
    http_plugin::http_plugin():my(new http_plugin_impl()){}
@@ -102,14 +203,22 @@ namespace eosio {
    void http_plugin::set_program_options(options_description&, options_description& cfg) {
       cfg.add_options()
             ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:8888"),
-             "The local IP and port to listen for incoming http connections.")
+             "The local IP and port to listen for incoming http connections; set blank to disable.")
+
+            ("https-server-address", bpo::value<string>(),
+             "The local IP and port to listen for incoming https connections; leave blank to disable.")
+
+            ("https-certificate-chain-file", bpo::value<string>(),
+             "Filename with the certificate chain to present on https connections. PEM format. Required for https.")
+
+            ("https-private-key-file", bpo::value<string>(),
+             "Filename with https private key in PEM format. Required for https")
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_allow_origin = v;
                 ilog("configured http with Access-Control-Allow-Origin: ${o}", ("o", my->access_control_allow_origin));
              }),
              "Specify the Access-Control-Allow-Origin to be returned on each request.")
-
 
             ("access-control-allow-headers", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_allow_headers = v;
@@ -127,115 +236,89 @@ namespace eosio {
    }
 
    void http_plugin::plugin_initialize(const variables_map& options) {
-      if(options.count("http-server-address")) {
-        #if 0
-         auto lipstr = options.at("http-server-address").as< string >();
-         auto fcep = fc::ip::endpoint::from_string(lipstr);
-         my->listen_endpoint = tcp::endpoint(boost::asio::ip::address_v4::from_string((string)fcep.get_address()), fcep.port());
-        #endif
-         auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
-         if( options.count( "http-server-address" ) ) {
-           auto lipstr =  options.at("http-server-address").as< string >();
-           auto host = lipstr.substr( 0, lipstr.find(':') );
-           auto port = lipstr.substr( host.size()+1, lipstr.size() );
-           idump((host)(port));
-           tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-           my->listen_endpoint = *resolver->resolve( query);
-           ilog("configured http to listen on ${h}:${p}", ("h",host)("p",port));
+      tcp::resolver resolver(app().get_io_service());
+      if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
+         string lipstr =  options.at("http-server-address").as<string>();
+         string host = lipstr.substr(0, lipstr.find(':'));
+         string port = lipstr.substr(host.size()+1, lipstr.size());
+         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+         try {
+            my->listen_endpoint = *resolver.resolve(query);
+            ilog("configured http to listen on ${h}:${p}", ("h",host)("p",port));
+         } catch(const boost::system::system_error& ec) {
+            elog("failed to configure http to listen on ${h}:${p} (${m})", ("h",host)("p",port)("m", ec.what()));
+         }
+      }
+
+      if(options.count("https-server-address") && options.at("https-server-address").as<string>().length()) {
+         if(!options.count("https-certificate-chain-file") || options.at("https-certificate-chain-file").as<string>().empty()) {
+            elog("https-certificate-chain-file is required for HTTPS");
+            return;
+         }
+         if(!options.count("https-private-key-file") || options.at("https-private-key-file").as<string>().empty()) {
+            elog("https-private-key-file is required for HTTPS");
+            return;
          }
 
-         // uint32_t addr = my->listen_endpoint->address().to_v4().to_ulong();
-         // auto fcep = fc::ip::endpoint (addr,my->listen_endpoint->port());
+         string lipstr =  options.at("https-server-address").as<string>();
+         string host = lipstr.substr(0, lipstr.find(':'));
+         string port = lipstr.substr(host.size()+1, lipstr.size());
+         tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
+         try {
+            my->https_listen_endpoint = *resolver.resolve(query);
+            ilog("configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)", ("h",host)("p",port));
+            my->https_cert_chain = options.at("https-certificate-chain-file").as<string>();
+            my->https_key = options.at("https-private-key-file").as<string>();
+         } catch(const boost::system::system_error& ec) {
+            elog("failed to configure https to listen on ${h}:${p} (${m})", ("h",host)("p",port)("m", ec.what()));
+         }
       }
+
+      //watch out for the returns above when adding new code here
    }
 
    void http_plugin::plugin_startup() {
       if(my->listen_endpoint) {
+         try {
+            my->create_server_for_endpoint(*my->listen_endpoint, my->server);
 
-         //my->http_thread = std::make_shared<std::thread>([&](){
-         //ilog("start processing http thread");
-            try {
-               my->server.clear_access_channels(websocketpp::log::alevel::all);
-               my->server.init_asio(&app().get_io_service()); //&my->http_ios);
-               my->server.set_reuse_addr(true);
+            ilog("start listening for http requests");
+            my->server.listen(*my->listen_endpoint);
+            my->server.start_accept();
+         } catch ( const fc::exception& e ){
+            elog( "http: ${e}", ("e",e.to_detail_string()));
+         } catch ( const std::exception& e ){
+            elog( "http: ${e}", ("e",e.what()));
+         } catch (...) {
+            elog("error thrown from http io service");
+         }
+      }
 
-               my->server.set_http_handler([&](connection_hdl hdl) {
-                  auto con = my->server.get_con_from_hdl(hdl);
-                  try {
-                     //ilog("handle http request: ${url}", ("url",con->get_uri()->str()));
-                     //ilog("${body}", ("body", con->get_request_body()));
+      if(my->https_listen_endpoint) {
+         try {
+            my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
+            my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr{
+               return my->on_tls_init(hdl);
+            });
 
-                     if (!my->access_control_allow_origin.empty()) {
-                        con->append_header("Access-Control-Allow-Origin", my->access_control_allow_origin);
-                     }
-                     if (!my->access_control_allow_headers.empty()) {
-                        con->append_header("Access-Control-Allow-Headers", my->access_control_allow_headers);
-                     }
-                     if (my->access_control_allow_credentials) {
-                        con->append_header("Access-Control-Allow-Credentials", "true");
-                     }
-                     con->append_header("Content-type", "application/json");
-                     auto body = con->get_request_body();
-                     auto resource = con->get_uri()->get_resource();
-                     auto handler_itr = my->url_handlers.find(resource);
-                     if(handler_itr != my->url_handlers.end()) {
-                        handler_itr->second(resource, body, [con,this](int code, string body) {
-                           con->set_body(body);
-                           con->set_status(websocketpp::http::status_code::value(code));
-                        });
-                     } else {
-                        wlog("404 - not found: ${ep}", ("ep",resource));
-                        error_results results{websocketpp::http::status_code::not_found,
-                                              "Not Found", fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint"))};
-                        con->set_body(fc::json::to_string(results));
-                        con->set_status(websocketpp::http::status_code::not_found);
-                     }
-                  } catch( const fc::exception& e ) {
-                     elog( "http: ${e}", ("e",e.to_detail_string()));
-                     error_results results{websocketpp::http::status_code::internal_server_error,
-                                           "Internal Service Error", e};
-                     con->set_body(fc::json::to_string(results));
-                     con->set_status(websocketpp::http::status_code::internal_server_error);
-                  } catch( const std::exception& e ) {
-                     elog( "http: ${e}", ("e",e.what()));
-                     error_results results{websocketpp::http::status_code::internal_server_error,
-                                           "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, e.what()))};
-                     con->set_body(fc::json::to_string(results));
-                     con->set_status(websocketpp::http::status_code::internal_server_error);
-                  } catch( ... ) {
-                     error_results results{websocketpp::http::status_code::internal_server_error,
-                                           "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, "Unknown Exception"))};
-                     con->set_body(fc::json::to_string(results));
-                     con->set_status(websocketpp::http::status_code::internal_server_error);
-                  }
-               });
-
-               ilog("start listening for http requests");
-               my->server.listen(*my->listen_endpoint);
-               my->server.start_accept();
-
-           //    my->http_ios.run();
-           //    ilog("http io service exit");
-            } catch ( const fc::exception& e ){
-               elog( "http: ${e}", ("e",e.to_detail_string()));
-            } catch ( const std::exception& e ){
-               elog( "http: ${e}", ("e",e.what()));
-            } catch (...) {
-                elog("error thrown from http io service");
-            }
-         //});
-
+            ilog("start listening for https requests");
+            my->https_server.listen(*my->https_listen_endpoint);
+            my->https_server.start_accept();
+         } catch ( const fc::exception& e ){
+            elog( "https: ${e}", ("e",e.to_detail_string()));
+         } catch ( const std::exception& e ){
+            elog( "https: ${e}", ("e",e.what()));
+         } catch (...) {
+            elog("error thrown from https io service");
+         }
       }
    }
 
    void http_plugin::plugin_shutdown() {
-     // if(my->http_thread) {
-         if(my->server.is_listening())
-             my->server.stop_listening();
-     //    my->http_ios.stop();
-     //    my->http_thread->join();
-     //    my->http_thread.reset();
-     // }
+      if(my->server.is_listening())
+         my->server.stop_listening();
+      if(my->https_server.is_listening())
+         my->https_server.stop_listening();
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {

@@ -557,10 +557,10 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
    auto call_test = [](TESTER& test, auto ac) {
       signed_transaction trx;
-      
+
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
       action act(pl, ac);
-      
+
       trx.actions.push_back(act);
       test.set_transaction_headers(trx);
       auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), chain_id_type());
@@ -569,7 +569,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
       test.produce_block();
    };
-   
+
    BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), checktime_exceeded, is_checktime_exceeded);
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
@@ -733,7 +733,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 
 BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    // Fix this unit test compilation
-   BOOST_CHECK(false); 
+   BOOST_CHECK(false);
 #warning TODO: FIX THIS
 #if 0
    produce_blocks(2);
@@ -831,7 +831,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
    // set active producers
    {
       signed_transaction trx;
-      
+
       auto pl = vector<permission_level>{{config::system_account_name, config::active_name}};
       action act(pl, test_chain_action<N(setprods)>());
       vector<producer_key> prod_keys = {
@@ -862,9 +862,9 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
       data.insert( data.end(), keys.begin(), keys.end() );
       act.data = data;
       trx.actions.push_back(act);
-      
+
       set_transaction_headers(trx);
-      
+
       auto sigs = trx.sign(get_private_key(config::system_account_name, "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
       auto res = push_transaction(trx);
@@ -878,7 +878,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
    for ( unsigned int i=0; i < gpo.proposed_schedule.producers.size(); i++ ) {
       prods[i] = gpo.proposed_schedule.producers[i].producer_name;
    }
-   
+
    CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods));
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -952,6 +952,21 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
                       N(testapi) );
    BOOST_CHECK_EQUAL( res, success() );
 
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_create_fail", {},
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_modify_fail", {},
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+
+   uint32_t lookup_type = 0; // 0 for find, 1 for lower bound, and 2 for upper bound;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   lookup_type = 1;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   lookup_type = 2;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
@@ -964,7 +979,6 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    produce_blocks(1);
    set_code( N(testapi), test_api_multi_index_wast );
    produce_blocks(1);
-
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
@@ -976,6 +990,7 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_long_double_general", {});
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_end", {},
                                            assert_exception, "cannot increment end iterator");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_end", {},
@@ -1177,6 +1192,37 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcpy_overlap_end", {} );
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcmp", {} );
+   produce_blocks(1000);
+
+#define test_memory_oob(func) \
+   try { \
+      CALL_TEST_FUNCTION( *this, "test_memory", func, {} ); \
+      BOOST_FAIL("assert failed in test out of bound memory in " func); \
+   } catch (...) { \
+      BOOST_REQUIRE_EQUAL(true, true); \
+   }
+
+#define test_memory_oob2(func) \
+   try { \
+      CALL_TEST_FUNCTION( *this, "test_memory", func, {} );\
+   } catch (const fc::exception& e) {\
+     if (!expect_assert_message(e, "access violation")) throw; \
+   }
+
+   test_memory_oob("test_outofbound_0");
+   test_memory_oob("test_outofbound_1");
+   test_memory_oob("test_outofbound_2");
+   test_memory_oob("test_outofbound_3");
+   test_memory_oob("test_outofbound_4");
+   test_memory_oob("test_outofbound_5");
+   test_memory_oob("test_outofbound_6");
+   test_memory_oob("test_outofbound_7");
+   test_memory_oob("test_outofbound_8");
+   test_memory_oob("test_outofbound_9");
+   test_memory_oob("test_outofbound_10");
+   test_memory_oob("test_outofbound_11");
+   test_memory_oob("test_outofbound_12");
+   test_memory_oob("test_outofbound_13");
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1281,9 +1327,55 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    // test printi128
    auto tx6_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printi128", {} );
    auto tx6_act_cnsl = tx6_trace->action_traces.front().console;
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(0, 39), U128Str(-1) );
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(39, 1), U128Str(0) );
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(40, 11), U128Str(87654323456) );
+   size_t start = 0;
+   size_t end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), U128Str(1) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), U128Str(0) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), "-" + U128Str(static_cast<unsigned __int128>(std::numeric_limits<__int128>::lowest())) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), "-" + U128Str(87654323456) );
+
+   // test printui128
+   auto tx7_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printui128", {} );
+   auto tx7_act_cnsl = tx7_trace->action_traces.front().console;
+   start = 0; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(std::numeric_limits<unsigned __int128>::max()) );
+   start = end + 1; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(0) );
+   start = end + 1; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(87654323456) );
+
+   // test printsf
+   auto tx8_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printsf", {} );
+   auto tx8_act_cnsl = tx8_trace->action_traces.front().console;
+   start = 0; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "5.000000e-01" );
+   start = end + 1; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "-3.750000e+00" );
+   start = end + 1; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "6.666667e-07" );
+
+   // test printdf
+   auto tx9_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printdf", {} );
+   auto tx9_act_cnsl = tx9_trace->action_traces.front().console;
+   start = 0; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "5.000000000000000e-01" );
+   start = end + 1; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "-3.750000000000000e+00" );
+   start = end + 1; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "6.666666666666666e-07" );
+
+   // test printqf
+   auto tx10_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printqf", {} );
+   auto tx10_act_cnsl = tx10_trace->action_traces.front().console;
+   start = 0; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "5.000000000000000000e-01" );
+   start = end + 1; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "-3.750000000000000000e+00" );
+   start = end + 1; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "6.666666666666666667e-07" );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }

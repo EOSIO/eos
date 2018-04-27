@@ -70,8 +70,8 @@ extern "C" {
     *  Copy up to @ref len bytes of current action data to the specified location
     *  @brief Copy current action data to the specified location
     *  @param msg - a pointer where up to @ref len bytes of the current action data will be copied
-    *  @param len - len of the current action data to be copied
-    *  @return the number of bytes copied to msg
+    *  @param len - len of the current action data to be copied, 0 to report required size
+    *  @return the number of bytes copied to msg, or number of bytes that can be copied if len==0 passed
     */
    uint32_t read_action_data( void* msg, uint32_t len );
 

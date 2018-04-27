@@ -124,5 +124,5 @@
       "key_types" : ["name"]
     } 
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }

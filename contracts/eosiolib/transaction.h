@@ -67,8 +67,8 @@ extern "C" {
     * access a copy of the currently executing transaction
     *
     * @param buffer - a buffer to write the current transaction to
-    * @param size - the size of the buffer
-    * @return the size of the transaction written to the buffer
+    * @param size - the size of the buffer, 0 to return required size
+    * @return the size of the transaction written to the buffer, or number of bytes that can be copied if size==0 passed
     */
    size_t read_transaction(char *buffer, size_t size);
 
@@ -107,8 +107,8 @@ extern "C" {
     * Retrieve the signed_transaction.context_free_data[index].
     * @param index - the index of the context_free_data entry to retrieve
     * @param buff - output buff of the context_free_data entry
-    * @param size - amount of context_free_data[index] to retrieve into buff
-    * @return signed_transaction.context_free_data[index].size() or -1 if index not valid
+    * @param size - amount of context_free_data[index] to retrieve into buff, 0 to report required size
+    * @return size copied, or context_free_data[index].size() if 0 passed for size, or -1 if index not valid
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
 

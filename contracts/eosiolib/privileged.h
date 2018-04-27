@@ -28,6 +28,11 @@ extern "C" {
 
    void     set_blockchain_parameters_packed(char* data, uint32_t datalen);
 
+   /**
+    * Retrieve the blolckchain parameters
+    * @param data - output buffer of the blockchain parameters, only retrieved if sufficent size to hold packed data.
+    * @param datalen - size of the data buffer, 0 to report required size.
+    */
    uint32_t get_blockchain_parameters_packed(char* data, uint32_t datalen);
 
    void activate_feature( int64_t f );
