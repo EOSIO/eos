@@ -1,4 +1,4 @@
-#add_subdirectory(net_plugin)
+add_subdirectory(net_plugin)
 #add_subdirectory(net_api_plugin)
 add_subdirectory(http_plugin)
 add_subdirectory(chain_plugin)
