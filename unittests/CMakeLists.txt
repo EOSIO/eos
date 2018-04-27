@@ -14,6 +14,7 @@ set( CMAKE_CXX_STANDARD 14 )
 
 include_directories("${CMAKE_BINARY_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/contracts")
+include_directories("${CMAKE_SOURCE_DIR}/unittests/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/libraries/testing/include")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/config.hpp ESCAPE_QUOTES)
