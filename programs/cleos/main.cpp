@@ -1081,10 +1081,32 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
-   // get transactions
+   // get actions 
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;
+
+   int32_t pos_seq = -1;
+   int32_t offset = -20;
+   auto getActions = get->add_subcommand("actions", localized("Retrieve all actions with specific account name referenced in authorization or receiver"), false);
+   getActions->add_option("account_name", account_name, localized("name of account to query on"))->required();
+   getActions->add_option("pos", pos_seq, localized("sequence number of action for this account, -1 for last"));
+   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset) for positive offset or [pos-offset,pos) for negative offset"));
+   getActions->add_flag("--json,-j", printjson, localized("print full json"));
+   getActions->set_callback([&] {
+      fc::mutable_variant_object arg;
+      arg( "account_name", account_name );
+      arg( "pos", pos_seq );
+      arg( "offset", offset);
+
+      edump((get_actions_func)(arg));
+      auto result = call(get_actions_func, arg);
+      //if( printjson ) {
+      std::cout << fc::json::to_pretty_string(result) << std::endl;
+   });
+
+
+   /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getTransactions->add_option("skip_seq", skip_seq_str, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
@@ -1137,6 +1159,7 @@ int main( int argc, char** argv ) {
       }
 
    });
+   */
 
    // set subcommand
    auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));

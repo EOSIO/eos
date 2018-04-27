@@ -30,6 +30,7 @@ class read_only {
          : history(history) {}
 
 
+      /*
       struct get_transaction_params {
          chain::transaction_id_type  transaction_id;
       };
@@ -38,24 +39,39 @@ class read_only {
          fc::variant                 transaction;
       };
       get_transaction_results get_transaction(const get_transaction_params& params) const;
+      */
 
 
-      struct get_transactions_params {
+      struct get_actions_params {
          chain::account_name account_name;
-         optional<uint32_t>  skip_seq;
-         optional<uint32_t>  num_seq;
+         optional<int32_t>   pos; /// a absolute sequence positon -1 is the end/last action
+         optional<int32_t>   offset; ///< the number of actions relative to pos, negative numbers return [pos-offset,pos), positive numbers return [pos,pos+offset)
       };
+
+      struct ordered_action_result {
+         uint64_t      global_action_seq = 0;
+         int32_t       account_action_seq = 0;
+         fc::variant   action_trace;
+      };
+
+      struct get_actions_result {
+         vector<ordered_action_result> actions;
+         optional<bool>                time_limit_exceeded_error;
+      };
+
+
+      get_actions_result get_actions( const get_actions_params& )const;
+
+
+      /*
       struct ordered_transaction_results {
          uint32_t                    seq_num;
          chain::transaction_id_type  transaction_id;
          fc::variant                 transaction;
       };
-      struct get_transactions_results {
-         vector<ordered_transaction_results> transactions;
-         optional<bool>                      time_limit_exceeded_error;
-      };
 
       get_transactions_results get_transactions(const get_transactions_params& params) const;
+      */
 
 
       struct get_key_accounts_params {
@@ -111,6 +127,10 @@ class history_plugin : public plugin<history_plugin> {
 
 } /// namespace eosio
 
+FC_REFLECT( eosio::history_apis::read_only::get_actions_params, (account_name)(pos)(offset) )
+FC_REFLECT( eosio::history_apis::read_only::get_actions_result, (actions)(time_limit_exceeded_error) )
+FC_REFLECT( eosio::history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(action_trace) )
+/*
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
 FC_REFLECT(eosio::history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
@@ -120,5 +140,6 @@ FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_params, (public_key)
 FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_results, (account_names) )
 FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
 FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
+*/
 
 
