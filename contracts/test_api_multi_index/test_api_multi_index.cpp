@@ -22,6 +22,7 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_multi_index, idx128_autoincrement_test_part2);
       WASM_TEST_HANDLER_EX(test_multi_index, idx256_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx_double_general);
+      WASM_TEST_HANDLER_EX(test_multi_index, idx_long_double_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_pk_iterator_exceed_end);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_sk_iterator_exceed_end);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_pk_iterator_exceed_begin);

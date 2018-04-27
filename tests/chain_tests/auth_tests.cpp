@@ -2,6 +2,13 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/resource_limits_private.hpp>
+
+#include <eosio/testing/tester_network.hpp>
+#include <eosio/chain/producer_object.hpp>
+#include <eosio.system/eosio.system.wast.hpp>
+#include <eosio.system/eosio.system.abi.hpp>
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -79,6 +86,7 @@ BOOST_AUTO_TEST_CASE(update_auths) {
 try {
    TESTER chain;
    chain.create_account("alice");
+   chain.create_account("bob");
 
    // Deleting active or owner should fail
    BOOST_CHECK_THROW(chain.delete_authority("alice", "active"), action_validate_exception);
@@ -132,6 +140,11 @@ try {
    auto spending_pub_key = spending_priv_key.get_public_key();
    auto trading_priv_key = chain.get_private_key("alice", "trading");
    auto trading_pub_key = trading_priv_key.get_public_key();
+
+   // Bob attempts to create new spending auth for Alice
+   BOOST_CHECK_THROW( chain.set_authority( "alice", "spending", authority(spending_pub_key), "active",
+                                           { permission_level{"bob", "active"} }, { chain.get_private_key("bob", "active") } ),
+                      transaction_exception );
 
    // Create new spending auth
    chain.set_authority("alice", "spending", authority(spending_pub_key), "active",
@@ -267,18 +280,18 @@ try {
 
    // Create duplicate name
    BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
-                         assert_message_is("Cannot create account named joe, as that name is already taken"));
+                         assert_message_ends_with("Cannot create account named joe, as that name is already taken"));
 
    // Creating account with name more than 12 chars
    BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
-                         assert_message_is("account names can only be 12 chars long"));
+                         assert_message_ends_with("account names can only be 12 chars long"));
 
    // Creating account with eosio. prefix with privileged account
    chain.create_account("eosio.test1");
 
    // Creating account with eosio. prefix with non-privileged account, should fail
    BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
-                         assert_message_is("only privileged accounts can have names that start with 'eosio.'"));
+                         assert_message_ends_with("only privileged accounts can have names that start with 'eosio.'"));
 
 } FC_LOG_AND_RETHROW() }
 
@@ -317,5 +330,161 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
    chain.produce_block();
 
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(no_double_billing) {
+try {
+   TESTER chain;
+
+   chain.produce_block();
+
+   account_name acc1 = N("bill1");
+   account_name acc2 = N("bill2");
+   account_name acc1a = N("bill1a");
+
+   chain.create_account(acc1);
+   chain.create_account(acc1a);
+   chain.produce_block();
+
+   chainbase::database &db = chain.control->get_mutable_database();
+
+   using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
+   using by_owner = eosio::chain::resource_limits::by_owner;
+
+   auto create_acc = [&](account_name a) {
+
+      signed_transaction trx;
+      chain.set_transaction_headers(trx);
+
+      authority owner_auth =  authority( chain.get_public_key( a, "owner" ) );
+      
+      vector<permission_level> pls = {{acc1, "active"}};
+      pls.push_back({acc1, "owner"}); // same account but different permission names
+      pls.push_back({acc1a, "owner"});
+      trx.actions.emplace_back( pls,
+                                contracts::newaccount{
+                                   .creator  = acc1,
+                                   .name     = a,
+                                   .owner    = owner_auth,
+                                   .active   = authority( chain.get_public_key( a, "active" ) ),
+                                   .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                });
+
+      chain.set_transaction_headers(trx);
+      trx.sign( chain.get_private_key( acc1, "active" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( acc1, "owner" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( acc1a, "owner" ), chain_id_type()  );
+      return chain.push_transaction( trx );
+   };
+
+   create_acc(acc2);
+
+   const auto &usage = db.get<resource_usage_object,by_owner>(acc1);
+
+   const auto &usage2 = db.get<resource_usage_object,by_owner>(acc1a);
+
+   BOOST_TEST(usage.cpu_usage.average() > 0);
+   BOOST_TEST(usage.net_usage.average() > 0);
+   BOOST_REQUIRE_EQUAL(usage.cpu_usage.average(), usage2.cpu_usage.average());
+   BOOST_REQUIRE_EQUAL(usage.net_usage.average(), usage2.net_usage.average());
+   chain.produce_block();
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(stricter_auth) {
+try {
+   TESTER chain;
+
+   chain.produce_block();
+
+   account_name acc1 = N("acc1");
+   account_name acc2 = N("acc2");
+   account_name acc3 = N("acc3");
+   account_name acc4 = N("acc4");
+
+   chain.create_account(acc1);
+   chain.produce_block();
+
+   auto create_acc = [&](account_name a, account_name creator, int threshold) {
+
+      signed_transaction trx;
+      chain.set_transaction_headers(trx);
+
+      authority invalid_auth = authority(threshold, {key_weight{chain.get_public_key( a, "owner" ), 1}}, {permission_level_weight{{creator, config::active_name}, 1}});
+      
+      vector<permission_level> pls;
+      pls.push_back({creator, "active"});
+      trx.actions.emplace_back( pls,
+                                contracts::newaccount{
+                                   .creator  = creator,
+                                   .name     = a,
+                                   .owner    = authority( chain.get_public_key( a, "owner" ) ),
+                                   .active   = invalid_auth,//authority( chain.get_public_key( a, "active" ) ),
+                                   .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                });
+
+      chain.set_transaction_headers(trx);
+      trx.sign( chain.get_private_key( creator, "active" ), chain_id_type()  );
+      return chain.push_transaction( trx );
+   };
+
+   try { 
+     create_acc(acc2, acc1, 0);
+     BOOST_FAIL("threshold can't be zero");
+   } catch (...) { }
+
+   try { 
+     create_acc(acc4, acc1, 3);
+     BOOST_FAIL("threshold can't be more than total weight");
+   } catch (...) { }
+
+   create_acc(acc3, acc1, 1);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
+   TESTER chain;
+
+   const auto& tester_account = N(tester);
+   std::vector<transaction_id_type> ids;
+   chain.set_code(config::system_account_name, eosio_system_wast);
+   chain.set_abi(config::system_account_name, eosio_system_abi);
+
+   chain.produce_blocks();
+   chain.create_account(N(currency));
+  
+   chain.produce_blocks();
+   chain.create_account(N(tester));
+   chain.create_account(N(tester2));
+   chain.produce_blocks();
+
+   chain.push_action(config::system_account_name, contracts::updateauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("permission", "first")
+           ("parent", "active")
+           ("data",  authority(chain.get_public_key(tester_account, "first")))
+           ("delay", 5));
+
+   auto validate_disallow = [&] (const char *type) {
+   BOOST_REQUIRE_EXCEPTION(
+   chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("code", "eosio")
+           ("type", type)
+           ("requirement", "first")),
+   action_validate_exception,
+   [] (const action_validate_exception &ex)->bool {
+      BOOST_REQUIRE_EQUAL(std::string("message validation exception"), ex.what());
+      return true;
+   });
+   };
+
+   validate_disallow("linkauth");
+   validate_disallow("unlinkauth");
+   validate_disallow("deleteauth");
+   validate_disallow("updateauth");
+   validate_disallow("canceldelay");
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()

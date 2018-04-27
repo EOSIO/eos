@@ -328,7 +328,7 @@ const char* my_abi = R"=====(
   ],
   "actions": [],
   "tables": [],
-  "clauses": [{"id":"clause A","body":"clause body A"}, 
+  "ricardian_clauses": [{"id":"clause A","body":"clause body A"}, 
               {"id":"clause B","body":"clause body B"}]
 }
 )=====";
@@ -358,7 +358,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
        }],
        "actions": [],
        "tables": [],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -654,7 +654,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
               "type" : "test_struct"
            }],
        "tables": [],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
    BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
@@ -740,7 +740,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
           "type" : "C",
           "ricardian_contract" : ""
        }],
-       "tables": []
+       "tables": [],
+       "ricardian_clauses":[]
    }
    )=====";
 
@@ -895,7 +896,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
         },
 
        ],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -910,7 +911,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_unable_to_determine_index, abi_gen_helper)
    #include <eosiolib/types.h>
 
    //@abi table
-   struct PACKED(table1) {
+   struct table1 {
       uint32_t field1;
       uint64_t field2;
    };
@@ -930,7 +931,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_field_name, abi_gen_helper)
    #include <eosiolib/types.h>
 
    //@abi table
-   struct PACKED(table1) {
+   struct table1 {
       uint64_t thisisaverylongfieldname;
    };
 
@@ -951,7 +952,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_type_name, abi_gen_helper)
    };
 
    //@abi table
-   struct PACKED(table1) {
+   struct table1 {
       this_is_a_very_very_very_very_long_type_name field1;
    };
 
@@ -1053,7 +1054,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
             "uint64"
           ]
         }],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -1105,7 +1106,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_str_table_decl, abi_gen_helper)
          "type": "table1"
        }
      ],
-     "clauses": []
+     "ricardian_clauses": []
    }
    )=====";
 
@@ -1203,7 +1204,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_template_base, abi_gen_helper)
             "uint64"
           ]
         }],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -1255,7 +1256,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
             "uint64"
           ]
         }],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -1319,7 +1320,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
           "ricardian_contract" : ""
        }],
        "tables": [],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -1344,10 +1345,10 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
    typedef complex_field my_complex_field_alias;
 
    //@abi table
-   struct PACKED(table1) {
-      uint64_t            field1;
+   struct table1 {
+      uint64_t               field1;
       my_complex_field_alias field2;
-      my_name_alias         name;
+      my_name_alias          name;
    };
 
    )=====";
@@ -1397,7 +1398,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
             "uint64"
           ]
         }],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -1465,7 +1466,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
          "type": "table1"
        }
      ],
-    "clauses": []
+    "ricardian_clauses": []
    }
    )=====";
 
@@ -1549,7 +1550,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
          "type": "table1"
        }
      ],
-    "clauses": []
+    "ricardian_clauses": []
    }
    )=====";
 
@@ -1640,7 +1641,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
        }
      ],
      "tables": [],
-     "clauses": []
+     "ricardian_clauses": []
    }
    )=====";
 
@@ -1700,7 +1701,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
        }
      ],
      "tables": [],
-     "clauses": []
+     "ricardian_clauses": []
    }
    )=====";
 
@@ -1773,7 +1774,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
        }
      ],
      "tables": [],
-     "clauses": []
+     "ricardian_clauses": []
    }
    )=====";
 
@@ -1957,20 +1958,20 @@ BOOST_AUTO_TEST_CASE(general)
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
         "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
         "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
-        "clauses": []
+        "ricardian_clauses": []
       },
       "abidef_arr": [{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
         "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
         "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
-        "clauses": []
+        "ricardian_clauses": []
       },{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
         "actions" : [{"name":"action1","type":"type1", "ricardian_contract": ""}],
         "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
-        "clauses": []
+        "ricardian_clauses": []
       }]
     }
    )=====";
@@ -1995,7 +1996,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
        "structs": [],
        "actions": [],
        "tables": [],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -2017,7 +2018,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
        }],
        "actions": [],
        "tables": [],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
 
@@ -2437,7 +2438,7 @@ BOOST_AUTO_TEST_CASE(setabi)
             "key_types" : ["name"]
           }
         ],
-       "clauses": []
+       "ricardian_clauses": []
       }
    }
    )=====";
@@ -2803,7 +2804,7 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
          }
        ],
        "tables": [],
-       "clauses": []
+       "ricardian_clauses": []
    }
    )=====";
    fc::variant var;
@@ -2879,7 +2880,7 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
          "key_types" : ["name"]
        }
      ],
-    "clauses": []
+    "ricardian_clauses": []
    }
    )=====";
 
@@ -2936,7 +2937,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
          "key_types" : ["name"]
        }
      ],
-     "clauses": []
+     "ricardian_clauses": []
    }
    )=====";
 
@@ -2996,7 +2997,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
          "key_types" : ["name"]
        }
      ],
-    "clauses": []
+    "ricardian_clauses": []
    }
    )=====";
 

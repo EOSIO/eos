@@ -4,6 +4,9 @@
 #include <regex>
 #include <algorithm>
 #include <memory>
+#include <map>
+#include <fstream>
+#include <sstream>
 
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/chain/contracts/types.hpp>
@@ -55,6 +58,102 @@ namespace eosio {
          }                                                                      \
        FC_MULTILINE_MACRO_END \
       )
+   
+   class ricardian_contracts {
+      public:
+         ricardian_contracts() = default;
+         ricardian_contracts( const string& context, const string& contract, const vector<string>& actions ) {
+            ifstream clauses_file( context+"/"+contract+"_rc.md");
+            if ( !clauses_file.good() )
+               wlog("Warning, no ricardian clauses found for ${con}\n", ("con", contract));
+            else
+               parse_clauses( clauses_file );
+
+            for ( auto act : actions ) {
+               ifstream contract_file( context+"/"+contract+"."+act+"_rc.md" );
+               if ( !contract_file.good() )
+                  wlog("Warning, no ricardian contract found for ${act}\n", ("act", act));
+               else {
+                  parse_contract( contract_file );
+               }
+            }   
+         }
+
+         vector<clause_pair> get_clauses() {
+            return _clauses;
+         }
+         string operator[]( string key ) {
+            return _contracts[key];
+         }
+      private:
+         inline string is_clause_decl( string line ) {
+            smatch match;
+            if ( regex_match( line, match, regex("(###[ ]+CLAUSE[ ]+NAME[ ]*:[ ]*)(.*)", regex_constants::ECMAScript) ) ) {
+               FC_ASSERT( match.size() == 3, "Error, malformed clause declaration" );
+               return match[2].str();
+            }
+            return {};
+         }
+
+         inline string is_action_decl( string line ) {
+            smatch match;
+            if ( regex_match( line, match, regex("(##[ ]+ACTION[ ]+NAME[ ]*:[ ]*)(.*)", regex_constants::ECMAScript) ) ) {
+               FC_ASSERT( match.size() == 3, "Error, malformed action declaration" );
+               return match[2].str();
+            }
+            return {};
+         }
+
+         void parse_contract( ifstream& contract_file ) {
+            string       line;
+            string       name;
+            string       _name;
+            stringstream body;
+            bool first_time = true;
+            while ( contract_file.peek() != EOF ) {
+               getline( contract_file, line );
+               body << line;
+               if ( !(_name = is_action_decl( line )).empty() ) {
+                  name = _name;
+                  first_time = false;
+               }
+               else
+                  if ( !first_time )
+                     body << line << '\n';
+            }
+
+            _contracts.emplace(name, body.str());
+         }
+
+         void parse_clauses( ifstream& clause_file ) {
+            string        line;
+            string        name;
+            string        _name;
+            stringstream  body;
+            bool first_time = true;
+            while ( clause_file.peek() != EOF ) {
+               getline( clause_file, line );
+
+               if ( !(_name = is_clause_decl( line )).empty() ) {
+                  if ( !first_time ) {
+                     if (body.str().empty() ) {
+                        FC_ASSERT( false, "Error, invalid input in ricardian clauses, no body found" );
+                     }
+                     _clauses.emplace_back( name, body.str() );
+                     body.str("");
+                  }
+                  name = _name;
+                  first_time = false;
+               }
+               else
+                  if ( !first_time )
+                     body << line << '\n';
+            }
+
+         }
+         vector<clause_pair> _clauses;
+         map<string, string> _contracts;
+   };
 
    /**
      * @brief Generates eosio::abi_def struct handling events from ASTConsumer
@@ -71,6 +170,7 @@ namespace eosio {
          clang::ASTContext*     ast_context;   
          string                 target_contract;
          vector<string>         target_actions;
+         ricardian_contracts    rc;
       public:
 
          enum optimization {
@@ -115,6 +215,13 @@ namespace eosio {
           * @param abi_context folder
           */
          void set_abi_context(const string& abi_context);
+
+         /**
+          * @brief Set the ricardian_contracts object with parsed contracts and clauses 
+          * @param ricardian_contracts contracts
+          */
+         void set_ricardian_contracts(const ricardian_contracts& contracts);
+
 
          /**
           * @brief Set the single instance of the Clang compiler
@@ -277,6 +384,7 @@ namespace eosio {
 
    };
 
+  
    class generate_abi_action : public ASTFrontendAction {
 
       private:
@@ -287,12 +395,15 @@ namespace eosio {
 
          generate_abi_action(bool verbose, bool opt_sfs, string abi_context,
                              abi_def& output, const string& contract, const vector<string>& actions) {
-
+            
+            ricardian_contracts rc( abi_context, contract, actions );
             abi_gen.set_output(output);
             abi_gen.set_verbose(verbose);
             abi_gen.set_abi_context(abi_context);
             abi_gen.set_target_contract(contract, actions);
-
+            abi_gen.set_ricardian_contracts( rc );
+            output.ricardian_clauses = rc.get_clauses();
+          
             if(opt_sfs)
                abi_gen.enable_optimizaton(abi_generator::OPT_SINGLE_FIELD_STRUCT);
          }

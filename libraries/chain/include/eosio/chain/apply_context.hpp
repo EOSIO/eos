@@ -211,6 +211,8 @@ class apply_context {
                context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
+               FC_ASSERT( table_obj.code == context.receiver, "db access violation" );
+
                context.require_write_lock( table_obj.scope );
 
                context.mutable_db.modify( table_obj, [&]( auto& t ) {
@@ -228,7 +230,10 @@ class apply_context {
             void update( int iterator, account_name payer, secondary_key_proxy_const_type secondary ) {
                const auto& obj = itr_cache.get( iterator );
 
-               context.require_write_lock( itr_cache.get_table( obj.t_id ).scope );
+               const auto& table_obj = itr_cache.get_table( obj.t_id );
+               FC_ASSERT( table_obj.code == context.receiver, "db access violation" );
+
+               context.require_write_lock( table_obj.scope );
 
                if( payer == account_name() ) payer = obj.payer;
 
@@ -463,8 +468,11 @@ class apply_context {
        idx128(*this),
        idx256(*this),
        idx_double(*this),
+       idx_long_double(*this),
        recurse_depth(depth)
-       {}
+      {
+         reset_console();
+      }
 
       void exec();
 
@@ -536,6 +544,8 @@ class apply_context {
 
       apply_results results;
 
+      std::ostringstream& get_console_stream() { return _pending_console_output; }
+
       template<typename T>
       void console_append(T val) {
          _pending_console_output << val;
@@ -574,8 +584,11 @@ class apply_context {
       generic_index<contracts::index128_object>   idx128;
       generic_index<contracts::index256_object, uint128_t*, const uint128_t*>   idx256;
       generic_index<contracts::index_double_object> idx_double;
+      generic_index<contracts::index_long_double_object> idx_long_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
+      
+      void add_cpu_usage( const uint64_t usage );
 
    private:
       iterator_cache<key_value_object> keyval_cache;
@@ -585,6 +598,8 @@ class apply_context {
          fc::move_append(results.deferred_transaction_requests, std::move(other.deferred_transaction_requests));
          results.deferred_transactions_count += other.deferred_transactions_count;
       }
+
+      void reset_console();
 
       void exec_one();
 

@@ -96,11 +96,6 @@ FC_REFLECT(game_t, (gameid)(bet)(deadline)(player1)(player2));
 
 struct dice_tester : TESTER {
 
-   const contracts::table_id_object* find_table( name code, name scope, name table ) {
-      auto tid = control->get_database().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
-      return tid;
-   }
-
    template<typename IndexType, typename Scope>
    const auto& get_index() {
       return control->get_database().get_index<IndexType,Scope>();
@@ -170,14 +165,8 @@ struct dice_tester : TESTER {
    }
 
    bool dice_game(uint64_t game_id, game_t& game) {
-      auto* maybe_tid = find_table(N(dice), N(dice), N(game));
-      if(maybe_tid == nullptr) return false;
-
-      auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, game_id));
-      if(o == nullptr) return false;
-
-      fc::raw::unpack(o->value.data(), o->value.size(), game);
-      return true;
+      const bool not_required = false;
+      return get_table_entry(game, N(dice), N(dice), N(game), game_id, not_required);
    }
 
    uint32_t open_games(account_name account) {
@@ -230,33 +219,34 @@ BOOST_AUTO_TEST_SUITE(dice_tests)
 
 BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
-   set_code(config::system_account_name, eosio_token_wast);
-   set_abi(config::system_account_name, eosio_token_abi);
+   create_accounts( {N(eosio.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
+   
+   set_code(N(eosio.token), eosio_token_wast);
+   set_abi(N(eosio.token), eosio_token_abi);
 
-   create_accounts( {N(dice),N(alice),N(bob),N(carol),N(david)}, false);
    produce_block();
    
    add_dice_authority(N(alice));
    add_dice_authority(N(bob));
    add_dice_authority(N(carol));
 
-   push_action(N(eosio), N(create), N(eosio), mvo()
-     ("issuer", "eosio")
-     ("maximum_supply", "1000000000000.0000 EOS")
+   push_action(N(eosio.token), N(create), N(eosio.token), mvo()
+     ("issuer", "eosio.token")
+     ("maximum_supply", "1000000000.0000 EOS")
      ("can_freeze", "0")
      ("can_recall", "0")
      ("can_whitelist", "0")
    );
 
-   push_action(N(eosio), N(issue), N(eosio), mvo()
+   push_action(N(eosio.token), N(issue), N(eosio.token), mvo()
      ("to", "eosio")
-     ("quantity", "1000000.0000 EOS")
+     ("quantity", "1000000000.0000 EOS")
      ("memo", "")
    );
 
-   transfer( N(eosio), N(alice), "10000.0000 EOS", "", N(eosio) );
-   transfer( N(eosio), N(bob),   "10000.0000 EOS", "", N(eosio) );
-   transfer( N(eosio), N(carol), "10000.0000 EOS", "", N(eosio) );
+   transfer( N(eosio), N(alice), "10000.0000 EOS", "", N(eosio.token) );
+   transfer( N(eosio), N(bob),   "10000.0000 EOS", "", N(eosio.token) );
+   transfer( N(eosio), N(carol), "10000.0000 EOS", "", N(eosio.token) );
 
    produce_block();
 
@@ -294,7 +284,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    // Alice tries to bet 1000 EOS (fail)
    // secret : a512f6b1b589a8906d574e9de74a529e504a5c53a760f0991a3e00256c027971
-   BOOST_CHECK_THROW( offer_bet( N(alice), asset::from_string("10000.0000 EOS"), 
+   BOOST_CHECK_THROW( offer_bet( N(alice), asset::from_string("1000.0000 EOS"), 
       commitment_for("a512f6b1b589a8906d574e9de74a529e504a5c53a760f0991a3e00256c027971")
    ), fc::exception);
    produce_block();
@@ -395,7 +385,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), asset::from_string("1.0000 EOS"));
 
    BOOST_REQUIRE_EQUAL( 
-      get_currency_balance(N(eosio), EOS_SYMBOL, N(alice)),
+      get_currency_balance(N(eosio.token), EOS_SYMBOL, N(alice)),
       asset::from_string("10009.0000 EOS")
    );
 
@@ -407,7 +397,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    withdraw( N(alice), asset::from_string("1.0000 EOS"));
 
    BOOST_REQUIRE_EQUAL( 
-      get_currency_balance(N(eosio), EOS_SYMBOL, N(alice)),
+      get_currency_balance(N(eosio.token), EOS_SYMBOL, N(alice)),
       asset::from_string("10010.0000 EOS")
    );
 

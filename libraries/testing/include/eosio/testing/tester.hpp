@@ -71,6 +71,7 @@ namespace eosio { namespace testing {
 
          void              close();
          void              open();
+         bool              is_same_chain( base_tester& other );
 
          virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) = 0;
          void                 produce_blocks( uint32_t n = 1 );
@@ -82,15 +83,17 @@ namespace eosio { namespace testing {
 
          transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
          transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
-
-         void                 set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<permission_level>& auths, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
 
          void                 set_transaction_headers(signed_transaction& trx,
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                       uint32_t delay_sec = 0)const;
 
-         void                 create_accounts( vector<account_name> names, bool multisig = false ) {
-            for( auto n : names ) create_account(n, config::system_account_name, multisig );
+         vector<transaction_trace>  create_accounts( vector<account_name> names, bool multisig = false ) {
+            vector<transaction_trace> traces;
+            traces.reserve(names.size());
+            for( auto n : names ) traces.emplace_back(create_account(n, config::system_account_name, multisig ));
+            return traces;
          }
 
          void                 push_genesis_block();
@@ -105,7 +108,7 @@ namespace eosio { namespace testing {
          void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void delete_authority( account_name account, permission_name perm );
 
-         void create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
+         transaction_trace create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
@@ -130,8 +133,15 @@ namespace eosio { namespace testing {
             return control->get_database().find<ObjectType,IndexBy>( forward<Args>(args)... );
          }
 
-         public_key_type   get_public_key( name keyname, string role = "owner" ) const;
-         private_key_type  get_private_key( name keyname, string role = "owner" ) const;
+         template< typename KeyType = fc::ecc::private_key_shim >
+         private_key_type get_private_key( name keyname, string role = "owner" ) const {
+            return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
+         }
+
+         template< typename KeyType = fc::ecc::private_key_shim >
+         public_key_type get_public_key( name keyname, string role = "owner" ) const {
+            return get_private_key<KeyType>( keyname, role ).get_public_key();
+         }
 
          void              set_code( account_name name, const char* wast );
          void              set_code( account_name name, const vector<uint8_t> wasm );
@@ -139,6 +149,7 @@ namespace eosio { namespace testing {
 
 
          unique_ptr<chain_controller> control;
+         std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
 
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
@@ -175,6 +186,27 @@ namespace eosio { namespace testing {
         }
 
        void sync_with(base_tester& other);
+
+       const contracts::table_id_object* find_table( name code, name scope, name table );
+
+       // method treats key as a name type, if this is not appropriate in your case, pass require == false and report the correct behavior
+       template<typename Object>
+       bool get_table_entry(Object& obj, account_name code, account_name scope, account_name table, uint64_t key, bool require = true) {
+          auto* maybe_tid = find_table(code, scope, table);
+          if(maybe_tid == nullptr)
+             BOOST_FAIL("table for code=\"" + code.to_string() + "\" scope=\"" + scope.to_string() + "\" table=\"" + table.to_string() + "\" does not exist");
+
+          auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
+          if(o == nullptr) {
+             if (require)
+                BOOST_FAIL("object does not exist for primary_key=\"" + name(key).to_string() + "\"");
+
+             return false;
+          }
+
+          fc::raw::unpack(o->value.data(), o->value.size(), obj);
+          return true;
+       }
 
    protected:
          signed_block _produce_block( fc::microseconds skip_time, uint32_t skip_flag);
@@ -259,14 +291,30 @@ namespace eosio { namespace testing {
    /**
     * Utility predicate to check whether an FC_ASSERT message ends with a given string
     */
-   struct assert_message_is {
-      assert_message_is(string expected)
+   struct assert_message_ends_with {
+      assert_message_ends_with(string expected)
          :expected(expected)
       {}
 
       bool operator()( const fc::exception& ex ) {
          auto message = ex.get_log().at(0).get_message();
          return boost::algorithm::ends_with(message, expected);
+      }
+
+      string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an FC_ASSERT message contains a given string
+    */
+   struct assert_message_contains {
+      assert_message_contains(string expected)
+         :expected(expected)
+      {}
+
+      bool operator()( const fc::exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         return boost::algorithm::contains(message, expected);
       }
 
       string expected;

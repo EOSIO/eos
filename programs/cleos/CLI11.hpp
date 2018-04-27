@@ -1190,7 +1190,7 @@ using App_p = std::unique_ptr<App>;
 /** To use, create a new `Program()` instance with `argc`, `argv`, and a help description. The templated
 *  add_option methods make it easy to prepare options. Remember to call `.start` before starting your
 * program, so that the options can be evaluated and the help option doesn't accidentally run your program. */
-class App {
+class App final {
     friend Option;
     friend detail::AppFriend;
 

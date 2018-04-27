@@ -173,16 +173,22 @@ void chain_controller::push_block(const signed_block& new_block, uint32_t skip)
          } );
       });
    });
-   ilog( "\rpush block #${n} from ${pro} ${time}  ${id} lib: ${l} success", ("n",new_block.block_num())("pro",name(new_block.producer))("time",new_block.timestamp)("id",new_block.id())("l",last_irreversible_block_num()));
+   ilog( "push block #${n} from ${pro} ${time}  ${id} lib: ${l} success", ("n",new_block.block_num())("pro",name(new_block.producer))("time",new_block.timestamp)("id",new_block.id())("l",last_irreversible_block_num()));
 } FC_CAPTURE_AND_RETHROW((new_block)) }
 
 bool chain_controller::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = _skip_flags;
    if (!(skip&skip_fork_db)) {
-      /// TODO: if the block is greater than the head block and before the next maintenance interval
-      // verify that the block signer is in the current set of active producers.
-
+      if(new_block.block_num() > head_block_num()) {
+         if(!is_start_of_round(new_block.block_num())) {
+            auto schedule = get_global_properties().active_producers.producers;
+            if(std::find(schedule.begin(), schedule.end(),
+                         producer_key{new_block.producer, new_block.signee()}) == schedule.end()) {
+               return false; // Not forking and not pushing block with unexpected signature
+            }
+         }
+      }
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if (new_head->data.previous != head_block_id()) {
@@ -252,6 +258,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
       session.push();
    } catch ( const fc::exception& e ) {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
+      _fork_db.pop_block();
       _fork_db.remove(new_block.id());
       throw;
    }
@@ -299,6 +306,10 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    validate_uniqueness(trx);
    if( should_check_authorization() ) {
       auto enforced_delay = check_transaction_authorization(trx, packed_trx.signatures, mtrx.context_free_data);
+      auto max_delay = fc::seconds( get_global_properties().configuration.max_transaction_delay );
+      if ( max_delay < enforced_delay ) {
+         enforced_delay = max_delay;
+      }
       EOS_ASSERT( mtrx.delay >= enforced_delay,
                   transaction_exception,
                   "authorization imposes a delay (${enforced_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
@@ -572,17 +583,19 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
             }
          }
          ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
-         for (const auto &ar : tr.action_traces) {
-            if (!ar.console.empty()) {
-               auto prefix = fc::format_string(
-                  "\n[(${a},${n})->${r}]",
-                  fc::mutable_variant_object()
-                     ("a", ar.act.account)
-                     ("n", ar.act.name)
-                     ("r", ar.receiver));
-               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
-                    + ar.console
-                    + prefix + ": CONSOLE OUTPUT END   =====================" );
+         if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
+            for (const auto &ar : tr.action_traces) {
+               if (!ar.console.empty()) {
+                  auto prefix = fc::format_string(
+                     "\n[(${a},${n})->${r}]",
+                     fc::mutable_variant_object()
+                        ("a", ar.act.account)
+                        ("n", ar.act.name)
+                        ("r", ar.receiver));
+                  dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+                       + ar.console
+                       + prefix + ": CONSOLE OUTPUT END   =====================" );
+               }
             }
          }
       }
@@ -710,7 +723,7 @@ void chain_controller::pop_block()
    optional<signed_block> head_block = fetch_block_by_id( head_id );
 
    EOS_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
-   wlog( "\rpop block #${n} from ${pro} ${time}  ${id}", ("n",head_block->block_num())("pro",name(head_block->producer))("time",head_block->timestamp)("id",head_block->id()));
+   wlog( "pop block #${n} from ${pro} ${time}  ${id}", ("n",head_block->block_num())("pro",name(head_block->producer))("time",head_block->timestamp)("id",head_block->id()));
 
    _fork_db.pop_block();
    _db.undo();
@@ -873,7 +886,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                                     ("enforced_delay", enforced_delay.to_seconds())("specified_delay", trx_meta.delay.to_seconds()) );
                      }
 
-                     return &input_metas.at(itr->second);
+                     return &trx_meta;
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
@@ -981,13 +994,13 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
 class permission_visitor {
 public:
    permission_visitor(const chain_controller& controller)
-   : _chain_controller(controller) {
+   : _chain_controller(controller), _track_delay(true) {
       _max_delay_stack.emplace_back();
    }
 
    void operator()(const permission_level& perm_level) {
       const auto obj = _chain_controller.get_permission(perm_level);
-      if( _max_delay_stack.back() < obj.delay )
+      if( _track_delay && _max_delay_stack.back() < obj.delay )
          _max_delay_stack.back() = obj.delay;
    }
 
@@ -1007,15 +1020,149 @@ public:
       _max_delay_stack.back() = delay_to_keep;
    }
 
-   fc::microseconds get_max_delay() const {
+   fc::microseconds get_max_delay()const {
       FC_ASSERT( _max_delay_stack.size() == 1, "invariant failure in permission_visitor" );
       return _max_delay_stack.back();
+   }
+
+   void pause_delay_tracking() {
+      _track_delay = false;
+   }
+
+   void resume_delay_tracking() {
+      _track_delay = true;
    }
 
 private:
    const chain_controller& _chain_controller;
    vector<fc::microseconds> _max_delay_stack;
+   bool _track_delay;
 };
+
+optional<fc::microseconds> chain_controller::check_updateauth_authorization( const contracts::updateauth& update,
+                                                                             const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "updateauth action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == update.account, tx_irrelevant_auth,
+               "the owner of the affected permission needs to be the actor of the declared authorization" );
+
+   const auto* min_permission = find_permission({update.account, update.permission});
+   bool ignore_delay = false;
+   if( !min_permission ) { // creating a new permission
+      ignore_delay = true;
+      min_permission = &get_permission({update.account, update.parent});
+
+   }
+   const auto delay = get_permission(auth).satisfies( *min_permission,
+                                                      _db.get_index<permission_index>().indices() );
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{update.account, min_permission->name}) );
+
+   return (ignore_delay ? optional<fc::microseconds>() : *delay);
+}
+
+fc::microseconds chain_controller::check_deleteauth_authorization( const contracts::deleteauth& del,
+                                                                   const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "deleteauth action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == del.account, tx_irrelevant_auth,
+               "the owner of the permission to delete needs to be the actor of the declared authorization" );
+
+   const auto& min_permission = get_permission({del.account, del.permission});
+   const auto delay = get_permission(auth).satisfies( min_permission,
+                                                      _db.get_index<permission_index>().indices() );
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{min_permission.owner, min_permission.name}) );
+
+   return *delay;
+}
+
+fc::microseconds chain_controller::check_linkauth_authorization( const contracts::linkauth& link,
+                                                                 const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "link action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == link.account, tx_irrelevant_auth,
+               "the owner of the linked permission needs to be the actor of the declared authorization" );
+
+   EOS_ASSERT( link.type != contracts::updateauth::get_name(),  action_validate_exception,
+               "Cannot link eosio::updateauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::deleteauth::get_name(),  action_validate_exception,
+               "Cannot link eosio::deleteauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::linkauth::get_name(),    action_validate_exception,
+               "Cannot link eosio::linkauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::unlinkauth::get_name(),  action_validate_exception,
+               "Cannot link eosio::unlinkauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::canceldelay::get_name(), action_validate_exception,
+               "Cannot link eosio::canceldelay to a minimum permission" );
+
+   const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
+
+   if( !linked_permission_name ) // if action is linked to eosio.any permission
+      return fc::microseconds(0);
+
+   const auto delay = get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
+                                                      _db.get_index<permission_index>().indices() );
+
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "link action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{link.account, *linked_permission_name}) );
+
+   return *delay;
+}
+
+fc::microseconds chain_controller::check_unlinkauth_authorization( const contracts::unlinkauth& unlink,
+                                                                   const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "unlink action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == unlink.account, tx_irrelevant_auth,
+               "the owner of the linked permission needs to be the actor of the declared authorization" );
+
+   const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
+   EOS_ASSERT( unlinked_permission_name.valid(), transaction_exception,
+               "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
+               ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
+
+   if( *unlinked_permission_name == config::eosio_any_name )
+      return fc::microseconds(0);
+
+   const auto delay = get_permission(auth).satisfies( get_permission({unlink.account, *unlinked_permission_name}),
+                                                      _db.get_index<permission_index>().indices() );
+
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "unlink action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{unlink.account, *unlinked_permission_name}) );
+
+   return *delay;
+}
+
+void chain_controller::check_canceldelay_authorization( const contracts::canceldelay& cancel,
+                                                        const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "canceldelay action should only have one declared authorization" );
+   const auto& auth = auths[0];
+
+   const auto delay = get_permission(auth).satisfies( get_permission(cancel.canceling_auth),
+                                                      _db.get_index<permission_index>().indices() );
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "canceldelay action declares irrelevant authority '${auth}'; specified authority to satisfy is ${min}",
+               ("auth", auth)("min", cancel.canceling_auth) );
+}
 
 fc::microseconds chain_controller::check_authorization( const vector<action>& actions,
                                                         const flat_set<public_key_type>& provided_keys,
@@ -1031,67 +1178,59 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
    fc::microseconds max_delay;
 
    for( const auto& act : actions ) {
+      bool special_case = false;
+      bool ignore_delay = false;
+
+      if( act.account == config::system_account_name ) {
+         special_case = true;
+
+         if( act.name == contracts::updateauth::get_name() ) {
+            const auto delay = check_updateauth_authorization(act.data_as<contracts::updateauth>(), act.authorization);
+            if( delay.valid() ) // update auth is used to modify an existing permission
+               max_delay = std::max( max_delay, *delay );
+            else // updateauth is used to create a new permission
+               ignore_delay = true;
+         } else if( act.name == contracts::deleteauth::get_name() ) {
+            max_delay = std::max( max_delay,
+                                  check_deleteauth_authorization(act.data_as<contracts::deleteauth>(), act.authorization) );
+         } else if( act.name == contracts::linkauth::get_name() ) {
+            max_delay = std::max( max_delay,
+                                  check_linkauth_authorization(act.data_as<contracts::linkauth>(), act.authorization) );
+         } else if( act.name == contracts::unlinkauth::get_name() ) {
+            max_delay = std::max( max_delay,
+                                  check_unlinkauth_authorization(act.data_as<contracts::unlinkauth>(), act.authorization) );
+         } else if( act.name == contracts::canceldelay::get_name() ) {
+            check_canceldelay_authorization(act.data_as<contracts::canceldelay>(), act.authorization);
+            ignore_delay = true;
+         } else {
+            special_case = false;
+         }
+      }
+
       for( const auto& declared_auth : act.authorization ) {
 
-         // check a minimum permission if one is set, otherwise assume the contract code will validate
-         auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
-         if( !min_permission_name ) {
-            // for updateauth actions, need to determine the permission that is changing
-            if( act.account == config::system_account_name && act.name == contracts::updateauth::get_name() ) {
-               auto update = act.data_as<contracts::updateauth>();
-               const auto permission_to_change = _db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
-               if( permission_to_change != nullptr ) {
-                  // Only changes to permissions need to possibly be delayed. New permissions can be added immediately.
-                  min_permission_name = update.permission;
-               }
-            }
-         }
-         if( min_permission_name ) {
-            const auto& min_permission = _db.get<permission_object, by_owner>(boost::make_tuple(declared_auth.actor, *min_permission_name));
-            const auto& index = _db.get_index<permission_index>().indices();
-            const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(min_permission, index);
-            EOS_ASSERT( delay.valid(),
-                        tx_irrelevant_auth,
-                        "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                        ("auth", declared_auth)("min", min_permission.name) );
-            if( max_delay < *delay )
-               max_delay = *delay;
-         }
-
-         if( act.account == config::system_account_name ) {
-            // for link changes, we need to also determine the delay associated with an existing link that is being
-            // moved or removed
-            if( act.name == contracts::linkauth::get_name() ) {
-               auto link = act.data_as<contracts::linkauth>();
-               if( declared_auth.actor == link.account ) {
-                  const auto linked_permission_name = lookup_linked_permission(link.account, link.code, link.type);
-                  if( linked_permission_name.valid() && *linked_permission_name != config::eosio_any_name ) {
-                     const auto& linked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(link.account, *linked_permission_name));
-                     const auto& index = _db.get_index<permission_index>().indices();
-                     const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(linked_permission, index);
-                     if( delay.valid() && max_delay < *delay )
-                        max_delay = *delay;
-                  } // else it is only a new link, so don't need to delay
-               }
-            } else if( act.name == contracts::unlinkauth::get_name() ) {
-               auto unlink = act.data_as<contracts::unlinkauth>();
-               if( declared_auth.actor == unlink.account ) {
-                  const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
-                  if( unlinked_permission_name.valid() && *unlinked_permission_name != config::eosio_any_name ) {
-                     const auto& unlinked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(unlink.account, *unlinked_permission_name));
-                     const auto& index = _db.get_index<permission_index>().indices();
-                     const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(unlinked_permission, index);
-                     if( delay.valid() && max_delay < *delay )
-                        max_delay = *delay;
-                  }
-               }
+         if( !special_case ) {
+            auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
+            if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is eosio.any
+               const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
+               auto delay = get_permission(declared_auth).satisfies( min_permission,
+                                                                     _db.get_index<permission_index>().indices() );
+               EOS_ASSERT( delay.valid(),
+                           tx_irrelevant_auth,
+                           "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+                           ("auth", declared_auth)("min", permission_level{min_permission.owner, min_permission.name}) );
+               max_delay = std::max( max_delay, *delay );
             }
          }
 
          if( should_check_signatures() ) {
+            if( ignore_delay )
+               checker.get_permission_visitor().pause_delay_tracking();
             EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
                        "transaction declares authority '${auth}', but does not have signatures for it.",
                        ("auth", declared_auth));
+            if( ignore_delay )
+               checker.get_permission_visitor().resume_delay_tracking();
          }
       }
    }
@@ -1103,10 +1242,8 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
    }
 
    const auto checker_max_delay = checker.get_permission_visitor().get_max_delay();
-   if( max_delay < checker_max_delay )
-      max_delay = checker_max_delay;
 
-   return max_delay;
+   return std::max(max_delay, checker_max_delay);
 }
 
 bool chain_controller::check_authorization( account_name account, permission_name permission,
@@ -1147,10 +1284,14 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
                                                                     account_name scope,
                                                                     action_name act_name) const {
 #warning TODO: this comment sounds like it is expecting a check ("may") somewhere else, but I have not found anything else
-   // updateauth is a special case where any permission _may_ be suitable depending
-   // on the contents of the action
-   if( scope == config::system_account_name && act_name == contracts::updateauth::get_name() ) {
-      return optional<permission_name>();
+   // Special case native actions cannot be linked to a minimum permission, so there is no need to check.
+   if( scope == config::system_account_name ) {
+       FC_ASSERT( act_name != contracts::updateauth::get_name() &&
+                  act_name != contracts::deleteauth::get_name() &&
+                  act_name != contracts::linkauth::get_name() &&
+                  act_name != contracts::unlinkauth::get_name() &&
+                  act_name != contracts::canceldelay::get_name(),
+                  "cannot call lookup_minimum_permission on native actions that are not allowed to be linked to minimum permissions" );
    }
 
    try {
@@ -1283,17 +1424,10 @@ void chain_controller::update_resource_usage( transaction_trace& trace, const tr
               ("used", trace.net_usage)("max", chain_configuration.max_transaction_net_usage));
 
    // determine the accounts to bill
-   set<std::pair<account_name, permission_name>> authorizations;
+   flat_set<account_name> bill_to_accounts;
    for( const auto& act : meta.trx().actions )
       for( const auto& auth : act.authorization )
-         authorizations.emplace( auth.actor, auth.permission );
-
-
-   vector<account_name> bill_to_accounts;
-   bill_to_accounts.reserve(authorizations.size());
-   for( const auto& ap : authorizations ) {
-      bill_to_accounts.push_back(ap.first);
-   }
+         bill_to_accounts.insert( auth.actor );
 
    // for account usage, the ordinal is based on possible blocks not actual blocks.  This means that as blocks are
    // skipped account usage will still decay.
@@ -1428,7 +1562,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    auto expected_schedule_version = get_global_properties().active_producers.version;
-   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expectd ${y}",
+   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expected ${y}",
                ("x", next_block.schedule_version)("y",expected_schedule_version) );
 
    return producer;
@@ -1506,8 +1640,7 @@ void chain_controller::_update_producers_authority() {
       active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
    }
 
-   auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
-                                                                      config::active_name ) );
+   auto& po = get_permission({config::producers_account_name, config::active_name});
    _db.modify(po,[active_producers_authority] (permission_object& po) {
       po.auth = active_producers_authority;
    });
@@ -1556,6 +1689,12 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
    return _db.get<producer_object, by_owner>(owner_name);
 } FC_CAPTURE_AND_RETHROW( (owner_name) ) }
 
+const permission_object*   chain_controller::find_permission( const permission_level& level )const
+{ try {
+   FC_ASSERT( !level.actor.empty() && !level.permission.empty(), "Invalid permission" );
+   return _db.find<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
+} EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
+
 const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
    FC_ASSERT( !level.actor.empty() && !level.permission.empty(), "Invalid permission" );
@@ -1581,6 +1720,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
    _db.add_index<contracts::index_double_index>();
+   _db.add_index<contracts::index_long_double_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();
@@ -1921,7 +2061,7 @@ block_timestamp_type chain_controller::get_slot_time(uint32_t slot_num)const
 
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
-   if( head_block_num() == 0 )
+   if( dpo.head_block_number == 0 )
    {
       // n.b. first block is at genesis_time plus one block interval
       auto genesis_time = block_timestamp_type(dpo.time);
@@ -1929,7 +2069,7 @@ block_timestamp_type chain_controller::get_slot_time(uint32_t slot_num)const
       return (fc::time_point)genesis_time;
    }
 
-   auto head_block_abs_slot = block_timestamp_type(head_block_time());
+   auto head_block_abs_slot = block_timestamp_type(dpo.time);
    head_block_abs_slot.slot += slot_num;
    return head_block_abs_slot;
 }
@@ -1939,7 +2079,7 @@ uint32_t chain_controller::get_slot_at_time( block_timestamp_type when )const
    auto first_slot_time = get_slot_time(1);
    if( when < first_slot_time )
       return 0;
-   return block_timestamp_type(when).slot - first_slot_time.slot + 1;
+   return when.slot - first_slot_time.slot + 1;
 }
 
 uint32_t chain_controller::producer_participation_rate()const

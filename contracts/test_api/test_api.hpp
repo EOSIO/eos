@@ -12,15 +12,10 @@ namespace eosio {
 }
 
 
-// #include <eosiolib/transaction.hpp>
+//#include <eosiolib/transaction.hpp>
 
 // NOTE: including eosiolib/transaction.hpp here causes !"unresolvable": env._ZNKSt3__120__vector_base_commonILb1EE20__throw_length_errorEv
 //       errors in api_tests/memory_tests
-
-static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char* method)
-{
-  return static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
-}
 
 #define WASM_TEST_HANDLER(CLASS, METHOD) \
   if( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \
@@ -53,7 +48,11 @@ struct test_print {
   static void test_printi();
   static void test_printui();
   static void test_printi128();
+  static void test_printui128();
   static void test_printn();
+  static void test_printsf();
+  static void test_printdf();
+  static void test_printqf();
 };
 
 struct test_action {
@@ -93,6 +92,12 @@ struct test_db {
    static void idx64_general(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action);
+
+   static void test_invalid_access(uint64_t receiver, uint64_t code, uint64_t action);
+
+   static void idx_double_nan_create_fail(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_nan_modify_fail(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_nan_lookup_fail(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_multi_index {
@@ -108,6 +113,7 @@ struct test_multi_index {
    static void idx128_autoincrement_test_part2(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx256_general(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx_double_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_long_double_general(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_pk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_sk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_pk_iterator_exceed_begin(uint64_t receiver, uint64_t code, uint64_t action);
@@ -231,6 +237,20 @@ struct test_memory {
    static void test_memcpy_overlap_start();
    static void test_memcpy_overlap_end();
    static void test_memcmp();
+   static void test_outofbound_0();
+   static void test_outofbound_1();
+   static void test_outofbound_2();
+   static void test_outofbound_3();
+   static void test_outofbound_4();
+   static void test_outofbound_5();
+   static void test_outofbound_6();
+   static void test_outofbound_7();
+   static void test_outofbound_8();
+   static void test_outofbound_9();
+   static void test_outofbound_10();
+   static void test_outofbound_11();
+   static void test_outofbound_12();
+   static void test_outofbound_13();
 };
 
 struct test_checktime {
@@ -249,4 +269,8 @@ struct test_softfloat {
 
 struct test_permission {
   static void check_authorization(uint64_t receiver, uint64_t code, uint64_t action);
+};
+
+struct test_datastream {
+  static void test_basic();
 };

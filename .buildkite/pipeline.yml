@@ -1,0 +1,183 @@
+steps:
+  - command: |
+      echo "--- Creating symbolic link to job directory :file_folder:" && \
+      sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
+      echo "+++ Building :hammer:" && \
+      echo 1 | ./eosio_build.sh && \
+      echo "--- Compressing build directory :compression:" && \
+      tar -pczf build.tar.gz build/
+    label: ":darwin: Build"
+    agents:
+      - "role=macos-builder"
+    artifact_paths: "build.tar.gz"
+    timeout: 30
+
+  - command: |
+        echo "+++ :hammer: Building" && \
+        echo 1 | ./eosio_build.sh && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz build/
+    label: ":ubuntu: Build"
+    agents:
+      - "role=linux-builder"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:ubuntu"
+        workdir: /data/job
+
+  - command: |
+        echo "+++ :hammer: Building" && \
+        echo 1 | ./eosio_build.sh && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz build/
+    label: ":fedora: Build"
+    agents:
+      - "role=linux-builder"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:fedora"
+        workdir: /data/job
+ 
+  - command: |
+        echo "+++ :hammer: Building" && \
+        echo 1 | ./eosio_build.sh && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz build/
+    label: ":centos: Build"
+    agents:
+      - "role=linux-builder"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:centos"
+        workdir: /data/job
+
+  - command: |
+        echo "+++ :hammer: Building" && \
+        echo 1 | ./eosio_build.sh && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz build/
+    label: ":aws: Build"
+    agents:
+      - "role=linux-builder"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:amazonlinux"
+        workdir: /data/job
+
+  - wait
+
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Build" &&
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest --output-on-failure
+    retry:
+      automatic:
+        limit: 1
+    label: ":darwin: Tests"
+    agents:
+      - "role=macos-tester"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    timeout: 30
+    
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" &&
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && ctest --output-on-failure
+    retry:
+      automatic:
+        limit: 1
+    label: ":ubuntu: Tests"
+    agents:
+      - "role=linux-tester"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:ubuntu"
+        workdir: /data/job
+
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: Build" &&
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && ctest --output-on-failure
+    retry:
+      automatic:
+        limit: 1
+    label: ":fedora: Tests"
+    agents:
+      - "role=linux-tester"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:fedora"
+        workdir: /data/job
+
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: Build" &&
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && ctest --output-on-failure
+    retry:
+      automatic:
+        limit: 1
+    label: ":centos: Tests"
+    agents:
+      - "role=linux-tester"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:centos"
+        workdir: /data/job
+
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: Build" &&
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && ctest --output-on-failure
+    retry:
+      automatic:
+        limit: 1
+    label: ":aws: Tests"
+    agents:
+      - "role=linux-tester"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:amazonlinux"
+        workdir: /data/job

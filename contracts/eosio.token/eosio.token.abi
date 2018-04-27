@@ -31,15 +31,22 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"balance", "type":"uint64"}
+        {"name":"balance", "type":"asset"},
+        {"name":"frozen", "type":"uint8"},
+        {"name":"whitelist", "type":"uint8"}
       ]
     },{
       "name": "currency_stats",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"supply", "type":"uint64"}
+        {"name":"supply", "type":"asset"},
+        {"name":"max_supply", "type":"asset"},
+        {"name":"issuer", "type":"account_name"},
+        {"name":"can_freeze", "type":"uint8"},
+        {"name":"can_recall", "type":"uint8"},
+        {"name":"can_whitelist", "type":"uint8"},
+        {"name":"is_frozen", "type":"uint8"},
+        {"name":"enforce_whitelist", "type":"uint8"}
       ]
     }
   ],
@@ -59,7 +66,7 @@
 
   ],
   "tables": [{
-      "name": "account",
+      "name": "accounts",
       "type": "account",
       "index_type": "i64",
       "key_names" : ["currency"],
@@ -72,5 +79,5 @@
       "key_types" : ["uint64"]
     }
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }

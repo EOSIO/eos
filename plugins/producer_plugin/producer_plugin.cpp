@@ -236,7 +236,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
             auto producer  = db.head_block_producer();
             //          auto pending   = db.pending().size();
 
-            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}", ("p", producer)("lib",db.last_irreversible_block_num())(capture) );
+            wlog("${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}", ("p", producer)("lib",db.last_irreversible_block_num())(capture) );
             break;
          }
          case block_production_condition::not_synced:

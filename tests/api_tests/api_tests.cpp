@@ -46,9 +46,10 @@
 #define DISABLE_EOSLIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
 
-FC_REFLECT( dummy_action, (a)(b)(c) );
-FC_REFLECT( u128_action, (values) );
-FC_REFLECT( cf_action, (payload)(cfd_idx) );
+FC_REFLECT( dummy_action, (a)(b)(c) )
+FC_REFLECT( u128_action, (values) )
+FC_REFLECT( cf_action, (payload)(cfd_idx) )
+FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -102,15 +103,6 @@ bool expect_assert_message(const fc::exception& ex, string expected) {
    BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
    return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
 }
-
-struct assert_message_is {
-	bool operator()( const fc::exception& ex, string expected) {
-		auto act = ex.get_log().at(0).get_message();
-		return boost::algorithm::ends_with(act, expected);
-	}
-
-	string expected;
-};
 
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
@@ -753,6 +745,8 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    //check that it gets executed afterwards
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+   //confirm printed message
+   BOOST_TEST(traces.back().action_traces.back().console == "deferred executed\n");
 
    //schedule twice (second deferred transaction should replace first one)
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
@@ -775,6 +769,13 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    produce_block( fc::seconds(2) );
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+
+   //verify that deferred transaction is dependent on max_generated_transaction_count configuration property
+   const auto& gpo = control->get_global_properties();
+   control->get_mutable_database().modify(gpo, [&]( auto& props ) {
+      props.configuration.max_generated_transaction_count = 0;
+   });
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -880,18 +881,84 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
  * db_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	produce_blocks(1000);
-	set_code( N(testapi), test_api_db_wast );
-	produce_blocks(1);
+   produce_blocks(2);
+   create_account( N(testapi) );
+   create_account( N(testapi2) );
+   produce_blocks(1000);
+   set_code( N(testapi), test_api_db_wast );
+   set_code( N(testapi2), test_api_db_wast );
+   produce_blocks(1);
 
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
+
+   // Store value in primary table
+   invalid_access_action ia1{.code = N(testapi), .val = 10, .index = 0, .store = true};
+   auto res = push_action( action({{N(testapi), config::active_name}},
+                                  N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                                  fc::raw::pack(ia1)),
+                           N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Attempt to change the value stored in the primary table under the code of N(testapi)
+   invalid_access_action ia2{.code = ia1.code, .val = 20, .index = 0, .store = true};
+   res = push_action( action({{N(testapi2), config::active_name}},
+                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia2)),
+                      N(testapi2) );
+   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+
+
+   // Verify that the value has not changed.
+   ia1.store = false;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Store value in secondary table
+   ia1.store = true; ia1.index = 1;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Attempt to change the value stored in the secondary table under the code of N(testapi)
+   ia2.index = 1;
+   res = push_action( action({{N(testapi2), config::active_name}},
+                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia2)),
+                      N(testapi2) );
+   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+
+   // Verify that the value has not changed.
+   ia1.store = false;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_create_fail", {},
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_modify_fail", {},
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+
+   uint32_t lookup_type = 0; // 0 for find, 1 for lower bound, and 2 for upper bound;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   lookup_type = 1;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   lookup_type = 2;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -905,7 +972,6 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    produce_blocks(1);
    set_code( N(testapi), test_api_multi_index_wast );
    produce_blocks(1);
-
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
@@ -917,6 +983,7 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_long_double_general", {});
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_end", {},
                                            transaction_exception, "cannot increment end iterator");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_end", {},
@@ -1118,6 +1185,37 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcpy_overlap_end", {} );
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcmp", {} );
+   produce_blocks(1000);
+
+#define test_memory_oob(func) \
+   try { \
+      CALL_TEST_FUNCTION( *this, "test_memory", func, {} ); \
+      BOOST_FAIL("assert failed in test out of bound memory in " func); \
+   } catch (...) { \
+      BOOST_REQUIRE_EQUAL(true, true); \
+   }
+
+#define test_memory_oob2(func) \
+   try { \
+      CALL_TEST_FUNCTION( *this, "test_memory", func, {} );\
+   } catch (const fc::exception& e) {\
+     if (!expect_assert_message(e, "access violation")) throw; \
+   }
+
+   test_memory_oob("test_outofbound_0");
+   test_memory_oob("test_outofbound_1");
+   test_memory_oob("test_outofbound_2");
+   test_memory_oob("test_outofbound_3");
+   test_memory_oob("test_outofbound_4");
+   test_memory_oob("test_outofbound_5");
+   test_memory_oob("test_outofbound_6");
+   test_memory_oob("test_outofbound_7");
+   test_memory_oob("test_outofbound_8");
+   test_memory_oob("test_outofbound_9");
+   test_memory_oob("test_outofbound_10");
+   test_memory_oob("test_outofbound_11");
+   test_memory_oob("test_outofbound_12");
+   test_memory_oob("test_outofbound_13");
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1222,9 +1320,55 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    // test printi128
    auto tx6_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printi128", {} );
    auto tx6_act_cnsl = tx6_trace.action_traces.front().console;
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(0, 39), U128Str(-1) );
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(39, 1), U128Str(0) );
-   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(40, 11), U128Str(87654323456) );
+   size_t start = 0;
+   size_t end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), U128Str(1) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), U128Str(0) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), "-" + U128Str(static_cast<unsigned __int128>(std::numeric_limits<__int128>::lowest())) );
+   start = end + 1; end = tx6_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(start, end-start), "-" + U128Str(87654323456) );
+
+   // test printui128
+   auto tx7_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printui128", {} );
+   auto tx7_act_cnsl = tx7_trace.action_traces.front().console;
+   start = 0; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(std::numeric_limits<unsigned __int128>::max()) );
+   start = end + 1; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(0) );
+   start = end + 1; end = tx7_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx7_act_cnsl.substr(start, end-start), U128Str(87654323456) );
+
+   // test printsf
+   auto tx8_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printsf", {} );
+   auto tx8_act_cnsl = tx8_trace.action_traces.front().console;
+   start = 0; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "5.000000e-01" );
+   start = end + 1; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "-3.750000e+00" );
+   start = end + 1; end = tx8_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx8_act_cnsl.substr(start, end-start), "6.666667e-07" );
+
+   // test printdf
+   auto tx9_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printdf", {} );
+   auto tx9_act_cnsl = tx9_trace.action_traces.front().console;
+   start = 0; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "5.000000000000000e-01" );
+   start = end + 1; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "-3.750000000000000e+00" );
+   start = end + 1; end = tx9_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "6.666666666666666e-07" );
+
+   // test printqf
+   auto tx10_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printqf", {} );
+   auto tx10_act_cnsl = tx10_trace.action_traces.front().console;
+   start = 0; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "5.000000000000000000e-01" );
+   start = end + 1; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "-3.750000000000000000e+00" );
+   start = end + 1; end = tx10_act_cnsl.find('\n', start);
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "6.666666666666666667e-07" );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1485,5 +1629,20 @@ BOOST_FIXTURE_TEST_CASE(privileged_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 #endif
+
+/*************************************************************************************
+ * real_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
+   produce_blocks(1000);
+   create_account(N(testapi) );
+   produce_blocks(1000);
+   set_code(N(testapi), test_api_wast);
+   produce_blocks(1000);
+
+   CALL_TEST_FUNCTION( *this, "test_datastream", "test_basic", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

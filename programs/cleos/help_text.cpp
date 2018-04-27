@@ -105,7 +105,7 @@ const char* error_advice_3010004 =  "Most likely, the given contract doesnt' exi
 const char* error_advice_3030000 =  "Ensure that your transaction satisfy the contract's constraint!";
 const char* error_advice_3030001 =  R"=====(Ensure that you have the related authority inside your transaction!;
 If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.)=====";
-const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and you wallet is unlocked.";
+const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and your wallet is unlocked.";
 const char* error_advice_3030003 =  "Please remove the unnecessary authority from your action!";
 const char* error_advice_3030004 =  "Please remove the unnecessary signature from your transaction!";
 const char* error_advice_3030011 =  "You can try embedding eosio nonce action inside your transaction to ensure uniqueness.";
@@ -214,15 +214,16 @@ e.g.
 
 const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
 const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
-                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet_port\033[0m\033[32m arguments!";
+                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet-port\033[0m\033[32m arguments!";
 const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration!";
 const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
 const char* error_advice_3140001 =  "Try to use different wallet name.";
-const char* error_advice_3140002 =  "Are you sure you typed the name correctly?";
+const char* error_advice_3140002 =  "Are you sure you typed the wallet name correctly?";
 const char* error_advice_3140003 =  "Ensure that your wallet is unlocked before using it!";
 const char* error_advice_3140004 =  "Ensure that you have the relevant private key imported!";
 const char* error_advice_3140005 =  "Are you sure you are using the right password?";
+const char* error_advice_3140006 =  "Ensure that you have created a wallet and have it open";
 
 
 const std::map<int64_t, std::string> error_advice = {
@@ -264,7 +265,8 @@ const std::map<int64_t, std::string> error_advice = {
    { 3140002, error_advice_3140002 },
    { 3140003, error_advice_3140003 },
    { 3140004, error_advice_3140004 },
-   { 3140005, error_advice_3140005 }
+   { 3140005, error_advice_3140005 },
+   { 3140006, error_advice_3140006 }
 };
 
 
