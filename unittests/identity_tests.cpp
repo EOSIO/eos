@@ -1,9 +1,10 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <chainbase/chainbase.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/fixed_key.hpp>
+#include <eosio/chain/global_property_object.hpp>
+#include <chainbase/chainbase.hpp>
 
 #include <identity/identity.wast.hpp>
 #include <identity/identity.abi.hpp>
@@ -17,8 +18,6 @@
 
 #include <algorithm>
 
-#include "test_wasts.hpp"
-
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -27,8 +26,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
-using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -47,23 +44,23 @@ public:
       set_abi(N(identitytest), identity_test_abi);
       produce_blocks(1);
 
-      const auto& accnt = control->get_database().get<account_object,by_name>( N(identity) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(identity) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
 
-      const auto& acnt_test = control->get_database().get<account_object,by_name>( N(identitytest) );
+      const auto& acnt_test = control->db().get<account_object,by_name>( N(identitytest) );
       abi_def abi_test;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(acnt_test.abi, abi_test), true);
       abi_ser_test.set_abi(abi_test);
 
-      const global_property_object &gpo = control->get_global_properties();
-      FC_ASSERT(0 < gpo.active_producers.producers.size(), "No producers");
-      producer_name = (string)gpo.active_producers.producers.front().producer_name;
+      const auto& ap = control->active_producers();
+      FC_ASSERT(0 < ap.producers.size(), "No producers");
+      producer_name = (string)ap.producers.front().producer_name;
    }
 
    uint64_t get_result_uint64() {
-      const auto& db = control->get_database();
+      const auto& db = control->db();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identitytest), 0, N(result)));
       FC_ASSERT(t_id != 0, "Table id not found");
 
@@ -113,7 +110,7 @@ public:
    }
 
    fc::variant get_identity(uint64_t idnt) {
-      const auto& db = control->get_database();
+      const auto& db = control->db();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), N(identity), N(ident)));
       FC_ASSERT(t_id != 0, "object not found");
 
@@ -124,7 +121,7 @@ public:
       BOOST_REQUIRE_EQUAL(idnt, itr->primary_key);
 
       vector<char> data;
-      read_only::copy_inline_row(*itr, data);
+      copy_row(*itr, data);
       return abi_ser.binary_to_variant("identrow", data);
    }
 
@@ -142,7 +139,7 @@ public:
    }
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
-      const auto& db = control->get_database();
+      const auto& db = control->db();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N( certs )));
       if ( !t_id ) {
          return fc::variant(nullptr);
@@ -161,7 +158,7 @@ public:
                     "Record found in secondary index, but not found in primary index."
          );
          vector<char> data;
-         read_only::copy_inline_row(*itr, data);
+         copy_row(*itr, data);
          return abi_ser.binary_to_variant("certrow", data);
       } else {
          return fc::variant(nullptr);
@@ -169,7 +166,7 @@ public:
    }
 
    fc::variant get_accountrow(const string& account) {
-      const auto& db = control->get_database();
+      const auto& db = control->db();
       uint64_t acnt = string_to_name(account.c_str());
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), acnt, N(account)));
       if (!t_id) {
@@ -179,7 +176,7 @@ public:
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id, N(account)));
       if( itr != idx.end() && itr->t_id == t_id->id && N(account) == itr->primary_key) {
          vector<char> data;
-         read_only::copy_inline_row(*itr, data);
+         copy_row(*itr, data);
          return abi_ser.binary_to_variant("accountrow", data);
       } else {
          return fc::variant(nullptr);
@@ -202,7 +199,7 @@ public:
    }
 
    bool get_trust(const string& trustor, const string& trusting) {
-      const auto& db = control->get_database();
+      const auto& db = control->db();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), string_to_name(trustor.c_str()), N(trust)));
       if (!t_id) {
          return false;

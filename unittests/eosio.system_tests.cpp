@@ -1,7 +1,8 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
@@ -22,8 +23,6 @@
 using namespace eosio::testing;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
-using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -33,7 +32,6 @@ class eosio_system_tester : public TESTER {
 public:
 
    eosio_system_tester() {
-
       produce_blocks( 2 );
 
       create_accounts( { N(eosio.token) } );
@@ -51,7 +49,7 @@ public:
 
       produce_blocks();
 
-      const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name );
+      const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -145,13 +143,13 @@ public:
       //return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
-      const auto& db  = control->get_database();
-      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(N(eosio.token), act, N(accounts)));
+      const auto& db  = control->db();
+      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(eosio.token), act, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).to_symbol_code()));
+         const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).to_symbol_code()));
          if (obj) {
             // balance is the first field in the serialization
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
@@ -1444,7 +1442,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(50);
-   auto producer_keys = control->get_global_properties().active_producers.producers;
+   auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
 
@@ -1462,7 +1460,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(50);
-   producer_keys = control->get_global_properties().active_producers.producers;
+   producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
@@ -1478,7 +1476,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(50);
-   producer_keys = control->get_global_properties().active_producers.producers;
+   producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
@@ -1494,7 +1492,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(100);
-   producer_keys = control->get_global_properties().active_producers.producers;
+   producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );

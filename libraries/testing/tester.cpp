@@ -17,6 +17,11 @@ namespace eosio { namespace testing {
       return res;
    }
 
+   void copy_row(const chain::key_value_object& obj, vector<char>& data) {
+      data.resize( obj.value.size() );
+      memcpy( data.data(), obj.value.data(), obj.value.size() );
+   }
+
    bool base_tester::is_same_chain( base_tester& other ) {
      return control->head_block_id() == other.control->head_block_id();
    }

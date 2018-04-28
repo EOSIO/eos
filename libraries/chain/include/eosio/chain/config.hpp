@@ -25,7 +25,6 @@ const static uint64_t majority_producers_permission_name = N(prod.major); // gre
 const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
 const static uint64_t any_producer_permission_name       = N(prod.any);   // any producer needed to authorize
 
-
 const static uint64_t eosio_auth_scope       = N(eosio.auth);
 const static uint64_t eosio_all_scope        = N(eosio.all);
 
@@ -66,11 +65,9 @@ const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of 
 const static uint32_t   default_max_trx_delay          = 45*24*3600; // 45 days
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static uint32_t   producers_authority_threshold_pct  = 66 * config::percent_1;
-
 const static uint16_t   max_recursion_depth = 6;
 
-const static uint32_t   default_base_per_transaction_net_usage  = 100;        // 100 bytes minimum (for signature and misc overhead)
+const static uint32_t   default_base_per_transaction_net_usage  = 48;        // 48 bytes minimum (for misc overhead)
 const static uint32_t   default_base_per_transaction_cpu_usage  = 500;        // TODO: is this reasonable?
 const static uint32_t   default_base_per_action_cpu_usage       = 1000;
 const static uint32_t   default_base_setcode_cpu_usage          = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
