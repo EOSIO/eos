@@ -65,6 +65,7 @@ action_trace apply_context::exec_one()
    }
 
    action_trace t(r);
+   t.trx_id = id;
    t.act = act;
    t.cpu_usage = cpu_usage;
    t.total_inline_cpu_usage = cpu_usage;

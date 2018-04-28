@@ -106,13 +106,13 @@ namespace eosio {
             if( itr->account == n ) 
                asn = itr->account_sequence_num + 1;
 
-            idump((n)(act.receipt.global_sequence)(asn));
+            //idump((n)(act.receipt.global_sequence)(asn));
             const auto& a = db.create<account_history_object>( [&]( auto& aho ) {
               aho.account = n;
               aho.action_sequence_num = act.receipt.global_sequence;
               aho.account_sequence_num = asn;
             });
-            idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
+            //idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
          }
 
          void on_action_trace( const action_trace& at ) {
