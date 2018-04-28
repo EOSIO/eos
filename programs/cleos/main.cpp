@@ -1087,6 +1087,8 @@ int main( int argc, char** argv ) {
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;
+   bool fullact = false;
+   bool prettyact = false;
 
    int32_t pos_seq = -1;
    int32_t offset = -20;
@@ -1095,6 +1097,8 @@ int main( int argc, char** argv ) {
    getActions->add_option("pos", pos_seq, localized("sequence number of action for this account, -1 for last"));
    getActions->add_option("offset", offset, localized("get actions [pos,pos+offset) for positive offset or [pos-offset,pos) for negative offset"));
    getActions->add_flag("--json,-j", printjson, localized("print full json"));
+   getActions->add_flag("--full", fullact, localized("don't truncate action json"));
+   getActions->add_flag("--pretty", prettyact, localized("pretty print full action json "));
    getActions->set_callback([&] {
       fc::mutable_variant_object arg;
       arg( "account_name", account_name );
@@ -1103,8 +1107,59 @@ int main( int argc, char** argv ) {
 
       edump((get_actions_func)(arg));
       auto result = call(get_actions_func, arg);
-      //if( printjson ) {
-      std::cout << fc::json::to_pretty_string(result) << std::endl;
+
+
+      if( printjson ) {
+         std::cout << fc::json::to_pretty_string(result) << std::endl;
+      } else {
+          auto& traces = result["actions"].get_array();
+          uint32_t lib = result["last_irreversible_block"].as_uint64();
+
+          for( const auto& trace: traces ) {
+              std::stringstream out;
+              out << "# ";
+              out << trace["account_action_seq"].as_uint64() <<"  ";
+              out << trace["block_time"].as_string() <<"  ";
+
+              const auto& at = trace["action_trace"].get_object();
+
+              const auto& receipt = at["receipt"];
+              auto receiver = receipt["receiver"].as_string();
+              const auto& act = at["act"].get_object();
+              auto code = act["account"].as_string();
+              auto func = act["name"].as_string();
+              string args;
+              if( prettyact ) {
+                  args = fc::json::to_pretty_string( act["data"] );
+              }
+              else {
+                 args = fc::json::to_string( act["data"] );
+                 if( !fullact ) {
+                    args = args.substr(0,60) + "...";
+                 }
+              }
+              auto console = at["console"].as_string();
+              out << " " << std::setw(28) << std::right<< (code +"::" + func) << " => " << left << std::setw(13) << receiver;
+
+              if( fullact || prettyact ) out << "\n";
+              else out << " ";
+
+              out << args ;//<< "\n";
+
+              if( console.size() ) {
+                 std::stringstream ss(console);
+                 string line;
+                 std::getline( ss, line );
+                 out << ">> " << line << "\n";
+              }
+
+              if( trace["block_num"].as_uint64() <= lib ) {
+                 dlog( "\r${m}", ("m",out.str()) );
+              } else {
+                 wlog( "\r${m}", ("m",out.str()) );
+              }
+          }
+      }
    });
 
 

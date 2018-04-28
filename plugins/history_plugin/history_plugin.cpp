@@ -27,7 +27,9 @@ namespace eosio {
       id_type      id;
       uint64_t     action_sequence_num; ///< the sequence number of the relevant action
 
-      shared_vector<char> packed_action_trace;
+      shared_vector<char>  packed_action_trace;
+      uint32_t             block_num;
+      block_timestamp_type block_time;
    };
    using account_history_id_type = account_history_object::id_type;
    using action_history_id_type  = action_history_object::id_type;
@@ -125,6 +127,8 @@ namespace eosio {
                   datastream<char*> ds( aho.packed_action_trace.data(), ps );
                   fc::raw::pack( ds, at );
                   aho.action_sequence_num = at.receipt.global_sequence;
+                  aho.block_num = chain.pending_block_state()->block_num;
+                  aho.block_time = chain.pending_block_time();
                });
                
                auto aset = account_set( at );
@@ -235,6 +239,7 @@ namespace eosio {
         auto end_time = start_time;
 
         get_actions_result result;
+        result.last_irreversible_block = chain.last_irreversible_block_num();
         while( start_itr != end_itr ) {
            const auto& a = db.get<action_history_object, by_action_sequence_num>( start_itr->action_sequence_num );
            fc::datastream<const char*> ds( a.packed_action_trace.data(), a.packed_action_trace.size() );
@@ -243,6 +248,7 @@ namespace eosio {
            result.actions.emplace_back( ordered_action_result{
                                  start_itr->action_sequence_num,
                                  start_itr->account_sequence_num,
+                                 a.block_num, a.block_time,
                                  chain.to_variant_with_abi(t)
                                  });
 
