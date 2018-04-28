@@ -106,12 +106,35 @@ struct controller_impl {
    SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
 
+   fork_db.irreversible.connect( [&]( auto b ) {
+                                 on_irreversible(b);
+                                 });
 
    }
 
+   void on_irreversible( const block_state_ptr& s ) {
+      if( !blog.head() )
+         blog.read_head();
+
+      const auto& log_head = blog.head();
+      FC_ASSERT( log_head );
+      auto lh_block_num = log_head->block_num();
+
+      if( s->block_num - 1  == lh_block_num ) {
+         FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
+         blog.append( s->block );
+      } else if( s->block_num -1 > lh_block_num ) {
+         wlog( "skipped blocks..." );
+         edump((s->block_num)(log_head->block_num()));
+         if( s->block_num == log_head->block_num() ) {
+            FC_ASSERT( s->id == log_head->id(), "", ("s->id",s->id)("hid",log_head->id()) );
+         }
+      }
+      self.irreversible_block( s );
+      db.commit( s->block_num );
+   }
+
    void init() {
-      // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
-      add_indices();
 
       /**
       *  The fork database needs an initial block_state to be set before
@@ -138,8 +161,9 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
+      fork_db.close();
 
-      edump((db.revision())(head->block_num));
+      edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
    }
@@ -314,9 +338,7 @@ struct controller_impl {
       pending->push();
       pending.reset();
 
-      if( !replaying ) {
-         self.log_irreversible_blocks();
-      }
+      self.log_irreversible_blocks();
    }
 
    transaction_trace_ptr apply_onerror( const generated_transaction_object& gto, fc::time_point deadline, uint32_t cpu_usage ) {
@@ -539,9 +561,11 @@ struct controller_impl {
       FC_ASSERT( !pending );
 
       FC_ASSERT( db.revision() == head->block_num, "",
-                ("db_head_block", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
+                ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
       pending = db.start_undo_session(true);
+
+
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
@@ -617,6 +641,7 @@ struct controller_impl {
 
    void push_block( const signed_block_ptr& b ) {
       try {
+         FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
          self.accepted_block_header( new_header_state );
          maybe_switch_forks();
@@ -890,14 +915,17 @@ controller::~controller() {
 
 
 void controller::startup() {
-   my->init();
 
-   /*
+   // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
+   my->add_indices();
+
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
+      my->init();
+   } else {
+   //  my->db.set_revision( my->head->block_num );
    }
-   */
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -1023,13 +1051,23 @@ const global_property_object& controller::get_global_properties()const {
  *  Any forks built off of a different block with the same number are also pruned.
  */
 void controller::log_irreversible_blocks() {
+   /*
    if( !my->blog.head() )
       my->blog.read_head();
 
    const auto& log_head = my->blog.head();
    auto lib = my->head->dpos_last_irreversible_blocknum;
 
-   if( lib > 1 ) {
+
+   if( lib > 2 ) {
+      if( log_head && log_head->block_num() > lib ) {
+         auto blk = my->fork_db.get_block_in_current_chain_by_num( lib - 1 );
+         FC_ASSERT( blk, "unable to find block state", ("block_num",lib-1));
+         my->fork_db.prune( blk  );
+         my->db.commit( lib -1 );
+         return;
+      }
+
       while( log_head && (log_head->block_num()+1) < lib ) {
          auto lhead = log_head->block_num();
          auto blk = my->fork_db.get_block_in_current_chain_by_num( lhead + 1 );
@@ -1044,6 +1082,7 @@ void controller::log_irreversible_blocks() {
          my->db.commit( lhead );
       }
    }
+   */
 }
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    idump((id));
