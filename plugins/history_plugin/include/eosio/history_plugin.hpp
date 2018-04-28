@@ -66,6 +66,24 @@ class read_only {
       get_actions_result get_actions( const get_actions_params& )const;
 
 
+      struct get_transaction_params {
+         transaction_id_type          id;
+      };
+
+      struct get_transaction_result {
+         transaction_id_type                   id;
+         fc::variant                           trx;
+         chain::block_timestamp_type           block_time;
+         uint32_t                              block_num = 0;
+         uint32_t                              last_irreversible_block = 0;
+         vector<fc::variant>                   traces;
+      };
+
+      get_transaction_result get_transaction( const get_transaction_params& )const;
+      
+
+
+
       /*
       struct ordered_transaction_results {
          uint32_t                    seq_num;
@@ -133,6 +151,9 @@ class history_plugin : public plugin<history_plugin> {
 FC_REFLECT( eosio::history_apis::read_only::get_actions_params, (account_name)(pos)(offset) )
 FC_REFLECT( eosio::history_apis::read_only::get_actions_result, (actions)(last_irreversible_block)(time_limit_exceeded_error) )
 FC_REFLECT( eosio::history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(block_num)(block_time)(action_trace) )
+
+FC_REFLECT( eosio::history_apis::read_only::get_transaction_params, (id) )
+FC_REFLECT( eosio::history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
 /*
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_params, (transaction_id) )
 FC_REFLECT(eosio::history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )

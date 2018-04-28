@@ -1089,9 +1089,10 @@ int main( int argc, char** argv ) {
    getTransaction->set_callback([&] {
       transaction_id_type transaction_id;
       try {
+         while( transaction_id_str.size() < 64 ) transaction_id_str += "0";
          transaction_id = transaction_id_type(transaction_id_str);
       } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
-      auto arg= fc::mutable_variant_object( "transaction_id", transaction_id);
+      auto arg= fc::mutable_variant_object( "id", transaction_id);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 

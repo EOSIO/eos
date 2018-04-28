@@ -97,7 +97,7 @@ namespace impl {
       return std::is_base_of<transaction, T>::value ||
              std::is_same<T, packed_transaction>::value ||
              std::is_same<T, action_trace>::value ||
-         //    std::is_same<T, transaction_trace>::value ||
+             std::is_same<T, signed_transaction>::value ||
              std::is_same<T, action>::value;
    }
 
