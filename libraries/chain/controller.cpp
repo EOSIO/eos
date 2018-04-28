@@ -894,9 +894,7 @@ void controller::abort_block() {
 
 void controller::push_block( const signed_block_ptr& b ) {
    my->push_block( b );
-   if( !my->replaying ) {
-      log_irreversible_blocks();
-   }
+   log_irreversible_blocks();
 }
 
 void controller::push_confirmation( const header_confirmation& c ) {
@@ -991,7 +989,11 @@ void controller::log_irreversible_blocks() {
          auto blk = my->fork_db.get_block_in_current_chain_by_num( lhead + 1 );
          FC_ASSERT( blk, "unable to find block state", ("block_num",lhead+1));
          irreversible_block( blk );
-         my->blog.append( blk->block );
+
+         if( !my->replaying ) {
+            my->blog.append( blk->block );
+         }
+
          my->fork_db.prune( blk );
          my->db.commit( lhead );
       }
