@@ -665,13 +665,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
 
    // test send_action_large
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), transaction_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), assert_exception,
          [](const fc::exception& e) {
             return expect_assert_message(e, "data_len < config::default_max_inline_action_size");
          }
       );
    // test send_action_inline_fail
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}), transaction_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}), assert_exception,
          [](const fc::exception& e) {
             return expect_assert_message(e, "test_action::assert_false");
          }
@@ -683,24 +683,24 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    control->push_next_scheduled_transaction();
 
    // test send_transaction_empty
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_empty", {}), transaction_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_empty", {}), tx_no_auths,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "transaction must have at least one action");
+            return expect_assert_message(e, "transaction must have at least one authorization");
          }
       );
    control->push_next_scheduled_transaction();
 
+   transaction_trace_ptr tx_traces;
+   control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { tx_traces = t; } } );
+
    // test error handling on deferred transaction failure
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
-#warning TODO: FIX THIS
-#if 0
-   auto tx_traces = control->push_deferred_transactions( true );
-   BOOST_CHECK_EQUAL(tx_traces.size(), 1);
-   BOOST_CHECK_EQUAL(tx_traces.at(0).action_traces.size(), 2);
-   BOOST_CHECK_EQUAL(tx_traces.at(0).status, transaction_receipt::soft_fail);
-#endif
+
+   BOOST_CHECK(tx_traces);
+   BOOST_CHECK_EQUAL(tx_traces->receipt.status, transaction_receipt::soft_fail);
+
    // test test_transaction_size
-   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(55) ); // TODO: Need a better way to test this.
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(53) ); // TODO: Need a better way to test this.
    control->push_next_scheduled_transaction();
 
    // test test_read_transaction
@@ -803,31 +803,36 @@ struct setprod_act {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
    produce_blocks(2);
-   create_account( N(inita) );
-   create_account( N(initb) );
-   create_account( N(initc) );
-   create_account( N(initd) );
-   create_account( N(inite) );
-   create_account( N(initf) );
-   create_account( N(initg) );
-   create_account( N(inith) );
-   create_account( N(initi) );
-   create_account( N(initj) );
-   create_account( N(initk) );
-   create_account( N(initl) );
-   create_account( N(initm) );
-   create_account( N(initn) );
-   create_account( N(inito) );
-   create_account( N(initp) );
-   create_account( N(initq) );
-   create_account( N(initr) );
-   create_account( N(inits) );
-   create_account( N(initt) );
-   create_account( N(initu) );
-   create_account( N(initv) );
 
    create_account( N(testapi) );
 
+   vector<account_name> producers = { N(inita),
+                                      N(initb),
+                                      N(initc),
+                                      N(initd),
+                                      N(inite),
+                                      N(initf),
+                                      N(initg),
+                                      N(inith),
+                                      N(initi),
+                                      N(initj),
+                                      N(initk),
+                                      N(initl),
+                                      N(initm),
+                                      N(initn),
+                                      N(inito),
+                                      N(initp),
+                                      N(initq),
+                                      N(initr),
+                                      N(inits),
+                                      N(initt),
+                                      N(initu)
+   };
+
+   create_accounts( producers );
+   set_producers (producers );
+
+   /*
    // set active producers
    {
       signed_transaction trx;
@@ -870,16 +875,17 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
       auto res = push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
    }
+   */
 
    set_code( N(testapi), test_api_wast );
    produce_blocks(100);
-   const auto& gpo = control->get_global_properties();
-   std::vector<account_name> prods(gpo.proposed_schedule.producers.size());
-   for ( unsigned int i=0; i < gpo.proposed_schedule.producers.size(); i++ ) {
-      prods[i] = gpo.proposed_schedule.producers[i].producer_name;
+
+   vector<account_name> prods( control->active_producers().producers.size() );
+   for ( uint32_t i = 0; i < prods.size(); i++ ) {
+      prods[i] = control->active_producers().producers[i].producer_name;
    }
 
-   CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods));
+   CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -979,6 +985,7 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    produce_blocks(1);
    set_code( N(testapi), test_api_multi_index_wast );
    produce_blocks(1);
+
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
@@ -1379,70 +1386,6 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
-
-
-/*************************************************************************************
- * math_tests test case
- *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(math_tests, TESTER) { try {
-	produce_blocks(1000);
-	create_account( N(testapi) );
-	produce_blocks(1000);
-
-	produce_blocks(1000);
-	set_code( N(testapi), test_api_wast );
-	produce_blocks(1000);
-
-   std::random_device rd;
-   std::mt19937_64 gen(rd());
-   std::uniform_int_distribution<unsigned long long> dis;
-
-   // test mult_eq with 10 random pairs of 128 bit numbers
-   for (int i=0; i < 10; i++) {
-      u128_action act;
-      act.values[0] = dis(gen); act.values[0] <<= 64; act.values[0] |= dis(gen);
-      act.values[1] = dis(gen); act.values[1] <<= 64; act.values[1] |= dis(gen);
-      act.values[2] = act.values[0] * act.values[1];
-      CALL_TEST_FUNCTION( *this, "test_math", "test_multeq", fc::raw::pack(act));
-   }
-   // test div_eq with 10 random pairs of 128 bit numbers
-   for (int i=0; i < 10; i++) {
-      u128_action act;
-      act.values[0] = dis(gen); act.values[0] <<= 64; act.values[0] |= dis(gen);
-      act.values[1] = dis(gen); act.values[1] <<= 64; act.values[1] |= dis(gen);
-      act.values[2] = act.values[0] / act.values[1];
-      CALL_TEST_FUNCTION( *this, "test_math", "test_diveq", fc::raw::pack(act));
-   }
-   // test diveq for divide by zero
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_math", "test_diveq_by_0", {}), assert_exception,
-          [](const fc::exception& e) {
-            return expect_assert_message(e, "divide by zero");
-         }
-      );
-
-	CALL_TEST_FUNCTION( *this, "test_math", "test_double_api", {});
-
-   union {
-      char whole[32];
-      double _[4] = {2, -2, 100000, -100000};
-   } d_vals;
-
-   std::vector<char> ds(sizeof(d_vals));
-   std::copy(d_vals.whole, d_vals.whole+sizeof(d_vals), ds.begin());
-   CALL_TEST_FUNCTION( *this, "test_math", "test_i64_to_double", ds);
-
-   std::copy(d_vals.whole, d_vals.whole+sizeof(d_vals), ds.begin());
-   CALL_TEST_FUNCTION( *this, "test_math", "test_double_to_i64", ds);
-
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_math", "test_double_api_div_0", {}), assert_exception,
-          [](const fc::exception& e) {
-            return expect_assert_message(e, "divide by zero");
-         }
-      );
-
-   BOOST_REQUIRE_EQUAL( validate(), true );
-} FC_LOG_AND_RETHROW() }
-
 
 /*************************************************************************************
  * types_tests test case
