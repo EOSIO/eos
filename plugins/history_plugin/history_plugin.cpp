@@ -115,11 +115,10 @@ namespace eosio {
 
          void on_action_trace( const action_trace& at ) {
             if( filter( at ) ) {
-               idump((fc::json::to_pretty_string(at)));
+               //idump((fc::json::to_pretty_string(at)));
                auto& chain = chain_plug->chain();
                auto& db = chain.db();
 
-               idump((at.receipt.global_sequence));
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
                   aho.packed_action_trace.resize(ps);
@@ -129,7 +128,6 @@ namespace eosio {
                });
                
                auto aset = account_set( at );
-               idump((aset));
                for( auto a : aset ) {
                   record_account_action( a, at );
                }
@@ -216,7 +214,7 @@ namespace eosio {
                pos = itr->account_sequence_num + 1;
         }
 
-        if( pos== -1 ) pos = 0xffffff;
+        if( pos== -1 ) pos = 0xfffffff;
 
         if( offset > 0 ) {
            start = pos;
@@ -245,7 +243,7 @@ namespace eosio {
            result.actions.emplace_back( ordered_action_result{
                                  start_itr->action_sequence_num,
                                  start_itr->account_sequence_num,
-                                 fc::variant(t)
+                                 chain.to_variant_with_abi(t)
                                  });
 
            end_time = fc::time_point::now();
@@ -255,7 +253,6 @@ namespace eosio {
            }
            ++start_itr;
         }
-        
         return result;
       }
    } /// history_apis

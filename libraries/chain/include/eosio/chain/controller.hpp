@@ -4,6 +4,9 @@
 #include <eosio/chain/genesis_state.hpp>
 #include <boost/signals2/signal.hpp>
 
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/account_object.hpp>
+
 namespace chainbase {
    class database;
 }
@@ -167,6 +170,22 @@ namespace eosio { namespace chain {
 
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
          wasm_interface& get_wasm_interface();
+
+
+         optional<abi_serializer> get_abi_serializer( account_name n )const {
+            const auto& a = get_account(n);
+            abi_def abi;
+            if( abi_serializer::to_abi( a.abi, abi ) )
+               return abi_serializer(abi);
+            return optional<abi_serializer>();
+         }
+
+         template<typename T>
+         fc::variant to_variant_with_abi( const T& obj ) {
+            fc::variant pretty_output;
+            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); });
+            return pretty_output;
+         }
 
       private:
          std::unique_ptr<controller_impl> my;

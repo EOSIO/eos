@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 
@@ -95,6 +96,8 @@ namespace impl {
    constexpr bool single_type_requires_abi_v() {
       return std::is_base_of<transaction, T>::value ||
              std::is_same<T, packed_transaction>::value ||
+             std::is_same<T, action_trace>::value ||
+             std::is_same<T, transaction_trace>::value ||
              std::is_same<T, action>::value;
    }
 
@@ -200,6 +203,26 @@ namespace impl {
          }
          out(name, std::move(mvo));
       }
+
+      /**
+       * overload of to_variant_object for actions
+       * @tparam Resolver
+       * @param act
+       * @param resolver
+       * @return
+      template<typename Resolver>
+      static void add(mutable_variant_object &out, const char* name, const action_trace& act, Resolver resolver) {
+         mutable_variant_object mvo;
+         mvo("receipt", act.receipt);
+         mvo("elapsed", act.elapsed);
+         mvo("cpu_usage", act.cpu_usage);
+         mvo("console", act.console);
+         mvo("total_inline_cpu_usage", act.total_inline_cpu_usage);
+         mvo("inline_traces", act.inline_traces);
+         out(name, std::move(mvo));
+      }
+       */
+
 
       /**
        * overload of to_variant_object for packed_transaction
