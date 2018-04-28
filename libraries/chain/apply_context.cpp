@@ -93,8 +93,12 @@ void apply_context::exec()
       }
    }
 
+   if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
+      EOS_ASSERT( recurse_depth < control.get_global_properties().configuration.max_inline_action_depth,
+                  transaction_exception, "inline action recursion depth reached" );
+   }
+
    for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
-      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, _cfa_inline_actions[i], trx, recurse_depth + 1 );
       ncontext.context_free = true;
       ncontext.id = id;
@@ -111,7 +115,6 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, _inline_actions[i], trx, recurse_depth + 1 );
       ncontext.processing_deadline = processing_deadline;
       ncontext.published_time      = published_time;
@@ -282,7 +285,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             gtx.payer       = payer;
             gtx.published   = control.pending_block_time();
             gtx.delay_until = gtx.published + delay;
-            gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
+            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
             trx_size = gtx.set( trx );
          });
@@ -294,7 +297,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             gtx.payer       = payer;
             gtx.published   = control.pending_block_time();
             gtx.delay_until = gtx.published + delay;
-            gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
+            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
             trx_size = gtx.set( trx );
          });

@@ -262,7 +262,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       if (!tx_ref_block_num_or_id.empty()) {
          ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
          ref_block_id = ref_block["id"].as<block_id_type>();
-      } 
+      }
    } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
    trx.set_reference_block(ref_block_id);
 
@@ -391,29 +391,31 @@ fc::variant regproducer_variant(const account_name& producer,
                                 uint32_t percent_of_max_inflation_rate,
                                 uint32_t storage_reserve_ratio) {
    fc::variant_object params = fc::mutable_variant_object()
-           ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
-           ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
-           ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
-           ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
-           ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
-           ("per_lock_net_usage", config::default_per_lock_net_usage)
-           ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
-           ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
-           ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
-           ("max_transaction_net_usage", config::default_max_transaction_net_usage)
-           ("max_block_cpu_usage", config::default_max_block_cpu_usage)
-           ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
-           ("max_block_net_usage", config::default_max_block_net_usage)
-           ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
-           ("max_transaction_lifetime", config::default_max_trx_lifetime)
-           ("max_transaction_exec_time", config::default_max_trx_runtime)
-           ("max_authority_depth", config::default_max_auth_depth)
-           ("max_inline_depth", config::default_max_inline_depth)
-           ("max_inline_action_size", config::default_max_inline_action_size)
-           ("max_generated_transaction_count", config::default_max_gen_trx_count)
-           ("max_storage_size", max_storage_size)
-           ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
-           ("storage_reserve_ratio", storage_reserve_ratio);
+         ("max_block_net_usage", config::default_max_block_net_usage)
+         ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
+         ("max_transaction_net_usage", config::default_max_transaction_net_usage)
+         ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
+         ("context_free_discount_net_usage_num", config::default_context_free_discount_net_usage_num)
+         ("context_free_discount_net_usage_den", config::default_context_free_discount_net_usage_den)
+         ("max_block_cpu_usage", config::default_max_block_cpu_usage)
+         ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
+         ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
+         ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
+         ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
+         ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
+         ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
+         ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
+         ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
+         ("max_transaction_lifetime", config::default_max_trx_lifetime)
+         ("deferred_trx_expiration_window", config::default_deferred_trx_expiration_window)
+         ("max_transaction_delay", config::default_max_trx_delay)
+         ("max_inline_action_size", config::default_max_inline_action_size)
+         ("max_inline_depth", config::default_max_inline_action_depth)
+         ("max_authority_depth", config::default_max_auth_depth)
+         ("max_generated_transaction_count", config::default_max_gen_trx_count)
+         ("max_storage_size", max_storage_size)
+         ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
+         ("storage_reserve_ratio", storage_reserve_ratio);
 
    return fc::mutable_variant_object()
             ("producer", producer)
@@ -1081,7 +1083,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
-   // get actions 
+   // get actions
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;

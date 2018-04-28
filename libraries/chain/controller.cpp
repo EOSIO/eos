@@ -1193,6 +1193,11 @@ uint64_t controller::validate_net_usage( const transaction_metadata_ptr& trx )co
    const auto& cfg = get_global_properties().configuration;
 
    auto actual_net_usage = cfg.base_per_transaction_net_usage + trx->packed_trx.get_billable_size();
+   if( trx->trx.delay_sec.value > 0 ) {
+       // If delayed, also charge ahead of time for the additional net usage needed to retire the delayed transaction
+       // whether that be by successfully executing, soft failure, hard failure, or expiration.
+      actual_net_usage += cfg.base_per_transaction_net_usage + ::eosio::chain::config::transaction_id_net_usage;
+   }
 
    actual_net_usage = ((actual_net_usage + 7)/8) * 8; // Round up to nearest multiple of 8
 
