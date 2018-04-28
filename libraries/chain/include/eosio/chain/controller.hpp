@@ -151,6 +151,9 @@ namespace eosio { namespace chain {
 
          bool set_proposed_producers( vector<producer_key> producers );
 
+
+
+
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;
@@ -188,6 +191,7 @@ namespace eosio { namespace chain {
          }
 
       private:
+
          std::unique_ptr<controller_impl> my;
 
    };

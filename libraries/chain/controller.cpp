@@ -112,6 +112,23 @@ struct controller_impl {
 
    }
 
+   /**
+    *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
+    *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
+    *  cause a node to fork.  
+    *
+    *  TODO: define special exceptions that can be thrown to reject transactions or blocks 
+    */
+   template<typename Signal, typename Arg>
+   void emit( const Signal& s, Arg&& a ) { 
+      try {
+        s(std::forward<Arg>(a));
+      } catch ( ... ) {
+         elog( "signal handler threw exception" );
+      }
+   }
+
+
    void on_irreversible( const block_state_ptr& s ) {
       if( !blog.head() )
          blog.read_head();
@@ -130,7 +147,7 @@ struct controller_impl {
             FC_ASSERT( s->id == log_head->id(), "", ("s->id",s->id)("hid",log_head->id()) );
          }
       }
-      self.irreversible_block( s );
+      emit( self.irreversible_block, s );
       db.commit( s->block_num );
    }
 
@@ -334,7 +351,7 @@ struct controller_impl {
       }
 
       //ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      self.accepted_block( pending->_pending_block_state );
+      emit( self.accepted_block, pending->_pending_block_state );
       pending->push();
       pending.reset();
 
@@ -356,7 +373,7 @@ struct controller_impl {
       trx_context.is_input  = false;
       trx_context.exec();
 
-      self.applied_transaction(trx_context.trace);
+      emit( self.applied_transaction, trx_context.trace );
       trx_context.squash();
 
       return move(trx_context.trace);
@@ -418,7 +435,7 @@ struct controller_impl {
 
          db.remove( gto );
 
-         self.applied_transaction( trx_context.trace );
+         emit( self.applied_transaction, trx_context.trace );
          trx_context.squash();
 
          return;
@@ -431,7 +448,7 @@ struct controller_impl {
          try {
             auto trace = apply_onerror( gto, deadline, apply_cpu_usage  );
             trace->soft_except = soft_except;
-            self.applied_transaction( trace );
+            emit( self.applied_transaction, trace );
          } catch ( const fc::exception& e ) {
             hard_except = e;
             trace->hard_except_ptr = std::current_exception();
@@ -454,7 +471,7 @@ struct controller_impl {
 
       db.remove( gto );
 
-      self.applied_transaction( trace );
+      emit( self.applied_transaction, trace );
    } /// push_scheduled_transaction
 
 
@@ -542,8 +559,8 @@ struct controller_impl {
          if( !implicit )
             pending->_pending_block_state->trxs.emplace_back(trx);
 
-         self.accepted_transaction(trx);
-         self.applied_transaction(trace);
+         emit( self.accepted_transaction,trx );
+         emit( self.applied_transaction,trace );
          trx_context.squash();
          return;
       } catch ( const fc::exception& e ) {
@@ -643,14 +660,14 @@ struct controller_impl {
       try {
          FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
-         self.accepted_block_header( new_header_state );
+         emit( self.accepted_block_header, new_header_state );
          maybe_switch_forks();
       } FC_LOG_AND_RETHROW()
    }
 
    void push_confirmation( const header_confirmation& c ) {
       fork_db.add( c );
-      self.accepted_confirmation( c );
+      emit( self.accepted_confirmation, c );
       maybe_switch_forks();
    }
 
