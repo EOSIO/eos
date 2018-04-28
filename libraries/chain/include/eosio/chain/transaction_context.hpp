@@ -7,8 +7,8 @@ namespace eosio { namespace chain {
 
    class transaction_context {
       public:
-         transaction_context( controller& c, 
-                              const signed_transaction& t, 
+         transaction_context( controller& c,
+                              const signed_transaction& t,
                               const transaction_id_type& trx_id )
          :control(c),
           id(trx_id),
@@ -33,7 +33,7 @@ namespace eosio { namespace chain {
          bool apply_actions      = true;
          bool is_input           = true;
 
-         fc::microseconds   delay; 
+         fc::microseconds   delay;
 
          vector<action_receipt>            executed;
 
@@ -51,7 +51,6 @@ namespace eosio { namespace chain {
          uint32_t                          net_usage = 0;
          //const transaction_metadata_ptr&   trx_meta;
          chainbase::database::session      undo_session;
-         flat_set<account_name>            bill_to_accounts;
    };
 
 } }

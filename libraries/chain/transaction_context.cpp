@@ -18,11 +18,30 @@ namespace eosio { namespace chain {
          control.validate_expiration( trx );
          record_transaction( id, trx.expiration ); /// checks for dupes
       }
-      max_cpu = control.get_global_properties().configuration.max_transaction_cpu_usage;
-      // TODO: reduce max_cpu to the minimum of the amount that the paying accounts can afford to pay
+
+      auto& rl = control.get_mutable_resource_limits_manager();
+      auto current_slot = block_timestamp_type(control.pending_block_time()).slot;
+
+      flat_set<account_name> bill_to_accounts;
+      for( const auto& act : trx.actions ) {
+         for( const auto& auth : act.authorization )
+            bill_to_accounts.insert( auth.actor );
+      }
+
+      rl.add_transaction_usage( bill_to_accounts, 0, 0, current_slot ); // Update usage values of accounts to reflect new time
+
+      max_cpu = std::min( rl.get_block_cpu_limit(),
+                          static_cast<uint64_t>(control.get_global_properties().configuration.max_transaction_cpu_usage) );
+      for( const auto& a : bill_to_accounts ) {
+         auto l = rl.get_account_cpu_limit(a);
+         if( l >= 0 )
+            max_cpu = std::min( max_cpu, static_cast<uint64_t>(l) ); // reduce max_cpu to the amount the account is able to pay
+      }
+
       uint64_t trx_specified_cpu_usage_limit = uint64_t(trx.max_kcpu_usage.value)*1024; // overflow checked in transaction_header::validate()
       if( trx_specified_cpu_usage_limit > 0 )
          max_cpu = std::min( max_cpu, trx_specified_cpu_usage_limit );
+
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
@@ -38,23 +57,14 @@ namespace eosio { namespace chain {
           schedule_transaction();
       }
 
-      for( const auto& act : trx.actions ) {
-         for( const auto& auth : act.authorization )
-            bill_to_accounts.insert( auth.actor );
-      }
-
       trace->cpu_usage = ((trace->cpu_usage + 1023)/1024)*1024; // Round up to nearest multiple of 1024
 
       EOS_ASSERT( trace->cpu_usage <= max_cpu, tx_resource_exhausted,
                   "cpu usage of transaction is too high: ${actual_net_usage} > ${cpu_usage_limit}",
                   ("actual_net_usage", trace->cpu_usage)("cpu_usage_limit", max_cpu) );
 
-      auto& rl = control.get_mutable_resource_limits_manager();
-
-      flat_set<account_name> bta( bill_to_accounts.begin(), bill_to_accounts.end() );
       FC_ASSERT( net_usage % 8 == 0, "net_usage must be a multiple of word size (8)" );
-      rl.add_transaction_usage( bta, trace->cpu_usage, net_usage, block_timestamp_type(control.pending_block_time()).slot );
-
+      rl.add_transaction_usage( bill_to_accounts, trace->cpu_usage, net_usage, current_slot );
    }
 
    void transaction_context::squash() {
