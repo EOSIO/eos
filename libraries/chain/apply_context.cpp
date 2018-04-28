@@ -14,6 +14,23 @@
 using boost::container::flat_set;
 
 namespace eosio { namespace chain {
+
+static inline void print_debug(account_name receiver, const action_trace& ar) {
+   if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
+      if (!ar.console.empty()) {
+         auto prefix = fc::format_string(
+                                         "\n[(${a},${n})->${r}]",
+                                         fc::mutable_variant_object()
+                                         ("a", ar.act.account)
+                                         ("n", ar.act.name)
+                                         ("r", receiver));
+         dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+              + ar.console
+              + prefix + ": CONSOLE OUTPUT END   =====================" );
+      }
+   }
+}
+
 action_trace apply_context::exec_one()
 {
    const auto& gpo = control.get_global_properties();
@@ -53,6 +70,8 @@ action_trace apply_context::exec_one()
    t.total_inline_cpu_usage = cpu_usage;
    t.console = _pending_console_output.str();
 
+   print_debug(receiver, t);
+
    executed.emplace_back( move(r) );
    total_cpu_usage += cpu_usage;
 
@@ -74,14 +93,19 @@ void apply_context::exec()
       }
    }
 
+   if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
+      EOS_ASSERT( recurse_depth < control.get_global_properties().configuration.max_inline_action_depth,
+                  transaction_exception, "inline action recursion depth reached" );
+   }
+
    for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
-      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, _cfa_inline_actions[i], trx, recurse_depth + 1 );
       ncontext.context_free = true;
       ncontext.id = id;
 
       ncontext.processing_deadline = processing_deadline;
       ncontext.published_time      = published_time;
+      ncontext.max_cpu = max_cpu - total_cpu_usage;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
@@ -91,10 +115,10 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, _inline_actions[i], trx, recurse_depth + 1 );
       ncontext.processing_deadline = processing_deadline;
       ncontext.published_time      = published_time;
+      ncontext.max_cpu = max_cpu - total_cpu_usage;
       ncontext.id = id;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
@@ -213,13 +237,8 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
-
-   //QUESTION: Do we need to validate other things about the transaction at this point such as:
-   //           * uniqueness?
-   //           * that there is at least one action and at least one authorization in the transaction?
-   //           * that the context free actions have no authorizations?
-   //           * that the max_kcpu_usage and max_net_usage fields do not cause overflow?
-
+   trx.validate();
+   FC_ASSERT( trx.context_free_actions.size() == 0, "context free actions are not currently allowed in generated transactions" );
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
 
@@ -259,17 +278,30 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    uint32_t trx_size = 0;
 
    auto& d = control.db();
-   d.create<generated_transaction_object>( [&]( auto& gtx ) {
-      gtx.trx_id      = id;
-      gtx.sender      = receiver;
-      gtx.sender_id   = sender_id;
-      gtx.payer       = payer;
-      gtx.published   = control.pending_block_time();
-      gtx.delay_until = gtx.published + delay;
-      gtx.expiration  = gtx.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
+   if ( auto ptr = d.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+      d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
+            gtx.sender      = receiver;
+            gtx.sender_id   = sender_id;
+            gtx.payer       = payer;
+            gtx.published   = control.pending_block_time();
+            gtx.delay_until = gtx.published + delay;
+            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
-      trx_size = gtx.set( trx );
-   });
+            trx_size = gtx.set( trx );
+         });
+   } else {
+      d.create<generated_transaction_object>( [&]( auto& gtx ) {
+            gtx.trx_id      = id;
+            gtx.sender      = receiver;
+            gtx.sender_id   = sender_id;
+            gtx.payer       = payer;
+            gtx.published   = control.pending_block_time();
+            gtx.delay_until = gtx.published + delay;
+            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+
+            trx_size = gtx.set( trx );
+         });
+   }
 
    auto& rl = control.get_mutable_resource_limits_manager();
    rl.add_pending_account_ram_usage( payer, config::billable_size_v<generated_transaction_object> + trx_size );

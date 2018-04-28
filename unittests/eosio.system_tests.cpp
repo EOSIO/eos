@@ -1,7 +1,8 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
@@ -22,8 +23,6 @@
 using namespace eosio::testing;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
-using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -33,7 +32,6 @@ class eosio_system_tester : public TESTER {
 public:
 
    eosio_system_tester() {
-
       produce_blocks( 2 );
 
       create_accounts( { N(eosio.token) } );
@@ -51,7 +49,7 @@ public:
 
       produce_blocks();
 
-      const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name );
+      const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -103,27 +101,28 @@ public:
 
    static fc::variant_object producer_parameters_example( int n ) {
       return mutable_variant_object()
+         ("max_block_net_usage", 10000000 + n )
+         ("target_block_net_usage_pct", 10 + n )
+         ("max_transaction_net_usage", 1000000 + n )
          ("base_per_transaction_net_usage", 100 + n)
+         ("context_free_discount_net_usage_num", 1 + n )
+         ("context_free_discount_net_usage_den", 100 + n )
+         ("max_block_cpu_usage", 10000000 + n )
+         ("target_block_cpu_usage_pct", 10 + n )
+         ("max_transaction_cpu_usage", 1000000 + n )
          ("base_per_transaction_cpu_usage", 100 + n)
          ("base_per_action_cpu_usage", 100 + n)
          ("base_setcode_cpu_usage", 100 + n)
          ("per_signature_cpu_usage", 100 + n)
-         ("per_lock_net_usage", 100 + n )
          ("context_free_discount_cpu_usage_num", 1 + n )
          ("context_free_discount_cpu_usage_den", 100 + n )
-         ("max_transaction_cpu_usage", 1000000 + n )
-         ("max_transaction_net_usage", 1000000 + n )
-         ("max_block_cpu_usage", 10000000 + n )
-         ("target_block_cpu_usage_pct", 10 + n )
-         ("max_block_net_usage", 10000000 + n )
-         ("target_block_net_usage_pct", 10 + n )
          ("max_transaction_lifetime", 3600 + n)
-         ("max_transaction_exec_time", 9900 + n)
-         ("max_authority_depth", 6 + n)
-         ("max_inline_depth", 4 + n)
-         ("max_inline_action_size", 4096 + n)
-         ("max_generated_transaction_count", 10 + n)
+         ("deferred_trx_expiration_window", 600 + n)
          ("max_transaction_delay", 10*86400+n)
+         ("max_inline_action_size", 4096 + n)
+         ("max_inline_action_depth", 4 + n)
+         ("max_authority_depth", 6 + n)
+         ("max_generated_transaction_count", 10 + n)
          ("max_storage_size", (n % 10 + 1) * 1024 * 1024)
          ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);
@@ -145,13 +144,13 @@ public:
       //return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
-      const auto& db  = control->get_database();
-      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(N(eosio.token), act, N(accounts)));
+      const auto& db  = control->db();
+      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(eosio.token), act, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).to_symbol_code()));
+         const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).to_symbol_code()));
          if (obj) {
             // balance is the first field in the serialization
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
@@ -1406,25 +1405,27 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
 
 fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& config ) {
    return mutable_variant_object()
+      ( "max_block_net_usage", config.max_block_net_usage )
+      ( "target_block_net_usage_pct", config.target_block_net_usage_pct )
+      ( "max_transaction_net_usage", config.max_transaction_net_usage )
       ( "base_per_transaction_net_usage", config.base_per_transaction_net_usage )
+      ( "context_free_discount_net_usage_num", config.context_free_discount_net_usage_num )
+      ( "context_free_discount_net_usage_den", config.context_free_discount_net_usage_den )
+      ( "max_block_cpu_usage", config.max_block_cpu_usage )
+      ( "target_block_cpu_usage_pct", config.target_block_cpu_usage_pct )
+      ( "max_transaction_cpu_usage", config.max_transaction_cpu_usage )
       ( "base_per_transaction_cpu_usage", config.base_per_transaction_cpu_usage )
       ( "base_per_action_cpu_usage", config.base_per_action_cpu_usage )
       ( "base_setcode_cpu_usage", config.base_setcode_cpu_usage )
       ( "per_signature_cpu_usage", config.per_signature_cpu_usage )
-      ( "per_lock_net_usage", config.per_lock_net_usage )
       ( "context_free_discount_cpu_usage_num", config.context_free_discount_cpu_usage_num )
       ( "context_free_discount_cpu_usage_den", config.context_free_discount_cpu_usage_den )
-      ( "max_transaction_cpu_usage", config.max_transaction_cpu_usage )
-      ( "max_transaction_net_usage", config.max_transaction_net_usage )
-      ( "max_block_cpu_usage", config.max_block_cpu_usage )
-      ( "target_block_cpu_usage_pct", config.target_block_cpu_usage_pct )
-      ( "max_block_net_usage", config.max_block_net_usage )
-      ( "target_block_net_usage_pct", config.target_block_net_usage_pct )
       ( "max_transaction_lifetime", config.max_transaction_lifetime )
-      ( "max_transaction_exec_time", config.max_transaction_exec_time )
-      ( "max_authority_depth", config.max_authority_depth )
-      ( "max_inline_depth", config.max_inline_depth )
+      ( "deferred_trx_expiration_window", config.deferred_trx_expiration_window )
+      ( "max_transaction_delay", config.max_transaction_delay )
       ( "max_inline_action_size", config.max_inline_action_size )
+      ( "max_inline_action_depth", config.max_inline_action_depth )
+      ( "max_authority_depth", config.max_authority_depth )
       ( "max_generated_transaction_count", config.max_generated_transaction_count );
 }
 
@@ -1444,7 +1445,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(50);
-   auto producer_keys = control->get_global_properties().active_producers.producers;
+   auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
 
@@ -1462,7 +1463,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(50);
-   producer_keys = control->get_global_properties().active_producers.producers;
+   producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
@@ -1478,7 +1479,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(50);
-   producer_keys = control->get_global_properties().active_producers.producers;
+   producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
@@ -1494,7 +1495,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                         )
    );
    produce_blocks(100);
-   producer_keys = control->get_global_properties().active_producers.producers;
+   producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );

@@ -1137,8 +1137,9 @@ class transaction_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       void send_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+         //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
+         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+                    "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
@@ -1146,8 +1147,9 @@ class transaction_api : public context_aware_api {
       }
 
       void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+         //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
+         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+                   "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
@@ -1431,92 +1433,6 @@ class compiler_builtins : public context_aware_api {
 
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
-
-class math_api : public context_aware_api {
-   public:
-      math_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
-
-      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
-         fc::uint128_t s(*self);
-         const fc::uint128_t o(*other);
-         FC_ASSERT( o != 0, "divide by zero" );
-
-         s = s/o;
-         *self = (unsigned __int128)s;
-      }
-
-      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
-         fc::uint128_t s(*self);
-         const fc::uint128_t o(*other);
-         s *= o;
-         *self = (unsigned __int128)s;
-      }
-
-      uint64_t double_add(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
-                  + DOUBLE(*reinterpret_cast<double *>(&b));
-         double res = c.convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-
-      uint64_t double_mult(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
-                  * DOUBLE(*reinterpret_cast<double *>(&b));
-         double res = c.convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-
-      uint64_t double_div(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
-         FC_ASSERT(divisor != 0, "divide by zero");
-         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
-         double res = c.convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-
-      uint32_t double_eq(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
-      }
-
-      uint32_t double_lt(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
-      }
-
-      uint32_t double_gt(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
-      }
-
-      uint64_t double_to_i64(uint64_t n) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
-      }
-
-      uint64_t i64_to_double(int64_t n) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         double res = DOUBLE(n).convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-};
-
-REGISTER_INTRINSICS(math_api,
-   (diveq_i128,    void(int, int)            )
-   (multeq_i128,   void(int, int)            )
-   (double_add,    int64_t(int64_t, int64_t) )
-   (double_mult,   int64_t(int64_t, int64_t) )
-   (double_div,    int64_t(int64_t, int64_t) )
-   (double_eq,     int32_t(int64_t, int64_t) )
-   (double_lt,     int32_t(int64_t, int64_t) )
-   (double_gt,     int32_t(int64_t, int64_t) )
-   (double_to_i64, int64_t(int64_t)          )
-   (i64_to_double, int64_t(int64_t)          )
-);
 
 REGISTER_INTRINSICS(compiler_builtins,
    (__ashlti3,     void(int, int64_t, int64_t, int)               )

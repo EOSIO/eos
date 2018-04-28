@@ -18,8 +18,13 @@ const static auto default_shared_memory_size = 32*1024*1024*1024ll;
 
 const static uint64_t system_account_name    = N(eosio);
 const static uint64_t nobody_account_name    = N(nobody);
-const static uint64_t anybody_account_name   = N(anybody);
 const static uint64_t producers_account_name = N(producers);
+
+// Active permission of producers account requires greater than 2/3 of the producers to authorize
+const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
+const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
+const static uint64_t any_producer_permission_name       = N(prod.any);   // any producer needed to authorize
+
 const static uint64_t eosio_auth_scope       = N(eosio.auth);
 const static uint64_t eosio_all_scope        = N(eosio.all);
 
@@ -41,39 +46,41 @@ static const uint32_t account_cpu_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t account_net_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
 static const uint32_t block_size_average_window_ms         = 60*1000l;
-static const uint32_t deferred_trx_expiration_window_ms    = 10*60*1000l; // TODO: make 10 minutes configurable by system
 
-const static uint32_t   default_max_block_net_usage         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
-const static int        default_target_block_net_usage_pct  = 10 * percent_1; /// we target 1000 TPS
+//const static uint64_t   default_max_storage_size       = 10 * 1024;
+//const static uint32_t   default_max_trx_runtime        = 10*1000;
+//const static uint32_t   default_max_gen_trx_size       = 64 * 1024;
 
-const static uint32_t   default_max_block_cpu_usage         = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_cpu_usage_pct  = 10 * percent_1; /// target 1000 TPS
-
-const static uint64_t   default_max_storage_size       = 10 * 1024;
-const static uint32_t   default_max_trx_lifetime       = 60*60;
-const static uint16_t   default_max_auth_depth         = 6;
-const static uint32_t   default_max_trx_runtime        = 10*1000;
-const static uint16_t   default_max_inline_depth       = 4;
-const static uint32_t   default_max_inline_action_size = 4 * 1024;
-const static uint32_t   default_max_gen_trx_size       = 64 * 1024; ///
-const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
-const static uint32_t   default_max_trx_delay          = 45*24*3600; // 45 days
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static uint32_t   producers_authority_threshold_pct  = 66 * config::percent_1;
 
-const static uint16_t   max_recursion_depth = 6;
+const static uint32_t   default_max_block_net_usage                 = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
+const static uint32_t   default_target_block_net_usage_pct           = 10 * percent_1; /// we target 1000 TPS
+const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 10;
+const static uint32_t   default_base_per_transaction_net_usage       = 12;  // 12 bytes (11 bytes for worst case of transaction_receipt_header + 1 byte for static_variant tag)
+const static uint64_t   default_context_free_discount_net_usage_num  = 20; // TODO: is this reasonable?
+const static uint64_t   default_context_free_discount_net_usage_den  = 100;
+const static uint32_t   transaction_id_net_usage                     = 32; // 32 bytes for the size of a transaction id
 
-const static uint32_t   default_base_per_transaction_net_usage  = 100;        // 100 bytes minimum (for signature and misc overhead)
-const static uint32_t   default_base_per_transaction_cpu_usage  = 500;        // TODO: is this reasonable?
-const static uint32_t   default_base_per_action_cpu_usage       = 1000;
-const static uint32_t   default_base_setcode_cpu_usage          = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
-const static uint32_t   default_per_signature_cpu_usage         = 100 * 1000; // TODO: is this reasonable?
-const static uint32_t   default_per_lock_net_usage                     = 32;
-const static uint64_t   default_context_free_discount_cpu_usage_num    = 20;
-const static uint64_t   default_context_free_discount_cpu_usage_den    = 100;
-const static uint32_t   default_max_transaction_cpu_usage              = default_max_block_cpu_usage / 10;
-const static uint32_t   default_max_transaction_net_usage              = default_max_block_net_usage / 10;
+const static uint32_t   default_max_block_cpu_usage                 = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
+const static uint32_t   default_target_block_cpu_usage_pct          = 10 * percent_1; /// target 1000 TPS
+const static uint32_t   default_max_transaction_cpu_usage           = default_max_block_cpu_usage / 10;
+const static uint32_t   default_base_per_transaction_cpu_usage      = 500;        // TODO: is this reasonable?
+const static uint32_t   default_base_per_action_cpu_usage           = 1000;
+const static uint32_t   default_base_setcode_cpu_usage              = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
+const static uint32_t   default_per_signature_cpu_usage             = 100 * 1000; // TODO: is this reasonable?
+const static uint64_t   default_context_free_discount_cpu_usage_num = 20;
+const static uint64_t   default_context_free_discount_cpu_usage_den = 100;
+
+const static uint32_t   default_max_trx_lifetime               = 60*60; // 1 hour
+const static uint32_t   default_deferred_trx_expiration_window = 10*60; // 10 minutes
+//static const uint32_t   deferred_trx_expiration_window_ms    = 10*60*1000l; // TODO: make 10 minutes configurable by system
+const static uint32_t   default_max_trx_delay                  = 45*24*3600; // 45 days
+const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 4 KB
+const static uint16_t   default_max_inline_action_depth        = 4;
+const static uint16_t   default_max_auth_depth                 = 6;
+const static uint32_t   default_max_gen_trx_count              = 16;
+
 
 const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery

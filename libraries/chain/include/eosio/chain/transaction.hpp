@@ -43,6 +43,7 @@ namespace eosio { namespace chain {
       }
       void set_reference_block( const block_id_type& reference_block );
       bool verify_reference_block( const block_id_type& reference_block )const;
+      void validate()const;
    };
 
    /**
@@ -153,7 +154,7 @@ namespace eosio { namespace chain {
 
       deferred_transaction() = default;
 
-      deferred_transaction(uint128_t sender_id, account_name sender, account_name payer,time_point_sec execute_after, 
+      deferred_transaction(uint128_t sender_id, account_name sender, account_name payer,time_point_sec execute_after,
                            const signed_transaction& txn)
       : signed_transaction(txn),
         sender_id(sender_id),

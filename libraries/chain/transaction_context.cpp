@@ -4,15 +4,13 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
-
+#include <eosio/chain/global_property_object.hpp>
 
 namespace eosio { namespace chain {
 
    void transaction_context::exec() {
 
-      EOS_ASSERT( trx.max_kcpu_usage.value < UINT32_MAX / 1024UL, transaction_exception, "declared max_kcpu_usage overflows when expanded to max cpu usage" );
-      EOS_ASSERT( trx.max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception, "declared max_net_usage_words overflows when expanded to max net usage" );
-
+      trx.validate();
       control.validate_tapos( trx );
       control.validate_referenced_accounts( trx );
 
@@ -21,11 +19,29 @@ namespace eosio { namespace chain {
          record_transaction( id, trx.expiration ); /// checks for dupes
       }
 
-      if( trx.max_kcpu_usage.value != 0 ) {
-         max_cpu = uint64_t(trx.max_kcpu_usage.value)*1024;
-      } else {
-         max_cpu = uint64_t(-1);
+      auto& rl = control.get_mutable_resource_limits_manager();
+      auto current_slot = block_timestamp_type(control.pending_block_time()).slot;
+
+      flat_set<account_name> bill_to_accounts;
+      for( const auto& act : trx.actions ) {
+         for( const auto& auth : act.authorization )
+            bill_to_accounts.insert( auth.actor );
       }
+
+      rl.add_transaction_usage( bill_to_accounts, 0, 0, current_slot ); // Update usage values of accounts to reflect new time
+
+      max_cpu = std::min( rl.get_block_cpu_limit(),
+                          static_cast<uint64_t>(control.get_global_properties().configuration.max_transaction_cpu_usage) );
+      for( const auto& a : bill_to_accounts ) {
+         auto l = rl.get_account_cpu_limit(a);
+         if( l >= 0 )
+            max_cpu = std::min( max_cpu, static_cast<uint64_t>(l) ); // reduce max_cpu to the amount the account is able to pay
+      }
+
+      uint64_t trx_specified_cpu_usage_limit = uint64_t(trx.max_kcpu_usage.value)*1024; // overflow checked in transaction_header::validate()
+      if( trx_specified_cpu_usage_limit > 0 )
+         max_cpu = std::min( max_cpu, trx_specified_cpu_usage_limit );
+
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
@@ -41,18 +57,14 @@ namespace eosio { namespace chain {
           schedule_transaction();
       }
 
-      for( const auto& act : trx.actions ) {
-         for( const auto& auth : act.authorization )
-            bill_to_accounts.insert( auth.actor );
-      }
+      trace->cpu_usage = ((trace->cpu_usage + 1023)/1024)*1024; // Round up to nearest multiple of 1024
 
-      FC_ASSERT( trace->cpu_usage <= max_cpu, "transaction consumed too many CPU cycles" );
+      EOS_ASSERT( trace->cpu_usage <= max_cpu, tx_resource_exhausted,
+                  "cpu usage of transaction is too high: ${actual_net_usage} > ${cpu_usage_limit}",
+                  ("actual_net_usage", trace->cpu_usage)("cpu_usage_limit", max_cpu) );
 
-      auto& rl = control.get_mutable_resource_limits_manager();
-
-      flat_set<account_name> bta( bill_to_accounts.begin(), bill_to_accounts.end() );
-      rl.add_transaction_usage( bta, trace->cpu_usage, net_usage, block_timestamp_type(control.pending_block_time()).slot );
-
+      FC_ASSERT( net_usage % 8 == 0, "net_usage must be a multiple of word size (8)" );
+      rl.add_transaction_usage( bill_to_accounts, trace->cpu_usage, net_usage, current_slot );
    }
 
    void transaction_context::squash() {
@@ -86,7 +98,7 @@ namespace eosio { namespace chain {
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
         gto.published   = control.pending_block_time();
         gto.delay_until = gto.published + delay;
-        gto.expiration  = gto.delay_until + fc::milliseconds(config::deferred_trx_expiration_window_ms);
+        gto.expiration  = gto.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
         gto.set( trx );
       });
 
