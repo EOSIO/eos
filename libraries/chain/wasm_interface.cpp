@@ -1,6 +1,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
@@ -132,7 +133,7 @@ class privileged_api : public context_aware_api {
          EOS_ASSERT(ram_bytes >= -1, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
          EOS_ASSERT(net_weight >= -1, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
          EOS_ASSERT(cpu_weight >= -1, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
-         context.mutable_controller.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight);
+         context.control.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight);
       }
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
@@ -151,7 +152,7 @@ class privileged_api : public context_aware_api {
             unique_producers.insert(p.producer_name);
          }
          EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
-         return context.mutable_controller.set_proposed_producers( std::move(producers) );
+         return context.control.set_proposed_producers( std::move(producers) );
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
@@ -841,7 +842,7 @@ class action_api : public context_aware_api {
       }
 
       uint64_t publication_time() {
-         return static_cast<uint64_t>( context.published_time.time_since_epoch().count() );
+         return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
       name current_receiver() {
@@ -1137,8 +1138,9 @@ class transaction_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       void send_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+         //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
+         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+                    "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
@@ -1146,8 +1148,9 @@ class transaction_api : public context_aware_api {
       }
 
       void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+         //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
+         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+                   "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
@@ -1191,14 +1194,14 @@ class context_free_transaction_api : public context_aware_api {
       }
 
       int expiration() {
-        return context.trx.expiration.sec_since_epoch();
+        return context.trx_context.trx.expiration.sec_since_epoch();
       }
 
       int tapos_block_num() {
-        return context.trx.ref_block_num;
+        return context.trx_context.trx.ref_block_num;
       }
       int tapos_block_prefix() {
-        return context.trx.ref_block_prefix;
+        return context.trx_context.trx.ref_block_prefix;
       }
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {

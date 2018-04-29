@@ -27,7 +27,10 @@ namespace eosio {
       id_type      id;
       uint64_t     action_sequence_num; ///< the sequence number of the relevant action
 
-      shared_vector<char> packed_action_trace;
+      shared_vector<char>  packed_action_trace;
+      uint32_t             block_num;
+      block_timestamp_type block_time;
+      transaction_id_type  trx_id;
    };
    using account_history_id_type = account_history_object::id_type;
    using action_history_id_type  = action_history_object::id_type;
@@ -35,12 +38,19 @@ namespace eosio {
 
    struct by_action_sequence_num;
    struct by_account_action_seq;
+   struct by_trx_id;
 
    using action_history_index = chainbase::shared_multi_index_container<
       action_history_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<action_history_object, action_history_object::id_type, &action_history_object::id>>,
-         ordered_unique<tag<by_action_sequence_num>, member<action_history_object, uint64_t, &action_history_object::action_sequence_num>>
+         ordered_unique<tag<by_action_sequence_num>, member<action_history_object, uint64_t, &action_history_object::action_sequence_num>>,
+         ordered_unique<tag<by_trx_id>, 
+            composite_key< action_history_object,
+               member<action_history_object, transaction_id_type, &action_history_object::trx_id>,
+               member<action_history_object, uint64_t, &action_history_object::action_sequence_num >
+            >
+         >
       >
    >;
 
@@ -104,32 +114,33 @@ namespace eosio {
             if( itr->account == n ) 
                asn = itr->account_sequence_num + 1;
 
-            idump((n)(act.receipt.global_sequence)(asn));
+            //idump((n)(act.receipt.global_sequence)(asn));
             const auto& a = db.create<account_history_object>( [&]( auto& aho ) {
               aho.account = n;
               aho.action_sequence_num = act.receipt.global_sequence;
               aho.account_sequence_num = asn;
             });
-            idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
+            //idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
          }
 
          void on_action_trace( const action_trace& at ) {
             if( filter( at ) ) {
-               idump((fc::json::to_pretty_string(at)));
+               //idump((fc::json::to_pretty_string(at)));
                auto& chain = chain_plug->chain();
                auto& db = chain.db();
 
-               idump((at.receipt.global_sequence));
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
                   aho.packed_action_trace.resize(ps);
                   datastream<char*> ds( aho.packed_action_trace.data(), ps );
                   fc::raw::pack( ds, at );
                   aho.action_sequence_num = at.receipt.global_sequence;
+                  aho.block_num = chain.pending_block_state()->block_num;
+                  aho.block_time = chain.pending_block_time();
+                  aho.trx_id     = at.trx_id;
                });
                
                auto aset = account_set( at );
-               idump((aset));
                for( auto a : aset ) {
                   record_account_action( a, at );
                }
@@ -197,7 +208,7 @@ namespace eosio {
         auto& chain = history->chain_plug->chain();
         const auto& db = chain.db();
 
-            const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
+        const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
 
         int32_t start = 0;
         int32_t pos = params.pos ? *params.pos : -1;
@@ -216,7 +227,7 @@ namespace eosio {
                pos = itr->account_sequence_num + 1;
         }
 
-        if( pos== -1 ) pos = 0xffffff;
+        if( pos== -1 ) pos = 0xfffffff;
 
         if( offset > 0 ) {
            start = pos;
@@ -237,6 +248,7 @@ namespace eosio {
         auto end_time = start_time;
 
         get_actions_result result;
+        result.last_irreversible_block = chain.last_irreversible_block_num();
         while( start_itr != end_itr ) {
            const auto& a = db.get<action_history_object, by_action_sequence_num>( start_itr->action_sequence_num );
            fc::datastream<const char*> ds( a.packed_action_trace.data(), a.packed_action_trace.size() );
@@ -245,7 +257,8 @@ namespace eosio {
            result.actions.emplace_back( ordered_action_result{
                                  start_itr->action_sequence_num,
                                  start_itr->account_sequence_num,
-                                 fc::variant(t)
+                                 a.block_num, a.block_time,
+                                 chain.to_variant_with_abi(t)
                                  });
 
            end_time = fc::time_point::now();
@@ -255,10 +268,68 @@ namespace eosio {
            }
            ++start_itr;
         }
-        
         return result;
       }
+
+
+      read_only::get_transaction_result read_only::get_transaction( const read_only::get_transaction_params& p )const {
+         auto& chain = history->chain_plug->chain();
+
+         get_transaction_result result;
+
+         result.id = p.id;
+         result.last_irreversible_block = chain.last_irreversible_block_num();
+
+         const auto& db = chain.db();
+
+         const auto& idx = db.get_index<action_history_index, by_trx_id>();
+         auto itr = idx.lower_bound( boost::make_tuple(p.id) );
+         if( itr == idx.end() ) {
+            return result;
+         }
+         result.id         = itr->trx_id;
+         result.block_num  = itr->block_num;
+         result.block_time = itr->block_time;
+
+         if( fc::variant(result.id).as_string().substr(0,8) != fc::variant(p.id).as_string().substr(0,8) )
+            return result;
+
+         while( itr != idx.end() && itr->trx_id == result.id ) {
+
+           fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
+           action_trace t;
+           fc::raw::unpack( ds, t );
+           result.traces.emplace_back( chain.to_variant_with_abi(t) );
+
+           ++itr;
+         }
+
+         auto blk = chain.fetch_block_by_number( result.block_num );
+         for( const auto& receipt: blk->transactions ) {
+            if( receipt.trx.contains<packed_transaction>() ) {
+               auto& pt = receipt.trx.get<packed_transaction>();
+               auto mtrx = transaction_metadata(pt);
+               if( mtrx.id == result.id ) {
+                  fc::mutable_variant_object r( "receipt", receipt );
+                  r( "trx", chain.to_variant_with_abi(mtrx.trx) );
+                  result.trx = move(r);
+                  break;
+               }
+            } else {
+               auto& id = receipt.trx.get<transaction_id_type>();
+               if( id == result.id ) {
+                  fc::mutable_variant_object r( "receipt", receipt );
+                  result.trx = move(r);
+                  break;
+               }
+            }
+         }
+
+         return result;
+      }
+
    } /// history_apis
+
 
 
 } /// namespace eosio

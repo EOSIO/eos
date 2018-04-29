@@ -65,6 +65,12 @@ public:
       chain::block_id_type    head_block_id;
       fc::time_point_sec      head_block_time;
       account_name            head_block_producer;
+
+      uint64_t                virtual_block_cpu_limit = 0;
+      uint64_t                virtual_block_net_limit = 0;
+
+      uint64_t                block_cpu_limit = 0;
+      uint64_t                block_net_limit = 0;
       //string                  recent_slots;
       //double                  participation_rate = 0;
    };
@@ -77,6 +83,18 @@ public:
 
    struct get_account_results {
       name                       account_name;
+      bool                       privileged = false;
+      fc::time_point             last_code_update;
+      fc::time_point             created;
+
+      int64_t                    ram_quota  = 0;
+      int64_t                    net_weight = 0;
+      int64_t                    cpu_weight = 0;
+
+      int64_t                    net_limit = 0;
+      int64_t                    cpu_limit = 0;
+      int64_t                    ram_usage = 0;
+
       vector<permission>         permissions;
    };
 
@@ -347,7 +365,7 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-  (server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer) )
+  (server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
@@ -359,7 +377,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(ac
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 
-FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(permissions) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )

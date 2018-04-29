@@ -14,7 +14,7 @@ typedef __uint128_t uint128_t;
 
 const static auto default_block_log_dir     = "block_log";
 const static auto default_shared_memory_dir = "shared_mem";
-const static auto default_shared_memory_size = 32*1024*1024*1024ll;
+const static auto default_shared_memory_size = 1*1024*1024*1024ll;
 
 const static uint64_t system_account_name    = N(eosio);
 const static uint64_t nobody_account_name    = N(nobody);
@@ -46,37 +46,44 @@ static const uint32_t account_cpu_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t account_net_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
 static const uint32_t block_size_average_window_ms         = 60*1000l;
-static const uint32_t deferred_trx_expiration_window_ms    = 10*60*1000l; // TODO: make 10 minutes configurable by system
 
-const static uint32_t   default_max_block_net_usage         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
-const static int        default_target_block_net_usage_pct  = 10 * percent_1; /// we target 1000 TPS
+//const static uint64_t   default_max_storage_size       = 10 * 1024;
+//const static uint32_t   default_max_trx_runtime        = 10*1000;
+//const static uint32_t   default_max_gen_trx_size       = 64 * 1024;
 
-const static uint32_t   default_max_block_cpu_usage         = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_cpu_usage_pct  = 10 * percent_1; /// target 1000 TPS
-
-const static uint64_t   default_max_storage_size       = 10 * 1024;
-const static uint32_t   default_max_trx_lifetime       = 60*60;
-const static uint16_t   default_max_auth_depth         = 6;
-const static uint32_t   default_max_trx_runtime        = 10*1000;
-const static uint16_t   default_max_inline_depth       = 4;
-const static uint32_t   default_max_inline_action_size = 4 * 1024;
-const static uint32_t   default_max_gen_trx_size       = 64 * 1024; ///
-const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
-const static uint32_t   default_max_trx_delay          = 45*24*3600; // 45 days
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static uint16_t   max_recursion_depth = 6;
 
-const static uint32_t   default_base_per_transaction_net_usage  = 48;        // 48 bytes minimum (for misc overhead)
-const static uint32_t   default_base_per_transaction_cpu_usage  = 500;        // TODO: is this reasonable?
-const static uint32_t   default_base_per_action_cpu_usage       = 1000;
-const static uint32_t   default_base_setcode_cpu_usage          = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
-const static uint32_t   default_per_signature_cpu_usage         = 100 * 1000; // TODO: is this reasonable?
-const static uint32_t   default_per_lock_net_usage                     = 32;
-const static uint64_t   default_context_free_discount_cpu_usage_num    = 20;
-const static uint64_t   default_context_free_discount_cpu_usage_den    = 100;
-const static uint32_t   default_max_transaction_cpu_usage              = default_max_block_cpu_usage / 10;
-const static uint32_t   default_max_transaction_net_usage              = default_max_block_net_usage / 10;
+const static uint32_t   default_max_block_net_usage                 = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
+const static uint32_t   default_target_block_net_usage_pct           = 10 * percent_1; /// we target 1000 TPS
+const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 10;
+const static uint32_t   default_base_per_transaction_net_usage       = 12;  // 12 bytes (11 bytes for worst case of transaction_receipt_header + 1 byte for static_variant tag)
+const static uint64_t   default_context_free_discount_net_usage_num  = 20; // TODO: is this reasonable?
+const static uint64_t   default_context_free_discount_net_usage_den  = 100;
+const static uint32_t   transaction_id_net_usage                     = 32; // 32 bytes for the size of a transaction id
+
+const static uint32_t   default_max_block_cpu_usage                 = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
+const static uint32_t   default_target_block_cpu_usage_pct          = 10 * percent_1; /// target 1000 TPS
+const static uint32_t   default_max_transaction_cpu_usage           = default_max_block_cpu_usage / 10;
+const static uint32_t   default_base_per_transaction_cpu_usage      = 512;        // TODO: is this reasonable?
+const static uint32_t   default_base_per_action_cpu_usage           = 1024;
+const static uint32_t   default_base_setcode_cpu_usage              = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
+const static uint32_t   default_per_signature_cpu_usage             = 100 * 1024; // TODO: is this reasonable?
+const static uint64_t   default_context_free_discount_cpu_usage_num = 20;
+const static uint64_t   default_context_free_discount_cpu_usage_den = 100;
+
+const static uint32_t   default_max_trx_lifetime               = 60*60; // 1 hour
+const static uint32_t   default_deferred_trx_expiration_window = 10*60; // 10 minutes
+//static const uint32_t   deferred_trx_expiration_window_ms    = 10*60*1000l; // TODO: make 10 minutes configurable by system
+const static uint32_t   default_max_trx_delay                  = 45*24*3600; // 45 days
+const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 4 KB
+const static uint16_t   default_max_inline_action_depth        = 4;
+const static uint16_t   default_max_auth_depth                 = 6;
+const static uint32_t   default_max_gen_trx_count              = 16;
+
+
+const static uint32_t   resource_processing_cpu_overhead_per_billed_account = 256; // TODO: is this reasonable?
+const static uint32_t   determine_payers_cpu_overhead_per_authorization     = 64;  // TODO: is this reasonable?
 
 const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery

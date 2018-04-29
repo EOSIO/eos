@@ -317,7 +317,6 @@ namespace eosio { namespace chain {
             uint32_t i = 0;
             if (va.size() > 0) {
                for( const auto& field : st.fields ) {
-                  idump((field.type)(va[i])(i));
                   if( va.size() > i )
                      variant_to_binary(field.type, va[i], ds);
                   else

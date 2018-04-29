@@ -37,11 +37,11 @@ namespace eosio { namespace chain {
          shared_vector<char>           packed_trx;
 
          uint32_t set( const transaction& trx ) {
-           auto trxsize = fc::raw::pack_size( static_cast<const transaction&>( trx ) );
-           packed_trx.resize(trxsize);
-           fc::datastream<char*> ds( packed_trx.data(), trxsize );
-           fc::raw::pack( ds, trx );
-           return trxsize;
+            auto trxsize = fc::raw::pack_size( trx );
+            packed_trx.resize( trxsize );
+            fc::datastream<char*> ds( packed_trx.data(), trxsize );
+            fc::raw::pack( ds, trx );
+            return trxsize;
          }
    };
 
@@ -56,13 +56,13 @@ namespace eosio { namespace chain {
       indexed_by<
          ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
          ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, transaction_id_type, trx_id)>,
-         ordered_unique< tag<by_expiration>, 
+         ordered_unique< tag<by_expiration>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, expiration),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
             >
          >,
-         ordered_unique< tag<by_delay>, 
+         ordered_unique< tag<by_delay>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, delay_until),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
@@ -89,4 +89,3 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
-
