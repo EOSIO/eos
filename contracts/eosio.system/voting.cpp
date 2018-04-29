@@ -203,37 +203,6 @@ namespace eosiosystem {
       producers_table producers_tbl( _self, _self );
       auto idx = producers_tbl.template get_index<N(prototalvote)>();
 
-      /*
-      std::array<uint64_t, 21> max_block_net_usage;
-      std::array<uint32_t, 21> target_block_net_usage_pct;
-      std::array<uint32_t, 21> base_per_transaction_net_usage;
-      std::array<uint32_t, 21> max_transaction_net_usage;
-      std::array<uint64_t, 21> context_free_discount_net_usage_num;
-      std::array<uint64_t, 21> context_free_discount_net_usage_den;
-
-      std::array<uint64_t, 21> max_block_cpu_usage;
-      std::array<uint32_t, 21> target_block_cpu_usage_pct;
-      std::array<uint32_t, 21> max_transaction_cpu_usage;
-      std::array<uint32_t, 21> base_per_transaction_cpu_usage;
-      std::array<uint32_t, 21> base_per_action_cpu_usage;
-      std::array<uint32_t, 21> base_setcode_cpu_usage;
-      std::array<uint32_t, 21> per_signature_cpu_usage;
-      std::array<uint64_t, 21> context_free_discount_cpu_usage_num;
-      std::array<uint64_t, 21> context_free_discount_cpu_usage_den;
-
-      std::array<uint32_t, 21> max_transaction_lifetime;
-      std::array<uint32_t, 21> deferred_trx_expiration_window;
-      std::array<uint32_t, 21> max_transaction_delay;
-      std::array<uint32_t, 21> max_inline_action_size;
-      std::array<uint16_t, 21> max_inline_action_depth;
-      std::array<uint16_t, 21> max_authority_depth;
-      std::array<uint32_t, 21> max_generated_transaction_count;
-
-      std::array<uint32_t, 21> max_storage_size;
-      std::array<uint32_t, 21> percent_of_max_inflation_rate;
-      std::array<uint32_t, 21> storage_reserve_ratio;
-      */
-
       eosio::producer_schedule schedule;
       schedule.producers.reserve(21);
       size_t n = 0;
@@ -241,40 +210,7 @@ namespace eosiosystem {
          if ( it->active() ) {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;
-            //eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
             schedule.producers.back().block_signing_key = it->producer_key; 
-            //std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data.data() );
-
-            /*
-            max_block_net_usage[n] = it->prefs.max_block_net_usage;
-            target_block_net_usage_pct[n] = it->prefs.target_block_net_usage_pct;
-            max_transaction_net_usage[n] = it->prefs.max_transaction_net_usage;
-            base_per_transaction_net_usage[n] = it->prefs.base_per_transaction_net_usage;
-            context_free_discount_net_usage_num[n] = it->prefs.context_free_discount_net_usage_num;
-            context_free_discount_net_usage_den[n] = it->prefs.context_free_discount_net_usage_den;
-
-            max_block_cpu_usage[n] = it->prefs.max_block_cpu_usage;
-            target_block_cpu_usage_pct[n] = it->prefs.target_block_cpu_usage_pct;
-            max_transaction_cpu_usage[n] = it->prefs.max_transaction_cpu_usage;
-            base_per_transaction_cpu_usage[n] = it->prefs.base_per_transaction_cpu_usage;
-            base_per_action_cpu_usage[n] = it->prefs.base_per_action_cpu_usage;
-            base_setcode_cpu_usage[n] = it->prefs.base_setcode_cpu_usage;
-            per_signature_cpu_usage[n] = it->prefs.per_signature_cpu_usage;
-            context_free_discount_cpu_usage_num[n] = it->prefs.context_free_discount_cpu_usage_num;
-            context_free_discount_cpu_usage_den[n] = it->prefs.context_free_discount_cpu_usage_den;
-
-            max_transaction_lifetime[n] = it->prefs.max_transaction_lifetime;
-            deferred_trx_expiration_window[n] = it->prefs.deferred_trx_expiration_window;
-            max_transaction_delay[n] = it->prefs.max_transaction_delay;
-            max_inline_action_size[n] = it->prefs.max_inline_action_size;
-            max_inline_action_depth[n] = it->prefs.max_inline_action_depth;
-            max_authority_depth[n] = it->prefs.max_authority_depth;
-            max_generated_transaction_count[n] = it->prefs.max_generated_transaction_count;
-
-            max_storage_size[n] = it->prefs.max_storage_size;
-            storage_reserve_ratio[n] = it->prefs.storage_reserve_ratio;
-            percent_of_max_inflation_rate[n] = it->prefs.percent_of_max_inflation_rate;
-            */
             ++n;
          }
       }
@@ -285,41 +221,9 @@ namespace eosiosystem {
       // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
       bytes packed_schedule = pack(schedule);
       set_active_producers( packed_schedule.data(),  packed_schedule.size() );
-    //  size_t median = n/2;
 
       global_state_singleton gs( _self, _self );
       auto parameters = gs.exists() ? gs.get() : get_default_parameters();
-
-      /*
-      parameters.max_block_net_usage = max_block_net_usage[median];
-      parameters.target_block_net_usage_pct = target_block_net_usage_pct[median];
-      parameters.max_transaction_net_usage = max_transaction_net_usage[median];
-      parameters.base_per_transaction_net_usage = base_per_transaction_net_usage[median];
-      parameters.context_free_discount_net_usage_num = context_free_discount_net_usage_num[median];
-      parameters.context_free_discount_net_usage_den = context_free_discount_net_usage_den[median];
-
-      parameters.max_block_cpu_usage = max_block_cpu_usage[median];
-      parameters.target_block_cpu_usage_pct = target_block_cpu_usage_pct[median];
-      parameters.max_transaction_cpu_usage = max_transaction_cpu_usage[median];
-      parameters.base_per_transaction_cpu_usage = base_per_transaction_cpu_usage[median];
-      parameters.base_per_action_cpu_usage = base_per_action_cpu_usage[median];
-      parameters.base_setcode_cpu_usage = base_setcode_cpu_usage[median];
-      parameters.per_signature_cpu_usage = per_signature_cpu_usage[median];
-      parameters.context_free_discount_cpu_usage_num = context_free_discount_cpu_usage_num[median];
-      parameters.context_free_discount_cpu_usage_den = context_free_discount_cpu_usage_den[median];
-
-      parameters.max_transaction_lifetime = max_transaction_lifetime[median];
-      parameters.deferred_trx_expiration_window = deferred_trx_expiration_window[median];
-      parameters.max_transaction_delay = max_transaction_delay[median];
-      parameters.max_inline_action_size = max_inline_action_size[median];
-      parameters.max_inline_action_depth = max_inline_action_depth[median];
-      parameters.max_authority_depth = max_authority_depth[median];
-      parameters.max_generated_transaction_count = max_generated_transaction_count[median];
-
-      parameters.max_storage_size = max_storage_size[median];
-      parameters.storage_reserve_ratio = storage_reserve_ratio[median];
-      parameters.percent_of_max_inflation_rate = percent_of_max_inflation_rate[median];
-      */
 
       // not voted on
       parameters.first_block_time_in_cycle = cycle_time;

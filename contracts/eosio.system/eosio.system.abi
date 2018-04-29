@@ -270,6 +270,12 @@
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
     },{
+      "name": "global",
+      "type": "eosio_global_state",
+      "index_type": "i64",
+      "key_names" : [],
+      "key_types" : []
+    },{
       "name": "voters",
       "type": "voter_info",
       "index_type": "i64",
