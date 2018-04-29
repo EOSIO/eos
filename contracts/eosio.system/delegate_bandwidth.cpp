@@ -98,7 +98,9 @@ namespace eosiosystem {
          auto parameters = gs.exists() ? gs.get() : get_default_parameters();
          const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
 
-         print( "token supply: ", token_supply, " " );
+         print( " token supply: ", token_supply, " \n" );
+         print( " max storage size: ", parameters.max_storage_size, "\n");
+         print( " total reserved: ", parameters.total_storage_bytes_reserved, "\n");
 
          //make sure that there is no posibility of overflow here
          int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
@@ -112,7 +114,7 @@ namespace eosiosystem {
          eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
          parameters.total_storage_bytes_reserved += uint64_t(storage_bytes);
-         print( "\ntotal storage stake: ", parameters.total_storage_stake );
+         print( "\ntotal storage stake: ", parameters.total_storage_stake, "\n" );
          parameters.total_storage_stake += stake_storage_quantity;
          gs.set( parameters, _self );
       }
@@ -168,6 +170,20 @@ namespace eosiosystem {
 
    } // delegatebw
 
+   void system_contract::setparams( uint64_t max_storage_size, uint32_t storage_reserve_ratio ) {
+         require_auth( _self );
+
+         eosio_assert( storage_reserve_ratio > 0, "invalid reserve ratio" );
+
+         global_state_singleton gs( _self, _self );
+         auto parameters = gs.exists() ? gs.get() : get_default_parameters();
+
+         eosio_assert( max_storage_size > parameters.total_storage_bytes_reserved, "attempt to set max below reserved" );
+
+         parameters.max_storage_size = max_storage_size;
+         parameters.storage_reserve_ratio = storage_reserve_ratio;
+         gs.set( parameters, _self );
+   }
 
    void system_contract::undelegatebw( const account_name from, const account_name receiver,
                                        const asset unstake_net_quantity, const asset unstake_cpu_quantity,
@@ -218,7 +234,7 @@ namespace eosiosystem {
             tot.storage_bytes -= unstake_storage_bytes;
          });
 
-      //set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity );
+      set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.amount, totals.cpu_weight.amount );
 
       refunds_table refunds_tbl( _self, from );
       //create refund request

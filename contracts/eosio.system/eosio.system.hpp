@@ -35,9 +35,9 @@ namespace eosiosystem {
    };
 
    struct eosio_parameters : eosio::blockchain_parameters {
-      uint64_t          max_storage_size = 10 * 1024 * 1024;
+      uint64_t          max_storage_size = 1024 * 1024 * 1024;
       uint32_t          percent_of_max_inflation_rate = 0;
-      uint32_t          storage_reserve_ratio = 1000;      // ratio * 1000
+      uint32_t          storage_reserve_ratio = 2000;      // ratio * 1000
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_storage_size)(percent_of_max_inflation_rate)(storage_reserve_ratio) )
@@ -62,8 +62,7 @@ namespace eosiosystem {
    struct producer_info {
       account_name      owner;
       uint128_t         total_votes = 0;
-      eosio_parameters  prefs;
-      eosio::bytes      packed_key; /// a packed public key object
+      eosio::public_key producer_key; /// a packed public key object
       eosio::asset      per_block_payments;
       time              last_rewards_claim = 0;
       time              time_became_active = 0;
@@ -71,10 +70,10 @@ namespace eosiosystem {
 
       uint64_t    primary_key()const { return owner;       }
       uint128_t   by_votes()const    { return total_votes; }
-      bool active() const { return 0 < packed_key.size(); }
+      bool active() const { return producer_key != public_key(); }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)
+      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)
                         (per_block_payments)(last_rewards_claim)
                         (time_became_active)(last_produced_block_time) )
    };
@@ -109,9 +108,11 @@ namespace eosiosystem {
 
          // functions defined in voting.cpp
 
-         void regproducer( const account_name producer, const bytes& producer_key, const eosio_parameters& prefs );
+         void regproducer( const account_name producer, const public_key& producer_key, const std::string& url );
 
          void unregprod( const account_name producer );
+
+         void setparams( uint64_t max_storage_size, uint32_t storage_reserve_ratio );
 
 
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );

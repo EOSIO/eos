@@ -140,24 +140,30 @@
       "fields": [
          {"name":"owner",              "type":"account_name"},
          {"name":"total_votes",        "type":"uint128"},
-         {"name":"prefs",              "type":"eosio_parameters"},
-         {"name":"packed_key",         "type":"uint8[]"},
+         {"name":"packed_key",         "type":"public_key"},
          {"name":"per_block_payments", "type":"uint64"},
-         {"name":"last_claim_time",    "type":"uint32"}
+         {"name":"last_claim_time",    "type":"time"}
       ]
     },{
       "name": "regproducer",
       "base": "",
       "fields": [
         {"name":"producer",     "type":"account_name"},
-        {"name":"producer_key", "type":"bytes"},
-        {"name":"prefs",        "type":"eosio_parameters"}
+        {"name":"producer_key", "type":"public_key"},
+        {"name":"url",          "type":"string"}
       ]
     },{
       "name": "unregprod",
       "base": "",
       "fields": [
         {"name":"producer",     "type":"account_name"}
+      ]
+    },{
+      "name": "setparams",
+      "base": "",
+      "fields": [
+        {"name":"max_ram_size",     "type":"uint64"}
+        {"name":"ram_reserve_ratio", "type":"uint32"}
       ]
     },{
       "name": "regproxy",
@@ -226,6 +232,10 @@
     },{
       "name": "regproducer",
       "type": "regproducer",
+      "ricardian_contract": ""
+    },{
+      "name": "setparams",
+      "type": "setparams",
       "ricardian_contract": ""
     },{
       "name": "unregprod",

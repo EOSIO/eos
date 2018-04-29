@@ -45,7 +45,7 @@ namespace eosiosystem {
          struct producer_info {
             account_name      owner;
             uint128_t         total_votes = 0;
-            eosio_parameters  prefs;
+           // eosio_parameters  prefs;
             eosio::bytes      packed_key; /// a packed public key object
             system_token_type per_block_payments;
             time              last_rewards_claim = 0;
@@ -56,7 +56,7 @@ namespace eosiosystem {
             uint128_t   by_votes()const    { return total_votes; }
             bool active() const { return packed_key.size() == sizeof(public_key); }
 
-            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)
+            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(packed_key)
                               (per_block_payments)(last_rewards_claim)
                               (time_became_active)(last_produced_block_time) )
          };
@@ -86,60 +86,6 @@ namespace eosiosystem {
 
          typedef eosio::multi_index< N(voters), voter_info>  voters_table;
 
-         ACTION( SystemAccount, regproducer ) {
-            account_name     producer;
-            bytes            producer_key;
-            eosio_parameters prefs;
-
-            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key)(prefs) )
-         };
-
-         /**
-          *  This method will create a producer_config and producer_info object for 'producer'
-          *
-          *  @pre producer is not already registered
-          *  @pre producer to register is an account
-          *  @pre authority of producer to register
-          *
-          */
-         static void on( const regproducer& reg ) {
-            require_auth( reg.producer );
-
-            producers_table producers_tbl( SystemAccount, SystemAccount );
-            auto prod = producers_tbl.find( reg.producer );
-
-            if ( prod != producers_tbl.end() ) {
-               producers_tbl.modify( prod, reg.producer, [&]( producer_info& info ){
-                     info.prefs = reg.prefs;
-                     info.packed_key = reg.producer_key;
-                  });
-            } else {
-               producers_tbl.emplace( reg.producer, [&]( producer_info& info ){
-                     info.owner       = reg.producer;
-                     info.total_votes = 0;
-                     info.prefs       = reg.prefs;
-                     info.packed_key  = reg.producer_key;
-                  });
-            }
-         }
-
-         ACTION( SystemAccount, unregprod ) {
-            account_name producer;
-
-            EOSLIB_SERIALIZE( unregprod, (producer) )
-         };
-
-         static void on( const unregprod& unreg ) {
-            require_auth( unreg.producer );
-
-            producers_table producers_tbl( SystemAccount, SystemAccount );
-            auto prod = producers_tbl.find( unreg.producer );
-            eosio_assert( prod != producers_tbl.end(), "producer not found" );
-
-            producers_tbl.modify( prod, 0, [&]( producer_info& info ){
-                  info.packed_key.clear();
-               });
-         }
 
          static void increase_voting_power( account_name acnt, system_token_type amount ) {
             voters_table voters_tbl( SystemAccount, SystemAccount );

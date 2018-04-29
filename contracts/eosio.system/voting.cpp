@@ -59,27 +59,25 @@ namespace eosiosystem {
     *  @pre authority of producer to register
     *
     */
-   void system_contract::regproducer( const account_name producer, const bytes& packed_producer_key, const eosio_parameters& prefs ) {
+   void system_contract::regproducer( const account_name producer, const public_key& producer_key, const std::string& url ) { //, const eosio_parameters& prefs ) {
+      eosio_assert( url.size() < 1024, "url too long" );
       //eosio::print("produce_key: ", producer_key.size(), ", sizeof(public_key): ", sizeof(public_key), "\n");
       require_auth( producer );
 
       producers_table producers_tbl( _self, _self );
       auto prod = producers_tbl.find( producer );
 
-      //check that we can unpack producer key
-      public_key producer_key = eosio::unpack<public_key>( packed_producer_key );
-
       if ( prod != producers_tbl.end() ) {
-         producers_tbl.modify( prod, producer, [&]( producer_info& info ){
-               info.prefs = prefs;
-               info.packed_key = eosio::pack<public_key>( producer_key );
-            });
+         if( producer_key != prod->producer_key ) {
+            producers_tbl.modify( prod, producer, [&]( producer_info& info ){
+                  info.producer_key = producer_key;
+               });
+         }
       } else {
          producers_tbl.emplace( producer, [&]( producer_info& info ){
                info.owner       = producer;
                info.total_votes = 0;
-               info.prefs       = prefs;
-               info.packed_key  = eosio::pack<public_key>( producer_key );
+               info.producer_key =  producer_key;
             });
       }
    }
@@ -92,7 +90,7 @@ namespace eosiosystem {
       eosio_assert( prod != producers_tbl.end(), "producer not found" );
 
       producers_tbl.modify( prod, 0, [&]( producer_info& info ){
-            info.packed_key.clear();
+            info.producer_key = public_key();
          });
    }
 
@@ -205,6 +203,7 @@ namespace eosiosystem {
       producers_table producers_tbl( _self, _self );
       auto idx = producers_tbl.template get_index<N(prototalvote)>();
 
+      /*
       std::array<uint64_t, 21> max_block_net_usage;
       std::array<uint32_t, 21> target_block_net_usage_pct;
       std::array<uint32_t, 21> base_per_transaction_net_usage;
@@ -233,6 +232,7 @@ namespace eosiosystem {
       std::array<uint32_t, 21> max_storage_size;
       std::array<uint32_t, 21> percent_of_max_inflation_rate;
       std::array<uint32_t, 21> storage_reserve_ratio;
+      */
 
       eosio::producer_schedule schedule;
       schedule.producers.reserve(21);
@@ -242,9 +242,10 @@ namespace eosiosystem {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;
             //eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
-            schedule.producers.back().block_signing_key = eosio::unpack<public_key>( it->packed_key );
+            schedule.producers.back().block_signing_key = it->producer_key; 
             //std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data.data() );
 
+            /*
             max_block_net_usage[n] = it->prefs.max_block_net_usage;
             target_block_net_usage_pct[n] = it->prefs.target_block_net_usage_pct;
             max_transaction_net_usage[n] = it->prefs.max_transaction_net_usage;
@@ -273,51 +274,23 @@ namespace eosiosystem {
             max_storage_size[n] = it->prefs.max_storage_size;
             storage_reserve_ratio[n] = it->prefs.storage_reserve_ratio;
             percent_of_max_inflation_rate[n] = it->prefs.percent_of_max_inflation_rate;
+            */
             ++n;
          }
       }
       if ( n == 0 ) { //no active producers with votes > 0
          return;
       }
-      if ( 1 < n ) {
-         std::sort( max_block_net_usage.begin(), max_block_net_usage.begin()+n );
-         std::sort( target_block_net_usage_pct.begin(), target_block_net_usage_pct.begin()+n );
-         std::sort( max_transaction_net_usage.begin(), max_transaction_net_usage.begin()+n );
-         std::sort( base_per_transaction_net_usage.begin(), base_per_transaction_net_usage.begin()+n );
-         std::sort( context_free_discount_net_usage_num.begin(), context_free_discount_net_usage_num.begin()+n );
-         std::sort( context_free_discount_net_usage_den.begin(), context_free_discount_net_usage_den.begin()+n );
-
-         std::sort( max_block_cpu_usage.begin(), max_block_cpu_usage.begin()+n );
-         std::sort( target_block_cpu_usage_pct.begin(), target_block_cpu_usage_pct.begin()+n );
-         std::sort( max_transaction_cpu_usage.begin(), max_transaction_cpu_usage.begin()+n );
-         std::sort( base_per_transaction_cpu_usage.begin(), base_per_transaction_cpu_usage.begin()+n );
-         std::sort( base_per_action_cpu_usage.begin(), base_per_action_cpu_usage.begin()+n );
-         std::sort( base_setcode_cpu_usage.begin(), base_setcode_cpu_usage.begin()+n );
-         std::sort( per_signature_cpu_usage.begin(), per_signature_cpu_usage.begin()+n );
-         std::sort( context_free_discount_cpu_usage_num.begin(), context_free_discount_cpu_usage_num.begin()+n );
-         std::sort( context_free_discount_cpu_usage_den.begin(), context_free_discount_cpu_usage_den.begin()+n );
-
-         std::sort( max_transaction_lifetime.begin(), max_transaction_lifetime.begin()+n );
-         std::sort( deferred_trx_expiration_window.begin(), deferred_trx_expiration_window.begin()+n );
-         std::sort( max_transaction_delay.begin(), max_transaction_delay.begin()+n );
-         std::sort( max_inline_action_size.begin(), max_inline_action_size.begin()+n );
-         std::sort( max_inline_action_depth.begin(), max_inline_action_depth.begin()+n );
-         std::sort( max_authority_depth.begin(), max_authority_depth.begin()+n );
-         std::sort( max_generated_transaction_count.begin(), max_generated_transaction_count.begin()+n );
-
-         std::sort( max_storage_size.begin(), max_storage_size.begin()+n );
-         std::sort( storage_reserve_ratio.begin(), storage_reserve_ratio.begin()+n );
-         std::sort( percent_of_max_inflation_rate.begin(), percent_of_max_inflation_rate.begin()+n );
-      }
 
       // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
       bytes packed_schedule = pack(schedule);
       set_active_producers( packed_schedule.data(),  packed_schedule.size() );
-      size_t median = n/2;
+    //  size_t median = n/2;
 
       global_state_singleton gs( _self, _self );
       auto parameters = gs.exists() ? gs.get() : get_default_parameters();
 
+      /*
       parameters.max_block_net_usage = max_block_net_usage[median];
       parameters.target_block_net_usage_pct = target_block_net_usage_pct[median];
       parameters.max_transaction_net_usage = max_transaction_net_usage[median];
@@ -346,6 +319,7 @@ namespace eosiosystem {
       parameters.max_storage_size = max_storage_size[median];
       parameters.storage_reserve_ratio = storage_reserve_ratio[median];
       parameters.percent_of_max_inflation_rate = percent_of_max_inflation_rate[median];
+      */
 
       // not voted on
       parameters.first_block_time_in_cycle = cycle_time;

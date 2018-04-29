@@ -6,6 +6,7 @@
 #include "voting.cpp"
 
 EOSIO_ABI( eosiosystem::system_contract,
+           (setparams)
            // delegate_bandwith.cpp
            (delegatebw)(undelegatebw)(refund)
            (regproxy)
