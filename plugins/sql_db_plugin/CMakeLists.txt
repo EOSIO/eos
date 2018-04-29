@@ -1,3 +1,5 @@
+add_subdirectory(externals)
+
 include_directories(include)
 add_library(sql_db_plugin
     sql_db_plugin.cpp
