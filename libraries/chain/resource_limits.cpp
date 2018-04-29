@@ -7,6 +7,8 @@
 
 namespace eosio { namespace chain { namespace resource_limits {
 
+static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
+
 static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_usage, const elastic_limit_parameters& params) {
    uint64_t result = current_limit;
    if (average_usage > params.target ) {
@@ -17,6 +19,15 @@ static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_us
 
    return std::min(std::max(result, params.max), params.max * params.max_multiplier);
 }
+
+void elastic_limit_parameters::validate()const {
+   // At the very least ensure parameters are not set to values that will cause divide by zero errors later on.
+   // Stricter checks for sensible values can be added later.
+   FC_ASSERT( periods > 0, "elastic limit parameter 'periods' cannot be zero" );
+   FC_ASSERT( contract_rate.denominator > 0, "elastic limit parameter 'contract_rate' is not a well-defined ratio" );
+   FC_ASSERT( expand_rate.denominator > 0,   "elastic limit parameter 'expand_rate' is not a well-defined ratio" );
+}
+
 
 void resource_limits_state_object::update_virtual_cpu_limit( const resource_limits_config_object& cfg ) {
    virtual_cpu_limit = update_elastic_limit(virtual_cpu_limit, average_block_cpu_usage.average(), cfg.cpu_limit_parameters);
@@ -58,6 +69,8 @@ void resource_limits_manager::initialize_account(const account_name& account) {
 }
 
 void resource_limits_manager::set_block_parameters(const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters ) {
+   cpu_limit_parameters.validate();
+   net_limit_parameters.validate();
    const auto& config = _db.get<resource_limits_config_object>();
    _db.modify(config, [&](resource_limits_config_object& c){
       c.cpu_limit_parameters = cpu_limit_parameters;
