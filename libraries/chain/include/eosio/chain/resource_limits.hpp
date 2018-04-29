@@ -56,6 +56,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
          int64_t get_account_cpu_limit( const account_name& name ) const;
          int64_t get_account_net_limit( const account_name& name ) const;
+         int64_t get_account_ram_usage( const account_name& name ) const;
 
       private:
          chainbase::database& _db;

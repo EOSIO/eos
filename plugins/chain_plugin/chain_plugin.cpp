@@ -11,6 +11,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -443,6 +444,11 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.account_name = params.account_name;
 
    const auto& d = db.db();
+   const auto& rm = db.get_resource_limits_manager();
+   rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
+   result.net_limit = rm.get_account_net_limit( result.account_name );
+   result.cpu_limit = rm.get_account_cpu_limit( result.account_name );
+   result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );

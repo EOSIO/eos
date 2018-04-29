@@ -77,6 +77,14 @@ public:
 
    struct get_account_results {
       name                       account_name;
+      int64_t                    ram_quota  = 0;
+      int64_t                    net_weight = 0;
+      int64_t                    cpu_weight = 0;
+
+      int64_t                    net_limit = 0;
+      int64_t                    cpu_limit = 0;
+      int64_t                    ram_usage = 0;
+
       vector<permission>         permissions;
    };
 
@@ -361,7 +369,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(ac
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 
-FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(permissions) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )
