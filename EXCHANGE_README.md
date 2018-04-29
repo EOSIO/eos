@@ -37,7 +37,7 @@ replay the blockchain to pickup any historical activity.
 ```
 
 You only need to replay once, subsequent runs of nodeos should not use the replay flag or
-your startup times will be unnecessiarlly log. 
+your startup times will be unnecessiarlly long. 
 
 
 Accepting Deposits
