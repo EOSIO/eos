@@ -1,0 +1,36 @@
+# group `systemcapi` 
+
+Define API for interacting with system level intrinsics.
+
+## Summary
+
+ Members                        | Descriptions                                
+--------------------------------|---------------------------------------------
+`public void `[`eosio_assert`](#group__systemcapi_1ga8566f3999bfc932b2190d05e97abbe1f)`(uint32_t test,const char * cstr)`            | Aborts processing of this action and unwinds all pending changes.
+`public void `[`eosio_exit`](#group__systemcapi_1gae6b0de62b1edad98f29873b53f75dda0)`(int32_t code)`            | This method will abort execution of wasm without failing the contract. This is used to bypass all cleanup / destructors that would normally be called.
+`public `[`time`](#group__types_1ga44479e2657d126b44ca53d30c3e670d8)` `[`now`](#group__systemcapi_1ga5eef43c9589d6ef54a0ece1dda5e0ffe)`()`            | Get time of the last accepted block.
+
+## Members
+
+#### `public void `[`eosio_assert`](#group__systemcapi_1ga8566f3999bfc932b2190d05e97abbe1f)`(uint32_t test,const char * cstr)` 
+
+Aborts processing of this action and unwinds all pending changes.
+
+Aborts processing of this action and unwinds all pending changes if the test condition is true 
+#### Parameters
+* `test` - 0 to abort, 1 to ignore 
+
+* `cstr` - a null terminated action to explain the reason for failure
+
+#### `public void `[`eosio_exit`](#group__systemcapi_1gae6b0de62b1edad98f29873b53f75dda0)`(int32_t code)` 
+
+This method will abort execution of wasm without failing the contract. This is used to bypass all cleanup / destructors that would normally be called.
+
+#### `public `[`time`](#group__types_1ga44479e2657d126b44ca53d30c3e670d8)` `[`now`](#group__systemcapi_1ga5eef43c9589d6ef54a0ece1dda5e0ffe)`()` 
+
+Get time of the last accepted block.
+
+Returns the time in seconds from 1970 of the last accepted block (not the block including this action) 
+#### Returns
+time in seconds from 1970 of the last accepted block
+

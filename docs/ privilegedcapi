@@ -1,0 +1,38 @@
+# group `privilegedcapi` 
+
+Define C Privileged API.
+
+## Summary
+
+ Members                        | Descriptions                                
+--------------------------------|---------------------------------------------
+`public void `[`set_resource_limits`](#group__privilegedcapi_1ga3b04b07b03ab6bcd72f0ae8628ea8bdb)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` account,uint64_t ram_bytes,uint64_t net_weight,uint64_t cpu_weight)`            | 
+`public void `[`set_active_producers`](#group__privilegedcapi_1ga13e710dfe759f02d4d3d46ca06d24993)`(char * producer_data,uint32_t producer_data_size)`            | 
+`public bool `[`is_privileged`](#group__privilegedcapi_1ga932c094f2d83f9a5706108d66ebcf3ad)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` account)`            | 
+`public void `[`set_privileged`](#group__privilegedcapi_1ga7eaefebaad2576dd64c06f9efb66e7b7)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` account,bool is_priv)`            | 
+`public void `[`set_blockchain_parameters_packed`](#group__privilegedcapi_1ga1d72b091412cf36373b9e5902dbfd95b)`(char * data,uint32_t datalen)`            | 
+`public uint32_t `[`get_blockchain_parameters_packed`](#group__privilegedcapi_1ga4d6063e8201c5cadc5775ba5b1dbb019)`(char * data,uint32_t datalen)`            | Retrieve the blolckchain parameters 
+`public void `[`activate_feature`](#group__privilegedcapi_1gaaa4fd3068850193329a4569b3a2b91a9)`(int64_t f)`            | 
+
+## Members
+
+#### `public void `[`set_resource_limits`](#group__privilegedcapi_1ga3b04b07b03ab6bcd72f0ae8628ea8bdb)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` account,uint64_t ram_bytes,uint64_t net_weight,uint64_t cpu_weight)` 
+
+#### `public void `[`set_active_producers`](#group__privilegedcapi_1ga13e710dfe759f02d4d3d46ca06d24993)`(char * producer_data,uint32_t producer_data_size)` 
+
+#### `public bool `[`is_privileged`](#group__privilegedcapi_1ga932c094f2d83f9a5706108d66ebcf3ad)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` account)` 
+
+#### `public void `[`set_privileged`](#group__privilegedcapi_1ga7eaefebaad2576dd64c06f9efb66e7b7)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` account,bool is_priv)` 
+
+#### `public void `[`set_blockchain_parameters_packed`](#group__privilegedcapi_1ga1d72b091412cf36373b9e5902dbfd95b)`(char * data,uint32_t datalen)` 
+
+#### `public uint32_t `[`get_blockchain_parameters_packed`](#group__privilegedcapi_1ga4d6063e8201c5cadc5775ba5b1dbb019)`(char * data,uint32_t datalen)` 
+
+Retrieve the blolckchain parameters 
+#### Parameters
+* `data` - output buffer of the blockchain parameters, only retrieved if sufficent size to hold packed data. 
+
+* `datalen` - size of the data buffer, 0 to report required size.
+
+#### `public void `[`activate_feature`](#group__privilegedcapi_1gaaa4fd3068850193329a4569b3a2b91a9)`(int64_t f)` 
+

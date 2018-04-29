@@ -1,0 +1,39 @@
+# group `accountcapi` 
+
+C API for querying account data.
+
+## Summary
+
+ Members                        | Descriptions                                
+--------------------------------|---------------------------------------------
+`public bool `[`account_balance_get`](#group__accountcapi_1gabc0d83c30cea31ccd9c5155f5292eab7)`(void * balance,uint32_t len)`            | Retrieve the balance for the provided account.
+
+## Members
+
+#### `public bool `[`account_balance_get`](#group__accountcapi_1gabc0d83c30cea31ccd9c5155f5292eab7)`(void * balance,uint32_t len)` 
+
+Retrieve the balance for the provided account.
+
+Retrieve the balance for the provided account
+
+#### Parameters
+* `balance` - a pointer to a range of memory to store balance data 
+
+* `len` - length of the range of memory to store balance data 
+
+#### Returns
+true if account information is retrieved
+
+data is a valid pointer to a range of memory at least datalen bytes long 
+
+data is a pointer to a balance object 
+
+*((uint64_t*)data) stores the primary key
+
+Example: 
+```cpp
+balance b;
+b.account = N(myaccount);
+balance(b, sizeof(balance));
+```
+

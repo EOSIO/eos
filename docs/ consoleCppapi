@@ -1,0 +1,76 @@
+# group `consoleCppapi` 
+
+C++ wrapper for Console C API.
+
+This API uses C++ variadic templates and type detection to make it easy to print any native type. You can even overload the `[print()](#namespaceeosio_1aa0a56fe314d032d027a1565d93a68b21)` method for your own custom types.
+
+**Example:**
+```cpp
+print( "hello world, this is a number: ", 5 );
+```
+
+Overriding Print for your TypesThere are two ways to overload print:* implement void print( const T& )
+
+* implement T::print()const
+
+## Summary
+
+ Members                        | Descriptions                                
+--------------------------------|---------------------------------------------
+`public template<>`  <br/>`void `[`print`](#group__console_cppapi_1gab5232cf7452d463948eac1179f31d9f0)`(Arg && a,Args &&... args)`            | Print out value / list of values.
+`public template<>`  <br/>`inline iostream & `[`operator<<`](#group__console_cppapi_1ga827f0aac6315e7963bcd52656cd7eeed)`(iostream & out,const T & v)`            | Overload c++ iostream.
+`class `[`eosio::iostream`](docs/ consoleCppapi#classeosio_1_1iostream) | Simulate C++ style streams
+
+## Members
+
+#### `public template<>`  <br/>`void `[`print`](#group__console_cppapi_1gab5232cf7452d463948eac1179f31d9f0)`(Arg && a,Args &&... args)` 
+
+Print out value / list of values.
+
+Print out value / list of values (except double) 
+#### Parameters
+* `a` Value to be printed 
+
+* `args` Other values to be printed
+
+Example: 
+```cpp
+const char *s = "Hello World!";
+uint64_t unsigned_64_bit_int = 1e+18;
+uint128_t unsigned_128_bit_int (87654323456);
+uint64_t string_as_unsigned_64_bit = N(abcde);
+print(s , unsigned_64_bit_int, unsigned_128_bit_int, string_as_unsigned_64_bit);
+// Ouput: Hello World!100000000000000000087654323456abcde
+```
+
+#### `public template<>`  <br/>`inline iostream & `[`operator<<`](#group__console_cppapi_1ga827f0aac6315e7963bcd52656cd7eeed)`(iostream & out,const T & v)` 
+
+Overload c++ iostream.
+
+Overload c++ iostream 
+#### Parameters
+* `out` Output strem 
+
+* `v` Value to be printed
+
+Example: 
+```cpp
+const char *s = "Hello World!";
+uint64_t unsigned_64_bit_int = 1e+18;
+uint128_t unsigned_128_bit_int (87654323456);
+uint64_t string_as_unsigned_64_bit = N(abcde);
+std::out << s << " " << unsigned_64_bit_int << " "  << unsigned_128_bit_int << " " << string_as_unsigned_64_bit;
+// Output: Hello World! 1000000000000000000 87654323456 abcde
+```
+
+# class `eosio::iostream` 
+
+Simulate C++ style streams
+
+## Summary
+
+ Members                        | Descriptions                                
+--------------------------------|---------------------------------------------
+
+## Members
+

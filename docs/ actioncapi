@@ -1,0 +1,171 @@
+# group `actioncapi` 
+
+Define API for querying action properties.
+
+A EOS.IO action has the following abstract structure:
+
+```cpp
+struct action {
+  scope_name scope; // the contract defining the primary code to execute for code/type
+  action_name name; // the action to be taken
+  permission_level[] authorization; // the accounts and permission levels provided
+  bytes data; // opaque data processed by code
+};
+```
+
+This API enables your contract to inspect the fields on the current action and act accordingly.
+
+Example: 
+```cpp
+// Assume this action is used for the following examples:
+// {
+//  "code": "eos",
+//  "type": "transfer",
+//  "authorization": [{ "account": "inita", "permission": "active" }],
+//  "data": {
+//    "from": "inita",
+//    "to": "initb",
+//    "amount": 1000
+//  }
+// }
+
+char buffer[128];
+uint32_t total = read_action(buffer, 5); // buffer contains the content of the action up to 5 bytes
+print(total); // Output: 5
+
+uint32_t msgsize = action_size();
+print(msgsize); // Output: size of the above action's data field
+
+require_recipient(N(initc)); // initc account will be notified for this action
+
+require_auth(N(inita)); // Do nothing since inita exists in the auth list
+require_auth(N(initb)); // Throws an exception
+
+print(now()); // Output: timestamp of last accepted block
+```
+
+## Summary
+
+ Members                        | Descriptions                                
+--------------------------------|---------------------------------------------
+`public uint32_t `[`read_action_data`](#group__actioncapi_1ga4de6d1722b92b464ba2c999e0a636f84)`(void * msg,uint32_t len)`            | Copy current action data to the specified location.
+`public uint32_t `[`action_data_size`](#group__actioncapi_1ga9d5497faab78ecdc03052cf644d72a5e)`()`            | Get the length of current action's data field.
+`public void `[`require_recipient`](#group__actioncapi_1gae232893c733f02b94dbb70fae39d19f7)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)`            | Add the specified account to set of accounts to be notified.
+`public void `[`require_auth`](#group__actioncapi_1gab1e668e93ac1f94421743ed79edffb26)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)`            | Verify specified account exists in the set of provided auths.
+`public bool `[`has_auth`](#group__actioncapi_1ga38a837d8c12a0cf02b729be1e13b0765)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)`            | 
+`public void `[`require_auth2`](#group__actioncapi_1gace44cd21e660827634c0529077f9494c)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name,`[`permission_name`](#group__types_1ga4a16baef1413dc2ec44666f6cc85adb1)` permission)`            | Verify specified account exists in the set of provided auths.
+`public void `[`send_inline`](#group__actioncapi_1gada68da99a95a5b25e9f5d43af255c63e)`(char * serialized_action,size_t size)`            | Send an inline action in the context of this action's parent transaction 
+`public void `[`send_context_free_inline`](#group__actioncapi_1ga30b1cab2d60f843eb2d496e754e41705)`(char * serialized_action,size_t size)`            | Send an inline context free action in the context of this action's parent transaction 
+`public void `[`require_write_lock`](#group__actioncapi_1ga9893f539cf6d56989eb6e0d4ce51a813)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)`            | Verifies that name exists in the set of write locks held.
+`public void `[`require_read_lock`](#group__actioncapi_1ga4b02a9d9adf71ae49e77e19fefc0cbf4)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)`            | Verifies that name exists in the set of read locks held.
+`public `[`time`](#group__types_1ga44479e2657d126b44ca53d30c3e670d8)` `[`publication_time`](#group__actioncapi_1ga761ba259bec8bbdab79b31b716a5d4d6)`()`            | Get the publication time.
+`public `[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` `[`current_sender`](#group__actioncapi_1gaf531fda07a825ca8b0d90f21446e6a64)`()`            | Get the sender of the action.
+`public `[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` `[`current_receiver`](#group__actioncapi_1ga5fcca014b53b0f15b9f9636325bae976)`()`            | Get the current receiver of the action.
+
+## Members
+
+#### `public uint32_t `[`read_action_data`](#group__actioncapi_1ga4de6d1722b92b464ba2c999e0a636f84)`(void * msg,uint32_t len)` 
+
+Copy current action data to the specified location.
+
+Copy up to len bytes of current action data to the specified location 
+#### Parameters
+* `msg` - a pointer where up to len bytes of the current action data will be copied 
+
+* `len` - len of the current action data to be copied, 0 to report required size 
+
+#### Returns
+the number of bytes copied to msg, or number of bytes that can be copied if len==0 passed
+
+#### `public uint32_t `[`action_data_size`](#group__actioncapi_1ga9d5497faab78ecdc03052cf644d72a5e)`()` 
+
+Get the length of current action's data field.
+
+Get the length of the current action's data field This method is useful for dynamically sized actions 
+#### Returns
+the length of the current action's data field
+
+#### `public void `[`require_recipient`](#group__actioncapi_1gae232893c733f02b94dbb70fae39d19f7)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)` 
+
+Add the specified account to set of accounts to be notified.
+
+Add the specified account to set of accounts to be notified 
+#### Parameters
+* `name` - name of the account to be verified
+
+#### `public void `[`require_auth`](#group__actioncapi_1gab1e668e93ac1f94421743ed79edffb26)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)` 
+
+Verify specified account exists in the set of provided auths.
+
+Verifies that name exists in the set of provided auths on a action. Throws if not found 
+#### Parameters
+* `name` - name of the account to be verified
+
+#### `public bool `[`has_auth`](#group__actioncapi_1ga38a837d8c12a0cf02b729be1e13b0765)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)` 
+
+#### `public void `[`require_auth2`](#group__actioncapi_1gace44cd21e660827634c0529077f9494c)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name,`[`permission_name`](#group__types_1ga4a16baef1413dc2ec44666f6cc85adb1)` permission)` 
+
+Verify specified account exists in the set of provided auths.
+
+Verifies that name exists in the set of provided auths on a action. Throws if not found 
+#### Parameters
+* `name` - name of the account to be verified 
+
+* `permission` - permission level to be verified
+
+#### `public void `[`send_inline`](#group__actioncapi_1gada68da99a95a5b25e9f5d43af255c63e)`(char * serialized_action,size_t size)` 
+
+Send an inline action in the context of this action's parent transaction 
+#### Parameters
+* `serialized_action` - serialized action 
+
+* `size` - size of serialized action in bytes
+
+#### `public void `[`send_context_free_inline`](#group__actioncapi_1ga30b1cab2d60f843eb2d496e754e41705)`(char * serialized_action,size_t size)` 
+
+Send an inline context free action in the context of this action's parent transaction 
+#### Parameters
+* `serialized_action` - serialized action 
+
+* `size` - size of serialized action in bytes
+
+#### `public void `[`require_write_lock`](#group__actioncapi_1ga9893f539cf6d56989eb6e0d4ce51a813)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)` 
+
+Verifies that name exists in the set of write locks held.
+
+Verifies that name exists in the set of write locks held on a action. Throws if not found 
+#### Parameters
+* `name` - name of the account to be verified
+
+#### `public void `[`require_read_lock`](#group__actioncapi_1ga4b02a9d9adf71ae49e77e19fefc0cbf4)`(`[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` name)` 
+
+Verifies that name exists in the set of read locks held.
+
+Verifies that name exists in the set of read locks held on a action. Throws if not found 
+#### Parameters
+* `name` - name of the account to be verified
+
+#### `public `[`time`](#group__types_1ga44479e2657d126b44ca53d30c3e670d8)` `[`publication_time`](#group__actioncapi_1ga761ba259bec8bbdab79b31b716a5d4d6)`()` 
+
+Get the publication time.
+
+Returns the time in seconds from 1970 of the publication_time 
+#### Returns
+the time in seconds from 1970 of the publication_time
+
+#### `public `[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` `[`current_sender`](#group__actioncapi_1gaf531fda07a825ca8b0d90f21446e6a64)`()` 
+
+Get the sender of the action.
+
+Get the account which specifies the sender of the action 
+#### Returns
+the account which specifies the sender of the action
+
+#### `public `[`account_name`](#group__types_1ga3b44deb4b3b8d6ebab339d1263692117)` `[`current_receiver`](#group__actioncapi_1ga5fcca014b53b0f15b9f9636325bae976)`()` 
+
+Get the current receiver of the action.
+
+Get the current receiver of the action 
+#### Returns
+the account which specifies the current receiver of the action
+

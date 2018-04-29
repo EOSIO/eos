@@ -1,0 +1,29 @@
+# group `database` 
+
+APIs that store and retreive data on the blockchain
+
+EOS.IO organizes data according to the following broad structure:
+
+* **code** - the account name which has write permission
+
+* **scope** - an account where the data is stored
+
+* **table** - a name for the table that is being stored
+
+* **record** - a row in the table
+
+Every transaction specifies the set of valid scopes that may be read and/or written to. The code that is running determines what can be written to; therefore, write operations do not allow you to specify/configure the code.
+
+Attempts to read and/or write outside the valid scope and/or code sections will cause your transaction to fail.
+
+table TypesThese are the supported table types identified by the number and size of the index:
+
+* dbi64
+
+The databaseCpp provides a simple interface for storing any fixed-size struct as a database row.
+
+## Summary
+
+ Members                        | Descriptions                                
+--------------------------------|---------------------------------------------
+
