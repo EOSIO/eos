@@ -1,7 +1,7 @@
 Exchange Deposit & Withdraw Documentation
 -----------------------------------------
 
-This document is targeted toward exchanges which wish to automate deposit
+This document is targeted toward exchanges who wish to automate deposit
 and withdraw of standard-conforming EOSIO token contracts. The blockchain's
 native token conforms to the standard. 
 
