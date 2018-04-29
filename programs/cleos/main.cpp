@@ -1109,7 +1109,7 @@ int main( int argc, char** argv ) {
    auto getActions = get->add_subcommand("actions", localized("Retrieve all actions with specific account name referenced in authorization or receiver"), false);
    getActions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getActions->add_option("pos", pos_seq, localized("sequence number of action for this account, -1 for last"));
-   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset) for positive offset or [pos-offset,pos) for negative offset"));
+   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset] for positive offset or [pos-offset,pos) for negative offset"));
    getActions->add_flag("--json,-j", printjson, localized("print full json"));
    getActions->add_flag("--full", fullact, localized("don't truncate action json"));
    getActions->add_flag("--pretty", prettyact, localized("pretty print full action json "));
@@ -1134,7 +1134,11 @@ int main( int argc, char** argv ) {
           cout  << "================================================================================================================\n";
           for( const auto& trace: traces ) {
               std::stringstream out;
-              out << "#";
+              if( trace["block_num"].as_uint64() <= lib )
+                 out << "#";
+              else
+                 out << "?";
+
               out << setw(5) << trace["account_action_seq"].as_uint64() <<"  ";
               out << setw(24) << trace["block_time"].as_string() <<"  ";
 

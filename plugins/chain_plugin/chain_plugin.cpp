@@ -397,8 +397,8 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
 
    auto trx_trace_ptr = db.sync_push( std::make_shared<transaction_metadata>(move(pretty_input)) );
 
-   fc::variant pretty_output;
-   abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
+   fc::variant pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
+   //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
    return read_write::push_transaction_results{ trx_trace_ptr->id, pretty_output };
 }
 
