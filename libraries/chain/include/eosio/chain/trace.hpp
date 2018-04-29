@@ -66,5 +66,5 @@ FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )
 
 FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(net_usage)(cpu_usage)(scheduled)(action_traces)
-                                             /*(failed_dtrx_trace)*/(soft_except)(hard_except) )
+                                             (failed_dtrx_trace)(soft_except)(hard_except) )
 FC_REFLECT( eosio::chain::block_trace, (elapsed)(cpu_usage)(trx_traces) )
