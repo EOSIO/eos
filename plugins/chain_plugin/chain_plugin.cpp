@@ -246,6 +246,7 @@ namespace chain_apis {
 const string read_only::KEYi64 = "i64";
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+   const auto& rm = db.get_resource_limits_manager();
    return {
       eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
       db.head_block_num(),
@@ -254,6 +255,10 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),
+      rm.get_virtual_block_cpu_limit(),
+      rm.get_virtual_block_net_limit(),
+      rm.get_block_cpu_limit(),
+      rm.get_block_net_limit()
       //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
       //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
    };
@@ -446,6 +451,13 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& d = db.db();
    const auto& rm = db.get_resource_limits_manager();
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
+
+   const auto& a = db.get_account(result.account_name);
+
+   result.privileged       = a.privileged;
+   result.last_code_update = a.last_code_update;
+   result.created          = a.creation_date;
+
    result.net_limit = rm.get_account_net_limit( result.account_name );
    result.cpu_limit = rm.get_account_cpu_limit( result.account_name );
    result.ram_usage = rm.get_account_ram_usage( result.account_name );

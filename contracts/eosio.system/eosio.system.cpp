@@ -6,11 +6,13 @@
 #include "voting.cpp"
 
 EOSIO_ABI( eosiosystem::system_contract,
+           (setparams)
            // delegate_bandwith.cpp
            (delegatebw)(undelegatebw)(refund)
            (regproxy)
            // voting.cpp
-           (unregproxy)(regproducer)(unregprod)(voteproducer)(onblock)
+           (unregproxy)(regproducer)(unregprod)(voteproducer)
+           (onblock)
            // producer_pay.cpp
            (claimrewards)
            // native.hpp

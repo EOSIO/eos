@@ -7,6 +7,8 @@
 #include <eosiolib/action.hpp>
 #include <eosiolib/public_key.hpp>
 #include <eosiolib/types.hpp>
+#include <eosiolib/print.hpp>
+#include <eosiolib/privileged.h>
 
 namespace eosiosystem {
    using eosio::permission_level;
@@ -47,11 +49,15 @@ namespace eosiosystem {
    class native {
       public:
 
-      void newaccount( /*account_name     creator,
-                              account_name     name,
+      void newaccount( account_name     creator,
+                       account_name     newact
+                              /*
                               const authority& owner,
                               const authority& active,
-                              const authority& recovery*/ ) {}
+                              const authority& recovery*/ ) {
+         eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
+         set_resource_limits( newact, 1000, 0, 0 );
+      }
 
       void updateauth( /*account_name     account,
                               permission_name  permission,

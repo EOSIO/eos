@@ -1029,11 +1029,14 @@ bool controller::push_next_unapplied_transaction( fc::time_point deadline ) {
 }
 
 transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx, time_point deadline ) {
-   FC_ASSERT( deadline != fc::time_point() );
-   transaction_trace_ptr trace;
-   trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; };
-   my->push_transaction( trx, deadline );
-   return trace;
+   auto start = fc::time_point::now();
+   try {
+      FC_ASSERT( deadline != fc::time_point() );
+      transaction_trace_ptr trace;
+      trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; };
+      my->push_transaction( trx, deadline );
+      return trace;
+   } FC_CAPTURE_AND_RETHROW( (fc::time_point::now()-start)(deadline) ) 
 }
 
 bool controller::push_next_scheduled_transaction( fc::time_point deadline ) {

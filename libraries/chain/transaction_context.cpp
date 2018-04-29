@@ -180,6 +180,7 @@ namespace eosio { namespace chain {
 
    void transaction_context::check_time()const {
       if( BOOST_UNLIKELY(fc::time_point::now() > deadline) ) {
+         wlog( "deadline passed" );
          throw checktime_exceeded();
       }
    }

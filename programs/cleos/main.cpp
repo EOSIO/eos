@@ -342,13 +342,17 @@ void print_result( const fc::variant& result ) { try {
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
          }
+         auto hard_except = processed["hard_except"].as<optional<fc::exception>>();
+         if( hard_except ) {
+            edump((hard_except->to_detail_string()));
+         }
       } else {
          const auto& actions = processed["action_traces"].get_array();
          for( const auto& a : actions ) {
             print_action_tree( a );
          }
+         wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
       }
-      wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
@@ -399,9 +403,8 @@ chain::action create_action(const vector<permission_level>& authorization, const
 
 fc::variant regproducer_variant(const account_name& producer,
                                 public_key_type key,
-                                uint64_t max_storage_size,
-                                uint32_t percent_of_max_inflation_rate,
-                                uint32_t storage_reserve_ratio) {
+                                string url) {
+   /*
    fc::variant_object params = fc::mutable_variant_object()
          ("max_block_net_usage", config::default_max_block_net_usage)
          ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
@@ -428,11 +431,12 @@ fc::variant regproducer_variant(const account_name& producer,
          ("max_storage_size", max_storage_size)
          ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
          ("storage_reserve_ratio", storage_reserve_ratio);
+         */
 
    return fc::mutable_variant_object()
             ("producer", producer)
-            ("producer_key", fc::raw::pack(key))
-            ("prefs", params);
+            ("producer_key", key)
+            ("url", url);
 }
 
 chain::action create_transfer(const string& contract, const name& sender, const name& recipient, asset amount, const string& memo ) {
@@ -621,17 +625,13 @@ CLI::callback_t old_host_port = [](CLI::results_t) {
 struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
-   uint64_t max_storage_size = 10 * 1024 * 1024;
-   uint32_t percent_of_max_inflation_rate = 0;
-   uint32_t storage_reserve_ratio = 1000;
+   string url;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
-      register_producer->add_option("max_storage_size", max_storage_size, localized("The max storage size"), true);
-      register_producer->add_option("percent_of_max_inflation_rate", percent_of_max_inflation_rate, localized("Percent of max inflation rate"), true);
-      register_producer->add_option("storage_reserve_ratio", storage_reserve_ratio, localized("Storage Reserve Ratio"), true);
+      register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
       add_standard_transaction_options(register_producer);
 
 
@@ -641,7 +641,7 @@ struct register_producer_subcommand {
             producer_key = public_key_type(producer_key_str);
          } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
-         auto regprod_var = regproducer_variant(producer_str, producer_key, max_storage_size, percent_of_max_inflation_rate, storage_reserve_ratio);
+         auto regprod_var = regproducer_variant(producer_str, producer_key, url );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
       });
    }
@@ -686,19 +686,22 @@ struct vote_producer_proxy_subcommand {
 
 struct vote_producers_subcommand {
    string voter_str;
-   std::vector<std::string> producers;
+   vector<eosio::name> producer_names;
 
    vote_producers_subcommand(CLI::App* actionRoot) {
       auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
       vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_producers->add_option("producers", producers, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
+      vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
       add_standard_transaction_options(vote_producers);
 
       vote_producers->set_callback([this] {
+
+         std::sort( producer_names.begin(), producer_names.end() );
+
          fc::variant act_payload = fc::mutable_variant_object()
                   ("voter", voter_str)
                   ("proxy", "")
-                  ("producers", producers);
+                  ("producers", producer_names);
          send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
       });
    }
@@ -727,6 +730,7 @@ struct delegate_bandwidth_subcommand {
                   ("stake_net_quantity", stake_net_amount + " EOS")
                   ("stake_cpu_quantity", stake_cpu_amount + " EOS")
                   ("stake_storage_quantity", stake_storage_amount + " EOS");
+                  wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
    }
