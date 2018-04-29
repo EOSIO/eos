@@ -4,7 +4,7 @@
 #pragma GCC diagnostic pop
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
@@ -300,7 +300,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(6, malformed.decimals());
    }
 
-   // invalid - contains lower case characters, exception thrown 
+   // invalid - contains lower case characters, exception thrown
    {
       BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
                             fc::assert_exception, assert_message_ends_with("invalid character in symbol name"));

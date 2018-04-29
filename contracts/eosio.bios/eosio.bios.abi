@@ -33,8 +33,7 @@
       "name": "set_producers",
       "base": "",
       "fields": [
-        {"name":"version",    "type":"uint32"},
-        {"name":"producers",   "type":"producer_key[]"}
+        {"name":"schedule",   "type":"producer_key[]"}
       ]
     },{
       "name": "require_auth",

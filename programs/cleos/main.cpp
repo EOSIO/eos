@@ -39,7 +39,7 @@ Subcommands:
   sign                        Sign a transaction
   push                        Push arbitrary transactions to the blockchain
   multisig                    Multisig contract commands
-  
+
 ```
 To get help with any particular subcommand, run it with no arguments as well:
 ```
@@ -86,8 +86,9 @@ Options:
 
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain/transaction_trace.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/contract_types.hpp>
 
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
@@ -224,7 +225,7 @@ chain::action generate_nonce() {
 
    try {
       auto result = call(get_code_func, fc::mutable_variant_object("account_name", name(config::system_account_name)));
-      abi_serializer eosio_serializer(result["abi"].as<contracts::abi_def>());
+      abi_serializer eosio_serializer(result["abi"].as<abi_def>());
       return chain::action( {}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce));
    }
    catch (...) {
@@ -255,15 +256,13 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    trx.expiration = info.head_block_time + tx_expiration;
 
    // Set tapos, default to last irreversible block if it's not specified by the user
-   block_id_type ref_block_id;
+   block_id_type ref_block_id = info.last_irreversible_block_id;
    try {
       fc::variant ref_block;
       if (!tx_ref_block_num_or_id.empty()) {
          ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
-      } else {
-         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", info.last_irreversible_block_num));
-      }
-      ref_block_id = ref_block["id"].as<block_id_type>();
+         ref_block_id = ref_block["id"].as<block_id_type>();
+      } 
    } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
    trx.set_reference_block(ref_block_id);
 
@@ -295,41 +294,50 @@ fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcp
    return push_transaction(trx, extra_kcpu, compression);
 }
 
-void print_result( const fc::variant& result ) {
+void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
-      const auto& status = processed["status"].as_string() ;
-      auto net = processed["net_usage"].as_int64();
-      auto cpu = processed["cpu_usage"].as_int64();
+      const auto& receipt = processed["receipt"].get_object() ;
+      const auto& status = receipt["status"].as_string() ;
+      auto net = receipt["net_usage_words"].as_int64()*8;
+      auto cpu = receipt["kcpu_usage"].as_int64();
 
-      cout << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << " cycles\n";
+      cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
 
-      const auto& actions = processed["action_traces"].get_array();
-      for( const auto& at : actions ) {
-         auto receiver = at["receiver"].as_string();
-         const auto& act = at["act"].get_object();
-         auto code = act["account"].as_string();
-         auto func = act["name"].as_string();
-         auto args = fc::json::to_string( act["data"] );
-         auto console = at["console"].as_string();
+      if( status == "hard_fail" ) {
+         auto soft_except = processed["soft_except"].as<optional<fc::exception>>();
+         if( soft_except ) {
+            edump((soft_except->to_detail_string()));
+         }
 
-         /*
-         if( code == "eosio" && func == "setcode" )
-            args = args.substr(40)+"...";
-         if( name(code) == config::system_account_name && func == "setabi" )
-            args = args.substr(40)+"...";
-         */
-         if( args.size() > 100 ) args = args.substr(0,100) + "...";
+      } else {
+         const auto& actions = processed["action_traces"].get_array();
+         for( const auto& at : actions ) {
+            const auto& receipt = at["receipt"];
+            auto receiver = receipt["receiver"].as_string();
+            const auto& act = at["act"].get_object();
+            auto code = act["account"].as_string();
+            auto func = act["name"].as_string();
+            auto args = fc::json::to_string( act["data"] );
+            auto console = at["console"].as_string();
 
-         cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
-         if( console.size() ) {
-            std::stringstream ss(console);
-            string line;
-            std::getline( ss, line );
-            cout << ">> " << line << "\n";
+            /*
+            if( code == "eosio" && func == "setcode" )
+               args = args.substr(40)+"...";
+            if( name(code) == config::system_account_name && func == "setabi" )
+               args = args.substr(40)+"...";
+            */
+            if( args.size() > 100 ) args = args.substr(0,100) + "...";
+            cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+            if( console.size() ) {
+               std::stringstream ss(console);
+               string line;
+               std::getline( ss, line );
+               cout << ">> " << line << "\n";
+            }
          }
       }
-}
+} FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
@@ -356,7 +364,7 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
 chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
-      contracts::newaccount{
+      eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
          .owner        = eosio::chain::authority{1, {{owner, 1}}, {}},
@@ -434,10 +442,10 @@ chain::action create_transfer(const name& sender, const name& recipient, uint64_
    };
 }
 
-chain::action create_setabi(const name& account, const contracts::abi_def& abi) {
+chain::action create_setabi(const name& account, const abi_def& abi) {
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-      contracts::setabi{
+      setabi{
          .account   = account,
          .abi       = abi
       }
@@ -447,7 +455,7 @@ chain::action create_setabi(const name& account, const contracts::abi_def& abi) 
 chain::action create_setcode(const name& account, const bytes& code) {
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-      contracts::setcode{
+      setcode{
          .account   = account,
          .vmtype    = 0,
          .vmversion = 0,
@@ -458,28 +466,28 @@ chain::action create_setcode(const name& account, const bytes& code) {
 
 chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth) {
    return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::updateauth{account, permission, parent, auth}};
+                   updateauth{account, permission, parent, auth}};
 }
 
 chain::action create_deleteauth(const name& account, const name& permission) {
    return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::deleteauth{account, permission}};
+                   deleteauth{account, permission}};
 }
 
 chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
    return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::linkauth{account, code, type, requirement}};
+                   linkauth{account, code, type, requirement}};
 }
 
 chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
    return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::unlinkauth{account, code, type}};
+                   unlinkauth{account, code, type}};
 }
 
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
 {
    regex r("^[ \t]*[\{\[]");
-   if ( !regex_search(file_or_str, r) && is_regular_file(file_or_str) ) {
+   if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
       return fc::json::from_file(file_or_str, ptype);
    } else {
       return fc::json::from_string(file_or_str, ptype);
@@ -850,7 +858,7 @@ struct canceldelay_subcommand {
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
-      binPath = relative(binPath, current_path());
+      binPath = relative(binPath, fc::current_path());
    }
 
    setlocale(LC_ALL, "");
@@ -1073,10 +1081,32 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
-   // get transactions
+   // get actions 
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;
+
+   int32_t pos_seq = -1;
+   int32_t offset = -20;
+   auto getActions = get->add_subcommand("actions", localized("Retrieve all actions with specific account name referenced in authorization or receiver"), false);
+   getActions->add_option("account_name", account_name, localized("name of account to query on"))->required();
+   getActions->add_option("pos", pos_seq, localized("sequence number of action for this account, -1 for last"));
+   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset) for positive offset or [pos-offset,pos) for negative offset"));
+   getActions->add_flag("--json,-j", printjson, localized("print full json"));
+   getActions->set_callback([&] {
+      fc::mutable_variant_object arg;
+      arg( "account_name", account_name );
+      arg( "pos", pos_seq );
+      arg( "offset", offset);
+
+      edump((get_actions_func)(arg));
+      auto result = call(get_actions_func, arg);
+      //if( printjson ) {
+      std::cout << fc::json::to_pretty_string(result) << std::endl;
+   });
+
+
+   /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getTransactions->add_option("skip_seq", skip_seq_str, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
@@ -1129,6 +1159,7 @@ int main( int argc, char** argv ) {
       }
 
    });
+   */
 
    // set subcommand
    auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));
@@ -1168,7 +1199,7 @@ int main( int argc, char** argv ) {
       {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
-      
+
       std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
       FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
@@ -1189,7 +1220,7 @@ int main( int argc, char** argv ) {
       FC_ASSERT( fc::exists( abiPath ), "no abi file found ${f}", ("f", abiPath)  );
 
       try {
-         actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<contracts::abi_def>()) );
+         actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
 
       std::cout << localized("Publishing contract...") << std::endl;
@@ -1543,7 +1574,6 @@ int main( int argc, char** argv ) {
       transaction trx;
 
       trx.expiration = fc::time_point_sec( fc::time_point::now() + fc::hours(proposal_expiration_hours) );
-      trx.region = 0;
       trx.ref_block_num = 0;
       trx.ref_block_prefix = 0;
       trx.max_net_usage_words = 0;
@@ -1567,14 +1597,14 @@ int main( int argc, char** argv ) {
    });
 
    //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-   auto resolver = [](const name& code) -> optional<contracts::abi_serializer> {
+   auto resolver = [](const name& code) -> optional<abi_serializer> {
       auto result = call(get_code_func, fc::mutable_variant_object("account_name", code.to_string()));
       if (result["abi"].is_object()) {
          //std::cout << "ABI: " << fc::json::to_pretty_string(result) << std::endl;
-         return optional<contracts::abi_serializer>(abi_serializer(result["abi"].as<contracts::abi_def>()));
+         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>()));
       } else {
          std::cerr << "ABI for contract " << code.to_string() << " not found. Action data will be shown in hex only." << std::endl;
-         return optional<contracts::abi_serializer>();
+         return optional<abi_serializer>();
       }
    };
 

@@ -8,10 +8,10 @@
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/block.hpp>
-#include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/contracts/contract_table_objects.hpp>
+#include <eosio/chain/controller.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/algorithm/string.hpp>
@@ -20,7 +20,7 @@
 namespace fc { class variant; }
 
 namespace eosio {
-   using chain::chain_controller;
+   using chain::controller;
    using std::unique_ptr;
    using namespace appbase;
    using chain::name;
@@ -31,8 +31,8 @@ namespace eosio {
    using chain::asset;
    using chain::authority;
    using chain::account_name;
-   using chain::contracts::abi_def;
-   using chain::contracts::abi_serializer;
+   using chain::abi_def;
+   using chain::abi_serializer;
 
 namespace chain_apis {
 struct empty{};
@@ -47,12 +47,12 @@ template<typename>
 struct resolver_factory;
 
 class read_only {
-   const chain_controller& db;
+   const controller& db;
 
 public:
    static const string KEYi64;
 
-   read_only(const chain_controller& db)
+   read_only(const controller& db)
       : db(db) {}
 
    using get_info_params = empty;
@@ -61,6 +61,7 @@ public:
       string                  server_version;
       uint32_t                head_block_num = 0;
       uint32_t                last_irreversible_block_num = 0;
+      chain::block_id_type    last_irreversible_block_id;
       chain::block_id_type    head_block_id;
       fc::time_point_sec      head_block_time;
       account_name            head_block_producer;
@@ -185,7 +186,7 @@ public:
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
-   static void copy_inline_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
+   static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
@@ -193,8 +194,8 @@ public:
    template<typename IndexType, typename Scope, typename Function>
    void walk_table(const name& code, const name& scope, const name& table, Function f) const
    {
-      const auto& d = db.get_database();
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
+      const auto& d = db.db();
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -212,7 +213,7 @@ public:
    template <typename IndexType, typename Scope>
    read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
       read_only::get_table_rows_result result;
-      const auto& d = db.get_database();
+      const auto& d = db.db();
 
       uint64_t scope = 0;
       try {
@@ -239,7 +240,7 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi);
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -285,10 +286,9 @@ public:
 };
 
 class read_write {
-   chain_controller& db;
-   uint32_t skip_flags;
+   controller& db;
 public:
-   read_write(chain_controller& db, uint32_t skip_flags) : db(db), skip_flags(skip_flags) {}
+   read_write(controller& db) : db(db) {}
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -326,20 +326,17 @@ public:
    chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain()); }
    chain_apis::read_write get_read_write_api();
 
-   bool accept_block(const chain::signed_block& block, bool currently_syncing);
+   void accept_block( const chain::signed_block_ptr& block );
    void accept_transaction(const chain::packed_transaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
-   // return true if --skip-transaction-signatures passed to eosd
-   bool is_skipping_transaction_signatures() const;
-
-   // Only call this in plugin_initialize() to modify chain_controller constructor configuration
-   chain_controller::controller_config& chain_config();
+   // Only call this in plugin_initialize() to modify controller constructor configuration
+   controller::config& chain_config();
    // Only call this after plugin_startup()!
-   chain_controller& chain();
+   controller& chain();
    // Only call this after plugin_startup()!
-   const chain_controller& chain() const;
+   const controller& chain() const;
 
   void get_chain_id (chain::chain_id_type &cid) const;
 
@@ -352,7 +349,7 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-  (server_version)(head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer) )
+  (server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )

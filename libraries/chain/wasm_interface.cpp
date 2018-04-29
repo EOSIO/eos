@@ -1,15 +1,17 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/controller.hpp>
 #include <eosio/chain/producer_schedule.hpp>
-#include <eosio/chain/asset.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
+#include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -22,7 +24,6 @@
 #include <fstream>
 
 namespace eosio { namespace chain {
-   using namespace contracts;
    using namespace webassembly;
    using namespace webassembly::common;
 
@@ -135,28 +136,26 @@ class privileged_api : public context_aware_api {
       }
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
-         context.controller.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
+         context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
-      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+      bool set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
-         producer_schedule_type psch;
-         fc::raw::unpack(ds, psch);
+         vector<producer_key> producers;
+         fc::raw::unpack(ds, producers);
          // check that producers are unique
          std::set<account_name> unique_producers;
-         for (const auto& p: psch.producers) {
-            EOS_ASSERT(context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account");
+         for (const auto& p: producers) {
+            EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
+            EOS_ASSERT( p.block_signing_key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
             unique_producers.insert(p.producer_name);
          }
-         EOS_ASSERT(psch.producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule");
-         context.mutable_db.modify( context.controller.get_global_properties(),
-            [&]( auto& gprops ) {
-                 gprops.new_active_producers = psch;
-         });
+         EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
+         return context.mutable_controller.set_proposed_producers( std::move(producers) );
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
-         auto& gpo = context.controller.get_global_properties();
+         auto& gpo = context.control.get_global_properties();
 
          auto s = fc::raw::pack_size( gpo.configuration );
          if( buffer_size == 0 ) return s;
@@ -169,12 +168,11 @@ class privileged_api : public context_aware_api {
          return 0;
       }
 
-
       void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
          datastream<const char*> ds( packed_blockchain_parameters, datalen );
          chain::chain_config cfg;
          fc::raw::unpack(ds, cfg);
-         context.mutable_db.modify( context.controller.get_global_properties(),
+         context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.configuration = cfg;
          });
@@ -186,7 +184,7 @@ class privileged_api : public context_aware_api {
 
       void set_privileged( account_name n, bool is_priv ) {
          const auto& a = context.db.get<account_object, by_name>( n );
-         context.mutable_db.modify( a, [&]( auto& ma ){
+         context.db.modify( a, [&]( auto& ma ){
             ma.privileged = is_priv;
          });
       }
@@ -777,7 +775,7 @@ class permission_api : public context_aware_api {
             pub_keys.emplace_back(pub);
          }
 
-         return context.controller.check_authorization(
+         return context.control.get_authorization_manager().check_authorization(
             account, permission,
             {pub_keys.begin(), pub_keys.end()},
             false
@@ -818,8 +816,8 @@ class system_api : public context_aware_api {
          throw wasm_exit{code};
       }
 
-      fc::time_point_sec now() {
-         return context.controller.head_block_time();
+      uint64_t current_time() {
+         return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
       }
 };
 
@@ -842,16 +840,8 @@ class action_api : public context_aware_api {
          return context.act.data.size();
       }
 
-      fc::time_point_sec publication_time() {
-         return context.trx_meta.published;
-      }
-
-      name current_sender() {
-         if (context.trx_meta.sender) {
-            return *context.trx_meta.sender;
-         } else {
-            return name();
-         }
+      uint64_t publication_time() {
+         return static_cast<uint64_t>( context.published_time.time_since_epoch().count() );
       }
 
       name current_receiver() {
@@ -1166,19 +1156,15 @@ class transaction_api : public context_aware_api {
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len ) {
          try {
-            deferred_transaction dtrx;
-            fc::raw::unpack<transaction>(data, data_len, dtrx);
-            dtrx.sender = context.receiver;
-            dtrx.sender_id = sender_id;
-            dtrx.execute_after = time_point_sec( (context.controller.head_block_time() + fc::seconds(dtrx.delay_sec)) + fc::microseconds(999'999) ); // rounds up to nearest second
-            dtrx.payer = payer;
-            context.execute_deferred(std::move(dtrx));
+            transaction trx;
+            fc::raw::unpack<transaction>(data, data_len, trx);
+            context.schedule_deferred_transaction(sender_id, payer, std::move(trx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
       void cancel_deferred( const unsigned __int128& val ) {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
-         context.cancel_deferred( (unsigned __int128)sender_id );
+         context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
 };
 
@@ -1205,14 +1191,14 @@ class context_free_transaction_api : public context_aware_api {
       }
 
       int expiration() {
-        return context.trx_meta.trx().expiration.sec_since_epoch();
+        return context.trx.expiration.sec_since_epoch();
       }
 
       int tapos_block_num() {
-        return context.trx_meta.trx().ref_block_num;
+        return context.trx.ref_block_num;
       }
       int tapos_block_prefix() {
-        return context.trx_meta.trx().ref_block_prefix;
+        return context.trx.ref_block_prefix;
       }
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
@@ -1590,7 +1576,7 @@ REGISTER_INTRINSICS(privileged_api,
    (activate_feature,                 void(int64_t)                         )
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
-   (set_active_producers,             void(int,int)                         )
+   (set_active_producers,             int(int,int)                          )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
@@ -1670,23 +1656,20 @@ REGISTER_INTRINSICS(string_api,
 );
 
 REGISTER_INTRINSICS(system_api,
-   (abort,        void())
-   (eosio_assert, void(int, int))
-   (eosio_exit,   void(int ))
-   (now,          int())
+   (abort,        void()         )
+   (eosio_assert, void(int, int) )
+   (eosio_exit,   void(int)      )
+   (current_time, int64_t()      )
 );
 
 REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
-   (publication_time,   int32_t()          )
-   (current_sender,     int64_t()          )
+   (publication_time,   int64_t()          )
    (current_receiver,   int64_t()          )
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_lock,    void(int64_t)          )
-   (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&))
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(apply_context::*)(const account_name&, const permission_name& permission))
@@ -1694,7 +1677,6 @@ REGISTER_INTRINSICS(apply_context,
    (is_account,            int(int64_t)           )
 );
 
-   //(printdi,               void(int64_t)   )
 REGISTER_INTRINSICS(console_api,
    (prints,                void(int)      )
    (prints_l,              void(int, int) )
@@ -1716,7 +1698,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
    (get_action,             int (int, int, int, int) )
-   (check_auth,              void(int, int, int, int) )
+   (check_auth,             void(int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(transaction_api,

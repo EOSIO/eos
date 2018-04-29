@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/asset.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <fc/time.hpp>
 
@@ -42,7 +41,7 @@ static const uint32_t account_cpu_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t account_net_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
 static const uint32_t block_size_average_window_ms         = 60*1000l;
-
+static const uint32_t deferred_trx_expiration_window_ms    = 10*60*1000l; // TODO: make 10 minutes configurable by system
 
 const static uint32_t   default_max_block_net_usage         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
 const static int        default_target_block_net_usage_pct  = 10 * percent_1; /// we target 1000 TPS

@@ -1,6 +1,5 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <multi_index_test/multi_index_test.wast.hpp>
@@ -17,7 +16,6 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(multi_index_tests)

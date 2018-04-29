@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
