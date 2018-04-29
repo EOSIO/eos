@@ -77,7 +77,7 @@ still notes that they were notified.
 The account history consists of all actions which were either authorized by the account or received by the account. Since the
 exchange received the `eosio.token::transfer` action it is listed in the history. If you are using the console confirmed and
 irreversible transactions are printed in "green" while unconfirmed transactions are printed in "yellow". Without color you
-can tell whether a transaction is confirmed or not by the first character.
+can tell whether a transaction is confirmed or not by the first character, '#' for irreversible and '?' for potentially reversable.
 
 ```
 ./cleos get actions exchange
