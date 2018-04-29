@@ -342,13 +342,17 @@ void print_result( const fc::variant& result ) { try {
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
          }
+         auto hard_except = processed["hard_except"].as<optional<fc::exception>>();
+         if( hard_except ) {
+            edump((hard_except->to_detail_string()));
+         }
       } else {
          const auto& actions = processed["action_traces"].get_array();
          for( const auto& a : actions ) {
             print_action_tree( a );
          }
+         wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
       }
-      wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
@@ -727,6 +731,7 @@ struct delegate_bandwidth_subcommand {
                   ("stake_net_quantity", stake_net_amount + " EOS")
                   ("stake_cpu_quantity", stake_cpu_amount + " EOS")
                   ("stake_storage_quantity", stake_storage_amount + " EOS");
+                  wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
    }

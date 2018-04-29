@@ -25,13 +25,12 @@ namespace eosiosystem {
       time                                      timestamp;
       checksum256                               transaction_mroot;
       checksum256                               action_mroot;
-      checksum256                               block_mroot;
       account_name                              producer;
       uint32_t                                  schedule_version;
       eosio::optional<eosio::producer_schedule> new_producers;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)
+      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)
                                      (producer)(schedule_version)(new_producers))
    };
 
@@ -99,8 +98,8 @@ namespace eosiosystem {
 
          // functions defined in delegate_bandwidth.cpp
          void delegatebw( const account_name from, const account_name receiver,
-                          const asset stake_net_quantity, const asset stake_cpu_quantity,
-                          const asset stake_storage_quantity );
+                          const asset& stake_net_quantity, const asset& stake_cpu_quantity,
+                          const asset& stake_storage_quantity );
 
          void undelegatebw( const account_name from, const account_name receiver,
                             const asset unstake_net_quantity, const asset unstake_cpu_quantity,
@@ -114,9 +113,6 @@ namespace eosiosystem {
 
          void unregprod( const account_name producer );
 
-         eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
-
-         void update_elected_producers(time cycle_time);
 
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
 
@@ -133,6 +129,10 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
       private:
+         eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
+
+         void update_elected_producers(time cycle_time);
+
          // Implementation details:
 
          //defined in voting.hpp

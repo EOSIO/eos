@@ -77,14 +77,16 @@ namespace eosiosystem {
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
    void system_contract::delegatebw( const account_name from, const account_name receiver,
-                                     const asset stake_net_quantity, const asset stake_cpu_quantity,
-                                     const asset stake_storage_quantity )
+                                     const asset& stake_net_quantity, const asset& stake_cpu_quantity,
+                                     const asset& stake_storage_quantity )
    {
       eosio_assert( stake_cpu_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_net_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_storage_quantity.amount >= 0, "must stake a positive amount" );
 
+      print( "adding stake...", stake_net_quantity, " ", stake_cpu_quantity, " ", stake_storage_quantity );
       asset total_stake = stake_cpu_quantity + stake_net_quantity + stake_storage_quantity;
+      print( "\ntotal stake: ", total_stake );
       eosio_assert( total_stake.amount > 0, "must stake a positive amount" );
 
       require_auth( from );
@@ -95,6 +97,9 @@ namespace eosiosystem {
          global_state_singleton gs( _self, _self );
          auto parameters = gs.exists() ? gs.get() : get_default_parameters();
          const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
+
+         print( "token supply: ", token_supply, " " );
+
          //make sure that there is no posibility of overflow here
          int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
             * int64_t(parameters.storage_reserve_ratio) * stake_storage_quantity
@@ -107,6 +112,7 @@ namespace eosiosystem {
          eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
          parameters.total_storage_bytes_reserved += uint64_t(storage_bytes);
+         print( "\ntotal storage stake: ", parameters.total_storage_stake );
          parameters.total_storage_stake += stake_storage_quantity;
          gs.set( parameters, _self );
       }
@@ -151,7 +157,7 @@ namespace eosiosystem {
             });
       }
 
-      //set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
+      set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
                                                     { from, N(eosio), total_stake, std::string("stake bandwidth") } );

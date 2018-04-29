@@ -130,6 +130,7 @@ void apply_eosio_setcode(apply_context& context) {
    int64_t old_size = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
    int64_t new_size = code_size * config::setcode_ram_bytes_multiplier;
 
+   context.checktime( act.code.size() * 20 );
 
    FC_ASSERT( account.code_version != code_id, "contract is already running this version of code" );
 //   wlog( "set code: ${size}", ("size",act.code.size()));
@@ -174,6 +175,8 @@ void apply_eosio_setabi(apply_context& context) {
    int64_t old_size = (int64_t)account.abi.size();
    int64_t new_size = (int64_t)fc::raw::pack_size(act.abi);
 
+   context.checktime( new_size * 2 );
+
    db.modify( account, [&]( auto& a ) {
       a.set_abi( act.abi );
    });
@@ -187,7 +190,6 @@ void apply_eosio_setabi(apply_context& context) {
 }
 
 void apply_eosio_updateauth(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
 
    auto update = context.act.data_as<updateauth>();
    context.require_authorization(update.account); // only here to mark the single authority on this action as used
@@ -216,6 +218,9 @@ void apply_eosio_updateauth(apply_context& context) {
                ("max_delay", max_delay) );
 
    validate_authority_precondition(context, update.auth);
+
+
+   context.checktime( 5000 );
 
    auto permission = authorization.find_permission({update.account, update.permission});
 
@@ -291,6 +296,8 @@ void apply_eosio_deleteauth(apply_context& context) {
       -(int64_t)(config::billable_size_v<permission_object> + permission.auth.get_billable_size())
    );
    db.remove(permission);
+
+   context.checktime( 3000 );
 }
 
 void apply_eosio_linkauth(apply_context& context) {
@@ -338,6 +345,8 @@ void apply_eosio_linkauth(apply_context& context) {
             (int64_t)(config::billable_size_v<permission_link_object>)
          );
       }
+
+      context.checktime( 3000 );
   } FC_CAPTURE_AND_RETHROW((requirement))
 }
 
@@ -359,6 +368,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    );
 
    db.remove(*link);
+   context.checktime( 3000 );
 }
 
 void apply_eosio_onerror(apply_context& context) {
@@ -483,6 +493,8 @@ void apply_eosio_postrecovery(apply_context& context) {
    }
 
    context.console_append_formatted("Recovery Started for account ${account} : ${memo}\n", mutable_variant_object()("account", account)("memo", recover_act.memo));
+
+   context.checktime( 3000 );
 }
 
 static void remove_pending_recovery(apply_context& context, const account_name& account) {
@@ -514,6 +526,8 @@ void apply_eosio_passrecovery(apply_context& context) {
 
    remove_pending_recovery(context, account);
    context.console_append_formatted("Account ${account} successfully recovered!\n", mutable_variant_object()("account", account));
+
+   context.checktime( 3000 );
 }
 
 void apply_eosio_vetorecovery(apply_context& context) {
@@ -530,6 +544,8 @@ void apply_eosio_vetorecovery(apply_context& context) {
 
    remove_pending_recovery(context, account);
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
+
+   context.checktime( 3000 );
 }
 
 void apply_eosio_canceldelay(apply_context& context) {
@@ -552,6 +568,7 @@ void apply_eosio_canceldelay(apply_context& context) {
             found = true;
             break;
          }
+         context.checktime( 20 );
       }
       if( found ) break;
    }
@@ -559,6 +576,8 @@ void apply_eosio_canceldelay(apply_context& context) {
    FC_ASSERT (found, "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction");
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
+
+   context.checktime( 1000 );
 }
 
 } } // namespace eosio::chain

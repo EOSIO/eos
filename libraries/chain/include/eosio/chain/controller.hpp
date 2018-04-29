@@ -81,7 +81,7 @@ namespace eosio { namespace chain {
 
          bool push_next_unapplied_transaction( fc::time_point deadline = fc::time_point::maximum() );
 
-         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline = fc::time_point::now() + fc::milliseconds(25) );
+         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline = fc::time_point::now() + fc::milliseconds(30) );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
