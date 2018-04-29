@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -33,26 +34,24 @@ static inline void print_debug(account_name receiver, const action_trace& ar) {
 
 action_trace apply_context::exec_one()
 {
-   const auto& gpo = control.get_global_properties();
-
    auto start = fc::time_point::now();
-   cpu_usage = gpo.configuration.base_per_action_cpu_usage;
+   cpu_usage = 0;
+   checktime( control.get_global_properties().configuration.base_per_action_cpu_usage );
    try {
       const auto &a = control.get_account(receiver);
       privileged = a.privileged;
-      auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
+      auto native = control.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
       }
 
       if (a.code.size() > 0 && !(act.name == N(setcode) && act.account == config::system_account_name)) {
          try {
-            mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
+            control.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
       }
 
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
-
 
    action_receipt r;
    r.receiver        = receiver;
@@ -67,13 +66,13 @@ action_trace apply_context::exec_one()
    action_trace t(r);
    t.act = act;
    t.cpu_usage = cpu_usage;
-   t.total_inline_cpu_usage = cpu_usage;
+   t.total_cpu_usage = cpu_usage;
    t.console = _pending_console_output.str();
-
-   print_debug(receiver, t);
 
    executed.emplace_back( move(r) );
    total_cpu_usage += cpu_usage;
+
+   print_debug(receiver, t);
 
    reset_console();
 
@@ -83,14 +82,12 @@ action_trace apply_context::exec_one()
 
 void apply_context::exec()
 {
-   _notified.push_back(act.account);
-   for( uint32_t i = 0; i < _notified.size(); ++i ) {
+   _notified.push_back(receiver);
+   trace = exec_one();
+   for( uint32_t i = 1; i < _notified.size(); ++i ) {
       receiver = _notified[i];
-      if( i == 0 ) { /// first one is the root, of this trace
-         trace = exec_one();
-      } else {
-         trace.inline_traces.emplace_back( exec_one() );
-      }
+      trace.inline_traces.emplace_back( exec_one() );
+      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
    if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
@@ -98,33 +95,22 @@ void apply_context::exec()
                   transaction_exception, "inline action recursion depth reached" );
    }
 
-   for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, _cfa_inline_actions[i], trx, recurse_depth + 1 );
+   for( const auto& inline_action : _cfa_inline_actions ) {
+      apply_context ncontext( control, trx_context, inline_action, recurse_depth + 1 );
       ncontext.context_free = true;
-      ncontext.id = id;
-
-      ncontext.processing_deadline = processing_deadline;
-      ncontext.published_time      = published_time;
-      ncontext.max_cpu = max_cpu - total_cpu_usage;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
-
-      trace.total_inline_cpu_usage += ncontext.trace.total_inline_cpu_usage;
+      trace.total_cpu_usage += ncontext.trace.total_cpu_usage;
       trace.inline_traces.emplace_back(ncontext.trace);
    }
 
-   for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, _inline_actions[i], trx, recurse_depth + 1 );
-      ncontext.processing_deadline = processing_deadline;
-      ncontext.published_time      = published_time;
-      ncontext.max_cpu = max_cpu - total_cpu_usage;
-      ncontext.id = id;
+   for( const auto& inline_action : _inline_actions ) {
+      apply_context ncontext( control, trx_context, inline_action, recurse_depth + 1 );
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
-
-      trace.total_inline_cpu_usage += ncontext.trace.total_inline_cpu_usage;
+      trace.total_cpu_usage += ncontext.trace.total_cpu_usage;
       trace.inline_traces.emplace_back(ncontext.trace);
    }
 
@@ -217,7 +203,7 @@ void apply_context::execute_inline( action&& a ) {
                                                                               flat_set<public_key_type>(),
                                                                               false,
                                                                               {receiver}                   ) );
-         FC_ASSERT( published_time + delay <= control.pending_block_time(),
+         FC_ASSERT( trx_context.published + delay <= control.pending_block_time(),
                     "authorization for inline action imposes a delay of ${delay} seconds that is not met",
                     ("delay", delay.to_seconds()) );
 
@@ -237,10 +223,16 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
-   trx.validate();
+   //trx.validate(); // Not needed anymore since overflow is prevented by using uint64_t instead of uint32_t
    FC_ASSERT( trx.context_free_actions.size() == 0, "context free actions are not currently allowed in generated transactions" );
    control.validate_referenced_accounts( trx );
    control.validate_expiration( trx );
+
+   // Charge ahead of time for the additional net usage needed to retire the deferred transaction
+   // whether that be by successfully executing, soft failure, hard failure, or expiration.
+   const auto& cfg = control.get_global_properties().configuration;
+   trx_context.add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
+                               + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
 
    fc::microseconds required_delay;
 
@@ -268,15 +260,13 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       }
    }
 
-   auto id = trx.id();
-
    auto delay = fc::seconds(trx.delay_sec);
    EOS_ASSERT( delay >= required_delay, transaction_exception,
                "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
 
-   uint32_t trx_size = 0;
 
+   uint32_t trx_size = 0;
    auto& d = control.db();
    if ( auto ptr = d.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
@@ -291,7 +281,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          });
    } else {
       d.create<generated_transaction_object>( [&]( auto& gtx ) {
-            gtx.trx_id      = id;
+            gtx.trx_id      = trx_context.id;
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
             gtx.payer       = payer;
@@ -303,8 +293,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          });
    }
 
-   auto& rl = control.get_mutable_resource_limits_manager();
-   rl.add_pending_account_ram_usage( payer, config::billable_size_v<generated_transaction_object> + trx_size );
+   control.get_mutable_resource_limits_manager()
+          .add_pending_account_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
    checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
 }
 
@@ -361,16 +351,12 @@ void apply_context::reset_console() {
 }
 
 void apply_context::checktime(uint32_t instruction_count) {
-   if( BOOST_UNLIKELY(fc::time_point::now() > processing_deadline) ) {
-      throw checktime_exceeded();
-   }
    cpu_usage += instruction_count;
-   FC_ASSERT( cpu_usage <= max_cpu, "contract consumed more cpu cycles than allowed" );
+   trx_context.add_cpu_usage_and_check_time( instruction_count );
 }
 
-
 bytes apply_context::get_packed_transaction() {
-   auto r = fc::raw::pack( static_cast<const transaction&>(trx) );
+   auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
    checktime( r.size() );
    return r;
 }
@@ -380,34 +366,39 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
       if( !(privileged || payer == account_name(receiver)) ) {
          require_authorization( payer );
       }
-      mutable_controller.get_mutable_resource_limits_manager().add_pending_account_ram_usage(payer, delta);
+      control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(payer, delta);
    }
 }
 
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const action* act = nullptr;
+   const auto& trx = trx_context.trx;
+   const action* act_ptr = nullptr;
+
    if( type == 0 ) {
       if( index >= trx.context_free_actions.size() )
          return -1;
-      act = &trx.context_free_actions[index];
+      act_ptr = &trx.context_free_actions[index];
    }
    else if( type == 1 ) {
       if( index >= trx.actions.size() )
          return -1;
-      act = &trx.actions[index];
+      act_ptr = &trx.actions[index];
    }
 
-   auto ps = fc::raw::pack_size( *act );
+   auto ps = fc::raw::pack_size( *act_ptr );
    if( ps <= buffer_size ) {
       fc::datastream<char*> ds(buffer, buffer_size);
-      fc::raw::pack( ds, *act );
+      fc::raw::pack( ds, *act_ptr );
    }
    return ps;
 }
 
-int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const {
+int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const
+{
+   const auto& trx = trx_context.trx;
+
    if( index >= trx.context_free_data.size() ) return -1;
 
    auto s = trx.context_free_data[index].size();
