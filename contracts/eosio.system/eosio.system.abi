@@ -191,7 +191,7 @@
       "fields": [
         {"name":"owner",             "type":"account_name"},
         {"name":"proxy",             "type":"account_name"},
-        {"name":"last_update",       "type":"uint32"},
+        {"name":"last_update",       "type":"time"},
         {"name":"is_proxy",          "type":"uint32"},
         {"name":"staked",            "type":"asset"},
         {"name":"unstaking",         "type":"asset"},
@@ -269,6 +269,12 @@
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
+    },{
+      "name": "voters",
+      "type": "voter_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["account_name"]
     },{
       "name": "totalband",
       "type": "total_resources",

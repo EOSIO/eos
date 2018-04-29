@@ -60,7 +60,7 @@ namespace eosiosystem {
     *
     */
    void system_contract::regproducer( const account_name producer, const public_key& producer_key, const std::string& url ) { //, const eosio_parameters& prefs ) {
-      eosio_assert( url.size() < 1024, "url too long" );
+      eosio_assert( url.size() < 512, "url too long" );
       //eosio::print("produce_key: ", producer_key.size(), ", sizeof(public_key): ", sizeof(public_key), "\n");
       require_auth( producer );
 
