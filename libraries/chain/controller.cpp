@@ -106,12 +106,52 @@ struct controller_impl {
    SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
 
+   fork_db.irreversible.connect( [&]( auto b ) {
+                                 on_irreversible(b);
+                                 });
 
    }
 
+   /**
+    *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
+    *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
+    *  cause a node to fork.
+    *
+    *  TODO: define special exceptions that can be thrown to reject transactions or blocks
+    */
+   template<typename Signal, typename Arg>
+   void emit( const Signal& s, Arg&& a ) {
+      try {
+        s(std::forward<Arg>(a));
+      } catch ( ... ) {
+         elog( "signal handler threw exception" );
+      }
+   }
+
+
+   void on_irreversible( const block_state_ptr& s ) {
+      if( !blog.head() )
+         blog.read_head();
+
+      const auto& log_head = blog.head();
+      FC_ASSERT( log_head );
+      auto lh_block_num = log_head->block_num();
+
+      if( s->block_num - 1  == lh_block_num ) {
+         FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
+         blog.append( s->block );
+      } else if( s->block_num -1 > lh_block_num ) {
+         wlog( "skipped blocks..." );
+         edump((s->block_num)(log_head->block_num()));
+         if( s->block_num == log_head->block_num() ) {
+            FC_ASSERT( s->id == log_head->id(), "", ("s->id",s->id)("hid",log_head->id()) );
+         }
+      }
+      emit( self.irreversible_block, s );
+      db.commit( s->block_num );
+   }
+
    void init() {
-      // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
-      add_indices();
 
       /**
       *  The fork database needs an initial block_state to be set before
@@ -138,8 +178,9 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
+      fork_db.close();
 
-      edump((db.revision())(head->block_num));
+      edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
    }
@@ -310,13 +351,11 @@ struct controller_impl {
       }
 
       //ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      self.accepted_block( pending->_pending_block_state );
+      emit( self.accepted_block, pending->_pending_block_state );
       pending->push();
       pending.reset();
 
-      if( !replaying ) {
-         self.log_irreversible_blocks();
-      }
+      self.log_irreversible_blocks();
    }
 
    transaction_trace_ptr apply_onerror( const generated_transaction_object& gto,
@@ -345,7 +384,7 @@ struct controller_impl {
 
             remove_scheduled_transaction( gto );
 
-            self.applied_transaction( trace );
+            emit( self.applied_transaction, trace );
 
             trx_context.squash();
             return trace;
@@ -407,15 +446,15 @@ struct controller_impl {
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-         trx_context.trace->receipt = push_receipt( gto.trx_id,
-                                                    transaction_receipt::executed,
-                                                    trace->cpu_usage,
-                                                    trace->net_usage );
+         trace->receipt = push_receipt( gto.trx_id,
+                                        transaction_receipt::executed,
+                                        trace->cpu_usage,
+                                        trace->net_usage );
 
          remove_scheduled_transaction( gto );
 
          try {
-            self.applied_transaction( trx_context.trace );
+            emit( self.applied_transaction, trace );
          } catch( ... ) {
             abort_on_error = true;
             throw;
@@ -464,7 +503,7 @@ struct controller_impl {
 
       remove_scheduled_transaction( gto );
 
-      self.applied_transaction( trace );
+      emit( self.applied_transaction, trace );
 
       undo_session.squash();
    } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
@@ -536,7 +575,7 @@ struct controller_impl {
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                      ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );
 
-         self.accepted_transaction(trx);
+         emit( self.accepted_transaction, trx);
 
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
@@ -559,10 +598,9 @@ struct controller_impl {
             }
             fc::move_append( pending->_actions, move(trx_context.executed) );
 
-            if( !implicit )
-               transaction_trace_notify(trx, trace);
+            transaction_trace_notify( trx, trace );
 
-            self.applied_transaction(trace);
+            emit( self.applied_transaction, trace );
             trx_context.squash();
             return;
          } catch( ... ) {
@@ -575,7 +613,7 @@ struct controller_impl {
          trace->hard_except = e;
          trace->hard_except_ptr = std::current_exception();
       }
-      transaction_trace_notify(trx, trace);
+      transaction_trace_notify( trx, trace );
    } FC_CAPTURE_AND_RETHROW() } /// push_transaction
 
 
@@ -583,9 +621,11 @@ struct controller_impl {
       FC_ASSERT( !pending );
 
       FC_ASSERT( db.revision() == head->block_num, "",
-                ("db_head_block", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
+                ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
       pending = db.start_undo_session(true);
+
+
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
@@ -661,15 +701,16 @@ struct controller_impl {
 
    void push_block( const signed_block_ptr& b ) {
       try {
+         FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
-         self.accepted_block_header( new_header_state );
+         emit( self.accepted_block_header, new_header_state );
          maybe_switch_forks();
       } FC_LOG_AND_RETHROW()
    }
 
    void push_confirmation( const header_confirmation& c ) {
       fork_db.add( c );
-      self.accepted_confirmation( c );
+      emit( self.accepted_confirmation, c );
       maybe_switch_forks();
    }
 
@@ -934,14 +975,17 @@ controller::~controller() {
 
 
 void controller::startup() {
-   my->init();
 
-   /*
+   // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
+   my->add_indices();
+
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
+      my->init();
+   } else {
+   //  my->db.set_revision( my->head->block_num );
    }
-   */
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -969,9 +1013,7 @@ void controller::abort_block() {
 
 void controller::push_block( const signed_block_ptr& b ) {
    my->push_block( b );
-   if( !my->replaying ) {
-      log_irreversible_blocks();
-   }
+   log_irreversible_blocks();
 }
 
 void controller::push_confirmation( const header_confirmation& c ) {
@@ -1069,23 +1111,38 @@ const global_property_object& controller::get_global_properties()const {
  *  Any forks built off of a different block with the same number are also pruned.
  */
 void controller::log_irreversible_blocks() {
+   /*
    if( !my->blog.head() )
       my->blog.read_head();
 
    const auto& log_head = my->blog.head();
    auto lib = my->head->dpos_last_irreversible_blocknum;
 
-   if( lib > 1 ) {
+
+   if( lib > 2 ) {
+      if( log_head && log_head->block_num() > lib ) {
+         auto blk = my->fork_db.get_block_in_current_chain_by_num( lib - 1 );
+         FC_ASSERT( blk, "unable to find block state", ("block_num",lib-1));
+         my->fork_db.prune( blk  );
+         my->db.commit( lib -1 );
+         return;
+      }
+
       while( log_head && (log_head->block_num()+1) < lib ) {
          auto lhead = log_head->block_num();
          auto blk = my->fork_db.get_block_in_current_chain_by_num( lhead + 1 );
          FC_ASSERT( blk, "unable to find block state", ("block_num",lhead+1));
          irreversible_block( blk );
-         my->blog.append( blk->block );
+
+         if( !my->replaying ) {
+            my->blog.append( blk->block );
+         }
+
          my->fork_db.prune( blk );
          my->db.commit( lhead );
       }
    }
+   */
 }
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    idump((id));

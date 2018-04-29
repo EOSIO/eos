@@ -294,6 +294,39 @@ fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcp
    return push_transaction(trx, extra_kcpu, compression);
 }
 
+void print_action( const fc::variant& at ) {
+   const auto& receipt = at["receipt"];
+   auto receiver = receipt["receiver"].as_string();
+   const auto& act = at["act"].get_object();
+   auto code = act["account"].as_string();
+   auto func = act["name"].as_string();
+   auto args = fc::json::to_string( act["data"] );
+   auto console = at["console"].as_string();
+
+   /*
+   if( code == "eosio" && func == "setcode" )
+      args = args.substr(40)+"...";
+   if( name(code) == config::system_account_name && func == "setabi" )
+      args = args.substr(40)+"...";
+   */
+   if( args.size() > 100 ) args = args.substr(0,100) + "...";
+   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+   if( console.size() ) {
+      std::stringstream ss(console);
+      string line;
+      std::getline( ss, line );
+      cout << ">> " << line << "\n";
+   }
+}
+
+void print_action_tree( const fc::variant& action ) {
+   print_action( action );
+   const auto& inline_traces = action["inline_traces"].get_array();
+   for( const auto& t : inline_traces ) {
+      print_action_tree( t );
+   }
+}
+
 void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
@@ -309,34 +342,13 @@ void print_result( const fc::variant& result ) { try {
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
          }
-
       } else {
          const auto& actions = processed["action_traces"].get_array();
-         for( const auto& at : actions ) {
-            const auto& receipt = at["receipt"];
-            auto receiver = receipt["receiver"].as_string();
-            const auto& act = at["act"].get_object();
-            auto code = act["account"].as_string();
-            auto func = act["name"].as_string();
-            auto args = fc::json::to_string( act["data"] );
-            auto console = at["console"].as_string();
-
-            /*
-            if( code == "eosio" && func == "setcode" )
-               args = args.substr(40)+"...";
-            if( name(code) == config::system_account_name && func == "setabi" )
-               args = args.substr(40)+"...";
-            */
-            if( args.size() > 100 ) args = args.substr(0,100) + "...";
-            cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
-            if( console.size() ) {
-               std::stringstream ss(console);
-               string line;
-               std::getline( ss, line );
-               cout << ">> " << line << "\n";
-            }
+         for( const auto& a : actions ) {
+            print_action_tree( a );
          }
       }
+      wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
@@ -423,16 +435,16 @@ fc::variant regproducer_variant(const account_name& producer,
             ("prefs", params);
 }
 
-chain::action create_transfer(const name& sender, const name& recipient, uint64_t amount, const string& memo ) {
+chain::action create_transfer(const string& contract, const name& sender, const name& recipient, asset amount, const string& memo ) {
 
    auto transfer = fc::mutable_variant_object
       ("from", sender)
       ("to", recipient)
-      ("quantity", asset(amount))
+      ("quantity", amount)
       ("memo", memo);
 
    auto args = fc::mutable_variant_object
-      ("code", name(config::system_account_name))
+      ("code", contract)
       ("action", "transfer")
       ("args", transfer);
 
@@ -440,7 +452,7 @@ chain::action create_transfer(const name& sender, const name& recipient, uint64_
 
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission),
-      config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>()
+      contract, "transfer", result.get_object()["binargs"].as<bytes>()
    };
 }
 
@@ -1077,9 +1089,10 @@ int main( int argc, char** argv ) {
    getTransaction->set_callback([&] {
       transaction_id_type transaction_id;
       try {
+         while( transaction_id_str.size() < 64 ) transaction_id_str += "0";
          transaction_id = transaction_id_type(transaction_id_str);
       } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
-      auto arg= fc::mutable_variant_object( "transaction_id", transaction_id);
+      auto arg= fc::mutable_variant_object( "id", transaction_id);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
@@ -1087,24 +1100,93 @@ int main( int argc, char** argv ) {
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;
+   bool fullact = false;
+   bool prettyact = false;
+   bool printconsole = false;
 
    int32_t pos_seq = -1;
    int32_t offset = -20;
    auto getActions = get->add_subcommand("actions", localized("Retrieve all actions with specific account name referenced in authorization or receiver"), false);
    getActions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getActions->add_option("pos", pos_seq, localized("sequence number of action for this account, -1 for last"));
-   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset) for positive offset or [pos-offset,pos) for negative offset"));
+   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset] for positive offset or [pos-offset,pos) for negative offset"));
    getActions->add_flag("--json,-j", printjson, localized("print full json"));
+   getActions->add_flag("--full", fullact, localized("don't truncate action json"));
+   getActions->add_flag("--pretty", prettyact, localized("pretty print full action json "));
+   getActions->add_flag("--console", printconsole, localized("print console output generated by action "));
    getActions->set_callback([&] {
       fc::mutable_variant_object arg;
       arg( "account_name", account_name );
       arg( "pos", pos_seq );
       arg( "offset", offset);
 
-      edump((get_actions_func)(arg));
       auto result = call(get_actions_func, arg);
-      //if( printjson ) {
-      std::cout << fc::json::to_pretty_string(result) << std::endl;
+
+
+      if( printjson ) {
+         std::cout << fc::json::to_pretty_string(result) << std::endl;
+      } else {
+          auto& traces = result["actions"].get_array();
+          uint32_t lib = result["last_irreversible_block"].as_uint64();
+
+
+          cout  << "#" << setw(5) << "seq" << "  " << setw( 24 ) << left << "when"<< "  " << setw(24) << right << "contract::action" << " => " << setw(13) << left << "receiver" << " " << setw(11) << left << "trx id..." << " args\n";
+          cout  << "================================================================================================================\n";
+          for( const auto& trace: traces ) {
+              std::stringstream out;
+              if( trace["block_num"].as_uint64() <= lib )
+                 out << "#";
+              else
+                 out << "?";
+
+              out << setw(5) << trace["account_action_seq"].as_uint64() <<"  ";
+              out << setw(24) << trace["block_time"].as_string() <<"  ";
+
+              const auto& at = trace["action_trace"].get_object();
+
+              auto id = at["trx_id"].as_string();
+              const auto& receipt = at["receipt"];
+              auto receiver = receipt["receiver"].as_string();
+              const auto& act = at["act"].get_object();
+              auto code = act["account"].as_string();
+              auto func = act["name"].as_string();
+              string args;
+              if( prettyact ) {
+                  args = fc::json::to_pretty_string( act["data"] );
+              }
+              else {
+                 args = fc::json::to_string( act["data"] );
+                 if( !fullact ) {
+                    args = args.substr(0,60) + "...";
+                 }
+              }
+              out << std::setw(24) << std::right<< (code +"::" + func) << " => " << left << std::setw(13) << receiver;
+
+              out << " " << setw(11) << (id.substr(0,8) + "...");
+
+              if( fullact || prettyact ) out << "\n";
+              else out << " ";
+
+              out << args ;//<< "\n";
+
+              if( trace["block_num"].as_uint64() <= lib ) {
+                 dlog( "\r${m}", ("m",out.str()) );
+              } else {
+                 wlog( "\r${m}", ("m",out.str()) );
+              }
+              if( printconsole ) {
+                 auto console = at["console"].as_string();
+                 if( console.size() ) {
+                    stringstream out;
+                    std::stringstream ss(console);
+                    string line;
+                    std::getline( ss, line );
+                    out << ">> " << line << "\n";
+                    cerr << out.str(); //ilog( "\r${m}                                   ", ("m",out.str()) );
+                 }
+              }
+          }
+      }
    });
 
 
@@ -1249,15 +1331,17 @@ int main( int argc, char** argv ) {
    auto setActionPermission = set_action_permission_subcommand(setAction);
 
    // Transfer subcommand
+   string con = "eosio.token";
    string sender;
    string recipient;
-   uint64_t amount;
+   string amount;
    string memo;
    auto transfer = app.add_subcommand("transfer", localized("Transfer EOS from account to account"), false);
    transfer->add_option("sender", sender, localized("The account sending EOS"))->required();
    transfer->add_option("recipient", recipient, localized("The account receiving EOS"))->required();
    transfer->add_option("amount", amount, localized("The amount of EOS to send"))->required();
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
+   transfer->add_option("--contract,-c", con, localized("The contract which controls the token"));
 
    add_standard_transaction_options(transfer, "sender@active");
    transfer->set_callback([&] {
@@ -1268,7 +1352,7 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(sender, recipient, amount, memo)});
+      send_actions({create_transfer(con,sender, recipient, asset::from_string(amount), memo)});
    });
 
    // Net subcommand

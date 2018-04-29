@@ -74,7 +74,9 @@ namespace eosio { namespace chain {
       }
    }
 
-   fork_database::~fork_database() {
+   void fork_database::close() {
+      if( my->index.size() == 0 ) return;
+
       fc::datastream<size_t> ps;
       vector<block_state>  states;
       states.reserve( my->index.size() );
@@ -90,6 +92,23 @@ namespace eosio { namespace chain {
       else
          fc::raw::pack( out, block_id_type() );
       idump((states.size()));
+
+
+      /// we don't normally indicate the head block as irreversible 
+      /// we cannot normally prune the lib if it is the head block because
+      /// the next block needs to build off of the head block. We are exiting
+      /// now so we can prune this block as irreversible before exiting.
+      auto lib    = my->head->dpos_last_irreversible_blocknum;
+      auto oldest = *my->index.get<by_block_num>().begin();
+      if( oldest->block_num <= lib ) {
+         prune( oldest );
+      }
+
+      my->index.clear();
+   }
+
+   fork_database::~fork_database() {
+      close();
    }
 
    void fork_database::set( block_state_ptr s ) {
@@ -111,10 +130,19 @@ namespace eosio { namespace chain {
       FC_ASSERT( inserted.second, "duplicate block added?" );
 
       my->head = *my->index.get<by_lib_block_num>().begin();
+
+      auto lib    = my->head->dpos_last_irreversible_blocknum;
+      auto oldest = *my->index.get<by_block_num>().begin();
+
+      if( oldest->block_num < lib ) {
+         prune( oldest );
+      }
+
       return n;
    }
 
    block_state_ptr fork_database::add( signed_block_ptr b ) {
+      FC_ASSERT( b, "attempt to add null block" );
       FC_ASSERT( my->head, "no head block set" );
 
       const auto& by_id_idx = my->index.get<by_block_id>();
@@ -125,6 +153,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( prior != by_id_idx.end(), "unlinkable block", ("id", b->id())("previous", b->previous) );
 
       auto result = std::make_shared<block_state>( **prior, move(b) );
+      FC_ASSERT( result );
       return add(result);
    }
 
@@ -188,6 +217,7 @@ namespace eosio { namespace chain {
             previtr = previdx.find(id);
          }
       }
+      wdump((my->index.size()));
    }
 
    void fork_database::set_validity( const block_state_ptr& h, bool valid ) {
@@ -215,9 +245,18 @@ namespace eosio { namespace chain {
    void fork_database::prune( const block_state_ptr& h ) {
       auto num = h->block_num;
 
+      auto& by_bn = my->index.get<by_block_num>();
+      auto bni = by_bn.begin();
+      while( bni != by_bn.end() && (*bni)->block_num < num ) {
+         prune( *bni );
+         bni = by_bn.begin();
+      }
+
       auto itr = my->index.find( h->id );
-      if( itr != my->index.end() )
+      if( itr != my->index.end() ) {
+         irreversible(*itr);
          my->index.erase(itr);
+      }
 
       auto& numidx = my->index.get<by_block_num>();
       auto nitr = numidx.lower_bound( num );
