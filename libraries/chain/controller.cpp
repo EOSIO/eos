@@ -115,12 +115,12 @@ struct controller_impl {
    /**
     *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
     *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
-    *  cause a node to fork.  
+    *  cause a node to fork.
     *
-    *  TODO: define special exceptions that can be thrown to reject transactions or blocks 
+    *  TODO: define special exceptions that can be thrown to reject transactions or blocks
     */
    template<typename Signal, typename Arg>
-   void emit( const Signal& s, Arg&& a ) { 
+   void emit( const Signal& s, Arg&& a ) {
       try {
         s(std::forward<Arg>(a));
       } catch ( ... ) {
@@ -358,121 +358,155 @@ struct controller_impl {
       self.log_irreversible_blocks();
    }
 
-   transaction_trace_ptr apply_onerror( const generated_transaction_object& gto, fc::time_point deadline, uint32_t cpu_usage ) {
+   transaction_trace_ptr apply_onerror( const generated_transaction_object& gto,
+                                        fc::time_point deadline,
+                                        uint64_t cpu_usage,
+                                        fc::time_point start                     ) {
       signed_transaction etrx;
-      etrx.actions.emplace_back(vector<permission_level>{{gto.sender,config::active_name}},
-                                onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size()) );
-
-
-      etrx.expiration = self.pending_block_time() + fc::seconds(1);
+      // Deliver onerror action containing the failed deferred transaction directly back to the sender.
+      etrx.actions.emplace_back( vector<permission_level>{{gto.sender,config::active_name}},
+                                 gto.sender, onerror::get_name(),
+                                 fc::raw::pack( onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) ) );
+      etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
 
-      transaction_context trx_context( self, etrx, etrx.id() );
-      trx_context.deadline = deadline;
-      /// TODO: forward cpu usage into error trx_context.cpu_usage = cpu_usage;
-      trx_context.is_input  = false;
-      trx_context.exec();
+      transaction_trace_ptr trace;
+      try {
+         transaction_context trx_context( trace, self, etrx, etrx.id(), deadline, true, 0, cpu_usage );
+         trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+         trace->elapsed = fc::time_point::now() - start;
 
-      emit( self.applied_transaction, trx_context.trace );
-      trx_context.squash();
+         auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
+         auto orig_state_actions_size      = pending->_actions.size();
+         try {
+            trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail, trace->cpu_usage, trace->net_usage );
+            fc::move_append( pending->_actions, move(trx_context.executed) );
 
-      return move(trx_context.trace);
+            remove_scheduled_transaction( gto );
+
+            emit( self.applied_transaction, trace );
+
+            trx_context.squash();
+            return trace;
+         } catch( ... ) {
+            pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
+            pending->_actions.resize(orig_state_actions_size);
+            throw;
+         }
+      } catch( const fc::exception& e ) {
+         trace->hard_except = e;
+         trace->hard_except_ptr = std::current_exception();
+      }
+      return trace;
    }
 
-   void expire_scheduled_transaction( const generated_transaction_object& gto ) {
-      auto receipt = push_receipt( gto.trx_id, transaction_receipt::expired, 0, 0 );
+   void remove_scheduled_transaction( const generated_transaction_object& gto, bool expire = false ) {
+      if( expire ) {
+         push_receipt( gto.trx_id, transaction_receipt::expired, 0, 0 );
+      }
 
       resource_limits.add_pending_account_ram_usage(gto.payer,
-               -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
+                                     -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
 
       db.remove( gto );
    }
 
-   void push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline  ) {
+   void push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline  )
+   { try {
+      auto undo_session = db.start_undo_session(true);
+
       fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
 
-      FC_ASSERT( gto.delay_until <= self.pending_block_time(), "this transaction isn't ready", ("gto.delay_until",gto.delay_until)("pbt",self.pending_block_time()) );
-      if( gto.expiration <= self.pending_block_time() ) {
-         expire_scheduled_transaction( gto );
+      FC_ASSERT( gto.delay_until <= self.pending_block_time(), "this transaction isn't ready",
+                 ("gto.delay_until",gto.delay_until)("pbt",self.pending_block_time())          );
+      if( gto.expiration < self.pending_block_time() ) {
+         remove_scheduled_transaction( gto, true ); // expire the transaction
          return;
       }
 
       optional<fc::exception> soft_except;
       optional<fc::exception> hard_except;
-      std::exception_ptr soft_except_ptr;
+      std::exception_ptr except_ptr;
       std::exception_ptr hard_except_ptr;
 
-      auto sender = gto.sender;
-
+      auto start = fc::time_point::now();
       transaction_trace_ptr trace;
-      uint32_t apply_cpu_usage = 0;
+      flat_set<account_name>  bill_to_accounts;
+      uint64_t max_cpu;
+      bool abort_on_error = false;
       try {
          signed_transaction dtrx;
          fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
 
-         transaction_context trx_context( self, dtrx, gto.trx_id );
-         trace = trx_context.trace;
-
-         trx_context.trace->scheduled = true;
-         trx_context.deadline  = deadline;
-         trx_context.published = gto.published;
-         trx_context.net_usage = 0;
-         trx_context.apply_context_free = false;
-         trx_context.is_input           = false;
-         try {
-            trx_context.exec();
-         } catch ( ... ) {
-            apply_cpu_usage = trx_context.trace->cpu_usage;
-            throw;
-         }
+         transaction_context trx_context( trace, self, dtrx, gto.trx_id, deadline, gto.published );
+         bill_to_accounts = trx_context.bill_to_accounts;
+         max_cpu = trx_context.max_cpu;
+         trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+         trace->elapsed = fc::time_point::now() - start;
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-         trx_context.trace->receipt = push_receipt( gto.trx_id,
-                                                    transaction_receipt::executed,
-                                                    trx_context.trace->kcpu_usage(),
-                                                    0 );
+         trace->receipt = push_receipt( gto.trx_id,
+                                        transaction_receipt::executed,
+                                        trace->cpu_usage,
+                                        trace->net_usage );
 
-         db.remove( gto );
+         remove_scheduled_transaction( gto );
 
-         emit( self.applied_transaction, trx_context.trace );
+         try {
+            emit( self.applied_transaction, trace );
+         } catch( ... ) {
+            abort_on_error = true;
+            throw;
+         }
          trx_context.squash();
-
+         undo_session.squash();
          return;
       } catch( const fc::exception& e ) {
-         soft_except = e;
-         soft_except_ptr = std::current_exception();
+         if( abort_on_error ) // abort_on_error should  normally should not be set at this point, but if it is then that means
+            throw;            // something went wrong while emitting the applied_transaction signal and we should abort
+         trace->soft_except = e;
+         trace->soft_except_ptr = std::current_exception();
+         trace->elapsed = fc::time_point::now() - start;
       }
-      if( soft_except && sender != account_name() ) { /// TODO: soft errors should not go to error handlers (deadline error)
-         edump((soft_except->to_detail_string()));
-         try {
-            auto trace = apply_onerror( gto, deadline, apply_cpu_usage  );
-            trace->soft_except = soft_except;
-            emit( self.applied_transaction, trace );
-         } catch ( const fc::exception& e ) {
-            hard_except = e;
-            trace->hard_except_ptr = std::current_exception();
-         }
-      }
+      // Only soft or hard failure logic below:
 
-      /*
-      if( hard_except )
-         edump((hard_except->to_detail_string()));
-      if( soft_except )
-         edump((soft_except->to_detail_string()));
-       */
-
+      // Make sure failure was not due to problems with deserializing the deferred transaction.
       FC_ASSERT( bool(trace), "failed to deserialize transaction" );
-      trace->receipt  = push_receipt( gto.trx_id, transaction_receipt::hard_fail, (apply_cpu_usage+1023)/1024, 0 );
-      trace->soft_except = soft_except;
-      trace->hard_except = hard_except;
-      trace->soft_except_ptr = soft_except_ptr;
-      trace->hard_except_ptr = hard_except_ptr;
 
-      db.remove( gto );
+      if( gto.sender != account_name() ) {
+         // Attempt error handling for the generated transaction.
+         edump((soft_except->to_detail_string()));
+         auto error_trace = apply_onerror( gto, deadline, trace->cpu_usage, start );
+         error_trace->failed_dtrx_trace = trace;
+         trace = error_trace;
+         if( !trace->hard_except_ptr ) {
+            undo_session.squash();
+            return;
+         }
+      } else {
+         // Soft failures are not allowed for delayed transactions; upgrade to hard failure.
+         trace->hard_except     = std::move(trace->soft_except);
+         trace->soft_except.reset();
+         trace->hard_except_ptr = trace->soft_except_ptr;
+         trace->soft_except_ptr = nullptr;
+      }
+      // Only hard failure logic below:
+
+      trace->cpu_usage = ((trace->cpu_usage + 1023)/1024)*1024; // Round up cpu_usage to nearest multiple of 1024
+      trace->cpu_usage = std::min(trace->cpu_usage, max_cpu);
+      resource_limits.add_transaction_usage( bill_to_accounts, trace->cpu_usage, 0,
+                                             block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
+      trace->elapsed = fc::time_point::now() - start;
+
+      trace->receipt = push_receipt( gto.trx_id, transaction_receipt::hard_fail, trace->cpu_usage, 0 );
+
+      remove_scheduled_transaction( gto );
 
       emit( self.applied_transaction, trace );
-   } /// push_scheduled_transaction
+
+      undo_session.squash();
+   } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
 
 
    /**
@@ -480,7 +514,11 @@ struct controller_impl {
     */
    template<typename T>
    const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
-                      uint32_t kcpu_usage, uint32_t net_usage_words ) {
+                                            uint64_t cpu_usage, uint64_t net_usage ) {
+      uint64_t kcpu_usage      = cpu_usage / 1024;
+      uint64_t net_usage_words = net_usage / 8;
+      FC_ASSERT( kcpu_usage*1024 == cpu_usage, "cpu_usage is not divisible by 1024" );
+      FC_ASSERT( net_usage_words*8 == net_usage, "net_usage is not divisible by 8" );
       pending->_pending_block_state->block->transactions.emplace_back( trx );
       transaction_receipt& r = pending->_pending_block_state->block->transactions.back();
       r.kcpu_usage           = kcpu_usage;
@@ -513,24 +551,23 @@ struct controller_impl {
     */
    void push_transaction( const transaction_metadata_ptr& trx,
                           fc::time_point deadline = fc::time_point::maximum(),
-                          bool implicit = false ) {
-      //if( !implicit )
-      //   idump((fc::json::to_pretty_string(trx->trx)));
-
+                          bool implicit = false )
+   { try {
       if( deadline == fc::time_point() ) {
          unapplied_transactions[trx->signed_id] = trx;
          return;
       }
 
+      auto start = fc::time_point::now();
       transaction_trace_ptr trace;
       try {
          unapplied_transactions.erase( trx->signed_id );
 
-         transaction_context trx_context( self, trx->trx, trx->id );
-         trace = trx_context.trace;
+         transaction_context trx_context( trace, self, trx->trx, trx->id, deadline,
+                                          implicit, ( implicit ? 0 : trx->packed_trx.get_billable_size() ) );
 
          fc::microseconds required_delay(0);
-         if (!implicit) {
+         if( !implicit ) {
             required_delay = limit_delay( authorization.check_authorization( trx->trx.actions, trx->recover_keys() ) );
          }
          trx_context.delay = fc::seconds(trx->trx.delay_sec);
@@ -538,40 +575,46 @@ struct controller_impl {
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                      ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );
 
-         trx_context.deadline  = deadline;
-         trx_context.published = self.pending_block_time();
-         trx_context.net_usage = self.validate_net_usage( trx ); // Returns multiple of 8
-         trx_context.is_input  = !implicit;
-         trx_context.exec();
+         emit( self.accepted_transaction, trx);
 
-         fc::move_append( pending->_actions, move(trx_context.executed) );
+         trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+         trace->elapsed = fc::time_point::now() - start;
 
-         if( !implicit ) {
-            if( trx_context.delay == fc::seconds(0) ) {
-               trace->receipt = push_receipt( trx->packed_trx, transaction_receipt::executed, trace->kcpu_usage(), trx_context.net_usage/8 );
+         auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
+         auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
+         auto orig_state_actions_size      = pending->_actions.size();
+
+         try {
+            if( !implicit ) {
+               transaction_receipt::status_enum s = ( trx_context.delay == fc::seconds(0) )
+                                                    ? transaction_receipt::executed
+                                                    : transaction_receipt::delayed;
+               trace->receipt = push_receipt( trx->packed_trx, s, trace->cpu_usage, trace->net_usage );
+               pending->_pending_block_state->trxs.emplace_back(trx);
             } else {
-               trace->receipt = push_receipt( trx->packed_trx, transaction_receipt::delayed, trace->kcpu_usage(), trx_context.net_usage/8 );
+               trace->receipt.status          = transaction_receipt::executed;
+               trace->receipt.kcpu_usage      = trace->cpu_usage / 1024;
+               trace->receipt.net_usage_words = trace->net_usage / 8;
             }
+            fc::move_append( pending->_actions, move(trx_context.executed) );
+
+            transaction_trace_notify( trx, trace );
+
+            emit( self.applied_transaction, trace );
+            trx_context.squash();
+            return;
+         } catch( ... ) {
+            pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
+            pending->_pending_block_state->trxs.resize(orig_state_transactions_size);
+            pending->_actions.resize(orig_state_actions_size);
+            throw;
          }
-
-         transaction_trace_notify(trx, trace);
-
-         if( !implicit )
-            pending->_pending_block_state->trxs.emplace_back(trx);
-
-         emit( self.accepted_transaction,trx );
-         emit( self.applied_transaction,trace );
-         trx_context.squash();
-         return;
-      } catch ( const fc::exception& e ) {
-         trace->soft_except = e;
+      } catch( const fc::exception& e ) {
+         trace->hard_except = e;
          trace->hard_except_ptr = std::current_exception();
-         //wlog( "caught exception in push_transaction" );
-         //wdump((trace));
       }
-      transaction_trace_notify(trx, trace);
-
-   } /// push_transaction
+      transaction_trace_notify( trx, trace );
+   } FC_CAPTURE_AND_RETHROW() } /// push_transaction
 
 
    void start_block( block_timestamp_type when ) {
@@ -1247,31 +1290,6 @@ void controller::validate_expiration( const transaction& trx )const { try {
                ("trx.expiration",trx.expiration)("reference_time",pending_block_time())
                ("max_til_exp",chain_configuration.max_transaction_lifetime) );
 } FC_CAPTURE_AND_RETHROW((trx)) }
-
-uint64_t controller::validate_net_usage( const transaction_metadata_ptr& trx )const {
-   const auto& cfg = get_global_properties().configuration;
-
-   auto actual_net_usage = cfg.base_per_transaction_net_usage + trx->packed_trx.get_billable_size();
-   if( trx->trx.delay_sec.value > 0 ) {
-       // If delayed, also charge ahead of time for the additional net usage needed to retire the delayed transaction
-       // whether that be by successfully executing, soft failure, hard failure, or expiration.
-      actual_net_usage += cfg.base_per_transaction_net_usage + ::eosio::chain::config::transaction_id_net_usage;
-   }
-
-   actual_net_usage = ((actual_net_usage + 7)/8) * 8; // Round up to nearest multiple of 8
-
-   uint32_t net_usage_limit = cfg.max_transaction_net_usage;
-   // TODO: reduce net_usage_limit to the minimum of the amount that the paying accounts can afford to pay
-   uint32_t trx_specified_net_usage_limit = trx->trx.max_net_usage_words.value * 8UL; // overflow checked in transaction_header::validate()
-   if( trx_specified_net_usage_limit > 0 )
-      net_usage_limit = std::min( net_usage_limit, trx_specified_net_usage_limit );
-
-   EOS_ASSERT( actual_net_usage <= net_usage_limit, tx_resource_exhausted,
-               "net usage of transaction is too high: ${actual_net_usage} > ${net_usage_limit}",
-               ("actual_net_usage", actual_net_usage)("net_usage_limit",net_usage_limit) );
-
-   return actual_net_usage;
-}
 
 void controller::validate_tapos( const transaction& trx )const { try {
    const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)trx.ref_block_num);

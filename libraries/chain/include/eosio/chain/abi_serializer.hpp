@@ -8,7 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 
-namespace eosio { namespace chain { 
+namespace eosio { namespace chain {
 
 using std::map;
 using std::string;
@@ -218,7 +218,7 @@ namespace impl {
          mvo("elapsed", act.elapsed);
          mvo("cpu_usage", act.cpu_usage);
          mvo("console", act.console);
-         mvo("total_inline_cpu_usage", act.total_inline_cpu_usage);
+         mvo("total_cpu_usage", act.total_inline_cpu_usage);
          mvo("inline_traces", act.inline_traces);
          out(name, std::move(mvo));
       }

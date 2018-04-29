@@ -6,6 +6,7 @@
 #include <eosio/chain/contract_table_objects.hpp>
 
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -36,7 +37,7 @@ uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
       context.db.get<account_object, by_name>(a.permission.actor);
-      context.mutable_controller.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
+      context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
    }
 }
 
@@ -48,8 +49,8 @@ void apply_eosio_newaccount(apply_context& context) {
    try {
    context.require_authorization(create.creator);
 //   context.require_write_lock( config::eosio_auth_scope );
-   auto& resources     = context.mutable_controller.get_mutable_resource_limits_manager();
-   auto& authorization = context.mutable_controller.get_mutable_authorization_manager();
+   auto& resources     = context.control.get_mutable_resource_limits_manager();
+   auto& authorization = context.control.get_mutable_authorization_manager();
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
@@ -111,7 +112,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.db;
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
 //   context.require_write_lock( config::eosio_auth_scope );
@@ -154,7 +155,7 @@ void apply_eosio_setcode(apply_context& context) {
 
 void apply_eosio_setabi(apply_context& context) {
    auto& db = context.db;
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setabi>();
 
    context.require_authorization(act.account);
@@ -191,8 +192,8 @@ void apply_eosio_updateauth(apply_context& context) {
    auto update = context.act.data_as<updateauth>();
    context.require_authorization(update.account); // only here to mark the single authority on this action as used
 
-   auto& authorization = context.mutable_controller.get_mutable_authorization_manager();
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& authorization = context.control.get_mutable_authorization_manager();
+   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto& db = context.db;
 
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
@@ -265,8 +266,8 @@ void apply_eosio_deleteauth(apply_context& context) {
    EOS_ASSERT(remove.permission != config::active_name, action_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != config::owner_name, action_validate_exception, "Cannot delete owner authority");
 
-   auto& authorization = context.mutable_controller.get_authorization_manager();
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& authorization = context.control.get_authorization_manager();
+   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto& db = context.db;
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});
@@ -295,7 +296,7 @@ void apply_eosio_deleteauth(apply_context& context) {
 void apply_eosio_linkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto requirement = context.act.data_as<linkauth>();
    try {
       EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
@@ -343,7 +344,7 @@ void apply_eosio_linkauth(apply_context& context) {
 void apply_eosio_unlinkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto& db = context.db;
    auto unlink = context.act.data_as<unlinkauth>();
 
@@ -452,7 +453,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .auth = recover_act.auth
    }, update);
 
-   const uint128_t request_id = transaction_id_to_sender_id(context.id);
+   const uint128_t request_id = transaction_id_to_sender_id(context.trx_context.id);
    auto record_data = mutable_variant_object()
       ("account", account)
       ("request_id", request_id)

@@ -16,6 +16,7 @@ namespace chainbase { class database; }
 namespace eosio { namespace chain {
 
 class controller;
+class transaction_context;
 
 class apply_context {
    private:
@@ -99,7 +100,7 @@ class apply_context {
             inline size_t end_iterator_to_index( int ei )const { return (-ei - 2); }
             /// Precondition: indx < _end_iterator_to_table.size() <= std::numeric_limits<int>::max()
             inline int index_to_end_iterator( size_t indx )const { return -(indx + 2); }
-      };
+      }; /// class iterator_cache
 
       template<typename>
       struct array_size;
@@ -445,36 +446,43 @@ class apply_context {
          private:
             apply_context&              context;
             iterator_cache<ObjectType>  itr_cache;
-      };
+      }; /// class generic_index
 
 
-
-
-      apply_context(controller& con, const action& a, const signed_transaction& t, uint32_t depth=0)
-
-      :control(con),
-       db(con.db()),
-       act(a),
-       mutable_controller(con),
-       used_authorizations(act.authorization.size(), false),
-       trx(t),
-       idx64(*this),
-       idx128(*this),
-       idx256(*this),
-       idx_double(*this),
-       idx_long_double(*this),
-       recurse_depth(depth)
+   /// Constructor
+   public:
+      apply_context(controller& con, transaction_context& trx_ctx, const action& a, uint32_t depth=0)
+      :control(con)
+      ,db(con.db())
+      ,trx_context(trx_ctx)
+      ,act(a)
+      ,receiver(act.account)
+      ,used_authorizations(act.authorization.size(), false)
+      ,recurse_depth(depth)
+      ,idx64(*this)
+      ,idx128(*this)
+      ,idx256(*this)
+      ,idx_double(*this)
+      ,idx_long_double(*this)
       {
          reset_console();
       }
 
-      void exec();
 
-      void execute_inline( action &&a );
-      void execute_context_free_inline( action &&a );
-      void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction &&trx );
+   /// Execution methods:
+   public:
+
+      action_trace exec_one();
+      void exec();
+      void execute_inline( action&& a );
+      void execute_context_free_inline( action&& a );
+      void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx );
       void cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
       void cancel_deferred_transaction( const uint128_t& sender_id ) { cancel_deferred_transaction(sender_id, receiver); }
+
+
+   /// Authorization methods:
+   public:
 
       /**
        * @brief Require @ref account to have approved of this message
@@ -488,8 +496,6 @@ class apply_context {
       void require_authorization(const account_name& account);
       bool has_authorization(const account_name& account) const;
       void require_authorization(const account_name& account, const permission_name& permission);
-//      void require_write_lock(const scope_name& scope);
-//      void require_read_lock(const account_name& account, const scope_name& scope);
 
       /**
        * @return true if account exists, false if it does not
@@ -510,38 +516,15 @@ class apply_context {
       bool                     all_authorizations_used()const;
       vector<permission_level> unused_authorizations()const;
 
-      vector<account_name> get_active_producers() const;
-
-      bytes         get_packed_transaction();
-
-      controller&                   control;
-      chainbase::database&          db;  ///< database where state is stored
-      const action&                 act; ///< message being applied
-      account_name                  receiver; ///< the code that is currently running
-      bool                          privileged   = false;
-      bool                          context_free = false;
-      bool                          used_context_free_api = false;
-
-      controller&                   mutable_controller;
+      void check_auth( const transaction& trx, const vector<permission_level>& perm );
 
 
-      ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
-      vector<bool> used_authorizations;
+   /// Console methods:
+   public:
 
-      const signed_transaction&   trx;
-      transaction_id_type         id;
-
-/*
-      struct apply_results {
-         vector<action_trace> applied_actions;
-         vector<fc::static_variant<deferred_transaction, deferred_reference>> deferred_transaction_requests;
-         size_t deferred_transactions_count = 0;
-      };
-
-      apply_results results;
-*/
-
-      std::ostringstream& get_console_stream() { return _pending_console_output; }
+      void reset_console();
+      std::ostringstream& get_console_stream()            { return _pending_console_output; }
+      const std::ostringstream& get_console_stream()const { return _pending_console_output; }
 
       template<typename T>
       void console_append(T val) {
@@ -558,24 +541,64 @@ class apply_context {
          console_append(fc::format_string(fmt, vo));
       }
 
-      void checktime(uint32_t instruction_count);
-
-      int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
-      int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
+   /// Database methods:
+   public:
 
       void update_db_usage( const account_name& payer, int64_t delta );
-      void check_auth( const transaction& trx, const vector<permission_level>& perm );
 
       int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
       void db_remove_i64( int iterator );
-      int db_get_i64( int iterator, char* buffer, size_t buffer_size );
-      int db_next_i64( int iterator, uint64_t& primary );
-      int db_previous_i64( int iterator, uint64_t& primary );
-      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-      int db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
+      int  db_get_i64( int iterator, char* buffer, size_t buffer_size );
+      int  db_next_i64( int iterator, uint64_t& primary );
+      int  db_previous_i64( int iterator, uint64_t& primary );
+      int  db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
+      int  db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
+      int  db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
+      int  db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
+
+   private:
+
+      const table_id_object* find_table( name code, name scope, name table );
+      const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
+      void                   remove_table( const table_id_object& tid );
+
+      int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+
+
+   /// Misc methods:
+   public:
+
+      int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
+      int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
+      vector<account_name> get_active_producers() const;
+      bytes  get_packed_transaction();
+
+      void checktime(uint32_t instruction_count);
+
+      uint64_t next_global_sequence();
+      uint64_t next_recv_sequence( account_name receiver );
+      uint64_t next_auth_sequence( account_name actor );
+
+   private:
+
+      void validate_referenced_accounts( const transaction& t )const;
+      void validate_expiration( const transaction& t )const;
+
+
+   /// Fields:
+   public:
+
+      controller&                   control;
+      chainbase::database&          db;  ///< database where state is stored
+      transaction_context&          trx_context; ///< transaction context in which the action is running
+      const action&                 act; ///< message being applied
+      account_name                  receiver; ///< the code that is currently running
+      vector<bool> used_authorizations; ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
+      uint32_t                      recurse_depth; ///< how deep inline actions can recurse
+      bool                          privileged   = false;
+      bool                          context_free = false;
+      bool                          used_context_free_api = false;
 
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;
@@ -583,50 +606,19 @@ class apply_context {
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
 
-      uint32_t                                    recurse_depth;  // how deep inline actions can recurse
-      fc::time_point                              published_time;
-      fc::time_point                              processing_deadline;
-      uint64_t                                    max_cpu = uint64_t(-1);
-
       vector<action_receipt>                      executed;
       action_trace                                trace;
 
-      uint64_t                                    cpu_usage;
-      uint64_t                                    total_cpu_usage;
-
-
-      uint64_t next_global_sequence();
-      uint64_t next_recv_sequence( account_name receiver );
-      uint64_t next_auth_sequence( account_name actor );
+      uint64_t                                    cpu_usage = 0;
+      uint64_t                                    total_cpu_usage = 0;
 
    private:
-      iterator_cache<key_value_object> keyval_cache;
-      void validate_referenced_accounts( const transaction& t )const;
-      void validate_expiration( const transaction& t )const;
 
-      /*
-      void append_results(apply_results &&other) {
-         fc::move_append(results.applied_actions, std::move(other.applied_actions));
-         fc::move_append(results.deferred_transaction_requests, std::move(other.deferred_transaction_requests));
-         results.deferred_transactions_count += other.deferred_transactions_count;
-      }
-      */
-
-      void reset_console();
-
-      action_trace exec_one();
-
-      const table_id_object* find_table( name code, name scope, name table );
-      const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
-      void remove_table( const table_id_object& tid );
-
-      int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
-
+      iterator_cache<key_value_object>    keyval_cache;
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
       vector<action>                      _cfa_inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
-
 
       //bytes                               _cached_trx;
 };
