@@ -155,10 +155,6 @@ namespace eosio { namespace testing {
          void              set_code( account_name name, const vector<uint8_t> wasm );
          void              set_abi( account_name name, const char* abi_json );
 
-
-         unique_ptr<controller> control;
-         std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
-
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
 
@@ -166,59 +162,71 @@ namespace eosio { namespace testing {
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
-        vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
+         vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
 
-        static vector<uint8_t> to_uint8_vector(const string& s);
+         static vector<uint8_t> to_uint8_vector(const string& s);
 
-        static vector<uint8_t> to_uint8_vector(uint64_t x);
+         static vector<uint8_t> to_uint8_vector(uint64_t x);
 
-        static uint64_t to_uint64(fc::variant x);
+         static uint64_t to_uint64(fc::variant x);
 
-        static string to_string(fc::variant x);
+         static string to_string(fc::variant x);
 
-        static action_result success() { return string(); }
+         static action_result success() { return string(); }
 
-        static action_result error(const string& msg) { return msg; }
+         static action_result error(const string& msg) { return msg; }
 
-        auto get_resolver() {
-           return [this](const account_name &name) -> optional<abi_serializer> {
-              try {
-                 const auto &accnt = control->db().get<account_object, by_name>(name);
-                 abi_def abi;
-                 if (abi_serializer::to_abi(accnt.abi, abi)) {
-                    return abi_serializer(abi);
-                 }
-                 return optional<abi_serializer>();
-              } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
-           };
-        }
+         auto get_resolver() {
+            return [this](const account_name &name) -> optional<abi_serializer> {
+               try {
+                  const auto &accnt = control->db().get<account_object, by_name>(name);
+                  abi_def abi;
+                  if (abi_serializer::to_abi(accnt.abi, abi)) {
+                     return abi_serializer(abi);
+                  }
+                  return optional<abi_serializer>();
+               } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+            };
+         }
 
-       void sync_with(base_tester& other);
+         void sync_with(base_tester& other);
 
-       const table_id_object* find_table( name code, name scope, name table );
+         const table_id_object* find_table( name code, name scope, name table );
 
-       // method treats key as a name type, if this is not appropriate in your case, pass require == false and report the correct behavior
-       template<typename Object>
-       bool get_table_entry(Object& obj, account_name code, account_name scope, account_name table, uint64_t key, bool require = true) {
-          auto* maybe_tid = find_table(code, scope, table);
-          if(maybe_tid == nullptr)
-             BOOST_FAIL("table for code=\"" + code.to_string() + "\" scope=\"" + scope.to_string() + "\" table=\"" + table.to_string() + "\" does not exist");
+         // method treats key as a name type, if this is not appropriate in your case, pass require == false and report the correct behavior
+         template<typename Object>
+         bool get_table_entry(Object& obj, account_name code, account_name scope, account_name table, uint64_t key, bool require = true) {
+            auto* maybe_tid = find_table(code, scope, table);
+            if( maybe_tid == nullptr ) {
+               BOOST_FAIL( "table for code=\"" + code.to_string()
+                            + "\" scope=\"" + scope.to_string()
+                            + "\" table=\"" + table.to_string()
+                            + "\" does not exist"                 );
+            }
 
-          auto* o = control->db().find<key_value_object, by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
-          if(o == nullptr) {
-             if (require)
-                BOOST_FAIL("object does not exist for primary_key=\"" + name(key).to_string() + "\"");
+            auto* o = control->db().find<key_value_object, by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
+            if( o == nullptr ) {
+               if( require )
+                  BOOST_FAIL("object does not exist for primary_key=\"" + name(key).to_string() + "\"");
 
-             return false;
-          }
+               return false;
+            }
 
-          fc::raw::unpack(o->value.data(), o->value.size(), obj);
-          return true;
-       }
+            fc::raw::unpack(o->value.data(), o->value.size(), obj);
+            return true;
+         }
 
-   protected:
+      protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
+
+      // Fields:
+      protected:
+         // tempdir field must come before control so that during destruction the tempdir is deleted only after controller finishes
          fc::temp_directory                            tempdir;
+      public:
+         unique_ptr<controller> control;
+         std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
+      protected:
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
    };
