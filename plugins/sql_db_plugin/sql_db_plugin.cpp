@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/sql_db_plugin/sql_db_plugin.hpp>
-#include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
