@@ -10,5 +10,7 @@ namespace eosio {
    struct producer_schedule {
       uint32_t                     version;   ///< sequentially incrementing version number
       std::vector<producer_key>    producers;
+
+      EOSLIB_SERIALIZE( producer_schedule, (version)(producers) )
    };
 } /// namespace eosio

@@ -81,7 +81,6 @@ namespace eosiosystem {
                                      const asset& stake_storage_quantity )
    {
       require_auth( from );
-
       eosio_assert( stake_cpu_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_net_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_storage_quantity.amount >= 0, "must stake a positive amount" );

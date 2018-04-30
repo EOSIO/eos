@@ -26,12 +26,11 @@ namespace eosiosystem {
       checksum256                               transaction_mroot;
       checksum256                               action_mroot;
       account_name                              producer;
-      uint32_t                                  schedule_version;
       eosio::optional<eosio::producer_schedule> new_producers;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)
-                                     (producer)(schedule_version)(new_producers))
+                                     (producer)(new_producers))
    };
 
    struct eosio_parameters : eosio::blockchain_parameters {

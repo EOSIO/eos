@@ -50,6 +50,8 @@ namespace eosio {
             bool     whitelist = true;
 
             uint64_t primary_key()const { return balance.symbol.name(); }
+
+            EOSLIB_SERIALIZE( account, (balance)(frozen)(whitelist) )
          };
 
          struct currency_stats {
@@ -63,6 +65,8 @@ namespace eosio {
             bool           enforce_whitelist  = false;
 
             uint64_t primary_key()const { return supply.symbol.name(); }
+
+            EOSLIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(enforce_whitelist) )
          };
 
          typedef eosio::multi_index<N(accounts), account> accounts;

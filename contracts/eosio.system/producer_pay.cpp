@@ -28,6 +28,7 @@ bool system_contract::update_cycle(time block_time) {
 }
 
 void system_contract::onblock(const block_header& header) {
+   eosio::print( "ONBLOCK\n" );
    // update parameters if it's a new cycle
    update_cycle(header.timestamp);
 
