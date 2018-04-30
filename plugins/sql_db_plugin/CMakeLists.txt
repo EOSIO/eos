@@ -4,6 +4,7 @@ include_directories(include)
 
 add_library(sql_db_plugin
     sql_db_plugin.cpp
+    database.cpp
     accounts_table.cpp
     transactions_table.cpp
     blocks_table.cpp

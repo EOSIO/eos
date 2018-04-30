@@ -8,16 +8,9 @@
 #include <appbase/application.hpp>
 #include <memory>
 
-namespace soci {
-class session;
-}
-
 namespace eosio {
 
-class accounts_table;
-class actions_table;
-class blocks_table;
-class transactions_table;
+class database;
 
 /**
  * Provides persistence to SQL DB for:
@@ -50,11 +43,7 @@ public:
     void plugin_shutdown();
 
 private:
-    std::shared_ptr<soci::session> m_session;
-    std::unique_ptr<accounts_table> m_accounts_table;
-    std::unique_ptr<actions_table> m_actions_table;
-    std::unique_ptr<blocks_table> m_blocks_table;
-    std::unique_ptr<transactions_table> m_transactions_table;
+    std::unique_ptr<database> m_database = std::make_unique<database>();
 };
 
 }

@@ -17,12 +17,7 @@
 
 #include <queue>
 
-#include <soci/soci.h>
-
-#include "accounts_table.h"
-#include "transactions_table.h"
-#include "blocks_table.h"
-#include "actions_table.h"
+#include "database.h"
 
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
@@ -72,26 +67,24 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
 {
     ilog("initialize");
 
-    if (!options.count(SQL_DB_URI_OPTION))
+    std::string uri_str = options.at(SQL_DB_URI_OPTION).as<std::string>();
+    if (uri_str.empty())
     {
         wlog("db URI not specified => eosio::sql_db_plugin disabled.");
         return;
     }
-
-    std::string uri_str = options.at(SQL_DB_URI_OPTION).as<std::string>();
     ilog("connecting to ${u}", ("u", uri_str));
+    m_database->connect(uri_str);
 
-    m_session = std::make_shared<soci::session>(uri_str);
-    m_accounts_table = std::make_unique<accounts_table>();
-    m_transactions_table = std::make_unique<transactions_table>();
-    m_actions_table = std::make_unique<actions_table>();
-    m_blocks_table = std::make_unique<blocks_table>(m_session);
+    if (options.at("resync-blockchain").as<bool>()) {
+        ilog("Resync requested: wiping database");
+    }
 
-//    mongocxx::uri uri = mongocxx::uri{uri_str};
-//    my->db_name = uri.database();
-//    if (my->db_name.empty())
-//       my->db_name = "EOS";
-//    my->mongo_conn = mongocxx::client{uri};
+    //    mongocxx::uri uri = mongocxx::uri{uri_str};
+    //    my->db_name = uri.database();
+    //    if (my->db_name.empty())
+    //       my->db_name = "EOS";
+    //    my->mongo_conn = mongocxx::client{uri};
 
 
     //   if (options.count("mongodb-uri")) {
