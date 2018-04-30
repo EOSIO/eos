@@ -18,6 +18,7 @@ add_subdirectory(exchange)
 add_subdirectory(test.inline)
 
 #add_subdirectory(bancor)
+add_subdirectory(hello)
 add_subdirectory(asserter)
 add_subdirectory(infinite)
 add_subdirectory(proxy)
