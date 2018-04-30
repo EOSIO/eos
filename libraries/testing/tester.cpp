@@ -182,10 +182,10 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
+   transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
          control->start_block();
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), fc::time_point::now() + fc::milliseconds(500) );
+      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
       if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
       if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
       if( r->hard_except)  throw *r->hard_except;
@@ -193,10 +193,10 @@ namespace eosio { namespace testing {
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
-   transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) { try {
+   transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
          control->start_block();
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), fc::time_point::now() + fc::milliseconds(500) );
+      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
       if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
       if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
       if( r->hard_except)  throw *r->hard_except;
