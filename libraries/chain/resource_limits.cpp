@@ -128,16 +128,17 @@ void resource_limits_manager::add_pending_account_ram_usage( const account_name 
    const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, account));
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
+   
+   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.ram_usage >= (uint64_t)ram_delta, transaction_exception,
+              "Ram usage delta would overflow UINT64_MAX");
+   EOS_ASSERT(ram_delta > 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
+              "Ram usage delta would underflow UINT64_MAX");
+
    _db.modify( usage, [&]( auto& u ) {
      u.ram_usage += ram_delta;
    });
 
    FC_ASSERT( usage.ram_usage >= 0, "cannot have negative usage!" );
-
-   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.ram_usage>= (uint64_t)ram_delta, transaction_exception,
-              "Ram usage delta would overflow UINT64_MAX");
-   EOS_ASSERT(ram_delta > 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
-              "Ram usage delta would underflow UINT64_MAX");
 
    if( limits.ram_bytes >= 0 && usage.ram_usage > limits.ram_bytes ) {
       tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
