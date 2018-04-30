@@ -17,7 +17,6 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
-#include <fc/utf8.hpp>
 
 #include <softfloat.hpp>
 #include <boost/asio.hpp>
@@ -50,7 +49,7 @@ namespace eosio { namespace chain {
       //there are a couple opportunties for improvement here--
       //Easy: Cache the Module created here so it can be reused for instantiaion
       //Hard: Kick off instantiation in a separate thread at this location
-   }
+	   }
 
    void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
       my->get_instantiated_module(code_id, code)->apply(context);
@@ -784,17 +783,6 @@ class permission_api : public context_aware_api {
       }
 };
 
-class string_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-
-      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
-         const bool test = fc::is_utf8(std::string( str, datalen ));
-
-         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
-      }
-};
-
 class system_api : public context_aware_api {
    public:
       explicit system_api( apply_context& ctx )
@@ -1435,6 +1423,108 @@ class compiler_builtins : public context_aware_api {
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
 
+class math_api : public context_aware_api {
+   public:
+      math_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+
+      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         FC_ASSERT( o != 0, "divide by zero" );
+
+         s = s/o;
+         *self = (unsigned __int128)s;
+      }
+
+      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         s *= o;
+         *self = (unsigned __int128)s;
+      }
+
+      uint64_t double_add(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  + DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_mult(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  * DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_div(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
+         FC_ASSERT(divisor != 0, "divide by zero");
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint32_t double_eq(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_lt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_gt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint64_t double_to_i64(uint64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
+      }
+
+      uint64_t i64_to_double(int64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         double res = DOUBLE(n).convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+};
+
+/*
+ * This api will be removed with fix for `eos #2561`
+ */
+class call_depth_api : public context_aware_api {
+   public:
+      call_depth_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+      void call_depth_assert() { 
+         FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
+      }
+};
+
+REGISTER_INJECTED_INTRINSICS(call_depth_api,
+   (call_depth_assert,  void()               )
+);
+
+REGISTER_INTRINSICS(math_api,
+   (diveq_i128,    void(int, int)            )
+   (multeq_i128,   void(int, int)            )
+   (double_add,    int64_t(int64_t, int64_t) )
+   (double_mult,   int64_t(int64_t, int64_t) )
+   (double_div,    int64_t(int64_t, int64_t) )
+   (double_eq,     int32_t(int64_t, int64_t) )
+   (double_lt,     int32_t(int64_t, int64_t) )
+   (double_gt,     int32_t(int64_t, int64_t) )
+   (double_to_i64, int64_t(int64_t)          )
+   (i64_to_double, int64_t(int64_t)          )
+);
+
 REGISTER_INTRINSICS(compiler_builtins,
    (__ashlti3,     void(int, int64_t, int64_t, int)               )
    (__ashrti3,     void(int, int64_t, int64_t, int)               )
@@ -1550,10 +1640,6 @@ REGISTER_INTRINSICS(crypto_api,
 
 REGISTER_INTRINSICS(permission_api,
    (check_authorization,  int(int64_t, int64_t, int, int))
-);
-
-REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(system_api,

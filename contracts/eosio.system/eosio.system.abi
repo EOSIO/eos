@@ -162,7 +162,7 @@
       "name": "setparams",
       "base": "",
       "fields": [
-        {"name":"max_ram_size",     "type":"uint64"}
+        {"name":"max_ram_size",     "type":"uint64"},
         {"name":"ram_reserve_ratio", "type":"uint32"}
       ]
     },{
