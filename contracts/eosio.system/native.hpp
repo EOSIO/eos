@@ -32,11 +32,12 @@ namespace eosiosystem {
 
    struct authority {
       uint32_t                              threshold;
+      uint32_t                              delay_sec;
       std::vector<key_weight>               keys;
       std::vector<permission_level_weight>  accounts;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( authority, (threshold)(keys)(accounts) )
+      EOSLIB_SERIALIZE( authority, (threshold)(delay_sec)(keys)(accounts) )
    };
 
    /*

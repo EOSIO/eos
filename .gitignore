@@ -57,7 +57,7 @@ tests/chain_test
 tests/intense_test
 tests/performance_test
 tests/tests/config.hpp
-
+unittests/config.hpp
 doxygen
 
 wallet.json

@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -17,6 +16,8 @@
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
 
 namespace eosio { namespace chain {
 
@@ -66,8 +67,11 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
    fc::raw::pack( enc, *this );
-   if( cfd.size() )
-      fc::raw::pack( enc, cfd );
+   if( cfd.size() ) {
+      fc::raw::pack( enc, digest_type::hash(cfd) );
+   } else {
+      fc::raw::pack( enc, digest_type() );
+   }
    return enc.result();
 }
 
@@ -126,8 +130,15 @@ uint32_t packed_transaction::get_billable_size()const {
 }
 
 digest_type packed_transaction::packed_digest()const {
+   digest_type::encoder prunable;
+   fc::raw::pack( prunable, signatures );
+   fc::raw::pack( prunable, packed_context_free_data );
+
    digest_type::encoder enc;
-   fc::raw::pack( enc, *this );
+   fc::raw::pack( enc, compression );
+   fc::raw::pack( enc, packed_trx  );
+   fc::raw::pack( enc, prunable.result() );
+
    return enc.result();
 }
 

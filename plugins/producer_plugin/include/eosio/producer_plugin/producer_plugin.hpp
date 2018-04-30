@@ -25,6 +25,8 @@ namespace block_production_condition {
    };
 }
 
+using boost::signals2::signal;
+
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin))
@@ -37,14 +39,14 @@ public:
       boost::program_options::options_description &config_file_options
       ) override;
 
-   chain::public_key_type first_producer_public_key() const;
-   bool is_producer_key(const chain::public_key_type& key) const;
-   chain::signature_type sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
+   bool                   is_producer_key(const chain::public_key_type& key) const;
+   chain::signature_type  sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const;
 
    virtual void plugin_initialize(const boost::program_options::variables_map& options);
    virtual void plugin_startup();
    virtual void plugin_shutdown();
 
+   signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::unique_ptr<class producer_plugin_impl> my;
 };

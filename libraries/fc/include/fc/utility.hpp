@@ -31,11 +31,9 @@ namespace fc {
   template<typename T> struct deduce<T&&>      { typedef T type; };
   template<typename T> struct deduce<const T&&>{ typedef T type; };
 
-  template<typename T>
-  typename fc::remove_reference<T>::type&& move( T&& t ) { return static_cast<typename fc::remove_reference<T>::type&&>(t); }
 
-  template<typename T, typename U>
-  inline T&& forward( U&& u ) { return static_cast<T&&>(u); }
+  using std::move;
+  using std::forward;
 
   struct true_type  { enum _value { value = 1 }; };
   struct false_type { enum _value { value = 0 }; };

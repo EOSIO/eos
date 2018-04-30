@@ -5,7 +5,7 @@
 #pragma once
 
 #include "native.hpp"
-
+#include <eosiolib/producer_schedule.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/contract.hpp>
 #include <eosiolib/optional.hpp>

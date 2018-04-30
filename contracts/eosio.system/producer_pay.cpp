@@ -56,7 +56,10 @@ void system_contract::onblock(const block_header& header) {
 
 void system_contract::claimrewards(const account_name& owner) {
    require_auth(owner);
-   eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
+   // We don't have current_sender() anymore. We don't have a good way to determine if the transaction was a deferred one.
+   // publication_time() could be used but it is not any guarantee that a transaction is or is not deferred.
+   // Do we really need to prevent users from using contracts to claim their rewards?
+   //eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
    producers_table producers_tbl( _self, _self );
    auto prod = producers_tbl.find(owner);
    eosio_assert(prod != producers_tbl.end(), "account name is not in producer list");

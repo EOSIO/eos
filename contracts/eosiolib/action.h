@@ -58,7 +58,7 @@ extern "C" {
     * require_auth(N(inita)); // Do nothing since inita exists in the auth list
     * require_auth(N(initb)); // Throws an exception
     *
-    * print(now()); // Output: timestamp of last accepted block
+    * print(current_time()); // Output: timestamp (in microseconds since 1970) of current block
     *
     * @endcode
     *
@@ -106,6 +106,8 @@ extern "C" {
     */
    void require_auth2( account_name name, permission_name permission );
 
+   bool is_account( account_name name );
+
    /**
     *  Send an inline action in the context of this action's parent transaction
     * @param serialized_action - serialized action
@@ -135,18 +137,11 @@ extern "C" {
    void require_read_lock( account_name name );
 
    /**
-    *  Returns the time in seconds from 1970 of the publication_time
+    *  Returns the time in microseconds from 1970 of the publication_time
     *  @brief Get the publication time
-    *  @return the time in seconds from 1970 of the publication_time
+    *  @return the time in microseconds from 1970 of the publication_time
     */
-   time  publication_time();
-
-   /**
-    *  Get the account which specifies the sender of the action
-    *  @brief Get the sender of the action
-    *  @return the account which specifies the sender of the action
-    */
-   account_name current_sender();
+   uint64_t  publication_time();
 
    /**
     *  Get the current receiver of the action

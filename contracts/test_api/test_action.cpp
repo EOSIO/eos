@@ -165,8 +165,9 @@ void test_action::test_abort() {
 }
 
 void test_action::test_publication_time() {
-   uint32_t pub_time = 0;
-   read_action_data(&pub_time, sizeof(uint32_t));
+   uint64_t pub_time = 0;
+   uint32_t total = read_action_data(&pub_time, sizeof(uint64_t));
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
    eosio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
 }
 
@@ -178,15 +179,9 @@ void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64
    eosio_assert( receiver == cur_rec, "the current receiver does not match" );
 }
 
-void test_action::test_current_sender() {
-   account_name cur_send;
-   read_action_data(&cur_send, sizeof(account_name));
-   eosio_assert( current_sender() == cur_send, "the current sender does not match" );
-}
-
-void test_action::now() {
-   uint32_t tmp = 0;
-   uint32_t total = read_action_data(&tmp, sizeof(uint32_t));
-   eosio_assert( total == sizeof(uint32_t), "total == sizeof(uint32_t)");
-   eosio_assert( tmp == ::now(), "tmp == now()" );
+void test_action::test_current_time() {
+   uint64_t tmp = 0;
+   uint32_t total = read_action_data(&tmp, sizeof(uint64_t));
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   eosio_assert( tmp == current_time(), "tmp == current_time()" );
 }

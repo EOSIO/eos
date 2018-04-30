@@ -74,10 +74,9 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, require_auth);
       WASM_TEST_HANDLER(test_action, assert_false);
       WASM_TEST_HANDLER(test_action, assert_true);
-      WASM_TEST_HANDLER(test_action, now);
+      WASM_TEST_HANDLER(test_action, test_current_time);
       WASM_TEST_HANDLER(test_action, test_abort);
       WASM_TEST_HANDLER_EX(test_action, test_current_receiver);
-      WASM_TEST_HANDLER(test_action, test_current_sender);
       WASM_TEST_HANDLER(test_action, test_publication_time);
 
       // test named actions

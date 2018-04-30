@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
@@ -51,7 +51,7 @@ public:
 
       return base_tester::push_action( std::move(act), uint64_t(signer));
    }
-   
+
    fc::variant get_stats( const string& symbolname )
    {
       auto symb = eosio::chain::symbol::from_string(symbolname);
@@ -71,7 +71,7 @@ public:
    action_result create( account_name issuer,
                 asset        maximum_supply,
                 uint8_t      issuer_can_freeze,
-                uint8_t      issuer_can_recall,  
+                uint8_t      issuer_can_recall,
                 uint8_t      issuer_can_whitelist ) {
 
       return push_action( N(eosio.token), N(create), mvo()
@@ -91,7 +91,7 @@ public:
       );
    }
 
-   action_result transfer( account_name from, 
+   action_result transfer( account_name from,
                   account_name to,
                   asset        quantity,
                   string       memo ) {
@@ -128,7 +128,7 @@ BOOST_FIXTURE_TEST_CASE( create_tests, eosio_token_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, eosio_token_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: max-supply must be positive" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: max-supply must be positive" ),
       create( N(alice), asset::from_string("-1000.000 TKN"), false, false, false)
    );
 
@@ -150,7 +150,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
    );
    produce_blocks(1);
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid supply" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid supply" ),
       create( N(alice), asset::from_string("4611686018427387904 TKN"), true, false, false)
    );
 
@@ -172,13 +172,13 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
    );
    produce_blocks(1);
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid supply" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid supply" ),
       create( N(alice), asset::from_string("4.611686018427387904 TKN"), true, false, false)
    );
 
    //1.0000000000000000000 => 0x8ac7230489e80000L
    //TODO: Better error message
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: max-supply must be positive" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: max-supply must be positive" ),
       create( N(alice), asset::from_string("1.0000000000000000000 TKN"), true, false, false)
    );
 
@@ -210,15 +210,15 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
       ("whitelist", 1)
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: quantity exceeds available supply" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: quantity exceeds available supply" ),
       issue( N(alice), N(alice), asset::from_string("500.001 TKN"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid quantity" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid quantity" ),
       issue( N(alice), N(alice), asset::from_string("4611686018427387.904 TKN"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must issue positive quantity" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must issue positive quantity" ),
       issue( N(alice), N(alice), asset::from_string("-1.000 TKN"), "hola" )
    );
 
@@ -259,7 +259,7 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
    );
 
    transfer( N(alice), N(bob), asset::from_string("300 CERO"), "hola" );
-   
+
    alice_balance = get_account(N(alice), "0,CERO");
    REQUIRE_MATCHING_OBJECT( alice_balance, mvo()
       ("balance", "700 CERO")
@@ -274,15 +274,15 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
       ("whitelist", 1)
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: overdrawn balance" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: overdrawn balance" ),
       transfer( N(alice), N(bob), asset::from_string("701 CERO"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid quantity" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid quantity" ),
       transfer( N(alice), N(alice), asset::from_string("4611686018427387904 CERO"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must transfer positive quantity" ), 
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must transfer positive quantity" ),
       transfer( N(alice), N(alice), asset::from_string("-1000 CERO"), "hola" )
    );
 

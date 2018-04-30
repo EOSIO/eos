@@ -233,7 +233,7 @@ class incremental_merkle_impl {
          }
       }
 
-   private:
+//   private:
       uint64_t                         _node_count;
       Container<DigestType, Args...>   _active_nodes;
 };
@@ -242,3 +242,5 @@ typedef incremental_merkle_impl<digest_type>               incremental_merkle;
 typedef incremental_merkle_impl<digest_type,shared_vector> shared_incremental_merkle;
 
 } } /// eosio::chain
+
+FC_REFLECT( eosio::chain::incremental_merkle, (_active_nodes)(_node_count) );
