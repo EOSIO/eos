@@ -251,6 +251,26 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       BOOST_REQUIRE_THROW(add_pending_account_ram_usage(account, increment), tx_resource_exhausted);
    } FC_LOG_AND_RETHROW();
 
+   BOOST_FIXTURE_TEST_CASE(enforce_account_ram_limit_underflow, resource_limits_fixture) try {
+      const account_name account(1);
+      initialize_account(account);
+      set_account_limits(account, 100, -1, -1 );
+      process_account_limit_updates();
+      BOOST_REQUIRE_THROW(add_pending_account_ram_usage(account, -101), transaction_exception);
+
+   } FC_LOG_AND_RETHROW();
+
+   BOOST_FIXTURE_TEST_CASE(enforce_account_ram_limit_overflow, resource_limits_fixture) try {
+      const account_name account(1);
+      initialize_account(account);
+      set_account_limits(account, UINT64_MAX, -1, -1 );
+      process_account_limit_updates();
+      add_pending_account_ram_usage(account, UINT64_MAX/2);
+      add_pending_account_ram_usage(account, UINT64_MAX/2);
+      BOOST_REQUIRE_THROW(add_pending_account_ram_usage(account, 2), transaction_exception);
+
+   } FC_LOG_AND_RETHROW();
+
    BOOST_FIXTURE_TEST_CASE(enforce_account_ram_commitment, resource_limits_fixture) try {
       const int64_t limit = 1000;
       const int64_t commit = 600;
