@@ -17,6 +17,9 @@
 
 #include <queue>
 
+#include <soci/soci.h>
+#include <soci/postgresql/soci-postgresql.h>
+
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
 const char* SQL_DB_URI_OPTION = "sql_db-uri";
