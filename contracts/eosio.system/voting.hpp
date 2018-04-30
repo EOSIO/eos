@@ -45,7 +45,7 @@ namespace eosiosystem {
          struct producer_info {
             account_name      owner;
             uint128_t         total_votes = 0;
-            eosio_parameters  prefs;
+           // eosio_parameters  prefs;
             eosio::bytes      packed_key; /// a packed public key object
             system_token_type per_block_payments;
             time              last_rewards_claim = 0;
@@ -56,7 +56,7 @@ namespace eosiosystem {
             uint128_t   by_votes()const    { return total_votes; }
             bool active() const { return packed_key.size() == sizeof(public_key); }
 
-            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)
+            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(packed_key)
                               (per_block_payments)(last_rewards_claim)
                               (time_became_active)(last_produced_block_time) )
          };
@@ -86,60 +86,6 @@ namespace eosiosystem {
 
          typedef eosio::multi_index< N(voters), voter_info>  voters_table;
 
-         ACTION( SystemAccount, regproducer ) {
-            account_name     producer;
-            bytes            producer_key;
-            eosio_parameters prefs;
-
-            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key)(prefs) )
-         };
-
-         /**
-          *  This method will create a producer_config and producer_info object for 'producer'
-          *
-          *  @pre producer is not already registered
-          *  @pre producer to register is an account
-          *  @pre authority of producer to register
-          *
-          */
-         static void on( const regproducer& reg ) {
-            require_auth( reg.producer );
-
-            producers_table producers_tbl( SystemAccount, SystemAccount );
-            auto prod = producers_tbl.find( reg.producer );
-
-            if ( prod != producers_tbl.end() ) {
-               producers_tbl.modify( prod, reg.producer, [&]( producer_info& info ){
-                     info.prefs = reg.prefs;
-                     info.packed_key = reg.producer_key;
-                  });
-            } else {
-               producers_tbl.emplace( reg.producer, [&]( producer_info& info ){
-                     info.owner       = reg.producer;
-                     info.total_votes = 0;
-                     info.prefs       = reg.prefs;
-                     info.packed_key  = reg.producer_key;
-                  });
-            }
-         }
-
-         ACTION( SystemAccount, unregprod ) {
-            account_name producer;
-
-            EOSLIB_SERIALIZE( unregprod, (producer) )
-         };
-
-         static void on( const unregprod& unreg ) {
-            require_auth( unreg.producer );
-
-            producers_table producers_tbl( SystemAccount, SystemAccount );
-            auto prod = producers_tbl.find( unreg.producer );
-            eosio_assert( prod != producers_tbl.end(), "producer not found" );
-
-            producers_tbl.modify( prod, 0, [&]( producer_info& info ){
-                  info.packed_key.clear();
-               });
-         }
 
          static void increase_voting_power( account_name acnt, system_token_type amount ) {
             voters_table voters_tbl( SystemAccount, SystemAccount );
@@ -238,30 +184,39 @@ namespace eosiosystem {
             return (system_token_type(payment));
          }
 
+         static void update_elected_producers(time cycle_time);
+
+#if 0
          static void update_elected_producers(time cycle_time) {
             producers_table producers_tbl( SystemAccount, SystemAccount );
             auto idx = producers_tbl.template get_index<N(prototalvote)>();
 
+            std::array<uint64_t, 21> max_block_net_usage;
+            std::array<uint32_t, 21> target_block_net_usage_pct;
             std::array<uint32_t, 21> base_per_transaction_net_usage;
+            std::array<uint32_t, 21> max_transaction_net_usage;
+            std::array<uint64_t, 21> context_free_discount_net_usage_num;
+            std::array<uint64_t, 21> context_free_discount_net_usage_den;
+
+            std::array<uint64_t, 21> max_block_cpu_usage;
+            std::array<uint32_t, 21> target_block_cpu_usage_pct;
+            std::array<uint32_t, 21> max_transaction_cpu_usage;
             std::array<uint32_t, 21> base_per_transaction_cpu_usage;
             std::array<uint32_t, 21> base_per_action_cpu_usage;
             std::array<uint32_t, 21> base_setcode_cpu_usage;
             std::array<uint32_t, 21> per_signature_cpu_usage;
-            std::array<uint32_t, 21> per_lock_net_usage;
             std::array<uint64_t, 21> context_free_discount_cpu_usage_num;
             std::array<uint64_t, 21> context_free_discount_cpu_usage_den;
-            std::array<uint32_t, 21> max_transaction_cpu_usage;
-            std::array<uint32_t, 21> max_transaction_net_usage;
-            std::array<uint64_t, 21> max_block_cpu_usage;
-            std::array<uint32_t, 21> target_block_cpu_usage_pct;
-            std::array<uint64_t, 21> max_block_net_usage;
-            std::array<uint32_t, 21> target_block_net_usage_pct;
+
             std::array<uint32_t, 21> max_transaction_lifetime;
-            std::array<uint16_t, 21> max_authority_depth;
-            std::array<uint32_t, 21> max_transaction_exec_time;
-            std::array<uint16_t, 21> max_inline_depth;
+            std::array<uint32_t, 21> deferred_trx_expiration_window;
+            std::array<uint32_t, 21> max_transaction_delay;
             std::array<uint32_t, 21> max_inline_action_size;
+            std::array<uint16_t, 21> max_inline_action_depth;
+            std::array<uint16_t, 21> max_authority_depth;
             std::array<uint32_t, 21> max_generated_transaction_count;
+
+            std::array<uint32_t, 21> max_storage_size;
             std::array<uint32_t, 21> percent_of_max_inflation_rate;
             std::array<uint32_t, 21> storage_reserve_ratio;
 
@@ -275,27 +230,32 @@ namespace eosiosystem {
                   eosio_assert( sizeof(schedule.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
                   std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.back().block_signing_key.data );
 
+                  max_block_net_usage[n] = it->prefs.max_block_net_usage;
+                  target_block_net_usage_pct[n] = it->prefs.target_block_net_usage_pct;
+                  max_transaction_net_usage[n] = it->prefs.max_transaction_net_usage;
                   base_per_transaction_net_usage[n] = it->prefs.base_per_transaction_net_usage;
+                  context_free_discount_net_usage_num[n] = it->prefs.context_free_discount_net_usage_num;
+                  context_free_discount_net_usage_den[n] = it->prefs.context_free_discount_net_usage_den;
+
+                  max_block_cpu_usage[n] = it->prefs.max_block_cpu_usage;
+                  target_block_cpu_usage_pct[n] = it->prefs.target_block_cpu_usage_pct;
+                  max_transaction_cpu_usage[n] = it->prefs.max_transaction_cpu_usage;
                   base_per_transaction_cpu_usage[n] = it->prefs.base_per_transaction_cpu_usage;
                   base_per_action_cpu_usage[n] = it->prefs.base_per_action_cpu_usage;
                   base_setcode_cpu_usage[n] = it->prefs.base_setcode_cpu_usage;
                   per_signature_cpu_usage[n] = it->prefs.per_signature_cpu_usage;
-                  per_lock_net_usage[n] = it->prefs.per_lock_net_usage;
                   context_free_discount_cpu_usage_num[n] = it->prefs.context_free_discount_cpu_usage_num;
                   context_free_discount_cpu_usage_den[n] = it->prefs.context_free_discount_cpu_usage_den;
-                  max_transaction_cpu_usage[n] = it->prefs.max_transaction_cpu_usage;
-                  max_transaction_net_usage[n] = it->prefs.max_transaction_net_usage;
-                  max_block_cpu_usage[n] = it->prefs.max_block_cpu_usage;
-                  target_block_cpu_usage_pct[n] = it->prefs.target_block_cpu_usage_pct;
-                  max_block_net_usage[n] = it->prefs.max_block_net_usage;
-                  target_block_net_usage_pct[n] = it->prefs.target_block_net_usage_pct;
+
                   max_transaction_lifetime[n] = it->prefs.max_transaction_lifetime;
-                  max_authority_depth[n] = it->prefs.max_authority_depth;
-                  max_transaction_exec_time[n] = it->prefs.max_transaction_exec_time;
-                  max_inline_depth[n] = it->prefs.max_inline_depth;
+                  deferred_trx_expiration_window[n] = it->prefs.deferred_trx_expiration_window;
+                  max_transaction_delay[n] = it->prefs.max_transaction_delay;
                   max_inline_action_size[n] = it->prefs.max_inline_action_size;
+                  max_inline_action_depth[n] = it->prefs.max_inline_action_depth;
+                  max_authority_depth[n] = it->prefs.max_authority_depth;
                   max_generated_transaction_count[n] = it->prefs.max_generated_transaction_count;
 
+                  max_storage_size[n] = it->prefs.max_storage_size;
                   storage_reserve_ratio[n] = it->prefs.storage_reserve_ratio;
                   percent_of_max_inflation_rate[n] = it->prefs.percent_of_max_inflation_rate;
                   ++n;
@@ -305,26 +265,32 @@ namespace eosiosystem {
                return;
             }
             if ( 1 < n ) {
+               std::sort( max_block_net_usage.begin(), max_block_net_usage.begin()+n );
+               std::sort( target_block_net_usage_pct.begin(), target_block_net_usage_pct.begin()+n );
+               std::sort( max_transaction_net_usage.begin(), max_transaction_net_usage.begin()+n );
                std::sort( base_per_transaction_net_usage.begin(), base_per_transaction_net_usage.begin()+n );
+               std::sort( context_free_discount_net_usage_num.begin(), context_free_discount_net_usage_num.begin()+n );
+               std::sort( context_free_discount_net_usage_den.begin(), context_free_discount_net_usage_den.begin()+n );
+
+               std::sort( max_block_cpu_usage.begin(), max_block_cpu_usage.begin()+n );
+               std::sort( target_block_cpu_usage_pct.begin(), target_block_cpu_usage_pct.begin()+n );
+               std::sort( max_transaction_cpu_usage.begin(), max_transaction_cpu_usage.begin()+n );
                std::sort( base_per_transaction_cpu_usage.begin(), base_per_transaction_cpu_usage.begin()+n );
                std::sort( base_per_action_cpu_usage.begin(), base_per_action_cpu_usage.begin()+n );
                std::sort( base_setcode_cpu_usage.begin(), base_setcode_cpu_usage.begin()+n );
                std::sort( per_signature_cpu_usage.begin(), per_signature_cpu_usage.begin()+n );
-               std::sort( per_lock_net_usage.begin(), per_lock_net_usage.begin()+n );
                std::sort( context_free_discount_cpu_usage_num.begin(), context_free_discount_cpu_usage_num.begin()+n );
                std::sort( context_free_discount_cpu_usage_den.begin(), context_free_discount_cpu_usage_den.begin()+n );
-               std::sort( max_transaction_cpu_usage.begin(), max_transaction_cpu_usage.begin()+n );
-               std::sort( max_transaction_net_usage.begin(), max_transaction_net_usage.begin()+n );
-               std::sort( max_block_cpu_usage.begin(), max_block_cpu_usage.begin()+n );
-               std::sort( target_block_cpu_usage_pct.begin(), target_block_cpu_usage_pct.begin()+n );
-               std::sort( max_block_net_usage.begin(), max_block_net_usage.begin()+n );
-               std::sort( target_block_net_usage_pct.begin(), target_block_net_usage_pct.begin()+n );
+
                std::sort( max_transaction_lifetime.begin(), max_transaction_lifetime.begin()+n );
-               std::sort( max_transaction_exec_time.begin(), max_transaction_exec_time.begin()+n );
-               std::sort( max_authority_depth.begin(), max_authority_depth.begin()+n );
-               std::sort( max_inline_depth.begin(), max_inline_depth.begin()+n );
+               std::sort( deferred_trx_expiration_window.begin(), deferred_trx_expiration_window.begin()+n );
+               std::sort( max_transaction_delay.begin(), max_transaction_delay.begin()+n );
                std::sort( max_inline_action_size.begin(), max_inline_action_size.begin()+n );
+               std::sort( max_inline_action_depth.begin(), max_inline_action_depth.begin()+n );
+               std::sort( max_authority_depth.begin(), max_authority_depth.begin()+n );
                std::sort( max_generated_transaction_count.begin(), max_generated_transaction_count.begin()+n );
+
+               std::sort( max_storage_size.begin(), max_storage_size.begin()+n );
                std::sort( storage_reserve_ratio.begin(), storage_reserve_ratio.begin()+n );
                std::sort( percent_of_max_inflation_rate.begin(), percent_of_max_inflation_rate.begin()+n );
             }
@@ -336,26 +302,32 @@ namespace eosiosystem {
             auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
 
+            parameters.max_block_net_usage = max_block_net_usage[median];
+            parameters.target_block_net_usage_pct = target_block_net_usage_pct[median];
+            parameters.max_transaction_net_usage = max_transaction_net_usage[median];
             parameters.base_per_transaction_net_usage = base_per_transaction_net_usage[median];
+            parameters.context_free_discount_net_usage_num = context_free_discount_net_usage_num[median];
+            parameters.context_free_discount_net_usage_den = context_free_discount_net_usage_den[median];
+
+            parameters.max_block_cpu_usage = max_block_cpu_usage[median];
+            parameters.target_block_cpu_usage_pct = target_block_cpu_usage_pct[median];
+            parameters.max_transaction_cpu_usage = max_transaction_cpu_usage[median];
             parameters.base_per_transaction_cpu_usage = base_per_transaction_cpu_usage[median];
             parameters.base_per_action_cpu_usage = base_per_action_cpu_usage[median];
             parameters.base_setcode_cpu_usage = base_setcode_cpu_usage[median];
             parameters.per_signature_cpu_usage = per_signature_cpu_usage[median];
-            parameters.per_lock_net_usage = per_lock_net_usage[median];
             parameters.context_free_discount_cpu_usage_num = context_free_discount_cpu_usage_num[median];
             parameters.context_free_discount_cpu_usage_den = context_free_discount_cpu_usage_den[median];
-            parameters.max_transaction_cpu_usage = max_transaction_cpu_usage[median];
-            parameters.max_transaction_net_usage = max_transaction_net_usage[median];
-            parameters.max_block_cpu_usage = max_block_cpu_usage[median];
-            parameters.target_block_cpu_usage_pct = target_block_cpu_usage_pct[median];
-            parameters.max_block_net_usage = max_block_net_usage[median];
-            parameters.target_block_net_usage_pct = target_block_net_usage_pct[median];
+
             parameters.max_transaction_lifetime = max_transaction_lifetime[median];
-            parameters.max_transaction_exec_time = max_transaction_exec_time[median];
-            parameters.max_authority_depth = max_authority_depth[median];
-            parameters.max_inline_depth = max_inline_depth[median];
+            parameters.deferred_trx_expiration_window = deferred_trx_expiration_window[median];
+            parameters.max_transaction_delay = max_transaction_delay[median];
             parameters.max_inline_action_size = max_inline_action_size[median];
+            parameters.max_inline_action_depth = max_inline_action_depth[median];
+            parameters.max_authority_depth = max_authority_depth[median];
             parameters.max_generated_transaction_count = max_generated_transaction_count[median];
+
+            parameters.max_storage_size = max_storage_size[median];
             parameters.storage_reserve_ratio = storage_reserve_ratio[median];
             parameters.percent_of_max_inflation_rate = percent_of_max_inflation_rate[median];
 
@@ -378,6 +350,7 @@ namespace eosiosystem {
             set_blockchain_parameters(parameters);
             global_state_singleton::set(parameters);
          }
+#endif
 
          ACTION( SystemAccount, voteproducer ) {
             account_name                voter;

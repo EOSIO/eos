@@ -13,31 +13,34 @@
 #include <string>
 #include <vector>
 
-namespace eosio { namespace chain { 
+namespace eosio { namespace chain {
 
 struct genesis_state {
    chain_config   initial_configuration = {
-      .base_per_transaction_net_usage = config::default_base_per_transaction_net_usage,
-      .base_per_transaction_cpu_usage = config::default_base_per_transaction_cpu_usage,
-      .base_per_action_cpu_usage      = config::default_base_per_action_cpu_usage,
-      .base_setcode_cpu_usage         = config::default_base_setcode_cpu_usage,
-      .per_signature_cpu_usage        = config::default_per_signature_cpu_usage,
-      .per_lock_net_usage             = config::default_per_lock_net_usage,
-      .context_free_discount_cpu_usage_num      = config::default_context_free_discount_cpu_usage_num,
-      .context_free_discount_cpu_usage_den      = config::default_context_free_discount_cpu_usage_den,
-      .max_transaction_cpu_usage      = config::default_max_transaction_cpu_usage,
-      .max_transaction_net_usage      = config::default_max_transaction_net_usage,
-      .max_block_cpu_usage            = config::default_max_block_cpu_usage,
-      .target_block_cpu_usage_pct     = config::default_target_block_cpu_usage_pct,
-      .max_block_net_usage            = config::default_max_block_net_usage,
-      .target_block_net_usage_pct     = config::default_target_block_net_usage_pct,
-      .max_transaction_lifetime       = config::default_max_trx_lifetime,
-      .max_transaction_exec_time      = 0, // TODO: unused?
-      .max_authority_depth            = config::default_max_auth_depth,
-      .max_inline_depth               = config::default_max_inline_depth,
-      .max_inline_action_size         = config::default_max_inline_action_size,
-      .max_generated_transaction_count = config::default_max_gen_trx_count,
-      .max_transaction_delay          = config::default_max_trx_delay
+      .max_block_net_usage                  = config::default_max_block_net_usage,
+      .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
+      .max_transaction_net_usage            = config::default_max_transaction_net_usage,
+      .base_per_transaction_net_usage       = config::default_base_per_transaction_net_usage,
+      .context_free_discount_net_usage_num  = config::default_context_free_discount_net_usage_num,
+      .context_free_discount_net_usage_den  = config::default_context_free_discount_net_usage_den,
+
+      .max_block_cpu_usage                  = config::default_max_block_cpu_usage,
+      .target_block_cpu_usage_pct           = config::default_target_block_cpu_usage_pct,
+      .max_transaction_cpu_usage            = config::default_max_transaction_cpu_usage,
+      .base_per_transaction_cpu_usage       = config::default_base_per_transaction_cpu_usage,
+      .base_per_action_cpu_usage            = config::default_base_per_action_cpu_usage,
+      .base_setcode_cpu_usage               = config::default_base_setcode_cpu_usage,
+      .per_signature_cpu_usage              = config::default_per_signature_cpu_usage,
+      .context_free_discount_cpu_usage_num  = config::default_context_free_discount_cpu_usage_num,
+      .context_free_discount_cpu_usage_den  = config::default_context_free_discount_cpu_usage_den,
+
+      .max_transaction_lifetime             = config::default_max_trx_lifetime,
+      .deferred_trx_expiration_window       = config::default_deferred_trx_expiration_window,
+      .max_transaction_delay                = config::default_max_trx_delay,
+      .max_inline_action_size               = config::default_max_inline_action_size,
+      .max_inline_action_depth              = config::default_max_inline_action_depth,
+      .max_authority_depth                  = config::default_max_auth_depth,
+      .max_generated_transaction_count      = config::default_max_gen_trx_count,
    };
 
    time_point                               initial_timestamp = fc::time_point::from_iso_string( "2018-03-02T12:00:00" );;

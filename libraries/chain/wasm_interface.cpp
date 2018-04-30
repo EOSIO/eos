@@ -1,6 +1,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
@@ -16,7 +17,6 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
-#include <fc/utf8.hpp>
 
 #include <softfloat.hpp>
 #include <boost/asio.hpp>
@@ -49,7 +49,7 @@ namespace eosio { namespace chain {
       //there are a couple opportunties for improvement here--
       //Easy: Cache the Module created here so it can be reused for instantiaion
       //Hard: Kick off instantiation in a separate thread at this location
-   }
+	   }
 
    void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
       my->get_instantiated_module(code_id, code)->apply(context);
@@ -132,7 +132,7 @@ class privileged_api : public context_aware_api {
          EOS_ASSERT(ram_bytes >= -1, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
          EOS_ASSERT(net_weight >= -1, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
          EOS_ASSERT(cpu_weight >= -1, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
-         context.mutable_controller.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight);
+         context.control.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight);
       }
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
@@ -151,7 +151,7 @@ class privileged_api : public context_aware_api {
             unique_producers.insert(p.producer_name);
          }
          EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
-         return context.mutable_controller.set_proposed_producers( std::move(producers) );
+         return context.control.set_proposed_producers( std::move(producers) );
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
@@ -783,17 +783,6 @@ class permission_api : public context_aware_api {
       }
 };
 
-class string_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-
-      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
-         const bool test = fc::is_utf8(std::string( str, datalen ));
-
-         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
-      }
-};
-
 class system_api : public context_aware_api {
    public:
       explicit system_api( apply_context& ctx )
@@ -841,7 +830,7 @@ class action_api : public context_aware_api {
       }
 
       uint64_t publication_time() {
-         return static_cast<uint64_t>( context.published_time.time_since_epoch().count() );
+         return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
       name current_receiver() {
@@ -1137,8 +1126,9 @@ class transaction_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       void send_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+         //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
+         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+                    "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
@@ -1146,8 +1136,9 @@ class transaction_api : public context_aware_api {
       }
 
       void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+         //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
+         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+                   "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
@@ -1191,14 +1182,14 @@ class context_free_transaction_api : public context_aware_api {
       }
 
       int expiration() {
-        return context.trx.expiration.sec_since_epoch();
+        return context.trx_context.trx.expiration.sec_since_epoch();
       }
 
       int tapos_block_num() {
-        return context.trx.ref_block_num;
+        return context.trx_context.trx.ref_block_num;
       }
       int tapos_block_prefix() {
-        return context.trx.ref_block_prefix;
+        return context.trx_context.trx.ref_block_prefix;
       }
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
@@ -1432,6 +1423,108 @@ class compiler_builtins : public context_aware_api {
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
 
+class math_api : public context_aware_api {
+   public:
+      math_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+
+      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         FC_ASSERT( o != 0, "divide by zero" );
+
+         s = s/o;
+         *self = (unsigned __int128)s;
+      }
+
+      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         s *= o;
+         *self = (unsigned __int128)s;
+      }
+
+      uint64_t double_add(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  + DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_mult(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  * DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_div(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
+         FC_ASSERT(divisor != 0, "divide by zero");
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint32_t double_eq(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_lt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_gt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint64_t double_to_i64(uint64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
+      }
+
+      uint64_t i64_to_double(int64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         double res = DOUBLE(n).convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+};
+
+/*
+ * This api will be removed with fix for `eos #2561`
+ */
+class call_depth_api : public context_aware_api {
+   public:
+      call_depth_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+      void call_depth_assert() { 
+         FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
+      }
+};
+
+REGISTER_INJECTED_INTRINSICS(call_depth_api,
+   (call_depth_assert,  void()               )
+);
+
+REGISTER_INTRINSICS(math_api,
+   (diveq_i128,    void(int, int)            )
+   (multeq_i128,   void(int, int)            )
+   (double_add,    int64_t(int64_t, int64_t) )
+   (double_mult,   int64_t(int64_t, int64_t) )
+   (double_div,    int64_t(int64_t, int64_t) )
+   (double_eq,     int32_t(int64_t, int64_t) )
+   (double_lt,     int32_t(int64_t, int64_t) )
+   (double_gt,     int32_t(int64_t, int64_t) )
+   (double_to_i64, int64_t(int64_t)          )
+   (i64_to_double, int64_t(int64_t)          )
+);
+
 REGISTER_INTRINSICS(compiler_builtins,
    (__ashlti3,     void(int, int64_t, int64_t, int)               )
    (__ashrti3,     void(int, int64_t, int64_t, int)               )
@@ -1547,10 +1640,6 @@ REGISTER_INTRINSICS(crypto_api,
 
 REGISTER_INTRINSICS(permission_api,
    (check_authorization,  int(int64_t, int64_t, int, int))
-);
-
-REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(system_api,

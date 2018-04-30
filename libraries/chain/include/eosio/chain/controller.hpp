@@ -4,6 +4,9 @@
 #include <eosio/chain/genesis_state.hpp>
 #include <boost/signals2/signal.hpp>
 
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/account_object.hpp>
+
 namespace chainbase {
    class database;
 }
@@ -78,7 +81,7 @@ namespace eosio { namespace chain {
 
          bool push_next_unapplied_transaction( fc::time_point deadline = fc::time_point::maximum() );
 
-         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline = fc::time_point::now() + fc::milliseconds(25) );
+         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline = fc::time_point::now() + fc::milliseconds(30) );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
@@ -110,14 +113,6 @@ namespace eosio { namespace chain {
 
          chainbase::database& db()const;
 
-         uint32_t   head_block_num()const;
-
-         time_point head_block_time()const;
-         time_point pending_block_time()const;
-
-         block_state_ptr head_block_state()const;
-         block_state_ptr pending_block_state()const;
-
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
          const dynamic_global_property_object& get_dynamic_global_properties()const;
@@ -129,9 +124,15 @@ namespace eosio { namespace chain {
 
          fc::microseconds     limit_delay( fc::microseconds delay )const;
 
+         uint32_t             head_block_num()const;
+         time_point           head_block_time()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
          const block_header&  head_block_header()const;
+         block_state_ptr      head_block_state()const;
+
+         time_point      pending_block_time()const;
+         block_state_ptr pending_block_state()const;
 
          const producer_schedule_type&    active_producers()const;
          const producer_schedule_type&    pending_producers()const;
@@ -146,9 +147,11 @@ namespace eosio { namespace chain {
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
-         uint64_t validate_net_usage( const transaction_metadata_ptr& trx )const;
 
          bool set_proposed_producers( vector<producer_key> producers );
+
+
+
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
@@ -170,7 +173,24 @@ namespace eosio { namespace chain {
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
          wasm_interface& get_wasm_interface();
 
+
+         optional<abi_serializer> get_abi_serializer( account_name n )const {
+            const auto& a = get_account(n);
+            abi_def abi;
+            if( abi_serializer::to_abi( a.abi, abi ) )
+               return abi_serializer(abi);
+            return optional<abi_serializer>();
+         }
+
+         template<typename T>
+         fc::variant to_variant_with_abi( const T& obj ) {
+            fc::variant pretty_output;
+            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); });
+            return pretty_output;
+         }
+
       private:
+
          std::unique_ptr<controller_impl> my;
 
    };

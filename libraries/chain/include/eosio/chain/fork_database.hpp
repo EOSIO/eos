@@ -25,6 +25,8 @@ namespace eosio { namespace chain {
          fork_database( const fc::path& data_dir );
          ~fork_database();
 
+         void close();
+
          block_state_ptr  get_block(const block_id_type& id)const;
          block_state_ptr  get_block_in_current_chain_by_num( uint32_t n )const;
 //         vector<block_state_ptr>    get_blocks_by_number(uint32_t n)const;
@@ -64,9 +66,9 @@ namespace eosio { namespace chain {
 
          /**
           * This signal is emited when a block state becomes irreversible, once irreversible
-          * it is removed;
+          * it is removed unless it is the head block.
           */
-         signal<void(block_state_ptr)> irreverisble;
+         signal<void(block_state_ptr)> irreversible;
 
       private:
          void set_bft_irreversible( block_id_type id );

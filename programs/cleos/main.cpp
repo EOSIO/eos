@@ -262,7 +262,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       if (!tx_ref_block_num_or_id.empty()) {
          ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
          ref_block_id = ref_block["id"].as<block_id_type>();
-      } 
+      }
    } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
    trx.set_reference_block(ref_block_id);
 
@@ -294,6 +294,39 @@ fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcp
    return push_transaction(trx, extra_kcpu, compression);
 }
 
+void print_action( const fc::variant& at ) {
+   const auto& receipt = at["receipt"];
+   auto receiver = receipt["receiver"].as_string();
+   const auto& act = at["act"].get_object();
+   auto code = act["account"].as_string();
+   auto func = act["name"].as_string();
+   auto args = fc::json::to_string( act["data"] );
+   auto console = at["console"].as_string();
+
+   /*
+   if( code == "eosio" && func == "setcode" )
+      args = args.substr(40)+"...";
+   if( name(code) == config::system_account_name && func == "setabi" )
+      args = args.substr(40)+"...";
+   */
+   if( args.size() > 100 ) args = args.substr(0,100) + "...";
+   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+   if( console.size() ) {
+      std::stringstream ss(console);
+      string line;
+      std::getline( ss, line );
+      cout << ">> " << line << "\n";
+   }
+}
+
+void print_action_tree( const fc::variant& action ) {
+   print_action( action );
+   const auto& inline_traces = action["inline_traces"].get_array();
+   for( const auto& t : inline_traces ) {
+      print_action_tree( t );
+   }
+}
+
 void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
@@ -309,33 +342,16 @@ void print_result( const fc::variant& result ) { try {
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
          }
-
+         auto hard_except = processed["hard_except"].as<optional<fc::exception>>();
+         if( hard_except ) {
+            edump((hard_except->to_detail_string()));
+         }
       } else {
          const auto& actions = processed["action_traces"].get_array();
-         for( const auto& at : actions ) {
-            const auto& receipt = at["receipt"];
-            auto receiver = receipt["receiver"].as_string();
-            const auto& act = at["act"].get_object();
-            auto code = act["account"].as_string();
-            auto func = act["name"].as_string();
-            auto args = fc::json::to_string( act["data"] );
-            auto console = at["console"].as_string();
-
-            /*
-            if( code == "eosio" && func == "setcode" )
-               args = args.substr(40)+"...";
-            if( name(code) == config::system_account_name && func == "setabi" )
-               args = args.substr(40)+"...";
-            */
-            if( args.size() > 100 ) args = args.substr(0,100) + "...";
-            cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
-            if( console.size() ) {
-               std::stringstream ss(console);
-               string line;
-               std::getline( ss, line );
-               cout << ">> " << line << "\n";
-            }
+         for( const auto& a : actions ) {
+            print_action_tree( a );
          }
+         wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
       }
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
@@ -387,50 +403,52 @@ chain::action create_action(const vector<permission_level>& authorization, const
 
 fc::variant regproducer_variant(const account_name& producer,
                                 public_key_type key,
-                                uint64_t max_storage_size,
-                                uint32_t percent_of_max_inflation_rate,
-                                uint32_t storage_reserve_ratio) {
+                                string url) {
+   /*
    fc::variant_object params = fc::mutable_variant_object()
-           ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
-           ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
-           ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
-           ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
-           ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
-           ("per_lock_net_usage", config::default_per_lock_net_usage)
-           ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
-           ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
-           ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
-           ("max_transaction_net_usage", config::default_max_transaction_net_usage)
-           ("max_block_cpu_usage", config::default_max_block_cpu_usage)
-           ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
-           ("max_block_net_usage", config::default_max_block_net_usage)
-           ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
-           ("max_transaction_lifetime", config::default_max_trx_lifetime)
-           ("max_transaction_exec_time", config::default_max_trx_runtime)
-           ("max_authority_depth", config::default_max_auth_depth)
-           ("max_inline_depth", config::default_max_inline_depth)
-           ("max_inline_action_size", config::default_max_inline_action_size)
-           ("max_generated_transaction_count", config::default_max_gen_trx_count)
-           ("max_storage_size", max_storage_size)
-           ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
-           ("storage_reserve_ratio", storage_reserve_ratio);
+         ("max_block_net_usage", config::default_max_block_net_usage)
+         ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
+         ("max_transaction_net_usage", config::default_max_transaction_net_usage)
+         ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
+         ("context_free_discount_net_usage_num", config::default_context_free_discount_net_usage_num)
+         ("context_free_discount_net_usage_den", config::default_context_free_discount_net_usage_den)
+         ("max_block_cpu_usage", config::default_max_block_cpu_usage)
+         ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
+         ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
+         ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
+         ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
+         ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
+         ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
+         ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
+         ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
+         ("max_transaction_lifetime", config::default_max_trx_lifetime)
+         ("deferred_trx_expiration_window", config::default_deferred_trx_expiration_window)
+         ("max_transaction_delay", config::default_max_trx_delay)
+         ("max_inline_action_size", config::default_max_inline_action_size)
+         ("max_inline_depth", config::default_max_inline_action_depth)
+         ("max_authority_depth", config::default_max_auth_depth)
+         ("max_generated_transaction_count", config::default_max_gen_trx_count)
+         ("max_storage_size", max_storage_size)
+         ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
+         ("storage_reserve_ratio", storage_reserve_ratio);
+         */
 
    return fc::mutable_variant_object()
             ("producer", producer)
-            ("producer_key", fc::raw::pack(key))
-            ("prefs", params);
+            ("producer_key", key)
+            ("url", url);
 }
 
-chain::action create_transfer(const name& sender, const name& recipient, uint64_t amount, const string& memo ) {
+chain::action create_transfer(const string& contract, const name& sender, const name& recipient, asset amount, const string& memo ) {
 
    auto transfer = fc::mutable_variant_object
       ("from", sender)
       ("to", recipient)
-      ("quantity", asset(amount))
+      ("quantity", amount)
       ("memo", memo);
 
    auto args = fc::mutable_variant_object
-      ("code", name(config::system_account_name))
+      ("code", contract)
       ("action", "transfer")
       ("args", transfer);
 
@@ -438,7 +456,7 @@ chain::action create_transfer(const name& sender, const name& recipient, uint64_
 
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission),
-      config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>()
+      contract, "transfer", result.get_object()["binargs"].as<bytes>()
    };
 }
 
@@ -607,17 +625,13 @@ CLI::callback_t old_host_port = [](CLI::results_t) {
 struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
-   uint64_t max_storage_size = 10 * 1024 * 1024;
-   uint32_t percent_of_max_inflation_rate = 0;
-   uint32_t storage_reserve_ratio = 1000;
+   string url;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
-      register_producer->add_option("max_storage_size", max_storage_size, localized("The max storage size"), true);
-      register_producer->add_option("percent_of_max_inflation_rate", percent_of_max_inflation_rate, localized("Percent of max inflation rate"), true);
-      register_producer->add_option("storage_reserve_ratio", storage_reserve_ratio, localized("Storage Reserve Ratio"), true);
+      register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
       add_standard_transaction_options(register_producer);
 
 
@@ -627,7 +641,7 @@ struct register_producer_subcommand {
             producer_key = public_key_type(producer_key_str);
          } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
-         auto regprod_var = regproducer_variant(producer_str, producer_key, max_storage_size, percent_of_max_inflation_rate, storage_reserve_ratio);
+         auto regprod_var = regproducer_variant(producer_str, producer_key, url );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
       });
    }
@@ -672,19 +686,22 @@ struct vote_producer_proxy_subcommand {
 
 struct vote_producers_subcommand {
    string voter_str;
-   std::vector<std::string> producers;
+   vector<eosio::name> producer_names;
 
    vote_producers_subcommand(CLI::App* actionRoot) {
       auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
       vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_producers->add_option("producers", producers, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
+      vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
       add_standard_transaction_options(vote_producers);
 
       vote_producers->set_callback([this] {
+
+         std::sort( producer_names.begin(), producer_names.end() );
+
          fc::variant act_payload = fc::mutable_variant_object()
                   ("voter", voter_str)
                   ("proxy", "")
-                  ("producers", producers);
+                  ("producers", producer_names);
          send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
       });
    }
@@ -713,6 +730,7 @@ struct delegate_bandwidth_subcommand {
                   ("stake_net_quantity", stake_net_amount + " EOS")
                   ("stake_cpu_quantity", stake_cpu_amount + " EOS")
                   ("stake_storage_quantity", stake_storage_amount + " EOS");
+                  wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
    }
@@ -1075,34 +1093,104 @@ int main( int argc, char** argv ) {
    getTransaction->set_callback([&] {
       transaction_id_type transaction_id;
       try {
+         while( transaction_id_str.size() < 64 ) transaction_id_str += "0";
          transaction_id = transaction_id_type(transaction_id_str);
       } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
-      auto arg= fc::mutable_variant_object( "transaction_id", transaction_id);
+      auto arg= fc::mutable_variant_object( "id", transaction_id);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
-   // get actions 
+   // get actions
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;
+   bool fullact = false;
+   bool prettyact = false;
+   bool printconsole = false;
 
    int32_t pos_seq = -1;
    int32_t offset = -20;
    auto getActions = get->add_subcommand("actions", localized("Retrieve all actions with specific account name referenced in authorization or receiver"), false);
    getActions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getActions->add_option("pos", pos_seq, localized("sequence number of action for this account, -1 for last"));
-   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset) for positive offset or [pos-offset,pos) for negative offset"));
+   getActions->add_option("offset", offset, localized("get actions [pos,pos+offset] for positive offset or [pos-offset,pos) for negative offset"));
    getActions->add_flag("--json,-j", printjson, localized("print full json"));
+   getActions->add_flag("--full", fullact, localized("don't truncate action json"));
+   getActions->add_flag("--pretty", prettyact, localized("pretty print full action json "));
+   getActions->add_flag("--console", printconsole, localized("print console output generated by action "));
    getActions->set_callback([&] {
       fc::mutable_variant_object arg;
       arg( "account_name", account_name );
       arg( "pos", pos_seq );
       arg( "offset", offset);
 
-      edump((get_actions_func)(arg));
       auto result = call(get_actions_func, arg);
-      //if( printjson ) {
-      std::cout << fc::json::to_pretty_string(result) << std::endl;
+
+
+      if( printjson ) {
+         std::cout << fc::json::to_pretty_string(result) << std::endl;
+      } else {
+          auto& traces = result["actions"].get_array();
+          uint32_t lib = result["last_irreversible_block"].as_uint64();
+
+
+          cout  << "#" << setw(5) << "seq" << "  " << setw( 24 ) << left << "when"<< "  " << setw(24) << right << "contract::action" << " => " << setw(13) << left << "receiver" << " " << setw(11) << left << "trx id..." << " args\n";
+          cout  << "================================================================================================================\n";
+          for( const auto& trace: traces ) {
+              std::stringstream out;
+              if( trace["block_num"].as_uint64() <= lib )
+                 out << "#";
+              else
+                 out << "?";
+
+              out << setw(5) << trace["account_action_seq"].as_uint64() <<"  ";
+              out << setw(24) << trace["block_time"].as_string() <<"  ";
+
+              const auto& at = trace["action_trace"].get_object();
+
+              auto id = at["trx_id"].as_string();
+              const auto& receipt = at["receipt"];
+              auto receiver = receipt["receiver"].as_string();
+              const auto& act = at["act"].get_object();
+              auto code = act["account"].as_string();
+              auto func = act["name"].as_string();
+              string args;
+              if( prettyact ) {
+                  args = fc::json::to_pretty_string( act["data"] );
+              }
+              else {
+                 args = fc::json::to_string( act["data"] );
+                 if( !fullact ) {
+                    args = args.substr(0,60) + "...";
+                 }
+              }
+              out << std::setw(24) << std::right<< (code +"::" + func) << " => " << left << std::setw(13) << receiver;
+
+              out << " " << setw(11) << (id.substr(0,8) + "...");
+
+              if( fullact || prettyact ) out << "\n";
+              else out << " ";
+
+              out << args ;//<< "\n";
+
+              if( trace["block_num"].as_uint64() <= lib ) {
+                 dlog( "\r${m}", ("m",out.str()) );
+              } else {
+                 wlog( "\r${m}", ("m",out.str()) );
+              }
+              if( printconsole ) {
+                 auto console = at["console"].as_string();
+                 if( console.size() ) {
+                    stringstream out;
+                    std::stringstream ss(console);
+                    string line;
+                    std::getline( ss, line );
+                    out << ">> " << line << "\n";
+                    cerr << out.str(); //ilog( "\r${m}                                   ", ("m",out.str()) );
+                 }
+              }
+          }
+      }
    });
 
 
@@ -1247,15 +1335,17 @@ int main( int argc, char** argv ) {
    auto setActionPermission = set_action_permission_subcommand(setAction);
 
    // Transfer subcommand
+   string con = "eosio.token";
    string sender;
    string recipient;
-   uint64_t amount;
+   string amount;
    string memo;
    auto transfer = app.add_subcommand("transfer", localized("Transfer EOS from account to account"), false);
    transfer->add_option("sender", sender, localized("The account sending EOS"))->required();
    transfer->add_option("recipient", recipient, localized("The account receiving EOS"))->required();
    transfer->add_option("amount", amount, localized("The amount of EOS to send"))->required();
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
+   transfer->add_option("--contract,-c", con, localized("The contract which controls the token"));
 
    add_standard_transaction_options(transfer, "sender@active");
    transfer->set_callback([&] {
@@ -1266,7 +1356,7 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(sender, recipient, amount, memo)});
+      send_actions({create_transfer(con,sender, recipient, asset::from_string(amount), memo)});
    });
 
    // Net subcommand

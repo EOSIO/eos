@@ -4,7 +4,7 @@
 #pragma GCC diagnostic pop
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 
 #include <payloadless/payloadless.wast.hpp>
 #include <payloadless/payloadless.abi.hpp>
@@ -22,7 +22,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -39,7 +38,7 @@ BOOST_FIXTURE_TEST_CASE( test_doit, payloadless_tester ) {
    set_abi( N(payloadless), payloadless_abi );
 
    auto trace = push_action(N(payloadless), N(doit), N(payloadless), mutable_variant_object());
-   auto msg = trace.action_traces.front().console;
+   auto msg = trace->action_traces.front().console;
    BOOST_CHECK_EQUAL(msg == "Im a payloadless action", true);
 }
 

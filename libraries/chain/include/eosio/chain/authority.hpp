@@ -56,6 +56,10 @@ struct authority {
    friend bool operator == ( const authority& lhs, const authority& rhs ) {
       return tie( lhs.threshold, lhs.delay_sec, lhs.keys, lhs.accounts ) == tie( rhs.threshold, rhs.delay_sec, rhs.keys, rhs.accounts );
    }
+
+   friend bool operator != ( const authority& lhs, const authority& rhs ) {
+      return tie( lhs.threshold, lhs.delay_sec, lhs.keys, lhs.accounts ) != tie( rhs.threshold, rhs.delay_sec, rhs.keys, rhs.accounts );
+   }
 };
 
 

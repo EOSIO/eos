@@ -51,7 +51,7 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
           } catch (fc::exception& e) { \
              error_results results{500, "Internal Service Error", e}; \
              cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e.to_detail_string())); \
           } \
        }}
 

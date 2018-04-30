@@ -21,7 +21,7 @@ namespace eosio { namespace chain {
       uint8_t              vm_version   = 0;
       bool                 privileged   = false;
 
-      time_point_sec       last_code_update;
+      time_point           last_code_update;
       digest_type          code_version;
       block_timestamp_type creation_date;
 
