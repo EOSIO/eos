@@ -7,7 +7,7 @@ steps:
         /usr/bin/ninja EOS_ut_coverage
     label: ":spiral_note_pad: Generate Report"
     agents:
-      - "role=linux-builder"
+      - "role=linux-coverage"
     artifact_paths: "EOS_ut_coverage/**/*"
     plugins:
       docker#v1.1.1:
