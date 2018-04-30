@@ -18,7 +18,11 @@
 #include <queue>
 
 #include <soci/soci.h>
-#include <soci/postgresql/soci-postgresql.h>
+
+#include "accounts_table.h"
+#include "transactions_table.h"
+#include "blocks_table.h"
+#include "actions_table.h"
 
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
@@ -76,6 +80,13 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
 
     std::string uri_str = options.at(SQL_DB_URI_OPTION).as<std::string>();
     ilog("connecting to ${u}", ("u", uri_str));
+
+    m_session = std::make_shared<soci::session>(uri_str);
+    m_accounts_table = std::make_unique<accounts_table>();
+    m_transactions_table = std::make_unique<transactions_table>();
+    m_actions_table = std::make_unique<actions_table>();
+    m_blocks_table = std::make_unique<blocks_table>(m_session);
+
 //    mongocxx::uri uri = mongocxx::uri{uri_str};
 //    my->db_name = uri.database();
 //    if (my->db_name.empty())
