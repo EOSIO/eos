@@ -28,9 +28,9 @@ namespace eosio { namespace chain { namespace plugin_interface {
    }
 
    namespace methods {
-      using get_block_by_number    = method_decl<chain_plugin_interface, const signed_block&(uint32_t block_num)>;
-      using get_block_by_id        = method_decl<chain_plugin_interface, const signed_block&(const block_id_type& block_id)>;
-      using get_head_block_id      = method_decl<chain_plugin_interface, const block_id_type& ()>;
+      using get_block_by_number    = method_decl<chain_plugin_interface, const signed_block_ptr&(uint32_t block_num)>;
+      using get_block_by_id        = method_decl<chain_plugin_interface, const signed_block_ptr&(const block_id_type& block_id)>;
+      using get_head_block_id      = method_decl<chain_plugin_interface, block_id_type ()>;
 
       using get_last_irreversible_block_number = method_decl<chain_plugin_interface, uint32_t ()>;
    }
