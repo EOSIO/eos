@@ -42,50 +42,77 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( authority, (threshold)(delay_sec)(keys)(accounts) )
    };
 
+   struct block_header {
+      checksum256                               previous;
+      time                                      timestamp;
+      checksum256                               transaction_mroot;
+      checksum256                               action_mroot;
+      account_name                              producer;
+      uint32_t                                  schedule_version;
+      eosio::optional<eosio::producer_schedule> new_producers;
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)
+                                     (producer)(schedule_version)(new_producers))
+   };
+
+
    /*
-    * Empty handlers for native messages.
     * Method parameters commented out to prevent generation of code that parses input data.
     */
-   class native {
+   class native : public eosio::contract {
       public:
+         using eosio::contract::contract;
 
-      void newaccount( account_name     creator,
-                       account_name     newact
-                              /*
-                              const authority& owner,
-                              const authority& active,
-                              const authority& recovery*/ ) {
-         eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
-         set_resource_limits( newact, 1000, 0, 0 );
-      }
+         /**
+          *  Called after a new account is created. This code enforces resource-limits rules
+          *  for new accounts as well as new account naming conventions.
+          *
+          *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
+          *  characters long without '.' until a future account auction process is implemented
+          *  which prevents name squatting.
+          *
+          *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
+          *     therefore, this method will execute an inline buyram from receiver for newacnt in
+          *     an amount equal to the current new account creation fee. 
+          */
+         void newaccount( account_name     creator,
+                          account_name     newact
+                                 /*  no need to parse authorites 
+                                 const authority& owner,
+                                 const authority& active,
+                                 const authority& recovery*/ ) {
+            eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
+            set_resource_limits( newact, 1000, 0, 0 );
+         }
 
-      void updateauth( /*account_name     account,
-                              permission_name  permission,
-                              permission_name  parent,
-                              const authority& data*/ ) {}
+         void updateauth( /*account_name     account,
+                                 permission_name  permission,
+                                 permission_name  parent,
+                                 const authority& data*/ ) {}
 
-      void deleteauth( /*account_name account, permission_name permission*/ ) {}
+         void deleteauth( /*account_name account, permission_name permission*/ ) {}
 
-      void linkauth( /*account_name    account,
-                            account_name    code,
-                            action_name     type,
-                            permission_name requirement*/ ) {}
+         void linkauth( /*account_name    account,
+                               account_name    code,
+                               action_name     type,
+                               permission_name requirement*/ ) {}
 
-      void unlinkauth( /*account_name account,
-                              account_name code,
-                              action_name  type*/ ) {}
+         void unlinkauth( /*account_name account,
+                                 account_name code,
+                                 action_name  type*/ ) {}
 
-      void postrecovery( /*account_name       account,
-                                const authority&   data,
-                                const std::string& memo*/ ) {}
+         void postrecovery( /*account_name       account,
+                                   const authority&   data,
+                                   const std::string& memo*/ ) {}
 
-      void passrecovery( /*account_name account*/ ) {}
+         void passrecovery( /*account_name account*/ ) {}
 
-      void vetorecovery( /*account_name account*/ ) {}
+         void vetorecovery( /*account_name account*/ ) {}
 
-      void onerror( /*const bytes&*/ ) {}
+         void onerror( /*const bytes&*/ ) {}
 
-      void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
+         void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
 
    };
 }
