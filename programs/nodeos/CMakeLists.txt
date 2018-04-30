@@ -53,6 +53,7 @@ target_link_libraries( nodeos
         PRIVATE -Wl,${whole_archive_flag} net_api_plugin             -Wl,${no_whole_archive_flag}
 #        PRIVATE -Wl,${whole_archive_flag} faucet_testnet_plugin      -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} sql_db_plugin              -Wl,${no_whole_archive_flag}
         PRIVATE chain_plugin http_plugin producer_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
@@ -87,4 +88,4 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/eosio
                               GROUP_EXECUTE
                               WORLD_READ
                               WORLD_EXECUTE
-)
+			)
