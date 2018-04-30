@@ -1,0 +1,52 @@
+{
+  "types": [{
+    "new_type_name": "ethereum_account",
+    "type": "string"
+  }],
+  "structs": [{
+      "name": "account",
+      "base": "",
+      "fields": [{
+          "name": "id",
+          "type": "uint64"
+        }, {
+          "name": "ethereum_account",
+          "type": "ethereum_account"
+        }, {
+          "name": "balance",
+          "type": "asset"
+        }
+      ]
+    },
+
+    {
+      "name": "add",
+      "base": "",
+      "fields": [{
+          "name": "ethereum_account",
+          "type": "ethereum_account"
+        }, {
+          "name": "balance",
+          "type": "asset"
+        }
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "add",
+      "type": "add"
+    }
+  ],
+  "tables": [{
+      "name": "accounts",
+      "index_type": "i64",
+      "key_names": [
+        "id"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "account"
+    }
+  ]
+}
