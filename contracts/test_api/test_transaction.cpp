@@ -256,6 +256,18 @@ void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, ui
    trx.send( 0xffffffffffffffff, receiver );
 }
 
+void test_transaction::send_deferred_tx_given_payer() {
+   using namespace eosio;
+   uint64_t payer;
+   read_action_data(&payer, action_data_size());
+
+   auto trx = transaction();
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   trx.delay_sec = 2;
+   trx.send( 0xffffffffffffffff, payer );
+}
+
 void test_transaction::cancel_deferred_transaction() {
    using namespace eosio;
    cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
