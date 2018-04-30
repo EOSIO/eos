@@ -2,10 +2,13 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/controller.hpp>
+#include <eosio/chain/contract_types.hpp>
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 
@@ -37,7 +40,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -92,15 +94,15 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
 
       set_transaction_headers(trx);
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-      auto result = push_transaction( trx );
-      BOOST_CHECK_EQUAL(result.status, transaction_receipt::executed);
-      BOOST_CHECK_EQUAL(result.action_traces.size(), 1);
-      BOOST_CHECK_EQUAL(result.action_traces.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.account.to_string(), name(N(asserter)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.size(),  1 );
-      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
-      BOOST_CHECK_EQUAL(result.action_traces.at(0).act.authorization.at(0).permission.to_string(),  name(config::active_name).to_string() );
+      transaction_trace_ptr result = push_transaction( trx );
+      BOOST_CHECK_EQUAL(result->receipt.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(result->action_traces.size(), 1);
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).receipt.receiver.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.account.to_string(), name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.size(),  1 );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.at(0).permission.to_string(),  name(config::active_name).to_string() );
       no_assert_id = trx.id();
    }
 
@@ -120,7 +122,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(push_transaction( trx ), transaction_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), fc::assert_exception);
    }
 
    produce_blocks(1);
@@ -220,7 +222,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
 
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
       try {
-         const auto& accnt  = this->control->get_database().get<account_object,by_name>( name );
+         const auto& accnt  = this->control->db().get<account_object,by_name>( name );
          abi_def abi;
          if (abi_serializer::to_abi(accnt.abi, abi)) {
             return abi_serializer(abi);
@@ -529,8 +531,7 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
       set_transaction_headers(trx);
       trx.sign(get_private_key( N(aligncheck), "active" ), chain_id_type());
       push_transaction(trx);
-      auto sb = produce_block();
-      block_trace trace(sb);
+      produce_block();
       
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    };
@@ -605,7 +606,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
 
-   resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
+   resource_limits_manager &mgr = control->get_mutable_resource_limits_manager();
    create_accounts( {N(f_tests)} );
    create_accounts( {N(acc2)} );
    bool pass = false;
@@ -762,7 +763,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
     set_abi(N(stltest), stltest_abi);
     produce_blocks(1);
 
-    const auto& accnt  = control->get_database().get<account_object,by_name>( N(stltest) );
+    const auto& accnt  = control->db().get<account_object,by_name>( N(stltest) );
     abi_def abi;
     BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
     abi_serializer abi_ser(abi);
@@ -970,7 +971,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
    set_code(N(noop), noop_wast);
 
    set_abi(N(noop), noop_abi);
-   const auto& accnt  = control->get_database().get<account_object,by_name>(N(noop));
+   const auto& accnt  = control->db().get<account_object,by_name>(N(noop));
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi);
@@ -1035,7 +1036,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    set_abi(config::system_account_name, eosio_system_abi);
    produce_block();
 
-   const auto& accnt  = control->get_database().get<account_object,by_name>(config::system_account_name);
+   const auto& accnt  = control->db().get<account_object,by_name>(config::system_account_name);
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi);
@@ -1045,7 +1046,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    name a = N(alice);
    authority owner_auth =  authority( get_public_key( a, "owner" ) );
    trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
-                             contracts::newaccount{
+                             eosio::chain::newaccount{
                                    .creator  = config::system_account_name,
                                    .name     = a,
                                    .owner    = owner_auth,
@@ -1129,7 +1130,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
 
    //should fail, a check to make sure assert() in wasm is being evaluated correctly
-   BOOST_CHECK_THROW(push_transaction(trx), transaction_exception);
+   BOOST_CHECK_THROW(push_transaction(trx), fc::assert_exception);
    }
 
    produce_blocks(1);
@@ -1145,7 +1146,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
 
    //should fail, this element index (5) does not exist
-   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(push_transaction(trx), wasm_execution_error);
    }
 
    produce_blocks(1);
@@ -1161,7 +1162,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
 
    //should fail, this element index is out of range
-   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(push_transaction(trx), wasm_execution_error);
    }
 
    produce_blocks(1);
@@ -1461,7 +1462,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       signed_transaction trx;
       auto wasm = ::eosio::chain::wast_to_wasm(code);
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
-                              contracts::setcode{
+                              eosio::chain::setcode{
                                  .account    = account,
                                  .vmtype     = 0,
                                  .vmversion  = 0,
@@ -1513,7 +1514,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
       signed_transaction trx;
       auto wasm = ::eosio::chain::wast_to_wasm(code);
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
-                              contracts::setcode{
+                              eosio::chain::setcode{
                                  .account    = account,
                                  .vmtype     = 0,
                                  .vmversion  = 0,

@@ -20,7 +20,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp.in ${CMAKE_CURRENT_S
 
 # Temporarily remove some tests to get chain_test to compile
 #file(GLOB UNIT_TESTS "tests/wallet_tests.cpp" "chain_tests/*.cpp" "api_tests/*.cpp" "wasm_tests/*.cpp")
-file(GLOB UNIT_TESTS "tests/wallet_tests.cpp" "api_tests/*.cpp")
+file(GLOB UNIT_TESTS "tests/wallet_tests.cpp" "api_tests/*.cpp" "wasm_tests/wasm_tests.cpp")
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp)
 target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities chain_plugin wallet_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
