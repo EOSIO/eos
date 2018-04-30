@@ -1,0 +1,16 @@
+steps:
+  - command: |
+        echo "+++ :hammer: Building" && \
+        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DWASM_ROOT=/root/opt/wasm -DOPENSSL_ROOT_DIR=/usr/include/openssl -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_COVERAGE_TESTING=true -DBUILD_DOXYGEN=false && \
+        ninja
+        echo "--- :spiral_note_pad: Generating Code Coverage Report" && \
+        ninja EOS_ut_coverage
+    label: ":spiral_note_pad: Generate Report"
+    agents:
+      - "role=linux-builder"
+    artifact_paths: "EOS_ut_coverage/**/*"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:ubuntu18"
+        workdir: /data/job
+    timeout: 30
