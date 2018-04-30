@@ -17,7 +17,6 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
-#include <fc/utf8.hpp>
 
 #include <softfloat.hpp>
 #include <boost/asio.hpp>
@@ -784,17 +783,6 @@ class permission_api : public context_aware_api {
       }
 };
 
-class string_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-
-      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
-         const bool test = fc::is_utf8(std::string( str, datalen ));
-
-         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
-      }
-};
-
 class system_api : public context_aware_api {
    public:
       explicit system_api( apply_context& ctx )
@@ -1550,10 +1538,6 @@ REGISTER_INTRINSICS(crypto_api,
 
 REGISTER_INTRINSICS(permission_api,
    (check_authorization,  int(int64_t, int64_t, int, int))
-);
-
-REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(system_api,
