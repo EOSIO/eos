@@ -80,16 +80,21 @@ namespace eosiosystem {
                                      const asset& stake_net_quantity, const asset& stake_cpu_quantity,
                                      const asset& stake_storage_quantity )
    {
+      require_auth( from );
+
       eosio_assert( stake_cpu_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_net_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_storage_quantity.amount >= 0, "must stake a positive amount" );
+
+      if( stake_storage_quantity.amount > 0 ) {
+         eosio_assert( from == receiver, "you may only stake storage to yourself" );
+      }
 
       print( "adding stake...", stake_net_quantity, " ", stake_cpu_quantity, " ", stake_storage_quantity );
       asset total_stake = stake_cpu_quantity + stake_net_quantity + stake_storage_quantity;
       print( "\ntotal stake: ", total_stake );
       eosio_assert( total_stake.amount > 0, "must stake a positive amount" );
 
-      require_auth( from );
 
       //eosio_assert( is_account( receiver ), "can only delegate resources to an existing account" );
       int64_t storage_bytes = 0;

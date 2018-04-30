@@ -24,8 +24,8 @@ class transaction_metadata {
       std::function<void(const transaction_trace_ptr&)>       on_result;
 
 
-      transaction_metadata( const signed_transaction& t )
-      :trx(t),packed_trx(t,packed_transaction::zlib) {
+      transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
+      :trx(t),packed_trx(t, c) {
          id = trx.id();
          //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
          signed_id = digest_type::hash(packed_trx);
