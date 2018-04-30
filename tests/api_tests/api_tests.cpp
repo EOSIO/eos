@@ -732,16 +732,15 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
+   produce_blocks();
+   create_accounts( {N(testapi), N(testapi2), N(alice)} );
+   set_code( N(testapi), test_api_wast );
+   set_code( N(testapi2), test_api_wast );
+   produce_blocks();
    // Fix this unit test compilation
    BOOST_CHECK(false);
 #warning TODO: FIX THIS
 #if 0
-   produce_blocks(2);
-   create_account( N(testapi) );
-   produce_blocks(100);
-   set_code( N(testapi), test_api_wast );
-   produce_blocks(1);
-
    //schedule
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
    //check that it doesn't get executed immediately
@@ -782,9 +781,18 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       props.configuration.max_generated_transaction_count = 0;
    });
    BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
+#endif
+
+   // Send deferred transaction with payer != receiver, payer is alice in this case, this should fail since we don't have authorization of alice
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), transaction_exception);
+         
+   // If we make testapi to be priviledge account, deferred transaction will work no matter who is the payer
+   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+                                                       ("account", "testapi")
+                                                       ("is_priv", 1));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", fc::raw::pack(account_name("alice")));
 
    BOOST_REQUIRE_EQUAL( validate(), true );
-#endif
 } FC_LOG_AND_RETHROW() }
 
 template <uint64_t NAME>
