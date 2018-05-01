@@ -192,7 +192,6 @@
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
-		export BOOST_ROOT=/usr/local
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		WASM_ROOT=/usr/local/wasm
 	fi
@@ -226,7 +225,7 @@
 		exit -1
 	fi
 	
-	TIME_END=$(( $(date -u +%s) - "${TIME_BEGIN}" ))
+	TIME_END=$(( $(date -u +%s) - ${TIME_BEGIN} ))
 
 	printf "\n\n${bldred}\t _______  _______  _______ _________ _______\n"
 	printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
