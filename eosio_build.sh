@@ -142,7 +142,6 @@
 		FILE=${WORK_DIR}/scripts/eosio_build_darwin.sh
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
-		export BOOST_ROOT=/usr/local
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		export WASM_ROOT=/usr/local/wasm
