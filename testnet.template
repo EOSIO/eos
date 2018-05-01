@@ -13,7 +13,8 @@ if [ -z "$biosport" ]; then
 fi
 
 wddir=eosio-ignition-wd
-wdurl=http://localhost:8899
+wdaddr=localhost:8899
+wdurl=http://$wdaddr
 # Manual deployers, add a line below this block that looks like:
 #    bioshost=$BIOS_HOSTNAME
 #    biosport=$BIOS_HTTP_PORT
@@ -34,7 +35,7 @@ mkdir $wddir
 step=1
 echo Initializing ignition sequence  at $(date) | tee $logfile
 
-echo "http-server-address = 127.0.0.1:$wdport" > $wddir/config.ini
+echo "http-server-address = $wdaddr" > $wddir/config.ini
 
 programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
 echo $$ > ignition_wallet.pid
