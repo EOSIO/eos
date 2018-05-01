@@ -49,7 +49,6 @@ void apply_eosio_newaccount(apply_context& context) {
    try {
    context.require_authorization(create.creator);
 //   context.require_write_lock( config::eosio_auth_scope );
-   auto& resources     = context.control.get_mutable_resource_limits_manager();
    auto& authorization = context.control.get_mutable_authorization_manager();
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
@@ -81,7 +80,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
    const auto& new_account = db.create<account_object>([&](auto& a) {
       a.name = create.name;
-      a.creation_date = context.control.head_block_time();
+      a.creation_date = context.control.pending_block_time();
    });
 
    db.create<account_sequence_object>([&](auto& a) {
@@ -93,26 +92,19 @@ void apply_eosio_newaccount(apply_context& context) {
    const auto& active_permission = authorization.create_permission( create.name, config::active_name, owner_permission.id,
                                                                     std::move(create.active) );
 
-   resources.add_pending_account_ram_usage(
-      create.creator,
-      (int64_t)config::overhead_per_account_ram_bytes
-   );
+   context.control.get_mutable_resource_limits_manager().initialize_account(create.name);
 
-   resources.initialize_account(create.name);
-   resources.add_pending_account_ram_usage(
-      create.name,
-      (int64_t)(config::billable_size_v<permission_object> + owner_permission.auth.get_billable_size())
-   );
-   resources.add_pending_account_ram_usage(
-      create.name,
-      (int64_t)(config::billable_size_v<permission_object> + active_permission.auth.get_billable_size())
-   );
+   int64_t ram_delta = config::overhead_per_account_ram_bytes;
+   ram_delta += 2*config::billable_size_v<permission_object>;
+   ram_delta += owner_permission.auth.get_billable_size();
+   ram_delta += active_permission.auth.get_billable_size();
+
+   context.trx_context.add_ram_usage(create.name, ram_delta);
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.db;
-   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
 //   context.require_write_lock( config::eosio_auth_scope );
@@ -141,22 +133,18 @@ void apply_eosio_setcode(apply_context& context) {
       // Added resize(0) here to avoid bug in boost vector container
       a.code.resize( 0 );
       a.code.resize( code_size );
-      a.last_code_update = context.control.head_block_time();
+      a.last_code_update = context.control.pending_block_time();
       memcpy( a.code.data(), act.code.data(), code_size );
 
    });
 
    if (new_size != old_size) {
-      resources.add_pending_account_ram_usage(
-         act.account,
-         new_size - old_size
-      );
+      context.trx_context.add_ram_usage( act.account, new_size - old_size );
    }
 }
 
 void apply_eosio_setabi(apply_context& context) {
    auto& db = context.db;
-   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setabi>();
 
    context.require_authorization(act.account);
@@ -182,10 +170,7 @@ void apply_eosio_setabi(apply_context& context) {
    });
 
    if (new_size != old_size) {
-      resources.add_pending_account_ram_usage(
-         act.account,
-         new_size - old_size
-      );
+      context.trx_context.add_ram_usage( act.account, new_size - old_size );
    }
 }
 
@@ -195,7 +180,6 @@ void apply_eosio_updateauth(apply_context& context) {
    context.require_authorization(update.account); // only here to mark the single authority on this action as used
 
    auto& authorization = context.control.get_mutable_authorization_manager();
-   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto& db = context.db;
 
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
@@ -242,23 +226,19 @@ void apply_eosio_updateauth(apply_context& context) {
       db.modify(*permission, [&update, &parent_id, &context](permission_object& po) {
          po.auth = update.auth;
          po.parent = parent_id;
-         po.last_updated = context.control.head_block_time();
+         po.last_updated = context.control.pending_block_time();
          po.delay = fc::seconds(update.auth.delay_sec);
       });
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      resources.add_pending_account_ram_usage(
-         permission->owner,
-         new_size - old_size
-      );
+      context.trx_context.add_ram_usage( permission->owner, new_size - old_size );
    } else {
       const auto& p = authorization.create_permission( update.account, update.permission, parent_id, update.auth );
 
-      resources.add_pending_account_ram_usage(
-         update.account,
-         (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size())
-      );
+      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size());
+
+      context.trx_context.add_ram_usage( update.account, new_size );
    }
 }
 
@@ -272,7 +252,6 @@ void apply_eosio_deleteauth(apply_context& context) {
    EOS_ASSERT(remove.permission != config::owner_name, action_validate_exception, "Cannot delete owner authority");
 
    auto& authorization = context.control.get_authorization_manager();
-   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto& db = context.db;
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});
@@ -291,7 +270,7 @@ void apply_eosio_deleteauth(apply_context& context) {
                  "Cannot delete a linked authority. Unlink the authority first");
    }
 
-   resources.add_pending_account_ram_usage(
+   context.trx_context.add_ram_usage(
       permission.owner,
       -(int64_t)(config::billable_size_v<permission_object> + permission.auth.get_billable_size())
    );
@@ -303,7 +282,6 @@ void apply_eosio_deleteauth(apply_context& context) {
 void apply_eosio_linkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
-   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto requirement = context.act.data_as<linkauth>();
    try {
       EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
@@ -340,7 +318,7 @@ void apply_eosio_linkauth(apply_context& context) {
             link.required_permission = requirement.requirement;
          });
 
-         resources.add_pending_account_ram_usage(
+         context.trx_context.add_ram_usage(
             l.account,
             (int64_t)(config::billable_size_v<permission_link_object>)
          );
@@ -353,7 +331,6 @@ void apply_eosio_linkauth(apply_context& context) {
 void apply_eosio_unlinkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
-   auto& resources = context.control.get_mutable_resource_limits_manager();
    auto& db = context.db;
    auto unlink = context.act.data_as<unlinkauth>();
 
@@ -362,7 +339,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = db.find<permission_link_object, by_action_name>(link_key);
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
-   resources.add_pending_account_ram_usage(
+   context.trx_context.add_ram_usage(
       link->account,
       -(int64_t)(config::billable_size_v<permission_link_object>)
    );
@@ -428,7 +405,7 @@ void apply_eosio_postrecovery(apply_context& context) {
    FC_ASSERT(!get_pending_recovery(context, account), "Account ${account} already has a pending recovery request!", ("account",account));
 
    fc::microseconds delay_lock;
-   auto now = context.control.head_block_time();
+   auto now = context.control.pending_block_time();
    if (auth.actor == account && auth.permission == N(active)) {
       // process owner recovery from active
       delay_lock = fc::days(30);

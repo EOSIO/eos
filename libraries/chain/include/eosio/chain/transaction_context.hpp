@@ -51,6 +51,8 @@ namespace eosio { namespace chain {
          void check_cpu_usage()const;
          void check_time()const;
 
+         void add_ram_usage( account_name account, int64_t ram_delta );
+
       private:
 
          void dispatch_action( const action& a, account_name receiver, bool context_free = false );
@@ -73,6 +75,7 @@ namespace eosio { namespace chain {
 
          vector<action_receipt>        executed;
          flat_set<account_name>        bill_to_accounts;
+         flat_set<account_name>        validate_ram_usage;
          uint64_t                      max_net = 0;   /// the maximum number of network usage bytes the transaction can consume
          uint64_t                      max_cpu = 0;   /// the maximum number of CPU instructions the transaction may consume
          fc::microseconds              delay;

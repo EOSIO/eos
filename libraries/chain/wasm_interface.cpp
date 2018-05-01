@@ -17,7 +17,6 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
-#include <fc/utf8.hpp>
 
 #include <softfloat.hpp>
 #include <boost/asio.hpp>
@@ -50,7 +49,7 @@ namespace eosio { namespace chain {
       //there are a couple opportunties for improvement here--
       //Easy: Cache the Module created here so it can be reused for instantiaion
       //Hard: Kick off instantiation in a separate thread at this location
-   }
+	   }
 
    void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
       my->get_instantiated_module(code_id, code)->apply(context);
@@ -133,7 +132,9 @@ class privileged_api : public context_aware_api {
          EOS_ASSERT(ram_bytes >= -1, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
          EOS_ASSERT(net_weight >= -1, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
          EOS_ASSERT(cpu_weight >= -1, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
-         context.control.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight);
+         if( context.control.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight) ) {
+            context.trx_context.validate_ram_usage.insert( account );
+         }
       }
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
@@ -784,17 +785,6 @@ class permission_api : public context_aware_api {
       }
 };
 
-class string_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-
-      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
-         const bool test = fc::is_utf8(std::string( str, datalen ));
-
-         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
-      }
-};
-
 class system_api : public context_aware_api {
    public:
       explicit system_api( apply_context& ctx )
@@ -1343,6 +1333,10 @@ class compiler_builtins : public context_aware_api {
          float128_t b = {{ lb, hb }};
          ret = f128_div( a, b );
       }
+      void __negtf2( float128_t& ret, uint64_t la, uint64_t ha ) {
+         float128_t a = {{ la, (ha ^ (1 << 63)) }};
+         a = ret;
+      }
       int ___cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb, int return_value_if_nan ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
@@ -1407,21 +1401,45 @@ class compiler_builtins : public context_aware_api {
          edump(("warning in flaot64..." ));
          ret = f64_to_f128( float64_t{*(uint64_t*)&in} );
       }
+      void __fixtfti( __int128& ret, uint64_t la, uint64_t ha ) {
+         float128_t f = {{ la, ha }};
+#warning         ret = f128_to_i128( f, 0, false );
+      }
       int64_t __fixtfdi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_i64( f, 0, false );
+#warning         return f128_to_i64( f, 0, false );
       }
       int32_t __fixtfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_i32( f, 0, false );
+#warning         return f128_to_i32( f, 0, false );
+      }
+      void __fixunstfti( unsigned __int128& ret, uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+#warning         ret = f128_to_ui128( f, 0, false );
       }
       uint64_t __fixunstfdi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_ui64( f, 0, false );
+#warning         return f128_to_ui64( f, 0, false );
       }
       uint32_t __fixunstfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_ui32( f, 0, false );
+#warning         return f128_to_ui32( f, 0, false );
+      }
+      void __fixsfti( __int128& ret, float a ) {
+#warning         float32_t f = {a};
+#warning         ret = f32_to_i128( f, 0, false );
+      }
+      void __fixdfti( __int128& ret, double a ) {
+#warning         float64_t f = {a};
+#warning         ret = f64_to_i128( f, 0, false );
+      }
+      void __fixunssfti( unsigned __int128& ret, float a ) {
+#warning         float32_t f = {a};
+#warning         ret = f32_to_ui128( f, 0, false );
+      }
+      void __fixunsdfti( unsigned __int128& ret, double a ) {
+#warning         float64_t f = {a};
+#warning ret = f64_to_ui128( f, 0, false );
       }
       uint64_t __trunctfdf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
@@ -1434,6 +1452,108 @@ class compiler_builtins : public context_aware_api {
 
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
+
+class math_api : public context_aware_api {
+   public:
+      math_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+
+      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         FC_ASSERT( o != 0, "divide by zero" );
+
+         s = s/o;
+         *self = (unsigned __int128)s;
+      }
+
+      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         s *= o;
+         *self = (unsigned __int128)s;
+      }
+
+      uint64_t double_add(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  + DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_mult(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  * DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_div(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
+         FC_ASSERT(divisor != 0, "divide by zero");
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint32_t double_eq(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_lt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_gt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint64_t double_to_i64(uint64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
+      }
+
+      uint64_t i64_to_double(int64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         double res = DOUBLE(n).convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+};
+
+/*
+ * This api will be removed with fix for `eos #2561`
+ */
+class call_depth_api : public context_aware_api {
+   public:
+      call_depth_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+      void call_depth_assert() {
+         FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
+      }
+};
+
+REGISTER_INJECTED_INTRINSICS(call_depth_api,
+   (call_depth_assert,  void()               )
+);
+
+REGISTER_INTRINSICS(math_api,
+   (diveq_i128,    void(int, int)            )
+   (multeq_i128,   void(int, int)            )
+   (double_add,    int64_t(int64_t, int64_t) )
+   (double_mult,   int64_t(int64_t, int64_t) )
+   (double_div,    int64_t(int64_t, int64_t) )
+   (double_eq,     int32_t(int64_t, int64_t) )
+   (double_lt,     int32_t(int64_t, int64_t) )
+   (double_gt,     int32_t(int64_t, int64_t) )
+   (double_to_i64, int64_t(int64_t)          )
+   (i64_to_double, int64_t(int64_t)          )
+);
 
 REGISTER_INTRINSICS(compiler_builtins,
    (__ashlti3,     void(int, int64_t, int64_t, int)               )
@@ -1457,6 +1577,7 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__letf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
+   (__negtf2,      void (int, int64_t, int64_t)                   )
    (__floatsitf,   void (int, int)                                )
    (__floatunsitf, void (int, int)                                )
    (__floatditf,   void (int, int64_t)                            )
@@ -1464,10 +1585,16 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__floatsidf,   double(int)                                    )
    (__extendsftf2, void(int, int)                                 )
    (__extenddftf2, void(int, double)                              )
+   (__fixtfti,     void(int, int64_t, int64_t)                    )
    (__fixtfdi,     int64_t(int64_t, int64_t)                      )
    (__fixtfsi,     int(int64_t, int64_t)                          )
+   (__fixunstfti,  void(int, int64_t, int64_t)                    )
    (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
    (__fixunstfsi,  int(int64_t, int64_t)                          )
+   (__fixsfti,     void(int, float)                               )
+   (__fixdfti,     void(int, double)                              )
+   (__fixunssfti,     void(int, float)                            )
+   (__fixunsdfti,     void(int, double)                           )
    (__trunctfdf2,  int64_t(int64_t, int64_t)                      )
    (__trunctfsf2,  int(int64_t, int64_t)                          )
 );
@@ -1550,10 +1677,6 @@ REGISTER_INTRINSICS(crypto_api,
 
 REGISTER_INTRINSICS(permission_api,
    (check_authorization,  int(int64_t, int64_t, int, int))
-);
-
-REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(system_api,

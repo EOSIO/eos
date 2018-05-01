@@ -125,8 +125,6 @@ public:
    };
    struct abi_json_to_bin_result {
       vector<char>   binargs;
-      vector<name>   required_scope;
-      vector<name>   required_auth;
    };
 
    abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
@@ -385,7 +383,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
-FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
+FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )

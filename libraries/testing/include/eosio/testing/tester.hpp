@@ -84,8 +84,8 @@ namespace eosio { namespace testing {
          void                 produce_blocks_until_end_of_round();
          signed_block_ptr     push_block(signed_block_ptr b);
 
-         transaction_trace_ptr    push_transaction( packed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing */ );
-         transaction_trace_ptr    push_transaction( signed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing*/  );
+         transaction_trace_ptr    push_transaction( packed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing */, fc::time_point deadline = fc::time_point::maximum() );
+         transaction_trace_ptr    push_transaction( signed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing*/, fc::time_point deadline = fc::time_point::maximum() );
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
 
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );

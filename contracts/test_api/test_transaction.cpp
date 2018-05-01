@@ -256,6 +256,18 @@ void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, ui
    trx.send( 0xffffffffffffffff, receiver );
 }
 
+void test_transaction::send_deferred_tx_given_payer() {
+   using namespace eosio;
+   uint64_t payer;
+   read_action_data(&payer, action_data_size());
+
+   auto trx = transaction();
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   trx.delay_sec = 2;
+   trx.send( 0xffffffffffffffff, payer );
+}
+
 void test_transaction::cancel_deferred_transaction() {
    using namespace eosio;
    cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
@@ -274,64 +286,4 @@ void test_transaction::send_cf_action_fail() {
    action act(vector<permission_level>{{N(dummy), N(active)}}, cfa);
    act.send_context_free();
    eosio_assert(false, "send_cfa_action_fail() should've thrown an error");
-}
-
-void test_transaction::read_inline_action() {
-   using namespace eosio;
-   using dummy_act_t = test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action","assert_true")>;
-
-   char buffer[64];
-   auto res = get_action( 3, 0, buffer, 64);
-   eosio_assert(res == -1, "get_action error 0");
-
-   auto dummy_act = dummy_act_t{1, 2, 3};
-
-   action act(vector<permission_level>{{N(testapi), N(active)}}, dummy_act);
-   act.send();
-
-   res = get_action( 3, 0, buffer, 64);
-   eosio_assert(res != -1, "get_action error");
-
-   action tmp;
-   datastream<char *> ds(buffer, (size_t)res);
-   ds >> tmp.account;
-   ds >> tmp.name;
-   ds >> tmp.authorization;
-   ds >> tmp.data;
-
-   auto dres = tmp.data_as<dummy_act_t>();
-   eosio_assert(dres.a == 1 && dres.b == 2 && dres.c == 3, "data_as error");
-
-   res = get_action( 3, 1, buffer, 64);
-   eosio_assert(res == -1, "get_action error -1");
-}
-
-void test_transaction::read_inline_cf_action() {
-   using namespace eosio;
-   using dummy_act_t = test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action","assert_true_cf")>;
-
-   char buffer[64];
-   auto res = get_action( 2, 0, buffer, 64);
-   eosio_assert(res == -1, "get_action error 0");
-
-   auto dummy_act = dummy_act_t{1, 2, 3};
-
-   action act(dummy_act);
-   act.send_context_free();
-
-   res = get_action( 2, 0, buffer, 64);
-   eosio_assert(res != -1, "get_action error");
-
-   action tmp;
-   datastream<char *> ds(buffer, (size_t)res);
-   ds >> tmp.account;
-   ds >> tmp.name;
-   ds >> tmp.authorization;
-   ds >> tmp.data;
-
-   auto dres = tmp.data_as<dummy_act_t>();
-   eosio_assert(dres.a == 1 && dres.b == 2 && dres.c == 3, "data_as error");
-
-   res = get_action( 2, 1, buffer, 64);
-   eosio_assert(res == -1, "get_action error -1");
 }

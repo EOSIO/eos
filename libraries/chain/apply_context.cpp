@@ -294,8 +294,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          });
    }
 
-   control.get_mutable_resource_limits_manager()
-          .add_pending_account_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+   trx_context.add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
    checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
 }
 
@@ -306,7 +305,7 @@ void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
                "there is no generated transaction created by account ${sender} with sender id ${sender_id}",
                ("sender", sender)("sender_id", sender_id) );
 
-   control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(gto->payer, -( config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()));
+   trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
    generated_transaction_idx.remove(*gto);
    checktime( 100 );
 }
@@ -367,7 +366,7 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
       if( !(privileged || payer == account_name(receiver)) ) {
          require_authorization( payer );
       }
-      control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(payer, delta);
+      trx_context.add_ram_usage(payer, delta);
    }
 }
 

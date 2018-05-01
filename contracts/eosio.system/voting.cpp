@@ -35,7 +35,7 @@ namespace eosiosystem {
       account_name                proxy = 0;
       time                        last_update = 0;
       uint32_t                    is_proxy = 0;
-      eosio::asset                staked;
+      eosio::asset                staked; /// total staked across all delegations
       eosio::asset                unstaking;
       eosio::asset                unstake_per_week;
       uint128_t                   proxied_votes = 0;
@@ -94,33 +94,36 @@ namespace eosiosystem {
          });
    }
 
-   void system_contract::increase_voting_power( account_name acnt, const eosio::asset& amount ) {
+   void system_contract::adjust_voting_power( account_name acnt, int64_t delta ) {
       voters_table voters_tbl( _self, _self );
       auto voter = voters_tbl.find( acnt );
-
-      eosio_assert( 0 <= amount.amount, "negative asset" );
 
       if( voter == voters_tbl.end() ) {
          voter = voters_tbl.emplace( acnt, [&]( voter_info& a ) {
                a.owner = acnt;
                a.last_update = now();
-               a.staked = amount;
+               a.staked.amount = delta; 
+               eosio_assert( a.staked.amount >= 0, "underflow" );
             });
       } else {
          voters_tbl.modify( voter, 0, [&]( auto& av ) {
                av.last_update = now();
-               av.staked += amount;
+               av.staked.amount += delta;
+               eosio_assert( av.staked.amount >= 0, "underflow" );
             });
       }
 
       const std::vector<account_name>* producers = nullptr;
       if ( voter->proxy ) {
+         /*  TODO: disabled until we can switch proxied votes to double
          auto proxy = voters_tbl.find( voter->proxy );
          eosio_assert( proxy != voters_tbl.end(), "selected proxy not found" ); //data corruption
-         voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes += uint64_t(amount.amount); } );
+         voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes += delta; } );
          if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
             producers = &proxy->producers;
          }
+         */
+
       } else {
          producers = &voter->producers;
       }
@@ -131,12 +134,13 @@ namespace eosiosystem {
             auto prod = producers_tbl.find( p );
             eosio_assert( prod != producers_tbl.end(), "never existed producer" ); //data corruption
             producers_tbl.modify( prod, 0, [&]( auto& v ) {
-                  v.total_votes += uint64_t(amount.amount);
+                  v.total_votes += delta;
                });
          }
       }
    }
 
+   /*
    void system_contract::decrease_voting_power( account_name acnt, const eosio::asset& amount ) {
       require_auth( acnt );
       voters_table voters_tbl( _self, _self );
@@ -184,6 +188,7 @@ namespace eosiosystem {
             });
       }
    }
+   */
 
    eosio_global_state system_contract::get_default_parameters() {
       eosio_global_state dp;
@@ -203,37 +208,6 @@ namespace eosiosystem {
       producers_table producers_tbl( _self, _self );
       auto idx = producers_tbl.template get_index<N(prototalvote)>();
 
-      /*
-      std::array<uint64_t, 21> max_block_net_usage;
-      std::array<uint32_t, 21> target_block_net_usage_pct;
-      std::array<uint32_t, 21> base_per_transaction_net_usage;
-      std::array<uint32_t, 21> max_transaction_net_usage;
-      std::array<uint64_t, 21> context_free_discount_net_usage_num;
-      std::array<uint64_t, 21> context_free_discount_net_usage_den;
-
-      std::array<uint64_t, 21> max_block_cpu_usage;
-      std::array<uint32_t, 21> target_block_cpu_usage_pct;
-      std::array<uint32_t, 21> max_transaction_cpu_usage;
-      std::array<uint32_t, 21> base_per_transaction_cpu_usage;
-      std::array<uint32_t, 21> base_per_action_cpu_usage;
-      std::array<uint32_t, 21> base_setcode_cpu_usage;
-      std::array<uint32_t, 21> per_signature_cpu_usage;
-      std::array<uint64_t, 21> context_free_discount_cpu_usage_num;
-      std::array<uint64_t, 21> context_free_discount_cpu_usage_den;
-
-      std::array<uint32_t, 21> max_transaction_lifetime;
-      std::array<uint32_t, 21> deferred_trx_expiration_window;
-      std::array<uint32_t, 21> max_transaction_delay;
-      std::array<uint32_t, 21> max_inline_action_size;
-      std::array<uint16_t, 21> max_inline_action_depth;
-      std::array<uint16_t, 21> max_authority_depth;
-      std::array<uint32_t, 21> max_generated_transaction_count;
-
-      std::array<uint32_t, 21> max_storage_size;
-      std::array<uint32_t, 21> percent_of_max_inflation_rate;
-      std::array<uint32_t, 21> storage_reserve_ratio;
-      */
-
       eosio::producer_schedule schedule;
       schedule.producers.reserve(21);
       size_t n = 0;
@@ -241,40 +215,7 @@ namespace eosiosystem {
          if ( it->active() ) {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;
-            //eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
             schedule.producers.back().block_signing_key = it->producer_key; 
-            //std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data.data() );
-
-            /*
-            max_block_net_usage[n] = it->prefs.max_block_net_usage;
-            target_block_net_usage_pct[n] = it->prefs.target_block_net_usage_pct;
-            max_transaction_net_usage[n] = it->prefs.max_transaction_net_usage;
-            base_per_transaction_net_usage[n] = it->prefs.base_per_transaction_net_usage;
-            context_free_discount_net_usage_num[n] = it->prefs.context_free_discount_net_usage_num;
-            context_free_discount_net_usage_den[n] = it->prefs.context_free_discount_net_usage_den;
-
-            max_block_cpu_usage[n] = it->prefs.max_block_cpu_usage;
-            target_block_cpu_usage_pct[n] = it->prefs.target_block_cpu_usage_pct;
-            max_transaction_cpu_usage[n] = it->prefs.max_transaction_cpu_usage;
-            base_per_transaction_cpu_usage[n] = it->prefs.base_per_transaction_cpu_usage;
-            base_per_action_cpu_usage[n] = it->prefs.base_per_action_cpu_usage;
-            base_setcode_cpu_usage[n] = it->prefs.base_setcode_cpu_usage;
-            per_signature_cpu_usage[n] = it->prefs.per_signature_cpu_usage;
-            context_free_discount_cpu_usage_num[n] = it->prefs.context_free_discount_cpu_usage_num;
-            context_free_discount_cpu_usage_den[n] = it->prefs.context_free_discount_cpu_usage_den;
-
-            max_transaction_lifetime[n] = it->prefs.max_transaction_lifetime;
-            deferred_trx_expiration_window[n] = it->prefs.deferred_trx_expiration_window;
-            max_transaction_delay[n] = it->prefs.max_transaction_delay;
-            max_inline_action_size[n] = it->prefs.max_inline_action_size;
-            max_inline_action_depth[n] = it->prefs.max_inline_action_depth;
-            max_authority_depth[n] = it->prefs.max_authority_depth;
-            max_generated_transaction_count[n] = it->prefs.max_generated_transaction_count;
-
-            max_storage_size[n] = it->prefs.max_storage_size;
-            storage_reserve_ratio[n] = it->prefs.storage_reserve_ratio;
-            percent_of_max_inflation_rate[n] = it->prefs.percent_of_max_inflation_rate;
-            */
             ++n;
          }
       }
@@ -285,41 +226,9 @@ namespace eosiosystem {
       // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
       bytes packed_schedule = pack(schedule);
       set_active_producers( packed_schedule.data(),  packed_schedule.size() );
-    //  size_t median = n/2;
 
       global_state_singleton gs( _self, _self );
       auto parameters = gs.exists() ? gs.get() : get_default_parameters();
-
-      /*
-      parameters.max_block_net_usage = max_block_net_usage[median];
-      parameters.target_block_net_usage_pct = target_block_net_usage_pct[median];
-      parameters.max_transaction_net_usage = max_transaction_net_usage[median];
-      parameters.base_per_transaction_net_usage = base_per_transaction_net_usage[median];
-      parameters.context_free_discount_net_usage_num = context_free_discount_net_usage_num[median];
-      parameters.context_free_discount_net_usage_den = context_free_discount_net_usage_den[median];
-
-      parameters.max_block_cpu_usage = max_block_cpu_usage[median];
-      parameters.target_block_cpu_usage_pct = target_block_cpu_usage_pct[median];
-      parameters.max_transaction_cpu_usage = max_transaction_cpu_usage[median];
-      parameters.base_per_transaction_cpu_usage = base_per_transaction_cpu_usage[median];
-      parameters.base_per_action_cpu_usage = base_per_action_cpu_usage[median];
-      parameters.base_setcode_cpu_usage = base_setcode_cpu_usage[median];
-      parameters.per_signature_cpu_usage = per_signature_cpu_usage[median];
-      parameters.context_free_discount_cpu_usage_num = context_free_discount_cpu_usage_num[median];
-      parameters.context_free_discount_cpu_usage_den = context_free_discount_cpu_usage_den[median];
-
-      parameters.max_transaction_lifetime = max_transaction_lifetime[median];
-      parameters.deferred_trx_expiration_window = deferred_trx_expiration_window[median];
-      parameters.max_transaction_delay = max_transaction_delay[median];
-      parameters.max_inline_action_size = max_inline_action_size[median];
-      parameters.max_inline_action_depth = max_inline_action_depth[median];
-      parameters.max_authority_depth = max_authority_depth[median];
-      parameters.max_generated_transaction_count = max_generated_transaction_count[median];
-
-      parameters.max_storage_size = max_storage_size[median];
-      parameters.storage_reserve_ratio = storage_reserve_ratio[median];
-      parameters.percent_of_max_inflation_rate = percent_of_max_inflation_rate[median];
-      */
 
       // not voted on
       parameters.first_block_time_in_cycle = cycle_time;

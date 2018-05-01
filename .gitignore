@@ -40,6 +40,7 @@ libraries/wasm-jit/Source/Programs/Test
 libraries/wasm-jit/Source/Programs/wavm
 
 programs/cli_wallet/cli_wallet
+programs/cleos/cleos
 programs/js_operation_serializer/js_operation_serializer
 programs/witness_node/witness_node
 programs/data-dir

@@ -46,11 +46,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensus-validation-malicious-produc
 
 #Manually run chain_test for all supported runtimes
 #To run chain_test with all log from blockchain displayed, put --verbose after --, i.e. chain_test -- --verbose
-add_test(NAME chain_test_binaryen COMMAND chain_test --report_level=detailed --color_output -- --binaryen)
-add_test(NAME chain_test_wavm COMMAND chain_test --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
-add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO removed on slim: #add_test(NAME chain_test_binaryen COMMAND chain_test --report_level=detailed --color_output -- --binaryen)
+# TODO removed on slim: add_test(NAME chain_test_wavm COMMAND chain_test --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+# TODO removed on slim: add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO removed on slim: add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO removed on slim: add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 #if(BUILD_MONGO_DB_PLUGIN)
 #   add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 #endif()
@@ -60,9 +60,9 @@ add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_
 # TODO: add_test(NAME p2p_sync_test_p2_d10 COMMAND tests/p2p_tests/sync/test.sh -p 2 -d 10 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: add_test(NAME message_storm COMMAND tests/p2p_tests/sync/test.sh -m -p 21 -n 21 -d 5 -l WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: add_test(NAME trans_sync_across_mixed_cluster_test COMMAND tests/trans_sync_across_mixed_cluster_test.sh -p 1 -n 2 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME distributed-transactions-remote-test COMMAND tests/distributed-transactions-remote-test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO removed on slim: add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO removed on slim: add_test(NAME distributed-transactions-remote-test COMMAND tests/distributed-transactions-remote-test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO removed on slim: add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: add_test(NAME consensus-validation-malicious-producers COMMAND tests/consensus-validation-malicious-producers.py -w 80 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
