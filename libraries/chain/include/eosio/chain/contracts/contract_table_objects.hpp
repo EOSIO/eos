@@ -133,10 +133,14 @@ namespace eosio { namespace chain { namespace contracts {
    typedef secondary_index<key256_t,index256_object_type>::index_index  index256_index;
 
    struct soft_double_less {
-      bool operator()( uint64_t a, uint64_t b )const {
-         float64_t x; x.v = a;
-         float64_t y; y.v = b;
-         return f64_lt(x, y);
+      bool operator()( const float64_t& lhs, const float64_t& rhs )const {
+         return f64_lt(lhs, rhs);
+      }
+   };
+
+   struct soft_long_double_less {
+      bool operator()( const float128_t lhs, const float128_t& rhs )const {
+         return f128_lt(lhs, rhs);
       }
    };
 
@@ -145,8 +149,16 @@ namespace eosio { namespace chain { namespace contracts {
     *
     *  The software double implementation is using the Berkeley softfloat library (release 3).
     */
-   typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_object  index_double_object;
-   typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_index   index_double_index;
+   typedef secondary_index<float64_t,index_double_object_type,soft_double_less>::index_object  index_double_object;
+   typedef secondary_index<float64_t,index_double_object_type,soft_double_less>::index_index   index_double_index;
+
+   /**
+    *  This index supports a deterministic software implementation of long double as the secondary key.
+    *
+    *  The software long double implementation is using the Berkeley softfloat library (release 3).
+    */
+   typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_object  index_long_double_object;
+   typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_index   index_long_double_index;
 
 } // ::contracts
 
@@ -184,7 +196,13 @@ namespace config {
    template<>
    struct billable_size<contracts::index_double_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for potentially single-row table, 3x indices internal-key, primary key and primary+secondary key
-      static const uint64_t value = 24 + 8 + overhead; ///< 24 bytes for fixed fields + 32 bytes key + overhead
+      static const uint64_t value = 24 + 8 + overhead; ///< 24 bytes for fixed fields + 8 bytes key + overhead
+   };
+
+   template<>
+   struct billable_size<contracts::index_long_double_object> {
+      static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for potentially single-row table, 3x indices internal-key, primary key and primary+secondary key
+      static const uint64_t value = 24 + 16 + overhead; ///< 24 bytes for fixed fields + 16 bytes key + overhead
    };
 
 }
@@ -198,6 +216,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index128_object, eosio::chain::contracts::index128_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index256_object, eosio::chain::contracts::index256_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index_double_object, eosio::chain::contracts::index_double_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index_long_double_object, eosio::chain::contracts::index_long_double_index)
 
 FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table) )
 FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value)(payer) )

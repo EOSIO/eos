@@ -1,9 +1,10 @@
 	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
-
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	DISK_TOTAL=`df -h . | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//'`
 	DISK_AVAIL=`df -h . | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//'`
@@ -102,6 +103,44 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
+	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
+		printf "\n\tChecking perl installation."
+		perl_bin=$( which perl 2>/dev/null )
+		if [ $? -ne 0 ]; then
+			printf "\n\tInstalling perl."
+			yum -y install perl
+			if [ $? -ne 0 ]; then
+				printf "\n\tUnable to install perl at this time.\n"
+				printf "\n\tExiting now.\n"
+			fi
+		else
+			printf "\n\tPerl installation found at ${perl_bin}."
+		fi
+		printf "\n\tChecking LCOV installation."
+		if [ ! -e /usr/local/bin/lcov ]; then
+			printf "\n\tLCOV installation not found.\n"
+			printf "\tInstalling LCOV.\n"
+			cd ${TEMP_DIR}
+			git clone https://github.com/linux-test-project/lcov.git
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to clone LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			cd lcov
+			sudo make install
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to install LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			rm -rf ${TEMP_DIR}/lcov
+			printf "\tSuccessfully installed LCOV.\n"
+		else
+			printf "\n\tLCOV installation found @ /usr/local/bin/lcov.\n"
+		fi
+	fi
+
 	printf "\n\tChecking CMAKE installation.\n"
     if [ ! -e ${CMAKE} ]; then
 		printf "\tInstalling CMAKE\n"
@@ -115,7 +154,7 @@
 		fi
 		tar xf cmake-3.10.2.tar.gz
 		rm -f cmake-3.10.2.tar.gz
-		ln -s cmake-3.10.2/ cmake
+		ln -s ${HOME}/opt/cmake-3.10.2/ cmake
 		cd cmake
 		./bootstrap
 		if [ $? -ne 0 ]; then
@@ -123,7 +162,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling CMAKE.\n"
 			printf "\tExiting now.\n\n"
@@ -184,7 +223,7 @@
 		fi
 		tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
 		rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
-		ln -s ${HOME}/opt/mongodb-linux-x86_64-3.6.3/ mongodb
+		ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ mongodb
 		mkdir ${HOME}/opt/mongodb/data
 		mkdir ${HOME}/opt/mongodb/log
 		touch ${HOME}/opt/mongodb/log/mongodb.log
@@ -225,7 +264,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
@@ -254,7 +293,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE}
+		sudo make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -291,7 +330,7 @@ mongodconf
 			exit;
 		fi
 		./configure
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
@@ -333,7 +372,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
@@ -344,3 +383,11 @@ mongodconf
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"
 	fi
+
+	function print_instructions()
+	{
+		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
+		printf "\tcd ${HOME}/eos/build; make test\n\n"
+	return 0
+	}

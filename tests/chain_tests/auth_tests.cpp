@@ -5,6 +5,10 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
 
+#include <eosio/testing/tester_network.hpp>
+#include <eosio/chain/producer_object.hpp>
+#include <eosio.system/eosio.system.wast.hpp>
+#include <eosio.system/eosio.system.abi.hpp>
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -82,6 +86,7 @@ BOOST_AUTO_TEST_CASE(update_auths) {
 try {
    TESTER chain;
    chain.create_account("alice");
+   chain.create_account("bob");
 
    // Deleting active or owner should fail
    BOOST_CHECK_THROW(chain.delete_authority("alice", "active"), action_validate_exception);
@@ -135,6 +140,11 @@ try {
    auto spending_pub_key = spending_priv_key.get_public_key();
    auto trading_priv_key = chain.get_private_key("alice", "trading");
    auto trading_pub_key = trading_priv_key.get_public_key();
+
+   // Bob attempts to create new spending auth for Alice
+   BOOST_CHECK_THROW( chain.set_authority( "alice", "spending", authority(spending_pub_key), "active",
+                                           { permission_level{"bob", "active"} }, { chain.get_private_key("bob", "active") } ),
+                      transaction_exception );
 
    // Create new spending auth
    chain.set_authority("alice", "spending", authority(spending_pub_key), "active",
@@ -430,5 +440,51 @@ try {
    create_acc(acc3, acc1, 1);
 
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
+   TESTER chain;
+
+   const auto& tester_account = N(tester);
+   std::vector<transaction_id_type> ids;
+   chain.set_code(config::system_account_name, eosio_system_wast);
+   chain.set_abi(config::system_account_name, eosio_system_abi);
+
+   chain.produce_blocks();
+   chain.create_account(N(currency));
+  
+   chain.produce_blocks();
+   chain.create_account(N(tester));
+   chain.create_account(N(tester2));
+   chain.produce_blocks();
+
+   chain.push_action(config::system_account_name, contracts::updateauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("permission", "first")
+           ("parent", "active")
+           ("data",  authority(chain.get_public_key(tester_account, "first")))
+           ("delay", 5));
+
+   auto validate_disallow = [&] (const char *type) {
+   BOOST_REQUIRE_EXCEPTION(
+   chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("code", "eosio")
+           ("type", type)
+           ("requirement", "first")),
+   action_validate_exception,
+   [] (const action_validate_exception &ex)->bool {
+      BOOST_REQUIRE_EQUAL(std::string("message validation exception"), ex.what());
+      return true;
+   });
+   };
+
+   validate_disallow("linkauth");
+   validate_disallow("unlinkauth");
+   validate_disallow("deleteauth");
+   validate_disallow("updateauth");
+   validate_disallow("canceldelay");
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()

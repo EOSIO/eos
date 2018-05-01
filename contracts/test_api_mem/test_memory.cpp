@@ -344,6 +344,7 @@ template <typename T>
 void test_memory_load() {
     T *ptr = (T *)(8192 * 1024 - 1);
     volatile T tmp = ptr[0];
+    (void)tmp;
 }
 
 void test_memory::test_outofbound_4()
@@ -391,4 +392,5 @@ void test_memory::test_outofbound_13()
     volatile unsigned int a = 0xffffffff;
     double *ptr = (double *)a; // load with memory wrap
     volatile double tmp = ptr[0];
+    (void)tmp;
 }

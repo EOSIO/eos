@@ -76,7 +76,7 @@ public:
    // transaction.id -> actions
    std::map<std::string, std::vector<chain::action>> reversible_actions;
    boost::mutex mtx;
-   boost::condition_variable condtion;
+   boost::condition_variable condition;
    boost::thread consume_thread;
    boost::atomic<bool> done{false};
    boost::atomic<bool> startup{true};
@@ -116,7 +116,7 @@ void mongo_db_plugin_impl::applied_irreversible_block(const signed_block& block)
          boost::mutex::scoped_lock lock(mtx);
          signed_block_queue.push_back(block);
          lock.unlock();
-         condtion.notify_one();
+         condition.notify_one();
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
@@ -136,7 +136,7 @@ void mongo_db_plugin_impl::applied_block(const block_trace& bt) {
          boost::mutex::scoped_lock lock(mtx);
          block_trace_queue.emplace_back(std::make_pair(bt, bt.block));
          lock.unlock();
-         condtion.notify_one();
+         condition.notify_one();
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_block ${e}", ("e", e.to_string()));
@@ -152,7 +152,7 @@ void mongo_db_plugin_impl::consume_blocks() {
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
          while (signed_block_queue.empty() && block_trace_queue.empty() && !done) {
-            condtion.wait(lock);
+            condition.wait(lock);
          }
          // capture blocks for processing
          size_t block_trace_size = block_trace_queue.size();
@@ -705,7 +705,7 @@ mongo_db_plugin_impl::mongo_db_plugin_impl()
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {
    try {
       done = true;
-      condtion.notify_one();
+      condition.notify_one();
 
       consume_thread.join();
    } catch (std::exception& e) {

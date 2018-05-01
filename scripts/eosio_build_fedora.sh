@@ -1,9 +1,10 @@
 	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
-
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
 	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
@@ -108,6 +109,44 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
+	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
+		printf "\n\tChecking perl installation."
+		perl_bin=$( which perl 2>/dev/null )
+		if [ $? -ne 0 ]; then
+			printf "\n\tInstalling perl."
+			yum -y install perl
+			if [ $? -ne 0 ]; then
+				printf "\n\tUnable to install perl at this time.\n"
+				printf "\n\tExiting now.\n"
+			fi
+		else
+			printf "\n\tPerl installation found at ${perl_bin}."
+		fi
+		printf "\n\tChecking LCOV installation."
+		if [ ! -e /usr/local/bin/lcov ]; then
+			printf "\n\tLCOV installation not found.\n"
+			printf "\tInstalling LCOV.\n"
+			cd ${TEMP_DIR}
+			git clone https://github.com/linux-test-project/lcov.git
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to clone LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			cd lcov
+			sudo make install
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to install LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			rm -rf ${TEMP_DIR}/lcov
+			printf "\tSuccessfully installed LCOV.\n"
+		else
+			printf "\n\tLCOV installation found @ /usr/local/bin/lcov.\n"
+		fi
+	fi
+
 	printf "\n\tChecking boost library installation.\n"
 	BVERSION=`cat "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null | grep BOOST_LIB_VERSION \
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI'`
@@ -167,7 +206,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
@@ -196,7 +235,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE}
+		sudo make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -232,7 +271,7 @@
 			exit;
 		fi
 		./configure
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
@@ -273,7 +312,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
@@ -284,3 +323,10 @@
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"
 	fi
+
+	function print_instructions()
+	{
+		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+		printf "\tcd ${HOME}/eos/build; make test\n\n"
+	return 0
+	}

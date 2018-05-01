@@ -1,4 +1,6 @@
 #include <boost/test/unit_test.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
@@ -127,6 +129,51 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL(false, has_tx);
 
 } FC_LOG_AND_RETHROW() /// basic_test
+
+/**
+ * Make sure WASM doesn't allow function call depths greater than 250 
+ */
+BOOST_FIXTURE_TEST_CASE( call_depth_test, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {N(check)} );
+   produce_block();
+   // test that we can call to 249
+   {
+      set_code(N(check), call_depth_almost_limit_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(check);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(check),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(check), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+   // should fail at 250
+   {
+      set_code(N(check), call_depth_limit_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(check);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(check),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(check), "active" ), chain_id_type());
+      BOOST_CHECK_THROW( push_transaction(trx), wasm_execution_error );
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
+   }
+} FC_LOG_AND_RETHROW()
 
 /**
  * Prove the modifications to global variables are wiped between runs
@@ -363,7 +410,6 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
 
 // test softfloat conversion operations
 BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
-
    int count = 0;
    auto check = [&](const char *wast_template, const char *op, const char *param) -> bool {
       count+=16;
@@ -464,11 +510,44 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709551616")); 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
+   produce_blocks(2);
+   create_accounts( {N(aligncheck)} );
+   produce_block();
+   
+   auto check_aligned = [&]( auto wast ) { 
+      set_code(N(aligncheck), wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(aligncheck);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(aligncheck),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(aligncheck), "active" ), chain_id_type());
+      push_transaction(trx);
+      auto sb = produce_block();
+      block_trace trace(sb);
+      
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   };
+
+   check_aligned(aligned_ref_wast);
+   check_aligned(misaligned_ref_wast);
+   check_aligned(aligned_const_ref_wast);
+   check_aligned(misaligned_const_ref_wast);
+   check_aligned(aligned_ptr_wast);
+   check_aligned(misaligned_ptr_wast);
+   check_aligned(misaligned_const_ptr_wast);
+} FC_LOG_AND_RETHROW()
+
 // test cpu usage
 BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
 
    create_accounts( {N(f_tests)} );
-   int limit = 100;
    bool pass = false;
 
    std::string code = R"=====(
@@ -491,7 +570,8 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    set_code(N(f_tests), code.c_str());
    produce_blocks(10);
 
-   while (!pass && limit < 250) {
+   int limit = 190;
+   while (!pass && limit < 200) {
       signed_transaction trx;
 
       for (int i = 0; i < 100; ++i) {
@@ -518,7 +598,71 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
       BOOST_REQUIRE_EQUAL(true, validate());
    }
 // NOTE: limit is 197
-   BOOST_REQUIRE_EQUAL(true, limit > 101 && limit < 250);
+   BOOST_REQUIRE_EQUAL(true, limit > 190 && limit < 200);
+} FC_LOG_AND_RETHROW()
+
+
+// test weighted cpu limit
+BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
+
+   resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
+   create_accounts( {N(f_tests)} );
+   create_accounts( {N(acc2)} );
+   bool pass = false;
+
+   std::string code = R"=====(
+(module
+  (import "env" "require_auth" (func $require_auth (param i64)))
+  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+   (table 0 anyfunc)
+   (memory $0 1)
+   (export "apply" (func $apply))
+   (func $i64_trunc_u_f64 (param $0 f64) (result i64) (i64.trunc_u/f64 (get_local $0)))
+   (func $test (param $0 i64))
+   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
+   )=====";
+   for (int i = 0; i < 1024; ++i) {
+      code += "(call $test (call $i64_trunc_u_f64 (f64.const 1)))\n";
+   }
+   code += "))";
+
+   produce_blocks(1);
+   set_code(N(f_tests), code.c_str());
+   produce_blocks(10);
+
+   mgr.set_account_limits(N(f_tests), -1, -1, 1);
+   int count = 0;
+   while (count < 4) {
+      signed_transaction trx;
+
+      for (int i = 0; i < 100; ++i) {
+         action act;
+         act.account = N(f_tests);
+         act.name = N() + (i * 16);
+         act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+         trx.actions.push_back(act);
+      }
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+
+      try {
+         push_transaction(trx);
+         produce_blocks(1);
+         BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+         pass = true;
+         count++;
+      } catch (eosio::chain::tx_resource_exhausted &) {
+         BOOST_REQUIRE_EQUAL(count, 3);
+         break;
+      } 
+      BOOST_REQUIRE_EQUAL(true, validate());
+
+      if (count == 2) { // add a big weight on acc2, making f_tests out of resource
+        mgr.set_account_limits(N(acc2), -1, -1, 1000);
+      }
+   }
+   BOOST_REQUIRE_EQUAL(count, 3);
 } FC_LOG_AND_RETHROW()
 
 /**
@@ -1039,7 +1183,6 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    }
 
    produce_blocks(1);
-#if 0
    {
    signed_transaction trx;
    action act;
@@ -1047,7 +1190,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.account = N(tbl);
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
-   set_tapos(trx);
+   set_transaction_headers(trx);
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
    push_transaction(trx);
    }
@@ -1061,14 +1204,12 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.account = N(tbl);
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
-   set_tapos(trx);
+   set_transaction_headers(trx);
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
 
    //an element that is out of range and has no mmap access permission either (should be a trapped segv)
    BOOST_CHECK_EXCEPTION(push_transaction(trx), eosio::chain::wasm_execution_error, [](const eosio::chain::wasm_execution_error &e) {return true;});
    }
-#endif
-
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( protected_globals, TESTER ) try {
@@ -1342,6 +1483,61 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
    BOOST_REQUIRE_EQUAL(true, check(1024, 0)); // default behavior
    BOOST_REQUIRE_EQUAL(false, check(1024, 1000)); // transaction max_net_usage too small
    BOOST_REQUIRE_EQUAL(false, check(10240, 0)); // larger than global maximum
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
+   account_name account = N(f_tests);
+   account_name acc2 = N(acc2);
+   create_accounts({account, acc2});
+   int ver = 0;
+   auto check = [&](int coderepeat)-> bool {
+      std::string code = R"=====(
+   (module
+   (import "env" "require_auth" (func $require_auth (param i64)))
+   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+      (table 0 anyfunc)
+      (memory $0 1)
+      (export "apply" (func $apply))
+      (func $i64_trunc_u_f64 (param $0 f64) (result i64) (i64.trunc_u/f64 (get_local $0)))
+      (func $test (param $0 i64))
+      (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
+      )=====";
+      for (int i = 0; i < coderepeat; ++i) {
+         code += "(call $test (call $i64_trunc_u_f64 (f64.const ";
+         code += (char)('0' + ver);
+         code += ")))\n";
+      }
+      code += "))"; ver++;
+      produce_blocks(1);
+      signed_transaction trx;
+      auto wasm = ::eosio::chain::wast_to_wasm(code);
+      trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
+                              contracts::setcode{
+                                 .account    = account,
+                                 .vmtype     = 0,
+                                 .vmversion  = 0,
+                                 .code       = bytes(wasm.begin(), wasm.end())
+                              });
+      set_transaction_headers(trx);
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      try {
+         push_transaction(trx);
+         produce_blocks(1);
+         return true;
+      } catch (tx_resource_exhausted &) {
+         return false;
+      }
+   };
+   BOOST_REQUIRE_EQUAL(true, check(128)); // no limits, should pass
+
+   resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
+   mgr.set_account_limits(account, -1, 1, -1); // set weight = 1 for account
+
+   BOOST_REQUIRE_EQUAL(true, check(128)); 
+
+   mgr.set_account_limits(acc2, -1, 1000, -1); // set a big weight for other account
+   BOOST_REQUIRE_EQUAL(false, check(128));
 
 } FC_LOG_AND_RETHROW()
 

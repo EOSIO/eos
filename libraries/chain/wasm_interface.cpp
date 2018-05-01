@@ -155,14 +155,18 @@ class privileged_api : public context_aware_api {
          });
       }
 
-      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
          auto& gpo = context.controller.get_global_properties();
-         auto size = fc::raw::pack_size( gpo.configuration );
-         if ( size <= datalen ) {
-            datastream<char*> ds( packed_blockchain_parameters, datalen );
+
+         auto s = fc::raw::pack_size( gpo.configuration );
+         if( buffer_size == 0 ) return s;
+
+         if ( s <= buffer_size ) {
+            datastream<char*> ds( packed_blockchain_parameters, s );
             fc::raw::pack(ds, gpo.configuration);
+            return s;
          }
-         return size;
+         return 0;
       }
 
 
@@ -641,43 +645,49 @@ class softfloat_api : public context_aware_api {
          return from_softfloat64(ui64_to_f64( a ));
       }
 
-
-   private:
-      inline float32_t to_softfloat32( float f ) {
+      static bool is_nan( const float32_t f ) {
+         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
+      }
+      static bool is_nan( const float64_t f ) {
+         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+      }
+      static bool is_nan( const float128_t& f ) {
+         return (((~(f.v[1]) & uint64_t( 0x7FFF000000000000 )) == 0) && (f.v[0] || ((f.v[1]) & uint64_t( 0x0000FFFFFFFFFFFF ))));
+      }
+      static float32_t to_softfloat32( float f ) {
          return *reinterpret_cast<float32_t*>(&f);
       }
-      inline float64_t to_softfloat64( double d ) {
+      static float64_t to_softfloat64( double d ) {
          return *reinterpret_cast<float64_t*>(&d);
       }
-      inline float from_softfloat32( float32_t f ) {
+      static float from_softfloat32( float32_t f ) {
          return *reinterpret_cast<float*>(&f);
       }
-      inline double from_softfloat64( float64_t d ) {
+      static double from_softfloat64( float64_t d ) {
          return *reinterpret_cast<double*>(&d);
       }
       static constexpr uint32_t inv_float_eps = 0x4B000000;
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 
-      inline bool sign_bit( float32_t f ) { return f.v >> 31; }
-      inline bool sign_bit( float64_t f ) { return f.v >> 63; }
-      inline bool is_nan( float32_t f ) {
-         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
-      }
-      inline bool is_nan( float64_t f ) {
-         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
-      }
+      static bool sign_bit( float32_t f ) { return f.v >> 31; }
+      static bool sign_bit( float64_t f ) { return f.v >> 63; }
 
 };
 class producer_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+      int get_active_producers(array_ptr<chain::account_name> producers, size_t buffer_size) {
          auto active_producers = context.get_active_producers();
+
          size_t len = active_producers.size();
-         size_t cpy_len = std::min(datalen, len);
-         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name));
-         return len;
+         auto s = len * sizeof(chain::account_name);
+         if( buffer_size == 0 ) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( producers, active_producers.data(), copy_size );
+
+         return copy_size;
       }
 };
 
@@ -685,7 +695,6 @@ class crypto_api : public context_aware_api {
    public:
       explicit crypto_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
-
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
@@ -736,7 +745,6 @@ class crypto_api : public context_aware_api {
          auto result = fc::ripemd160::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
-
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
          hash_val = fc::sha1::hash( data, datalen );
@@ -820,11 +828,14 @@ class action_api : public context_aware_api {
    action_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
-      int read_action_data(array_ptr<char> memory, size_t size) {
-         FC_ASSERT(size > 0);
-         int minlen = std::min<size_t>(context.act.data.size(), size);
-         memcpy((void *)memory, context.act.data.data(), minlen);
-         return minlen;
+      int read_action_data(array_ptr<char> memory, size_t buffer_size) {
+         auto s = context.act.data.size();
+         if( buffer_size == 0 ) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( memory, context.act.data.data(), copy_size );
+
+         return copy_size;
       }
 
       int action_data_size() {
@@ -861,25 +872,82 @@ class console_api : public context_aware_api {
          context.console_append(string(str, str_len));
       }
 
-      void printui(uint64_t val) {
-         context.console_append(val);
-      }
-
       void printi(int64_t val) {
          context.console_append(val);
       }
 
-      void printi128(const unsigned __int128& val) {
-         fc::uint128_t v(val>>64, uint64_t(val) );
+      void printui(uint64_t val) {
+         context.console_append(val);
+      }
+
+      void printi128(const __int128& val) {
+         bool is_negative = (val < 0);
+         unsigned __int128 val_magnitude;
+
+         if( is_negative )
+            val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
+         else
+            val_magnitude = static_cast<unsigned __int128>(val);
+
+         fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
+
+         if( is_negative ) {
+            context.console_append("-");
+         }
+
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printdf( double val ) {
-         context.console_append(val);
+      void printui128(const unsigned __int128& val) {
+         fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
+         context.console_append(fc::variant(v).get_string());
       }
 
-      void printff( float val ) {
+      void printsf( float val ) {
+         // Assumes float representation on native side is the same as on the WASM side
+         auto& console = context.get_console_stream();
+         auto orig_prec = console.precision();
+
+         console.precision( std::numeric_limits<float>::digits10 );
          context.console_append(val);
+
+         console.precision( orig_prec );
+      }
+
+      void printdf( double val ) {
+         // Assumes double representation on native side is the same as on the WASM side
+         auto& console = context.get_console_stream();
+         auto orig_prec = console.precision();
+
+         console.precision( std::numeric_limits<double>::digits10 );
+         context.console_append(val);
+
+         console.precision( orig_prec );
+      }
+
+      void printqf( const float128_t& val ) {
+         /*
+          * Native-side long double uses an 80-bit extended-precision floating-point number.
+          * The easiest solution for now was to use the Berkeley softfloat library to round the 128-bit
+          * quadruple-precision floating-point number to an 80-bit extended-precision floating-point number
+          * (losing precision) which then allows us to simply cast it into a long double for printing purposes.
+          *
+          * Later we might find a better solution to print the full quadruple-precision floating-point number.
+          * Maybe with some compilation flag that turns long double into a quadruple-precision floating-point number,
+          * or maybe with some library that allows us to print out quadruple-precision floating-point numbers without
+          * having to deal with long doubles at all.
+          */
+
+         auto& console = context.get_console_stream();
+         auto orig_prec = console.precision();
+
+         console.precision( std::numeric_limits<long double>::digits10 );
+
+         extFloat80_t val_approx;
+         f128M_to_extF80M(&val, &val_approx);
+         context.console_append( *(long double*)(&val_approx) );
+
+         console.precision( orig_prec );
       }
 
       void printn(const name& value) {
@@ -973,6 +1041,42 @@ class console_api : public context_aware_api {
          return context.IDX.previous_secondary(iterator, primary);\
       }
 
+#define DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(IDX, TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.store( scope, table, payer, id, secondary );\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.update( iterator, payer, secondary );\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove( iterator );\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
+         return context.IDX.find_primary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
 
 class database_api : public context_aware_api {
    public:
@@ -1012,7 +1116,8 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
-      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, uint64_t)
+      DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_double, float64_t)
+      DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_long_double, float128_t)
 };
 
 class memory_api : public context_aware_api {
@@ -1083,12 +1188,16 @@ class context_free_transaction_api : public context_aware_api {
       context_free_transaction_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
-      int read_transaction( array_ptr<char> data, size_t data_len ) {
+      int read_transaction( array_ptr<char> data, size_t buffer_size ) {
          bytes trx = context.get_packed_transaction();
-         if (data_len >= trx.size()) {
-            memcpy(data, trx.data(), trx.size());
-         }
-         return trx.size();
+
+         auto s = trx.size();
+         if( buffer_size == 0) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( data, trx.data(), copy_size );
+
+         return copy_size;
       }
 
       int transaction_size() {
@@ -1245,49 +1354,42 @@ class compiler_builtins : public context_aware_api {
          float128_t b = {{ lb, hb }};
          ret = f128_div( a, b );
       }
-      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+      int ___cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb, int return_value_if_nan ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return f128_eq( a, b );
-      }
-      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return !f128_eq( a, b );
-      }
-      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return !f128_lt( a, b );
-      }
-      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return !f128_lt( a, b ) && !f128_eq( a, b );
-      }
-      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return f128_le( a, b );
-      }
-      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return f128_lt( a, b );
-      }
-      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         if ( __unordtf2(la, ha, lb, hb) )
+            return return_value_if_nan;
          if ( f128_lt( a, b ) )
             return -1;
          if ( f128_eq( a, b ) )
             return 0;
          return 1;
       }
+      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, -1);
+      }
+      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 0);
+      }
+      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 0);
+      }
+      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
       int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
+         float128_t b = {{ lb, hb }};
+         if ( softfloat_api::is_nan(a) || softfloat_api::is_nan(b) )
             return 1;
          return 0;
       }
@@ -1301,6 +1403,12 @@ class compiler_builtins : public context_aware_api {
       }
       void __floatunsitf( float128_t& ret, uint32_t i ) {
          ret = ui32_to_f128(i); /// TODO: should be 128
+      }
+      void __floatditf( float128_t& ret, uint64_t a ) {
+         ret = i64_to_f128( a );
+      }
+      void __floatunditf( float128_t& ret, uint64_t a ) {
+         ret = ui64_to_f128( a );
       }
       void __extendsftf2( float128_t& ret, uint32_t f ) {
          float32_t in = { f };
@@ -1411,6 +1519,22 @@ class math_api : public context_aware_api {
       }
 };
 
+/*
+ * This api will be removed with fix for `eos #2561`
+ */
+class call_depth_api : public context_aware_api {
+   public:
+      call_depth_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+      void call_depth_assert() { 
+         FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
+      }
+};
+
+REGISTER_INJECTED_INTRINSICS(call_depth_api,
+   (call_depth_assert,  void()               )
+);
+
 REGISTER_INTRINSICS(math_api,
    (diveq_i128,    void(int, int)            )
    (multeq_i128,   void(int, int)            )
@@ -1443,10 +1567,13 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__letf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
    (__floatsitf,   void (int, int)                                )
    (__floatunsitf, void (int, int)                                )
+   (__floatditf,   void (int, int64_t)                            )
+   (__floatunditf, void (int, int64_t)                            )
    (__floatsidf,   double(int)                                    )
    (__extendsftf2, void(int, int)                                 )
    (__extenddftf2, void(int, double)                              )
@@ -1518,6 +1645,7 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 );
 
 REGISTER_INTRINSICS(crypto_api,
@@ -1568,15 +1696,17 @@ REGISTER_INTRINSICS(apply_context,
 
    //(printdi,               void(int64_t)   )
 REGISTER_INTRINSICS(console_api,
-   (prints,                void(int)       )
-   (prints_l,              void(int, int)  )
-   (printui,               void(int64_t)   )
-   (printi,                void(int64_t)   )
-   (printi128,             void(int)       )
-   (printdf,               void(double)    )
-   (printff,               void(float)     )
-   (printn,                void(int64_t)   )
-   (printhex,              void(int, int)  )
+   (prints,                void(int)      )
+   (prints_l,              void(int, int) )
+   (printi,                void(int64_t)  )
+   (printui,               void(int64_t)  )
+   (printi128,             void(int)      )
+   (printui128,            void(int)      )
+   (printsf,               void(float)    )
+   (printdf,               void(double)   )
+   (printqf,               void(int)      )
+   (printn,                void(int64_t)  )
+   (printhex,              void(int, int) )
 );
 
 REGISTER_INTRINSICS(context_free_transaction_api,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/wasm_eosio_binary_ops.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/webassembly/common.hpp>
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -57,8 +58,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             if ( exp.kind == IR::ObjectKind::function )
                exports++;
 
-         next_function_index = module.functions.imports.size() + module.functions.defs.size() + registered_injected.size(); // + exports + registered_injected.size()-1;
-         ;
+         next_function_index = module.functions.imports.size() + module.functions.defs.size() + registered_injected.size();
          next_actual_index = next_injected_index++;
       }
 
@@ -75,10 +75,18 @@ namespace eosio { namespace chain { namespace wasm_injections {
             module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
             injected_index_mapping.emplace( index, actual_index ); 
             // shift all exported functions by 1
+            bool have_updated_start = false;
             for ( int i=0; i < module.exports.size(); i++ ) {
-               if ( module.exports[i].kind == IR::ObjectKind::function )
+               if ( module.exports[i].kind == IR::ObjectKind::function ) {
+                  // update the start function
+                  if ( !have_updated_start && module.exports[i].index == module.startFunctionIndex ) {
+                     module.startFunctionIndex++;
+                     have_updated_start = true;
+                  }
                   module.exports[i].index++;
+               }
             }
+
             // shift all table entries for call indirect
             for(TableSegment& ts : module.tableSegments) {
                for(auto& idx : ts.indices)
@@ -90,12 +98,11 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       }
    };
-
+   
    struct noop_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
    };
-   
 
    struct memories_injection_visitor {
       static void inject( IR::Module& m );
@@ -189,6 +196,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
          auto mapped_index = injector_utils::injected_index_mapping.find(call_inst->field);
+
          if ( mapped_index != injector_utils::injected_index_mapping.end() )  {
             call_inst->field = mapped_index->second;
          }
@@ -199,6 +207,78 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
    };
    
+   struct call_depth_check {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static int32_t global_idx; 
+      static void init() {
+         global_idx = -1;
+      }
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         if ( global_idx == -1 ) {
+            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32) eosio::chain::wasm_constraints::maximum_call_depth}});
+         }
+
+         global_idx = arg.module->globals.size()-1;
+
+         int32_t assert_idx;
+         injector_utils::add_import<ResultType::none>(*(arg.module), "call_depth_assert", assert_idx);
+
+         wasm_ops::op_types<>::call_t call_assert;
+         wasm_ops::op_types<>::get_global_t get_global_inst; 
+         wasm_ops::op_types<>::set_global_t set_global_inst;
+
+         wasm_ops::op_types<>::i32_eqz_t eqz_inst; 
+         wasm_ops::op_types<>::i32_const_t const_inst; 
+         wasm_ops::op_types<>::i32_add_t add_inst;
+         wasm_ops::op_types<>::end_t end_inst;
+         wasm_ops::op_types<>::if__t if_inst; 
+         wasm_ops::op_types<>::else__t else_inst; 
+
+         call_assert.field = assert_idx;
+         get_global_inst.field = global_idx;
+         set_global_inst.field = global_idx;
+         const_inst.field = -1;
+
+#define INSERT_INJECTED(X) \
+         tmp = X.pack();   \
+         injected.insert( injected.end(), tmp.begin(), tmp.end() )
+         std::vector<U8> injected;
+         std::vector<U8> tmp;
+
+         INSERT_INJECTED(get_global_inst);
+         INSERT_INJECTED(eqz_inst);
+         INSERT_INJECTED(if_inst);
+         INSERT_INJECTED(call_assert);
+         INSERT_INJECTED(else_inst);
+         INSERT_INJECTED(const_inst);
+         INSERT_INJECTED(get_global_inst);
+         INSERT_INJECTED(add_inst);
+         INSERT_INJECTED(set_global_inst);
+         INSERT_INJECTED(end_inst);
+
+         /* print the correct call type */
+         if ( inst->get_code() == wasm_ops::call_code ) {
+            wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
+            tmp = call_inst->pack();
+         }
+         else {
+            wasm_ops::op_types<>::call_indirect_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_indirect_t*>(inst);
+            tmp = call_inst->pack();
+         }
+         injected.insert( injected.end(), tmp.begin(), tmp.end() );
+
+         const_inst.field = 1;
+         INSERT_INJECTED(get_global_inst); 
+         INSERT_INJECTED(const_inst);
+         INSERT_INJECTED(add_inst);
+         INSERT_INJECTED(set_global_inst);
+
+#undef INSERT_INJECTED
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   }; 
+
    // float injections
    constexpr const char* inject_which_op( uint16_t opcode ) {
       switch ( opcode ) {
@@ -566,8 +646,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using br_if_t           = wasm_ops::br_if                   <instruction_counter>;
       using br_table_t        = wasm_ops::br_table                <instruction_counter>;
       using return__t         = wasm_ops::return_                 <instruction_counter>;
-      using call_t            = wasm_ops::call                    <instruction_counter>;
-      using call_indirect_t   = wasm_ops::call_indirect           <instruction_counter>;
+      using call_t            = wasm_ops::call                    <instruction_counter, call_depth_check>;
+      using call_indirect_t   = wasm_ops::call_indirect           <instruction_counter, call_depth_check>;
       using drop_t            = wasm_ops::drop                    <instruction_counter>;
       using select_t          = wasm_ops::select                  <instruction_counter>;
 
@@ -784,6 +864,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             injector_utils::init( mod );
             instruction_counter::init();
             checktime_injector::init();
+            call_depth_check::init();
          }
 
          void inject() {

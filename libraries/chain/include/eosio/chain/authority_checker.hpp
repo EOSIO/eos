@@ -170,7 +170,7 @@ namespace detail {
             return {range.begin(), range.end()};
          }
 
-         const PermissionVisitorFunc& get_permission_visitor() {
+         PermissionVisitorFunc& get_permission_visitor() {
             return permission_visitor;
          }
 

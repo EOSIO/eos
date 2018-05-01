@@ -59,6 +59,8 @@ namespace eosio {
    struct symbol_type {
       symbol_name value;
 
+      symbol_type() { }
+      symbol_type(symbol_name s): value(s) { }
       bool     is_valid()const  { return is_valid_symbol( value ); }
       uint64_t precision()const { return value & 0xff; }
       uint64_t name()const      { return value >> 8;   }
@@ -199,7 +201,7 @@ namespace eosio {
 
       friend bool operator==( const asset& a, const asset& b ) {
          eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
-         return a.amount < b.amount;
+         return a.amount == b.amount;
       }
 
       friend bool operator!=( const asset& a, const asset& b ) {

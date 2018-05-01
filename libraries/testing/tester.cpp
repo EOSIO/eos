@@ -12,6 +12,7 @@
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
+#include <eosio/chain/producer_object.hpp>
 
 #include "WAST/WAST.h"
 #include "WASM/WASM.h"
@@ -31,6 +32,17 @@ namespace eosio { namespace testing {
       return res;
    }
 
+   bool base_tester::is_same_chain( base_tester& other ) {
+     auto hbh = control->head_block_header();
+     auto vn_hbh = other.control->head_block_header();
+     return control->head_block_id() == other.control->head_block_id() &&
+            hbh.previous == vn_hbh.previous &&
+            hbh.timestamp == vn_hbh.timestamp &&
+            hbh.transaction_mroot == vn_hbh.transaction_mroot &&
+            hbh.action_mroot == vn_hbh.action_mroot &&
+            hbh.block_mroot == vn_hbh.block_mroot &&
+            hbh.producer == vn_hbh.producer;
+   }
    void base_tester::init(bool push_genesis, chain_controller::runtime_limits limits) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
@@ -57,16 +69,6 @@ namespace eosio { namespace testing {
    void base_tester::init(chain_controller::controller_config config) {
       cfg = config;
       open();
-   }
-
-
-   public_key_type  base_tester::get_public_key( name keyname, string role ) const {
-      return get_private_key( keyname, role ).get_public_key();
-   }
-
-
-   private_key_type base_tester::get_private_key( name keyname, string role ) const {
-      return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
    }
 
 
@@ -101,8 +103,18 @@ namespace eosio { namespace testing {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
       uint32_t slot  = control->get_slot_at_time( next_time );
-      auto sch_pro   = control->get_scheduled_producer(slot);
-      auto priv_key  = get_private_key( sch_pro, "active" );
+      auto sch_pro = control->get_scheduled_producer(slot);
+      const auto& sch_pro_signing_key = control->get_producer(sch_pro).signing_key;
+
+      private_key_type priv_key;
+      // Check if signing private key exist in the list
+      auto private_key_itr = block_signing_private_keys.find( sch_pro_signing_key );
+      if( private_key_itr == block_signing_private_keys.end() ) {
+         // If it's not found, default to active k1 key
+         priv_key = get_private_key( sch_pro, "active" );
+      } else {
+         priv_key = private_key_itr->second;
+      }
 
       return control->generate_block( next_time, sch_pro, priv_key, skip_flag );
    }
@@ -198,13 +210,30 @@ namespace eosio { namespace testing {
                              uint32_t delay_sec)
 
    { try {
-      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration, delay_sec);
+      vector<permission_level> auths;
+      auths.push_back(permission_level{actor, config::active_name});
+      return push_action(code, acttype, auths, data, expiration, delay_sec);
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
 
 
    transaction_trace base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const vector<account_name>& actors,
+                             const variant_object& data,
+                             uint32_t expiration,
+                             uint32_t delay_sec)
+
+   { try {
+      vector<permission_level> auths;
+      for (const auto& actor : actors) {
+         auths.push_back(permission_level{actor, config::active_name});
+      }
+      return push_action(code, acttype, auths, data, expiration, delay_sec);
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
+
+   transaction_trace base_tester::push_action( const account_name& code,
+                             const action_name& acttype,
+                             const vector<permission_level>& auths,
                              const variant_object& data,
                              uint32_t expiration,
                              uint32_t delay_sec)
@@ -222,21 +251,18 @@ namespace eosio { namespace testing {
       action act;
       act.account = code;
       act.name = acttype;
-      for (const auto& actor : actors) {
-         act.authorization.push_back(permission_level{actor, config::active_name});
-      }
+      act.authorization = auths;
       act.data = abis.variant_to_binary(action_type_name, data);
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
       set_transaction_headers(trx, expiration, delay_sec);
-      for (const auto& actor : actors) {
-         trx.sign(get_private_key(actor, "active"), chain_id_type());
+      for (const auto& auth : auths) {
+         trx.sign(get_private_key(auth.actor, auth.permission.to_string()), chain_id_type());
       }
 
       return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
-
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
 
    transaction_trace base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
@@ -509,9 +535,9 @@ namespace eosio { namespace testing {
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.template find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
+         const auto *obj = db.template find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.to_symbol_code().value));
          if (obj) {
-            //balance is the second field after symbol, so skip the symbol
+            //balance is the first field in the serialization
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }
