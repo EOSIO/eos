@@ -71,6 +71,10 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(amount) )
    };
 
+   /**
+    *  These tables are designed to be constructed in the scope of the relevant user, this 
+    *  facilitates simpler API for per-user queries
+    */
    typedef eosio::multi_index< N(userres), user_resources>      user_resources_table;
    typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
@@ -93,15 +97,12 @@ namespace eosiosystem {
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
                                                     { payer, N(eosio), quant, std::string("buy ram") } );
 
-      global_state_singleton gstate_table( _self, _self );
-      auto gstate = gstate_table.exists() ? gstate_table.get() : get_default_parameters();
-
       const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
-      const double unstaked_token_supply = system_token_supply - gstate.total_storage_stake.amount;
+      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
 
       const double E = quant.amount;
       const double R = unstaked_token_supply - E;
-      const double C = gstate.free_ram();   //free_ram;
+      const double C = _gstate.free_ram();   //free_ram;
       const double F = .10; /// 10% reserve ratio pricing, assumes only 10% of tokens will ever want to stake for ram
       const double ONE(1.0);
 
@@ -111,10 +112,8 @@ namespace eosiosystem {
 
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
-      gstate.total_storage_bytes_reserved += uint64_t(bytes_out);
-      gstate.total_storage_stake.amount   += quant.amount;
-
-      gstate_table.set( gstate, _self );
+      _gstate.total_storage_bytes_reserved += uint64_t(bytes_out);
+      _gstate.total_storage_stake.amount   += quant.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
@@ -143,14 +142,11 @@ namespace eosiosystem {
       eosio_assert( res_itr != userres.end(), "no resource row" );
       eosio_assert( res_itr->storage_bytes >= bytes, "insufficient quota" );
 
-      global_state_singleton gstate_table( _self, _self );
-      auto gstate = gstate_table.exists() ? gstate_table.get() : get_default_parameters();
-
       const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
-      const double unstaked_token_supply = system_token_supply - gstate.total_storage_stake.amount;
+      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
 
       const double R = unstaked_token_supply;
-      const double C = gstate.free_ram() + bytes;
+      const double C = _gstate.free_ram() + bytes;
       const double F = .10; 
       const double T = bytes;
       const double ONE(1.0);
@@ -163,10 +159,8 @@ namespace eosiosystem {
       int64_t tokens_out = int64_t(E);
       eosio_assert( tokens_out > 0, "must free at least one token" );
 
-      gstate.total_storage_bytes_reserved -= bytes;
-      gstate.total_storage_stake.amount   -= tokens_out;
-
-      gstate_table.set( gstate, _self );
+      _gstate.total_storage_bytes_reserved -= bytes;
+      _gstate.total_storage_stake.amount   -= tokens_out;
 
       userres.modify( res_itr, account, [&]( auto& res ) {
           res.storage_bytes -= bytes;
