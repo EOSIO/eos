@@ -29,8 +29,8 @@ target_include_directories( unit_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_te
 target_include_directories( unit_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include )
 add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange eosio.token proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline multi_index_test noop dice eosio.msig)
 
-#Manually run chain_test for all supported runtimes
-#To run chain_test with all log from blockchain displayed, put --verbose after --, i.e. chain_test -- --verbose
+#Manually run unit_test for all supported runtimes
+#To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
 add_test(NAME unit_test_binaryen COMMAND unit_test  -t \!auth_tests/linkauth_special -t \!eosio_system_tests/* -t \!delay_tests/* --report_level=detailed --color_output -- --binaryen)
 add_test(NAME unit_test_wavm COMMAND unit_test -t \!auth_tests/linkauth_special -t \!eosio_system_tests/* -t \!delay_tests/* --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 
