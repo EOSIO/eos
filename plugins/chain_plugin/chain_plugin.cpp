@@ -561,7 +561,34 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       ++perm;
    }
 
+   const auto& code_account = db.db().get<account_object,by_name>( N(eosio) );
+   //const abi_def abi = get_abi( db, N(eosio) );
+   abi_def abi;
+   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+      abi_serializer abis( abi );
+      //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(totalband) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.total_resources = abis.binary_to_variant( abis.get_action_type( N(totalband) ), data );
+         }
+      }
 
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(voters) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.voter_info = abis.binary_to_variant( abis.get_action_type( N(producerinfo) ), data );
+         }
+      }
+   }
    return result;
 }
 
