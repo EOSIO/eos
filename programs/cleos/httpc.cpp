@@ -77,7 +77,7 @@ namespace eosio { namespace client { namespace http {
       return re.str();
    }
 
-   fc::variant call( const std::string& server_url,
+   fc::variant do_http_call( const std::string& server_url,
                      const std::string& path,
                      const fc::variant& postdata ) {
    std::string postjson;

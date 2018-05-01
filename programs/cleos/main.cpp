@@ -194,7 +194,7 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return eosio::client::http::call( url, path, fc::variant(v) );
+      return eosio::client::http::do_http_call( url, path, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -207,10 +207,10 @@ fc::variant call( const std::string& url,
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return ::call( url, path, fc::variant(v) ); }
+                  const T& v ) { return call( url, path, fc::variant(v) ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-   return ::call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
+   return call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_value() {
