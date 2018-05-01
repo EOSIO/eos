@@ -19,6 +19,8 @@
 #include <eosio/utilities/common.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
+#include <eosio/chain/plugin_interface.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
@@ -27,6 +29,7 @@ namespace eosio {
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::config;
+using namespace eosio::chain::plugin_interface;
 using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
 
@@ -35,6 +38,15 @@ using fc::flat_map;
 
 class chain_plugin_impl {
 public:
+   chain_plugin_impl()
+   :accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
+   ,accepted_block_channel(app().get_channel<channels::accepted_block>())
+   ,irreversible_block_channel(app().get_channel<channels::irreversible_block>())
+   ,accepted_transaction_channel(app().get_channel<channels::accepted_transaction>())
+   ,applied_transaction_channel(app().get_channel<channels::applied_transaction>())
+   ,accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
+   {}
+   
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
@@ -52,6 +64,21 @@ public:
    int32_t                          max_deferred_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
+
+   // retained references to channels for easy publication
+   channels::accepted_block_header::channel_type&  accepted_block_header_channel;
+   channels::accepted_block::channel_type&         accepted_block_channel;
+   channels::irreversible_block::channel_type&     irreversible_block_channel;
+   channels::accepted_transaction::channel_type&   accepted_transaction_channel;
+   channels::applied_transaction::channel_type&    applied_transaction_channel;
+   channels::accepted_confirmation::channel_type&  accepted_confirmation_channel;
+
+   // method provider handles
+   methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
+   methods::get_block_by_id::method_type::handle                     get_block_by_id_provider;
+   methods::get_head_block_id::method_type::handle                   get_head_block_id_provider;
+   methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
+
 };
 
 chain_plugin::chain_plugin()
@@ -190,6 +217,48 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
    my->chain.emplace(*my->chain_config);
+
+   // set up method providers
+   my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider([this](uint32_t block_num) -> const signed_block_ptr& {
+      return my->chain->fetch_block_by_number(block_num);
+   });
+
+   my->get_block_by_id_provider = app().get_method<methods::get_block_by_id>().register_provider([this](block_id_type id) -> const signed_block_ptr& {
+      return my->chain->fetch_block_by_id(id);
+   });
+
+   my->get_head_block_id_provider = app().get_method<methods::get_head_block_id>().register_provider([this](){
+      return my->chain->head_block_id();
+   });
+
+   my->get_last_irreversible_block_number_provider = app().get_method<methods::get_last_irreversible_block_number>().register_provider([this](){
+      return my->chain->last_irreversible_block_num();
+   });
+
+   // relay signals to channels
+   my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
+      my->accepted_block_header_channel.publish(blk);
+   });
+
+   my->chain->accepted_block.connect([this](const block_state_ptr& blk) {
+      my->accepted_block_channel.publish(blk);
+   });
+
+   my->chain->irreversible_block.connect([this](const block_state_ptr& blk) {
+      my->irreversible_block_channel.publish(blk);
+   });
+
+   my->chain->accepted_transaction.connect([this](const transaction_metadata_ptr& meta){
+      my->accepted_transaction_channel.publish(meta);
+   });
+
+   my->chain->applied_transaction.connect([this](const transaction_trace_ptr& trace){
+      my->applied_transaction_channel.publish(trace);
+   });
+
+   my->chain->accepted_confirmation.connect([this](const header_confirmation& conf){
+      my->accepted_confirmation_channel.publish(conf);
+   });
 }
 
 void chain_plugin::plugin_startup()

@@ -24,6 +24,7 @@ typedef uint64_t permission_name;
 typedef uint64_t token_name;
 typedef uint64_t table_name;
 typedef uint32_t time;
+typedef uint32_t block_timestamp;
 typedef uint64_t scope_name;
 typedef uint64_t action_name;
 typedef uint16_t region_id;
@@ -61,6 +62,7 @@ struct fixed_string16 {
 };
 
 typedef struct checksum256 transaction_id_type;
+typedef struct checksum256 block_id_type;
 
 typedef struct fixed_string16 field_name;
 

@@ -41,7 +41,7 @@ namespace eosio { namespace chain {
          p.auth   = auth;
          p.delay  = fc::seconds(auth.delay_sec);
          if( initial_creation_time == time_point())
-            p.last_updated = _control.head_block_time();
+            p.last_updated = _control.pending_block_time();
          else
             p.last_updated = initial_creation_time;
       });
@@ -62,7 +62,7 @@ namespace eosio { namespace chain {
          p.auth   = std::move(auth);
          p.delay  = fc::seconds(auth.delay_sec);
          if( initial_creation_time == time_point())
-            p.last_updated = _control.head_block_time();
+            p.last_updated = _control.pending_block_time();
          else
             p.last_updated = initial_creation_time;
       });
