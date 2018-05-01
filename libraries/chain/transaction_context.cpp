@@ -245,7 +245,7 @@ namespace eosio { namespace chain {
               transaction.expiration = expire;
           });
       } catch ( ... ) {
-          EOS_ASSERT( false, transaction_exception,
+          EOS_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );
       }
    } /// record_transaction

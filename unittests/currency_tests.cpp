@@ -5,6 +5,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
@@ -25,7 +26,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -106,7 +106,7 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
 
       produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
    }
 } FC_LOG_AND_RETHROW() /// test_transfer
@@ -121,16 +121,16 @@ BOOST_FIXTURE_TEST_CASE( test_duplicate_transfer, currency_tester ) {
       ("memo", "fund Alice")
    );
 
-   BOOST_CHECK_THROW(push_action(N(eosio.token), N(transfer), mutable_variant_object()
-                                 ("from", eosio_token)
-                                 ("to",   "alice")
-                                 ("quantity", "100.0000 CUR")
-                                 ("memo", "fund Alice")),
-                     tx_duplicate);
+   BOOST_REQUIRE_THROW(push_action(N(eosio.token), N(transfer), mutable_variant_object()
+                                    ("from", eosio_token)
+                                    ("to",   "alice")
+                                    ("quantity", "100.0000 CUR")
+                                    ("memo", "fund Alice")),
+                       tx_duplicate);
 
    produce_block();
 
-   BOOST_CHECK_EQUAL(true, chain_has_transaction(trace.id));
+   BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
    BOOST_CHECK_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
 }
 
@@ -148,7 +148,7 @@ BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
 
       produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
    }
 
@@ -163,7 +163,7 @@ BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
 
       produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "110.0000 CUR" ));
    }
 } FC_LOG_AND_RETHROW() /// test_transfer
@@ -183,7 +183,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
 
       produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
    }
 
@@ -195,7 +195,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("quantity", "101.0000 CUR")
          ("memo", "overspend! Alice");
 
-      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), transaction_exception, assert_message_ends_with("overdrawn balance"));
+      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), fc::exception, assert_message_contains("overdrawn balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -217,7 +217,7 @@ BOOST_FIXTURE_TEST_CASE( test_fullspend, currency_tester ) try {
 
       produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
    }
 
@@ -232,7 +232,7 @@ BOOST_FIXTURE_TEST_CASE( test_fullspend, currency_tester ) try {
       auto trace = push_action(N(alice), N(transfer), data);
       produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "0.0000 CUR" ));
       BOOST_REQUIRE_EQUAL(get_balance(N(bob)), asset::from_string( "100.0000 CUR" ));
    }
@@ -462,20 +462,22 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       ("memo", "fund Proxy")
    );
 
-   BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
-   auto deferred_id = trace.deferred_transaction_requests.back().get<deferred_transaction>().id();
+   const auto& index = control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+   BOOST_REQUIRE_EQUAL(1, index.size());
+   auto deferred_id = index.begin()->trx_id;
+   BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred_id));
 
    while(control->head_block_time() < expected_delivery) {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
-      BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), false);
+      BOOST_REQUIRE_EQUAL(1, index.size());
    }
 
    fc::time_point expected_redelivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
    produce_block();
-   BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), true);
+   BOOST_REQUIRE_EQUAL(0, index.size());
    BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::soft_fail);
 
    // set up alice owner
