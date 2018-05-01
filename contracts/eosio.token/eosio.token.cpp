@@ -53,10 +53,7 @@ void token::issue( account_name to, asset quantity, string memo )
 
     add_balance( st.issuer, quantity, st, st.issuer );
 
-    if( to != st.issuer )
-    {
-       SEND_INLINE_ACTION( *this, transfer, {st.issuer,N(active)}, {st.issuer, to, quantity, memo} );
-    }
+    SEND_INLINE_ACTION( *this, transfer, {st.issuer,N(active)}, {st.issuer, to, quantity, memo} );
 }
 
 void token::transfer( account_name from,
