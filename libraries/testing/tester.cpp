@@ -112,9 +112,9 @@ namespace eosio { namespace testing {
 
       if( !skip_pending_trxs ) {
             //wlog( "pushing all input transactions in waiting queue" );
-            while( control->push_next_unapplied_transaction() );
+            while( control->push_next_unapplied_transaction( fc::time_point::maximum() ) );
             //wlog( "pushing all available deferred transactions" );
-            while( control->push_next_scheduled_transaction() );
+            while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
       }
 
       control->finalize_block();
