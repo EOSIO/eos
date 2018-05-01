@@ -629,8 +629,8 @@ bool port_busy( uint16_t port ) {
    using namespace boost::asio;
    
    io_service ios;
-   ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
-   ip::tcp::socket socket(ios);
+   boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+   boost::asio::ip::tcp::socket socket(ios);
    boost::system::error_code ec = error::would_block;
    //connecting/failing to connect to localhost should be always fast - don't care about timeouts
    socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
