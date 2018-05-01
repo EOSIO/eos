@@ -374,7 +374,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::lag;
    }
 
-  // idump( (fc::time_point::now() - chain.pending_block_time()) );
+   //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
    chain.sign_block( [&]( const digest_type& d ) { return private_key_itr->second.sign(d); } );
    chain.commit_block();
