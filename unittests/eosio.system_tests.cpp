@@ -131,8 +131,8 @@ public:
    action_result regproducer( const account_name& acnt, int params_fixture = 1 ) {
       return push_action( acnt, N(regproducer), mvo()
                           ("producer",  acnt )
-                          ("producer_key", fc::raw::pack( get_public_key( acnt, "active" ) ) )
-                          ("prefs", producer_parameters_example( params_fixture ) )
+                          ("producer_key", get_public_key( acnt, "active" ) )
+                          ("url", "http://block.one")
       );
    }
 
@@ -560,37 +560,38 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
+   auto key = fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
 
    auto info = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
-   REQUIRE_MATCHING_OBJECT( params, info["prefs"] );
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(info["packed_key"]) );
-
+   //REQUIRE_MATCHING_OBJECT( params, info["prefs"] );
+   BOOST_REQUIRE_EQUAL( key, info["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", info["url"].as_string() );
 
    //call regproducer again to change parameters
-   fc::variant params2 = producer_parameters_example(2);
+   //fc::variant params2 = producer_parameters_example(2);
 
-   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("EOSR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
+   auto key2 = fc::crypto::public_key( std::string("EOSR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key2 )
-                                               ("prefs", params2)
+                                               ("url", "http://block.two")
                         )
    );
 
    info = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
-   REQUIRE_MATCHING_OBJECT( params2, info["prefs"] );
-   BOOST_REQUIRE_EQUAL( string(key2.begin(), key2.end()), to_string(info["packed_key"]) );
+   //REQUIRE_MATCHING_OBJECT( params2, info["prefs"] );
+   BOOST_REQUIRE_EQUAL( key2, info["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.two", info["url"].as_string() );
 
    //unregister producer
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(unregprod), mvo()
@@ -599,11 +600,13 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    );
    info = get_producer_info( "alice" );
    //key should be empty
-   BOOST_REQUIRE_EQUAL( true, to_string(info["packed_key"]).empty() );
+   BOOST_REQUIRE_EQUAL( public_key_type(), info["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", info["url"].as_string() );
+
    //everything else should stay the same
    BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
-   REQUIRE_MATCHING_OBJECT( params2, info["prefs"] );
+   //REQUIRE_MATCHING_OBJECT( params2, info["prefs"] );
 
    //unregister bob who is not a producer
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer not found" ),
@@ -618,18 +621,19 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
 BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   auto key = get_public_key( N(alice), "active");
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
    auto prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
-   REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
+   ////REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL( key, prod["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", prod["url"].as_string() );
 
    issue( "bob", "2000.0000 EOS",  config::system_account_name );
    issue( "carol", "3000.0000 EOS",  config::system_account_name );
@@ -651,8 +655,9 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 111111, prod["total_votes"].as_uint64() );
    BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
-   REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
+   //REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL( key, prod["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", prod["url"].as_string() );
 
    //carol makes stake
    BOOST_REQUIRE_EQUAL( success(), stake( "carol", "22.0000 EOS", "0.2222 EOS", "0.0000 EOS" ) );
@@ -701,8 +706,9 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
    //check that the producer parameters stay the same after all
    BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
-   REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
+   //REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL( key, prod["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", prod["url"].as_string() );
    //carol should receive funds in 3 days
    produce_block( fc::days(3) );
    produce_block();
@@ -728,11 +734,11 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester ) try
    //alice registers as a producer
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   auto key = get_public_key( N(alice), "active");
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
    //and then unregisters
@@ -743,6 +749,7 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester ) try
    //key should be empty
    auto prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( true, to_string(prod["packed_key"]).empty() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", prod["url"].as_string() );
 
    //bob should not be able to vote for alice who is an unregistered producer
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer is not currently registered" ),
@@ -781,11 +788,11 @@ BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, eosio_system_tester ) try 
    //alice becomes a producer
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   auto key = get_public_key( N(alice), "active");
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
 
@@ -807,11 +814,11 @@ BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, eosio_system_tester ) try 
 BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   auto key = get_public_key( N(alice), "active");
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
 
@@ -839,8 +846,9 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    prod = get_producer_info( "alice" );
    //key should be empty
    BOOST_REQUIRE_EQUAL( true, to_string(prod["packed_key"]).empty() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", prod["url"].as_string() );
    //check parameters just in case
-   REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
+   //REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
    //votes should stay the same
    BOOST_REQUIRE_EQUAL( 135791, prod["total_votes"].as_uint64() );
 
@@ -849,7 +857,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
    prod = get_producer_info( "alice" );
@@ -861,15 +869,16 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
    prod = get_producer_info( "alice" );
    //votes should stay the same
    BOOST_REQUIRE_EQUAL( 135791, prod["total_votes"].as_uint64() );
    //check parameters just in case
-   REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
+   //REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL( key, prod["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", prod["url"].as_string() );
 
 } FC_LOG_AND_RETHROW()
 
@@ -877,20 +886,20 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester ) try {
    //alice becomes a producer
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   auto key = get_public_key( N(alice), "active");
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
    //bob becomes a producer
    params = producer_parameters_example(2);
-   key = fc::raw::pack( get_public_key( N(bob), "active" ) );
+   key = get_public_key( N(bob), "active");
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(regproducer), mvo()
                                                ("producer",  "bob")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "http://block.one")
                         )
    );
 
@@ -1103,14 +1112,14 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), get_balance( "alice" ) );
 
    fc::variant params = producer_parameters_example(50);
-   vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
+   auto key = get_public_key(N(alice), "active");
 
    // 1 block produced
 
    BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(regproducer), mvo()
                                               ("producer",  "alice")
                                               ("producer_key", key )
-                                              ("prefs", params)
+                                              ("url", "http://block.one")
                                               )
                        );
 
@@ -1118,8 +1127,9 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
 
    BOOST_REQUIRE_EQUAL("alice", prod["owner"].as_string());
    BOOST_REQUIRE_EQUAL(0, prod["total_votes"].as_uint64());
-   REQUIRE_EQUAL_OBJECTS(params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL(string(key.begin(), key.end()), to_string(prod["packed_key"]));
+   //REQUIRE_EQUAL_OBJECTS(params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL( key, prod["packed_key"].as<public_key_type>() );
+   //BOOST_REQUIRE_EQUAL( "http://block.one", prod["url"].as_string() );
 
 
    issue("bob", "2000.0000 EOS", config::system_account_name);
