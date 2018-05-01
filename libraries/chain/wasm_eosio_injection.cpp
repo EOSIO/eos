@@ -35,6 +35,7 @@ void max_memory_injection_visitor::inject( Module& m ) {
 }
 void max_memory_injection_visitor::initializer() {}
 
+int32_t  call_depth_check::global_idx = -1;
 uint32_t instruction_counter::icnt = 0;
 int32_t  checktime_injector::checktime_idx = -1;
 
