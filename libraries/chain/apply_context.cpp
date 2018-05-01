@@ -144,7 +144,7 @@ void apply_context::require_authorization( const account_name& account ) {
         return;
      }
    }
-   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+   EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}", ("account",account));
 }
 
 bool apply_context::has_authorization( const account_name& account )const {
@@ -163,7 +163,7 @@ void apply_context::require_authorization(const account_name& account,
            return;
         }
      }
-  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
+  EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
 }
 

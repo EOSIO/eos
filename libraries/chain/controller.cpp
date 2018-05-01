@@ -1,4 +1,5 @@
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/block_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 
 #include <eosio/chain/block_log.hpp>
@@ -35,6 +36,7 @@ struct pending_state {
 
    vector<action_receipt>             _actions;
 
+   block_context                      _block_ctx;
 
    void push() {
       _db_session.push();

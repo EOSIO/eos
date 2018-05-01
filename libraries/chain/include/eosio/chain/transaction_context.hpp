@@ -86,6 +86,8 @@ namespace eosio { namespace chain {
 
          uint64_t&                     net_usage; /// reference to trace->net_usage
          uint64_t&                     cpu_usage; /// reference to trace->cpu_usage
+         bool                          net_limit_due_to_block = false;
+         bool                          cpu_limit_due_to_block = false;
 
    };
 

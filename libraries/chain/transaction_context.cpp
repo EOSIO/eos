@@ -71,8 +71,6 @@ namespace eosio { namespace chain {
       rl.add_transaction_usage( bill_to_accounts, 0, 0, block_timestamp_type(control.pending_block_time()).slot );
 
       // Lower limits to what the billed accounts can afford to pay
-      max_net = std::min( max_net, rl.get_block_net_limit() );
-      max_cpu = std::min( max_cpu, rl.get_block_cpu_limit() );
       for( const auto& a : bill_to_accounts ) {
          auto net_limit = rl.get_account_net_limit(a);
          if( net_limit >= 0 )
@@ -82,11 +80,20 @@ namespace eosio { namespace chain {
             max_cpu = std::min( max_cpu, static_cast<uint64_t>(cpu_limit) ); // reduce max_cpu to the amount the account is able to pay
       }
 
+      if( rl.get_block_net_limit() < max_net ) {
+         max_net = rl.get_block_net_limit();
+         net_limit_due_to_block = true;
+      }
+      if( rl.get_block_cpu_limit() < max_cpu ) {
+         max_cpu = rl.get_block_cpu_limit();
+         cpu_limit_due_to_block = true;
+      }
+
       // Round down network and CPU usage limits so that comparison to actual usage is more efficient
       max_net = (max_net/8)*8;       // Round down to nearest multiple of word size (8 bytes)
       max_cpu = (max_cpu/1024)*1024; // Round down to nearest multiple of 1024
       if( initial_net_usage > 0 )
-         check_net_usage();
+         check_net_usage();  // Fail early if current net usage is already greater than the calculated limit
       check_cpu_usage(); // Fail early if current CPU usage is already greater than the calculated limit
    }
 
@@ -175,13 +182,13 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::check_net_usage()const {
-      EOS_ASSERT( BOOST_LIKELY(net_usage <= max_net), tx_resource_exhausted,
+      EOS_ASSERT( BOOST_LIKELY(net_usage <= max_net), tx_net_resource_exhausted,
                   "net usage of transaction is too high: ${actual_net_usage} > ${net_usage_limit}",
                   ("actual_net_usage", net_usage)("net_usage_limit", max_net) );
    }
 
    void transaction_context::check_cpu_usage()const {
-      EOS_ASSERT( BOOST_LIKELY(cpu_usage <= max_cpu), tx_resource_exhausted,
+      EOS_ASSERT( BOOST_LIKELY(cpu_usage <= max_cpu), tx_cpu_resource_exhausted,
                   "cpu usage of transaction is too high: ${actual_net_usage} > ${cpu_usage_limit}",
                   ("actual_net_usage", cpu_usage)("cpu_usage_limit", max_cpu) );
    }
@@ -245,7 +252,7 @@ namespace eosio { namespace chain {
               transaction.expiration = expire;
           });
       } catch ( ... ) {
-          EOS_ASSERT( false, transaction_exception,
+          EOS_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );
       }
    } /// record_transaction

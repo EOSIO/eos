@@ -50,6 +50,8 @@ namespace eosio { namespace chain { namespace resource_limits {
          void add( uint64_t units, uint32_t ordinal, uint32_t window_size /* must be positive */ )
          {
             if( last_ordinal != ordinal ) {
+               if( ordinal <= last_ordinal )
+                  wdump((ordinal)(last_ordinal));
                FC_ASSERT( ordinal > last_ordinal, "new ordinal cannot be less than the previous ordinal" );
                if( (uint64_t)last_ordinal + window_size > (uint64_t)ordinal ) {
                   const auto delta = ordinal - last_ordinal; // clearly 0 < delta < window_size

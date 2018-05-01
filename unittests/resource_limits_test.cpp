@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       // relax from the starting state (congested) to the idle state as fast as possible
       uint32_t iterations = 0;
-      while (get_virtual_block_cpu_limit() < desired_virtual_limit && iterations <= expected_relax_iterations) {
+      while( get_virtual_block_cpu_limit() < desired_virtual_limit && iterations <= expected_relax_iterations ) {
          add_transaction_usage({account},0,0,iterations);
          process_block_usage(iterations++);
       }
@@ -86,13 +86,13 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       BOOST_REQUIRE_EQUAL(get_virtual_block_cpu_limit(), desired_virtual_limit);
 
       // push maximum resources to go from idle back to congested as fast as possible
-      iterations = 0;
-      while (get_virtual_block_cpu_limit() > config::default_max_block_cpu_usage && iterations <= expected_contract_iterations) {
+      while( get_virtual_block_cpu_limit() > config::default_max_block_cpu_usage
+              && iterations <= expected_relax_iterations + expected_contract_iterations ) {
          add_transaction_usage({account}, config::default_max_block_cpu_usage, 0, iterations);
          process_block_usage(iterations++);
       }
 
-      BOOST_REQUIRE_EQUAL(iterations, expected_contract_iterations);
+      BOOST_REQUIRE_EQUAL(iterations, expected_relax_iterations + expected_contract_iterations);
       BOOST_REQUIRE_EQUAL(get_virtual_block_cpu_limit(), config::default_max_block_cpu_usage);
    } FC_LOG_AND_RETHROW();
 
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       // relax from the starting state (congested) to the idle state as fast as possible
       uint32_t iterations = 0;
-      while (get_virtual_block_net_limit() < desired_virtual_limit && iterations <= expected_relax_iterations) {
+      while( get_virtual_block_net_limit() < desired_virtual_limit && iterations <= expected_relax_iterations ) {
          add_transaction_usage({account},0,0,iterations);
          process_block_usage(iterations++);
       }
@@ -125,13 +125,13 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       BOOST_REQUIRE_EQUAL(get_virtual_block_net_limit(), desired_virtual_limit);
 
       // push maximum resources to go from idle back to congested as fast as possible
-      iterations = 0;
-      while (get_virtual_block_net_limit() > config::default_max_block_net_usage && iterations <= expected_contract_iterations) {
+      while( get_virtual_block_net_limit() > config::default_max_block_net_usage
+              && iterations <= expected_relax_iterations + expected_contract_iterations ) {
          add_transaction_usage({account},0, config::default_max_block_net_usage, iterations);
          process_block_usage(iterations++);
       }
 
-      BOOST_REQUIRE_EQUAL(iterations, expected_contract_iterations);
+      BOOST_REQUIRE_EQUAL(iterations, expected_relax_iterations + expected_contract_iterations);
       BOOST_REQUIRE_EQUAL(get_virtual_block_net_limit(), config::default_max_block_net_usage);
    } FC_LOG_AND_RETHROW();
 
@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          }
 
          // use too much, and expect failure;
-         BOOST_REQUIRE_THROW(add_transaction_usage({account}, expected_limits.at(idx) + 1, 0, 0), tx_resource_exhausted);
+         BOOST_REQUIRE_THROW(add_transaction_usage({account}, expected_limits.at(idx) + 1, 0, 0), tx_cpu_resource_exhausted);
       }
    } FC_LOG_AND_RETHROW();
 
@@ -195,7 +195,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          }
 
          // use too much, and expect failure;
-         BOOST_REQUIRE_THROW(add_transaction_usage({account}, 0, expected_limits.at(idx) + 1, 0), tx_resource_exhausted);
+         BOOST_REQUIRE_THROW(add_transaction_usage({account}, 0, expected_limits.at(idx) + 1, 0), tx_net_resource_exhausted);
       }
    } FC_LOG_AND_RETHROW();
 
@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       }
 
       add_pending_ram_usage(account, increment);
-      BOOST_REQUIRE_THROW(verify_account_ram_usage(account), tx_resource_exhausted);
+      BOOST_REQUIRE_THROW(verify_account_ram_usage(account), ram_usage_exceeded);
    } FC_LOG_AND_RETHROW();
 
    BOOST_FIXTURE_TEST_CASE(enforce_account_ram_limit_underflow, resource_limits_fixture) try {
@@ -298,7 +298,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       }
 
       set_account_limits(account, limit - increment * expected_iterations, -1, -1);
-      BOOST_REQUIRE_THROW(verify_account_ram_usage(account), tx_resource_exhausted);
+      BOOST_REQUIRE_THROW(verify_account_ram_usage(account), ram_usage_exceeded);
    } FC_LOG_AND_RETHROW();
 
 BOOST_AUTO_TEST_SUITE_END()

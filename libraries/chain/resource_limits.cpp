@@ -97,7 +97,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
 
          EOS_ASSERT( state.total_cpu_weight > 0 && (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
-                     tx_resource_exhausted,
+                     tx_cpu_resource_exhausted,
                      "authorizing account '${n}' has insufficient cpu resources for this transaction",
                      ("n",                    name(a))
                      ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
@@ -112,7 +112,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
 
          EOS_ASSERT( state.total_net_weight > 0 && (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
-                     tx_resource_exhausted,
+                     tx_net_resource_exhausted,
                      "authorizing account '${n}' has insufficient net resources for this transaction",
                      ("n",                    name(a))
                      ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)
@@ -156,7 +156,7 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
    if( ram_bytes >= 0 && usage.ram_usage > ram_bytes ) {
-      tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
+      ram_usage_exceeded e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
       e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",usage.ram_usage)("m",ram_bytes)));
       throw e;
    }

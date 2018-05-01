@@ -53,7 +53,7 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, TESTER ) { try {
    produce_block();
 
    /// action not provided from authority
-   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(bob), config::active_name}}, { get_private_key(N(bob), "active") } ), tx_missing_auth);
+   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(bob), config::active_name}}, { get_private_key(N(bob), "active") } ), missing_auth_exception);
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
 
@@ -156,7 +156,7 @@ try {
    // Bob attempts to create new spending auth for Alice
    BOOST_CHECK_THROW( chain.set_authority( "alice", "spending", authority(spending_pub_key), "active",
                                            { permission_level{"bob", "active"} }, { chain.get_private_key("bob", "active") } ),
-                      transaction_exception );
+                      irrelevant_auth_exception );
 
    // Create new spending auth
    chain.set_authority("alice", "spending", authority(spending_pub_key), "active",
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
    chain.set_authority("alice", "scud", scud_pub_key, "spending");
 
    // Send req auth action with alice's spending key, it should fail
-   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), tx_irrelevant_auth);
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), irrelevant_auth_exception);
    // Link authority for eosio reqauth action with alice's spending key
    chain.link_authority("alice", "eosio", "spending",  "reqauth");
    // Now, req auth action with alice's spending key should succeed
@@ -254,12 +254,12 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
    // Unlink alice with eosio reqauth
    chain.unlink_authority("alice", "eosio", "reqauth");
    // Now, req auth action with alice's spending key should fail
-   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), tx_irrelevant_auth);
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), irrelevant_auth_exception);
 
    chain.produce_block();
 
    // Send req auth action with scud key, it should fail
-   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key }), tx_irrelevant_auth);
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key }), irrelevant_auth_exception);
    // Link authority for any eosio action with alice's scud key
    chain.link_authority("alice", "eosio", "scud");
    // Now, req auth action with alice's scud key should succeed
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    /// this should fail because spending is not active which is default for reqauth
    BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }),
-                        tx_irrelevant_auth );
+                        irrelevant_auth_exception );
 
    chain.produce_block();
 
@@ -337,7 +337,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
    BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(bob), "spending"} }, { spending_priv_key }),
-                        tx_missing_auth );
+                        missing_auth_exception );
 
 
    chain.produce_block();
