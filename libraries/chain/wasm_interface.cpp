@@ -1334,7 +1334,7 @@ class compiler_builtins : public context_aware_api {
          ret = f128_div( a, b );
       }
       void __negtf2( float128_t& ret, uint64_t la, uint64_t ha ) {
-         float128_t a = {{ la, (ha ^ (1 << 63)) }};
+         float128_t a = {{ la, (ha ^ ((uint64_t)1 << 63)) }};
          a = ret;
       }
       int ___cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb, int return_value_if_nan ) {
@@ -1393,6 +1393,14 @@ class compiler_builtins : public context_aware_api {
       void __floatunditf( float128_t& ret, uint64_t a ) {
          ret = ui64_to_f128( a );
       }
+      double __floattidf( uint64_t l, uint64_t h ) {
+         auto ret = i64_to_f64( l );
+         return *(double*)&ret;
+      }
+      double __floatuntidf( uint64_t l, uint64_t h ) {
+         auto ret = ui64_to_f64( l );
+         return *(double*)&ret;
+      }
       void __extendsftf2( float128_t& ret, uint32_t f ) {
          float32_t in = { f };
          ret = f32_to_f128( in );
@@ -1401,45 +1409,45 @@ class compiler_builtins : public context_aware_api {
          edump(("warning in flaot64..." ));
          ret = f64_to_f128( float64_t{*(uint64_t*)&in} );
       }
-      void __fixtfti( __int128& ret, uint64_t la, uint64_t ha ) {
-         float128_t f = {{ la, ha }};
-#warning         ret = f128_to_i128( f, 0, false );
+      void __fixtfti( __int128& ret, uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         ret = f128_to_i64( f, 0, false );
       }
       int64_t __fixtfdi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-#warning         return f128_to_i64( f, 0, false );
+         return f128_to_i64( f, 0, false );
       }
       int32_t __fixtfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-#warning         return f128_to_i32( f, 0, false );
+         return f128_to_i32( f, 0, false );
       }
       void __fixunstfti( unsigned __int128& ret, uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-#warning         ret = f128_to_ui128( f, 0, false );
+         ret = f128_to_ui64( f, 0, false );
       }
       uint64_t __fixunstfdi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-#warning         return f128_to_ui64( f, 0, false );
+         return f128_to_ui64( f, 0, false );
       }
       uint32_t __fixunstfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-#warning         return f128_to_ui32( f, 0, false );
+         return f128_to_ui32( f, 0, false );
       }
       void __fixsfti( __int128& ret, float a ) {
-#warning         float32_t f = {a};
-#warning         ret = f32_to_i128( f, 0, false );
+         float32_t f = {*(uint32_t*)&a};
+         ret = f32_to_i64( f, 0, false );
       }
       void __fixdfti( __int128& ret, double a ) {
-#warning         float64_t f = {a};
-#warning         ret = f64_to_i128( f, 0, false );
+         float64_t f = {*(uint64_t*)&a};
+         ret = f64_to_i64( f, 0, false );
       }
       void __fixunssfti( unsigned __int128& ret, float a ) {
-#warning         float32_t f = {a};
-#warning         ret = f32_to_ui128( f, 0, false );
+         float32_t f = {*(uint32_t*)&a};
+         ret = f32_to_ui64( f, 0, false );
       }
       void __fixunsdfti( unsigned __int128& ret, double a ) {
-#warning         float64_t f = {a};
-#warning ret = f64_to_ui128( f, 0, false );
+         float64_t f = {*(uint64_t*)&a};
+         ret = f64_to_ui64( f, 0, false );
       }
       uint64_t __trunctfdf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
@@ -1582,6 +1590,8 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__floatunsitf, void (int, int)                                )
    (__floatditf,   void (int, int64_t)                            )
    (__floatunditf, void (int, int64_t)                            )
+   (__floattidf,   double (int64_t, int64_t)                      )
+   (__floatuntidf, double (int64_t, int64_t)                      )
    (__floatsidf,   double(int)                                    )
    (__extendsftf2, void(int, int)                                 )
    (__extenddftf2, void(int, double)                              )
