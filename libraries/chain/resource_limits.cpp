@@ -120,28 +120,31 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
-void resource_limits_manager::add_pending_account_ram_usage( const account_name account, int64_t ram_delta ) {
+void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta ) {
    if (ram_delta == 0) {
       return;
    }
 
-   const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, account));
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
+
+   EOS_ASSERT( ram_delta <= 0 || UINT64_MAX - usage.ram_usage >= (uint64_t)ram_delta, transaction_exception,
+              "Ram usage delta would overflow UINT64_MAX");
+   EOS_ASSERT(ram_delta >= 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
+              "Ram usage delta would underflow UINT64_MAX");
 
    _db.modify( usage, [&]( auto& u ) {
      u.ram_usage += ram_delta;
    });
+}
 
-   FC_ASSERT( usage.ram_usage >= 0, "cannot have negative usage!" );
+void resource_limits_manager::verify_account_ram_usage( const account_name account )const {
+   int64_t ram_bytes; int64_t net_weight; int64_t cpu_weight;
+   get_account_limits( account, ram_bytes, net_weight, cpu_weight );
+   const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
-   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.ram_usage>= (uint64_t)ram_delta, transaction_exception,
-              "Ram usage delta would overflow UINT64_MAX");
-   EOS_ASSERT(ram_delta > 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
-              "Ram usage delta would underflow UINT64_MAX");
-
-   if( limits.ram_bytes >= 0 && usage.ram_usage > limits.ram_bytes ) {
+   if( ram_bytes >= 0 && usage.ram_usage > ram_bytes ) {
       tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
-      e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",usage.ram_usage)("m",limits.ram_bytes)));
+      e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",usage.ram_usage)("m",ram_bytes)));
       throw e;
    }
 }
@@ -151,7 +154,7 @@ int64_t resource_limits_manager::get_account_ram_usage( const account_name& name
 }
 
 
-void resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
+bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
    const auto& usage = _db.get<resource_usage_object,by_owner>( account );
    /*
     * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
@@ -177,13 +180,19 @@ void resource_limits_manager::set_account_limits( const account_name& account, i
    // update the users weights directly
    auto& limits = find_or_create_pending_limits();
 
-   if (ram_bytes >= 0) {
-      if (limits.ram_bytes < 0 ) {
+   bool decreased_limit = false;
+
+   if( ram_bytes >= 0 ) {
+
+      decreased_limit = ( (limits.ram_bytes < 0) || (ram_bytes < limits.ram_bytes) );
+
+      /*
+      if( limits.ram_bytes < 0 ) {
          EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "converting unlimited account would result in overcommitment [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
       } else {
          EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "attempting to release committed ram resources [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
       }
-
+      */
    }
 
    auto old_ram_bytes = limits.ram_bytes;
@@ -192,6 +201,8 @@ void resource_limits_manager::set_account_limits( const account_name& account, i
       pending_limits.net_weight = net_weight;
       pending_limits.cpu_weight = cpu_weight;
    });
+
+   return decreased_limit;
 }
 
 void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {

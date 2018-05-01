@@ -56,7 +56,10 @@ namespace eosiosystem {
                               const authority& active,
                               const authority& recovery*/ ) {
          eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
-         set_resource_limits( newact, 1000, 0, 0 );
+         set_resource_limits( newact, 3000, 0, 0 );
+         // TODO: The 3000 initial ram usage is a hack to get tests to work for now.
+         //       When we add support in the system contract to buy storage for another user, we will need to replace the
+         //       3000 with 0 and modify the tester to gift the necessary storage amount to all created accounts.
       }
 
       void updateauth( /*account_name     account,
