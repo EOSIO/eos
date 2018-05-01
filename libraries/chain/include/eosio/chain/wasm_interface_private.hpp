@@ -58,6 +58,7 @@ namespace eosio { namespace chain {
             } catch(Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
+
             wasm_injections::wasm_binary_injection injector(module);
             injector.inject();
 
@@ -69,16 +70,9 @@ namespace eosio { namespace chain {
             } catch(Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-             
-            std::ofstream output("wasm");
-            output.write((const char*)bytes.data(), bytes.size());
-            output.close();
 
-            ilog("END00 ${now}", ("now",fc::time_point::now()));
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
-
             ilog("END0 ${now}", ("now",fc::time_point::now()));
-            //it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)code.data(), code.size(), parse_initial_memory(module))).first;
          }
          return it->second;
       }

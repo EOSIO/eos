@@ -19,33 +19,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
    using namespace IR;
    // helper functions for injection
 
-   class injector_stream {
-      public:
-         injector_stream(size_t size) : idx(0) {
-            data.resize(size);
-         }
-         void operator<< (const char c) { 
-            if (idx >= data.size())
-               data.resize(data.size()*2);
-            data[idx++] = static_cast<U8>(c);
-         }
-         void set(size_t i, const char* arr) {
-            if (i+idx >= data.size())
-               data.resize(data.size()*2);
-            memcpy((char*)&data[idx], arr, i);
-            idx += i;
-         }
-         size_t get_index() { return idx; }
-         std::vector<U8> get() {
-            std::vector<U8> ret = data;
-            ret.resize(idx+1);
-            return ret;
-         }
-      private:
-         size_t idx;
-         std::vector<U8> data;
-   };
-
    struct injector_utils {
       static std::map<std::vector<uint16_t>, uint32_t> type_slots;
       static std::map<std::string, uint32_t>           registered_injected;
@@ -199,7 +172,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          // first add the import for checktime
          injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"checktime", checktime_idx );
-
          wasm_ops::op_types<>::i32_const_t cnt; 
          cnt.field = instruction_counter::icnt;
 
@@ -650,8 +622,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using br_if_t           = wasm_ops::br_if                   <instruction_counter>;
       using br_table_t        = wasm_ops::br_table                <instruction_counter>;
       using return__t         = wasm_ops::return_                 <instruction_counter>;
-      using call_t            = wasm_ops::call                    <instruction_counter>; //, call_depth_check>;
-      using call_indirect_t   = wasm_ops::call_indirect           <instruction_counter>; //, call_depth_check>;
+      using call_t            = wasm_ops::call                    <instruction_counter, call_depth_check>;
+      using call_indirect_t   = wasm_ops::call_indirect           <instruction_counter, call_depth_check>;
       using drop_t            = wasm_ops::drop                    <instruction_counter>;
       using select_t          = wasm_ops::select                  <instruction_counter>;
 
