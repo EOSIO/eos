@@ -9,6 +9,9 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/print.hpp>
 #include <eosiolib/privileged.h>
+#include <eosiolib/optional.hpp>
+#include <eosiolib/producer_schedule.hpp>
+#include <eosiolib/contract.hpp>
 
 namespace eosiosystem {
    using eosio::permission_level;
@@ -42,53 +45,80 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( authority, (threshold)(delay_sec)(keys)(accounts) )
    };
 
+   struct block_header {
+      block_id_type                             previous;
+      uint32_t                                  timestamp;
+      account_name                              producer;
+      uint32_t                                  schedule_version = 0;
+      checksum256                               transaction_mroot;
+      checksum256                               action_mroot;
+      eosio::optional<eosio::producer_schedule> new_producers;
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(producer)(schedule_version)(transaction_mroot)(action_mroot)
+                                     (new_producers))
+   };
+
+
    /*
-    * Empty handlers for native messages.
     * Method parameters commented out to prevent generation of code that parses input data.
     */
-   class native {
+   class native : public eosio::contract {
       public:
 
-      void newaccount( account_name     creator,
-                       account_name     newact
-                              /*
-                              const authority& owner,
-                              const authority& active,
-                              const authority& recovery*/ ) {
-         eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
-         set_resource_limits( newact, 3000, 0, 0 );
-         // TODO: The 3000 initial ram usage is a hack to get tests to work for now.
-         //       When we add support in the system contract to buy storage for another user, we will need to replace the
-         //       3000 with 0 and modify the tester to gift the necessary storage amount to all created accounts.
-      }
+         using eosio::contract::contract;
 
-      void updateauth( /*account_name     account,
-                              permission_name  permission,
-                              permission_name  parent,
-                              const authority& data*/ ) {}
+         /**
+          *  Called after a new account is created. This code enforces resource-limits rules
+          *  for new accounts as well as new account naming conventions.
+          *
+          *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
+          *  characters long without '.' until a future account auction process is implemented
+          *  which prevents name squatting.
+          *
+          *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
+          *     therefore, this method will execute an inline buyram from receiver for newacnt in
+          *     an amount equal to the current new account creation fee. 
+          */
+         void newaccount( account_name     creator,
+                          account_name     newact
+                                 /*  no need to parse authorites 
+                                 const authority& owner,
+                                 const authority& active,
+                                 const authority& recovery*/ ) {
+            eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
+            set_resource_limits( newact, 3000, 0, 0 );
+         }
 
-      void deleteauth( /*account_name account, permission_name permission*/ ) {}
 
-      void linkauth( /*account_name    account,
-                            account_name    code,
-                            action_name     type,
-                            permission_name requirement*/ ) {}
+         void updateauth( /*account_name     account,
+                                 permission_name  permission,
+                                 permission_name  parent,
+                                 const authority& data*/ ) {}
 
-      void unlinkauth( /*account_name account,
-                              account_name code,
-                              action_name  type*/ ) {}
+         void deleteauth( /*account_name account, permission_name permission*/ ) {}
 
-      void postrecovery( /*account_name       account,
-                                const authority&   data,
-                                const std::string& memo*/ ) {}
+         void linkauth( /*account_name    account,
+                               account_name    code,
+                               action_name     type,
+                               permission_name requirement*/ ) {}
 
-      void passrecovery( /*account_name account*/ ) {}
+         void unlinkauth( /*account_name account,
+                                 account_name code,
+                                 action_name  type*/ ) {}
 
-      void vetorecovery( /*account_name account*/ ) {}
+         void postrecovery( /*account_name       account,
+                                   const authority&   data,
+                                   const std::string& memo*/ ) {}
 
-      void onerror( /*const bytes&*/ ) {}
+         void passrecovery( /*account_name account*/ ) {}
 
-      void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
+         void vetorecovery( /*account_name account*/ ) {}
+
+         void onerror( /*const bytes&*/ ) {}
+
+         void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
+
 
    };
 }

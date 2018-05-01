@@ -9,14 +9,15 @@ EOSIO_ABI( eosiosystem::system_contract,
            (setparams)
            // delegate_bandwith.cpp
            (delegatebw)(undelegatebw)(refund)
+           (buyram)(sellram)
            (regproxy)
            // voting.cpp
            (unregproxy)(regproducer)(unregprod)(voteproducer)
-           (onblock)
            // producer_pay.cpp
            (claimrewards)
            // native.hpp
            //XXX
+           (onblock)
            (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
            // defined in eosio.system.hpp
            (nonce)
