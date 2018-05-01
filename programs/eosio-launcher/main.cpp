@@ -1011,7 +1011,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::mongo_db_plugin\n";
   }
   cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::account_history_api_plugin\n";
+      << "plugin = eosio::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1042,6 +1042,9 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
                   ( "host", instance.name )
              ) );
     log_config.loggers.front().appenders.push_back("net");
+    fc::logger_config p2p ("net_plugin_impl");
+    p2p.level=fc::log_level::debug;
+    log_config.loggers.emplace_back(p2p);
   }
 
   auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );
