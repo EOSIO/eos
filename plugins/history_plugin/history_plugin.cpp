@@ -305,24 +305,32 @@ namespace eosio {
          }
 
          auto blk = chain.fetch_block_by_number( result.block_num );
-         for( const auto& receipt: blk->transactions ) {
-            if( receipt.trx.contains<packed_transaction>() ) {
-               auto& pt = receipt.trx.get<packed_transaction>();
-               auto mtrx = transaction_metadata(pt);
-               if( mtrx.id == result.id ) {
-                  fc::mutable_variant_object r( "receipt", receipt );
-                  r( "trx", chain.to_variant_with_abi(mtrx.trx) );
-                  result.trx = move(r);
-                  break;
-               }
-            } else {
-               auto& id = receipt.trx.get<transaction_id_type>();
-               if( id == result.id ) {
-                  fc::mutable_variant_object r( "receipt", receipt );
-                  result.trx = move(r);
-                  break;
-               }
-            }
+         if( blk == nullptr ) { // still in pending
+             auto blk_state = chain.pending_block_state();
+             if( blk_state != nullptr ) {
+                 blk = blk_state->block;
+             }
+         }
+         if( blk != nullptr ) {
+             for (const auto &receipt: blk->transactions) {
+                 if (receipt.trx.contains<packed_transaction>()) {
+                     auto &pt = receipt.trx.get<packed_transaction>();
+                     auto mtrx = transaction_metadata(pt);
+                     if (mtrx.id == result.id) {
+                         fc::mutable_variant_object r("receipt", receipt);
+                         r("trx", chain.to_variant_with_abi(mtrx.trx));
+                         result.trx = move(r);
+                         break;
+                     }
+                 } else {
+                     auto &id = receipt.trx.get<transaction_id_type>();
+                     if (id == result.id) {
+                         fc::mutable_variant_object r("receipt", receipt);
+                         result.trx = move(r);
+                         break;
+                     }
+                 }
+             }
          }
 
          return result;

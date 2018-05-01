@@ -804,7 +804,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 #endif
 
    // Send deferred transaction with payer != receiver, payer is alice in this case, this should fail since we don't have authorization of alice
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), transaction_exception);
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), missing_auth_exception);
 
    // If we make testapi to be priviledge account, deferred transaction will work no matter who is the payer
    push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()

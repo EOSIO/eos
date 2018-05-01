@@ -143,7 +143,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception,
                                  3080000, "resource exhausted exception" )
       FC_DECLARE_DERIVED_EXCEPTION( ram_usage_exceeded, resource_exhausted_exception,
-                                    3080002, "account using more than allotted RAM usage" )
+                                    3080001, "account using more than allotted RAM usage" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_cpu_resource_exhausted, resource_exhausted_exception,
                                     3080002, "transaction exceeded CPU usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_net_resource_exhausted, resource_exhausted_exception,

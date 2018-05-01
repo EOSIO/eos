@@ -429,11 +429,6 @@ struct controller_impl {
          return;
       }
 
-      optional<fc::exception> soft_except;
-      optional<fc::exception> hard_except;
-      std::exception_ptr except_ptr;
-      std::exception_ptr hard_except_ptr;
-
       auto start = fc::time_point::now();
       transaction_trace_ptr trace;
       flat_set<account_name>  bill_to_accounts;
@@ -481,7 +476,7 @@ struct controller_impl {
 
       if( gto.sender != account_name() ) {
          // Attempt error handling for the generated transaction.
-         edump((soft_except->to_detail_string()));
+         edump((trace->soft_except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trace->cpu_usage, start );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
