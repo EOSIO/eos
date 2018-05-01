@@ -1,6 +1,5 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <multi_index_test/multi_index_test.wast.hpp>
 #include <multi_index_test/multi_index_test.abi.hpp>

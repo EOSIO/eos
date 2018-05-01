@@ -1,7 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/symbol.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
@@ -26,7 +26,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -85,12 +84,10 @@ class exchange_tester : public TESTER {
       exchange_state get_market_state( account_name exchange, symbol sym ) {
 
          uint64_t s = sym.value() >> 8;
-         const auto& db  = control->get_database();
-         const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(
-                                                             boost::make_tuple(exchange, s, N(markets)));
+         const auto& db  = control->db();
+         const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(exchange, s, N(markets)));
          if (tbl) {
-            const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(
-                                                            boost::make_tuple(tbl->id, s));
+            const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, s));
             if( obj ) {
                fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
                exchange_state result;
@@ -103,13 +100,11 @@ class exchange_tester : public TESTER {
 
       extended_asset get_exchange_balance( account_name exchange, account_name currency,
                                            symbol sym, account_name owner ) {
-         const auto& db  = control->get_database();
-         const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(
-                                                             boost::make_tuple(exchange, owner, N(exaccounts)));
+         const auto& db  = control->db();
+         const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(exchange, owner, N(exaccounts)));
 
          if (tbl) {
-            const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(
-                                                            boost::make_tuple(tbl->id, owner));
+            const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, owner));
             if( obj ) {
                fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
                account_name own;
@@ -128,16 +123,14 @@ class exchange_tester : public TESTER {
 
       double get_lent_shares( account_name exchange, symbol market, account_name owner, bool base )
       {
-         const auto& db  = control->get_database();
+         const auto& db  = control->db();
 
          auto scope = ((market.value() >> 8) << 4) + (base ? 1 : 2);
 
-         const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(
-                                                             boost::make_tuple(exchange, scope, N(loans)));
+         const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(exchange, scope, N(loans)));
 
          if (tbl) {
-            const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(
-                                                            boost::make_tuple(tbl->id, owner));
+            const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, owner));
             if( obj ) {
                fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
                account_name own;
@@ -299,7 +292,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
                           extended_asset( A(10.00 BTC), N(eosio.token) ),
                           extended_asset( A(0.01 USD), N(eosio.token) ) );
 
-   for( const auto& at : result.action_traces )
+   for( const auto& at : result->action_traces )
       ilog( "${s}", ("s",at.console) );
 
    trader_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(trader) );
@@ -314,7 +307,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    trader_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(trader) );
    trader_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(trader) );
 
-   for( const auto& at : result.action_traces )
+   for( const auto& at : result->action_traces )
       ilog( "${s}", ("s",at.console) );
 
    wdump((trader_ex_btc.quantity));
