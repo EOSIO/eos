@@ -166,6 +166,153 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
 
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
+
+BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
+   TESTER chain;
+
+   const auto& tester_account = N(tester);
+
+   chain.set_code(config::system_account_name, eosio_system_wast);
+   chain.set_abi(config::system_account_name, eosio_system_abi);
+
+   chain.produce_blocks();
+   chain.create_account(N(eosio.token));
+   chain.produce_blocks(10);
+
+   chain.set_code(N(eosio.token), eosio_token_wast);
+   chain.set_abi(N(eosio.token), eosio_token_abi);
+
+   chain.produce_blocks();
+   chain.create_account(N(tester));
+   chain.create_account(N(tester2));
+   chain.produce_blocks(10);
+
+   transaction_trace trace;
+
+   // can't delete auth because it doesn't exist
+   BOOST_REQUIRE_EXCEPTION(
+   trace = chain.push_action(config::system_account_name, contracts::deleteauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("permission", "first")),
+   permission_query_exception,
+   [] (const permission_query_exception &e)->bool {
+      std::string check_str = "3010001 permission_query_exception: Permission Query Exception\nFailed to retrieve permission";
+      BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
+      return true;
+   });
+
+   // update auth
+   chain.push_action(config::system_account_name, contracts::updateauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("permission", "first")
+           ("parent", "active")
+           ("data",  authority(chain.get_public_key(tester_account, "first")))
+           ("delay", 0));
+
+   // link auth
+   chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("code", "eosio.token")
+           ("type", "transfer")
+           ("requirement", "first"));
+
+   // create CUR token
+   chain.produce_blocks();
+   chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
+           ("issuer", "eosio.token" )
+           ("maximum_supply", "9000000.0000 CUR" )
+           ("can_freeze", 0)
+           ("can_recall", 0)
+           ("can_whitelist", 0)
+   );
+
+   // issue to account "eosio.token"
+   chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
+           ("to",       "eosio.token")
+           ("quantity", "1000000.0000 CUR")
+           ("memo", "for stuff")
+   );
+
+   // transfer from eosio.token to tester
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(eosio.token), fc::mutable_variant_object()
+       ("from", "eosio.token")
+       ("to", "tester")
+       ("quantity", "100.0000 CUR")
+       ("memo", "hi" )
+   );
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
+
+   chain.produce_blocks();
+
+   auto liquid_balance = get_currency_balance(chain, N(eosio.token));
+   BOOST_REQUIRE_EQUAL(asset::from_string("999900.0000 CUR"), liquid_balance);
+   liquid_balance = get_currency_balance(chain, N(tester));
+   BOOST_REQUIRE_EQUAL(asset::from_string("100.0000 CUR"), liquid_balance);
+
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+       ("from", "tester")
+       ("to", "tester2")
+       ("quantity", "1.0000 CUR")
+       ("memo", "hi" )
+   );
+
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
+
+   liquid_balance = get_currency_balance(chain, N(eosio.token));
+   BOOST_REQUIRE_EQUAL(asset::from_string("999900.0000 CUR"), liquid_balance);
+   liquid_balance = get_currency_balance(chain, N(tester));
+   BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
+   liquid_balance = get_currency_balance(chain, N(tester2));
+   BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
+
+   // can't delete auth because it's linked
+   BOOST_REQUIRE_EXCEPTION(
+   trace = chain.push_action(config::system_account_name, contracts::deleteauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("permission", "first")),
+   action_validate_exception,
+   [] (const action_validate_exception &e)->bool {
+      std::string check_str = "3040000 action_validate_exception: message validation exception\nCannot delete a linked authority";
+      BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
+      return true;
+   });
+
+   // unlink auth
+   trace = chain.push_action(config::system_account_name, contracts::unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("code", "eosio.token")
+           ("type", "transfer"));
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
+
+   // delete auth
+   trace = chain.push_action(config::system_account_name, contracts::deleteauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", "tester")
+           ("permission", "first"));
+
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
+
+   chain.produce_blocks(1);;
+
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
+       ("from", "tester")
+       ("to", "tester2")
+       ("quantity", "3.0000 CUR")
+       ("memo", "hi" )
+   );
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
+
+   chain.produce_blocks();
+
+   liquid_balance = get_currency_balance(chain, N(tester));
+   BOOST_REQUIRE_EQUAL(asset::from_string("96.0000 CUR"), liquid_balance);
+   liquid_balance = get_currency_balance(chain, N(tester2));
+   BOOST_REQUIRE_EQUAL(asset::from_string("4.0000 CUR"), liquid_balance);
+
+} FC_LOG_AND_RETHROW() }/// delete_auth_test
+
+
 // test link to permission with delay on permission which is parent of min permission (special logic in permission_object::satisfies)
 BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    TESTER chain;

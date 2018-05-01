@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
                           extended_asset( A(0.01 USD), N(eosio.token) ) );
 
    for( const auto& at : result.action_traces )
-      ilog( "\r${s}", ("s",at.console) );
+      ilog( "${s}", ("s",at.console) );
 
    trader_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(trader) );
    trader_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(trader) );
@@ -315,7 +315,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    trader_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(trader) );
 
    for( const auto& at : result.action_traces )
-      ilog( "\r${s}", ("s",at.console) );
+      ilog( "${s}", ("s",at.console) );
 
    wdump((trader_ex_btc.quantity));
    wdump((trader_ex_usd.quantity));

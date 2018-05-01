@@ -13,6 +13,7 @@ namespace eosio { namespace chain { namespace wasm_constraints {
    constexpr unsigned maximum_table_elements     = 1024;        //elements
    constexpr unsigned maximum_linear_memory_init = 64*1024;     //bytes
    constexpr unsigned maximum_func_local_bytes   = 8192;        //bytes
+   constexpr unsigned maximum_call_depth         = 250;         //nested calls
 
    static constexpr unsigned wasm_page_size      = 64*1024;
 

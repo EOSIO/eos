@@ -883,7 +883,7 @@ namespace eosio {
       handshake_initializer::populate(last_handshake_sent);
       last_handshake_sent.generation = ++sent_handshake_count;
       fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
-              ("g",last_handshake_sent.generation)("ep", peer_addr));
+              ("g",last_handshake_sent.generation)("ep", peer_name()));
       enqueue(last_handshake_sent);
    }
 
@@ -1416,6 +1416,9 @@ namespace eosio {
       if( req.req_blocks.mode == catch_up ) {
          c->fork_head = id;
          c->fork_head_num = num;
+         ilog ("got a catch_up notice while in ${s}, fork head num = ${fhn} target LIB = ${lib} next_expected = ${ne}", ("s",stage_str(state))("fhn",num)("lib",sync_known_lib_num)("ne", sync_next_expected_num));
+         if (state == lib_catchup)
+            return;
          set_state(head_catchup);
       }
       else {
@@ -1444,6 +1447,7 @@ namespace eosio {
    }
 
    void sync_manager::recv_block (connection_ptr c, const block_id_type &blk_id, uint32_t blk_num, bool accepted) {
+      fc_dlog(logger," got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
       if (!accepted) {
          uint32_t head_num = chain_plug->chain().head_block_num();
          if (head_num != last_repeated) {
@@ -2775,7 +2779,6 @@ namespace eosio {
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
-         ( "log-level-net-plugin", bpo::value<string>()->default_value("info"), "Log level: one of 'all', 'debug', 'info', 'warn', 'error', or 'off'")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
