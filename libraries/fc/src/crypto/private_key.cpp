@@ -90,14 +90,14 @@ namespace fc { namespace crypto {
 
    static private_key::storage_type parse_base58(const string& base58str)
    {
-      if (base58str.find('.') == std::string::npos) {
+      if (base58str.find('_') == std::string::npos) {
          // wif import
          using default_type = private_key::storage_type::template type_at<0>;
          return private_key::storage_type(from_wif<default_type>(base58str));
       } else {
          constexpr auto prefix = config::private_key_base_prefix;
 
-         const auto pivot = base58str.find('.');
+         const auto pivot = base58str.find('_');
          FC_ASSERT(pivot != std::string::npos, "No delimiter in string, cannot determine type: ${str}", ("str", base58str));
 
          const auto prefix_str = base58str.substr(0, pivot);
@@ -123,7 +123,7 @@ namespace fc { namespace crypto {
       }
 
       auto data_str = _storage.visit(base58str_visitor<storage_type, config::private_key_prefix>());
-      return std::string(config::private_key_base_prefix) + "." + data_str;
+      return std::string(config::private_key_base_prefix) + "_" + data_str;
    }
 
    std::ostream& operator<<(std::ostream& s, const private_key& k) {

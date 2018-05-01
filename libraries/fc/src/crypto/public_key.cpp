@@ -27,7 +27,7 @@ namespace fc { namespace crypto {
    static public_key::storage_type parse_base58(const std::string& base58str)
    {
       constexpr auto legacy_prefix = config::public_key_legacy_prefix;
-      if(prefix_matches(legacy_prefix, base58str) && base58str.find('.') == std::string::npos ) {
+      if(prefix_matches(legacy_prefix, base58str) && base58str.find('_') == std::string::npos ) {
          auto sub_str = base58str.substr(const_strlen(legacy_prefix));
          using default_type = typename public_key::storage_type::template type_at<0>;
          using data_type = default_type::data_type;
@@ -40,7 +40,7 @@ namespace fc { namespace crypto {
       } else {
          constexpr auto prefix = config::public_key_base_prefix;
 
-         const auto pivot = base58str.find('.');
+         const auto pivot = base58str.find('_');
          FC_ASSERT(pivot != std::string::npos, "No delimiter in string, cannot determine data type: ${str}", ("str", base58str));
 
          const auto prefix_str = base58str.substr(0, pivot);
@@ -64,7 +64,7 @@ namespace fc { namespace crypto {
       if (which == 0) {
          return std::string(config::public_key_legacy_prefix) + data_str;
       } else {
-         return std::string(config::public_key_base_prefix) + "." + data_str;
+         return std::string(config::public_key_base_prefix) + "_" + data_str;
       }
    }
 

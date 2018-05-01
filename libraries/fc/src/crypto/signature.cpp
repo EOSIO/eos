@@ -16,7 +16,7 @@ namespace fc { namespace crypto {
    {
       constexpr auto prefix = config::signature_base_prefix;
 
-      const auto pivot = base58str.find('.');
+      const auto pivot = base58str.find('_');
       FC_ASSERT(pivot != std::string::npos, "No delimiter in string, cannot determine type: ${str}", ("str", base58str));
 
       const auto prefix_str = base58str.substr(0, pivot);
@@ -34,7 +34,7 @@ namespace fc { namespace crypto {
    signature::operator std::string() const
    {
       auto data_str = _storage.visit(base58str_visitor<storage_type, config::signature_prefix>());
-      return std::string(config::signature_base_prefix) + "." + data_str;
+      return std::string(config::signature_base_prefix) + "_" + data_str;
    }
 
    std::ostream& operator<<(std::ostream& s, const signature& k) {
