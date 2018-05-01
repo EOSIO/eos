@@ -124,7 +124,7 @@ namespace eosio { namespace testing {
 
       control->commit_block();
       control->log_irreversible_blocks();
-
+      control->start_block( next_time + fc::microseconds(config::block_interval_us));
       return control->head_block_state()->block;
    }
 

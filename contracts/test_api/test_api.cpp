@@ -139,8 +139,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
-      WASM_TEST_HANDLER(test_transaction, read_inline_action);
-      WASM_TEST_HANDLER(test_transaction, read_inline_cf_action);
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);
