@@ -1393,6 +1393,14 @@ class compiler_builtins : public context_aware_api {
       void __floatunditf( float128_t& ret, uint64_t a ) {
          ret = ui64_to_f128( a );
       }
+      double __floattidf( uint64_t l, uint64_t h ) {
+         auto ret = i64_to_f64( l );
+         return *(double*)&ret;
+      }
+      double __floatuntidf( uint64_t l, uint64_t h ) {
+         auto ret = ui64_to_f64( l );
+         return *(double*)&ret;
+      }
       void __extendsftf2( float128_t& ret, uint32_t f ) {
          float32_t in = { f };
          ret = f32_to_f128( in );
@@ -1582,6 +1590,8 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__floatunsitf, void (int, int)                                )
    (__floatditf,   void (int, int64_t)                            )
    (__floatunditf, void (int, int64_t)                            )
+   (__floattidf,   double (int64_t, int64_t)                      )
+   (__floatuntidf, double (int64_t, int64_t)                      )
    (__floatsidf,   double(int)                                    )
    (__extendsftf2, void(int, int)                                 )
    (__extenddftf2, void(int, double)                              )
