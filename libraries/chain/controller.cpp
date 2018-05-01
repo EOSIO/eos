@@ -704,6 +704,7 @@ struct controller_impl {
 
    void push_block( const signed_block_ptr& b ) {
       try {
+         if( pending ) abort_block();
          FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
          emit( self.accepted_block_header, new_header_state );

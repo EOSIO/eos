@@ -4,7 +4,7 @@
 #pragma GCC diagnostic pop
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 
 #include <tic_tac_toe/tic_tac_toe.wast.hpp>
 #include <tic_tac_toe/tic_tac_toe.abi.hpp>
@@ -27,7 +27,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -54,7 +53,7 @@ struct ttt_tester : TESTER {
       if(maybe_tid == nullptr)
          BOOST_FAIL("table for code=\"tic.tac.toe\" scope=\"" + scope.to_string() + "\" table=\"games\" does not exist");
 
-      auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
+      auto* o = control->db().find<key_value_object, by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
       if(o == nullptr)
          BOOST_FAIL("game for  does not exist for challenger=\"" + key.to_string() + "\"");
 
@@ -103,7 +102,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player1")
          ("mvt", mvt)
-      ), transaction_exception, assert_message_contains("not your turn"));
+      ), assert_exception, assert_message_contains("not your turn"));
 
    mvt = mutable_variant_object()
            ("row", 1)
@@ -113,7 +112,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player2")
          ("mvt", mvt)
-      ), transaction_exception, assert_message_contains("not a valid movement"));
+      ), assert_exception, assert_message_contains("not a valid movement"));
 
    mvt = mutable_variant_object()
            ("row", 0)
@@ -163,7 +162,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player2")
          ("mvt", mvt)
-      ), transaction_exception, assert_message_contains("the game has ended"));
+      ), assert_exception, assert_message_contains("the game has ended"));
 
    game current;
    chain.get_table_entry(current, N(tic.tac.toe), N(player1), N(games), N(player2));
@@ -182,13 +181,13 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player2")
          ("mvt", mvt)
-      ), transaction_exception, assert_message_contains("game doesn't exists"));
+      ), assert_exception, assert_message_contains("game doesn't exists"));
 
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(restart), N(player2), mutable_variant_object()
          ("challenger", "player2")
          ("host", "player1")
          ("by", "player2")
-      ), transaction_exception, assert_message_contains("game doesn't exists"));
+      ), assert_exception, assert_message_contains("game doesn't exists"));
 
    chain.push_action(N(tic.tac.toe), N(create), N(player2), mutable_variant_object()
            ("challenger", "player1")
@@ -221,7 +220,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player2")
          ("by", "player2")
          ("mvt", mvt)
-      ), transaction_exception, assert_message_contains("not your turn"));
+      ), assert_exception, assert_message_contains("not your turn"));
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
