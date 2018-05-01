@@ -5,10 +5,7 @@
 #pragma once
 
 #include <eosio.system/native.hpp>
-#include <eosiolib/producer_schedule.hpp>
 #include <eosiolib/asset.hpp>
-#include <eosiolib/contract.hpp>
-#include <eosiolib/optional.hpp>
 #include <eosiolib/privileged.hpp>
 #include <eosiolib/singleton.hpp>
 
@@ -30,13 +27,17 @@ namespace eosiosystem {
    };
 
    struct eosio_global_state : eosio_parameters {
+      uint64_t free_ram()const { return max_storage_size - total_storage_bytes_reserved; }
+
       uint64_t             total_storage_bytes_reserved = 0;
       eosio::asset         total_storage_stake;
       eosio::asset         payment_per_block;
       eosio::asset         payment_to_eos_bucket;
+
       time                 first_block_time_in_cycle = 0;
       uint32_t             blocks_per_cycle = 0;
       time                 last_bucket_fill_time = 0;
+
       eosio::asset         eos_bucket;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
@@ -76,9 +77,11 @@ namespace eosiosystem {
 
    class system_contract : public native {
       public:
-         using eosio::contract::contract;
+         using native::native;
 
          // Actions:
+         void onblock( const block_id_type&, uint32_t timestamp_slot, account_name producer );
+                      // const block_header& header ); /// only parse first 3 fields of block header
 
          // functions defined in delegate_bandwidth.cpp
          void delegatebw( account_name from, account_name receiver,
@@ -116,7 +119,7 @@ namespace eosiosystem {
           *  Reduces quota my bytes and then performs an inline transfer of tokens
           *  to receiver based upon the average purchase price of the original quota.
           */
-         void sellram( account_name receiver, uint32_t bytes );
+         void sellram( account_name receiver, uint64_t bytes );
 
          /**
           *  This action is called after the delegation-period to claim all pending
@@ -142,9 +145,6 @@ namespace eosiosystem {
          void nonce( const std::string& /*value*/ ) {}
 
          // functions defined in producer_pay.cpp
-
-         void onblock( const block_header& header );
-
          void claimrewards( const account_name& owner );
 
       private:
@@ -158,13 +158,7 @@ namespace eosiosystem {
          static eosio_global_state get_default_parameters();
 
          // defined in voting.cpp
-         void increase_voting_power( account_name acnt, const eosio::asset& amount );
-
-         void decrease_voting_power( account_name acnt, const eosio::asset& amount );
-
-         // defined in producer_pay.cpp
-         bool update_cycle( time block_time );
-
+         void adjust_voting_power( account_name acnt, int64_t delta );
    };
 
 } /// eosiosystem

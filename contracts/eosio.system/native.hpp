@@ -9,6 +9,9 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/print.hpp>
 #include <eosiolib/privileged.h>
+#include <eosiolib/optional.hpp>
+#include <eosiolib/producer_schedule.hpp>
+#include <eosiolib/contract.hpp>
 
 namespace eosiosystem {
    using eosio::permission_level;
@@ -43,17 +46,17 @@ namespace eosiosystem {
    };
 
    struct block_header {
-      checksum256                               previous;
-      time                                      timestamp;
+      block_id_type                             previous;
+      uint32_t                                  timestamp;
+      account_name                              producer;
+      uint32_t                                  schedule_version = 0;
       checksum256                               transaction_mroot;
       checksum256                               action_mroot;
-      account_name                              producer;
-      uint32_t                                  schedule_version;
       eosio::optional<eosio::producer_schedule> new_producers;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)
-                                     (producer)(schedule_version)(new_producers))
+      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(producer)(schedule_version)(transaction_mroot)(action_mroot)
+                                     (new_producers))
    };
 
 
@@ -85,6 +88,7 @@ namespace eosiosystem {
             eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
             set_resource_limits( newact, 1000, 0, 0 );
          }
+
 
          void updateauth( /*account_name     account,
                                  permission_name  permission,

@@ -6,67 +6,55 @@ namespace eosiosystem {
 
 static const uint32_t num_of_payed_producers = 121;
 
-bool system_contract::update_cycle(time block_time) {
+
+void system_contract::onblock( const block_id_type&, block_timestamp timestamp, account_name producer ) {
+
    global_state_singleton gs( _self, _self );
    auto parameters = gs.exists() ? gs.get() : get_default_parameters();
-   if (parameters.first_block_time_in_cycle == 0) {
+   if( parameters.first_block_time_in_cycle == 0 ) {
       // This is the first time onblock is called in the blockchain.
-      parameters.last_bucket_fill_time = block_time;
+      parameters.last_bucket_fill_time = timestamp;
       gs.set( parameters, _self );
-      update_elected_producers( block_time );
-      return true;
+      update_elected_producers( timestamp );
    }
 
    static const uint32_t slots_per_cycle = parameters.blocks_per_cycle;
-   const uint32_t time_slots = block_time - parameters.first_block_time_in_cycle;
+   const uint32_t time_slots = timestamp - parameters.first_block_time_in_cycle;
    if (time_slots >= slots_per_cycle) {
-      time beginning_of_cycle = block_time - (time_slots % slots_per_cycle);
+      auto beginning_of_cycle = timestamp - (time_slots % slots_per_cycle);
       update_elected_producers(beginning_of_cycle);
-      return true;
    }
-   return false;
-}
-
-void system_contract::onblock(const block_header& header) {
-   // update parameters if it's a new cycle
-   update_cycle(header.timestamp);
 
    producers_table producers_tbl( _self, _self );
-   account_name producer = header.producer;
 
-   global_state_singleton gs( _self, _self );
-   auto parameters = gs.exists() ? gs.get() : get_default_parameters();
-   //            const system_token_type block_payment = parameters.payment_per_block;
+   // const system_token_type block_payment = parameters.payment_per_block;
    const asset block_payment = parameters.payment_per_block;
    auto prod = producers_tbl.find(producer);
    if ( prod != producers_tbl.end() ) {
       producers_tbl.modify( prod, 0, [&](auto& p) {
             p.per_block_payments += block_payment;
-            p.last_produced_block_time = header.timestamp;
+            p.last_produced_block_time = timestamp;
          });
    }
 
-   const uint32_t num_of_payments = header.timestamp - parameters.last_bucket_fill_time;
+   const uint32_t num_of_payments = timestamp - parameters.last_bucket_fill_time;
    //            const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
    const asset to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
-   parameters.last_bucket_fill_time = header.timestamp;
+   parameters.last_bucket_fill_time = timestamp;
    parameters.eos_bucket += to_eos_bucket;
    gs.set( parameters, _self );
 }
 
 void system_contract::claimrewards(const account_name& owner) {
    require_auth(owner);
-   // We don't have current_sender() anymore. We don't have a good way to determine if the transaction was a deferred one.
-   // publication_time() could be used but it is not any guarantee that a transaction is or is not deferred.
-   // Do we really need to prevent users from using contracts to claim their rewards?
-   //eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
+
    producers_table producers_tbl( _self, _self );
    auto prod = producers_tbl.find(owner);
    eosio_assert(prod != producers_tbl.end(), "account name is not in producer list");
-   eosio_assert(prod->active(), "producer is not active"); // QUESTION: Why do we want to prevent inactive producers from claiming their earned rewards?
    if( prod->last_rewards_claim > 0 ) {
       eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
    }
+
    //            system_token_type rewards = prod->per_block_payments;
    eosio::asset rewards = prod->per_block_payments;
    auto idx = producers_tbl.template get_index<N(prototalvote)>();
