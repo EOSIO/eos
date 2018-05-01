@@ -728,7 +728,7 @@ class multi_index
             typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             auto secondary = index_type::extract_secondary_key( obj );
-            if( hana::at_c<index_type::index_number>(secondary_keys) != secondary ) {
+            if( memcmp( &hana::at_c<index_type::index_number>(secondary_keys), &secondary, sizeof(secondary) ) != 0 ) {
                auto indexitr = mutableitem.__iters[index_type::number()];
 
                if( indexitr < 0 ) {
