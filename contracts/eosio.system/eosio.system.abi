@@ -43,8 +43,7 @@
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
          {"name":"stake_net_quantity", "type":"asset"},
-         {"name":"stake_cpu_quantity", "type":"asset"},
-         {"name":"stake_storage_quantity", "type":"asset"}
+         {"name":"stake_cpu_quantity", "type":"asset"}
       ]
     },{
       "name": "undelegatebw",
@@ -53,8 +52,22 @@
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
          {"name":"unstake_net_quantity", "type":"asset"},
-         {"name":"unstake_cpu_quantity", "type":"asset"},
-         {"name":"unstake_storage_bytes", "type":"uint64"}
+         {"name":"unstake_cpu_quantity", "type":"asset"}
+      ]
+    },{
+      "name": "buyram",
+      "base": "",
+      "fields": [
+         {"name":"buyer", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"tokens", "type":"asset"}
+      ]
+    },{
+      "name": "sellram",
+      "base": "",
+      "fields": [
+         {"name":"receiver", "type":"account_name"},
+         {"name":"bytes", "type":"uint64"}
       ]
     },{
       "name": "refund",
@@ -74,13 +87,12 @@
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
-      "name": "total_resources",
+      "name": "user_resources",
       "base": "",
       "fields": [
          {"name":"owner", "type":"account_name"},
          {"name":"net_weight", "type":"asset"},
          {"name":"cpu_weight", "type":"asset"},
-         {"name":"storage_stake", "type":"asset"},
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
@@ -226,6 +238,14 @@
       "type": "undelegatebw",
       "ricardian_contract": ""
     },{
+      "name": "buyram",
+      "type": "buyram",
+      "ricardian_contract": ""
+    },{
+      "name": "sellram",
+      "type": "sellram",
+      "ricardian_contract": ""
+    },{
       "name": "refund",
       "type": "refund",
       "ricardian_contract": ""
@@ -282,8 +302,8 @@
       "key_names" : ["owner"],
       "key_types" : ["account_name"]
     },{
-      "name": "totalband",
-      "type": "total_resources",
+      "name": "userres",
+      "type": "user_resources",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
