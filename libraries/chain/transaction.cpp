@@ -292,8 +292,10 @@ void packed_transaction::local_unpack()const
          switch(compression) {
          case none:
             unpacked_trx = unpack_transaction(packed_trx);
+            break;
          case zlib:
             unpacked_trx = zlib_decompress_transaction(packed_trx);
+            break;
          default:
             FC_THROW("Unknown transaction compression algorithm");
          }
