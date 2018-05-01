@@ -285,14 +285,14 @@ struct controller_impl {
                                                                       active, conf.genesis.initial_timestamp );
 
       resource_limits.initialize_account(name);
-      resource_limits.add_pending_account_ram_usage(
-         name,
-         (int64_t)(config::billable_size_v<permission_object> + owner_permission.auth.get_billable_size())
-      );
-      resource_limits.add_pending_account_ram_usage(
-         name,
-         (int64_t)(config::billable_size_v<permission_object> + active_permission.auth.get_billable_size())
-      );
+
+      int64_t ram_delta = config::overhead_per_account_ram_bytes;
+      ram_delta += 2*config::billable_size_v<permission_object>;
+      ram_delta += owner_permission.auth.get_billable_size();
+      ram_delta += active_permission.auth.get_billable_size();
+
+      resource_limits.add_pending_ram_usage(name, ram_delta);
+      resource_limits.verify_account_ram_usage(name);
    }
 
    void initialize_database() {
@@ -405,8 +405,11 @@ struct controller_impl {
          push_receipt( gto.trx_id, transaction_receipt::expired, 0, 0 );
       }
 
-      resource_limits.add_pending_account_ram_usage(gto.payer,
-                                     -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
+      resource_limits.add_pending_ram_usage(
+         gto.payer,
+         -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size())
+      );
+      // No need to verify_account_ram_usage since we are only reducing memory
 
       db.remove( gto );
    }
@@ -423,11 +426,6 @@ struct controller_impl {
          remove_scheduled_transaction( gto, true ); // expire the transaction
          return;
       }
-
-      optional<fc::exception> soft_except;
-      optional<fc::exception> hard_except;
-      std::exception_ptr except_ptr;
-      std::exception_ptr hard_except_ptr;
 
       auto start = fc::time_point::now();
       transaction_trace_ptr trace;
@@ -476,7 +474,7 @@ struct controller_impl {
 
       if( gto.sender != account_name() ) {
          // Attempt error handling for the generated transaction.
-         edump((soft_except->to_detail_string()));
+         edump((trace->soft_except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trace->cpu_usage, start );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
@@ -701,6 +699,7 @@ struct controller_impl {
 
    void push_block( const signed_block_ptr& b ) {
       try {
+         if( pending ) abort_block();
          FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
          emit( self.accepted_block_header, new_header_state );
@@ -941,7 +940,7 @@ struct controller_impl {
       signed_transaction trx;
       trx.actions.emplace_back(std::move(on_block_act));
       trx.set_reference_block(self.head_block_id());
-      trx.expiration = self.head_block_time() + fc::seconds(1);
+      trx.expiration = self.pending_block_time() + fc::seconds(1);
       return trx;
    }
 
@@ -1036,7 +1035,7 @@ transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx
       trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; };
       my->push_transaction( trx, deadline );
       return trace;
-   } FC_CAPTURE_AND_RETHROW( (fc::time_point::now()-start)(deadline) ) 
+   } FC_CAPTURE_AND_RETHROW( (fc::time_point::now()-start)(deadline) )
 }
 
 bool controller::push_next_scheduled_transaction( fc::time_point deadline ) {

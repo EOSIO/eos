@@ -84,6 +84,7 @@ const static uint32_t   default_max_gen_trx_count              = 16;
 
 const static uint32_t   resource_processing_cpu_overhead_per_billed_account = 256; // TODO: is this reasonable?
 const static uint32_t   determine_payers_cpu_overhead_per_authorization     = 64;  // TODO: is this reasonable?
+const static uint32_t   ram_usage_validation_overhead_per_account           = 64;  // TODO: is this reasonable?
 
 const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery

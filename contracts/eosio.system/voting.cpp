@@ -35,7 +35,7 @@ namespace eosiosystem {
       account_name                proxy = 0;
       time                        last_update = 0;
       uint32_t                    is_proxy = 0;
-      eosio::asset                staked;
+      eosio::asset                staked; /// total staked across all delegations
       eosio::asset                unstaking;
       eosio::asset                unstake_per_week;
       uint128_t                   proxied_votes = 0;
@@ -94,33 +94,36 @@ namespace eosiosystem {
          });
    }
 
-   void system_contract::increase_voting_power( account_name acnt, const eosio::asset& amount ) {
+   void system_contract::adjust_voting_power( account_name acnt, int64_t delta ) {
       voters_table voters_tbl( _self, _self );
       auto voter = voters_tbl.find( acnt );
-
-      eosio_assert( 0 <= amount.amount, "negative asset" );
 
       if( voter == voters_tbl.end() ) {
          voter = voters_tbl.emplace( acnt, [&]( voter_info& a ) {
                a.owner = acnt;
                a.last_update = now();
-               a.staked = amount;
+               a.staked.amount = delta; 
+               eosio_assert( a.staked.amount >= 0, "underflow" );
             });
       } else {
          voters_tbl.modify( voter, 0, [&]( auto& av ) {
                av.last_update = now();
-               av.staked += amount;
+               av.staked.amount += delta;
+               eosio_assert( av.staked.amount >= 0, "underflow" );
             });
       }
 
       const std::vector<account_name>* producers = nullptr;
       if ( voter->proxy ) {
+         /*  TODO: disabled until we can switch proxied votes to double
          auto proxy = voters_tbl.find( voter->proxy );
          eosio_assert( proxy != voters_tbl.end(), "selected proxy not found" ); //data corruption
-         voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes += uint64_t(amount.amount); } );
+         voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes += delta; } );
          if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
             producers = &proxy->producers;
          }
+         */
+
       } else {
          producers = &voter->producers;
       }
@@ -131,12 +134,13 @@ namespace eosiosystem {
             auto prod = producers_tbl.find( p );
             eosio_assert( prod != producers_tbl.end(), "never existed producer" ); //data corruption
             producers_tbl.modify( prod, 0, [&]( auto& v ) {
-                  v.total_votes += uint64_t(amount.amount);
+                  v.total_votes += delta;
                });
          }
       }
    }
 
+   /*
    void system_contract::decrease_voting_power( account_name acnt, const eosio::asset& amount ) {
       require_auth( acnt );
       voters_table voters_tbl( _self, _self );
@@ -184,6 +188,7 @@ namespace eosiosystem {
             });
       }
    }
+   */
 
    eosio_global_state system_contract::get_default_parameters() {
       eosio_global_state dp;
