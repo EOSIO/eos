@@ -38,6 +38,7 @@ namespace eosio { namespace chain {
             determine_payers_cpu_cost += config::determine_payers_cpu_overhead_per_authorization;
          }
       }
+      validate_ram_usage.reserve( bill_to_accounts.size() );
 
       // Calculate network and CPU usage limits and initial usage:
 
@@ -155,6 +156,13 @@ namespace eosio { namespace chain {
          schedule_transaction();
       }
 
+      add_cpu_usage( validate_ram_usage.size() * config::ram_usage_validation_overhead_per_account );
+
+      auto& rl = control.get_mutable_resource_limits_manager();
+      for( auto a : validate_ram_usage ) {
+         rl.verify_account_ram_usage( a );
+      }
+
       net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
       cpu_usage = ((cpu_usage + 1023)/1024)*1024; // Round up to nearest multiple of 1024
       control.get_mutable_resource_limits_manager()
@@ -182,6 +190,14 @@ namespace eosio { namespace chain {
       if( BOOST_UNLIKELY(fc::time_point::now() > deadline) ) {
          wlog( "deadline passed" );
          throw checktime_exceeded();
+      }
+   }
+
+   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
+      auto& rl = control.get_mutable_resource_limits_manager();
+      rl.add_pending_ram_usage( account, ram_delta );
+      if( ram_delta > 0 ) {
+         validate_ram_usage.insert( account );
       }
    }
 
@@ -219,8 +235,7 @@ namespace eosio { namespace chain {
         trx_size = gto.set( trx );
       });
 
-      control.get_mutable_resource_limits_manager()
-             .add_pending_account_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {

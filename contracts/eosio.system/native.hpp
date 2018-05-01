@@ -65,6 +65,7 @@ namespace eosiosystem {
     */
    class native : public eosio::contract {
       public:
+
          using eosio::contract::contract;
 
          /**
@@ -86,7 +87,7 @@ namespace eosiosystem {
                                  const authority& active,
                                  const authority& recovery*/ ) {
             eosio::print( eosio::name{creator}, " created ", eosio::name{newact});
-            set_resource_limits( newact, 1000, 0, 0 );
+            set_resource_limits( newact, 3000, 0, 0 );
          }
 
 
@@ -117,6 +118,7 @@ namespace eosiosystem {
          void onerror( /*const bytes&*/ ) {}
 
          void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
+
 
    };
 }
