@@ -613,8 +613,10 @@ struct controller_impl {
             throw;
          }
       } catch( const fc::exception& e ) {
-         trace->hard_except = e;
-         trace->hard_except_ptr = std::current_exception();
+         if (trace) {
+            trace->hard_except = e;
+            trace->hard_except_ptr = std::current_exception();
+         }
       }
       transaction_trace_notify( trx, trace );
    } FC_CAPTURE_AND_RETHROW() } /// push_transaction
