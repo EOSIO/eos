@@ -873,6 +873,58 @@ struct canceldelay_subcommand {
    }
 };
 
+void get_account( const string& accountName ) {
+   auto json = call(get_account_func, fc::mutable_variant_object("account_name", accountName));
+   auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
+   std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
+
+   const string ident = "     ";
+
+   std::cout << "permissions: " << std::endl;
+   unordered_map<name, vector<name>/*children*/> tree;
+   vector<name> roots; //we don't have multiple roots, but we can easily handle them here, so let's do it just in case
+   unordered_map<name, eosio::chain_apis::permission> cache;
+   for ( auto& perm : res.permissions ) {
+      if ( perm.parent ) {
+         tree[perm.parent].push_back( perm.perm_name );
+      } else {
+         roots.push_back( perm.perm_name );
+      }
+      auto name = perm.perm_name; //keep copy before moving `perm`, since thirst argument of emplace can be evaluated first
+      // looks a little crazy, but should be efficient
+      cache.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(perm)) );
+   }
+   std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
+      auto& p = cache.at(name);
+      std::cout << ident << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
+      for ( auto& key : p.required_auth.keys ) {
+         std::cout << key.weight << ' ' << string(key.key) << ", ";
+      }
+      for ( auto& acc : p.required_auth.accounts ) {
+         std::cout << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission) << ", ";
+      }
+      std::cout << std::endl;
+      auto it = tree.find( name );
+      if (it != tree.end()) {
+         auto& children = it->second;
+         sort( children.begin(), children.end() );
+         for ( auto& n : children ) {
+            // we have a tree, not a graph, so no need to check for already visited nodes
+            dfs_print( n, depth+1 );
+         }
+      } // else it's a leaf node
+   };
+   std::sort(roots.begin(), roots.end());
+   for ( auto r : roots ) {
+      dfs_print( r, 0 );
+   }
+
+   std::cout << "memory: " << std::endl
+             << ident << "quota: " << res.ram_quota << " bytes    used: " << res.ram_usage << " bytes     staked: " << "XXX" << " EOS" << std::endl;
+
+   std::cout << fc::json::to_pretty_string(json) << std::endl;
+}
+
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
@@ -961,11 +1013,7 @@ int main( int argc, char** argv ) {
    string accountName;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
-   getAccount->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(call(get_account_func,
-                                                   fc::mutable_variant_object("account_name", accountName)))
-                << std::endl;
-   });
+   getAccount->set_callback([&]() { get_account(accountName); });
 
    // get code
    string codeFilename;
