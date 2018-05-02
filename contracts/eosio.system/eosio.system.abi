@@ -21,7 +21,7 @@
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
          {"name":"stake_net_quantity", "type":"asset"},
-         {"name":"stake_cpu_quantity", "type":"asset"},
+         {"name":"stake_cpu_quantity", "type":"asset"}
       ]
     },{
       "name": "undelegatebw",
@@ -30,7 +30,7 @@
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
          {"name":"unstake_net_quantity", "type":"asset"},
-         {"name":"unstake_cpu_quantity", "type":"asset"},
+         {"name":"unstake_cpu_quantity", "type":"asset"}
       ]
     },{
       "name": "refund",
@@ -143,7 +143,7 @@
       "name": "regproxy",
       "base": "",
       "fields": [
-        {"name":"proxy",     "type":"account_name"}
+        {"name":"proxy",     "type":"account_name"},
         {"name":"isproxy",   "type":"bool"}
       ]
     },{
@@ -167,7 +167,7 @@
         {"name":"is_proxy",             "type":"bool"},
         {"name":"deferred_trx_id",      "type":"uint32"},
         {"name":"last_unstake_time",    "type":"time"},
-        {"name":"unstaking",            "type":"asset"},
+        {"name":"unstaking",            "type":"asset"}
       ]
     },{
       "name": "claimrewards",
