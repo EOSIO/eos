@@ -199,6 +199,9 @@
 	. "$FILE"
 
 	printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\\n\\n"
+	printf ">>>>>>>> CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
+	printf ">>>>>>>> ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
+	printf ">>>>>>>> DOXYGEN=%s\\n\\n" "${DOXYGEN}"
 
 	if [ ! -d "${BUILD_DIR}" ]; then
 		if ! mkdir -p "${BUILD_DIR}"
