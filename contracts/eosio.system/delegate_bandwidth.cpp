@@ -129,8 +129,10 @@ namespace eosiosystem {
       require_auth( payer );
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
-                                                    { payer, N(eosio), quant, std::string("buy ram") } );
+      if( payer != N(eosio) ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+                                                       { payer, N(eosio), quant, std::string("buy ram") } );
+      }
 
       const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
       const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
@@ -205,8 +207,10 @@ namespace eosiosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->storage_bytes, uint64_t(res_itr->net_weight.amount), uint64_t(res_itr->cpu_weight.amount) );
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                    { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
+      if( N(eosio) != account ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
+      }
    }
 
    void system_contract::delegatebw( account_name from, account_name receiver,
@@ -259,8 +263,10 @@ namespace eosiosystem {
 
       set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, uint64_t(tot_itr->net_weight.amount), uint64_t(tot_itr->cpu_weight.amount) );
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
-                                                    { from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
+      if( N(eosio) != from) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
+                                                       { from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
+      }
 
       print( "voters" );
       auto from_voter = _voters.find(from);
