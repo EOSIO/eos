@@ -196,17 +196,15 @@ bool is_access_violation(fc::unhandled_exception const & e) {
     }
    return false;
 }
-bool is_access_violation(const Runtime::Exception& e) {
-   return true;
-}
+bool is_access_violation(const Runtime::Exception& e) { return true; }
+
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
-bool is_tx_missing_auth(tx_missing_auth const & e) { return true; }
-bool is_tx_missing_recipient(tx_missing_recipient const & e) { return true;}
 bool is_tx_missing_sigs(tx_missing_sigs const & e) { return true;}
 bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
-bool is_tx_resource_exhausted(const tx_resource_exhausted& e) { return true; }
-bool is_checktime_exceeded(const checktime_exceeded& e) { return true; }
+bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
+bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
+bool is_tx_deadline_exceeded(const tx_deadline_exceeded& e) { return true; }
 
 /*
  * register test suite `api_tests`
@@ -307,24 +305,24 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       );
 
    // test require_auth
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", {}), tx_missing_auth,
-         [](const tx_missing_auth& e) {
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", {}), missing_auth_exception,
+         [](const missing_auth_exception& e) {
             return expect_assert_message(e, "missing authority of");
          }
       );
 
    // test require_auth
    auto a3only = std::vector<permission_level>{{N(acc3), config::active_name}};
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a3only)), tx_missing_auth,
-         [](const tx_missing_auth& e) {
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a3only)), missing_auth_exception,
+         [](const missing_auth_exception& e) {
             return expect_assert_message(e, "missing authority of");
          }
       );
 
    // test require_auth
    auto a4only = std::vector<permission_level>{{N(acc4), config::active_name}};
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a4only)), tx_missing_auth,
-         [](const tx_missing_auth& e) {
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "require_auth", fc::raw::pack(a4only)), missing_auth_exception,
+         [](const missing_auth_exception& e) {
             return expect_assert_message(e, "missing authority of");
          }
       );
@@ -477,7 +475,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
             sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
             BOOST_CHECK_EXCEPTION(push_transaction(trx), assert_exception,
                  [](const fc::exception& e) {
-                    return expect_assert_message(e, "context_free: only context free api's can be used in this context");
+                    return expect_assert_message(e, "only context free api's can be used in this context" );
                  }
             );
          }
@@ -500,7 +498,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
               return expect_assert_message(e, "context free actions cannot have authorizations");
            }
       );
-      
+
       BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
@@ -568,7 +566,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       test.produce_block();
    };
 
-   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), tx_resource_exhausted, is_tx_resource_exhausted /*checktime_exceeded, is_checktime_exceeded*/);
+   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), tx_cpu_usage_exceeded, is_tx_cpu_usage_exceeded /*tx_deadline_exceeded, is_tx_deadline_exceeded*/);
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -751,11 +749,11 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       control->push_next_scheduled_transaction();
       BOOST_CHECK(!trace);
       produce_block( fc::seconds(2) );
-      
+
       //check that it gets executed afterwards
       control->push_next_scheduled_transaction();
       BOOST_CHECK(trace);
-      
+
       //confirm printed message
       BOOST_TEST(!trace->action_traces.empty());
       BOOST_TEST(trace->action_traces.back().console == "deferred executed\n");
@@ -772,7 +770,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       produce_block( fc::seconds(2) );
-    
+
       //check that only one deferred transaction executed
       control->push_next_scheduled_transaction();
       control->push_next_scheduled_transaction();
@@ -806,9 +804,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    produce_blocks(10);
 
    // Send deferred transaction with payer != receiver, payer is alice in this case, this should fail since we don't have authorization of alice
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), transaction_exception);
-
-   produce_blocks(10);
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), missing_auth_exception);
 
    // If we make testapi to be priviledge account, deferred transaction will work no matter who is the payer
    push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
@@ -910,7 +906,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
                              N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
                              fc::raw::pack(ia2)),
                       N(testapi2) );
-   BOOST_CHECK_EQUAL( boost::algorithm::contains(res, "db access violation"), true );
+   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
 
 
    // Verify that the value has not changed.
