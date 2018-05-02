@@ -484,7 +484,55 @@ class multi_index
       } /// load_object_by_primary_iterator
 
    public:
-
+      /**
+       *  Constructs an instance of a Multi-Index table.
+       *  @brief Constructs an instance of a Multi-Index table.
+       *
+       *  @param code - Account that owns table
+       *  @param scope - Scope identifier within the code hierarchy
+       *
+       *  @pre code and scope member properties are initialized
+       *  @post each secondary index table initialized
+       *  @post Secondary indices are updated to refer to the newly added object. If the secondary index tables do not exist, they are created.
+       *  @post The payer is charged for the storage usage of the new object and, if the table (and secondary index tables) must be created, for the overhead of the table creation.
+       * 
+       *  @return A primary key iterator to the newly created object
+       * 
+       *  Notes
+       *  The `eosio::multi_index` template has template parameters `<uint64_t TableName, typename T, typename... Indices>`, where:
+       *  - `TableName` is the name of the table, maximum 12 characters long, characters in the name from the set of lowercase letters, digits 1 to 5, and the "." (period) character;
+       *  - `T` is the object type (i.e., row definition);
+       *  - `Indices` is a list of up to 16 secondary indices.
+       *  - Each must be a default constructable class or struct
+       *  - Each must have a function call operator that takes a const reference to the table object type and returns either a secondary key type or a reference to a secondary key type
+       *  - It is recommended to use the eosio::const_mem_fun template, which is a type alias to the boost::multi_index::const_mem_fun.  See the documentation for the Boost const_mem_fun key extractor for more details.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  @endcode
+       */
       multi_index( uint64_t code, uint64_t scope )
       :_code(code),_scope(scope),_next_primary_key(unset_next_primary_key)
       {}
@@ -633,7 +681,48 @@ class multi_index
          eosio_assert( objitem.__idx == this, "object passed to iterator_to is not in multi_index" );
          return {this, &objitem};
       }
-
+      /**
+       *  Adds a new object (i.e., row) to the table.
+       *  @brief Adds a new object (i.e., row) to the table.
+       *
+       *  @param payer - Account name of the payer for the Storage usage of the new object
+       *  @param constructor - Lambda function that does an in-place initialization of the object to be created in the table
+       *
+       *  @pre A multi index table has been instantiated
+       *  @post A new object is created in the Multi-Index table, with a unique primary key (as specified in the object).  The object is serialized and written to the table. If the table does not exist, it is created.
+       *  @post Secondary indices are updated to refer to the newly added object. If the secondary index tables do not exist, they are created.
+       *  @post The payer is charged for the storage usage of the new object and, if the table (and secondary index tables) must be created, for the overhead of the table creation.
+       * 
+       *  @return A primary key iterator to the newly created object
+       * 
+       *  Exception - The account is not authorized to write to the table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  @endcode
+       */
       template<typename Lambda>
       const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
          using namespace _multi_index_detail;
