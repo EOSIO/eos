@@ -49,6 +49,7 @@
 FC_REFLECT( dummy_action, (a)(b)(c) )
 FC_REFLECT( u128_action, (values) )
 FC_REFLECT( cf_action, (payload)(cfd_idx) )
+FC_REFLECT( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
 FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
 #ifdef NON_VALIDATING_TEST
@@ -897,15 +898,46 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
 #endif
 
-   // Send deferred transaction with payer != receiver, payer is alice in this case, this should fail since we don't have authorization of alice
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), missing_auth_exception);
+{
+   // Send deferred transaction with payer != receiver
+   // Payer is alice in this case, this should fail since we don't have authorization of alice
+   dtt_action dtt_act1 = {.payer = N(alice)};
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1)), transaction_exception);
+         
+   // Send deferred transaction with deferred transaction receiver != this transaction receiver
+   // This will include the authorization of the receiver, and impose any related delay
+   // We set the authorization delay to be 10 sec here, and the deferred transaction delay is set to be 2, so this should fail
+   dtt_action dtt_act2 = {.deferred_account = N(testapi2), .permission_name = N(additional), .delay_sec = 2};
+   push_action(config::system_account_name, updateauth::get_name(), "testapi", fc::mutable_variant_object()
+           ("account", "testapi")
+           ("permission", name(dtt_act2.permission_name))
+           ("parent", "active")
+           ("auth",  authority(get_public_key("testapi", name(dtt_act2.permission_name).to_string()), 10)));
+   push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
+           ("account", "testapi")
+           ("code", name(dtt_act2.deferred_account))
+           ("type", name(dtt_act2.deferred_action))
+           ("requirement", name(dtt_act2.permission_name)));
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2)), transaction_exception);
+   // Meanwhile, if the deferred transaction receiver == this transaction receiver, delay will be ignored, this should success
+   dtt_action dtt_act3 = {.deferred_account = N(testapi), .permission_name = N(additional)};
+   push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
+         ("account", "testapi")
+         ("code", name(dtt_act3.deferred_account))
+         ("type", name(dtt_act3.deferred_action))
+         ("requirement", name(dtt_act3.permission_name)));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act3));
 
-   // If we make testapi to be priviledge account, deferred transaction will work no matter who is the payer
+   // If we make testapi to be priviledged account:
+   // - deferred transaction will work no matter who is the payer
+   // - deferred transaction will not care about the delay of the authorization
    push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
                                                        ("account", "testapi")
                                                        ("is_priv", 1));
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", fc::raw::pack(account_name("alice")));
-
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2));
+}
+  
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
