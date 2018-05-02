@@ -641,7 +641,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    produce_blocks(100);
    set_code( N(testapi), test_api_wast );
    produce_blocks(1);
-   
+
    // test for zero auth
    {
       signed_transaction trx;
@@ -690,18 +690,17 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
    control->push_next_scheduled_transaction();
 
-#warning TODO: FIX THE FOLLOWING TESTS
-#if 0
-   transaction_trace_ptr trace;
-   control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
-
    // test error handling on deferred transaction failure
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
-   control->push_next_scheduled_transaction();
-
-   BOOST_CHECK(trace);
-   BOOST_CHECK_EQUAL(trace->receipt.status, transaction_receipt::soft_fail);
-#endif
+   {
+      produce_blocks(10);
+      transaction_trace_ptr trace;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->receipt.status != transaction_receipt::executed) { trace = t; } } );
+      CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
+      control->push_next_scheduled_transaction();
+      BOOST_CHECK(trace);
+      BOOST_CHECK_EQUAL(trace->receipt.status, transaction_receipt::soft_fail);
+      c.disconnect();
+   }
 
    // test test_transaction_size
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(53) ); // TODO: Need a better way to test this.
@@ -733,10 +732,11 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
-   produce_blocks(2);
+   produce_blocks(20);
    create_accounts( {N(testapi), N(testapi2), N(alice)} );
    set_code( N(testapi), test_api_wast );
    set_code( N(testapi2), test_api_wast );
@@ -745,7 +745,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    //schedule
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
       //check that it doesn't get executed immediately
       control->push_next_scheduled_transaction();
@@ -759,54 +759,57 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       //confirm printed message
       BOOST_TEST(!trace->action_traces.empty());
       BOOST_TEST(trace->action_traces.back().console == "deferred executed\n");
+      c.disconnect();
    }
 
-#warning TODO: FIX THE FOLLOWING TESTS
-#if 0
+   produce_blocks(10);
+
    //schedule twice (second deferred transaction should replace first one)
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      uint32_t count = 0;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       produce_block( fc::seconds(2) );
     
       //check that only one deferred transaction executed
       control->push_next_scheduled_transaction();
+      control->push_next_scheduled_transaction();
+      BOOST_CHECK_EQUAL(1, count);
       BOOST_CHECK(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
+      c.disconnect();
    }
+
+   produce_blocks(10);
 
    //schedule and cancel
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
       produce_block( fc::seconds(2) );
       control->push_next_scheduled_transaction();
       BOOST_CHECK(!trace);
-      //      BOOST_CHECK_EQUAL( 0, traces.size() );
+      c.disconnect();
    }
 
-   //cancel_deferred() before scheduling transaction should not prevent the transaction from being scheduled (check that previous bug is fixed)
-   CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
-   produce_block( fc::seconds(2) );
-   traces = control->push_deferred_transactions( true );
-   BOOST_CHECK_EQUAL( 1, traces.size() );
+   produce_blocks(10);
 
-   //verify that deferred transaction is dependent on max_generated_transaction_count configuration property
-   const auto& gpo = control->get_global_properties();
-   control->get_mutable_database().modify(gpo, [&]( auto& props ) {
-      props.configuration.max_generated_transaction_count = 0;
-   });
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
-#endif
+   //cancel_deferred() fails if no transaction is scheduled
+   {
+      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {}), transaction_exception);
+   }
+
+   produce_blocks(10);
 
    // Send deferred transaction with payer != receiver, payer is alice in this case, this should fail since we don't have authorization of alice
    BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), transaction_exception);
-         
+
+   produce_blocks(10);
+
    // If we make testapi to be priviledge account, deferred transaction will work no matter who is the payer
    push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
                                                        ("account", "testapi")
