@@ -97,7 +97,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("max-reversible-block-time", bpo::value<int32_t>()->default_value(-1),
           "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
-         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
+         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
           "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
