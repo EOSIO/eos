@@ -18,9 +18,9 @@ namespace eosiosystem {
    using eosio::const_mem_fun;
 
    struct eosio_parameters : eosio::blockchain_parameters {
-      uint64_t          max_storage_size = 1024 * 1024 * 1024;
+      uint64_t          max_storage_size = 64ll*1024 * 1024 * 1024;
       uint32_t          percent_of_max_inflation_rate = 0;
-      uint32_t          storage_reserve_ratio = 2000;      // ratio * 1000
+      uint32_t          storage_reserve_ratio = 100;      // ratio * 10000
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_storage_size)(percent_of_max_inflation_rate)(storage_reserve_ratio) )
@@ -65,7 +65,41 @@ namespace eosiosystem {
                         (time_became_active)(last_produced_block_time) )
    };
 
-   typedef eosio::multi_index< N(producerinfo), producer_info,
+   struct voter_info {
+      account_name                owner = 0; /// the voter
+      account_name                proxy = 0; /// the proxy set by the voter, if any
+      std::vector<account_name>   producers; /// the producers approved by this voter if no proxy set
+      uint64_t                    staked = 0;
+
+      /**
+       *  Every time a vote is cast we must first "undo" the last vote weight, before casting the
+       *  new vote weight.  Vote weight is calculated as:
+       *
+       *  stated.amount * 2 ^ ( weeks_since_launch/weeks_per_year)
+       */
+      double                      last_vote_weight = 0; /// the vote weight cast the last time the vote was updated
+
+      /**
+       * Total vote weight delegated to this voter.
+       */
+      double                      proxied_vote_weight= 0; /// the total vote weight delegated to this voter as a proxy
+      bool                        is_proxy = 0; /// whether the voter is a proxy for others
+
+
+      uint32_t                    deferred_trx_id = 0; /// the ID of the 3-day delay deferred transaction
+      time                        last_unstake_time = 0; /// the time when the deferred_trx_id was sent
+      eosio::asset                unstaking; /// the total unstaking (pending 3 day delay)
+
+      uint64_t primary_key()const { return owner; }
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(deferred_trx_id)(last_unstake_time)(unstaking) )
+   };
+
+   typedef eosio::multi_index< N(voters), voter_info>  voters_table;
+
+
+   typedef eosio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
                                >  producers_table;
 
@@ -76,8 +110,16 @@ namespace eosiosystem {
    static constexpr uint64_t     system_token_symbol = S(4,EOS);
 
    class system_contract : public native {
+      private:
+         voters_table           _voters;
+         producers_table        _producers;
+         global_state_singleton _global;
+
+         eosio_global_state     _gstate;
+
       public:
-         using native::native;
+         system_contract( account_name s );
+         [[noreturn]] ~system_contract();
 
          // Actions:
          void onblock( const block_id_type&, uint32_t timestamp_slot, account_name producer );
@@ -135,12 +177,9 @@ namespace eosiosystem {
 
          void setparams( uint64_t max_storage_size, uint32_t storage_reserve_ratio );
 
-
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
 
-         void regproxy( const account_name proxy );
-
-         void unregproxy( const account_name proxy );
+         void regproxy( const account_name proxy, bool isproxy );
 
          void nonce( const std::string& /*value*/ ) {}
 

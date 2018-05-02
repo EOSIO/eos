@@ -112,9 +112,9 @@ namespace eosio { namespace testing {
 
       if( !skip_pending_trxs ) {
             //wlog( "pushing all input transactions in waiting queue" );
-            while( control->push_next_unapplied_transaction() );
+            while( control->push_next_unapplied_transaction( fc::time_point::maximum() ) );
             //wlog( "pushing all available deferred transactions" );
-            while( control->push_next_scheduled_transaction() );
+            while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
       }
 
       control->finalize_block();
@@ -218,7 +218,8 @@ namespace eosio { namespace testing {
       try {
          push_transaction(trx);
       } catch (const fc::exception& ex) {
-         return error(ex.top_message());
+         //return error(ex.top_message());
+         return error(ex.to_detail_string());
       }
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -264,6 +265,18 @@ namespace eosio { namespace testing {
                                                  )
 
    { try {
+      signed_transaction trx;
+      trx.actions.emplace_back(get_action( code, acttype, auths, data ));
+      set_transaction_headers(trx, expiration, delay_sec);
+      for (const auto& auth : auths) {
+         trx.sign(get_private_key(auth.actor, auth.permission.to_string()), chain_id_type());
+      }
+
+      return push_transaction(trx);
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
+
+   action base_tester::get_action( account_name code, action_name acttype, vector<permission_level> auths, 
+                                   const variant_object& data )const {
       const auto& acnt = control->db().get<account_object,by_name>(code);
       auto abi = acnt.get_abi();
       chain::abi_serializer abis(abi);
@@ -278,17 +291,8 @@ namespace eosio { namespace testing {
       act.name = acttype;
       act.authorization = auths;
       act.data = abis.variant_to_binary(action_type_name, data);
-
-      signed_transaction trx;
-      trx.actions.emplace_back(std::move(act));
-      set_transaction_headers(trx, expiration, delay_sec);
-      for (const auto& auth : auths) {
-         trx.sign(get_private_key(auth.actor, auth.permission.to_string()), chain_id_type());
-      }
-
-      return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
-
+      return act;
+   }
    transaction_trace_ptr base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({

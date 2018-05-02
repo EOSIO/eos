@@ -35,8 +35,7 @@ public:
       produce_blocks( 2 );
 
       create_accounts( { N(eosio.token) } );
-      create_accounts( { N(alice), N(bob), N(carol) } );
-      produce_blocks( 1000 );
+      produce_blocks( 100 );
 
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
@@ -44,8 +43,14 @@ public:
       set_code( N(eosio.token), eosio_token_wast );
       set_abi( N(eosio.token), eosio_token_abi );
 
-      create_currency( N(eosio.token), config::system_account_name, asset::from_string("20000000.0000 EOS") );
-      issue(config::system_account_name, "10000000.0000 EOS");
+      create_currency( N(eosio.token), config::system_account_name, asset::from_string("1000000000.0000 EOS") );
+      issue(config::system_account_name, "1000000000.0000 EOS");
+
+      produce_blocks();
+
+      create_account_with_resources( N(alice), N(eosio), asset::from_string("0.5000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      create_account_with_resources( N(bob), N(eosio), asset::from_string("0.5000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      create_account_with_resources( N(carol), N(eosio), asset::from_string("0.5000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
 
       produce_blocks();
 
@@ -58,6 +63,39 @@ public:
       FC_ASSERT(0 < gpo.active_producers.producers.size(), "No producers");
       producer_name = (string)gpo.active_producers.producers.front().producer_name;
       */
+   }
+
+   transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig ) {
+      signed_transaction trx;
+      set_transaction_headers(trx);
+
+      authority owner_auth;
+      if (multisig) {
+         // multisig between account's owner key and creators active permission
+         owner_auth = authority(2, {key_weight{get_public_key( a, "owner" ), 1}}, {permission_level_weight{{creator, config::active_name}, 1}});
+      } else {
+         owner_auth =  authority( get_public_key( a, "owner" ) );
+      }
+
+      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                newaccount{
+                                   .creator  = creator,
+                                   .name     = a,
+                                   .owner    = owner_auth,
+                                   .active   = authority( get_public_key( a, "active" ) ),
+                                   .recovery = authority( get_public_key( a, "recovery" ) ),
+                                });
+
+      trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},
+                                            mvo()
+                                            ("payer", creator)
+                                            ("receiver", a)
+                                            ("quant", ramfunds) )
+                              );
+
+      set_transaction_headers(trx);
+      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      return push_transaction( trx );
    }
 
    action_result push_action( const account_name& signer, const action_name &name, const variant_object &data, bool auth = true ) {
@@ -189,7 +227,7 @@ public:
    }
 
    fc::variant get_producer_info( const account_name& act ) {
-      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producerinfo), act );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
       return abi_ser.binary_to_variant( "producer_info", data );
    }
 
@@ -257,6 +295,8 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "200.0000 EOS", "100.0000 EOS" ) );
 
    auto total = get_total_stake( "alice" );
+   idump((total));
+   return;
 
    BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, total["net_weight"].as<asset>().amount );
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, total["cpu_weight"].as<asset>().amount );
@@ -312,7 +352,6 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                                     ("receiver", "bob")
                                     ("unstake_net_quantity", "200.0000 EOS")
                                     ("unstake_cpu_quantity", "100.0000 EOS")
-                                    ("unstake_storage_bytes", 0)
                                     ,false
                         )
    );
@@ -346,23 +385,23 @@ BOOST_FIXTURE_TEST_CASE( stake_negative, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( unstake_negative, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0001 EOS", "100.0001 EOS", "300.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0001 EOS", "100.0001 EOS" ) );
 
    auto total = get_total_stake( "bob" );
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0001 EOS"), total["net_weight"].as<asset>());
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0002 EOS" ), get_voter_info( "alice" ) );
 
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
-                        unstake( "alice", "bob", "-1.0000 EOS", "0.0000 EOS", 0 )
+                        unstake( "alice", "bob", "-1.0000 EOS", "0.0000 EOS" )
    );
 
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
-                        unstake( "alice", "bob", "0.0000 EOS", "-1.0000 EOS", 0 )
+                        unstake( "alice", "bob", "0.0000 EOS", "-1.0000 EOS" )
    );
 
    //unstake all zeros
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
-                        unstake( "alice", "bob", "0.0000 EOS", "0.0000 EOS", 0 )
+                        unstake( "alice", "bob", "0.0000 EOS", "0.0000 EOS" )
    );
 
 } FC_LOG_AND_RETHROW()
@@ -375,11 +414,8 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
    auto total = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("150.0000 EOS"), total["storage_stake"].as<asset>());
-   auto bytes = total["storage_bytes"].as_uint64();
-   BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("550.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS"), get_balance( "alice" ) );
 
    //trying to unstake more net bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
