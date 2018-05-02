@@ -10,7 +10,7 @@
 
 namespace eosio {
 
-class database;
+class consumer;
 
 /**
  * Provides persistence to SQL DB for:
@@ -43,10 +43,7 @@ public:
     void plugin_shutdown();
 
 private:
-    void applied_block(const chain::block_trace& bt);
-    void applied_irreversible_block(const chain::signed_block& b);
-
-    std::unique_ptr<database> m_database = std::make_unique<database>();
+    std::unique_ptr<consumer> m_consumer;
 };
 
 }

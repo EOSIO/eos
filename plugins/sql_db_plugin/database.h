@@ -14,9 +14,7 @@ namespace eosio {
 class database
 {
 public:
-    database();
-
-    void connect(const std::string& uri);
+    database(const std::string& uri);
 
 private:
     std::shared_ptr<soci::session> m_session;

@@ -17,7 +17,7 @@
 
 #include <queue>
 
-#include "database.h"
+#include "consumer.h"
 
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
@@ -76,7 +76,8 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
         return;
     }
     ilog("connecting to ${u}", ("u", uri_str));
-    m_database->connect(uri_str);
+    auto db = std::make_shared<database>(uri_str);
+    m_consumer = std::make_unique<consumer>(db);
 
     if (options.at(RESYNC_OPTION).as<bool>()) {
         ilog("Resync requested: wiping database");
@@ -88,9 +89,9 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
     FC_ASSERT(chain_plug);
     chain_plug->chain_config().applied_block_callbacks.emplace_back(
-                [=](const chain::block_trace& bt) { this->applied_block(bt); });
+                [=](const chain::block_trace& bt) { m_consumer->applied_block(bt); });
     chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
-                [=](const chain::signed_block& b) { this->applied_irreversible_block(b); });
+                [=](const chain::signed_block& b) { m_consumer->applied_irreversible_block(b); });
 }
 
 void sql_db_plugin::plugin_startup()
@@ -110,16 +111,6 @@ void sql_db_plugin::plugin_startup()
 void sql_db_plugin::plugin_shutdown()
 {
     ilog("shutdown");
-}
-
-void sql_db_plugin::applied_block(const chain::block_trace &bt)
-{
-    ilog("applied_block");
-}
-
-void sql_db_plugin::applied_irreversible_block(const chain::signed_block &b)
-{
-    ilog("applied_irreversible_block");
 }
 
 } // namespace eosio

@@ -1,15 +1,8 @@
 #include "database.h"
 
-
-
 namespace eosio {
 
-database::database()
-{
-
-}
-
-void database::connect(const std::string &uri)
+database::database(const std::string &uri)
 {
     m_session = std::make_shared<soci::session>(uri);
     m_accounts_table = std::make_unique<accounts_table>();
