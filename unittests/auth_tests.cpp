@@ -268,6 +268,30 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(link_then_update_auth) { try {
+   TESTER chain;
+
+   chain.create_account("alice");
+
+   const auto first_priv_key = chain.get_private_key("alice", "first");
+   const auto first_pub_key = first_priv_key.get_public_key();
+   const auto second_priv_key = chain.get_private_key("alice", "second");
+   const auto second_pub_key = second_priv_key.get_public_key();
+
+   chain.set_authority("alice", "first", first_pub_key, "active");
+
+   chain.link_authority("alice", "eosio", "first",  "reqauth");
+   chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key });
+   
+   // Update "first" auth public key
+   chain.set_authority("alice", "first", second_pub_key, "active");
+   // Authority updated, using previous "first" auth should fail on linked auth
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key }), tx_missing_sigs);
+   // Using updated authority, should succeed
+   chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { second_priv_key });
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(create_account) {
 try {
    TESTER chain;
