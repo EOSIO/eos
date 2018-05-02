@@ -91,15 +91,21 @@ extern "C" {
    void require_recipient( account_name name );
 
    /**
-    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found
+    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found.
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     */
    void require_auth( account_name name );
+
+    /**
+    *  Verifies that @ref name has auth.
+    *  @brief Verifies that @ref name has auth.
+    *  @param name - name of the account to be verified
+    */
    bool has_auth( account_name name );
 
    /**
-    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found
+    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found.
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     *  @param permission - permission level to be verified
