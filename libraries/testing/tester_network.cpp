@@ -14,10 +14,15 @@ namespace eosio { namespace testing {
       }
 
       // The new blockchain is now in sync with any old ones; go ahead and connect the propagation signal.
+
+/// TODO restore this
+      
+      /*
       blockchains[&new_blockchain] = new_blockchain.control->applied_block.connect(
               [this, &new_blockchain](const chain::block_trace& bt) {
                  propagate_block(bt.block, new_blockchain);
               });
+              */
    }
 
    void tester_network::disconnect_blockchain(base_tester &leaving_blockchain) {
@@ -29,11 +34,11 @@ namespace eosio { namespace testing {
    }
 
    void tester_network::propagate_block(const signed_block &block, const base_tester &skip_blockchain) {
-      for (const auto &pair : blockchains) {
-         if (pair.first == &skip_blockchain) continue;
-         boost::signals2::shared_connection_block blocker(pair.second);
-         pair.first->control->push_block(block, eosio::chain::validation_steps::created_block);
-      }
+    //  for (const auto &pair : blockchains) {
+    //     if (pair.first == &skip_blockchain) continue;
+    //     boost::signals2::shared_connection_block blocker(pair.second);
+    //     pair.first->control->push_block(block, eosio::chain::validation_steps::created_block);
+    //  }
    }
 
 } } /// eosio::testing

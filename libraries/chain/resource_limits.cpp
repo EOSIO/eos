@@ -26,14 +26,14 @@ void resource_limits_state_object::update_virtual_net_limit( const resource_limi
    virtual_net_limit = update_elastic_limit(virtual_net_limit, average_block_net_usage.average(), cfg.net_limit_parameters);
 }
 
-void resource_limits_manager::initialize_database() {
+void resource_limits_manager::add_indices() {
    _db.add_index<resource_limits_index>();
    _db.add_index<resource_usage_index>();
    _db.add_index<resource_limits_state_index>();
    _db.add_index<resource_limits_config_index>();
 }
 
-void resource_limits_manager::initialize_chain() {
+void resource_limits_manager::initialize_database() {
    const auto& config = _db.create<resource_limits_config_object>([](resource_limits_config_object& config){
       // see default settings in the declaration
    });
@@ -120,46 +120,41 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
-void resource_limits_manager::add_pending_account_ram_usage( const account_name account, int64_t ram_delta ) {
+void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta ) {
    if (ram_delta == 0) {
       return;
    }
 
-   const auto& usage = _db.get<resource_usage_object,by_owner>( account );
+   const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
-   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.pending_ram_usage >= (uint64_t)ram_delta, transaction_exception, "Ram usage delta would overflow UINT64_MAX");
-   EOS_ASSERT(ram_delta > 0 || usage.pending_ram_usage >= (uint64_t)(-ram_delta), transaction_exception, "Ram usage delta would underflow UINT64_MAX");
+   EOS_ASSERT( ram_delta <= 0 || UINT64_MAX - usage.ram_usage >= (uint64_t)ram_delta, transaction_exception,
+              "Ram usage delta would overflow UINT64_MAX");
+   EOS_ASSERT(ram_delta >= 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
+              "Ram usage delta would underflow UINT64_MAX");
 
-   _db.modify(usage, [&](resource_usage_object& o){
-      o.pending_ram_usage += ram_delta;
+   _db.modify( usage, [&]( auto& u ) {
+     u.ram_usage += ram_delta;
    });
 }
 
-void resource_limits_manager::synchronize_account_ram_usage( ) {
-   auto& multi_index = _db.get_mutable_index<resource_usage_index>();
-   auto& by_dirty_index = multi_index.indices().get<by_dirty>();
+void resource_limits_manager::verify_account_ram_usage( const account_name account )const {
+   int64_t ram_bytes; int64_t net_weight; int64_t cpu_weight;
+   get_account_limits( account, ram_bytes, net_weight, cpu_weight );
+   const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
-   while(!by_dirty_index.empty()) {
-      const auto& itr = by_dirty_index.lower_bound(boost::make_tuple(true));
-      if (itr == by_dirty_index.end() || itr->is_dirty() != true) {
-         break;
-      }
-
-      const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, itr->owner));
-
-      if (limits.ram_bytes >= 0 && itr->pending_ram_usage > limits.ram_bytes) {
-         tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", itr->owner)));
-         e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",itr->pending_ram_usage)("m",limits.ram_bytes)));
-         throw e;
-      }
-
-      _db.modify(*itr, [&](resource_usage_object& o){
-         o.ram_usage = o.pending_ram_usage;
-      });
+   if( ram_bytes >= 0 && usage.ram_usage > ram_bytes ) {
+      tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
+      e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",usage.ram_usage)("m",ram_bytes)));
+      throw e;
    }
 }
 
-void resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
+int64_t resource_limits_manager::get_account_ram_usage( const account_name& name )const {
+   return _db.get<resource_usage_object,by_owner>( name ).ram_usage;
+}
+
+
+bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
    const auto& usage = _db.get<resource_usage_object,by_owner>( account );
    /*
     * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
@@ -185,13 +180,19 @@ void resource_limits_manager::set_account_limits( const account_name& account, i
    // update the users weights directly
    auto& limits = find_or_create_pending_limits();
 
-   if (ram_bytes >= 0) {
-      if (limits.ram_bytes < 0 ) {
+   bool decreased_limit = false;
+
+   if( ram_bytes >= 0 ) {
+
+      decreased_limit = ( (limits.ram_bytes < 0) || (ram_bytes < limits.ram_bytes) );
+
+      /*
+      if( limits.ram_bytes < 0 ) {
          EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "converting unlimited account would result in overcommitment [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
       } else {
          EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "attempting to release committed ram resources [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
       }
-
+      */
    }
 
    auto old_ram_bytes = limits.ram_bytes;
@@ -200,6 +201,8 @@ void resource_limits_manager::set_account_limits( const account_name& account, i
       pending_limits.net_weight = net_weight;
       pending_limits.cpu_weight = cpu_weight;
    });
+
+   return decreased_limit;
 }
 
 void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
@@ -304,9 +307,12 @@ int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name
       return -1;
    }
 
+   auto total_cpu_weight = state.total_cpu_weight;
+   if( total_cpu_weight == 0 ) total_cpu_weight = 1;
+
    uint128_t consumed_ex = (uint128_t)usage.cpu_usage.consumed * (uint128_t)config::rate_limiting_precision;
    uint128_t virtual_capacity_ex = (uint128_t)state.virtual_cpu_limit * (uint128_t)config::rate_limiting_precision;
-   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)state.total_cpu_weight;
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
 
    if (usable_capacity_ex < consumed_ex) {
       return 0;
@@ -325,7 +331,11 @@ int64_t resource_limits_manager::get_account_net_limit( const account_name& name
 
    uint128_t consumed_ex = (uint128_t)usage.net_usage.consumed * (uint128_t)config::rate_limiting_precision;
    uint128_t virtual_capacity_ex = (uint128_t)state.virtual_net_limit * (uint128_t)config::rate_limiting_precision;
-   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)state.total_net_weight;
+
+   auto total_net_weight = state.total_net_weight;
+   if( total_net_weight == 0 ) total_net_weight = 1;
+
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight;
 
    if (usable_capacity_ex < consumed_ex) {
       return 0;

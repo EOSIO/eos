@@ -71,15 +71,22 @@ using namespace eosio::chain;
      eosio::detail::txn_test_gen_empty result;
 
 struct txn_test_gen_plugin_impl {
+   transaction_trace_ptr push_transaction( signed_transaction& trx ) { try {
+      controller& cc = app().get_plugin<chain_plugin>().chain();
+      if( !cc.pending_block_state() )
+         cc.start_block();
+      return cc.push_transaction( std::make_shared<transaction_metadata>(trx) );
+   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
+
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
       name newaccountA("txn.test.a");
       name newaccountB("txn.test.b");
       name newaccountC("eosio.token");
       name creator(init_name);
 
-      contracts::abi_def eosio_token_abi_def = fc::json::from_string(eosio_token_abi).as<contracts::abi_def>();
+      abi_def currency_abi_def = fc::json::from_string(eosio_token_abi).as<abi_def>();
 
-      chain_controller& cc = app().get_plugin<chain_plugin>().chain();
+      controller& cc = app().get_plugin<chain_plugin>().chain();
       chain::chain_id_type chainid;
       app().get_plugin<chain_plugin>().get_chain_id(chainid);
 
@@ -102,7 +109,7 @@ struct txn_test_gen_plugin_impl {
          auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
          auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountA, owner_auth, active_auth, recovery_auth});
+         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountA, owner_auth, active_auth, recovery_auth});
          }
          //create "B" account
          {
@@ -110,7 +117,7 @@ struct txn_test_gen_plugin_impl {
          auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
          auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth});
+         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth});
          }
          //create "eosio.token" account
          {
@@ -118,13 +125,13 @@ struct txn_test_gen_plugin_impl {
          auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
          auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth});
+         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth});
          }
 
          trx.expiration = cc.head_block_time() + fc::seconds(30);
          trx.set_reference_block(cc.head_block_id());
          trx.sign(creator_priv_key, chainid);
-         cc.push_transaction(packed_transaction(trx));
+         push_transaction(trx);
       }
 
       //set eosio.token contract & initialize it
@@ -133,14 +140,14 @@ struct txn_test_gen_plugin_impl {
 
          vector<uint8_t> wasm = wast_to_wasm(std::string(eosio_token_wast));
 
-         contracts::setcode handler;
+         setcode handler;
          handler.account = newaccountC;
          handler.code.assign(wasm.begin(), wasm.end());
 
          trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
 
          {
-            contracts::setabi handler;
+            setabi handler;
             handler.account = newaccountC;
             handler.abi = eosio_token_abi_def;
             trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
@@ -185,7 +192,7 @@ struct txn_test_gen_plugin_impl {
          trx.set_reference_block(cc.head_block_id());
          trx.max_net_usage_words = 5000;
          trx.sign(txn_test_receiver_C_priv_key, chainid);
-         cc.push_transaction(packed_transaction(trx));
+         push_transaction(trx);
       }
    }
 
@@ -238,7 +245,7 @@ struct txn_test_gen_plugin_impl {
    }
 
    void send_transaction() {
-      chain_controller& cc = app().get_plugin<chain_plugin>().chain();
+      controller& cc = app().get_plugin<chain_plugin>().chain();
       chain::chain_id_type chainid;
       app().get_plugin<chain_plugin>().get_chain_id(chainid);
 
@@ -273,7 +280,7 @@ struct txn_test_gen_plugin_impl {
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;
       trx.sign(a_priv_key, chainid);
-      cc.push_transaction(packed_transaction(trx));
+      push_transaction(trx);
       }
 
       {
@@ -286,7 +293,7 @@ struct txn_test_gen_plugin_impl {
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;
       trx.sign(b_priv_key, chainid);
-      cc.push_transaction(packed_transaction(trx));
+      push_transaction(trx);
       }
       }
    }
@@ -308,9 +315,7 @@ struct txn_test_gen_plugin_impl {
    action act_a_to_b;
    action act_b_to_a;
 
-   int32_t txn_reference_block_lag;
-
-   abi_serializer eosio_token_serializer = fc::json::from_string(eosio_token_abi).as<contracts::abi_def>();
+   abi_serializer currency_serializer = fc::json::from_string(eosio_token_abi).as<abi_def>();
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}

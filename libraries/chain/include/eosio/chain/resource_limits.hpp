@@ -31,18 +31,18 @@ namespace eosio { namespace chain { namespace resource_limits {
          {
          }
 
+         void add_indices();
          void initialize_database();
-         void initialize_chain();
          void initialize_account( const account_name& account );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
          void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
 
+         void add_pending_ram_usage( const account_name account, int64_t ram_delta );
+         void verify_account_ram_usage( const account_name accunt )const;
 
-         void add_pending_account_ram_usage( const account_name account, int64_t ram_delta );
-         void synchronize_account_ram_usage( );
-
-         void set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
+         /// set_account_limits returns true if new ram_bytes limit is more restrictive than the previously set one
+         bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
 
          void process_account_limit_updates();
@@ -57,9 +57,9 @@ namespace eosio { namespace chain { namespace resource_limits {
 
          int64_t get_account_cpu_limit( const account_name& name ) const;
          int64_t get_account_net_limit( const account_name& name ) const;
+         int64_t get_account_ram_usage( const account_name& name ) const;
 
       private:
          chainbase::database& _db;
    };
 } } } /// eosio::chain
-

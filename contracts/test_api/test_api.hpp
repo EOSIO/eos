@@ -67,21 +67,10 @@ struct test_action {
   static void assert_false();
   static void assert_true();
   static void assert_true_cf();
-  static void now();
+  static void test_current_time();
   static void test_abort() __attribute__ ((noreturn)) ;
   static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
-  static void test_current_sender();
   static void test_publication_time();
-};
-
-struct test_math {
-  static void test_multeq();
-  static void test_diveq();
-  static void test_diveq_by_0();
-  static void test_double_api();
-  static void test_double_api_div_0();
-  static void test_i64_to_double();
-  static void test_double_to_i64();
 };
 
 struct test_db {
@@ -177,11 +166,10 @@ struct test_transaction {
   static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
   static void deferred_print();
   static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
+  static void send_deferred_tx_given_payer();
   static void cancel_deferred_transaction();
   static void send_cf_action();
   static void send_cf_action_fail();
-  static void read_inline_action();
-  static void read_inline_cf_action();
 };
 
 struct test_chain {
@@ -192,14 +180,6 @@ struct test_fixedpoint {
    static void create_instances();
    static void test_addition();
    static void test_subtraction();
-   static void test_multiplication();
-   static void test_division();
-   static void test_division_by_0();
-};
-
-struct test_real {
-   static void create_instances();
-   static void test_addition();
    static void test_multiplication();
    static void test_division();
    static void test_division_by_0();

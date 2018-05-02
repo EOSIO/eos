@@ -32,7 +32,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <eosio/chain/contracts/genesis_state.hpp>
+#include <eosio/chain/genesis_state.hpp>
 
 #include "config.hpp"
 
@@ -1011,7 +1011,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::mongo_db_plugin\n";
   }
   cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::account_history_api_plugin\n";
+      << "plugin = eosio::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1055,7 +1055,7 @@ launcher_def::init_genesis () {
    bfs::ifstream src(genesis_path);
    if (!src.good()) {
       cout << "generating default genesis file " << genesis_path << endl;
-      eosio::chain::contracts::genesis_state_type default_genesis;
+      eosio::chain::genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
       src.open(genesis_path);
    }

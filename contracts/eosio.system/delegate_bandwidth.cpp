@@ -14,6 +14,8 @@
 
 #include <eosio.token/eosio.token.hpp>
 
+
+#include <cmath>
 #include <map>
 
 namespace eosiosystem {
@@ -29,17 +31,16 @@ namespace eosiosystem {
    static constexpr time refund_delay = 3*24*3600;
    static constexpr time refund_expiration_time = 3600;
 
-   struct total_resources {
+   struct user_resources {
       account_name  owner;
       asset         net_weight;
       asset         cpu_weight;
-      asset         storage_stake;   
       uint64_t      storage_bytes = 0;
 
       uint64_t primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( total_resources, (owner)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )
+      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(storage_bytes) )
    };
 
 
@@ -51,13 +52,11 @@ namespace eosiosystem {
       account_name  to;
       asset         net_weight;
       asset         cpu_weight;
-      asset         storage_stake;
-      uint64_t      storage_bytes = 0;
 
       uint64_t  primary_key()const { return to; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )
+      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
 
    };
 
@@ -72,45 +71,159 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(amount) )
    };
 
-   typedef eosio::multi_index< N(totalband), total_resources>   total_resources_table;
+   /**
+    *  These tables are designed to be constructed in the scope of the relevant user, this 
+    *  facilitates simpler API for per-user queries
+    */
+   typedef eosio::multi_index< N(userres), user_resources>      user_resources_table;
    typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
-   void system_contract::delegatebw( const account_name from, const account_name receiver,
-                                     const asset stake_net_quantity, const asset stake_cpu_quantity,
-                                     const asset stake_storage_quantity )
+
+   /**
+    *  Called after a new account is created. This code enforces resource-limits rules
+    *  for new accounts as well as new account naming conventions.
+    *
+    *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
+    *  characters long without '.' until a future account auction process is implemented
+    *  which prevents name squatting.
+    *
+    *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
+    *     therefore, this method will execute an inline buyram from receiver for newacnt in
+    *     an amount equal to the current new account creation fee. 
+    */
+   void native::newaccount( account_name     creator,
+                    account_name     newact
+                           /*  no need to parse authorites 
+                           const authority& owner,
+                           const authority& active,
+                           const authority& recovery*/ ) {
+      eosio::print( eosio::name{creator}, " created ", eosio::name{newact}, "\n");
+
+      user_resources_table  userres( _self, newact);
+
+      auto r = userres.emplace( newact, [&]( auto& res ) {
+        res.owner = newact;
+      });
+
+      set_resource_limits( newact, 
+                          0,//  r->storage_bytes, 
+                           0, 0 );
+                    //       r->net_weight.amount, 
+                    //       r->cpu_weight.amount );
+   }
+
+
+
+   /**
+    *  When buying ram the payer irreversiblly transfers quant to system contract and only
+    *  the receiver may reclaim the tokens via the sellram action. The receiver pays for the
+    *  storage of all database records associated with this action.
+    *
+    *  RAM is a scarce resource whose supply is defined by global properties max_storage_size. RAM is
+    *  priced using the bancor algorithm such that price-per-byte with a constant reserve ratio of 100:1. 
+    */
+   void system_contract::buyram( account_name payer, account_name receiver, asset quant ) 
    {
-      eosio_assert( stake_cpu_quantity.amount >= 0, "must stake a positive amount" );
-      eosio_assert( stake_net_quantity.amount >= 0, "must stake a positive amount" );
-      eosio_assert( stake_storage_quantity.amount >= 0, "must stake a positive amount" );
+      print( "\n payer: ", eosio::name{payer}, " buys ram for ", eosio::name{receiver}, " with ", quant, "\n" );
+      require_auth( payer );
+      eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
-      asset total_stake = stake_cpu_quantity + stake_net_quantity + stake_storage_quantity;
-      eosio_assert( total_stake.amount > 0, "must stake a positive amount" );
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+                                                    { payer, N(eosio), quant, std::string("buy ram") } );
 
-      require_auth( from );
+      const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
 
-      //eosio_assert( is_account( receiver ), "can only delegate resources to an existing account" );
-      int64_t storage_bytes = 0;
-      if ( 0 < stake_storage_quantity.amount ) {
-         global_state_singleton gs( _self, _self );
-         auto parameters = gs.exists() ? gs.get() : get_default_parameters();
-         const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
-         //make sure that there is no posibility of overflow here
-         int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
-            * int64_t(parameters.storage_reserve_ratio) * stake_storage_quantity
-            / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
+      print( "free ram: ", _gstate.free_ram(),  "   tokens: ", system_token_supply,  "  unstaked: ", unstaked_token_supply, "\n" );
 
-         storage_bytes = ( int64_t(parameters.max_storage_size) - int64_t(parameters.total_storage_bytes_reserved) - storage_bytes_estimated )
-            * int64_t(parameters.storage_reserve_ratio) * stake_storage_quantity
-            / ( token_supply - stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
+      const double E = quant.amount;
+      const double R = unstaked_token_supply - E;
+      const double C = _gstate.free_ram();   //free_ram;
+      const double F = 1./(_gstate.storage_reserve_ratio/10000.0); /// 10% reserve ratio pricing, assumes only 10% of tokens will ever want to stake for ram
+      const double ONE(1.0);
 
-         eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
+      double T = C * (std::pow( ONE + E/R, F ) - ONE);
+      T *= .99; /// 1% fee on every conversion
+      int64_t bytes_out = static_cast<int64_t>(T);
+      print( "ram bytes out: ", bytes_out, "\n" );
 
-         parameters.total_storage_bytes_reserved += uint64_t(storage_bytes);
-         parameters.total_storage_stake += stake_storage_quantity;
-         gs.set( parameters, _self );
+      eosio_assert( bytes_out > 0, "must reserve a positive amount" );
+
+      _gstate.total_storage_bytes_reserved += uint64_t(bytes_out);
+      _gstate.total_storage_stake.amount   += quant.amount;
+
+      user_resources_table  userres( _self, receiver );
+      auto res_itr = userres.find( receiver );
+      if( res_itr ==  userres.end() ) {
+         res_itr = userres.emplace( receiver, [&]( auto& res ) {
+               res.owner = receiver;
+               res.storage_bytes = uint64_t(bytes_out);
+            });
+      } else {
+         userres.modify( res_itr, receiver, [&]( auto& res ) {
+               res.storage_bytes += uint64_t(bytes_out);
+            });
       }
+      set_resource_limits( res_itr->owner, res_itr->storage_bytes, uint64_t(res_itr->net_weight.amount), uint64_t(res_itr->cpu_weight.amount) );
+   }
 
+
+   /**
+    *  While buying ram uses the current market price according to the bancor-algorithm, selling ram only
+    *  refunds the purchase price to the account. In this way there is no profit to be made through buying
+    *  and selling ram.
+    */
+   void system_contract::sellram( account_name account, uint64_t bytes ) {
+      user_resources_table  userres( _self, account );
+      auto res_itr = userres.find( account );
+      eosio_assert( res_itr != userres.end(), "no resource row" );
+      eosio_assert( res_itr->storage_bytes >= bytes, "insufficient quota" );
+
+      const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
+
+      const double R = unstaked_token_supply;
+      const double C = _gstate.free_ram() + bytes;
+      const double F = _gstate.storage_reserve_ratio / 10000.0;
+      const double T = bytes;
+      const double ONE(1.0);
+
+      double E = -R * (ONE - std::pow( ONE + T/C, F ) );
+
+      E *= .99; /// 1% fee on every conversion, 
+                /// let the system contract profit on speculation while preventing abuse caused by rounding errors
+      
+      int64_t tokens_out = int64_t(E);
+      eosio_assert( tokens_out > 0, "must free at least one token" );
+
+      _gstate.total_storage_bytes_reserved -= bytes;
+      _gstate.total_storage_stake.amount   -= tokens_out;
+
+      userres.modify( res_itr, account, [&]( auto& res ) {
+          res.storage_bytes -= bytes;
+      });
+      set_resource_limits( res_itr->owner, res_itr->storage_bytes, uint64_t(res_itr->net_weight.amount), uint64_t(res_itr->cpu_weight.amount) );
+
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                    { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
+   }
+
+   void system_contract::delegatebw( account_name from, account_name receiver,
+                                     asset stake_net_quantity, 
+                                     asset stake_cpu_quantity )
+                                    
+   {
+      require_auth( from );
+      print( "from: ", eosio::name{from}, " to: ", eosio::name{receiver}, " net: ", stake_net_quantity, " cpu: ", stake_cpu_quantity );
+
+      eosio_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
+      eosio_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );
+
+      auto total_stake = stake_cpu_quantity.amount + stake_net_quantity.amount;
+      eosio_assert( total_stake > 0, "must stake a positive amount" );
+
+      print( "deltable" );
       del_bandwidth_table     del_tbl( _self, from );
       auto itr = del_tbl.find( receiver );
       if( itr == del_tbl.end() ) {
@@ -119,128 +232,117 @@ namespace eosiosystem {
                dbo.to            = receiver;
                dbo.net_weight    = stake_net_quantity;
                dbo.cpu_weight    = stake_cpu_quantity;
-               dbo.storage_stake = stake_storage_quantity;
-               dbo.storage_bytes = uint64_t(storage_bytes);
             });
       }
       else {
          del_tbl.modify( itr, from, [&]( auto& dbo ){
                dbo.net_weight    += stake_net_quantity;
                dbo.cpu_weight    += stake_cpu_quantity;
-               dbo.storage_stake += stake_storage_quantity;
-               dbo.storage_bytes += uint64_t(storage_bytes);
             });
       }
 
-      total_resources_table   totals_tbl( _self, receiver );
+      print( "totals" );
+      user_resources_table   totals_tbl( _self, receiver );
       auto tot_itr = totals_tbl.find( receiver );
       if( tot_itr ==  totals_tbl.end() ) {
          tot_itr = totals_tbl.emplace( from, [&]( auto& tot ) {
                tot.owner = receiver;
                tot.net_weight    = stake_net_quantity;
                tot.cpu_weight    = stake_cpu_quantity;
-               tot.storage_stake = stake_storage_quantity;
-               tot.storage_bytes = uint64_t(storage_bytes);
             });
       } else {
          totals_tbl.modify( tot_itr, from == receiver ? from : 0, [&]( auto& tot ) {
                tot.net_weight    += stake_net_quantity;
                tot.cpu_weight    += stake_cpu_quantity;
-               tot.storage_stake += stake_storage_quantity;
-               tot.storage_bytes += uint64_t(storage_bytes);
             });
       }
 
-      //set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
+      set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, uint64_t(tot_itr->net_weight.amount), uint64_t(tot_itr->cpu_weight.amount) );
 
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
-                                                    { from, N(eosio), total_stake, std::string("stake bandwidth") } );
+                                                    { from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
 
-      if ( asset(0) < stake_net_quantity + stake_cpu_quantity ) {
-         increase_voting_power( from, stake_net_quantity + stake_cpu_quantity );
+      print( "voters" );
+      auto from_voter = _voters.find(from);
+      if( from_voter == _voters.end() ) {
+         print( " create voter" );
+         from_voter = _voters.emplace( from, [&]( auto& v ) {
+            v.owner  = from;
+            v.staked = uint64_t(total_stake);
+         });
+      } else {
+         _voters.modify( from_voter, 0, [&]( auto& v ) {
+            v.staked += uint64_t(total_stake);
+         });
       }
 
+      print( "voteproducer" );
+      voteproducer( from, from_voter->proxy, from_voter->producers );
    } // delegatebw
 
-
-   void system_contract::undelegatebw( const account_name from, const account_name receiver,
-                                       const asset unstake_net_quantity, const asset unstake_cpu_quantity,
-                                       const uint64_t unstake_storage_bytes )
+   void system_contract::undelegatebw( account_name from, account_name receiver,
+                                       asset unstake_net_quantity, asset unstake_cpu_quantity )
    {
-      eosio_assert( unstake_cpu_quantity.amount >= 0, "must unstake a positive amount" );
-      eosio_assert( unstake_net_quantity.amount >= 0, "must unstake a positive amount" );
+      eosio_assert( unstake_cpu_quantity >= asset(), "must unstake a positive amount" );
+      eosio_assert( unstake_net_quantity >= asset(), "must unstake a positive amount" );
 
       require_auth( from );
 
-      //eosio_assert( is_account( receiver ), "can only delegate resources to an existing account" );
-
       del_bandwidth_table     del_tbl( _self, from );
       const auto& dbw = del_tbl.get( receiver );
-      eosio_assert( dbw.net_weight >= unstake_net_quantity, "insufficient staked net bandwidth" );
-      eosio_assert( dbw.cpu_weight >= unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
-      eosio_assert( dbw.storage_bytes >= unstake_storage_bytes, "insufficient staked storage" );
+      eosio_assert( dbw.net_weight.amount >= unstake_net_quantity.amount, "insufficient staked net bandwidth" );
+      eosio_assert( dbw.cpu_weight.amount >= unstake_cpu_quantity.amount, "insufficient staked cpu bandwidth" );
 
-      eosio::asset storage_stake_decrease(0, system_token_symbol);
-      if ( 0 < unstake_storage_bytes ) {
-         storage_stake_decrease = 0 < dbw.storage_bytes ?
-                                      dbw.storage_stake * int64_t(unstake_storage_bytes) / int64_t(dbw.storage_bytes)
-                                      : eosio::asset(0, system_token_symbol);
-         global_state_singleton gs( _self, _self );
-         auto parameters = gs.get(); //it should exist if user staked for bandwith
-         parameters.total_storage_bytes_reserved -= unstake_storage_bytes;
-         parameters.total_storage_stake -= storage_stake_decrease;
-         gs.set( parameters, _self );
-      }
+      auto total_refund = unstake_cpu_quantity.amount + unstake_net_quantity.amount;
 
-      eosio::asset total_refund = unstake_cpu_quantity + unstake_net_quantity + storage_stake_decrease;
+      _voters.modify( _voters.get(from), 0, [&]( auto& v ) {
+         v.staked -= uint64_t(total_refund);
+      });
 
-      eosio_assert( total_refund.amount > 0, "must unstake a positive amount" );
+
+      eosio_assert( total_refund > 0, "must unstake a positive amount" );
 
       del_tbl.modify( dbw, from, [&]( auto& dbo ){
             dbo.net_weight -= unstake_net_quantity;
             dbo.cpu_weight -= unstake_cpu_quantity;
-            dbo.storage_stake -= storage_stake_decrease;
-            dbo.storage_bytes -= unstake_storage_bytes;
-         });
+      });
 
-      total_resources_table totals_tbl( _self, receiver );
+      user_resources_table totals_tbl( _self, receiver );
+
       const auto& totals = totals_tbl.get( receiver );
       totals_tbl.modify( totals, 0, [&]( auto& tot ) {
             tot.net_weight -= unstake_net_quantity;
             tot.cpu_weight -= unstake_cpu_quantity;
-            tot.storage_stake -= storage_stake_decrease;
-            tot.storage_bytes -= unstake_storage_bytes;
-         });
+      });
 
-      //set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity );
+      set_resource_limits( receiver, totals.storage_bytes, totals.net_weight.amount, totals.cpu_weight.amount );
 
       refunds_table refunds_tbl( _self, from );
       //create refund request
       auto req = refunds_tbl.find( from );
       if ( req != refunds_tbl.end() ) {
          refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
-               r.amount += unstake_net_quantity + unstake_cpu_quantity + storage_stake_decrease;
+               r.amount += unstake_net_quantity + unstake_cpu_quantity;
                r.request_time = now();
             });
       } else {
          refunds_tbl.emplace( from, [&]( refund_request& r ) {
                r.owner = from;
-               r.amount = unstake_net_quantity + unstake_cpu_quantity + storage_stake_decrease;
+               r.amount = unstake_net_quantity + unstake_cpu_quantity;
                r.request_time = now();
             });
       }
+
       //create or replace deferred transaction
       //refund act;
       //act.owner = from;
-      eosio::transaction out( now() + refund_delay + refund_expiration_time );
+      eosio::transaction out;
       out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
       out.delay_sec = refund_delay;
       out.send( from, receiver );
 
-      if ( asset(0) < unstake_net_quantity + unstake_cpu_quantity ) {
-         decrease_voting_power( from, unstake_net_quantity + unstake_cpu_quantity );
-      }
-
+      const auto& fromv = _voters.get( from );
+      voteproducer( from, fromv.proxy, fromv.producers );
    } // undelegatebw
 
 
@@ -259,6 +361,18 @@ namespace eosiosystem {
                                                     { N(eosio), req->owner, req->amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
+   }
+
+   void system_contract::setparams( uint64_t max_storage_size, uint32_t storage_reserve_ratio ) {
+      require_auth( _self );
+
+      eosio_assert( storage_reserve_ratio > 0, "invalid reserve ratio" );
+
+      eosio_assert( max_storage_size > _gstate.total_storage_bytes_reserved, "attempt to set max below reserved" );
+
+      _gstate.max_storage_size = max_storage_size;
+      _gstate.storage_reserve_ratio = storage_reserve_ratio;
+      _global.set( _gstate, _self );
    }
 
 } //namespace eosiosystem
