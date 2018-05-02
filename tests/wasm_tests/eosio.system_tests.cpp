@@ -579,7 +579,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    //call regproducer again to change parameters
    fc::variant params2 = producer_parameters_example(2);
 
-   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("EOSR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
+   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("PUB_R1_6EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key2 )
