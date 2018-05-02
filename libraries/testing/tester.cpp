@@ -72,10 +72,10 @@ namespace eosio { namespace testing {
           for( const auto& receipt : block_state->block->transactions ) {
               if( receipt.trx.contains<packed_transaction>() ) {
                   auto &pt = receipt.trx.get<packed_transaction>();
-                  chain_transactions.emplace(pt.get_transaction().id(), receipt);
+                  chain_transactions[pt.get_transaction().id()] = receipt;
               } else {
                   auto& id = receipt.trx.get<transaction_id_type>();
-                  chain_transactions.emplace(id, receipt);
+                  chain_transactions[id] = receipt;
               }
           }
       });
