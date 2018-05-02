@@ -910,7 +910,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
                              N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
                              fc::raw::pack(ia2)),
                       N(testapi2) );
-   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+   BOOST_CHECK_EQUAL( boost::algorithm::contains(res, "db access violation"), true );
 
 
    // Verify that the value has not changed.
@@ -935,7 +935,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
                              N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
                              fc::raw::pack(ia2)),
                       N(testapi2) );
-   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+   BOOST_CHECK_EQUAL( boost::algorithm::contains(res, "db access violation"), true );
 
    // Verify that the value has not changed.
    ia1.store = false;
