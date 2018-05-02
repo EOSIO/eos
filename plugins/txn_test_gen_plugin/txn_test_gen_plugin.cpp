@@ -75,7 +75,7 @@ struct txn_test_gen_plugin_impl {
       controller& cc = app().get_plugin<chain_plugin>().chain();
       if( !cc.pending_block_state() )
          cc.start_block();
-      cc.push_transaction( std::make_shared<transaction_metadata>(trx) );
+      cc.push_transaction( std::make_shared<transaction_metadata>(trx), trx.expiration );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
