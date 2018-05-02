@@ -59,8 +59,36 @@ extern "C" {
     * @{
     */
 
+
+    /**
+     *  Sends a deferred transaction.
+     *  @brief Sends a deferred transaction.
+     *
+     *  @param sender_id - ID of sender
+     *  @param payer - Account paying for RAM
+     *  @param serialized_transaction - Pointer of serialized transaction to be deferred 
+     *  @param size - Size to reserve
+     */
    void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size);
 
+    /**
+     *  Cancels a deferred transaction.
+     *  @brief Cancels a deferred transaction.
+     *
+     *  @param sender_id - The id of the sender
+     *  @param length - Data length
+     *  @param hash - `checksum256*` hash to compare to
+     *
+     *  @pre The deferred transaction ID exists.
+     *  @pre The deferred transaction ID has not yet been published.
+     *  @post Deferred transaction canceled.
+     * 
+     *  Example:
+     *  @code
+     *  id = 0xffffffffffffffff
+     *  cancel_deferred( id );
+     *  @endcode
+     */
    void cancel_deferred(const uint128_t& sender_id);
 
    /**
