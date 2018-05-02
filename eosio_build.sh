@@ -201,11 +201,19 @@
 	printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\\n\\n"
 
 	if [ ! -d "${BUILD_DIR}" ]; then
-		mkdir -p "${BUILD_DIR}"
+		if ! mkdir -p "${BUILD_DIR}"
+		then
+			printf "Unable to create build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
+			exit 1;
+		fi
 	fi
 	
-	cd "${BUILD_DIR}"
-
+	if ! cd "${BUILD_DIR}"
+	then
+		printf "Unable to enter build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
+		exit 1;
+	fi
+	
 	if [ -z "$CMAKE" ]; then
 		CMAKE=$( command -v cmake )
 	fi
