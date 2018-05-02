@@ -220,14 +220,18 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         }
         ilog(".");
 
+#warning Complete this test
+/*
         // Set code eosio.system from eosio.bios to eosio.system
         set_code_abi(config::system_account_name, eosio_system_wast, eosio_system_abi);
+
 
         ilog(".");
         // Register these genesis accts as producer account
         for (auto gen_acc : gen_accounts) {
         //    BOOST_REQUIRE_EQUAL(success(), regproducer(gen_acc));
         }
+*/
     } FC_LOG_AND_RETHROW()
 }
 

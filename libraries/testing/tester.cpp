@@ -218,8 +218,8 @@ namespace eosio { namespace testing {
       try {
          push_transaction(trx);
       } catch (const fc::exception& ex) {
-         //return error(ex.top_message());
-         return error(ex.to_detail_string());
+         return error(ex.top_message()); // top_message() is assumed by many tests; otherwise they fail
+         //return error(ex.to_detail_string());
       }
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -275,7 +275,7 @@ namespace eosio { namespace testing {
       return push_transaction(trx);
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
 
-   action base_tester::get_action( account_name code, action_name acttype, vector<permission_level> auths, 
+   action base_tester::get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                    const variant_object& data )const {
       const auto& acnt = control->db().get<account_object,by_name>(code);
       auto abi = acnt.get_abi();
@@ -650,7 +650,7 @@ namespace eosio { namespace testing {
 
    void base_tester::push_genesis_block() {
       set_code(config::system_account_name, eosio_bios_wast);
-      
+
       set_abi(config::system_account_name, eosio_bios_abi);
       //produce_block();
    }
