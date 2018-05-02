@@ -207,7 +207,7 @@ const char* error_advice_3120010 =  R"=====(Ensure that your packed transaction 
 }
 e.g.
 {
-  "signatures" : [ "EOSJze4m1ZHQ4UjuHpBcX6uHPN4Xyggv52raQMTBZJghzDLepaPcSGCNYTxaP2NiaF4yRF5RaYwqsQYAwBwFtfuTJr34Z5GJX" ],
+  "signatures" : [ "SIG_K1_Jze4m1ZHQ4UjuHpBcX6uHPN4Xyggv52raQMTBZJghzDLepaPcSGCNYTxaP2NiaF4yRF5RaYwqsQYAwBwFtfuTJr34Z5GJX" ],
   "compression" : "none",
   "hex_transaction" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
 })=====";
