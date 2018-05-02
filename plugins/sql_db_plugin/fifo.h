@@ -17,7 +17,6 @@ public:
 
 private:
     std::mutex m_mux;
-
     std::deque<T> m_deque;
 };
 
