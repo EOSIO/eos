@@ -199,13 +199,24 @@
 	. "$FILE"
 
 	printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\\n\\n"
+	printf ">>>>>>>> CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
+	printf ">>>>>>>> ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
+	printf ">>>>>>>> DOXYGEN=%s\\n\\n" "${DOXYGEN}"
 
 	if [ ! -d "${BUILD_DIR}" ]; then
-		mkdir -p "${BUILD_DIR}"
+		if ! mkdir -p "${BUILD_DIR}"
+		then
+			printf "Unable to create build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
+			exit 1;
+		fi
 	fi
 	
-	cd "${BUILD_DIR}"
-
+	if ! cd "${BUILD_DIR}"
+	then
+		printf "Unable to enter build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
+		exit 1;
+	fi
+	
 	if [ -z "$CMAKE" ]; then
 		CMAKE=$( command -v cmake )
 	fi
