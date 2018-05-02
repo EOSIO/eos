@@ -9,8 +9,7 @@
 
 #include <eosio/testing/tester_network.hpp>
 #include <eosio/chain/producer_object.hpp>
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -459,8 +458,6 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
 
    const auto& tester_account = N(tester);
    std::vector<transaction_id_type> ids;
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(currency));
@@ -486,7 +483,7 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
            ("requirement", "first")),
    action_validate_exception,
    [] (const action_validate_exception &ex)->bool {
-      BOOST_REQUIRE_EQUAL(std::string("message validation exception"), ex.what());
+      BOOST_REQUIRE_EQUAL(std::string("action exception"), ex.what());
       return true;
    });
    };
