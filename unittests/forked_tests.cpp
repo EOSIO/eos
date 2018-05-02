@@ -67,6 +67,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "push c1 blocks to c2" );
    while( c2.control->head_block_num() < c.control->head_block_num() ) {
       auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
+      c2.control->abort_block();
       c2.control->push_block( fb );
    }
    wlog( "end push c1 blocks to c2" );
@@ -92,6 +93,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "push c1 blocks to c2" );
    while( c2.control->head_block_num() < c.control->head_block_num() ) {
       auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
+      c2.control->abort_block();
       c2.control->push_block( fb );
    }
    wlog( "end push c1 blocks to c2" );
@@ -119,6 +121,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "push c2 blocks to c1" );
    for( uint32_t start = fork_block_num + 1, end = c2.control->head_block_num(); start <= end; ++start ) {
       auto fb = c2.control->fetch_block_by_number( start );
+      c.control->abort_block();
       c.control->push_block( fb );
    }
    wlog( "end push c2 blocks to c1" );
@@ -138,6 +141,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "push c1 blocks to c2" );
    while( c2.control->head_block_num() < c.control->head_block_num() ) {
       auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
+      c2.control->abort_block();
       c2.control->push_block( fb );
    }
    wlog( "end push c1 blocks to c2" );
@@ -165,12 +169,14 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "push c2 blocks (except for the last block by dan) to c1" );
    for( uint32_t start = fork_block_num + 1, end = c2.control->head_block_num() - 1; start <= end; ++start ) {
       auto fb = c2.control->fetch_block_by_number( start );
+      c.control->abort_block();
       c.control->push_block( fb );
    }
    wlog( "end push c2 blocks to c1" );
    wlog( "now push dan's block to c1 but first corrupt it so it is a bad block" );
    auto bad_block = *b;
    bad_block.transaction_mroot = bad_block.previous;
+   c.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(c.control->push_block( std::make_shared<signed_block>(bad_block) ), fc::exception,
       [] (const fc::exception &ex)->bool {
          return ex.to_detail_string().find("block not signed by expected key") != std::string::npos;

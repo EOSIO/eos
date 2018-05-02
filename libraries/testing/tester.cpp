@@ -82,6 +82,7 @@ namespace eosio { namespace testing {
    }
 
    signed_block_ptr base_tester::push_block(signed_block_ptr b) {
+      control->abort_block();
       control->push_block(b);
       return b;
    }
@@ -639,6 +640,7 @@ namespace eosio { namespace testing {
          for( int i = 1; i <= a.control->head_block_num(); ++i ) {
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
+               b.control->abort_block();
                b.control->push_block(block); //, eosio::chain::validation_steps::created_block);
             }
          }
