@@ -560,7 +560,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
          produce_blocks(1);
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
-      } catch (eosio::chain::tx_cpu_resource_exhausted &) {
+      } catch (eosio::chain::tx_cpu_usage_exceeded &) {
          produce_blocks(1);
       }
 
@@ -621,7 +621,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
          count++;
-      } catch (eosio::chain::tx_cpu_resource_exhausted &) {
+      } catch (eosio::chain::tx_cpu_usage_exceeded &) {
          BOOST_REQUIRE_EQUAL(count, 3);
          break;
       }
@@ -1487,7 +1487,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
          push_transaction(trx);
          produce_blocks(1);
          return true;
-      } catch (tx_net_resource_exhausted &) {
+      } catch (tx_net_usage_exceeded &) {
          return false;
       } catch (transaction_exception &) {
          return false;
@@ -1538,7 +1538,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
          push_transaction(trx);
          produce_blocks(1);
          return true;
-      } catch (tx_net_resource_exhausted &) {
+      } catch (tx_net_usage_exceeded &) {
          return false;
       }
    };

@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          }
 
          // use too much, and expect failure;
-         BOOST_REQUIRE_THROW(add_transaction_usage({account}, expected_limits.at(idx) + 1, 0, 0), tx_cpu_resource_exhausted);
+         BOOST_REQUIRE_THROW(add_transaction_usage({account}, expected_limits.at(idx) + 1, 0, 0), tx_cpu_usage_exceeded);
       }
    } FC_LOG_AND_RETHROW();
 
@@ -195,7 +195,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
          }
 
          // use too much, and expect failure;
-         BOOST_REQUIRE_THROW(add_transaction_usage({account}, 0, expected_limits.at(idx) + 1, 0), tx_net_resource_exhausted);
+         BOOST_REQUIRE_THROW(add_transaction_usage({account}, 0, expected_limits.at(idx) + 1, 0), tx_net_usage_exceeded);
       }
    } FC_LOG_AND_RETHROW();
 

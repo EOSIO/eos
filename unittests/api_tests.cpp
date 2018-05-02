@@ -196,16 +196,15 @@ bool is_access_violation(fc::unhandled_exception const & e) {
     }
    return false;
 }
-bool is_access_violation(const Runtime::Exception& e) {
-   return true;
-}
+bool is_access_violation(const Runtime::Exception& e) { return true; }
+
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_tx_missing_sigs(tx_missing_sigs const & e) { return true;}
 bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
-bool is_tx_net_resource_exhausted(const tx_net_resource_exhausted& e) { return true; }
-bool is_tx_cpu_resource_exhausted(const tx_cpu_resource_exhausted& e) { return true; }
-bool is_checktime_exceeded(const checktime_exceeded& e) { return true; }
+bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
+bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
+bool is_tx_deadline_exceeded(const tx_deadline_exceeded& e) { return true; }
 
 /*
  * register test suite `api_tests`
@@ -476,7 +475,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
             sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
             BOOST_CHECK_EXCEPTION(push_transaction(trx), assert_exception,
                  [](const fc::exception& e) {
-                    return expect_assert_message(e, "context_free: only context free api's can be used in this context");
+                    return expect_assert_message(e, "this API may only be called from context_free apply" );
                  }
             );
          }
@@ -567,7 +566,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       test.produce_block();
    };
 
-   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), tx_cpu_resource_exhausted, is_tx_cpu_resource_exhausted /*checktime_exceeded, is_checktime_exceeded*/);
+   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), tx_cpu_usage_exceeded, is_tx_cpu_usage_exceeded /*tx_deadline_exceeded, is_tx_deadline_exceeded*/);
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }

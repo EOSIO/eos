@@ -7,38 +7,24 @@ namespace eosio { namespace chain {
 
    class transaction_context {
       private:
-         // Common private constructor
-         transaction_context( controller& c,
-                              transaction_trace_ptr& trace_ptr,
-                              const signed_transaction& t,
-                              const transaction_id_type& trx_id,
-                              fc::time_point deadline,
-                              fc::time_point published,
-                              uint64_t initial_net_usage,
-                              uint64_t initial_cpu_usage         );
-
-         static uint64_t calculate_initial_net_usage( const controller& c,
-                                                      const signed_transaction& t,
-                                                      uint64_t packed_trx_billable_size );
+         void init( uint64_t initial_net_usage, uint64_t initial_cpu_usage );
 
       public:
-         // For deferred transactions
-         transaction_context( transaction_trace_ptr& trace_ptr,
-                              controller& c,
-                              const signed_transaction& t,
-                              const transaction_id_type& trx_id,
-                              fc::time_point deadline,
-                              fc::time_point published           );
 
-         // For implicit or input transactions
-         transaction_context( transaction_trace_ptr& trace_ptr,
-                              controller& c,
+         transaction_context( controller& c,
                               const signed_transaction& t,
-                              const transaction_id_type& trx_id,
-                              fc::time_point deadline,
-                              bool is_implicit,
-                              uint64_t packed_trx_billable_size,
-                              uint64_t initial_cpu_usage = 0      );
+                              const transaction_id_type& trx_id );
+
+         void init_for_implicit_trx( fc::time_point deadline,
+                                     uint64_t initial_net_usage = 0,
+                                     uint64_t initial_cpu_usage = 0 );
+
+         void init_for_input_trx( fc::time_point deadline,
+                                  uint64_t packed_trx_unprunable_size,
+                                  uint64_t packed_trx_prunable_size    );
+
+         void init_for_deferred_trx( fc::time_point deadline,
+                                     fc::time_point published );
 
          void exec();
          void squash();
@@ -70,8 +56,8 @@ namespace eosio { namespace chain {
          transaction_id_type           id;
          chainbase::database::session  undo_session;
          transaction_trace_ptr         trace;
-         fc::time_point                deadline;
          fc::time_point                published;
+         fc::time_point                deadline = fc::time_point::maximum();
 
          vector<action_receipt>        executed;
          flat_set<account_name>        bill_to_accounts;
@@ -88,6 +74,7 @@ namespace eosio { namespace chain {
          uint64_t&                     cpu_usage; /// reference to trace->cpu_usage
          bool                          net_limit_due_to_block = false;
          bool                          cpu_limit_due_to_block = false;
+         bool                          is_initialized = false;
 
    };
 

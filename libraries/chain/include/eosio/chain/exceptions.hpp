@@ -128,7 +128,8 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
 
 
-   FC_DECLARE_DERIVED_EXCEPTION( wasm_exception, chain_exception, 3070000, "WASM Exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( wasm_exception, chain_exception,
+                                 3070000, "WASM Exception" )
 
       FC_DECLARE_DERIVED_EXCEPTION( page_memory_error,        wasm_exception,
                                     3070001, "error in WASM page memory" )
@@ -142,14 +143,19 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception,
                                  3080000, "resource exhausted exception" )
+
       FC_DECLARE_DERIVED_EXCEPTION( ram_usage_exceeded, resource_exhausted_exception,
                                     3080001, "account using more than allotted RAM usage" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_cpu_resource_exhausted, resource_exhausted_exception,
-                                    3080002, "transaction exceeded CPU usage limit" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_net_resource_exhausted, resource_exhausted_exception,
-                                    3080003, "transaction exceeded network usage limit" )
-      FC_DECLARE_DERIVED_EXCEPTION( checktime_exceeded,    transaction_exception,
-                                    3080004, "transaction exceeded allotted processing time" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_net_usage_exceeded, resource_exhausted_exception,
+                                    3080002, "transaction exceeded the current network usage limit imposed on the transaction" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_soft_net_usage_exceeded, resource_exhausted_exception,
+                                    3080003, "transaction network usage is too much for the remaining allowable usage of the current block" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_cpu_usage_exceeded, resource_exhausted_exception,
+                                    3080004, "transaction exceeded the current CPU usage limit imposed on the transaction" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_soft_cpu_usage_exceeded, resource_exhausted_exception,
+                                    3080005, "transaction CPU usage is too much for the remaining allowable usage of the current block" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_deadline_exceeded, resource_exhausted_exception,
+                                    3080006, "transaction took too long" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( misc_exception, chain_exception,
@@ -192,10 +198,5 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( wallet_not_available_exception,    wallet_exception,
                                     3110006, "No available wallet" )
 
-
-
-   #define EOS_RECODE_EXC( cause_type, effect_type ) \
-      catch( const cause_type& e ) \
-      { throw( effect_type( e.what(), e.get_log() ) ); }
 
 } } // eosio::chain

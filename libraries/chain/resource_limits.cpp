@@ -97,7 +97,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
 
          EOS_ASSERT( state.total_cpu_weight > 0 && (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
-                     tx_cpu_resource_exhausted,
+                     tx_cpu_usage_exceeded,
                      "authorizing account '${n}' has insufficient cpu resources for this transaction",
                      ("n",                    name(a))
                      ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
@@ -112,7 +112,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
 
          EOS_ASSERT( state.total_net_weight > 0 && (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
-                     tx_net_resource_exhausted,
+                     tx_net_usage_exceeded,
                      "authorizing account '${n}' has insufficient net resources for this transaction",
                      ("n",                    name(a))
                      ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)

@@ -77,8 +77,6 @@ namespace eosio { namespace chain {
       >
    >;
 
-   typedef chainbase::generic_index<generated_transaction_multi_index> generated_transaction_index;
-
    namespace config {
       template<>
       struct billable_size<generated_transaction_object> {
