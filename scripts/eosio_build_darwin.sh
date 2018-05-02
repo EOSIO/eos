@@ -73,11 +73,11 @@
 				$RUBY -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 				if [ $? -ne 0 ]; then
 					echo "Unable to install homebrew at this time. Exiting now."
-					exit 0;
+					exit 1;
 				fi
 				break;;
 				[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
-						exit;;
+						exit 1;;
 				* ) echo "Please enter 1 for yes or 2 for no.";;
 			esac
 		done
@@ -143,7 +143,7 @@
 					if [ $? -ne 0 ]; then
 						printf "\tUnable to update Home Brew at this time.\n"
 						printf "\tExiting now.\n\n"
-						exit;
+						exit 1;
 					fi
 					printf "\tInstalling Dependencies.\n"
 					if [ "${BOOST_CHECK}" = 1 ]; then
@@ -153,13 +153,13 @@
 					if [ $? -ne 0 ]; then
 						printf "\tHomebrew exited with the above errors.\n"
 						printf "\tExiting now.\n\n"
-						exit;
+						exit 1;
 					fi
 					brew unlink $DEP && brew link --force $DEP
 					if [ $? -ne 0 ]; then
 						printf "\tHomebrew exited with the above errors.\n"
 						printf "\tExiting now.\n\n"
-						exit;
+						exit 1;
 					fi
 				break;;
 				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
@@ -216,21 +216,21 @@
 			if ! brew install "https://raw.githubusercontent.com/Homebrew/homebrew-core/76a83d798d76aa43459ceb145b721ba4a16a54a6/Formula/boost.rb"
 			then
 				printf "\tUnable to install boost 1.66 libraries at this time. 0\n"
-				printf "\tExiting now. 0\n\n"
+				printf "\tExiting now.\n\n"
 				exit;
 			fi
 			printf "\tPinning boost libraries.\n"
 			if ! brew pin boost
 			then
 				printf "\tUnable to pin boost libraries at this time. 2\n"
-				printf "\tExiting now. 2\n\n"
+				printf "\tExiting now.\n\n"
 				exit;
 			fi
 		else
 			if ! brew switch boost 1.66.0
 			then
 				printf "\tUnable to swtich boost libraries to 1.66.0 at this time. 1\n"
-				printf "\tExiting now. 2\n\n"
+				printf "\tExiting now.\n\n"
 				exit;
 			fi
 		fi
