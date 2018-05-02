@@ -21,8 +21,6 @@ namespace eosio { namespace chain {
    {
       trace->id = id;
       executed.reserve( trx.total_actions() );
-      is_input = false;
-      apply_context_free = false;
    }
 
    void transaction_context::init(uint64_t initial_net_usage, uint64_t initial_cpu_usage )
