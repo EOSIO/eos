@@ -1,4 +1,5 @@
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/block_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 
 #include <eosio/chain/block_log.hpp>
@@ -35,6 +36,7 @@ struct pending_state {
 
    vector<action_receipt>             _actions;
 
+   block_context                      _block_ctx;
 
    void push() {
       _db_session.push();
@@ -370,9 +372,11 @@ struct controller_impl {
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
 
-      transaction_trace_ptr trace;
+      transaction_context trx_context( self, etrx, etrx.id() );
+      transaction_trace_ptr trace = trx_context.trace;
       try {
-         transaction_context trx_context( trace, self, etrx, etrx.id(), deadline, true, 0, cpu_usage );
+         trx_context.init_for_implicit_trx( deadline, 0, cpu_usage );
+
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 
@@ -428,15 +432,17 @@ struct controller_impl {
       }
 
       auto start = fc::time_point::now();
-      transaction_trace_ptr trace;
+      signed_transaction dtrx;
+      fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+
+      transaction_context trx_context( self, dtrx, gto.trx_id );
+      transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
       uint64_t max_cpu;
       bool abort_on_error = false;
       try {
-         signed_transaction dtrx;
-         fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+         trx_context.init_for_deferred_trx( deadline, gto.published );
 
-         transaction_context trx_context( trace, self, dtrx, gto.trx_id, deadline, gto.published );
          bill_to_accounts = trx_context.bill_to_accounts;
          max_cpu = trx_context.max_cpu;
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
@@ -467,10 +473,9 @@ struct controller_impl {
          trace->soft_except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - start;
       }
-      // Only soft or hard failure logic below:
+      trx_context.undo_session.undo();
 
-      // Make sure failure was not due to problems with deserializing the deferred transaction.
-      FC_ASSERT( bool(trace), "failed to deserialize transaction" );
+      // Only soft or hard failure logic below:
 
       if( gto.sender != account_name() ) {
          // Attempt error handling for the generated transaction.
@@ -502,6 +507,7 @@ struct controller_impl {
       remove_scheduled_transaction( gto );
 
       emit( self.applied_transaction, trace );
+
 
       undo_session.squash();
    } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
@@ -557,12 +563,18 @@ struct controller_impl {
       }
 
       auto start = fc::time_point::now();
-      transaction_trace_ptr trace;
+      transaction_context trx_context( self, trx->trx, trx->id);
+      transaction_trace_ptr trace = trx_context.trace;
       try {
          unapplied_transactions.erase( trx->signed_id );
 
-         transaction_context trx_context( trace, self, trx->trx, trx->id, deadline,
-                                          implicit, ( implicit ? 0 : trx->packed_trx.get_billable_size() ) );
+         if( implicit ) {
+            trx_context.init_for_implicit_trx( deadline );
+         } else {
+            trx_context.init_for_input_trx( deadline,
+                                            trx->packed_trx.get_unprunable_size(),
+                                            trx->packed_trx.get_prunable_size()    );
+         }
 
          fc::microseconds required_delay(0);
          if( !implicit ) {
@@ -572,8 +584,6 @@ struct controller_impl {
          EOS_ASSERT( trx_context.delay >= required_delay, transaction_exception,
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                      ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );
-
-         emit( self.accepted_transaction, trx);
 
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
