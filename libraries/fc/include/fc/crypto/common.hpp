@@ -34,15 +34,14 @@ namespace fc { namespace crypto {
 
    template<typename Result, const char * const * Prefixes, int Position, typename KeyType, typename ...Rem>
    struct base58_str_parser_impl<Result, Prefixes, Position, KeyType, Rem...> {
-      static Result apply(const std::string& base58str)
+      static Result apply(const std::string& prefix_str, const std::string& data_str)
       {
          using data_type = typename KeyType::data_type;
          using wrapper = checksummed_data<data_type>;
          constexpr auto prefix = Prefixes[Position];
 
-         if (prefix_matches(prefix, base58str)) {
-            auto str = base58str.substr(const_strlen(prefix));
-            auto bin = fc::from_base58(str);
+         if (prefix == prefix_str) {
+            auto bin = fc::from_base58(data_str);
             FC_ASSERT(bin.size() >= sizeof(data_type) + sizeof(uint32_t));
             auto wrapped = fc::raw::unpack<wrapper>(bin);
             auto checksum = wrapper::calculate_checksum(wrapped.data, prefix);
@@ -50,14 +49,14 @@ namespace fc { namespace crypto {
             return Result(KeyType(wrapped.data));
          }
 
-         return base58_str_parser_impl<Result, Prefixes, Position + 1, Rem...>::apply(base58str);
+         return base58_str_parser_impl<Result, Prefixes, Position + 1, Rem...>::apply(prefix_str, data_str);
       }
    };
 
    template<typename Result, const char * const * Prefixes, int Position>
    struct base58_str_parser_impl<Result, Prefixes, Position> {
-      static Result apply(const std::string& base58str) {
-         FC_ASSERT(false, "No matching prefix for ${str}", ("str", base58str));
+      static Result apply(const std::string& prefix_str, const std::string& data_str ) {
+         FC_ASSERT(false, "No matching suite type for ${prefix}_${data}", ("prefix", prefix_str)("data",data_str));
       }
    };
 
@@ -73,7 +72,14 @@ namespace fc { namespace crypto {
    template<const char * const * Prefixes, typename ...Ts>
    struct base58_str_parser<fc::static_variant<Ts...>, Prefixes> {
       static fc::static_variant<Ts...> apply(const std::string& base58str) {
-         return base58_str_parser_impl<fc::static_variant<Ts...>, Prefixes, 0, Ts...>::apply(base58str);
+         const auto pivot = base58str.find('_');
+         FC_ASSERT(pivot != std::string::npos, "No delimiter in data, cannot determine suite type: ${str}", ("str", base58str));
+
+         const auto prefix_str = base58str.substr(0, pivot);
+         auto data_str = base58str.substr(pivot + 1);
+         FC_ASSERT(!data_str.empty(), "Data only has suite type prefix: ${str}", ("str", base58str));
+
+         return base58_str_parser_impl<fc::static_variant<Ts...>, Prefixes, 0, Ts...>::apply(prefix_str, data_str);
       }
    };
 
@@ -91,7 +97,7 @@ namespace fc { namespace crypto {
          auto packed = raw::pack( wrapper );
          auto data_str = to_base58( packed.data(), packed.size() );
          if (!is_default) {
-            data_str = string(Prefixes[position]) + data_str;
+            data_str = string(Prefixes[position]) + "_" + data_str;
          }
 
          return data_str;
