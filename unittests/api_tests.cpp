@@ -475,7 +475,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
             sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
             BOOST_CHECK_EXCEPTION(push_transaction(trx), assert_exception,
                  [](const fc::exception& e) {
-                    return expect_assert_message(e, "this API may only be called from context_free apply" );
+                    return expect_assert_message(e, "only context free api's can be used in this context" );
                  }
             );
          }
