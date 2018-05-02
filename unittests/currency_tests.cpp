@@ -452,6 +452,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
+   const auto& index = control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+   BOOST_REQUIRE_EQUAL(0, index.size());
 
    // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
    fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
@@ -462,7 +464,6 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       ("memo", "fund Proxy")
    );
 
-   const auto& index = control->db().get_index<generated_transaction_multi_index,by_trx_id>();
    BOOST_REQUIRE_EQUAL(1, index.size());
    auto deferred_id = index.begin()->trx_id;
    BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred_id));
@@ -473,6 +474,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(1, index.size());
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(deferred_id));
+      BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::executed);
    }
 
    fc::time_point expected_redelivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
@@ -503,7 +506,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    while(control->head_block_time() < expected_redelivery) {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
    }
 
