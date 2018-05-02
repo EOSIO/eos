@@ -22,6 +22,8 @@
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
 const char* SQL_DB_URI_OPTION = "sql_db-uri";
+const char* RESYNC_OPTION = "resync-blockchain";
+const char* REPLAY_OPTION = "replay-blockchain";
 }
 
 namespace fc { class variant; }
@@ -76,10 +78,10 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     ilog("connecting to ${u}", ("u", uri_str));
     m_database->connect(uri_str);
 
-    if (options.at("resync-blockchain").as<bool>()) {
+    if (options.at(RESYNC_OPTION).as<bool>()) {
         ilog("Resync requested: wiping database");
     }
-    else if (options.at("replay-blockchain").as<bool>()) {
+    else if (options.at(REPLAY_OPTION).as<bool>()) {
         ilog("Replay requested: wiping mongo database on startup");
     }
 
