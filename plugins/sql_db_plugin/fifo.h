@@ -8,19 +8,34 @@
 
 namespace eosio {
 
+template<typename T>
 class fifo
 {
 public:
-    using data = std::pair<chain::block_trace, chain::signed_block>;
-
-    void push(const data&);
-    data pop();
+    void push(const T&);
+    T pop();
 
 private:
     std::mutex m_mux;
 
-    std::deque<data> m_deque;
+    std::deque<T> m_deque;
 };
+
+template<typename T>
+void fifo<T>::push(const T& d)
+{
+    std::lock_guard<std::mutex> lock(m_mux);
+    m_deque.push_back(d);
+}
+
+template<typename T>
+T fifo<T>::pop()
+{
+    std::lock_guard<std::mutex> lock(m_mux);
+    auto e = m_deque.front();
+    m_deque.pop_front();
+    return e;
+}
 
 } // namespace
 

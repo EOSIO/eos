@@ -15,9 +15,9 @@ public:
     void applied_irreversible_block(const chain::signed_block& b);
 
 private:
-    fifo m_block_trace_fifo;
-    fifo m_block_trace_process_fifo;
     std::shared_ptr<database> m_db;
+    fifo<chain::block_trace> m_block_trace_fifo;
+    fifo<chain::signed_block> m_block_trace_process_fifo;
 };
 
 } // namespace
