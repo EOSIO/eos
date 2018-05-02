@@ -191,22 +191,22 @@ namespace eosiosystem {
             producers_table producers_tbl( SystemAccount, SystemAccount );
             auto idx = producers_tbl.template get_index<N(prototalvote)>();
 
-            std::array<uint64_t, 21> max_block_net_usage;
+            std::array<uint32_t, 21> max_block_net_usage;
             std::array<uint32_t, 21> target_block_net_usage_pct;
             std::array<uint32_t, 21> base_per_transaction_net_usage;
             std::array<uint32_t, 21> max_transaction_net_usage;
-            std::array<uint64_t, 21> context_free_discount_net_usage_num;
-            std::array<uint64_t, 21> context_free_discount_net_usage_den;
+            std::array<uint32_t, 21> context_free_discount_net_usage_num;
+            std::array<uint32_t, 21> context_free_discount_net_usage_den;
 
-            std::array<uint64_t, 21> max_block_cpu_usage;
+            std::array<uint32_t, 21> max_block_cpu_usage;
             std::array<uint32_t, 21> target_block_cpu_usage_pct;
             std::array<uint32_t, 21> max_transaction_cpu_usage;
             std::array<uint32_t, 21> base_per_transaction_cpu_usage;
             std::array<uint32_t, 21> base_per_action_cpu_usage;
             std::array<uint32_t, 21> base_setcode_cpu_usage;
             std::array<uint32_t, 21> per_signature_cpu_usage;
-            std::array<uint64_t, 21> context_free_discount_cpu_usage_num;
-            std::array<uint64_t, 21> context_free_discount_cpu_usage_den;
+            std::array<uint32_t, 21> context_free_discount_cpu_usage_num;
+            std::array<uint32_t, 21> context_free_discount_cpu_usage_den;
 
             std::array<uint32_t, 21> max_transaction_lifetime;
             std::array<uint32_t, 21> deferred_trx_expiration_window;

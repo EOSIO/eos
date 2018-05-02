@@ -116,7 +116,8 @@ namespace eosio { namespace chain {
           && cfg.context_free_discount_net_usage_num < cfg.context_free_discount_net_usage_den )
       {
          discounted_size_for_pruned_data *= cfg.context_free_discount_net_usage_num;
-         discounted_size_for_pruned_data /= cfg.context_free_discount_net_usage_den;
+         discounted_size_for_pruned_data =  ( discounted_size_for_pruned_data + cfg.context_free_discount_net_usage_den - 1)
+                                                                                    / cfg.context_free_discount_net_usage_den; // rounds up
       }
 
       uint64_t initial_net_usage = static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
@@ -189,6 +190,38 @@ namespace eosio { namespace chain {
       undo_session.squash();
    }
 
+   uint64_t transaction_context::add_action_cpu_usage( uint64_t u, bool context_free ) {
+      const auto& cfg = control.get_global_properties().configuration;
+
+      uint64_t discounted_cpu_usage = u;
+      if( context_free && cfg.context_free_discount_cpu_usage_den > 0
+          && cfg.context_free_discount_cpu_usage_num < cfg.context_free_discount_cpu_usage_den )
+      {
+         discounted_cpu_usage *= cfg.context_free_discount_cpu_usage_num;
+         discounted_cpu_usage =  ( discounted_cpu_usage + cfg.context_free_discount_cpu_usage_den - 1)
+                                                               / cfg.context_free_discount_cpu_usage_den; // rounds up
+      }
+
+      add_cpu_usage( discounted_cpu_usage );
+      return discounted_cpu_usage;
+   }
+
+   uint64_t transaction_context::get_action_cpu_usage_limit( bool context_free )const {
+      check_cpu_usage();
+      uint64_t diff = max_cpu - cpu_usage;
+      if( !context_free ) return diff;
+
+      const auto& cfg = control.get_global_properties().configuration;
+      uint64_t n = cfg.context_free_discount_cpu_usage_num;
+      uint64_t d = cfg.context_free_discount_cpu_usage_den;
+
+      if( d == 0 || n >= d ) return diff;
+
+      if( n == 0 ) return std::numeric_limits<uint64_t>::max();
+
+      return (diff * d)/n;
+   }
+
    void transaction_context::check_net_usage()const {
       if( BOOST_UNLIKELY(net_usage > max_net) ) {
          if( BOOST_UNLIKELY( net_limit_due_to_block ) ) {
@@ -233,7 +266,15 @@ namespace eosio { namespace chain {
       apply_context  acontext( control, *this, a );
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
-      acontext.exec();
+
+      try {
+         acontext.exec();
+      } catch( const tx_cpu_usage_exceeded& e ) {
+         add_action_cpu_usage( acontext.cpu_usage, context_free ); // Will update cpu_usage to latest value and throw appropriate exception
+         FC_ASSERT(false, "should not have reached here" );
+      } catch( ... ) {
+         throw;
+      }
 
       fc::move_append(executed, move(acontext.executed) );
 

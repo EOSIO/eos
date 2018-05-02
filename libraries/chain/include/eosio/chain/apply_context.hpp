@@ -611,6 +611,7 @@ class apply_context {
 
       uint64_t                                    cpu_usage = 0;
       uint64_t                                    total_cpu_usage = 0;
+      uint64_t                                    cpu_usage_limit = 0;
 
    private:
 
