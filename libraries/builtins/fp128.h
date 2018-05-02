@@ -3,7 +3,7 @@
 
 #include <limits.h>
 #include <stdint.h>
-#include <softfloat.h>
+#include "../softfloat/source/include/softfloat.h"
 
 #define REP_C (__uint128_t)
 #define significandBits 112
