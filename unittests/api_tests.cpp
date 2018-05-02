@@ -905,6 +905,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
                              N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
                              fc::raw::pack(ia2)),
                       N(testapi2) );
+      wdump((res));
    BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
 
 

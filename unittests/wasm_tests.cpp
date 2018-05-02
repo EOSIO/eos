@@ -1000,10 +1000,6 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
 BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_blocks(2);
 
-   set_code(config::system_account_name, eosio_system_wast);
-   set_abi(config::system_account_name, eosio_system_abi);
-   produce_block();
-
    const auto& accnt  = control->db().get<account_object,by_name>(config::system_account_name);
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
