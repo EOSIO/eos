@@ -290,7 +290,7 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
 }
 
 void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   chain().push_transaction( std::make_shared<transaction_metadata>(trx) );
+   chain().push_transaction( std::make_shared<transaction_metadata>(trx), get_transaction_deadline() );
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -306,9 +306,13 @@ controller::config& chain_plugin::chain_config() {
 controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
-  void chain_plugin::get_chain_id (chain_id_type &cid)const {
-    memcpy (cid.data(), my->chain_id.data(), cid.data_size());
-  }
+void chain_plugin::get_chain_id(chain_id_type &cid)const {
+   memcpy(cid.data(), my->chain_id.data(), cid.data_size());
+}
+
+fc::time_point chain_plugin::get_transaction_deadline()const {
+   return fc::time_point::now() + fc::milliseconds(my->max_pending_transaction_time_ms);
+}
 
 namespace chain_apis {
 
@@ -464,13 +468,18 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
+   chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
+   FC_ASSERT( chain_plug != nullptr, "Unable to retrieve chain_plugin" );
+
    packed_transaction pretty_input;
    auto resolver = make_resolver(this);
    try {
       abi_serializer::from_variant(params, pretty_input, resolver);
    } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto trx_trace_ptr = db.sync_push( std::make_shared<transaction_metadata>(move(pretty_input)) );
+   auto trx_trace_ptr = db.sync_push(
+           std::make_shared<transaction_metadata>(move(pretty_input)),
+           chain_plug->get_transaction_deadline() );
 
    fc::variant pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
    //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
