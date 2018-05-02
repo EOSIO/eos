@@ -7,34 +7,12 @@
           {"name":"value", "type":"string"}
       ]
     },{
-      "name": "transfer",
+      "name": "buyram",
       "base": "",
       "fields": [
-         {"name":"from", "type":"account_name"},
-         {"name":"to", "type":"account_name"},
-         {"name":"quantity", "type":"asset"},
-         {"name":"memo", "type":"string"}
-      ]
-    },{
-     "name": "issue",
-     "base": "",
-     "fields": [
-        {"name":"to", "type":"account_name"},
-        {"name":"quantity", "type":"asset"}
-     ]
-    },{
-      "name": "account",
-      "base": "",
-      "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"balance", "type":"uint64"}
-      ]
-    },{
-      "name": "currency_stats",
-      "base": "",
-      "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"supply", "type":"uint64"}
+         {"name":"payer", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"quant", "type":"asset"}
       ]
     },{
       "name": "delegatebw",
@@ -44,7 +22,6 @@
          {"name":"receiver", "type":"account_name"},
          {"name":"stake_net_quantity", "type":"asset"},
          {"name":"stake_cpu_quantity", "type":"asset"},
-         {"name":"stake_storage_quantity", "type":"asset"}
       ]
     },{
       "name": "undelegatebw",
@@ -54,7 +31,6 @@
          {"name":"receiver", "type":"account_name"},
          {"name":"unstake_net_quantity", "type":"asset"},
          {"name":"unstake_cpu_quantity", "type":"asset"},
-         {"name":"unstake_storage_bytes", "type":"uint64"}
       ]
     },{
       "name": "refund",
@@ -70,7 +46,6 @@
          {"name":"to", "type":"account_name"},
          {"name":"net_weight", "type":"uint64"},
          {"name":"cpu_weight", "type":"uint64"},
-         {"name":"storage_stake", "type":"uint64"},
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
@@ -80,7 +55,6 @@
          {"name":"owner", "type":"account_name"},
          {"name":"net_weight", "type":"asset"},
          {"name":"cpu_weight", "type":"asset"},
-         {"name":"storage_stake", "type":"asset"},
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
@@ -170,12 +144,7 @@
       "base": "",
       "fields": [
         {"name":"proxy",     "type":"account_name"}
-      ]
-    },{
-      "name": "unregproxy",
-      "base": "",
-      "fields": [
-        {"name":"proxy",     "type":"account_name"}
+        {"name":"isproxy",   "type":"bool"}
       ]
     },{
       "name": "voteproducer",
@@ -189,17 +158,16 @@
       "name": "voter_info",
       "base": "",
       "fields": [
-        {"name":"owner",             "type":"account_name"},
-        {"name":"proxy",             "type":"account_name"},
-        {"name":"last_update",       "type":"time"},
-        {"name":"is_proxy",          "type":"uint32"},
-        {"name":"staked",            "type":"asset"},
-        {"name":"unstaking",         "type":"asset"},
-        {"name":"unstake_per_week",  "type":"asset"},
-        {"name":"proxied_votes",     "type":"uint128"},
-        {"name":"producers",         "type":"account_name[]"},
-        {"name":"deferred_trx_id",   "type":"uint32"},
-        {"name":"last_unstake",      "type":"uint32"}
+        {"name":"owner",                "type":"account_name"},
+        {"name":"proxy",                "type":"account_name"},
+        {"name":"producers",            "type":"account_name[]"},
+        {"name":"staked",               "type":"uint64"},
+        {"name":"last_vote_weight",     "type":"float64"},
+        {"name":"proxied_vote_weight",  "type":"float64"},
+        {"name":"is_proxy",             "type":"bool"},
+        {"name":"deferred_trx_id",      "type":"uint32"},
+        {"name":"last_unstake_time",    "type":"time"},
+        {"name":"unstaking",            "type":"asset"},
       ]
     },{
       "name": "claimrewards",
@@ -209,13 +177,10 @@
       ]
     }
   ],
-  "actions": [{
-      "name": "transfer",
-      "type": "transfer",
-      "ricardian_contract": ""
-    },{
-      "name": "issue",
-      "type": "issue",
+  "actions": [
+    {
+      "name": "buyram",
+      "type": "buyram",
       "ricardian_contract": ""
     },{
       "name": "delegatebw",
@@ -244,10 +209,6 @@
     },{
       "name": "regproxy",
       "type": "regproxy",
-      "ricardian_contract": ""
-    },{
-      "name": "unregproxy",
-      "type": "unregproxy",
       "ricardian_contract": ""
     },{
       "name": "voteproducer",
