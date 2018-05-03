@@ -85,7 +85,6 @@ namespace eosio { namespace chain {
     result.block_num                             = block_num + 1;
     result.producer_to_last_produced             = producer_to_last_produced;
     result.producer_to_last_produced[prokey.producer_name] = result.block_num;
-//    result.dpos_irreversible_blocknum       = result.calc_dpos_last_irreversible();
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
 
@@ -114,19 +113,20 @@ namespace eosio { namespace chain {
     }
 
     /// grow the confirmed count
-    uint8_t required_confs = (result.active_schedule.producers.size() * 2 / 3) + 1;
-    if( confirm_count.size() < 1024 ) {
+    static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
+    auto num_active_producers = result.active_schedule.producers.size();
+    uint32_t required_confs = (uint32_t)(num_active_producers * 2 / 3) + 1;
+
+    if( confirm_count.size() < config::maximum_tracked_dpos_confirmations ) {
        result.confirm_count.reserve( confirm_count.size() + 1 );
        result.confirm_count  = confirm_count;
        result.confirm_count.resize( confirm_count.size() + 1 );
-       result.confirm_count.back() = required_confs;
+       result.confirm_count.back() = (uint8_t)required_confs;
     } else {
        result.confirm_count.resize( confirm_count.size() );
        memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
-       result.confirm_count.back() = required_confs;
+       result.confirm_count.back() = (uint8_t)required_confs;
     }
-
-
 
     return result;
   } /// generate_next

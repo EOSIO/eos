@@ -22,16 +22,14 @@ struct block_header_state {
     flat_map<account_name,uint32_t>   producer_to_last_produced;
     public_key_type                   block_signing_key;
     vector<uint8_t>                   confirm_count;
+    vector<header_confirmation>       confirmations;
 
     block_header_state   next( const signed_block_header& h )const;
     block_header_state   generate_next( block_timestamp_type when )const;
 
     void set_new_producers( producer_schedule_type next_pending );
     void set_confirmed( uint16_t num_prev_blocks );
-
-
     void add_confirmation( const header_confirmation& c );
-    vector<header_confirmation>  confirmations;
 
 
     bool                 has_pending_producers()const { return pending_schedule.producers.size(); }
@@ -57,8 +55,8 @@ struct block_header_state {
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::block_header_state,
-            (id)(block_num)(header)(dpos_irreversible_blocknum)
+            (id)(block_num)(header)(dpos_irreversible_blocknum)(bft_irreversible_blocknum)
             (pending_schedule_lib_num)(pending_schedule_hash)
             (pending_schedule)(active_schedule)(blockroot_merkle)
             (producer_to_last_produced)(block_signing_key)
-            (bft_irreversible_blocknum)(confirmations) )
+            (confirm_count)(confirmations) )
