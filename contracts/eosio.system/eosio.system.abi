@@ -7,14 +7,6 @@
           {"name":"value", "type":"string"}
       ]
     },{
-      "name": "buyram",
-      "base": "",
-      "fields": [
-         {"name":"payer", "type":"account_name"},
-         {"name":"receiver", "type":"account_name"},
-         {"name":"quant", "type":"asset"}
-      ]
-    },{
       "name": "delegatebw",
       "base": "",
       "fields": [
@@ -194,10 +186,6 @@
   ],
   "actions": [
     {
-      "name": "buyram",
-      "type": "buyram",
-      "ricardian_contract": ""
-    },{
       "name": "delegatebw",
       "type": "delegatebw",
       "ricardian_contract": ""

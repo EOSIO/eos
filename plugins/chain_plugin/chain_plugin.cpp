@@ -536,8 +536,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.last_code_update = a.last_code_update;
    result.created          = a.creation_date;
 
-   result.net_limit = rm.get_account_net_limit( result.account_name );
-   result.cpu_limit = rm.get_account_cpu_limit( result.account_name );
+   result.net_limit = rm.get_account_net_limit_ex( result.account_name );
+   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name );
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();

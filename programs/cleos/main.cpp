@@ -720,7 +720,6 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_storage_quantity", stake_storage_amount, localized("The amount of EOS to stake for storage"))->required();
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
@@ -728,8 +727,7 @@ struct delegate_bandwidth_subcommand {
                   ("from", from_str)
                   ("receiver", receiver_str)
                   ("stake_net_quantity", stake_net_amount + " EOS")
-                  ("stake_cpu_quantity", stake_cpu_amount + " EOS")
-                  ("stake_storage_quantity", stake_storage_amount + " EOS");
+                  ("stake_cpu_quantity", stake_cpu_amount + " EOS");
                   wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
@@ -749,7 +747,6 @@ struct undelegate_bandwidth_subcommand {
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
       undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to undelegate for network bandwidth"))->required();
       undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to undelegate for CPU bandwidth"))->required();
-      undelegate_bandwidth->add_option("unstake_storage_bytes", unstake_storage_bytes, localized("The amount of byte storage to undelegate"))->required();
       add_standard_transaction_options(undelegate_bandwidth);
 
       undelegate_bandwidth->set_callback([this] {
@@ -757,8 +754,7 @@ struct undelegate_bandwidth_subcommand {
                   ("from", from_str)
                   ("receiver", receiver_str)
                   ("unstake_net_quantity", unstake_net_amount + " EOS")
-                  ("unstake_cpu_quantity", unstake_cpu_amount + " EOS")
-                  ("unstake_storage_bytes", unstake_storage_bytes);
+                  ("unstake_cpu_quantity", unstake_cpu_amount + " EOS");
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
       });
    }
@@ -920,7 +916,23 @@ void get_account( const string& accountName ) {
    }
 
    std::cout << "memory: " << std::endl
-             << ident << "quota: " << res.ram_quota << " bytes    used: " << res.ram_usage << " bytes     staked: " << "XXX" << " EOS" << std::endl;
+             << ident << "quota: " << res.ram_quota << " bytes    used: " << res.ram_usage << " bytes     staked: " << "XXX" << " EOS" << std::endl << std::endl;
+
+   std::cout << "net bandwidth:" << std::endl
+             << "staked: " << "XXX EOS" << "   (total stake delegated from account to self)" << std::endl
+             << "delegated: " << "XXX EOS" << "   (total staked delegated to account from others)" << std::endl
+             << "current:   ~" << res.net_limit.current_per_block << " bytes/block  (assuming current congestion and current usage)" << std::endl
+             << "max: ~" << res.net_limit.max_per_block << " bytes/block  (assuming current congestion and 0 usage in current window)" << std::endl
+             << "guaranteed: " << res.net_limit.guaranteed_per_day << " bytes/block .  (assuming 100% congestion and 0 usage in current window)" << std::endl
+             << std::endl;
+
+   std::cout << "net cpu:" << std::endl
+             << "staked: " << "XXX EOS" << "   (total stake delegated from account to self)" << std::endl
+             << "delegated: " << "XXX EOS" << "   (total staked delegated to account from others)" << std::endl
+             << "current:   ~" << res.cpu_limit.current_per_block/1024 << " kcycle/block  (assuming current congestion and current usage)" << std::endl
+             << "max: ~" << res.cpu_limit.max_per_block/1024 << " kcycle/block  (assuming current congestion and 0 usage in current window)" << std::endl
+             << "guaranteed: " << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/block .  (assuming 100% congestion and 0 usage in current window)" << std::endl
+             << std::endl;
 
    std::cout << fc::json::to_pretty_string(json) << std::endl;
 }
