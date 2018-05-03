@@ -138,6 +138,53 @@ struct indexed_by {
    typedef Extractor secondary_extractor_type;
 };
 
+/**
+ *  @defgroup multiindex Multi Index (Database) C++ API
+ *  @brief Defines an interface to EOSIO database
+ *  @ingroup contractdev
+ *  
+ *  EOSIO Multi-Index API provides a C++ interface to the EOSIO database. It is patterned after Boost Multi Index Container.
+ *  EOSIO Multi-Index table requires exactly a uint64_t primary key. For the table to be able to retrieve the primary key,
+ *  the object stored inside the table is required to have a const member function called primary_key() that returns uint64_t.
+ *  EOSIO Multi-Index table also supports up to 16 secondary indices. The type of the secondary indices could be any of:
+ *  - uint64_t
+ *  - uint128_t
+ *  - uint256_t
+ *  - double
+ *  - long double
+ *  
+ *  @tparam TableName - name of the table
+ *  @tparam T - type of the data stored inside the table 
+ *  @tparam Indices - secondary indices for the table, up to 16 indices is supported here
+ *
+ *  Example:
+ *  @code
+ *  struct record {
+ *    uint64_t    primary;
+ *    uint64_t    secondary_1;
+ *    uint128_t   secondary_2;
+ *    uint256_t   secondary_3;
+ *    double      secondary_4;
+ *    long double secondary_5;
+ *    uint64_t primary_key() const { return primary; }
+ *    uint64_t get_secondary_1() const { return secondary_1; }
+ *    uint128_t get_secondary_2() const { return secondary_2; }
+ *    uint256_t get_secondary_3() const { return secondary_3; }
+ *    double get_secondary_4() const { return secondary_4; }
+ *    long double get_secondary_5() const { return secondary_5; }
+ *    EOSLIB_SERIALIZE( record, (primary)(secondary_1)(secondary_2)(secondary_3)(secondary_4)(secondary_5) )
+ *  };
+ *  multi_index<mytable, record,
+ *    indexed_by< N(bysecondary1), const_mem_fun<record, uint64_t, &record::get_secondary_1> >,
+ *    indexed_by< N(bysecondary2), const_mem_fun<record, uint128_t, &record::get_secondary_2> >,
+ *    indexed_by< N(bysecondary3), const_mem_fun<record, uint256_t, &record::get_secondary_3> >,
+ *    indexed_by< N(bysecondary4), const_mem_fun<record, double, &record::get_secondary_4> >,
+ *    indexed_by< N(bysecondary5), const_mem_fun<record, long double, &record::get_secondary_5> >,
+ *  > table( code, scope);
+ *  @endcode
+ *  @{
+ */
+
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index
 {
@@ -1818,4 +1865,5 @@ class multi_index
       }
 
 };
+  /// @}
 }  /// eosio
