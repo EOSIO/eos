@@ -48,9 +48,13 @@ public:
 
       produce_blocks();
 
-      create_account_with_resources( N(alice), N(eosio), asset::from_string("0.5000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
-      create_account_with_resources( N(bob), N(eosio), asset::from_string("0.5000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
-      create_account_with_resources( N(carol), N(eosio), asset::from_string("0.5000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+      create_account_with_resources( N(alice), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      create_account_with_resources( N(bob), N(eosio), asset::from_string("0.4500 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      create_account_with_resources( N(carol), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+      // eosio pays it self for these...
+      //BOOST_REQUIRE_EQUAL( asset::from_string("999999998.5000 EOS"), get_balance( "eosio" ) );
 
       produce_blocks();
 
@@ -249,6 +253,15 @@ public:
                                 ("memo", "")
                                 );
    }
+   void transfer( name from, name to, const string& amount, name manager = config::system_account_name ) {
+      base_tester::push_action( N(eosio.token), N(transfer), manager, mutable_variant_object()
+                                ("from",    from)
+                                ("to",      to )
+                                ("quantity", asset::from_string(amount) )
+                                ("memo", "")
+                                );
+   }
+
 
    abi_serializer abi_ser;
 };
@@ -282,6 +295,7 @@ inline uint64_t M( const string& eos_str ) {
 BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
+   /* my
    BOOST_REQUIRE_EQUAL( success(), buyram("eosio", "alice", "500.0000 EOS") );
    BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice", "100.0000 EOS", "100.0000 EOS" ) );
 
@@ -293,6 +307,34 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("500.0000 EOS"), get_balance( "alice" ) );
 
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "200.0000 EOS", "100.0000 EOS" ) );
+   */
+   //issue( "eosio", "1000.0000 EOS", config::system_account_name );
+
+   /* beginning of slim */
+
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice" ) );
+   transfer( "eosio", "alice", "1000.0000 EOS", "eosio" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("999999000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice", "200.0000 EOS", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "alice", "200.0000 EOS", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "alice", "200.0000 EOS", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
+
+   produce_block( fc::hours(3*24-1) );
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
+   //after 3 days funds should be released
+   produce_block( fc::hours(1) );
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
+
+
+   /* end of slim */
 
    auto total = get_total_stake( "alice" );
    idump((total));

@@ -22,6 +22,8 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint32_t max_multiplier;   // the multiplier by which virtual space can oversell usage when uncongested
       ratio    contract_rate;    // the rate at which a congested resource contracts its limit
       ratio    expand_rate;       // the rate at which an uncongested resource expands its limits
+
+      void validate()const; // throws if the parameters do not satisfy basic sanity checks
    };
 
    struct account_resource_limit {

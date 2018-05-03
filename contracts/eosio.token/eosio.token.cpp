@@ -64,7 +64,8 @@ void token::transfer( account_name from,
                       asset        quantity,
                       string       /*memo*/ )
 {
-    print( "transfer" );
+    print( "transfer from ", eosio::name{from}, " to ", eosio::name{to}, " ", quantity, "\n" );
+    eosio_assert( from != to, "cannot transfer to self" );
     require_auth( from );
     eosio_assert( is_account( to ), "to account does not exist");
     auto sym = quantity.symbol.name();
@@ -99,6 +100,7 @@ void token::sub_balance( account_name owner, asset value, const currency_stats& 
 
    from_acnts.modify( from, owner, [&]( auto& a ) {
        a.balance -= value;
+       print( eosio::name{owner}, " balance: ", a.balance, "\n" );
    });
 }
 
@@ -110,11 +112,13 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
       eosio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
       to_acnts.emplace( ram_payer, [&]( auto& a ){
         a.balance = value;
+        print( eosio::name{owner}, " balance: ", a.balance, "\n" );
       });
    } else {
       eosio_assert( !st.enforce_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
       to_acnts.modify( to, 0, [&]( auto& a ) {
         a.balance += value;
+        print( eosio::name{owner}, " balance: ", a.balance, "\n" );
       });
    }
 }

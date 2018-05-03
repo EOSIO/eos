@@ -1,7 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
@@ -13,8 +12,6 @@
 using namespace eosio::testing;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
-using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 using namespace std;
@@ -35,7 +32,7 @@ public:
 
       produce_blocks();
 
-      const auto& accnt = control->get_database().get<account_object,by_name>( N(eosio.token) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -279,15 +276,15 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
    );
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid quantity" ),
-      transfer( N(alice), N(alice), asset::from_string("4611686018427387904 CERO"), "hola" )
+      transfer( N(alice), N(bob), asset::from_string("4611686018427387904 CERO"), "hola" )
    );
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must transfer positive quantity" ),
-      transfer( N(alice), N(alice), asset::from_string("-1000 CERO"), "hola" )
+      transfer( N(alice), N(bob), asset::from_string("-1000 CERO"), "hola" )
    );
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: attempt to subtract asset with different symbol" ),
-      transfer( N(alice), N(alice), asset::from_string("1.0 CERO"), "hola" )
+      transfer( N(alice), N(bob), asset::from_string("1.0 CERO"), "hola" )
    );
 
 } FC_LOG_AND_RETHROW()

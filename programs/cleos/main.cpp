@@ -1714,7 +1714,7 @@ int main( int argc, char** argv ) {
          if (!proposer.empty()) {
             accountPermissions = vector<permission_level>{{proposer, config::active_name}};
          } else {
-            EOS_THROW(tx_missing_auth, "Authority is not provided (either by multisig parameter <proposer> or -p)");
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
          }
       }
       if (proposer.empty()) {
@@ -1847,7 +1847,7 @@ int main( int argc, char** argv ) {
          if (!canceler.empty()) {
             accountPermissions = vector<permission_level>{{canceler, config::active_name}};
          } else {
-            EOS_THROW(tx_missing_auth, "Authority is not provided (either by multisig parameter <canceler> or -p)");
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <canceler> or -p)");
          }
       }
       if (canceler.empty()) {
@@ -1879,7 +1879,7 @@ int main( int argc, char** argv ) {
          if (!executer.empty()) {
             accountPermissions = vector<permission_level>{{executer, config::active_name}};
          } else {
-            EOS_THROW(tx_missing_auth, "Authority is not provided (either by multisig parameter <executer> or -p)");
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <executer> or -p)");
          }
       }
       if (executer.empty()) {
