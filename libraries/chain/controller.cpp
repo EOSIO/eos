@@ -348,6 +348,7 @@ struct controller_impl {
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
          auto new_bsp = fork_db.add( pending->_pending_block_state );
+         emit( self.accepted_block_header, pending->_pending_block_state );
          head = fork_db.head();
          FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
       }
@@ -678,6 +679,7 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b ) { try {
       try {
          start_block( b->timestamp );
+         self.pending_block_state()->set_confirmed( b->confirmed );
 
          for( const auto& receipt : b->transactions ) {
             if( receipt.trx.contains<packed_transaction>() ) {
@@ -714,7 +716,7 @@ struct controller_impl {
          auto new_header_state = fork_db.add( b );
          emit( self.accepted_block_header, new_header_state );
          maybe_switch_forks();
-      } FC_LOG_AND_RETHROW()
+      } FC_LOG_AND_RETHROW( )
    }
 
    void push_confirmation( const header_confirmation& c ) {

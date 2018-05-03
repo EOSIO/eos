@@ -167,7 +167,7 @@ namespace eosiosystem {
                res.storage_bytes += uint64_t(bytes_out);
             });
       }
-      set_resource_limits( res_itr->owner, res_itr->storage_bytes, uint64_t(res_itr->net_weight.amount), uint64_t(res_itr->cpu_weight.amount) );
+      set_resource_limits( res_itr->owner, res_itr->storage_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
    }
 
 
