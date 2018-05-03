@@ -96,8 +96,10 @@ class producer_plugin_impl {
          // abort the pending block
          chain.abort_block();
 
-         // push the new block
-         chain.push_block(block);
+         try {
+            // push the new block
+            chain.push_block(block);
+         } FC_LOG_AND_DROP();
 
          // restart our production loop
          schedule_production_loop();
@@ -234,7 +236,7 @@ void producer_plugin::plugin_startup()
       my->schedule_production_loop();
    } else
       elog("No producers configured! Please add producer IDs and private keys to configuration.");
-   ilog("producer plugin:  plugin_startup() end");
+      ilog("producer plugin:  plugin_startup() end");
    } FC_CAPTURE_AND_RETHROW() }
 
 void producer_plugin::plugin_shutdown() {
@@ -260,23 +262,41 @@ void producer_plugin_impl::schedule_production_loop() {
    }
 
    fc::time_point block_time = now + fc::microseconds(time_to_next_block_time);
+   static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
+   _timer.expires_at( epoch + boost::posix_time::microseconds(block_time.time_since_epoch().count()));
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   chain.abort_block();
-   chain.start_block( block_time );
+   try {
+      chain.abort_block();
+      chain.start_block(block_time);
+   } FC_LOG_AND_DROP();
 
-   // TODO:  BIG BAD WARNING, THIS WILL HAPPILY BLOW PAST DEADLINES BUT CONTROLLER IS NOT YET SAFE FOR DEADLINE USAGE
-   while( chain.push_next_unapplied_transaction( fc::time_point::maximum() ) );
-   while( chain.push_next_scheduled_transaction( fc::time_point::maximum() ) );
+   if (chain.pending_block_state()) {
+      // TODO:  BIG BAD WARNING, THIS WILL HAPPILY BLOW PAST DEADLINES BUT CONTROLLER IS NOT YET SAFE FOR DEADLINE USAGE
+      try {
+         while (chain.push_next_unapplied_transaction(fc::time_point::maximum()));
+      } FC_LOG_AND_DROP();
 
-   static const boost::posix_time::ptime epoch(boost::gregorian::date(1970,1,1));
-   _timer.expires_at( epoch + boost::posix_time::microseconds(block_time.time_since_epoch().count()));
-   //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
-   _timer.async_wait( [&](const boost::system::error_code& ec){
-      if (ec != boost::asio::error::operation_aborted ) {
-         block_production_loop();
-      }
-   });
+      try {
+         while (chain.push_next_scheduled_transaction(fc::time_point::maximum()));
+      } FC_LOG_AND_DROP();
+
+
+      //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
+      _timer.async_wait([&](const boost::system::error_code& ec) {
+         if (ec != boost::asio::error::operation_aborted) {
+            block_production_loop();
+         }
+      });
+   } else {
+      elog("Failed to start a pending block, will try again later");
+      // we failed to start a block, so try again later?
+      _timer.async_wait([&](const boost::system::error_code& ec) {
+         if (ec != boost::asio::error::operation_aborted) {
+            schedule_production_loop();
+         }
+      });
+   }
 }
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::block_production_loop() {

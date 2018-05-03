@@ -257,7 +257,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    });
 
    my->incoming_transaction_subscription = app().get_channel<channels::incoming_transaction>().subscribe([this](const packed_transaction_ptr& ptrx){
-      my->chain->push_transaction(std::make_shared<transaction_metadata>(*ptrx), get_transaction_deadline());
+      try {
+         my->chain->push_transaction(std::make_shared<transaction_metadata>(*ptrx), get_transaction_deadline());
+      } FC_LOG_AND_DROP();
    });
 }
 
