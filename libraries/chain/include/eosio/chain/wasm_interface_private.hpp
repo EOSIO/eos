@@ -69,7 +69,11 @@ namespace eosio { namespace chain {
             } catch(Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-
+            
+            static int i = 0;
+            std::ofstream out("wasm_"+std::to_string(i)+".s");
+            out.write((const char*)bytes.data(), bytes.size());
+            out.close();
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
          }
          return it->second;
