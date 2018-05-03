@@ -10,10 +10,10 @@ consumer::consumer(std::shared_ptr<database> db):
 
 }
 
-void consumer::push(const chain::block_trace &bt)
+void consumer::push(const chain::block_trace &t)
 {
     ilog("applied_block");
-    m_block_trace_fifo.push(bt);
+    m_block_trace_fifo.push(t);
 }
 
 void consumer::push(const chain::signed_block &b)

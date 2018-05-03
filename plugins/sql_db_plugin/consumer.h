@@ -14,7 +14,7 @@ class consumer
 public:
     consumer(std::shared_ptr<database> db);
 
-    void push(const chain::block_trace& bt);
+    void push(const chain::block_trace& t);
     void push(const chain::signed_block& b);
 
     void start();
