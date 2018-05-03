@@ -46,17 +46,18 @@ namespace eosiosystem {
    };
 
    struct block_header {
-      block_id_type                             previous;
       uint32_t                                  timestamp;
       account_name                              producer;
-      uint32_t                                  schedule_version = 0;
+      uint16_t                                  confirmed = 0;
+      block_id_type                             previous;
       checksum256                               transaction_mroot;
       checksum256                               action_mroot;
+      uint32_t                                  schedule_version = 0;
       eosio::optional<eosio::producer_schedule> new_producers;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(producer)(schedule_version)(transaction_mroot)(action_mroot)
-                                     (new_producers))
+      EOSLIB_SERIALIZE(block_header, (timestamp)(producer)(confirmed)(previous)(transaction_mroot)(action_mroot)
+                                     (schedule_version)(new_producers))
    };
 
 
