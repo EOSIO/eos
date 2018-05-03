@@ -3,8 +3,6 @@
 
 #include <mutex>
 #include <deque>
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/block_trace.hpp>
 
 namespace eosio {
 

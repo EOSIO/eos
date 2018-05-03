@@ -1,7 +1,5 @@
 #include "consumer.h"
 
-#include <iostream>
-
 namespace eosio {
 
 consumer::consumer(std::shared_ptr<database> db):

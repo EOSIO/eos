@@ -3,6 +3,8 @@
 
 #include <thread>
 #include <future>
+#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_trace.hpp>
 
 #include "fifo.h"
 #include "database.h"
