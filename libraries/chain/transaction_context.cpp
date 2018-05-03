@@ -105,7 +105,8 @@ namespace eosio { namespace chain {
 
    void transaction_context::init_for_input_trx( fc::time_point d,
                                                  uint64_t packed_trx_unprunable_size,
-                                                 uint64_t packed_trx_prunable_size    )
+                                                 uint64_t packed_trx_prunable_size,
+                                                 uint32_t num_signatures              )
    {
       const auto& cfg = control.get_global_properties().configuration;
 
@@ -121,6 +122,8 @@ namespace eosio { namespace chain {
       uint64_t initial_net_usage = static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
                                     + packed_trx_unprunable_size + discounted_size_for_pruned_data;
 
+      uint64_t initial_cpu_usage = num_signatures * cfg.per_signature_cpu_usage;
+
       if( trx.delay_sec.value > 0 ) {
           // If delayed, also charge ahead of time for the additional net usage needed to retire the delayed transaction
           // whether that be by successfully executing, soft failure, hard failure, or expiration.
@@ -131,7 +134,7 @@ namespace eosio { namespace chain {
       published = control.pending_block_time();
       deadline = d;
       is_input = true;
-      init( initial_net_usage, 0 );
+      init( initial_net_usage, initial_cpu_usage );
    }
 
    void transaction_context::init_for_deferred_trx( fc::time_point d,

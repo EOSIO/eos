@@ -573,7 +573,8 @@ struct controller_impl {
          } else {
             trx_context.init_for_input_trx( deadline,
                                             trx->packed_trx.get_unprunable_size(),
-                                            trx->packed_trx.get_prunable_size()    );
+                                            trx->packed_trx.get_prunable_size(),
+                                            trx->trx.signatures.size()             );
          }
 
          fc::microseconds required_delay(0);
