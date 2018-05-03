@@ -610,7 +610,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
    set_transaction_headers(trx, 10, 2);
    trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
    auto trace = push_transaction( trx );
-   BOOST_ASSERT(trace != nullptr);
+   BOOST_REQUIRE(trace != nullptr);
    if (trace) {
       BOOST_REQUIRE_EQUAL(transaction_receipt_header::status_enum::delayed, trace->receipt.status);
       BOOST_REQUIRE_EQUAL(1, trace->action_traces.size());
