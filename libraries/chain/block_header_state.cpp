@@ -96,19 +96,6 @@ namespace eosio { namespace chain {
     result.dpos_irreversible_blocknum        = dpos_irreversible_blocknum;
     result.bft_irreversible_blocknum         = bft_irreversible_blocknum;
 
-    /// grow the confirmed count
-    if( confirm_count.size() < 1024 ) {
-       result.confirm_count.reserve( confirm_count.size() + 1 );
-       result.confirm_count  = confirm_count;
-       result.confirm_count.resize( confirm_count.size() + 1 );
-       result.confirm_count.back() = 0;
-    } else {
-       result.confirm_count.resize( confirm_count.size() );
-       memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
-       result.confirm_count.back() = 0;
-    }
-
-
     if( result.pending_schedule.producers.size() &&
         result.dpos_irreversible_blocknum >= pending_schedule_lib_num ) {
       result.active_schedule = move( result.pending_schedule );
@@ -125,6 +112,21 @@ namespace eosio { namespace chain {
       result.producer_to_last_produced = move( new_producer_to_last_produced );
       result.producer_to_last_produced[prokey.producer_name] = result.block_num;
     }
+
+    /// grow the confirmed count
+    uint8_t required_confs = (result.active_schedule.producers.size() * 2 / 3) + 1;
+    if( confirm_count.size() < 1024 ) {
+       result.confirm_count.reserve( confirm_count.size() + 1 );
+       result.confirm_count  = confirm_count;
+       result.confirm_count.resize( confirm_count.size() + 1 );
+       result.confirm_count.back() = required_confs;
+    } else {
+       result.confirm_count.resize( confirm_count.size() );
+       memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
+       result.confirm_count.back() = required_confs;
+    }
+
+
 
     return result;
   } /// generate_next
@@ -198,12 +200,12 @@ namespace eosio { namespace chain {
      */
      header.confirmed = num_prev_blocks;
 
-     auto i = confirm_count.size() - 1;
+     int32_t i = (int32_t)(confirm_count.size() - 1);
      uint32_t blocks_to_confirm = num_prev_blocks + 1; /// confirm the head block too
      while( i >= 0 && blocks_to_confirm ) {
-        ++confirm_count[i];
+        --confirm_count[i];
         //idump((confirm_count[i]));
-        if( confirm_count[i] > active_schedule.producers.size()*2/3 )
+        if( confirm_count[i] == 0 )
         {
            uint32_t block_num_for_i = block_num - (uint32_t)(confirm_count.size() - 1 - i);
            dpos_irreversible_blocknum = block_num_for_i;
