@@ -474,7 +474,8 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       flat_set<account_name> new_producers;
       new_producers.reserve(new_bs->active_schedule.producers.size());
       for( const auto& p: new_bs->active_schedule.producers) {
-         new_producers.insert(p.producer_name);
+         if (_producers.count(p.producer_name) > 0)
+            new_producers.insert(p.producer_name);
       }
 
       for( const auto& p: hbs->active_schedule.producers) {
