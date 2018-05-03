@@ -209,8 +209,12 @@ template<typename T>
 fc::variant call( const std::string& path,
                   const T& v ) { return call( url, path, fc::variant(v) ); }
 
+template<>
+fc::variant call( const std::string& url,
+                  const std::string& path) { return call( url, path, fc::variant() ); }
+
 eosio::chain_apis::read_only::get_info_results get_info() {
-   return call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
+   return call(url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_value() {
@@ -1245,27 +1249,27 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
-      const auto& v = call(net_connect, new_host);
+      const auto& v = call(url, net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
-      const auto& v = call(net_disconnect, new_host);
+      const auto& v = call(url, net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"), false);
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->set_callback([&] {
-      const auto& v = call(net_status, new_host);
+      const auto& v = call(url, net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
    connections->set_callback([&] {
-      const auto& v = call(net_connections, new_host);
+      const auto& v = call(url, net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
