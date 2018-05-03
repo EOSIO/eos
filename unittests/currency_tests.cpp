@@ -294,10 +294,8 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 
    // invalid - contains lower case characters, no validation
    {
-      symbol malformed(SY(6,EoS));
-      BOOST_REQUIRE_EQUAL(false, malformed.valid());
-      BOOST_REQUIRE_EQUAL("EoS", malformed.name());
-      BOOST_REQUIRE_EQUAL(6, malformed.decimals());
+      BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,EoS)),
+                            fc::assert_exception, assert_message_contains("invalid symbol"));
    }
 
    // invalid - contains lower case characters, exception thrown
