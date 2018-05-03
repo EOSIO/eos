@@ -4,6 +4,7 @@
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/producer_object.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -24,11 +25,13 @@ namespace eosio {
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
 
 using namespace eosio::chain;
+using namespace eosio::chain::plugin_interface;
 
 class producer_plugin_impl {
    public:
       producer_plugin_impl(boost::asio::io_service& io)
-         : _timer(io) {}
+      :_timer(io)
+      {}
 
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
@@ -43,6 +46,8 @@ class producer_plugin_impl {
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
 
+      int32_t                                                   _max_deferred_transaction_time_ms;
+
       block_production_condition::block_production_condition_enum _prev_result = block_production_condition::produced;
       uint32_t _prev_result_count = 0;
 
@@ -51,6 +56,8 @@ class producer_plugin_impl {
       uint32_t   _last_signed_block_num = 0;
 
       producer_plugin* _self = nullptr;
+
+      channels::incoming_block::channel_type::handle   _incoming_block_subscription;
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -82,6 +89,18 @@ class producer_plugin_impl {
                }
             }
          } ) );
+      }
+
+      void on_incoming_block(const signed_block_ptr& block) {
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         // abort the pending block
+         chain.abort_block();
+
+         // push the new block
+         chain.push_block(block);
+
+         // restart our production loop
+         schedule_production_loop();
       }
 };
 
@@ -125,6 +144,8 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
+          "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("required-participation", boost::program_options::value<uint32_t>()
                                        ->default_value(uint32_t(config::required_producer_participation/config::percent_1))
                                        ->notifier([this](uint32_t e) {
@@ -186,6 +207,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          my->_private_keys[key_id_to_wif_pair.first] = key_id_to_wif_pair.second;
       }
    }
+
+   my->_max_deferred_transaction_time_ms = options.at("max-deferred-transaction-time").as<int32_t>();
+
+   my->_incoming_block_subscription = app().get_channel<channels::incoming_block>().subscribe([this](const signed_block_ptr& block){
+      my->on_incoming_block(block);
+   });
+
 } FC_LOG_AND_RETHROW() }
 
 void producer_plugin::plugin_startup()
@@ -218,6 +246,8 @@ void producer_plugin::plugin_shutdown() {
 }
 
 void producer_plugin_impl::schedule_production_loop() {
+   _timer.cancel();
+
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
    fc::time_point now = fc::time_point::now();
@@ -229,14 +259,24 @@ void producer_plugin_impl::schedule_production_loop() {
       time_to_next_block_time += config::block_interval_us;
    }
 
+   fc::time_point block_time = now + fc::microseconds(time_to_next_block_time);
+
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-
    chain.abort_block();
-   chain.start_block( now + fc::microseconds(time_to_next_block_time) );
+   chain.start_block( block_time );
 
-   _timer.expires_from_now( boost::posix_time::microseconds(time_to_next_block_time)  );
+   // TODO:  BIG BAD WARNING, THIS WILL HAPPILY BLOW PAST DEADLINES BUT CONTROLLER IS NOT YET SAFE FOR DEADLINE USAGE
+   while( chain.push_next_unapplied_transaction( fc::time_point::maximum() ) );
+   while( chain.push_next_scheduled_transaction( fc::time_point::maximum() ) );
+
+   static const boost::posix_time::ptime epoch(boost::gregorian::date(1970,1,1));
+   _timer.expires_at( epoch + boost::posix_time::microseconds(block_time.time_since_epoch().count()));
    //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
-   _timer.async_wait( [&](const boost::system::error_code&){ block_production_loop(); } );
+   _timer.async_wait( [&](const boost::system::error_code& ec){
+      if (ec != boost::asio::error::operation_aborted ) {
+         block_production_loop();
+      }
+   });
 }
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::block_production_loop() {

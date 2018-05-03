@@ -239,8 +239,6 @@ struct faucet_testnet_plugin_impl {
       trx.sign(_create_account_private_key, chainid);
 
       try {
-         if( !cc.pending_block_state() )
-            cc.start_block();
          cc.push_transaction( std::make_shared<transaction_metadata>(trx) );
       } catch (const account_name_exists_exception& ) {
          // another transaction ended up adding the account, so look for alternates
