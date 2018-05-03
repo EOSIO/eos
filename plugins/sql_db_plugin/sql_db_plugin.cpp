@@ -89,14 +89,15 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
     FC_ASSERT(chain_plug);
     chain_plug->chain_config().applied_block_callbacks.emplace_back(
-                [=](const chain::block_trace& bt) { m_consumer->applied_block(bt); });
+                [=](const chain::block_trace& bt) { m_consumer->push(bt); });
     chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
-                [=](const chain::signed_block& b) { m_consumer->applied_irreversible_block(b); });
+                [=](const chain::signed_block& b) { m_consumer->push(b); });
 }
 
 void sql_db_plugin::plugin_startup()
 {
     ilog("startup");
+    m_consumer->start();
 
     //   if (my->configured) {
     //      ilog("starting db plugin");
@@ -111,6 +112,7 @@ void sql_db_plugin::plugin_startup()
 void sql_db_plugin::plugin_shutdown()
 {
     ilog("shutdown");
+    m_consumer->stop();
 }
 
 } // namespace eosio

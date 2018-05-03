@@ -1,6 +1,9 @@
 #ifndef CONSUMER_H
 #define CONSUMER_H
 
+#include <thread>
+#include <future>
+
 #include "fifo.h"
 #include "database.h"
 
@@ -11,13 +14,20 @@ class consumer
 public:
     consumer(std::shared_ptr<database> db);
 
-    void applied_block(const chain::block_trace& bt);
-    void applied_irreversible_block(const chain::signed_block& b);
+    void push(const chain::block_trace& bt);
+    void push(const chain::signed_block& b);
+
+    void start();
+    void stop();
 
 private:
+    void run(std::future<void> future_obj);
+
     std::shared_ptr<database> m_db;
     fifo<chain::block_trace> m_block_trace_fifo;
     fifo<chain::signed_block> m_block_trace_process_fifo;
+    std::shared_ptr<std::thread> m_thread;
+    std::promise<void> m_exit_signal;
 };
 
 } // namespace
