@@ -64,6 +64,12 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
    BOOST_CHECK_EXCEPTION( asset::from_string("-0.1000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
       return expect_assert_message(e, "precision should be <= 18");
    });
+   BOOST_CHECK_EXCEPTION( asset::from_string("1.0000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
+      return expect_assert_message(e, "precision should be <= 18");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-1.0000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
+      return expect_assert_message(e, "precision should be <= 18");
+   });
 
    // precision = 18, magnitude < 2^58
    a = asset::from_string("0.100000000000000000 CUR");
@@ -76,6 +82,12 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
       return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-4.611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("4611686018427387.904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-4611686018427387.904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
       return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
    });
 
