@@ -10,6 +10,7 @@ namespace eosio {
       uint32_t target_block_net_usage_pct;
       uint32_t max_transaction_net_usage;
       uint32_t base_per_transaction_net_usage;
+      uint32_t net_usage_leeway;
       uint64_t context_free_discount_net_usage_num;
       uint64_t context_free_discount_net_usage_den;
 
@@ -20,6 +21,7 @@ namespace eosio {
       uint32_t base_per_action_cpu_usage;
       uint32_t base_setcode_cpu_usage;
       uint32_t per_signature_cpu_usage;
+      uint32_t cpu_usage_leeway;
       uint64_t context_free_discount_cpu_usage_num;
       uint64_t context_free_discount_cpu_usage_den;
 
@@ -33,12 +35,12 @@ namespace eosio {
 
       EOSLIB_SERIALIZE( blockchain_parameters,
                         (max_block_net_usage)(target_block_net_usage_pct)
-                        (max_transaction_net_usage)(base_per_transaction_net_usage)
+                        (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)
                         (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
 
                         (max_block_cpu_usage)(target_block_cpu_usage_pct)
                         (max_transaction_cpu_usage)(base_per_transaction_cpu_usage)
-                        (base_per_action_cpu_usage)(base_setcode_cpu_usage)(per_signature_cpu_usage)
+                        (base_per_action_cpu_usage)(base_setcode_cpu_usage)(per_signature_cpu_usage)(cpu_usage_leeway)
                         (context_free_discount_cpu_usage_num)(context_free_discount_cpu_usage_den)
 
                         (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)

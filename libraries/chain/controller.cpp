@@ -438,13 +438,13 @@ struct controller_impl {
       transaction_context trx_context( self, dtrx, gto.trx_id );
       transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
-      uint64_t max_cpu;
+      uint64_t max_cpu = 0;
       bool abort_on_error = false;
       try {
          trx_context.init_for_deferred_trx( deadline, gto.published );
 
          bill_to_accounts = trx_context.bill_to_accounts;
-         max_cpu = trx_context.max_cpu;
+         max_cpu = trx_context.initial_max_billable_cpu;
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 

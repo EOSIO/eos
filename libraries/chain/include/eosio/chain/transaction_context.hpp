@@ -67,8 +67,17 @@ namespace eosio { namespace chain {
          vector<action_receipt>        executed;
          flat_set<account_name>        bill_to_accounts;
          flat_set<account_name>        validate_ram_usage;
-         uint64_t                      max_net = 0;   /// the maximum number of network usage bytes the transaction can consume
-         uint64_t                      max_cpu = 0;   /// the maximum number of CPU instructions the transaction may consume
+
+         /// the maximum number of network usage bytes the transaction can consume (ignoring what billable accounts can pay and ignoring the remaining usage available in the block)
+         uint64_t                      max_net = 0;
+         uint64_t                      eager_net_limit = 0; ///< net usage limit (in bytes) to check against eagerly
+
+         /// the maximum number of virtual CPU instructions the transaction may consume (ignoring what billable accounts can pay and ignoring the remaining usage available in the block)
+         uint64_t                      max_cpu = 0;
+         uint64_t                      eager_cpu_limit = 0; ///< cpu usage limit (in virtual CPU instructions) to check against eagerly
+         /// the maximum number of virtual CPU instructions of the transaction that can be safely billed to the billable accounts
+         uint64_t                      initial_max_billable_cpu = 0; 
+
          fc::microseconds              delay;
          bool                          is_input           = false;
          bool                          apply_context_free = true;
