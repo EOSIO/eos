@@ -23,6 +23,8 @@
 #endif
 
 using namespace eosio::chain;
+using namespace eosio::testing;
+
 namespace eosio
 {
 using namespace chain;
@@ -48,6 +50,86 @@ BOOST_AUTO_TEST_CASE(json_from_string_test)
     exc_found = true;
   }
   BOOST_CHECK_EQUAL(exc_found, true);
+}
+
+// Test overflow handling in asset::from_string
+BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
+{
+   asset a;
+
+   // precision = 19, magnitude < 2^61
+   BOOST_CHECK_EXCEPTION( asset::from_string("0.1000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
+      return expect_assert_message(e, "precision should be <= 18");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-0.1000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
+      return expect_assert_message(e, "precision should be <= 18");
+   });
+
+   // precision = 18, magnitude < 2^58
+   a = asset::from_string("0.100000000000000000 CUR");
+   BOOST_CHECK_EQUAL(a.amount, 100000000000000000L);
+   a = asset::from_string("-0.100000000000000000 CUR");
+   BOOST_CHECK_EQUAL(a.amount, -100000000000000000L);
+
+   // precision = 18, magnitude = 2^62
+   BOOST_CHECK_EXCEPTION( asset::from_string("4.611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-4.611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
+
+   // precision = 18, magnitude = 2^62-1
+   a = asset::from_string("4.611686018427387903 CUR");
+   BOOST_CHECK_EQUAL(a.amount, 4611686018427387903L);
+   a = asset::from_string("-4.611686018427387903 CUR");
+   BOOST_CHECK_EQUAL(a.amount, -4611686018427387903L);
+
+   // precision = 0, magnitude = 2^62
+   BOOST_CHECK_EXCEPTION( asset::from_string("4611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-4611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
+
+   // precision = 0, magnitude = 2^62-1
+   a = asset::from_string("4611686018427387903 CUR");
+   BOOST_CHECK_EQUAL(a.amount, 4611686018427387903L);
+   a = asset::from_string("-4611686018427387903 CUR");
+   BOOST_CHECK_EQUAL(a.amount, -4611686018427387903L);
+
+   // precision = 18, magnitude = 2^65
+   BOOST_CHECK_EXCEPTION( asset::from_string("36.893488147419103232 CUR") , overflow_exception, [](const overflow_exception& e) {
+      return true;
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-36.893488147419103232 CUR") , underflow_exception, [](const underflow_exception& e) {
+      return true;
+   });
+
+   // precision = 14, magnitude > 2^76
+   BOOST_CHECK_EXCEPTION( asset::from_string("1000000000.00000000000000 CUR") , overflow_exception, [](const overflow_exception& e) {
+      return true;
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-1000000000.00000000000000 CUR") , underflow_exception, [](const underflow_exception& e) {
+      return true;
+   });
+
+   // precision = 0, magnitude > 2^76
+   BOOST_CHECK_EXCEPTION( asset::from_string("100000000000000000000000 CUR") , parse_error_exception, [](const parse_error_exception& e) {
+      return expect_assert_message(e, "Couldn't parse int64_t");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-100000000000000000000000 CUR") , parse_error_exception, [](const parse_error_exception& e) {
+      return expect_assert_message(e, "Couldn't parse int64_t");
+   });
+
+   // precision = 20, magnitude > 2^142
+   BOOST_CHECK_EXCEPTION( asset::from_string("100000000000000000000000.00000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
+      return expect_assert_message(e, "precision should be <= 18");
+   });
+   BOOST_CHECK_EXCEPTION( asset::from_string("-100000000000000000000000.00000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
+      return expect_assert_message(e, "precision should be <= 18");
+   });
 }
 
 /// Test that our deterministic random shuffle algorithm gives the same results in all environments

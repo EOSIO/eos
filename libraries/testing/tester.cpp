@@ -9,6 +9,11 @@
 
 namespace eosio { namespace testing {
 
+   bool expect_assert_message(const fc::exception& ex, string expected) {
+      BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
+      return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
+   }
+
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
       fc::mutable_variant_object res;
       for( auto& entry : filter ) {
@@ -83,6 +88,7 @@ namespace eosio { namespace testing {
    }
 
    signed_block_ptr base_tester::push_block(signed_block_ptr b) {
+      control->abort_block();
       control->push_block(b);
       return b;
    }
@@ -118,6 +124,16 @@ namespace eosio { namespace testing {
             while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
       }
 
+      auto hb = control->head_block_state();
+      auto pb = control->pending_block_state();
+      const auto& lpp_map = hb->producer_to_last_produced;
+      auto pitr = lpp_map.find( pb->header.producer );
+      if( pitr != lpp_map.end() ) {
+         if( pb->block_num == pitr->second ) {
+            wdump((pb->block_num));
+         }
+         control->pending_block_state()->set_confirmed( pb->block_num - pitr->second );
+      }
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {
                     return priv_key.sign(d);
@@ -640,6 +656,7 @@ namespace eosio { namespace testing {
          for( int i = 1; i <= a.control->head_block_num(); ++i ) {
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
+               b.control->abort_block();
                b.control->push_block(block); //, eosio::chain::validation_steps::created_block);
             }
          }

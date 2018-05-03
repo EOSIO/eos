@@ -98,11 +98,6 @@ struct check_auth {
 
 FC_REFLECT(check_auth, (account)(permission)(pubkeys) );
 
-bool expect_assert_message(const fc::exception& ex, string expected) {
-   BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
-   return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
-}
-
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
@@ -544,7 +539,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
 	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
 	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
-   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000), fc::milliseconds(-1)} );
+   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000)} );
    t.produce_blocks(2);
 
    t.create_account( N(testapi) );

@@ -60,6 +60,8 @@ namespace eosio { namespace testing {
 
    void copy_row(const chain::key_value_object& obj, vector<char>& data);
 
+   bool expect_assert_message(const fc::exception& ex, string expected);
+
    /**
     *  @class tester
     *  @brief provides utility function to simplify the creation of unit tests

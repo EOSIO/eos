@@ -348,6 +348,7 @@ struct controller_impl {
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
          auto new_bsp = fork_db.add( pending->_pending_block_state );
+         emit( self.accepted_block_header, pending->_pending_block_state );
          head = fork_db.head();
          FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
       }
@@ -679,6 +680,7 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b ) { try {
       try {
          start_block( b->timestamp );
+         self.pending_block_state()->set_confirmed( b->confirmed );
 
          for( const auto& receipt : b->transactions ) {
             if( receipt.trx.contains<packed_transaction>() ) {
@@ -709,16 +711,17 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b ) {
+      FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
       try {
-         if( pending ) abort_block();
          FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
          emit( self.accepted_block_header, new_header_state );
          maybe_switch_forks();
-      } FC_LOG_AND_RETHROW()
+      } FC_LOG_AND_RETHROW( )
    }
 
    void push_confirmation( const header_confirmation& c ) {
+      FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
       maybe_switch_forks();
@@ -729,7 +732,6 @@ struct controller_impl {
 
       if( new_head->header.previous == head->id ) {
          try {
-            abort_block();
             apply_block( new_head->block );
             fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
@@ -821,8 +823,10 @@ struct controller_impl {
 
 
    void finalize_block()
-   { try {
-      if( !pending ) self.start_block();
+   {
+      FC_ASSERT(pending, "it is not valid to finalize when there is no pending block");
+      try {
+
 
       /*
       ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
