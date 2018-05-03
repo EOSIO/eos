@@ -257,7 +257,6 @@ namespace eosio {
             return;
          eosio_assert(ref_sym.precision() >= this->symbol.precision(), "asset symbol has higher precision than expected");
          for (uint8_t i = 0; i < ref_sym.precision() - this->symbol.precision(); ++i) {
-            printi(amount);
             this->amount *= 10;
          }
          this->symbol.value = ref_sym.value;
