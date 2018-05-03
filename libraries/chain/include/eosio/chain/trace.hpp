@@ -31,7 +31,7 @@ namespace eosio { namespace chain {
    };
 
    struct transaction_trace;
-   typedef std::shared_ptr<transaction_trace> transaction_trace_ptr;
+   using transaction_trace_ptr = std::shared_ptr<transaction_trace>;
 
    struct transaction_trace {
       transaction_id_type          id;
@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
       uint64_t                        cpu_usage;
       vector<transaction_trace_ptr>   trx_traces;
    };
-   typedef std::shared_ptr<block_trace> block_trace_ptr;
+   using block_trace_ptr = std::shared_ptr<block_trace>;
 
 } }  /// namespace eosio::chain
 

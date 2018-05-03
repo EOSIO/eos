@@ -146,6 +146,7 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_key> producers;
          fc::raw::unpack(ds, producers);
+         EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          // check that producers are unique
          std::set<account_name> unique_producers;
          for (const auto& p: producers) {
@@ -194,6 +195,7 @@ class privileged_api : public context_aware_api {
 
 };
 
+/*
 class checktime_api : public context_aware_api {
 public:
    explicit checktime_api( apply_context& ctx )
@@ -203,6 +205,7 @@ public:
       context.checktime(instruction_count);
    }
 };
+*/
 
 class softfloat_api : public context_aware_api {
    public:
@@ -1617,7 +1620,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INJECTED_INTRINSICS(checktime_api,
+REGISTER_INJECTED_INTRINSICS(apply_context,
    (checktime,      void(int))
 );
 

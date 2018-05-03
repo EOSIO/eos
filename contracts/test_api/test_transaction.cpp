@@ -287,3 +287,13 @@ void test_transaction::send_cf_action_fail() {
    act.send_context_free();
    eosio_assert(false, "send_cfa_action_fail() should've thrown an error");
 }
+
+void test_transaction::stateful_api() {
+   char buf[4] = {1};
+   db_store_i64(N(test_transaction), N(table), N(test_transaction), 0, buf, 4);
+}
+
+void test_transaction::context_free_api() {
+   char buf[128] = {0};
+   get_context_free_data(0, buf, sizeof(buf));
+}

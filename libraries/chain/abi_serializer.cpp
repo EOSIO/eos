@@ -81,6 +81,7 @@ namespace eosio { namespace chain {
       built_in_types.emplace("uint128",                   pack_unpack<boost::multiprecision::uint128_t>());
       built_in_types.emplace("uint256",                   pack_unpack<boost::multiprecision::uint256_t>());
       built_in_types.emplace("varuint32",                 pack_unpack<fc::unsigned_int>());
+      built_in_types.emplace("bool",                      pack_unpack<uint8_t>());
       built_in_types.emplace("int8",                      pack_unpack<int8_t>());
       built_in_types.emplace("int16",                     pack_unpack<int16_t>());
       built_in_types.emplace("int32",                     pack_unpack<int32_t>());

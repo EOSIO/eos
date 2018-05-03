@@ -9,8 +9,7 @@
 
 #include <eosio/testing/tester_network.hpp>
 #include <eosio/chain/producer_object.hpp>
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -53,7 +52,7 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, TESTER ) { try {
    produce_block();
 
    /// action not provided from authority
-   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(bob), config::active_name}}, { get_private_key(N(bob), "active") } ), tx_missing_auth);
+   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(bob), config::active_name}}, { get_private_key(N(bob), "active") } ), missing_auth_exception);
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
 
@@ -156,7 +155,7 @@ try {
    // Bob attempts to create new spending auth for Alice
    BOOST_CHECK_THROW( chain.set_authority( "alice", "spending", authority(spending_pub_key), "active",
                                            { permission_level{"bob", "active"} }, { chain.get_private_key("bob", "active") } ),
-                      transaction_exception );
+                      irrelevant_auth_exception );
 
    // Create new spending auth
    chain.set_authority("alice", "spending", authority(spending_pub_key), "active",
@@ -240,7 +239,7 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
    chain.set_authority("alice", "scud", scud_pub_key, "spending");
 
    // Send req auth action with alice's spending key, it should fail
-   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), tx_irrelevant_auth);
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), irrelevant_auth_exception);
    // Link authority for eosio reqauth action with alice's spending key
    chain.link_authority("alice", "eosio", "spending",  "reqauth");
    // Now, req auth action with alice's spending key should succeed
@@ -254,18 +253,44 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
    // Unlink alice with eosio reqauth
    chain.unlink_authority("alice", "eosio", "reqauth");
    // Now, req auth action with alice's spending key should fail
-   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), tx_irrelevant_auth);
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), irrelevant_auth_exception);
 
    chain.produce_block();
 
    // Send req auth action with scud key, it should fail
-   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key }), tx_irrelevant_auth);
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key }), irrelevant_auth_exception);
    // Link authority for any eosio action with alice's scud key
    chain.link_authority("alice", "eosio", "scud");
    // Now, req auth action with alice's scud key should succeed
    chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key });
    // req auth action with alice's spending key should also be fine, since it is the parent of alice's scud key
    chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(link_then_update_auth) { try {
+   TESTER chain;
+
+   chain.create_account("alice");
+
+   const auto first_priv_key = chain.get_private_key("alice", "first");
+   const auto first_pub_key = first_priv_key.get_public_key();
+   const auto second_priv_key = chain.get_private_key("alice", "second");
+   const auto second_pub_key = second_priv_key.get_public_key();
+
+   chain.set_authority("alice", "first", first_pub_key, "active");
+
+   chain.link_authority("alice", "eosio", "first",  "reqauth");
+   chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key });
+
+   chain.produce_blocks(13); // Wait at least 6 seconds for first push_reqauth transaction to expire.
+
+   // Update "first" auth public key
+   chain.set_authority("alice", "first", second_pub_key, "active");
+   // Authority updated, using previous "first" auth should fail on linked auth
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key }), tx_missing_sigs);
+   // Using updated authority, should succeed
+   chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { second_priv_key });
 
 } FC_LOG_AND_RETHROW() }
 
@@ -292,11 +317,11 @@ try {
 
    // Create duplicate name
    BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
-                         assert_message_ends_with("Cannot create account named joe, as that name is already taken"));
+                         fc_exception_message_is("Cannot create account named joe, as that name is already taken"));
 
    // Creating account with name more than 12 chars
    BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
-                         assert_message_ends_with("account names can only be 12 chars long"));
+                         fc_exception_message_is("account names can only be 12 chars long"));
 
 
    // Creating account with eosio. prefix with privileged account
@@ -304,7 +329,7 @@ try {
 
    // Creating account with eosio. prefix with non-privileged account, should fail
    BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
-                         assert_message_ends_with("only privileged accounts can have names that start with 'eosio.'"));
+                         fc_exception_message_is("only privileged accounts can have names that start with 'eosio.'"));
 
 } FC_LOG_AND_RETHROW() }
 
@@ -323,7 +348,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    /// this should fail because spending is not active which is default for reqauth
    BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }),
-                        tx_irrelevant_auth );
+                        irrelevant_auth_exception );
 
    chain.produce_block();
 
@@ -337,7 +362,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
    BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(bob), "spending"} }, { spending_priv_key }),
-                        tx_missing_auth );
+                        missing_auth_exception );
 
 
    chain.produce_block();
@@ -459,8 +484,6 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
 
    const auto& tester_account = N(tester);
    std::vector<transaction_id_type> ids;
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(currency));
@@ -486,7 +509,7 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
            ("requirement", "first")),
    action_validate_exception,
    [] (const action_validate_exception &ex)->bool {
-      BOOST_REQUIRE_EQUAL(std::string("message validation exception"), ex.what());
+      BOOST_REQUIRE_EQUAL(std::string("action exception"), ex.what());
       return true;
    });
    };

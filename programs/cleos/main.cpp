@@ -410,6 +410,7 @@ fc::variant regproducer_variant(const account_name& producer,
          ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
          ("max_transaction_net_usage", config::default_max_transaction_net_usage)
          ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
+         ("net_usage_leeway", config::default_net_usage_leeway)
          ("context_free_discount_net_usage_num", config::default_context_free_discount_net_usage_num)
          ("context_free_discount_net_usage_den", config::default_context_free_discount_net_usage_den)
          ("max_block_cpu_usage", config::default_max_block_cpu_usage)
@@ -419,6 +420,7 @@ fc::variant regproducer_variant(const account_name& producer,
          ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
          ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
          ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
+         ("cpu_usage_leeway", config::default_cpu_usage_leeway)
          ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
          ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
          ("max_transaction_lifetime", config::default_max_trx_lifetime)
@@ -1654,7 +1656,7 @@ int main( int argc, char** argv ) {
          if (!proposer.empty()) {
             accountPermissions = vector<permission_level>{{proposer, config::active_name}};
          } else {
-            EOS_THROW(tx_missing_auth, "Authority is not provided (either by multisig parameter <proposer> or -p)");
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
          }
       }
       if (proposer.empty()) {
@@ -1787,7 +1789,7 @@ int main( int argc, char** argv ) {
          if (!canceler.empty()) {
             accountPermissions = vector<permission_level>{{canceler, config::active_name}};
          } else {
-            EOS_THROW(tx_missing_auth, "Authority is not provided (either by multisig parameter <canceler> or -p)");
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <canceler> or -p)");
          }
       }
       if (canceler.empty()) {
@@ -1819,7 +1821,7 @@ int main( int argc, char** argv ) {
          if (!executer.empty()) {
             accountPermissions = vector<permission_level>{{executer, config::active_name}};
          } else {
-            EOS_THROW(tx_missing_auth, "Authority is not provided (either by multisig parameter <executer> or -p)");
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <executer> or -p)");
          }
       }
       if (executer.empty()) {
