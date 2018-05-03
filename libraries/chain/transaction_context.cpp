@@ -158,13 +158,15 @@ namespace eosio { namespace chain {
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            dispatch_action( act, true );
+            trace->action_traces.emplace_back();
+            trace->action_traces.back() = dispatch_action( act, true );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            dispatch_action( act );
+            trace->action_traces.emplace_back();
+            trace->action_traces.back() = dispatch_action( act );
          }
       } else {
          schedule_transaction();
@@ -260,8 +262,8 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::dispatch_action( const action& a, account_name receiver, bool context_free ) {
-      apply_context  acontext( control, *this, a );
+   action_trace transaction_context::dispatch_action( const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
+      apply_context  acontext( control, *this, a, recurse_depth );
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
 
@@ -274,9 +276,7 @@ namespace eosio { namespace chain {
          throw;
       }
 
-      fc::move_append(executed, move(acontext.executed) );
-
-      trace->action_traces.emplace_back( move(acontext.trace) );
+      return move(acontext.trace);
    }
 
    void transaction_context::schedule_transaction() {

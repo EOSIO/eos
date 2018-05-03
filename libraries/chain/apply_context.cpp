@@ -73,8 +73,7 @@ action_trace apply_context::exec_one()
    t.total_cpu_usage = cpu_usage;
    t.console = _pending_console_output.str();
 
-   executed.emplace_back( move(r) );
-   total_cpu_usage += cpu_usage;
+   trx_context.executed.emplace_back( move(r) );
 
    print_debug(receiver, t);
 
@@ -100,22 +99,13 @@ void apply_context::exec()
    }
 
    for( const auto& inline_action : _cfa_inline_actions ) {
-      apply_context ncontext( control, trx_context, inline_action, recurse_depth + 1 );
-      ncontext.context_free = true;
-      ncontext.exec();
-      fc::move_append( executed, move(ncontext.executed) );
-      total_cpu_usage += ncontext.trace.total_cpu_usage;
-      trace.total_cpu_usage += ncontext.trace.total_cpu_usage;
-      trace.inline_traces.emplace_back(ncontext.trace);
+      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, true, recurse_depth + 1 ) );
+      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
    for( const auto& inline_action : _inline_actions ) {
-      apply_context ncontext( control, trx_context, inline_action, recurse_depth + 1 );
-      ncontext.exec();
-      fc::move_append( executed, move(ncontext.executed) );
-      total_cpu_usage += ncontext.total_cpu_usage;
-      trace.total_cpu_usage += ncontext.trace.total_cpu_usage;
-      trace.inline_traces.emplace_back(ncontext.trace);
+      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, false, recurse_depth + 1 ) );
+      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
 } /// exec()

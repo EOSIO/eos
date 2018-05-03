@@ -4,7 +4,6 @@
 
 namespace eosio { namespace chain {
 
-
    class transaction_context {
       private:
          void init( uint64_t initial_net_usage, uint64_t initial_cpu_usage );
@@ -44,9 +43,11 @@ namespace eosio { namespace chain {
 
       private:
 
-         void dispatch_action( const action& a, account_name receiver, bool context_free = false );
-         inline void dispatch_action( const action& a, bool context_free = false ) {
-            dispatch_action(a, a.account, context_free);
+         friend class apply_context;
+
+         action_trace dispatch_action( const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
+         inline action_trace dispatch_action( const action& a, bool context_free = false ) {
+            return dispatch_action(a, a.account, context_free);
          };
          void schedule_transaction();
          void record_transaction( const transaction_id_type& id, fc::time_point_sec expire );
