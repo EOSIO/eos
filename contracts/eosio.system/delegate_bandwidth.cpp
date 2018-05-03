@@ -113,6 +113,26 @@ namespace eosiosystem {
                     //       r->cpu_weight.amount );
    }
 
+   /**
+    *  This action will buy an exact amount of ram and bill the payer the current market price.
+    */
+   void system_contract::buyrambytes( account_name payer, account_name receiver, uint32_t bytes ) {
+      const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
+
+      const double R = unstaked_token_supply;
+      const double C = _gstate.free_ram() + bytes;
+      const double F = _gstate.storage_reserve_ratio / 10000.0;
+      const double T = bytes;
+      const double ONE(1.0);
+
+      double E = -R * (ONE - std::pow( ONE + T/C, F ) );
+      
+      int64_t tokens_out = int64_t(E*1.0105);
+      print( "desired ram: ", bytes, "\n" );
+      
+      buyram( payer, receiver, asset(tokens_out) );
+   }
 
 
    /**
@@ -176,7 +196,7 @@ namespace eosiosystem {
     *  refunds the purchase price to the account. In this way there is no profit to be made through buying
     *  and selling ram.
     */
-   void system_contract::sellram( account_name account, uint64_t bytes ) {
+   void system_contract::sellram( account_name account, uint32_t bytes ) {
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
       eosio_assert( res_itr != userres.end(), "no resource row" );

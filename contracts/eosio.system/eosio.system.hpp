@@ -156,12 +156,13 @@ namespace eosiosystem {
           * tokens will be executed.
           */
          void buyram( account_name buyer, account_name receiver, asset tokens );
+         void buyrambytes( account_name buyer, account_name receiver, uint32_t bytes );
 
          /**
           *  Reduces quota my bytes and then performs an inline transfer of tokens
           *  to receiver based upon the average purchase price of the original quota.
           */
-         void sellram( account_name receiver, uint64_t bytes );
+         void sellram( account_name receiver, uint32_t bytes );
 
          /**
           *  This action is called after the delegation-period to claim all pending
