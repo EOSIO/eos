@@ -45,6 +45,7 @@ class producer_plugin_impl {
       std::map<chain::public_key_type, chain::private_key_type> _private_keys;
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
+      std::map<chain::account_name, uint32_t>                   _producer_watermarks;
 
       int32_t                                                   _max_deferred_transaction_time_ms;
 
@@ -271,8 +272,25 @@ void producer_plugin_impl::schedule_production_loop() {
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    try {
+      // determine how many blocks this producer can confirm
+      // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
+      // 2) if it is a producer on this node that has never produced, the conservative approach is to assume no
+      //    confirmations to make sure we don't double sign after a crash TODO: make these watermarks durable?
+      // 3) if it is a producer on this node where this node knows the last block it produced, safely set it -UNLESS-
+      // 4) the producer on this node's last watermark is higher (meaning on a different fork)
+      const auto& hbs = chain.head_block_state();
+      auto producer_name = hbs->get_scheduled_producer(block_time).producer_name;
+      uint16_t blocks_to_confirm = 0;
+      auto itr = _producer_watermarks.find(producer_name);
+      if (itr != _producer_watermarks.end()) {
+         auto watermark = itr->second;
+         if (watermark < hbs->block_num) {
+            blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
+         }
+      }
+
       chain.abort_block();
-      chain.start_block(block_time);
+      chain.start_block(block_time, blocks_to_confirm);
    } FC_LOG_AND_DROP();
 
    if (chain.pending_block_state()) {
@@ -365,6 +383,9 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
          case block_production_condition::exception_producing_block:
             elog( "exception producing block" );
             break;
+         case block_production_condition::fork_below_watermark:
+            elog( "Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})" );
+            break;
          }
    }
    schedule_production_loop();
@@ -431,6 +452,15 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::lag;
    }
 
+   // determine if our watermark excludes us from producing at this point
+   auto itr = _producer_watermarks.find(scheduled_producer.producer_name);
+   if (itr != _producer_watermarks.end()) {
+      if (itr->second >= hbs.block_num + 1) {
+         capture("producer", scheduled_producer.producer_name)("watermark",itr->second)("head_block_num",hbs.block_num);
+         return block_production_condition::fork_below_watermark;
+      }
+   }
+
   // idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
    chain.sign_block( [&]( const digest_type& d ) { return private_key_itr->second.sign(d); } );
@@ -438,6 +468,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    auto hbt = chain.head_block_time();
    //idump((fc::time_point::now() - hbt));
 
+   _producer_watermarks[scheduled_producer.producer_name] = chain.head_block_num();
    return block_production_condition::produced;
 }
 
