@@ -59,13 +59,41 @@ extern "C" {
     * @{
     */
 
+
+    /**
+     *  Sends a deferred transaction.
+     *  @brief Sends a deferred transaction.
+     *
+     *  @param sender_id - ID of sender
+     *  @param payer - Account paying for RAM
+     *  @param serialized_transaction - Pointer of serialized transaction to be deferred 
+     *  @param size - Size to reserve
+     */
    void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size);
 
+    /**
+     *  Cancels a deferred transaction.
+     *  @brief Cancels a deferred transaction.
+     *
+     *  @param sender_id - The id of the sender
+     *  @param length - Data length
+     *  @param hash - `checksum256*` hash to compare to
+     *
+     *  @pre The deferred transaction ID exists.
+     *  @pre The deferred transaction ID has not yet been published.
+     *  @post Deferred transaction canceled.
+     * 
+     *  Example:
+     *  @code
+     *  id = 0xffffffffffffffff
+     *  cancel_deferred( id );
+     *  @endcode
+     */
    void cancel_deferred(const uint128_t& sender_id);
 
    /**
-    * access a copy of the currently executing transaction
-    *
+    * Access a copy of the currently executing transaction.
+    * @brief Access a copy of the currently executing transaction.
     * @param buffer - a buffer to write the current transaction to
     * @param size - the size of the buffer, 0 to return required size
     * @return the size of the transaction written to the buffer, or number of bytes that can be copied if size==0 passed
@@ -73,28 +101,49 @@ extern "C" {
    size_t read_transaction(char *buffer, size_t size);
 
    /**
-    * get the size of the currently executing transaction
+    * Gets the size of the currently executing transaction.
+    * @brief Gets the size of the currently executing transaction.
+    * @return size of the currently executing transaction
     */
    size_t transaction_size();
 
    /**
-    * get the block number used for TAPOS on the currently executing transaction
-    *
+    * Gets the block number used for TAPOS on the currently executing transaction.
+    * @brief Gets the block number used for TAPOS on the currently executing transaction.
+    * @return block number used for TAPOS on the currently executing transaction
+    * Example:
+    * @code
+    * int tbn = tapos_block_num();
+    * @endcode
     */
    int tapos_block_num();
 
    /**
-    * get the block prefix used for TAPOS on the currently executing transaction
+    * Gets the block prefix used for TAPOS on the currently executing transaction.
+    * @brief Gets the block prefix used for TAPOS on the currently executing transaction.
+    * @return block prefix used for TAPOS on the currently executing transaction
+    * Example:
+    * @code
+    * int tbp = tapos_block_prefix();
+    * @endcode
     */
    int tapos_block_prefix();
 
    /**
-    * get the expiration of the currently executing transaction
+    * Gets the expiration of the currently executing transaction.
+    * @brief Gets the expiration of the currently executing transaction.
+    * @return expiration of the currently executing transaction
+    * Example:
+    * @code
+    * time tm = expiration();
+    * eosio_print(tm);
+    * @endcode
     */
    time expiration();
 
    /**
-    * Retrieve the indicated action from the active transaction.
+    * Retrieves the indicated action from the active transaction.
+    * @brief Retrieves the indicated action from the active transaction.
     * @param type - 0 for context free action, 1 for action
     * @param index - the index of the requested action
     * @param buff - output packed buff of the action
@@ -105,6 +154,7 @@ extern "C" {
 
    /**
     * Retrieve the signed_transaction.context_free_data[index].
+    * @brief Retrieve the signed_transaction.context_free_data[index].
     * @param index - the index of the context_free_data entry to retrieve
     * @param buff - output buff of the context_free_data entry
     * @param size - amount of context_free_data[index] to retrieve into buff, 0 to report required size
@@ -113,7 +163,12 @@ extern "C" {
    int get_context_free_data( uint32_t index, char* buff, size_t size );
 
    /**
-    * Check that prodived authorizations is enough to execute the transaction
+    * Checks that prodived authorizations is enough to execute the transaction.
+    * @brief Checks that prodived authorizations is enough to execute the transaction.
+    * @param serialized_transaction - Pointer of serialized transaction to check authorization for
+    * @param size - Size of transaction
+    * @param permissions - Permissions to check for authorization
+    * @param psize - Size of permissions
     */
    void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
 

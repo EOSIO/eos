@@ -118,6 +118,20 @@ namespace _multi_index_detail {
 
 }
 
+/**
+ *  The indexed_by struct is used to instantiate the indices for the Multi-Index table. In EOSIO, up to 16 secondary indices can be specified.
+ *  @brief The indexed_by struct is used to instantiate the indices for the Multi-Index table. In EOSIO, up to 16 secondary indices can be specified.
+ *
+ *  @param IndexName - is the name of the index. The name must be provided as an EOSIO base32 encoded 64-bit integer and must conform to the EOSIO naming requirements of a maximum of 13 characters, the first twelve from the lowercase characters a-z, digits 0-5, and ".", and if there is a 13th character, it is restricted to lowercase characters a-p and ".".
+ *  @pram Extractor - is a function call operator that takes a const reference to the table object type and returns either a secondary key type or a reference to a secondary key type. It is recommended to use the `eosio::const_mem_fun` template, which is a type alias to the `boost::multi_index::const_mem_fun`. See the documentation for the Boost `const_mem_fun` key extractor for more details.
+ *
+ *  Example:
+ *  @code
+ *  multi_index<mytable, record,
+ *    indexed_by< N(bysecondary), const_mem_fun<record,
+ *    uint128_t, &record::get_secondary> > > table( code, scope);
+ *  @endcode
+ */
 template<uint64_t IndexName, typename Extractor>
 struct indexed_by {
    enum constants { index_name   = IndexName };
@@ -484,12 +498,108 @@ class multi_index
       } /// load_object_by_primary_iterator
 
    public:
-
+      /**
+       *  Constructs an instance of a Multi-Index table.
+       *  @brief Constructs an instance of a Multi-Index table.
+       *
+       *  @param code - Account that owns table
+       *  @param scope - Scope identifier within the code hierarchy
+       *
+       *  @pre code and scope member properties are initialized
+       *  @post each secondary index table initialized
+       *  @post Secondary indices are updated to refer to the newly added object. If the secondary index tables do not exist, they are created.
+       *  @post The payer is charged for the storage usage of the new object and, if the table (and secondary index tables) must be created, for the overhead of the table creation.
+       * 
+       *  @return A primary key iterator to the newly created object
+       * 
+       *  Notes
+       *  The `eosio::multi_index` template has template parameters `<uint64_t TableName, typename T, typename... Indices>`, where:
+       *  - `TableName` is the name of the table, maximum 12 characters long, characters in the name from the set of lowercase letters, digits 1 to 5, and the "." (period) character;
+       *  - `T` is the object type (i.e., row definition);
+       *  - `Indices` is a list of up to 16 secondary indices.
+       *  - Each must be a default constructable class or struct
+       *  - Each must have a function call operator that takes a const reference to the table object type and returns either a secondary key type or a reference to a secondary key type
+       *  - It is recommended to use the eosio::const_mem_fun template, which is a type alias to the boost::multi_index::const_mem_fun.  See the documentation for the Boost const_mem_fun key extractor for more details.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  @endcode
+       */
       multi_index( uint64_t code, uint64_t scope )
       :_code(code),_scope(scope),_next_primary_key(unset_next_primary_key)
       {}
 
+      /**
+       *  Returns the `code` member property.
+       *  @brief Returns the `code` member property.
+       * 
+       *  @return Account name of the Code that owns the Primary Table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(N(dan), N(dan)); // code, scope
+       *  eosio_assert(addresses.get_code() == N(dan), "Codes don't match.");
+       *  @endcode
+       */
       uint64_t get_code()const  { return _code; }
+
+      /**
+       *  Returns the `scope` member property.
+       *  @brief Returns the `scope` member property.
+       * 
+       *  @return Scope id of the Scope within the Code of the Current Receiver under which the desired Primary Table instance can be found.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(N(dan), N(dan)); // code, scope
+       *  eosio_assert(addresses.get_scope() == N(dan), "Scopes don't match.");
+       *  @endcode
+       */
       uint64_t get_scope()const { return _scope; }
 
       struct const_iterator : public std::iterator<std::bidirectional_iterator_tag, const T> {
@@ -550,20 +660,310 @@ class multi_index
 
       typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
+      /**
+       *  Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
+       *  @brief Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
+       * 
+       *  @return An iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  auto itr = addresses.find(N(dan));
+       *  eosio_assert(itr == addresses.cbegin(), "Only address is not at front.");
+       *  @endcode
+       */
       const_iterator cbegin()const {
          return lower_bound(std::numeric_limits<uint64_t>::lowest());
       }
+
+      /**
+       *  Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
+       *  @brief Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
+       * 
+       *  @return An iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  auto itr = addresses.find(N(dan));
+       *  eosio_assert(itr == addresses.begin(), "Only address is not at front.");
+       *  @endcode
+       */
       const_iterator begin()const  { return cbegin(); }
 
+      /**
+       *  Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       *  @brief Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  @return An iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  // address_index is typedef of our multi_index over table address
+       *  // address table is auto "created" if needed
+       *  address_index addresses(_self, _self); // code, scope
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  auto itr = addresses.find(account);
+       *  eosio_assert(itr == addresses.cend(), "Address for account already exists");
+       *  @endcode
+       */
       const_iterator cend()const   { return const_iterator( this ); }
+
+      /**
+       *  Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       *  @brief Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  @return An iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  // address_index is typedef of our multi_index over table address
+       *  // address table is auto "created" if needed
+       *  address_index addresses(_self, _self); // code, scope
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  auto itr = addresses.find(account);
+       *  eosio_assert(itr == addresses.end(), "Address for account already exists");
+       *  @endcode
+       */
       const_iterator end()const    { return cend(); }
 
+      /**
+       *  Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       *  @brief Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  @return A reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  // address_index is typedef of our multi_index over table address
+       *  // address table is auto "created" if needed
+       *  address_index addresses(_self, _self); // code, scope
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  // need to finished the example
+       *  @endcode
+       */
       const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
+      
+      /**
+       *  Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       *  @brief Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  @return A reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  // address_index is typedef of our multi_index over table address
+       *  // address table is auto "created" if needed
+       *  address_index addresses(_self, _self); // code, scope
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  // need to finished the example
+       *  @endcode
+       */
       const_reverse_iterator rbegin()const  { return crbegin(); }
 
+      /**
+       *  Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
+       *  @brief Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
+       * 
+       *  @return An iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  // address_index is typedef of our multi_index over table address
+       *  // address table is auto "created" if needed
+       *  address_index addresses(_self, _self); // code, scope
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  // need to finished the example
+       *  @endcode
+       */
       const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
+      
+      /**
+       *  Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
+       *  @brief Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
+       * 
+       *  @return An iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  // address_index is typedef of our multi_index over table address
+       *  // address table is auto "created" if needed
+       *  address_index addresses(_self, _self); // code, scope
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  // need to finished the example
+       *  @endcode
+       */
       const_reverse_iterator rend()const    { return crend(); }
 
+      /**
+       *  Searches for the `object_type` with the lowest primary key that is greater than or equal to a given primary key.
+       *  @brief Searches for the `object_type` with the lowest primary key that is greater than or equal to a given primary key.
+       *
+       *  @param primary - Primary key that establishes the target value for the lower bound search.
+       * 
+       *  @return An iterator pointing to the `object_type` that has the lowest primary key that is greater than or equal to `primary`. If an object could not be found, it will return the `end` iterator. If the table does not exist** it will return `-1`.
+       *
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint32_t zip = 0;
+       *    uint64_t liked = 0;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *    address.zip = 93446;
+       *    address.liked = 0;
+       *  });
+       *  uint32_t zipnumb = 93446;
+       *  auto zip_index = addresses.get_index<N(zip)>();
+       *  auto itr = zip_index.lower_bound(zipnumb);
+       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
+       *    zip_index.modify( itr, 0, [&]( auto &address ) {
+       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
+       *          address.liked++;
+       *    });
+       *  }
+       *  @endcode
+       */
       const_iterator lower_bound( uint64_t primary )const {
          auto itr = db_lowerbound_i64( _code, _scope, TableName, primary );
          if( itr < 0 ) return end();
@@ -571,6 +971,54 @@ class multi_index
          return {this, &obj};
       }
 
+      /**
+       *  Searches for the `object_type` with the highest primary key that is less than or equal to a given primary key.
+       *  @brief Searches for the `object_type` with the highest primary key that is less than or equal to a given primary key.
+       *
+       *  @param primary - Primary key that establishes the target value for the upper bound search
+       * 
+       *  @return An iterator pointing to the `object_type` that has the highest primary key that is less than or equal to `primary`. If an object could not be found, it will return the `end` iterator. If the table does not exist** it will return `-1`.
+       *
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint32_t zip = 0;
+       *    uint64_t liked = 0;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *    address.zip = 93446;
+       *    address.liked = 0;
+       *  });
+       *  uint32_t zipnumb = 93446;
+       *  auto zip_index = addresses.get_index<N(zip)>();
+       *  auto itr = zip_index.upper_bound(zipnumb);
+       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
+       *    zip_index.modify( itr, 0, [&]( auto &address ) {
+       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
+       *          address.liked++;
+       *    });
+       *  }
+       *  @endcode
+       */
       const_iterator upper_bound( uint64_t primary )const {
          auto itr = db_upperbound_i64( _code, _scope, TableName, primary );
          if( itr < 0 ) return end();
@@ -578,10 +1026,42 @@ class multi_index
          return {this, &obj};
       }
 
-      /** Ideally this method would only be used to determine the appropriate primary key to use within new objects added to a
-       *  table in which the primary keys of the table are strictly intended from the beginning to be autoincrementing and
-       *  thus will not ever be set to custom arbitrary values by the contract.
-       *  Violating this agreement could result in the table appearing full when in reality there is plenty of space left.
+      /**
+       *  Returns an available primary key.
+       *  @brief Returns an available primary key.
+       * 
+       *  @return An available (unused) primary key value.
+       * 
+       *  Notes:
+       *  Intended to be used in tables in which the primary keys of the table are strictly intended to be auto-incrementing, and thus will never be set to custom values by the contract.  Violating this expectation could result in the table appearing to be full due to inability to allocate an available primary key.
+       *  Ideally this method would only be used to determine the appropriate primary key to use within new objects added to a table in which the primary keys of the table are strictly intended from the beginning to be autoincrementing and thus will not ever be set to custom arbitrary values by the contract. Violating this agreement could result in the table appearing full when in reality there is plenty of space left.
+       *
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t key;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return key; }
+       *    EOSLIB_SERIALIZE( address, (key)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.key = addresses.available_primary_key();
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  @endcode
        */
       uint64_t available_primary_key()const {
          if( _next_primary_key == unset_next_primary_key ) {
@@ -602,6 +1082,54 @@ class multi_index
          return _next_primary_key;
       }
 
+      /**
+       *  Returns an appropriately typed Secondary Index.
+       *  @brief Returns an appropriately typed Secondary Index.
+       *
+       *  @param IndexName - the ID of the desired secondary index
+       * 
+       *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
+       *
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint32_t zip = 0;
+       *    uint64_t liked = 0;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *    address.zip = 93446;
+       *    address.liked = 0;
+       *  });
+       *  uint32_t zipnumb = 93446;
+       *  auto zip_index = addresses.get_index<N(zip)>();
+       *  auto itr = zip_index.lower_bound(zipnumb);
+       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
+       *    zip_index.modify( itr, 0, [&]( auto &address ) {
+       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
+       *          address.liked++;
+       *    });
+       *  }
+       *  @endcode
+       */
       template<uint64_t IndexName>
       auto get_index() {
          using namespace _multi_index_detail;
@@ -615,6 +1143,54 @@ class multi_index
          return typename decltype(+hana::at_c<0>(res.value()))::type(this);
       }
 
+      /**
+       *  Returns an appropriately typed Secondary Index.
+       *  @brief Returns an appropriately typed Secondary Index.
+       *
+       *  @param IndexName - the ID of the desired secondary index
+       * 
+       *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
+       *
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint32_t zip = 0;
+       *    uint64_t liked = 0;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *    address.zip = 93446;
+       *    address.liked = 0;
+       *  });
+       *  uint32_t zipnumb = 93446;
+       *  auto zip_index = addresses.get_index<N(zip)>();
+       *  auto itr = zip_index.lower_bound(zipnumb);
+       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
+       *    zip_index.modify( itr, 0, [&]( auto &address ) {
+       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
+       *          address.liked++;
+       *    });
+       *  }
+       *  @endcode
+       */
       template<uint64_t IndexName>
       auto get_index()const {
          using namespace _multi_index_detail;
@@ -628,12 +1204,94 @@ class multi_index
          return typename decltype(+hana::at_c<1>(res.value()))::type(this);
       }
 
+      /**
+       *  Returns an iterator to the given object in a Multi-Index table.
+       *  @brief Returns an iterator to the given object in a Multi-Index table.
+       *
+       *  @param obj - A reference to the desired object
+       * 
+       *  @return An iterator to the given object
+       *
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint32_t zip = 0;
+       *    uint64_t liked = 0;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *    address.zip = 93446;
+       *    address.liked = 0;
+       *  });
+       *  need to finish the example
+       *  @endcode
+       */
       const_iterator iterator_to( const T& obj )const {
          const auto& objitem = static_cast<const item&>(obj);
          eosio_assert( objitem.__idx == this, "object passed to iterator_to is not in multi_index" );
          return {this, &objitem};
       }
-
+      /**
+       *  Adds a new object (i.e., row) to the table.
+       *  @brief Adds a new object (i.e., row) to the table.
+       *
+       *  @param payer - Account name of the payer for the Storage usage of the new object
+       *  @param constructor - Lambda function that does an in-place initialization of the object to be created in the table
+       *
+       *  @pre A multi index table has been instantiated
+       *  @post A new object is created in the Multi-Index table, with a unique primary key (as specified in the object).  The object is serialized and written to the table. If the table does not exist, it is created.
+       *  @post Secondary indices are updated to refer to the newly added object. If the secondary index tables do not exist, they are created.
+       *  @post The payer is charged for the storage usage of the new object and, if the table (and secondary index tables) must be created, for the overhead of the table creation.
+       * 
+       *  @return A primary key iterator to the newly created object
+       * 
+       *  Exception - The account is not authorized to write to the table.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  @endcode
+       */
       template<typename Lambda>
       const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
          using namespace _multi_index_detail;
@@ -679,6 +1337,63 @@ class multi_index
          return {this, ptr};
       }
 
+      /**
+       *  Modifies an existing object in a table.
+       *  @brief Modifies an existing object in a table.
+       *
+       *  @param itr - an iterator pointing to the object to be updated
+       *  @param obj - a reference to the object to be updated
+       *  @param payer - account name of the payer for the Storage usage of the updated row
+       *  @param updater - lambda function that updates the target object
+       * 
+       *  @pre itr points to an existing element, or obj is an existing object in the table
+       *  @pre payer is a valid account that is authorized to execute the action and be billed for storage usage.
+       *  
+       *  @post The modified object is serialized, then replaces the existing object in the table.
+       *  @post Secondary indices are updated; the primary key of the updated object is not changed.
+       *  @post The payer is charged for the storage usage of the updated object.
+       *  @post If payer is the same as the existing payer, payer only pays for the usage difference between existing and updated object (and is refunded if this difference is negative).
+       *  @post If payer is different from the existing payer, the existing payer is refunded for the storage usage of the existing object.
+       * 
+       *  @return For the signature with `const_iterator`, returns a pointer to the object following the removed object.
+       * 
+       *  Exceptions:
+       *  If called with an invalid precondition, execution is aborted.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  // verify already exist
+       *  auto itr = addresses.find(N(dan));
+       *  eosio_assert(itr != addresses.end(), "Address for account not found");
+       *  addresses.modify( itr, account payer, [&]( auto& address ) {
+       *    address.city = "San Luis Obispo";
+       *    address.state = "CA";
+       *  });
+       *  @endcode
+       */
       template<typename Lambda>
       void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
          eosio_assert( itr != end(), "cannot pass end iterator to modify" );
@@ -686,6 +1401,57 @@ class multi_index
          modify( *itr, payer, std::forward<Lambda&&>(updater) );
       }
 
+      /**
+       *  Modifies an existing object in a table.
+       *  @brief Modifies an existing object in a table.
+       *
+       *  @param itr - an iterator pointing to the object to be updated
+       *  @param obj - a reference to the object to be updated
+       *  @param payer - account name of the payer for the Storage usage of the updated row
+       *  @param updater - lambda function that updates the target object
+       * 
+       *  @pre itr points to an existing element, or obj is an existing object in the table
+       *  @pre payer is a valid account that is authorized to execute the action and be billed for storage usage.
+       *  
+       *  @post The modified object is serialized, then replaces the existing object in the table.
+       *  @post Secondary indices are updated; the primary key of the updated object is not changed.
+       *  @post The payer is charged for the storage usage of the updated object.
+       *  @post If payer is the same as the existing payer, payer only pays for the usage difference between existing and updated object (and is refunded if this difference is negative).
+       *  @post If payer is different from the existing payer, the existing payer is refunded for the storage usage of the existing object.
+       * 
+       *  @return For the signature with `const_iterator`, returns a pointer to the object following the removed object.
+       * 
+       *  Exceptions:
+       *  If called with an invalid precondition, execution is aborted.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  need to complete the example
+       *  @endcode
+       */
       template<typename Lambda>
       void modify( const T& obj, uint64_t payer, Lambda&& updater ) {
          using namespace _multi_index_detail;
@@ -742,12 +1508,79 @@ class multi_index
          });
       }
 
+      /**
+       *  Retrieves an existing object from a table using its primary key.
+       *  @brief Retrieves an existing object from a table using its primary key.
+       *
+       *  @param primary - Primary key value of the object
+       *  @return A constant reference to the object containing the specified primary key.
+       * 
+       *  Exception - No object matches the given key
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  auto user = addresses.get(N(dan));
+       *  eosio_assert(user.first_name == "Daniel", "Couldn't get him.");
+       *  @endcode
+       */
       const T& get( uint64_t primary )const {
          auto result = find( primary );
          eosio_assert( result != cend(), "unable to find key" );
          return *result;
       }
 
+      /**
+       *  Search for an existing object in a table using its primary key.
+       *  @brief Search for an existing object in a table using its primary key.
+       *
+       *  @param primary - Primary key value of the object
+       *  @return An iterator to the found object which has a primary key equal to `primary` OR the `end` iterator of the referenced table if an object with primary key `primary` is not found.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  // address_index is typedef of our multi_index over table address
+       *  // address table is auto "created" if needed
+       *  address_index addresses(_self, _self); // code, scope
+       *  // verify does not already exist
+       *  // multi_index find on primary index which in our case is account
+       *  auto itr = addresses.find(N(dan));
+       *  eosio_assert(itr == addresses.end(), "Address for account already exists");
+       *  @endcode
+       */
       const_iterator find( uint64_t primary )const {
          auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item_ptr& ptr) {
             return ptr._item->primary_key() == primary;
@@ -762,6 +1595,54 @@ class multi_index
          return iterator_to(static_cast<const T&>(i));
       }
 
+      /**
+       *  Remove an existing object from a table using its primary key.
+       *  @brief Remove an existing object from a table using its primary key.
+       *
+       *  @param itr - An iterator pointing to the object to be removed
+       *  
+       *  @post The object is removed from the table and all associated storage is reclaimed.
+       *  @post Secondary indices associated with the table are updated.
+       *  @post The existing payer for storage usage of the object is refunded for the table and secondary indices usage of the removed object, and if the table and indices are removed, for the associated overhead.
+       * 
+       *  @return For the signature with `const_iterator`, returns a pointer to the object following the removed object.
+       * 
+       *  Exceptions:
+       *  The object to be removed is not in the table.
+       *  The action is not authorized to modify the table.
+       *  The given iterator is invalid.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  // verify already exist
+       *  auto itr = addresses.find(N(dan));
+       *  eosio_assert(itr != addresses.end(), "Address for account not found");
+       *  addresses.erase( itr );
+       *  @endcode
+       */
       const_iterator erase( const_iterator itr ) {
          eosio_assert( itr != end(), "cannot pass end iterator to erase" );
 
@@ -773,6 +1654,52 @@ class multi_index
          return itr;
       }
 
+      /**
+       *  Remove an existing object from a table using its primary key.
+       *  @brief Remove an existing object from a table using its primary key.
+       *
+       *  @param itr - An iterator pointing to the object to be removed
+       *  
+       *  @post The object is removed from the table and all associated storage is reclaimed.
+       *  @post Secondary indices associated with the table are updated.
+       *  @post The existing payer for storage usage of the object is refunded for the table and secondary indices usage of the removed object, and if the table and indices are removed, for the associated overhead.
+       * 
+       *  @return For the signature with `const_iterator`, returns a pointer to the object following the removed object.
+       * 
+       *  Exceptions:
+       *  The object to be removed is not in the table.
+       *  The action is not authorized to modify the table.
+       *  The given iterator is invalid.
+       * 
+       *  Example:
+       *  @code
+       *  struct address {
+       *    uint64_t account_name;
+       *    string first_name;
+       *    string last_name;
+       *    string street;
+       *    string city;
+       *    string state;
+       *    uint64_t primary_key() const { return account_name; }
+       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *  };
+       *  typedef eosio::multi_index< N(address), address > address_index;
+       *  address_index addresses(_self, _self); // code, scope
+       *  // add to table, first argument is account to bill for storage
+       *  // each entry will be pilled to the associated account
+       *  // we could have instead chosen to bill _self for all the storage
+       *  addresses.emplace(account payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  // verify already exist
+       *  need to finish the example
+       *  @endcode
+       */
       void erase( const T& obj ) {
          using namespace _multi_index_detail;
 
