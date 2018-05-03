@@ -12,13 +12,11 @@ consumer::consumer(std::shared_ptr<database> db):
 
 void consumer::push(const chain::block_trace &t)
 {
-    ilog("applied_block");
     m_block_trace_fifo.push(t);
 }
 
 void consumer::push(const chain::signed_block &b)
 {
-    ilog("applied_irreversible_block");
     m_block_trace_process_fifo.push(b);
 }
 
