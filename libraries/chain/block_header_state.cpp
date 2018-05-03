@@ -114,7 +114,9 @@ namespace eosio { namespace chain {
 
     /// grow the confirmed count
     static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
-    auto num_active_producers = result.active_schedule.producers.size();
+
+    // This uses the previous block active_schedule because thats the "schedule" that signs and therefore confirms _this_ block
+    auto num_active_producers = active_schedule.producers.size();
     uint32_t required_confs = (uint32_t)(num_active_producers * 2 / 3) + 1;
 
     if( confirm_count.size() < config::maximum_tracked_dpos_confirmations ) {
