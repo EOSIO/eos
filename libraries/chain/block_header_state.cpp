@@ -85,36 +85,18 @@ namespace eosio { namespace chain {
     result.block_num                             = block_num + 1;
     result.producer_to_last_produced             = producer_to_last_produced;
     result.producer_to_last_produced[prokey.producer_name] = result.block_num;
-//    result.dpos_last_irreversible_blocknum       = result.calc_dpos_last_irreversible();
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
 
     auto block_mroot = result.blockroot_merkle.get_root();
 
-    result.active_schedule  = active_schedule;
-    result.pending_schedule = pending_schedule;
-    result.dpos2_lib        = dpos2_lib;
-
-    result.dpos_last_irreversible_blocknum = dpos2_lib;
-    result.bft_irreversible_blocknum             =
-                std::max(bft_irreversible_blocknum,result.dpos_last_irreversible_blocknum);
-
-
-    /// grow the confirmed count
-    if( confirm_count.size() < 1024 ) {
-       result.confirm_count.reserve( confirm_count.size() + 1 );
-       result.confirm_count  = confirm_count;
-       result.confirm_count.resize( confirm_count.size() + 1 );
-       result.confirm_count.back() = 0;
-    } else {
-       result.confirm_count.resize( confirm_count.size() );
-       memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
-       result.confirm_count.back() = 0;
-    }
-
+    result.active_schedule                   = active_schedule;
+    result.pending_schedule                  = pending_schedule;
+    result.dpos_irreversible_blocknum        = dpos_irreversible_blocknum;
+    result.bft_irreversible_blocknum         = bft_irreversible_blocknum;
 
     if( result.pending_schedule.producers.size() &&
-        result.dpos_last_irreversible_blocknum >= pending_schedule_lib_num ) {
+        result.dpos_irreversible_blocknum >= pending_schedule_lib_num ) {
       result.active_schedule = move( result.pending_schedule );
 
       flat_map<account_name,uint32_t> new_producer_to_last_produced;
@@ -123,11 +105,27 @@ namespace eosio { namespace chain {
         if( existing != producer_to_last_produced.end() ) {
           new_producer_to_last_produced[pro.producer_name] = existing->second;
         } else {
-          new_producer_to_last_produced[pro.producer_name] = result.dpos_last_irreversible_blocknum;
+          new_producer_to_last_produced[pro.producer_name] = result.dpos_irreversible_blocknum;
         }
       }
       result.producer_to_last_produced = move( new_producer_to_last_produced );
       result.producer_to_last_produced[prokey.producer_name] = result.block_num;
+    }
+
+    /// grow the confirmed count
+    static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
+    auto num_active_producers = result.active_schedule.producers.size();
+    uint32_t required_confs = (uint32_t)(num_active_producers * 2 / 3) + 1;
+
+    if( confirm_count.size() < config::maximum_tracked_dpos_confirmations ) {
+       result.confirm_count.reserve( confirm_count.size() + 1 );
+       result.confirm_count  = confirm_count;
+       result.confirm_count.resize( confirm_count.size() + 1 );
+       result.confirm_count.back() = (uint8_t)required_confs;
+    } else {
+       result.confirm_count.resize( confirm_count.size() );
+       memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
+       result.confirm_count.back() = (uint8_t)required_confs;
     }
 
     return result;
@@ -202,23 +200,28 @@ namespace eosio { namespace chain {
      */
      header.confirmed = num_prev_blocks;
 
-     int32_t i = confirm_count.size() - 2;
-     while( i >= 0 && num_prev_blocks ) {
-        ++confirm_count[i];
+     int32_t i = (int32_t)(confirm_count.size() - 1);
+     uint32_t blocks_to_confirm = num_prev_blocks + 1; /// confirm the head block too
+     while( i >= 0 && blocks_to_confirm ) {
+        --confirm_count[i];
         //idump((confirm_count[i]));
-        if( confirm_count[i] > active_schedule.producers.size()*2/3 )
+        if( confirm_count[i] == 0 )
         {
-           uint32_t block_num_for_i = block_num - (confirm_count.size() - 1 - i);
-           dpos2_lib = block_num_for_i;
-           idump((dpos2_lib)(block_num)(dpos_last_irreversible_blocknum));
+           uint32_t block_num_for_i = block_num - (uint32_t)(confirm_count.size() - 1 - i);
+           dpos_irreversible_blocknum = block_num_for_i;
+           //idump((dpos2_lib)(block_num)(dpos_irreversible_blocknum));
 
-           memmove( &confirm_count[0], &confirm_count[i], confirm_count.size() -i );
-      //     wdump((confirm_count.size()-i));
-           confirm_count.resize( confirm_count.size() - i );
+           if (i == confirm_count.size() - 1) {
+              confirm_count.resize(0);
+           } else {
+              memmove( &confirm_count[0], &confirm_count[i + 1], confirm_count.size() - i  - 1);
+              confirm_count.resize( confirm_count.size() - i - 1 );
+           }
+
            return;
         }
         --i;
-        --num_prev_blocks;
+        --blocks_to_confirm;
      }
   }
 

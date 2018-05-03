@@ -145,6 +145,7 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_key> producers;
          fc::raw::unpack(ds, producers);
+         EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          // check that producers are unique
          std::set<account_name> unique_producers;
          for (const auto& p: producers) {

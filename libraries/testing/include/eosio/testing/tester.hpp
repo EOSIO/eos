@@ -223,6 +223,7 @@ namespace eosio { namespace testing {
 
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
+         void             _start_block(fc::time_point block_time);
 
       // Fields:
       protected:
@@ -234,6 +235,7 @@ namespace eosio { namespace testing {
       protected:
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
+         map<account_name, block_id_type>              last_produced_block;
    };
 
    class tester : public base_tester {
