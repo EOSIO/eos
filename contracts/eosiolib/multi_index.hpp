@@ -822,9 +822,28 @@ class multi_index
        *  // address_index is typedef of our multi_index over table address
        *  // address table is auto "created" if needed
        *  address_index addresses(_self, _self); // code, scope
-       *  // verify does not already exist
        *  // multi_index find on primary index which in our case is account
-       *  // need to finished the example
+       *  // add some data 
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(brendan);
+       *    address.first_name = "Brendan";
+       *    address.last_name = "Blumer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Hong Kong";
+       *    address.state = "HK";
+       *  });
+       *  auto itr = addresses.crbegin();
+       *  eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
+       *  itr++;
+       *  eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
        *  @endcode
        */
       const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
@@ -851,9 +870,27 @@ class multi_index
        *  // address_index is typedef of our multi_index over table address
        *  // address table is auto "created" if needed
        *  address_index addresses(_self, _self); // code, scope
-       *  // verify does not already exist
        *  // multi_index find on primary index which in our case is account
-       *  // need to finished the example
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(brendan);
+       *    address.first_name = "Brendan";
+       *    address.last_name = "Blumer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Hong Kong";
+       *    address.state = "HK";
+       *  });
+       *  auto itr = addresses.rbegin();
+       *  eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
+       *  itr++;
+       *  eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
        *  @endcode
        */
       const_reverse_iterator rbegin()const  { return crbegin(); }
@@ -880,9 +917,28 @@ class multi_index
        *  // address_index is typedef of our multi_index over table address
        *  // address table is auto "created" if needed
        *  address_index addresses(_self, _self); // code, scope
-       *  // verify does not already exist
        *  // multi_index find on primary index which in our case is account
-       *  // need to finished the example
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(brendan);
+       *    address.first_name = "Brendan";
+       *    address.last_name = "Blumer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Hong Kong";
+       *    address.state = "HK";
+       *  });
+       *  auto itr = addresses.crend();
+       *  itr--;
+       *  eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
+       *  itr--;
+       *  eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
        *  @endcode
        */
       const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
@@ -909,9 +965,28 @@ class multi_index
        *  // address_index is typedef of our multi_index over table address
        *  // address table is auto "created" if needed
        *  address_index addresses(_self, _self); // code, scope
-       *  // verify does not already exist
        *  // multi_index find on primary index which in our case is account
-       *  // need to finished the example
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(dan);
+       *    address.first_name = "Daniel";
+       *    address.last_name = "Larimer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Blacksburg";
+       *    address.state = "VA";
+       *  });
+       *  addresses.emplace(payer, [&](auto& address) {
+       *    address.account_name = N(brendan);
+       *    address.first_name = "Brendan";
+       *    address.last_name = "Blumer";
+       *    address.street = "1 EOS Way";
+       *    address.city = "Hong Kong";
+       *    address.state = "HK";
+       *  });
+       *  auto itr = addresses.rend();
+       *  itr--;
+       *  eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
+       *  itr--;
+       *  eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
        *  @endcode
        */
       const_reverse_iterator rend()const    { return crend(); }
@@ -1241,7 +1316,9 @@ class multi_index
        *    address.zip = 93446;
        *    address.liked = 0;
        *  });
-       *  need to finish the example
+       *  auto user = addresses.get(N(dan));
+       *  auto itr = address.find(N(dan));
+       *  eosio_assert(iterator_to(user) == itr, "Invalid iterator");
        *  @endcode
        */
       const_iterator iterator_to( const T& obj )const {
@@ -1449,7 +1526,13 @@ class multi_index
        *    address.city = "Blacksburg";
        *    address.state = "VA";
        *  });
-       *  need to complete the example
+       *  auto itr = addresses.find(N(dan));
+       *  eosio_assert(itr != addresses.end(), "Address for account not found");
+       *  addresses.modify( *itr, payer, [&]( auto& address ) {
+       *    address.city = "San Luis Obispo";
+       *    address.state = "CA";
+       *  });
+       *  eosio_assert(itr->city == "San Luis Obispo", "Address not modified");
        *  @endcode
        */
       template<typename Lambda>
@@ -1696,8 +1779,11 @@ class multi_index
        *    address.city = "Blacksburg";
        *    address.state = "VA";
        *  });
-       *  // verify already exist
-       *  need to finish the example
+       *  auto itr = addresses.find(N(dan));
+       *  eosio_assert(itr != addresses.end(), "Record is not found");
+       *  addresses.erase(*itr);
+       *  itr = addresses.find(N(dan));   
+       *  eosio_assert(itr == addresses.end(), "Record is not deleted");
        *  @endcode
        */
       void erase( const T& obj ) {
@@ -1732,5 +1818,4 @@ class multi_index
       }
 
 };
-
 }  /// eosio
