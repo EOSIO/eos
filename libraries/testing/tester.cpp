@@ -8,6 +8,11 @@
 
 namespace eosio { namespace testing {
 
+   bool expect_assert_message(const fc::exception& ex, string expected) {
+      BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
+      return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
+   }
+
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
       fc::mutable_variant_object res;
       for( auto& entry : filter ) {
