@@ -35,14 +35,12 @@ add_test(NAME unit_test_binaryen COMMAND unit_test
  -t \!eosio_system_tests/*
  -t \!delay_tests/*
  -t \!currency_tests/test_deferred_failure
- -t \!database_tests/get_blocks
  -t \!abi_tests/abigen_all_types
  --report_level=detailed --color_output -- --binaryen)
 add_test(NAME unit_test_wavm COMMAND unit_test
  -t \!eosio_system_tests/*
  -t \!delay_tests/*
  -t \!currency_tests/test_deferred_failure
- -t \!database_tests/get_blocks
  -t \!abi_tests/abigen_all_types
  --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 
