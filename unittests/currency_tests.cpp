@@ -62,7 +62,7 @@ class currency_tester : public TESTER {
          produce_block();
          return trace;
       }
-      
+
       currency_tester()
       :TESTER(),abi_ser(json::from_string(eosio_token_abi).as<abi_def>())
       {
@@ -205,7 +205,8 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("quantity", "101.0000 CUR")
          ("memo", "overspend! Alice");
 
-      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), fc::exception, assert_message_contains("overdrawn balance"));
+      BOOST_CHECK_EXCEPTION( push_action(N(alice), N(transfer), data),
+                             fc::assert_exception, eosio_assert_message_is("overdrawn balance") );
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -286,13 +287,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // from empty string
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string(""),
-                            fc::assert_exception, assert_message_ends_with("creating symbol from empty string"));
+                            fc::assert_exception, fc_assert_exception_message_is("creating symbol from empty string"));
    }
 
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
-                            fc::assert_exception, assert_message_ends_with("missing comma in symbol"));
+                            fc::assert_exception, fc_assert_exception_message_is("missing comma in symbol"));
    }
 
    // 0 decimals part
@@ -305,13 +306,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // invalid - contains lower case characters, no validation
    {
       BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,EoS)),
-                            fc::assert_exception, assert_message_contains("invalid symbol"));
+                            fc::assert_exception, fc_assert_exception_message_is("invalid symbol"));
    }
 
    // invalid - contains lower case characters, exception thrown
    {
       BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
-                            fc::assert_exception, assert_message_ends_with("invalid character in symbol name"));
+                            fc::assert_exception, fc_assert_exception_message_is("invalid character in symbol name"));
    }
 
    // Missing decimal point, should create asset with 0 decimals
@@ -326,19 +327,19 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // Missing space
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10CUR"),
-                            asset_type_exception, assert_message_ends_with("Asset's amount and symbol should be separated with space"));
+                            asset_type_exception, fc_exception_message_is("Asset's amount and symbol should be separated with space"));
    }
 
    // Precision is not specified when decimal separator is introduced
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10. CUR"),
-                            asset_type_exception, assert_message_ends_with("Missing decimal fraction after decimal point"));
+                            asset_type_exception, fc_exception_message_is("Missing decimal fraction after decimal point"));
    }
 
    // Missing symbol
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10"),
-                            asset_type_exception, assert_message_ends_with("Asset's amount and symbol should be separated with space"));
+                            asset_type_exception, fc_exception_message_is("Asset's amount and symbol should be separated with space"));
    }
 
    // Multiple spaces
@@ -534,7 +535,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
 
    produce_blocks(2);
-   
+
    create_accounts( {N(alice), N(bob), N(carl)} );
 
    // transfer to alice using right precision
@@ -566,15 +567,13 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
 
    // transfer using higher precision fails
    {
-      BOOST_REQUIRE_EXCEPTION(transfer(N(alice), N(carl), "5.34567 CUR"), assert_exception,
-                              [](const assert_exception& e) -> bool {
-                                 return e.get_log().at(0).get_message() == "condition: assertion failed: asset symbol has higher precision than expected"; 
-                              });
+      BOOST_REQUIRE_EXCEPTION( transfer(N(alice), N(carl), "5.34567 CUR"), fc::assert_exception,
+                               eosio_assert_message_is("asset symbol has higher precision than expected") );
    }
 
    // transfer using different symbol name fails
    {
-      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), assert_exception);
+      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), fc::assert_exception);
    }
 
 } FC_LOG_AND_RETHROW() /// test_currency

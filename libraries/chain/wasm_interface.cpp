@@ -193,6 +193,7 @@ class privileged_api : public context_aware_api {
 
 };
 
+/*
 class checktime_api : public context_aware_api {
 public:
    explicit checktime_api( apply_context& ctx )
@@ -202,6 +203,7 @@ public:
       context.checktime(instruction_count);
    }
 };
+*/
 
 class softfloat_api : public context_aware_api {
    public:
@@ -1621,7 +1623,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INJECTED_INTRINSICS(checktime_api,
+REGISTER_INJECTED_INTRINSICS(apply_context,
    (checktime,      void(int))
 );
 

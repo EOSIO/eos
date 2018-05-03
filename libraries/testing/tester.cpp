@@ -695,14 +695,13 @@ namespace eosio { namespace testing {
       return tid;
    }
 
-   bool assert_message_ends_with::operator()( const fc::exception& ex ) {
+   bool fc_exception_message_is::operator()( const fc::exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
-      return boost::algorithm::ends_with( message, expected );
-   }
-
-   bool assert_message_contains::operator()( const fc::exception& ex ) {
-      auto message = ex.get_log().at( 0 ).get_message();
-      return boost::algorithm::contains( message, expected );
+      bool match = (message == expected);
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
    }
 
    bool fc_exception_message_starts_with::operator()( const fc::exception& ex ) {
@@ -770,7 +769,7 @@ namespace eosio { namespace testing {
       return match;
    }
 
-} }  /// eosio::test
+} }  /// eosio::testing
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
    //fc::json::to_stream( osm, v );
