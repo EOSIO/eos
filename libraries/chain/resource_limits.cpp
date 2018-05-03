@@ -155,10 +155,10 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    get_account_limits( account, ram_bytes, net_weight, cpu_weight );
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
-   if( ram_bytes >= 0 && usage.ram_usage > ram_bytes ) {
-      ram_usage_exceeded e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
-      e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",usage.ram_usage)("m",ram_bytes)));
-      throw e;
+   if( ram_bytes >= 0 ) {
+      EOS_ASSERT( usage.ram_usage <= ram_bytes, ram_usage_exceeded,
+                  "account ${account} has insufficient ram bytes; needs ${available} has ${needs}",
+                  ("account", account)("available",usage.ram_usage)("needs",ram_bytes)              );
    }
 }
 
