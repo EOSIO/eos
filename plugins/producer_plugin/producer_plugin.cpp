@@ -66,8 +66,12 @@ class producer_plugin_impl {
 
          const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
 
-         auto active_producers = boost::adaptors::keys( boost::make_iterator_range( bsp->producer_to_last_produced.begin(),
-                                                                                    bsp->producer_to_last_produced.end()   ) );
+         flat_set<account_name> active_producers;
+         active_producers.reserve(bsp->active_schedule.producers.size());
+         for (const auto& p: bsp->active_schedule.producers) {
+            active_producers.insert(p.producer_name);
+         }
+
          std::set_intersection( _producers.begin(), _producers.end(),
                                 active_producers.begin(), active_producers.end(),
                                 boost::make_function_output_iterator( [&]( const chain::account_name& producer )
