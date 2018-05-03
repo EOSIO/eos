@@ -3,19 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/sql_db_plugin/sql_db_plugin.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/types.hpp>
-
-#include <fc/io/json.hpp>
-#include <fc/variant.hpp>
-
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
-
-#include <queue>
 
 #include "consumer.h"
 
@@ -29,16 +16,6 @@ const char* REPLAY_OPTION = "replay-blockchain";
 namespace fc { class variant; }
 
 namespace eosio {
-
-using chain::account_name;
-using chain::action_name;
-using chain::block_id_type;
-using chain::permission_name;
-using chain::transaction;
-using chain::signed_transaction;
-using chain::signed_block;
-using chain::block_trace;
-using chain::transaction_id_type;
 
 static appbase::abstract_plugin& _sql_db_plugin = app().register_plugin<sql_db_plugin>();
 
