@@ -21,8 +21,10 @@ void system_contract::onblock( const block_id_type&, block_timestamp timestamp, 
    static const uint32_t slots_per_cycle = parameters.blocks_per_cycle;
    const uint32_t time_slots = timestamp - parameters.first_block_time_in_cycle;
    if (time_slots >= slots_per_cycle) {
+      /*
       auto beginning_of_cycle = timestamp - (time_slots % slots_per_cycle);
       update_elected_producers(beginning_of_cycle);
+      */
    }
 
    producers_table producers_tbl( _self, _self );

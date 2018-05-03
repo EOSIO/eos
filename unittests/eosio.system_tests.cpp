@@ -35,7 +35,9 @@ public:
       produce_blocks( 2 );
 
       create_accounts( { N(eosio.token) } );
-      produce_blocks( 100 );
+      create_accounts( { N(alice), N(bob), N(carol) } );
+      produce_blocks( 1000 );
+      //produce_blocks( 100 );
 
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
@@ -43,6 +45,9 @@ public:
       set_code( N(eosio.token), eosio_token_wast );
       set_abi( N(eosio.token), eosio_token_abi );
 
+      create_currency( N(eosio.token), config::system_account_name, asset::from_string("20000000.0000 EOS") );
+      issue(config::system_account_name, "10000000.0000 EOS");
+      /*
       create_currency( N(eosio.token), config::system_account_name, asset::from_string("1000000000.0000 EOS") );
       issue(config::system_account_name, "1000000000.0000 EOS");
 
@@ -55,7 +60,7 @@ public:
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
       // eosio pays it self for these...
       //BOOST_REQUIRE_EQUAL( asset::from_string("999999998.5000 EOS"), get_balance( "eosio" ) );
-
+      */
       produce_blocks();
 
       const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
@@ -337,12 +342,10 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    /* end of slim */
 
    auto total = get_total_stake( "alice" );
-   idump((total));
-   return;
 
    BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, total["net_weight"].as<asset>().amount );
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, total["cpu_weight"].as<asset>().amount );
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS").amount, total["storage_stake"].as<asset>().amount );
+   //BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS").amount, total["storage_stake"].as<asset>().amount );
 
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0000 EOS"), get_voter_info( "alice" ) );
 
