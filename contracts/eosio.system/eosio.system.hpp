@@ -122,7 +122,7 @@ namespace eosiosystem {
          [[noreturn]] ~system_contract();
 
          // Actions:
-         void onblock( const block_id_type&, uint32_t timestamp_slot, account_name producer );
+         void onblock( uint32_t timestamp_slot, account_name producer );
                       // const block_header& header ); /// only parse first 3 fields of block header
 
          // functions defined in delegate_bandwidth.cpp
