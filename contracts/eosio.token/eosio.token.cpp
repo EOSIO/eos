@@ -75,6 +75,9 @@ void token::transfer( account_name from,
     require_recipient( from );
     require_recipient( to );
 
+    if ( quantity.symbol.precision() != st.supply.symbol.precision() )
+       quantity.adjust_precision( st.supply.symbol );
+
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must transfer positive quantity" );
 
