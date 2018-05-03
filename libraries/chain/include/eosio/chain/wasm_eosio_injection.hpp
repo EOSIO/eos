@@ -5,10 +5,12 @@
 #include <eosio/chain/webassembly/common.hpp>
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <iostream>
 #include <functional>
 #include <vector>
-#include <iostream>
 #include <map>
+#include <stack>
+#include <queue>
 #include <unordered_set>
 #include "IR/Module.h"
 #include "IR/Operators.h"
@@ -157,20 +159,29 @@ namespace eosio { namespace chain { namespace wasm_injections {
    struct instruction_counter {
       static constexpr bool kills = false;
       static constexpr bool post = false;
-      static void init() { icnt = 0; }
-      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         // maybe change this later to variable weighting for different instruction types
-         icnt++;
+      static void init() { 
+         icnt=0; 
+         tcnt=0; 
+         bcnt=0; 
+         while ( !fcnts.empty() )
+            fcnts.pop();
       }
-      static uint32_t icnt;
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         icnt++;
+         tcnt++;
+      }
+      static uint32_t icnt; /* instructions so far */
+      static uint32_t tcnt; /* total instructions */
+      static uint32_t bcnt; /* total instructions from block types */
+      static std::queue<uint32_t> fcnts; 
    };
+/*
    struct checktime_injector {
       static constexpr bool kills = false;
       static constexpr bool post = true;
-      static void init() { idx = -1; }
+      static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          // first add the import for checktime
-         injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"checktime", idx );
          wasm_ops::op_types<>::i32_const_t cnt; 
          cnt.field = instruction_counter::icnt;
 
@@ -181,22 +192,79 @@ namespace eosio { namespace chain { namespace wasm_injections {
          cnt.pack(arg.new_code);
          chktm.pack(arg.new_code);
       }
-      static int32_t idx;
-
    };
- 
-   struct checktime_block {
+*/
+   struct checktime_block_type {
       static constexpr bool kills = false;
       static constexpr bool post = false;
-      static void init() { block_stack.clear(); stack_idx = -1; }
-      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         block_stack.emplace_back(arg.start_index, 0);
-         stack_idx++;
+      static void init() { 
+         while ( !block_stack.empty() )
+            block_stack.pop(); 
+         while ( !orderings.empty() )
+            orderings.pop(); 
+         bcnt_table.clear();
+         idx = -1;
       }
-      static std::vector<std::pair<size_t, size_t>> block_stack;
-      static size_t stack_idx;
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         if ( idx == -1 )
+            injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"checktime", idx );
+         block_stack.push(arg.start_index);
+         orderings.back().push_back(arg.start_index);
+         bcnt_table.emplace(std::make_pair(arg.start_index, arg.function_def), 0);
+      }
+
+      static int32_t idx;
+      static std::stack<size_t>                block_stack;
+      static std::queue<std::vector<size_t>>   orderings;  /* record the order in which we found the blocks */
+      static std::map<std::pair<
+            size_t, IR::FunctionDef*>, size_t> bcnt_table; /* table for each blocks instruction count */
    };
 
+   struct checktime_end {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         size_t inst_idx = checktime_block_type::block_stack.top();
+         checktime_block_type::bcnt_table[{inst_idx, arg.function_def}] = instruction_counter::icnt;
+         instruction_counter::bcnt += instruction_counter::icnt;
+         instruction_counter::icnt = 0;
+         checktime_block_type::block_stack.pop();
+      }
+   };
+
+   struct checktime_function_end {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static void init() { fcnt = 0; }
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         size_t inst_idx = checktime_block_type::block_stack.top();
+         fcnt = instruction_counter::tcnt - instruction_counter::bcnt;
+      }
+      static size_t fcnt;
+   };
+
+   struct checktime_injection {
+      static constexpr bool kills = false;
+      static constexpr bool post = true;
+      static void init() {
+         idx = 0;
+      }
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         wasm_ops::op_types<>::i32_const_t cnt; 
+         cnt.field = checktime_block_type::orderings.back()[idx];
+
+         wasm_ops::op_types<>::call_t chktm; 
+         chktm.field = checktime_block_type::idx;
+
+         cnt.pack(arg.new_code);
+         chktm.pack(arg.new_code);
+      }
+
+      static int32_t idx;
+   };
+
+/*
    struct checktime_else {
       static constexpr bool kills = false;
       static constexpr bool post = false;
@@ -208,19 +276,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          checktime_block::stack_idx--;
       }
    };
-
-   struct checktime_end {
-      static constexpr bool kills = false;
-      static constexpr bool post = false;
-      static void init() {}
-      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         size_t inst_idx = checktime_block::block_stack[checktime_block::stack_idx].first;
-         checktime_block::block_stack[checktime_block::stack_idx] = {inst_idx, instruction_counter::icnt};
-         instruction_counter::icnt = 0;
-         checktime_block::stack_idx--;
-      }
-   };
-   
+*/
    struct fix_call_index {
       static constexpr bool kills = false;
       static constexpr bool post = false;
@@ -646,12 +702,12 @@ namespace eosio { namespace chain { namespace wasm_injections {
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
-      using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector>;
-      using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector>;
-      using if__t             = wasm_ops::if_                     <instruction_counter>;
-      using else__t           = wasm_ops::else_                   <instruction_counter>;
+      using block_t           = wasm_ops::block                   <instruction_counter, checktime_block_type>;
+      using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_block_type>;
+      using if__t             = wasm_ops::if_                     <instruction_counter, checktime_block_type>;
+      using else__t           = wasm_ops::else_                   <instruction_counter>; //, checktime_end, checktime_block_type>;
       
-      using end_t             = wasm_ops::end                     <instruction_counter>;
+      using end_t             = wasm_ops::end                     <instruction_counter>; //, checktime_end>;
       using unreachable_t     = wasm_ops::unreachable             <instruction_counter>;
       using br_t              = wasm_ops::br                      <instruction_counter>;
       using br_if_t           = wasm_ops::br_if                   <instruction_counter>;
@@ -846,6 +902,10 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
 
    struct post_op_injectors : wasm_ops::op_types<pass_injector> {
+      using block_t  = wasm_ops::block       <checktime_injection>;
+      using loop_t   = wasm_ops::loop        <checktime_injection>;
+      using if__t    = wasm_ops::if_         <checktime_block_type>;
+//      using else__t  = wasm_ops::else_       <instruction_counter>; //, checktime_end, checktime_block_type>;
       using call_t   = wasm_ops::call        <fix_call_index>;
    };
 
@@ -874,7 +934,9 @@ namespace eosio { namespace chain { namespace wasm_injections {
             // initialize static fields of injectors
             injector_utils::init( mod );
             instruction_counter::init();
-            checktime_injector::init();
+            checktime_injection::init();
+            checktime_block_type::init();
+            checktime_function_end::init();
             call_depth_check::init();
          }
 
@@ -883,8 +945,13 @@ namespace eosio { namespace chain { namespace wasm_injections {
             for ( auto& fd : _module->functions.defs ) {
                wasm_ops::EOSIO_OperatorDecoderStream<pre_op_injectors> pre_decoder(fd.code);
                wasm_ops::instruction_stream pre_code(fd.code.size()*2);
+               checktime_block_type::orderings.emplace();
+               bool is_start = true;
                while ( pre_decoder ) {
                   auto op = pre_decoder.decodeOp();
+                  if ( is_start ) {
+                     is_start = false;
+                  }
                   if (op->is_post()) {
                      op->pack(&pre_code);
                      op->visit( { _module, &pre_code, &fd, pre_decoder.index() } );
@@ -895,13 +962,24 @@ namespace eosio { namespace chain { namespace wasm_injections {
                         op->pack(&pre_code);
                   }
                }
+               instruction_counter::fcnts.push(instruction_counter::tcnt - instruction_counter::bcnt);
                fd.code = pre_code.get();
             }
             for ( auto& fd : _module->functions.defs ) {
                wasm_ops::EOSIO_OperatorDecoderStream<post_op_injectors> post_decoder(fd.code);
                wasm_ops::instruction_stream post_code(fd.code.size()*2);
+               bool is_start = true;
                while ( post_decoder ) {
                   auto op = post_decoder.decodeOp();
+                  if ( is_start ) {
+                     is_start = false;
+                     wasm_ops::op_types<>::i32_const_t cnt; 
+                     cnt.field = instruction_counter::fcnts.front();
+                     wasm_ops::op_types<>::call_t chktm; 
+                     chktm.field = injector_utils::injected_index_mapping.find(checktime_block_type::idx)->second;
+                     cnt.pack(&post_code);
+                     chktm.pack(&post_code);
+                  }
                   if (op->is_post()) {
                      op->pack(&post_code);
                      op->visit( { _module, &post_code, &fd, post_decoder.index() } );
@@ -913,6 +991,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
                   }
                }
                fd.code = post_code.get();
+               instruction_counter::fcnts.pop();
             }
          }
       private:
