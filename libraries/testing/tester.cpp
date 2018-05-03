@@ -118,6 +118,16 @@ namespace eosio { namespace testing {
             while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
       }
 
+      auto hb = control->head_block_state();
+      auto pb = control->pending_block_state();
+      const auto& lpp_map = hb->producer_to_last_produced;
+      auto pitr = lpp_map.find( pb->header.producer );
+      if( pitr != lpp_map.end() ) {
+         if( pb->block_num == pitr->second ) {
+            wdump((pb->block_num));
+         }
+         control->pending_block_state()->set_confirmed( pb->block_num - pitr->second );
+      }
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {
                     return priv_key.sign(d);

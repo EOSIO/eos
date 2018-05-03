@@ -73,8 +73,6 @@ using namespace eosio::chain;
 struct txn_test_gen_plugin_impl {
    transaction_trace_ptr push_transaction( signed_transaction& trx ) { try {
       controller& cc = app().get_plugin<chain_plugin>().chain();
-      if( !cc.pending_block_state() )
-         cc.start_block();
       return cc.push_transaction( std::make_shared<transaction_metadata>(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 

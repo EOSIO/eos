@@ -7,7 +7,7 @@ namespace eosiosystem {
 static const uint32_t num_of_payed_producers = 121;
 
 
-void system_contract::onblock( const block_id_type&, block_timestamp timestamp, account_name producer ) {
+void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
 
    global_state_singleton gs( _self, _self );
    auto parameters = gs.exists() ? gs.get() : get_default_parameters();
