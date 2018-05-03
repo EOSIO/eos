@@ -102,6 +102,17 @@ public:
       return push_transaction( trx );
    }
 
+   action_result buyram( const account_name& payer, account_name receiver, string eosin ) {
+      return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",eosin) );
+   }
+   action_result buyrambytes( const account_name& payer, account_name receiver, uint32_t numbytes ) {
+      return push_action( payer, N(buyrambytes), mvo()( "payer",payer)("receiver",receiver)("bytes",numbytes) );
+   }
+
+   action_result sellram( const account_name& account, uint32_t numbytes ) {
+      return push_action( account, N(sellram), mvo()( "account", account)("bytes",numbytes) );
+   }
+
    action_result push_action( const account_name& signer, const action_name &name, const variant_object &data, bool auth = true ) {
          string action_type_name = abi_ser.get_action_type(name);
 
@@ -297,6 +308,9 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice", "bob", "200.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 100 ) );
+   BOOST_REQUIRE_EQUAL( success(), sellram( "bob", 100 ) );
 
 
 
