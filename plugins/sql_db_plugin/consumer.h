@@ -17,6 +17,8 @@ public:
     void push(const chain::block_trace& t);
     void push(const chain::signed_block& b);
 
+    void consume();
+
     void start();
     void stop();
 

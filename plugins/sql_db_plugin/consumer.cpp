@@ -22,6 +22,11 @@ void consumer::push(const chain::signed_block &b)
     m_block_trace_process_fifo.push(b);
 }
 
+void consumer::consume()
+{
+    dlog("consumer::consume");
+}
+
 void consumer::start()
 {
     m_thread = std::make_shared<std::thread>(
@@ -37,14 +42,14 @@ void consumer::stop()
 
 void consumer::run(std::future<void> future_obj)
 {
-    std::cout << "Thread Start" << std::endl;
+    dlog("Thread Start");
     while (future_obj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout)
     {
-        std::cout << "Doing Some Work" << std::endl;
+        consume();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     }
-    std::cout << "Thread End" << std::endl;
+    dlog("Thread End");
 }
 
 } // namespace
