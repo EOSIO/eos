@@ -579,15 +579,15 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
    trx.context_free_actions.push_back(act);
    set_transaction_headers(trx, 10, 2);
    trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
-   auto trace = push_transaction( trx );
-   BOOST_ASSERT(trace != nullptr);
-   if (trace) {
-      BOOST_REQUIRE_EQUAL(transaction_receipt_header::status_enum::delayed, trace->receipt.status);
-      BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
-   }
+
+   BOOST_CHECK_EXCEPTION(push_transaction( trx ), fc::exception,
+      [&](const fc::exception &e) {
+         return expect_assert_message(e, "only context free api's can be used in this context");
+      });
+
    produce_blocks(10);
 
-   // defered CFA failed, testapi2 creation failed
+   // CFA failed, testapi2 not created
    create_account( N(testapi2) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -620,11 +620,11 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
    BOOST_ASSERT(trace != nullptr);
    if (trace) {
       BOOST_REQUIRE_EQUAL(transaction_receipt_header::status_enum::delayed, trace->receipt.status);
-      BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
+      BOOST_REQUIRE_EQUAL(1, trace->action_traces.size());
    }
    produce_blocks(10);
 
-   // defered CFA success, testapi2 already created
+   // CFA success, testapi2 created
    BOOST_CHECK_EXCEPTION(create_account( N(testapi2) ), fc::exception,
       [&](const fc::exception &e) {
          return expect_assert_message(e, "Cannot create account named testapi2, as that name is already taken");

@@ -114,7 +114,7 @@ namespace eosio { namespace chain {
    {
       trace->scheduled = true;
       is_input = false;
-      //apply_context_free = false; // does CFAs always execute immediately?
+      apply_context_free = false;
    }
 
    transaction_context::transaction_context( transaction_trace_ptr& trace_ptr,
@@ -142,12 +142,13 @@ namespace eosio { namespace chain {
          record_transaction( id, trx.expiration ); /// checks for dupes
       }
 
-      if( delay == fc::microseconds() ) {
-         if( apply_context_free ) {
-            for( const auto& act : trx.context_free_actions ) {
-               dispatch_action( act, true );
-            }
+      if( apply_context_free ) {
+         for( const auto& act : trx.context_free_actions ) {
+            dispatch_action( act, true );
          }
+      }
+
+      if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
             dispatch_action( act );
          }
