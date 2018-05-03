@@ -63,10 +63,10 @@ namespace eosio {
             static constexpr uint8_t max_precision = 18;
 
             explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) {
-               FC_ASSERT(valid(), "invalid symbol");
+               FC_ASSERT(valid(), "invalid symbol", ("s",s));
             }
             explicit symbol(uint64_t v = SY(4, EOS)): m_value(v) {
-               FC_ASSERT(valid(), "invalid symbol");
+               FC_ASSERT(valid(), "invalid symbol", ("name",name()));
             }
             static symbol from_string(const string& from)
             {

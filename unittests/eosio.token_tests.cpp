@@ -131,6 +131,28 @@ BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, eosio_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( symbol_already_exists, eosio_token_tester ) try {
+
+   auto token = create( N(alice), asset::from_string("100 TKN"), true, false, false);
+   auto stats = get_stats("0,TKN");
+   REQUIRE_MATCHING_OBJECT( stats, mvo()
+         ("supply", "0 TKN")
+               ("max_supply", "100 TKN")
+               ("issuer", "alice")
+               ("can_freeze",1)
+               ("can_recall",0)
+               ("can_whitelist",0)
+               ("is_frozen",false)
+               ("enforce_whitelist",false)
+   );
+   produce_blocks(1);
+
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: token with symbol already exists" ),
+                        create( N(alice), asset::from_string("100 TKN"), true, false, false)
+   );
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("4611686018427387903 TKN"), true, false, false);
@@ -147,9 +169,13 @@ BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
    );
    produce_blocks(1);
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid supply" ),
-      create( N(alice), asset::from_string("4611686018427387904 TKN"), true, false, false)
-   );
+   asset max(10, symbol(SY(0, NKT)));
+   max.amount = 4611686018427387904;
+
+   BOOST_CHECK_EXCEPTION( create( N(alice), max, true, false, false) , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
+
 
 } FC_LOG_AND_RETHROW()
 
@@ -169,15 +195,13 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
    );
    produce_blocks(1);
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid supply" ),
-      create( N(alice), asset::from_string("4.611686018427387904 TKN"), true, false, false)
-   );
-
+   asset max(10, symbol(SY(0, NKT)));
    //1.0000000000000000000 => 0x8ac7230489e80000L
-   //TODO: Better error message
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: max-supply must be positive" ),
-      create( N(alice), asset::from_string("1.0000000000000000000 TKN"), true, false, false)
-   );
+   max.amount = 0x8ac7230489e80000L;
+
+   BOOST_CHECK_EXCEPTION( create( N(alice), max, true, false, false) , asset_type_exception, [](const asset_type_exception& e) {
+      return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
+   });
 
 } FC_LOG_AND_RETHROW()
 
@@ -209,10 +233,6 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: quantity exceeds available supply" ),
       issue( N(alice), N(alice), asset::from_string("500.001 TKN"), "hola" )
-   );
-
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid quantity" ),
-      issue( N(alice), N(alice), asset::from_string("4611686018427387.904 TKN"), "hola" )
    );
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must issue positive quantity" ),
@@ -273,10 +293,6 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: overdrawn balance" ),
       transfer( N(alice), N(bob), asset::from_string("701 CERO"), "hola" )
-   );
-
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid quantity" ),
-      transfer( N(alice), N(bob), asset::from_string("4611686018427387904 CERO"), "hola" )
    );
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must transfer positive quantity" ),

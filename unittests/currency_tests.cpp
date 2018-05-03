@@ -52,6 +52,16 @@ class currency_tester : public TESTER {
          return get_currency_balance(N(eosio.token), symbol(SY(4,CUR)), account);
       }
 
+      auto transfer(const account_name& from, const account_name& to, const std::string& quantity, const std::string& memo = "") {
+         auto trace = push_action(from, N(transfer), mutable_variant_object()
+                                  ("from",     from)
+                                  ("to",       to)
+                                  ("quantity", quantity)
+                                  ("memo",     memo)
+                                  );
+         produce_block();
+         return trace;
+      }
 
       currency_tester()
       :TESTER(),abi_ser(json::from_string(eosio_token_abi).as<abi_def>())
@@ -295,10 +305,8 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 
    // invalid - contains lower case characters, no validation
    {
-      symbol malformed(SY(6,EoS));
-      BOOST_REQUIRE_EQUAL(false, malformed.valid());
-      BOOST_REQUIRE_EQUAL("EoS", malformed.name());
-      BOOST_REQUIRE_EQUAL(6, malformed.decimals());
+      BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,EoS)),
+                            fc::assert_exception, fc_assert_exception_message_is("invalid symbol"));
    }
 
    // invalid - contains lower case characters, exception thrown
@@ -521,6 +529,52 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+
+} FC_LOG_AND_RETHROW() /// test_currency
+
+BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
+
+   produce_blocks(2);
+
+   create_accounts( {N(alice), N(bob), N(carl)} );
+
+   // transfer to alice using right precision
+   {
+      auto trace = transfer(eosio_token, N(alice), "100.0000 CUR");
+
+      BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
+      BOOST_CHECK_EQUAL(asset::from_string( "100.0000 CUR"), get_balance(N(alice)));
+      BOOST_CHECK_EQUAL(1000000, get_balance(N(alice)).amount);
+   }
+
+   // transfer from alice to bob using no decimal point
+   {
+      auto trace = transfer(N(alice), N(bob), "13 CUR");
+
+      BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
+      BOOST_CHECK_EQUAL(asset::from_string("13.0000 CUR"), get_balance(N(bob)));
+      BOOST_CHECK_EQUAL(asset::from_string("87.0000 CUR"), get_balance(N(alice)));
+   }
+
+   // transfer from bob to carl using lower precision
+   {
+      auto trace = transfer(N(bob), N(carl), "2.01 CUR");
+
+      BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
+      BOOST_CHECK_EQUAL(asset::from_string("2.0100 CUR"),  get_balance(N(carl)));
+      BOOST_CHECK_EQUAL(asset::from_string("10.9900 CUR"), get_balance(N(bob)));
+   }
+
+   // transfer using higher precision fails
+   {
+      BOOST_REQUIRE_EXCEPTION( transfer(N(alice), N(carl), "5.34567 CUR"), fc::assert_exception,
+                               eosio_assert_message_is("asset symbol has higher precision than expected") );
+   }
+
+   // transfer using different symbol name fails
+   {
+      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), fc::assert_exception);
+   }
 
 } FC_LOG_AND_RETHROW() /// test_currency
 
