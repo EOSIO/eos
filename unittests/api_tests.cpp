@@ -98,11 +98,6 @@ struct check_auth {
 
 FC_REFLECT(check_auth, (account)(permission)(pubkeys) );
 
-bool expect_assert_message(const fc::exception& ex, string expected) {
-   BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
-   return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
-}
-
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
