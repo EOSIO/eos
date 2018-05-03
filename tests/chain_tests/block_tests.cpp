@@ -1227,9 +1227,8 @@ BOOST_AUTO_TEST_CASE(account_ram_limit) { try {
 
    BOOST_REQUIRE_EXCEPTION(
       chain.create_account(N(acc4), acc1),
-      tx_resource_exhausted,
-      [] (const tx_resource_exhausted &e)->bool {
-         BOOST_REQUIRE_EQUAL(std::string("transaction exhausted allowed resources"), e.what());
+      ram_usage_exceeded,
+      [] (const ram_usage_exceeded &e)->bool {
          return true;
       }
    );

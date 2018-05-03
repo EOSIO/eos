@@ -5,7 +5,6 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <fc/io/json.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <iosfwd>
@@ -61,6 +60,8 @@ namespace eosio { namespace testing {
 
    void copy_row(const chain::key_value_object& obj, vector<char>& data);
 
+   bool expect_assert_message(const fc::exception& ex, string expected);
+
    /**
     *  @class tester
     *  @brief provides utility function to simplify the creation of unit tests
@@ -91,6 +92,10 @@ namespace eosio { namespace testing {
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const vector<permission_level>& auths, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
+
+
+         action get_action( account_name code, action_name acttype, vector<permission_level> auths, 
+                                         const variant_object& data )const;
 
          void                 set_transaction_headers(signed_transaction& trx,
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
@@ -177,15 +182,15 @@ namespace eosio { namespace testing {
          static action_result error(const string& msg) { return msg; }
 
          auto get_resolver() {
-            return [this](const account_name &name) -> optional<abi_serializer> {
+            return [this]( const account_name& name ) -> optional<abi_serializer> {
                try {
-                  const auto &accnt = control->db().get<account_object, by_name>(name);
+                  const auto& accnt = control->db().get<account_object, by_name>( name );
                   abi_def abi;
-                  if (abi_serializer::to_abi(accnt.abi, abi)) {
-                     return abi_serializer(abi);
+                  if( abi_serializer::to_abi( accnt.abi, abi )) {
+                     return abi_serializer( abi );
                   }
                   return optional<abi_serializer>();
-               } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+               } FC_RETHROW_EXCEPTIONS( error, "Failed to find or parse ABI for ${name}", ("name", name))
             };
          }
 
@@ -324,14 +329,10 @@ namespace eosio { namespace testing {
     * Utility predicate to check whether an FC_ASSERT message ends with a given string
     */
    struct assert_message_ends_with {
-      assert_message_ends_with(string expected)
-         :expected(expected)
-      {}
+      assert_message_ends_with( string expected )
+            : expected( expected ) {}
 
-      bool operator()( const fc::exception& ex ) {
-         auto message = ex.get_log().at(0).get_message();
-         return boost::algorithm::ends_with(message, expected);
-      }
+      bool operator()( const fc::exception& ex );
 
       string expected;
    };
@@ -340,17 +341,76 @@ namespace eosio { namespace testing {
     * Utility predicate to check whether an FC_ASSERT message contains a given string
     */
    struct assert_message_contains {
-      assert_message_contains(string expected)
-         :expected(expected)
-      {}
+      assert_message_contains( string expected )
+            : expected( expected ) {}
 
-      bool operator()( const fc::exception& ex ) {
-         auto message = ex.get_log().at(0).get_message();
-         return boost::algorithm::contains(message, expected);
-      }
+      bool operator()( const fc::exception& ex );
 
       string expected;
    };
 
+  /**
+   * Utility predicate to check whether an fc::exception message starts with a given string
+   */
+  struct fc_exception_message_starts_with {
+     fc_exception_message_starts_with( const string& msg )
+           : expected( msg ) {}
+
+     bool operator()( const fc::exception& ex );
+
+     string expected;
+  };
+
+  /**
+   * Utility predicate to check whether an fc::assert_exception message is equivalent to a given string
+   */
+  struct fc_assert_exception_message_is {
+     fc_assert_exception_message_is( const string& msg )
+           : expected( msg ) {}
+
+     bool operator()( const fc::assert_exception& ex );
+
+     string expected;
+  };
+
+  /**
+   * Utility predicate to check whether an fc::assert_exception message starts with a given string
+   */
+  struct fc_assert_exception_message_starts_with {
+     fc_assert_exception_message_starts_with( const string& msg )
+           : expected( msg ) {}
+
+     bool operator()( const fc::assert_exception& ex );
+
+     string expected;
+  };
+
+  /**
+   * Utility predicate to check whether an eosio_assert message is equivalent to a given string
+   */
+  struct eosio_assert_message_is {
+     eosio_assert_message_is( const string& msg )
+           : expected( "assertion failed: " ) {
+        expected.append( msg );
+     }
+
+     bool operator()( const fc::assert_exception& ex );
+
+     string expected;
+  };
+
+  /**
+   * Utility predicate to check whether an eosio_assert message starts with a given string
+   */
+  struct eosio_assert_message_starts_with {
+     eosio_assert_message_starts_with( const string& msg )
+           : expected( "assertion failed: " ) {
+        expected.append( msg );
+     }
+
+     bool operator()( const fc::assert_exception& ex );
+
+     string expected;
+  };
 
 } } /// eosio::testing

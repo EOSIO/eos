@@ -36,6 +36,7 @@ action_trace apply_context::exec_one()
 {
    auto start = fc::time_point::now();
    cpu_usage = 0;
+   cpu_usage_limit = trx_context.get_action_cpu_usage_limit( context_free );
    checktime( control.get_global_properties().configuration.base_per_action_cpu_usage );
    try {
       const auto &a = control.get_account(receiver);
@@ -62,6 +63,8 @@ action_trace apply_context::exec_one()
    for( const auto& auth : act.authorization ) {
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
+
+   cpu_usage = trx_context.add_action_cpu_usage( cpu_usage, context_free );
 
    action_trace t(r);
    t.trx_id = trx_context.id;
@@ -101,7 +104,7 @@ void apply_context::exec()
       ncontext.context_free = true;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
-      total_cpu_usage += ncontext.total_cpu_usage;
+      total_cpu_usage += ncontext.trace.total_cpu_usage;
       trace.total_cpu_usage += ncontext.trace.total_cpu_usage;
       trace.inline_traces.emplace_back(ncontext.trace);
    }
@@ -144,7 +147,7 @@ void apply_context::require_authorization( const account_name& account ) {
         return;
      }
    }
-   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+   EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}", ("account",account));
 }
 
 bool apply_context::has_authorization( const account_name& account )const {
@@ -163,7 +166,7 @@ void apply_context::require_authorization(const account_name& account,
            return;
         }
      }
-  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
+  EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
 }
 
@@ -352,7 +355,8 @@ void apply_context::reset_console() {
 
 void apply_context::checktime(uint32_t instruction_count) {
    cpu_usage += instruction_count;
-   trx_context.add_cpu_usage_and_check_time( instruction_count );
+   EOS_ASSERT( BOOST_LIKELY(cpu_usage <= cpu_usage_limit), tx_cpu_usage_exceeded, "action cpu usage exceeded" );
+   trx_context.check_time();
 }
 
 bytes apply_context::get_packed_transaction() {

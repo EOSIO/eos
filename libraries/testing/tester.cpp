@@ -1,4 +1,5 @@
 #include <boost/test/unit_test.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
@@ -7,6 +8,11 @@
 #include <eosio.bios/eosio.bios.abi.hpp>
 
 namespace eosio { namespace testing {
+
+   bool expect_assert_message(const fc::exception& ex, string expected) {
+      BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
+      return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
+   }
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
       fc::mutable_variant_object res;
@@ -72,16 +78,17 @@ namespace eosio { namespace testing {
           for( const auto& receipt : block_state->block->transactions ) {
               if( receipt.trx.contains<packed_transaction>() ) {
                   auto &pt = receipt.trx.get<packed_transaction>();
-                  chain_transactions.emplace(pt.get_transaction().id(), receipt);
+                  chain_transactions[pt.get_transaction().id()] = receipt;
               } else {
                   auto& id = receipt.trx.get<transaction_id_type>();
-                  chain_transactions.emplace(id, receipt);
+                  chain_transactions[id] = receipt;
               }
           }
       });
    }
 
    signed_block_ptr base_tester::push_block(signed_block_ptr b) {
+      control->abort_block();
       control->push_block(b);
       return b;
    }
@@ -117,6 +124,16 @@ namespace eosio { namespace testing {
             while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
       }
 
+      auto hb = control->head_block_state();
+      auto pb = control->pending_block_state();
+      const auto& lpp_map = hb->producer_to_last_produced;
+      auto pitr = lpp_map.find( pb->header.producer );
+      if( pitr != lpp_map.end() ) {
+         if( pb->block_num == pitr->second ) {
+            wdump((pb->block_num));
+         }
+         control->pending_block_state()->set_confirmed( pb->block_num - pitr->second );
+      }
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {
                     return priv_key.sign(d);
@@ -218,7 +235,8 @@ namespace eosio { namespace testing {
       try {
          push_transaction(trx);
       } catch (const fc::exception& ex) {
-         return error(ex.top_message());
+         return error(ex.top_message()); // top_message() is assumed by many tests; otherwise they fail
+         //return error(ex.to_detail_string());
       }
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -264,6 +282,18 @@ namespace eosio { namespace testing {
                                                  )
 
    { try {
+      signed_transaction trx;
+      trx.actions.emplace_back(get_action( code, acttype, auths, data ));
+      set_transaction_headers(trx, expiration, delay_sec);
+      for (const auto& auth : auths) {
+         trx.sign(get_private_key(auth.actor, auth.permission.to_string()), chain_id_type());
+      }
+
+      return push_transaction(trx);
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
+
+   action base_tester::get_action( account_name code, action_name acttype, vector<permission_level> auths,
+                                   const variant_object& data )const {
       const auto& acnt = control->db().get<account_object,by_name>(code);
       auto abi = acnt.get_abi();
       chain::abi_serializer abis(abi);
@@ -278,17 +308,8 @@ namespace eosio { namespace testing {
       act.name = acttype;
       act.authorization = auths;
       act.data = abis.variant_to_binary(action_type_name, data);
-
-      signed_transaction trx;
-      trx.actions.emplace_back(std::move(act));
-      set_transaction_headers(trx, expiration, delay_sec);
-      for (const auto& auth : auths) {
-         trx.sign(get_private_key(auth.actor, auth.permission.to_string()), chain_id_type());
-      }
-
-      return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
-
+      return act;
+   }
    transaction_trace_ptr base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
@@ -635,6 +656,7 @@ namespace eosio { namespace testing {
          for( int i = 1; i <= a.control->head_block_num(); ++i ) {
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
+               b.control->abort_block();
                b.control->push_block(block); //, eosio::chain::validation_steps::created_block);
             }
          }
@@ -646,7 +668,7 @@ namespace eosio { namespace testing {
 
    void base_tester::push_genesis_block() {
       set_code(config::system_account_name, eosio_bios_wast);
-      
+
       set_abi(config::system_account_name, eosio_bios_abi);
       //produce_block();
    }
@@ -671,6 +693,81 @@ namespace eosio { namespace testing {
    const table_id_object* base_tester::find_table( name code, name scope, name table ) {
       auto tid = control->db().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
       return tid;
+   }
+
+   bool assert_message_ends_with::operator()( const fc::exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      return boost::algorithm::ends_with( message, expected );
+   }
+
+   bool assert_message_contains::operator()( const fc::exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      return boost::algorithm::contains( message, expected );
+   }
+
+   bool fc_exception_message_starts_with::operator()( const fc::exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = boost::algorithm::starts_with( message, expected );
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool fc_assert_exception_message_is::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = (message == expected);
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool fc_assert_exception_message_starts_with::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = boost::algorithm::starts_with( message, expected );
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool eosio_assert_message_is::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = (message == expected);
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool eosio_assert_message_starts_with::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = boost::algorithm::starts_with( message, expected );
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
    }
 
 } }  /// eosio::test
