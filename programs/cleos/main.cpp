@@ -762,6 +762,47 @@ struct undelegate_bandwidth_subcommand {
    }
 };
 
+struct buyram_subcommand {
+   string from_str;
+   string receiver_str;
+   string amount;
+
+   buyram_subcommand(CLI::App* actionRoot) {
+      auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
+      buyram->add_option("buyer", from_str, localized("The account paying for RAM"))->required();
+      buyram->add_option("receiver", receiver_str, localized("The account to receive bought RAM"))->required();
+      buyram->add_option("tokens", amount, localized("The amount of EOS to pay for RAM"))->required();
+      add_standard_transaction_options(buyram);
+      buyram->set_callback([this] {
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("buyer", from_str)
+               ("receiver", receiver_str)
+               ("tokens", amount + " EOS");
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
+         });
+   }
+};
+
+struct sellram_subcommand {
+   string from_str;
+   string receiver_str;
+   uint64_t amount;
+
+   sellram_subcommand(CLI::App* actionRoot) {
+      auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
+      sellram->add_option("receiver", receiver_str, localized("The account to receive EOS for sold RAM"))->required();
+      sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
+      add_standard_transaction_options(sellram);
+
+      sellram->set_callback([this] {
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("receiver", receiver_str)
+               ("bytes", amount);
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
+         });
+   }
+};
+
 struct claimrewards_subcommand {
    string owner;
 
@@ -925,7 +966,7 @@ void get_account( const string& accountName ) {
              << "delegated: " << "XXX EOS" << "   (total staked delegated to account from others)" << std::endl
              << "current:   ~" << res.net_limit.current_per_block << " bytes/block  (assuming current congestion and current usage)" << std::endl
              << "max: ~" << res.net_limit.max_per_block << " bytes/block  (assuming current congestion and 0 usage in current window)" << std::endl
-             << "guaranteed: " << res.net_limit.guaranteed_per_day << " bytes/block .  (assuming 100% congestion and 0 usage in current window)" << std::endl
+             << "guaranteed: " << res.net_limit.guaranteed_per_day << " bytes/day .  (assuming 100% congestion and 0 usage in current window)" << std::endl
              << std::endl;
 
    std::cout << "net cpu:" << std::endl
@@ -933,7 +974,7 @@ void get_account( const string& accountName ) {
              << "delegated: " << "XXX EOS" << "   (total staked delegated to account from others)" << std::endl
              << "current:   ~" << res.cpu_limit.current_per_block/1024 << " kcycle/block  (assuming current congestion and current usage)" << std::endl
              << "max: ~" << res.cpu_limit.max_per_block/1024 << " kcycle/block  (assuming current congestion and 0 usage in current window)" << std::endl
-             << "guaranteed: " << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/block .  (assuming 100% congestion and 0 usage in current window)" << std::endl
+             << "guaranteed: " << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day .  (assuming 100% congestion and 0 usage in current window)" << std::endl
              << std::endl;
 
    std::cout << fc::json::to_pretty_string(json) << std::endl;
@@ -1916,6 +1957,9 @@ int main( int argc, char** argv ) {
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
+
+   auto biyram = buyram_subcommand(system);
+   auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
 
