@@ -710,8 +710,8 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b ) {
+      FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
       try {
-         if( pending ) abort_block();
          FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
          emit( self.accepted_block_header, new_header_state );
@@ -720,6 +720,7 @@ struct controller_impl {
    }
 
    void push_confirmation( const header_confirmation& c ) {
+      FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
       maybe_switch_forks();
@@ -730,7 +731,6 @@ struct controller_impl {
 
       if( new_head->header.previous == head->id ) {
          try {
-            abort_block();
             apply_block( new_head->block );
             fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
@@ -822,8 +822,10 @@ struct controller_impl {
 
 
    void finalize_block()
-   { try {
-      if( !pending ) self.start_block();
+   {
+      FC_ASSERT(pending, "it is not valid to finalize when there is no pending block");
+      try {
+
 
       /*
       ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
