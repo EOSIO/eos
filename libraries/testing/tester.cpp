@@ -1,4 +1,5 @@
 #include <boost/test/unit_test.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
@@ -675,6 +676,81 @@ namespace eosio { namespace testing {
    const table_id_object* base_tester::find_table( name code, name scope, name table ) {
       auto tid = control->db().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
       return tid;
+   }
+
+   bool assert_message_ends_with::operator()( const fc::exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      return boost::algorithm::ends_with( message, expected );
+   }
+
+   bool assert_message_contains::operator()( const fc::exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      return boost::algorithm::contains( message, expected );
+   }
+
+   bool fc_exception_message_starts_with::operator()( const fc::exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = boost::algorithm::starts_with( message, expected );
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool fc_assert_exception_message_is::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = (message == expected);
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool fc_assert_exception_message_starts_with::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = boost::algorithm::starts_with( message, expected );
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool eosio_assert_message_is::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = (message == expected);
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
+   }
+
+   bool eosio_assert_message_starts_with::operator()( const fc::assert_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = false;
+      auto pos = message.find( ": " );
+      if( pos != std::string::npos ) {
+         message = message.substr( pos + 2 );
+         match = boost::algorithm::starts_with( message, expected );
+      }
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
    }
 
 } }  /// eosio::test
