@@ -116,7 +116,7 @@ void new_chain_banner(const eosio::chain::controller& db)
       "*******************************\n"
       "\n";
 
-   if( db.head_block_state()->get_slot_at_time(fc::time_point::now()) > 200 )
+   if( db.head_block_state()->header.timestamp.to_time_point() < (fc::time_point::now() - fc::milliseconds(200 * config::block_interval_ms)))
    {
       std::cerr << "Your genesis seems to have an old timestamp\n"
          "Please consider using the --genesis-timestamp option to give your genesis a recent timestamp\n"
@@ -360,19 +360,13 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {
-      if( hbs.get_slot_time(1) >= now )
+      if( hbs.header.timestamp.next().to_time_point() >= now )
          _production_enabled = true;
       else
          return block_production_condition::not_synced;
    }
 
-   // is anyone scheduled to produce now or one second in the future?
-   uint32_t slot = hbs.get_slot_at_time( now );
-   if( slot == 0 )
-   {
-      capture("next_time", hbs.get_slot_time(1));
-      return block_production_condition::not_time_yet;
-   }
+   auto pending_block_timestamp = chain.pending_block_state()->header.timestamp;
 
    //
    // this assert should not fail, because now <= db.head_block_time()
@@ -384,7 +378,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    //
    assert( now > chain.head_block_time() );
 
-   const auto& scheduled_producer = hbs.get_scheduled_producer( slot );
+   const auto& scheduled_producer = hbs.get_scheduled_producer( pending_block_timestamp );
    // we must control the producer scheduled to produce the next block.
    if( _producers.find( scheduled_producer.producer_name ) == _producers.end() )
    {
@@ -392,7 +386,6 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::not_my_turn;
    }
 
-   auto scheduled_time = hbs.get_slot_time( slot );
    auto private_key_itr = _private_keys.find( scheduled_producer.block_signing_key );
 
    if( private_key_itr == _private_keys.end() )
@@ -401,16 +394,16 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::no_private_key;
    }
 
-   uint32_t prate = hbs.producer_participation_rate();
+   /*uint32_t prate = hbs.producer_participation_rate();
    if( prate < _required_producer_participation )
    {
       capture("pct", uint32_t(prate / config::percent_1));
       return block_production_condition::low_participation;
-   }
+   }*/
 
-   if( llabs(( time_point(scheduled_time) - now).count()) > fc::milliseconds( config::block_interval_ms ).count() )
+   if( llabs(( pending_block_timestamp.to_time_point() - now).count()) > fc::milliseconds( config::block_interval_ms ).count() )
    {
-      capture("scheduled_time", scheduled_time)("now", now);
+      capture("scheduled_time", pending_block_timestamp)("now", now);
       return block_production_condition::lag;
    }
 
