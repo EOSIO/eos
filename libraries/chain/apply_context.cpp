@@ -350,7 +350,7 @@ void apply_context::reset_console() {
 
 void apply_context::checktime(uint32_t instruction_count) {
    cpu_usage += instruction_count;
-   EOS_ASSERT( BOOST_LIKELY(cpu_usage <= cpu_usage_limit), tx_cpu_usage_exceeded, "action cpu usage exceeded" );
+   EOS_ASSERT( BOOST_LIKELY(cpu_usage <= cpu_usage_limit), action_cpu_usage_exceeded, "action cpu usage exceeded" );
    trx_context.check_time();
 }
 

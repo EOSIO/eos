@@ -272,11 +272,9 @@ namespace eosio { namespace chain {
 
       try {
          acontext.exec();
-      } catch( const tx_cpu_usage_exceeded& e ) {
+      } catch( const action_cpu_usage_exceeded& e ) {
          add_action_cpu_usage( acontext.cpu_usage, context_free ); // Will update cpu_usage to latest value and throw appropriate exception
          FC_ASSERT(false, "should not have reached here" );
-      } catch( ... ) {
-         throw;
       }
 
       return move(acontext.trace);
