@@ -571,11 +571,6 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
                                eosio_assert_message_is("asset symbol has higher precision than expected") );
    }
 
-   // transfer using different symbol name fails
-   {
-      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), fc::assert_exception);
-   }
-
 } FC_LOG_AND_RETHROW() /// test_currency
 
 BOOST_AUTO_TEST_SUITE_END()

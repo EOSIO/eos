@@ -282,7 +282,9 @@ BOOST_AUTO_TEST_CASE(link_then_update_auth) { try {
 
    chain.link_authority("alice", "eosio", "first",  "reqauth");
    chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key });
-   
+
+   chain.produce_blocks(13); // Wait at least 6 seconds for first push_reqauth transaction to expire.
+
    // Update "first" auth public key
    chain.set_authority("alice", "first", second_pub_key, "active");
    // Authority updated, using previous "first" auth should fail on linked auth

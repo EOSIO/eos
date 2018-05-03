@@ -31,7 +31,7 @@ add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_api_m
 
 #Manually run unit_test for all supported runtimes
 #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
-add_test(NAME unit_test_binaryen COMMAND unit_test 
+add_test(NAME unit_test_binaryen COMMAND unit_test
  -t \!eosio_system_tests/*
  -t \!delay_tests/*
  -t \!currency_tests/test_deferred_failure
