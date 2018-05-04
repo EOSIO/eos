@@ -362,6 +362,7 @@ struct controller_impl {
       self.log_irreversible_blocks();
    }
 
+   // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
       auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
       auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
