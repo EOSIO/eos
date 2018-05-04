@@ -1,4 +1,5 @@
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/block_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 
 #include <eosio/chain/block_log.hpp>
@@ -35,6 +36,7 @@ struct pending_state {
 
    vector<action_receipt>             _actions;
 
+   block_context                      _block_ctx;
 
    void push() {
       _db_session.push();
@@ -346,6 +348,7 @@ struct controller_impl {
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
          auto new_bsp = fork_db.add( pending->_pending_block_state );
+         emit( self.accepted_block_header, pending->_pending_block_state );
          head = fork_db.head();
          FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
       }
@@ -370,9 +373,11 @@ struct controller_impl {
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
 
-      transaction_trace_ptr trace;
+      transaction_context trx_context( self, etrx, etrx.id() );
+      transaction_trace_ptr trace = trx_context.trace;
       try {
-         transaction_context trx_context( trace, self, etrx, etrx.id(), deadline, true, 0, cpu_usage );
+         trx_context.init_for_implicit_trx( deadline, 0, cpu_usage );
+
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 
@@ -428,17 +433,19 @@ struct controller_impl {
       }
 
       auto start = fc::time_point::now();
-      transaction_trace_ptr trace;
+      signed_transaction dtrx;
+      fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+
+      transaction_context trx_context( self, dtrx, gto.trx_id );
+      transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
-      uint64_t max_cpu;
+      uint64_t max_cpu = 0;
       bool abort_on_error = false;
       try {
-         signed_transaction dtrx;
-         fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+         trx_context.init_for_deferred_trx( deadline, gto.published );
 
-         transaction_context trx_context( trace, self, dtrx, gto.trx_id, deadline, gto.published );
          bill_to_accounts = trx_context.bill_to_accounts;
-         max_cpu = trx_context.max_cpu;
+         max_cpu = trx_context.initial_max_billable_cpu;
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 
@@ -467,10 +474,9 @@ struct controller_impl {
          trace->soft_except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - start;
       }
-      // Only soft or hard failure logic below:
+      trx_context.undo_session.undo();
 
-      // Make sure failure was not due to problems with deserializing the deferred transaction.
-      FC_ASSERT( bool(trace), "failed to deserialize transaction" );
+      // Only soft or hard failure logic below:
 
       if( gto.sender != account_name() ) {
          // Attempt error handling for the generated transaction.
@@ -502,6 +508,7 @@ struct controller_impl {
       remove_scheduled_transaction( gto );
 
       emit( self.applied_transaction, trace );
+
 
       undo_session.squash();
    } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
@@ -557,12 +564,19 @@ struct controller_impl {
       }
 
       auto start = fc::time_point::now();
-      transaction_trace_ptr trace;
+      transaction_context trx_context( self, trx->trx, trx->id);
+      transaction_trace_ptr trace = trx_context.trace;
       try {
          unapplied_transactions.erase( trx->signed_id );
 
-         transaction_context trx_context( trace, self, trx->trx, trx->id, deadline,
-                                          implicit, ( implicit ? 0 : trx->packed_trx.get_billable_size() ) );
+         if( implicit ) {
+            trx_context.init_for_implicit_trx( deadline );
+         } else {
+            trx_context.init_for_input_trx( deadline,
+                                            trx->packed_trx.get_unprunable_size(),
+                                            trx->packed_trx.get_prunable_size(),
+                                            trx->trx.signatures.size()             );
+         }
 
          fc::microseconds required_delay(0);
          if( !implicit ) {
@@ -572,8 +586,6 @@ struct controller_impl {
          EOS_ASSERT( trx_context.delay >= required_delay, transaction_exception,
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                      ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );
-
-         emit( self.accepted_transaction, trx);
 
          trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
@@ -615,7 +627,7 @@ struct controller_impl {
    } FC_CAPTURE_AND_RETHROW() } /// push_transaction
 
 
-   void start_block( block_timestamp_type when ) {
+   void start_block( block_timestamp_type when, uint16_t confirm_block_count ) {
       FC_ASSERT( !pending );
 
       FC_ASSERT( db.revision() == head->block_num, "",
@@ -629,7 +641,7 @@ struct controller_impl {
 
       const auto& gpo = db.get<global_property_object>();
       if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
-          ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_last_irreversible_blocknum ) && // ... that has now become irreversible ...
+          ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
           pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
           head->pending_schedule.producers.size() == 0 // ... and not just because it was promoted to active at the start of this block, then:
         )
@@ -637,7 +649,7 @@ struct controller_impl {
          // Promote proposed schedule to pending schedule.
          ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
                ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-               ("lib", pending->_pending_block_state->dpos_last_irreversible_blocknum)
+               ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
                ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
          pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
          db.modify( gpo, [&]( auto& gp ) {
@@ -645,6 +657,8 @@ struct controller_impl {
             gp.proposed_schedule.clear();
          });
       }
+
+      pending->_pending_block_state->set_confirmed(confirm_block_count);
 
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
@@ -667,7 +681,7 @@ struct controller_impl {
 
    void apply_block( const signed_block_ptr& b ) { try {
       try {
-         start_block( b->timestamp );
+         start_block( b->timestamp, b->confirmed );
 
          for( const auto& receipt : b->transactions ) {
             if( receipt.trx.contains<packed_transaction>() ) {
@@ -698,16 +712,17 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b ) {
+      FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
       try {
-         if( pending ) abort_block();
          FC_ASSERT( b );
          auto new_header_state = fork_db.add( b );
          emit( self.accepted_block_header, new_header_state );
          maybe_switch_forks();
-      } FC_LOG_AND_RETHROW()
+      } FC_LOG_AND_RETHROW( )
    }
 
    void push_confirmation( const header_confirmation& c ) {
+      FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
       maybe_switch_forks();
@@ -718,7 +733,6 @@ struct controller_impl {
 
       if( new_head->header.previous == head->id ) {
          try {
-            abort_block();
             apply_block( new_head->block );
             fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
@@ -810,8 +824,10 @@ struct controller_impl {
 
 
    void finalize_block()
-   { try {
-      if( !pending ) self.start_block();
+   {
+      FC_ASSERT(pending, "it is not valid to finalize when there is no pending block");
+      try {
+
 
       /*
       ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
@@ -821,7 +837,7 @@ struct controller_impl {
             ("p",pending->_pending_block_state->header.producer)
             ("signing_key", pending->_pending_block_state->block_signing_key)
             ("v",pending->_pending_block_state->header.schedule_version)
-            ("lib",pending->_pending_block_state->dpos_last_irreversible_blocknum)
+            ("lib",pending->_pending_block_state->dpos_irreversible_blocknum)
             ("ndtrxs",db.get_index<generated_transaction_multi_index,by_trx_id>().size())
             ("np",pending->_pending_block_state->header.new_producers)
             );
@@ -990,8 +1006,8 @@ void controller::startup() {
 chainbase::database& controller::db()const { return my->db; }
 
 
-void controller::start_block( block_timestamp_type when ) {
-   my->start_block(when);
+void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count ) {
+   my->start_block(when, confirm_block_count);
 }
 
 void controller::finalize_block() {
@@ -1084,11 +1100,11 @@ time_point controller::pending_block_time()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   return my->head->bft_irreversible_blocknum;
+   return std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
 }
 
 block_id_type controller::last_irreversible_block_id() const {
-   auto lib_num = my->head->bft_irreversible_blocknum;
+   auto lib_num = last_irreversible_block_num();
    const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)lib_num);
 
    if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
@@ -1118,7 +1134,7 @@ void controller::log_irreversible_blocks() {
       my->blog.read_head();
 
    const auto& log_head = my->blog.head();
-   auto lib = my->head->dpos_last_irreversible_blocknum;
+   auto lib = my->head->dpos_irreversible_blocknum;
 
 
    if( lib > 2 ) {

@@ -491,7 +491,7 @@ class apply_context {
        * This method will check that @ref account is listed in the message's declared authorizations, and marks the
        * authorization as used. Note that all authorizations on a message must be used, or the message is invalid.
        *
-       * @throws tx_missing_auth If no sufficient permission was found
+       * @throws missing_auth_exception If no sufficient permission was found
        */
       void require_authorization(const account_name& account);
       bool has_authorization(const account_name& account) const;
@@ -606,11 +606,10 @@ class apply_context {
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
 
-      vector<action_receipt>                      executed;
       action_trace                                trace;
 
       uint64_t                                    cpu_usage = 0;
-      uint64_t                                    total_cpu_usage = 0;
+      uint64_t                                    cpu_usage_limit = 0;
 
    private:
 

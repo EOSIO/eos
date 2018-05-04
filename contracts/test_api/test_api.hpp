@@ -170,6 +170,10 @@ struct test_transaction {
   static void cancel_deferred_transaction();
   static void send_cf_action();
   static void send_cf_action_fail();
+  static void stateful_api();
+  static void context_free_api();
+  static void new_feature();
+  static void active_new_feature();
 };
 
 struct test_chain {

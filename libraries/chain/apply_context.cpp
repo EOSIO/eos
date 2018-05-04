@@ -36,8 +36,14 @@ action_trace apply_context::exec_one()
 {
    auto start = fc::time_point::now();
    cpu_usage = 0;
-   checktime( control.get_global_properties().configuration.base_per_action_cpu_usage );
+   cpu_usage_limit = trx_context.get_action_cpu_usage_limit( context_free );
+   const auto& cfg = control.get_global_properties().configuration;
+   checktime( cfg.base_per_action_cpu_usage );
    try {
+      if( act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name ) {
+         checktime( cfg.base_setcode_cpu_usage );
+      }
+
       const auto &a = control.get_account(receiver);
       privileged = a.privileged;
       auto native = control.find_apply_handler(receiver, act.account, act.name);
@@ -45,7 +51,7 @@ action_trace apply_context::exec_one()
          (*native)(*this);
       }
 
-      if (a.code.size() > 0 && !(act.name == N(setcode) && act.account == config::system_account_name)) {
+      if( a.code.size() > 0 && !(act.account == config::system_account_name && act.name == N(setcode)) ) {
          try {
             control.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
@@ -63,6 +69,8 @@ action_trace apply_context::exec_one()
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
+   cpu_usage = trx_context.add_action_cpu_usage( cpu_usage, context_free );
+
    action_trace t(r);
    t.trx_id = trx_context.id;
    t.act = act;
@@ -70,8 +78,7 @@ action_trace apply_context::exec_one()
    t.total_cpu_usage = cpu_usage;
    t.console = _pending_console_output.str();
 
-   executed.emplace_back( move(r) );
-   total_cpu_usage += cpu_usage;
+   trx_context.executed.emplace_back( move(r) );
 
    print_debug(receiver, t);
 
@@ -97,22 +104,13 @@ void apply_context::exec()
    }
 
    for( const auto& inline_action : _cfa_inline_actions ) {
-      apply_context ncontext( control, trx_context, inline_action, recurse_depth + 1 );
-      ncontext.context_free = true;
-      ncontext.exec();
-      fc::move_append( executed, move(ncontext.executed) );
-      total_cpu_usage += ncontext.total_cpu_usage;
-      trace.total_cpu_usage += ncontext.trace.total_cpu_usage;
-      trace.inline_traces.emplace_back(ncontext.trace);
+      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, true, recurse_depth + 1 ) );
+      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
    for( const auto& inline_action : _inline_actions ) {
-      apply_context ncontext( control, trx_context, inline_action, recurse_depth + 1 );
-      ncontext.exec();
-      fc::move_append( executed, move(ncontext.executed) );
-      total_cpu_usage += ncontext.total_cpu_usage;
-      trace.total_cpu_usage += ncontext.trace.total_cpu_usage;
-      trace.inline_traces.emplace_back(ncontext.trace);
+      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, false, recurse_depth + 1 ) );
+      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
 } /// exec()
@@ -144,7 +142,7 @@ void apply_context::require_authorization( const account_name& account ) {
         return;
      }
    }
-   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+   EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}", ("account",account));
 }
 
 bool apply_context::has_authorization( const account_name& account )const {
@@ -163,7 +161,7 @@ void apply_context::require_authorization(const account_name& account,
            return;
         }
      }
-  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
+  EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
 }
 
@@ -352,7 +350,8 @@ void apply_context::reset_console() {
 
 void apply_context::checktime(uint32_t instruction_count) {
    cpu_usage += instruction_count;
-   trx_context.add_cpu_usage_and_check_time( instruction_count );
+   EOS_ASSERT( BOOST_LIKELY(cpu_usage <= cpu_usage_limit), action_cpu_usage_exceeded, "action cpu usage exceeded" );
+   trx_context.check_time();
 }
 
 bytes apply_context::get_packed_transaction() {

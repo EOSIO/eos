@@ -45,6 +45,10 @@ void token::issue( account_name to, asset quantity, string memo )
     require_auth( st.issuer );
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must issue positive quantity" );
+
+    if ( quantity.symbol.precision() != st.supply.symbol.precision() )
+       quantity.adjust_precision( st.supply.symbol );
+    
     eosio_assert( quantity <= st.max_supply - st.supply, "quantity exceeds available supply");
 
     statstable.modify( st, 0, [&]( auto& s ) {
@@ -64,7 +68,8 @@ void token::transfer( account_name from,
                       asset        quantity,
                       string       /*memo*/ )
 {
-    print( "transfer" );
+    print( "transfer from ", eosio::name{from}, " to ", eosio::name{to}, " ", quantity, "\n" );
+    eosio_assert( from != to, "cannot transfer to self" );
     require_auth( from );
     eosio_assert( is_account( to ), "to account does not exist");
     auto sym = quantity.symbol.name();
@@ -76,6 +81,9 @@ void token::transfer( account_name from,
 
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must transfer positive quantity" );
+
+    if ( quantity.symbol.precision() != st.supply.symbol.precision() )
+       quantity.adjust_precision( st.supply.symbol );
 
     sub_balance( from, quantity, st );
     add_balance( to, quantity, st, from );
@@ -99,6 +107,7 @@ void token::sub_balance( account_name owner, asset value, const currency_stats& 
 
    from_acnts.modify( from, owner, [&]( auto& a ) {
        a.balance -= value;
+       print( eosio::name{owner}, " balance: ", a.balance, "\n" );
    });
 }
 
@@ -110,11 +119,13 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
       eosio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
       to_acnts.emplace( ram_payer, [&]( auto& a ){
         a.balance = value;
+        print( eosio::name{owner}, " balance: ", a.balance, "\n" );
       });
    } else {
       eosio_assert( !st.enforce_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
       to_acnts.modify( to, 0, [&]( auto& a ) {
         a.balance += value;
+        print( eosio::name{owner}, " balance: ", a.balance, "\n" );
       });
    }
 }

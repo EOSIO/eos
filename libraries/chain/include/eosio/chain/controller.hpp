@@ -37,7 +37,6 @@ namespace eosio { namespace chain {
             struct runtime_limits {
                fc::microseconds     max_push_block_us = fc::microseconds(100000);
                fc::microseconds     max_push_transaction_us = fc::microseconds(1000'000);
-               fc::microseconds     max_deferred_transactions_us = fc::microseconds(100000);
             };
 
             path         block_log_dir       =  chain::config::default_block_log_dir;
@@ -60,7 +59,7 @@ namespace eosio { namespace chain {
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time = block_timestamp_type() );
+         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0 );
 
          void  abort_block();
 
@@ -76,16 +75,11 @@ namespace eosio { namespace chain {
          /**
           *
           */
-         void push_transaction( const transaction_metadata_ptr& trx = transaction_metadata_ptr(),
-                                fc::time_point deadline = fc::time_point::maximum() );
+         void push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline );
 
-         bool push_next_unapplied_transaction( fc::time_point deadline = fc::time_point::maximum() );
+         bool push_next_unapplied_transaction( fc::time_point deadline );
 
-#ifdef NDEBUG
-         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline = fc::time_point::now() + fc::milliseconds(30) );
-#else
-         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline = fc::time_point::now() + fc::milliseconds(120) );
-#endif
+         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
@@ -201,7 +195,7 @@ namespace eosio { namespace chain {
 
 } }  /// eosio::chain
 
-FC_REFLECT( eosio::chain::controller::config::runtime_limits, (max_push_block_us)(max_push_transaction_us)(max_deferred_transactions_us) )
+FC_REFLECT( eosio::chain::controller::config::runtime_limits, (max_push_block_us)(max_push_transaction_us) )
 FC_REFLECT( eosio::chain::controller::config,
             (block_log_dir)
             (shared_memory_dir)(shared_memory_size)(read_only)

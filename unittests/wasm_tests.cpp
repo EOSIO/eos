@@ -421,14 +421,14 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    // the maximum value below 2^31 representable in IEEE float32
    BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const 2147483520"));
    // -2^31
-   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const -2147483648"));  
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const -2147483648"));
    // the maximum value below -2^31 in IEEE float32
-   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const -2147483904"));   
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const -2147483904"));
 
    //
    //// float32 => uint32
-   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const 0")); 
-   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const -1")); 
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const 0"));
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const -1"));
    // max value below 2^32 in IEEE float32
    BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const 4294967040"));
    BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const 4294967296"));
@@ -437,13 +437,13 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    //// double => int32
    BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const 2147483648"));
    BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const 2147483647"));
-   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const -2147483648"));  
-   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const -2147483649"));   
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const -2147483648"));
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const -2147483649"));
 
    //
    //// double => uint32
-   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const 0")); 
-   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const -1")); 
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const 0"));
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const -1"));
    BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const 4294967295"));
    BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const 4294967296"));
 
@@ -454,16 +454,16 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    // the maximum value below 2^63 representable in IEEE float32
    BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const 9223371487098961920"));
    // -2^63
-   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const -9223372036854775808"));  
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const -9223372036854775808"));
    // the maximum value below -2^63 in IEEE float32
-   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const -9223373136366403584"));  
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const -9223373136366403584"));
 
    //// float32 => uint64
    BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const -1"));
    BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 0"));
    // max value below 2^64 in IEEE float32
-   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 18446742974197923840"));  
-   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 18446744073709551616")); 
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 18446742974197923840"));
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 18446744073709551616"));
 
    //// double => int64
    // 2^63
@@ -471,24 +471,24 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    // the maximum value below 2^63 representable in IEEE float64
    BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const 9223372036854774784"));
    // -2^63
-   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const -9223372036854775808"));  
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const -9223372036854775808"));
    // the maximum value below -2^63 in IEEE float64
-   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const -9223372036854777856"));  
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const -9223372036854777856"));
 
    //// double => uint64
    BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const -1"));
    BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 0"));
    // max value below 2^64 in IEEE float64
-   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709549568"));  
-   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709551616")); 
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709549568"));
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709551616"));
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
    produce_blocks(2);
    create_accounts( {N(aligncheck)} );
    produce_block();
-   
-   auto check_aligned = [&]( auto wast ) { 
+
+   auto check_aligned = [&]( auto wast ) {
       set_code(N(aligncheck), wast);
       produce_blocks(10);
 
@@ -503,7 +503,7 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
       trx.sign(get_private_key( N(aligncheck), "active" ), chain_id_type());
       push_transaction(trx);
       produce_block();
-      
+
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    };
 
@@ -515,7 +515,7 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
 
 // test cpu usage
 BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
-
+#warning This test does not appear to be very robust.
    create_accounts( {N(f_tests)} );
    bool pass = false;
 
@@ -539,8 +539,15 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    set_code(N(f_tests), code.c_str());
    produce_blocks(10);
 
-   int limit = 190;
-   while (!pass && limit < 200) {
+   uint32_t start = config::default_per_signature_cpu_usage + config::default_base_per_transaction_cpu_usage;
+   start += 100 * (config::default_base_per_action_cpu_usage + config::determine_payers_cpu_overhead_per_authorization);
+   start += config::resource_processing_cpu_overhead_per_billed_account;
+   start /= 1024;
+   --start;
+   wdump((start));
+   uint32_t end   = start + 5;
+   uint32_t limit = start;
+   for( limit = start; limit < end; ++limit ) {
       signed_transaction trx;
 
       for (int i = 0; i < 100; ++i) {
@@ -559,21 +566,20 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
          push_transaction(trx);
          produce_blocks(1);
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-         pass = true;
-      } catch (eosio::chain::tx_resource_exhausted &) {
-         produce_blocks(1);
+         break;
+      } catch (eosio::chain::tx_cpu_usage_exceeded &) {
       }
 
       BOOST_REQUIRE_EQUAL(true, validate());
    }
-// NOTE: limit is 197
-   BOOST_REQUIRE_EQUAL(true, limit > 190 && limit < 200);
+   wdump((limit));
+   BOOST_CHECK_EQUAL(true, start < limit && limit < end);
 } FC_LOG_AND_RETHROW()
 
 
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
-
+#warning This test does not appear to be very robust.
    resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
    create_accounts( {N(f_tests)} );
    create_accounts( {N(acc2)} );
@@ -621,10 +627,10 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
          count++;
-      } catch (eosio::chain::tx_resource_exhausted &) {
+      } catch (eosio::chain::tx_cpu_usage_exceeded &) {
          BOOST_REQUIRE_EQUAL(count, 3);
          break;
-      } 
+      }
       BOOST_REQUIRE_EQUAL(true, validate());
 
       if (count == 2) { // add a big weight on acc2, making f_tests out of resource
@@ -999,10 +1005,6 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
 // with eosio_system_abi as they are not allowed to contain duplicates.
 BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_blocks(2);
-
-   set_code(config::system_account_name, eosio_system_wast);
-   set_abi(config::system_account_name, eosio_system_abi);
-   produce_block();
 
    const auto& accnt  = control->db().get<account_object,by_name>(config::system_account_name);
    abi_def abi;
@@ -1423,7 +1425,7 @@ BOOST_FIXTURE_TEST_CASE( trigger_serialization_errors, TESTER) try {
                                          0x00, 0x05, 0x03, 0x01, 0x00, 0x20, 0x07, 0x09, 0x01, 0x05, 0x61, 0x70, 0x70, 0x6c, 0x79, 0x00,
                                          0x01, 0x0a, 0x0c, 0x01, 0x0a, 0x00, 0x41, 0x04, 0x41, 0x05, 0x41, 0x10, 0x10, 0x00, 0x0b, 0x0b,
                                          0x0b, 0x01, 0x00, 0x41, 0x04, 0x0b, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f };
-  
+
    const vector<uint8_t> malformed_wasm = { 0x00, 0x61, 0x03, 0x0d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x0d, 0x02, 0x60, 0x03, 0x7f, 0x7f, 0x7f,
                                             0x00, 0x60, 0x03, 0x7e, 0x7e, 0x7e, 0x00, 0x02, 0x0e, 0x01, 0x03, 0x65, 0x6e, 0x76, 0x06, 0x73,
                                             0x68, 0x61, 0x32, 0x38, 0x36, 0x00, 0x00, 0x03, 0x03, 0x01, 0x01, 0x04, 0x04, 0x01, 0x70, 0x00,
@@ -1487,7 +1489,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
          push_transaction(trx);
          produce_blocks(1);
          return true;
-      } catch (tx_resource_exhausted &) {
+      } catch (tx_net_usage_exceeded &) {
          return false;
       } catch (transaction_exception &) {
          return false;
@@ -1538,7 +1540,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
          push_transaction(trx);
          produce_blocks(1);
          return true;
-      } catch (tx_resource_exhausted &) {
+      } catch (tx_net_usage_exceeded &) {
          return false;
       }
    };
@@ -1547,7 +1549,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
    resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
    mgr.set_account_limits(account, -1, 1, -1); // set weight = 1 for account
 
-   BOOST_REQUIRE_EQUAL(true, check(128)); 
+   BOOST_REQUIRE_EQUAL(true, check(128));
 
    mgr.set_account_limits(acc2, -1, 1000, -1); // set a big weight for other account
    BOOST_REQUIRE_EQUAL(false, check(128));

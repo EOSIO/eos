@@ -32,7 +32,7 @@ namespace eosio { namespace chain {
          >,
          ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_header_state,
-                member<block_header_state,uint32_t,&block_header_state::dpos_last_irreversible_blocknum>,
+                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::bft_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
             >,
@@ -98,7 +98,7 @@ namespace eosio { namespace chain {
       /// we cannot normally prune the lib if it is the head block because
       /// the next block needs to build off of the head block. We are exiting
       /// now so we can prune this block as irreversible before exiting.
-      auto lib    = my->head->dpos_last_irreversible_blocknum;
+      auto lib    = my->head->dpos_irreversible_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
       if( oldest->block_num <= lib ) {
          prune( oldest );
@@ -131,7 +131,7 @@ namespace eosio { namespace chain {
 
       my->head = *my->index.get<by_lib_block_num>().begin();
 
-      auto lib    = my->head->dpos_last_irreversible_blocknum;
+      auto lib    = my->head->dpos_irreversible_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
 
       if( oldest->block_num < lib ) {
