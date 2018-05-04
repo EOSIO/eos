@@ -77,8 +77,8 @@ struct controller_impl {
    }
 
 
-   void set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {
-      apply_handlers[contract][make_pair(scope,action)] = v;
+   void set_apply_handler( account_name receiver, account_name contract, action_name action, apply_handler v ) {
+      apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
    controller_impl( const controller::config& cfg, controller& s  )
@@ -94,20 +94,20 @@ struct controller_impl {
     conf( cfg )
    {
 
-#define SET_APP_HANDLER( contract, scope, action, nspace ) \
-   set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
-   SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
-   SET_APP_HANDLER( eosio, eosio, setcode, eosio );
-   SET_APP_HANDLER( eosio, eosio, setabi, eosio );
-   SET_APP_HANDLER( eosio, eosio, updateauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, deleteauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, linkauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, onerror, eosio );
-   SET_APP_HANDLER( eosio, eosio, postrecovery, eosio );
-   SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
-   SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
+#define SET_APP_HANDLER( receiver, contract, action) \
+   set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+
+   SET_APP_HANDLER( eosio, eosio, newaccount );
+   SET_APP_HANDLER( eosio, eosio, setcode );
+   SET_APP_HANDLER( eosio, eosio, setabi );
+   SET_APP_HANDLER( eosio, eosio, updateauth );
+   SET_APP_HANDLER( eosio, eosio, deleteauth );
+   SET_APP_HANDLER( eosio, eosio, linkauth );
+   SET_APP_HANDLER( eosio, eosio, unlinkauth );
+   SET_APP_HANDLER( eosio, eosio, postrecovery );
+   SET_APP_HANDLER( eosio, eosio, passrecovery );
+   SET_APP_HANDLER( eosio, eosio, vetorecovery );
+   SET_APP_HANDLER( eosio, eosio, canceldelay );
 
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
@@ -387,7 +387,7 @@ struct controller_impl {
                                         fc::time_point start                     ) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
-      etrx.actions.emplace_back( vector<permission_level>{{gto.sender,config::active_name}},
+      etrx.actions.emplace_back( vector<permission_level>{},
                                  onerror( gto.sender_id, gto.published, gto.payer, gto.packed_trx.data(), gto.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
@@ -965,7 +965,7 @@ struct controller_impl {
       signed_transaction trx;
       trx.actions.emplace_back(std::move(on_block_act));
       trx.set_reference_block(self.head_block_id());
-      trx.expiration = self.pending_block_time() + fc::seconds(1);
+      trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
       return trx;
    }
 

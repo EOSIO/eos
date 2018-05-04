@@ -123,9 +123,6 @@ namespace eosio { namespace chain {
          check_net_usage();  // Fail early if current net usage is already greater than the calculated limit
       check_cpu_usage(); // Fail early if current CPU usage is already greater than the calculated limit
 
-      control.validate_tapos( trx );
-      control.validate_referenced_accounts( trx );
-
       is_initialized = true;
    }
 
@@ -168,6 +165,8 @@ namespace eosio { namespace chain {
       deadline = d;
       is_input = true;
       init( initial_net_usage, initial_cpu_usage );
+      control.validate_tapos( trx );
+      control.validate_referenced_accounts( trx );
       control.validate_expiration( trx );
       record_transaction( id, trx.expiration ); /// checks for dupes
    }

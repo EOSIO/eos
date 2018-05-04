@@ -226,6 +226,9 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint6
    eosio_assert(false, "send_transaction_large() should've thrown an error");
 }
 
+// Test no longer needed since the system just sets the expiration of a generated transaction to an appropriate value
+// similar to how it sets the TaPoS.
+/*
 void test_transaction::send_transaction_expiring_late(uint64_t receiver, uint64_t, uint64_t) {
    using namespace eosio;
    account_name cur_send;
@@ -239,6 +242,7 @@ void test_transaction::send_transaction_expiring_late(uint64_t receiver, uint64_
 
    eosio_assert(false, "send_transaction_expiring_late() should've thrown an error");
 }
+*/
 
 /**
  * deferred transaction

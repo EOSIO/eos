@@ -826,12 +826,14 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
 
    // test send_transaction_expiring_late
+   /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_transaction", "send_transaction_expiring_late", fc::raw::pack(N(testapi))),
                          eosio::chain::transaction_exception,  [](const eosio::chain::transaction_exception& e) {
                                                                   return expect_assert_message(e, "Transaction expiration is too far");
                                                                }
       );
-
+   */
+   
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
@@ -1656,20 +1658,20 @@ BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
  * new api feature test
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
-   
+
    produce_blocks(1);
    create_account(N(testapi) );
    produce_blocks(1);
    set_code(N(testapi), test_api_wast);
    produce_blocks(1);
 
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} ), 
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} ),
       assert_exception,
       [](const fc::exception& e) {
          return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
       });
 
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ), 
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ),
       assert_exception,
       [](const fc::exception& e) {
          return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
@@ -1696,7 +1698,7 @@ BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
 
    CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} );
 
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ), 
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ),
       assert_exception,
       [](const fc::exception& e) {
          return expect_assert_message(e, "Unsupported Hardfork Detected");
