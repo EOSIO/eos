@@ -104,6 +104,9 @@ void apply_eosio_newaccount(apply_context& context) {
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
 void apply_eosio_setcode(apply_context& context) {
+   const auto& cfg = context.control.get_global_properties().configuration;
+   context.checktime( cfg.base_setcode_cpu_usage );
+
    auto& db = context.db;
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
@@ -111,6 +114,8 @@ void apply_eosio_setcode(apply_context& context) {
 
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
+
+   context.checktime( act.code.size() * 20 );
 
    auto code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
 
@@ -121,8 +126,6 @@ void apply_eosio_setcode(apply_context& context) {
    int64_t code_size = (int64_t)act.code.size();
    int64_t old_size = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
    int64_t new_size = code_size * config::setcode_ram_bytes_multiplier;
-
-   context.checktime( act.code.size() * 20 );
 
    FC_ASSERT( account.code_version != code_id, "contract is already running this version of code" );
 //   wlog( "set code: ${size}", ("size",act.code.size()));
@@ -346,10 +349,6 @@ void apply_eosio_unlinkauth(apply_context& context) {
 
    db.remove(*link);
    context.checktime( 3000 );
-}
-
-void apply_eosio_onerror(apply_context& context) {
-   context.require_authorization(config::system_account_name);
 }
 
 static const abi_serializer& get_abi_serializer() {
