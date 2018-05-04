@@ -214,23 +214,12 @@ eosio::chain_apis::read_only::get_info_results get_info() {
    return ::call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-string generate_nonce_value() {
+string generate_nonce_string() {
    return fc::to_string(fc::time_point::now().time_since_epoch().count());
 }
 
-chain::action generate_nonce() {
-   auto v = generate_nonce_value();
-   variant nonce = fc::mutable_variant_object()
-         ("value", v);
-
-   try {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", name(config::system_account_name)));
-      abi_serializer eosio_serializer(result["abi"].as<abi_def>());
-      return chain::action( {}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce));
-   }
-   catch (...) {
-      EOS_THROW(account_query_exception, "A system contract is required to use nonce");
-   }
+chain::action generate_nonce_action() {
+   return chain::action( {}, config::nobody_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
 fc::variant determine_required_keys(const signed_transaction& trx) {
@@ -267,7 +256,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    trx.set_reference_block(ref_block_id);
 
    if (tx_force_unique) {
-      trx.context_free_actions.emplace_back( generate_nonce() );
+      trx.context_free_actions.emplace_back( generate_nonce_action() );
    }
 
    auto required_keys = determine_required_keys(trx);
@@ -1564,7 +1553,7 @@ int main( int argc, char** argv ) {
       signed_transaction trx;
       if (tx_force_unique && memo.size() == 0) {
          // use the memo to add a nonce
-         memo = generate_nonce_value();
+         memo = generate_nonce_string();
          tx_force_unique = false;
       }
 

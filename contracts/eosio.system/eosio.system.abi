@@ -1,12 +1,6 @@
 {
   "types": [],
   "structs": [{
-      "name": "nonce",
-       "base": "",
-       "fields": [
-          {"name":"value", "type":"string"}
-      ]
-    },{
       "name": "buyrambytes",
       "base": "",
       "fields": [
@@ -251,10 +245,6 @@
     },{
       "name": "claimrewards",
       "type": "claimrewards",
-      "ricardian_contract": ""
-    },{
-      "name": "nonce",
-      "type": "nonce",
       "ricardian_contract": ""
     }
   ],

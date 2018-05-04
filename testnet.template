@@ -13,8 +13,8 @@ if [ -z "$biosport" ]; then
 fi
 
 wddir=eosio-ignition-wd
-wdport=8899
-wdhost=127.0.0.1
+wdaddr=localhost:8899
+wdurl=http://$wdaddr
 # Manual deployers, add a line below this block that looks like:
 #    bioshost=$BIOS_HOSTNAME
 #    biosport=$BIOS_HTTP_PORT
@@ -35,7 +35,7 @@ mkdir $wddir
 step=1
 echo Initializing ignition sequence  at $(date) | tee $logfile
 
-echo "http-server-address = 127.0.0.1:$wdport" > $wddir/config.ini
+echo "http-server-address = $wdaddr" > $wddir/config.ini
 
 programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
 echo $$ > ignition_wallet.pid
@@ -44,9 +44,9 @@ sleep 1
 
 ecmd () {
     echo ===== Start: $step ============ >> $logfile
-    echo executing: cleos --wallet-port $wdport -p $biosport  -H $bioshost $* | tee -a $logfile
+    echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
     echo ----------------------- >> $logfile
-    programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport  -H $bioshost $* >> $logfile 2>&1
+    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport $* >> $logfile 2>&1
     echo ==== End: $step ============== >> $logfile
     step=$(($step + 1))
 }
@@ -89,18 +89,18 @@ ecmd set contract eosio contracts/eosio.bios contracts/eosio.bios/eosio.bios.was
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos --wallet-port $wdport -p $biosport -H $bioshost push action eosio setprods setprods.json -p eosio@active | tee -a $logfile
+echo executing: cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action eosio setprods setprods.json -p eosio@active >> $logfile 2>&1
+programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
 ecmd set contract eosio contracts/eosio.system contracts/eosio.system/eosio.system.wast contracts/eosio.system/eosio.system.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos --wallet-port $wdport -p $biosport -H $bioshost push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
+echo executing: cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active >> $logfile 2>&1
+programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 

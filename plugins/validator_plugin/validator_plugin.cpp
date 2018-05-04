@@ -48,6 +48,12 @@ class validator_plugin_impl {
 
          // push the new block
          chain.push_block(block);
+
+         ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+              ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(0,16))
+              ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
+              ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed) );
+
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
