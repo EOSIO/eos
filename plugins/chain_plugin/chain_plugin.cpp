@@ -46,6 +46,9 @@ public:
    ,applied_transaction_channel(app().get_channel<channels::applied_transaction>())
    ,accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
    ,incoming_block_channel(app().get_channel<channels::incoming_block>())
+   ,incoming_block_sync_method(app().get_method<methods::incoming_block_sync>())
+   ,incoming_transaction_sync_method(app().get_method<methods::incoming_transaction_sync>())
+   ,start_coordinator_method(app().get_method<methods::start_coordinator>())
    {}
    
    bfs::path                        block_log_dir;
@@ -60,8 +63,6 @@ public:
    fc::optional<controller::config> chain_config = controller::config();
    fc::optional<controller>         chain;
    chain_id_type                    chain_id;
-   int32_t                          max_reversible_block_time_ms;
-   int32_t                          max_pending_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
 
@@ -74,14 +75,17 @@ public:
    channels::accepted_confirmation::channel_type&  accepted_confirmation_channel;
    channels::incoming_block::channel_type&         incoming_block_channel;
 
+   // retained references to methods for easy calling
+   methods::incoming_block_sync::method_type&       incoming_block_sync_method;
+   methods::incoming_transaction_sync::method_type& incoming_transaction_sync_method;
+   methods::start_coordinator::method_type&         start_coordinator_method;
+
    // method provider handles
    methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
    methods::get_block_by_id::method_type::handle                     get_block_by_id_provider;
    methods::get_head_block_id::method_type::handle                   get_head_block_id_provider;
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
 
-   // things we subscribe to
-   channels::incoming_transaction::channel_type::handle incoming_transaction_subscription;
 };
 
 chain_plugin::chain_plugin()
@@ -98,10 +102,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("max-reversible-block-time", bpo::value<int32_t>()->default_value(-1),
-          "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
-         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(30),
-          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Maximum size MB of database shared memory file")
 
@@ -181,9 +181,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    }
 
-   my->max_reversible_block_time_ms = options.at("max-reversible-block-time").as<int32_t>();
-   my->max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
-
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
 
@@ -199,14 +196,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
-   }
-
-   if (my->max_reversible_block_time_ms > 0) {
-      my->chain_config->limits.max_push_block_us = fc::milliseconds(my->max_reversible_block_time_ms);
-   }
-
-   if (my->max_pending_transaction_time_ms > 0) {
-      my->chain_config->limits.max_push_transaction_us = fc::milliseconds(my->max_pending_transaction_time_ms);
    }
 
    if(my->wasm_runtime)
@@ -256,11 +245,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->accepted_confirmation_channel.publish(conf);
    });
 
-   my->incoming_transaction_subscription = app().get_channel<channels::incoming_transaction>().subscribe([this](const packed_transaction_ptr& ptrx){
-      try {
-         my->chain->push_transaction(std::make_shared<transaction_metadata>(*ptrx), get_transaction_deadline());
-      } FC_LOG_AND_DROP();
-   });
 }
 
 void chain_plugin::plugin_startup()
@@ -277,6 +261,8 @@ void chain_plugin::plugin_startup()
 
    my->chain_config.reset();
 
+   my->start_coordinator_method();
+
 } FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
@@ -288,11 +274,11 @@ chain_apis::read_write chain_plugin::get_read_write_api() {
 }
 
 void chain_plugin::accept_block(const signed_block_ptr& block ) {
-   my->incoming_block_channel.publish(block);
+   my->incoming_block_sync_method(block);
 }
 
 void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   chain().push_transaction( std::make_shared<transaction_metadata>(trx), get_transaction_deadline() );
+   my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -310,10 +296,6 @@ const controller& chain_plugin::chain() const { return *my->chain; }
 
 void chain_plugin::get_chain_id(chain_id_type &cid)const {
    memcpy(cid.data(), my->chain_id.data(), cid.data_size());
-}
-
-fc::time_point chain_plugin::get_transaction_deadline()const {
-   return fc::time_point::now() + fc::milliseconds(my->max_pending_transaction_time_ms);
 }
 
 namespace chain_apis {
@@ -470,18 +452,13 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-   FC_ASSERT( chain_plug != nullptr, "Unable to retrieve chain_plugin" );
-
-   packed_transaction pretty_input;
+   auto pretty_input = std::make_shared<packed_transaction>();
    auto resolver = make_resolver(this);
    try {
-      abi_serializer::from_variant(params, pretty_input, resolver);
+      abi_serializer::from_variant(params, *pretty_input, resolver);
    } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto trx_trace_ptr = db.sync_push(
-           std::make_shared<transaction_metadata>(move(pretty_input)),
-           chain_plug->get_transaction_deadline() );
+   auto trx_trace_ptr = app().get_method<methods::incoming_transaction_sync>()(pretty_input);
 
    fc::variant pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
    //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);

@@ -35,7 +35,7 @@ namespace eosiosystem {
       account_name  owner;
       asset         net_weight;
       asset         cpu_weight;
-      uint64_t      storage_bytes = 0;
+      int64_t       storage_bytes = 0;
 
       uint64_t primary_key()const { return owner; }
 
@@ -102,7 +102,7 @@ namespace eosiosystem {
 
       user_resources_table  userres( _self, newact);
 
-      auto r = userres.emplace( newact, [&]( auto& res ) {
+      userres.emplace( newact, [&]( auto& res ) {
         res.owner = newact;
       });
 
@@ -117,21 +117,12 @@ namespace eosiosystem {
     *  This action will buy an exact amount of ram and bill the payer the current market price.
     */
    void system_contract::buyrambytes( account_name payer, account_name receiver, uint32_t bytes ) {
-      const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
-      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
+      auto itr = _rammarket.find(S(4,RAMEOS));
+      auto tmp = *itr;
+      auto eosout = tmp.convert( asset(bytes,S(0,RAM)), S(4,EOS) );
+      print( "eosout: ", eosout, "\n" );
 
-      const double R = unstaked_token_supply;
-      const double C = _gstate.free_ram() + bytes;
-      const double F = _gstate.storage_reserve_ratio / 10000.0;
-      const double T = bytes;
-      const double ONE(1.0);
-
-      double E = -R * (ONE - std::pow( ONE + T/C, F ) );
-      
-      int64_t tokens_out = int64_t(E*1.0105);
-      print( "desired ram: ", bytes, "\n" );
-      
-      buyram( payer, receiver, asset(tokens_out) );
+      buyram( payer, receiver, eosout );
    }
 
 
@@ -154,20 +145,15 @@ namespace eosiosystem {
                                                        { payer, N(eosio), quant, std::string("buy ram") } );
       }
 
-      const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
-      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
+      print( "free ram: ", _gstate.free_ram(),  "\n");
 
-      print( "free ram: ", _gstate.free_ram(),  "   tokens: ", system_token_supply,  "  unstaked: ", unstaked_token_supply, "\n" );
+      int64_t bytes_out;
 
-      const double E = quant.amount;
-      const double R = unstaked_token_supply - E;
-      const double C = _gstate.free_ram();   //free_ram;
-      const double F = 1./(_gstate.storage_reserve_ratio/10000.0); /// 10% reserve ratio pricing, assumes only 10% of tokens will ever want to stake for ram
-      const double ONE(1.0);
+      auto itr = _rammarket.find(S(4,RAMEOS));
+      _rammarket.modify( itr, 0, [&]( auto& es ) {
+          bytes_out = es.convert( quant,  S(0,RAM) ).amount;
+      });
 
-      double T = C * (std::pow( ONE + E/R, F ) - ONE);
-      T *= .99; /// 1% fee on every conversion
-      int64_t bytes_out = static_cast<int64_t>(T);
       print( "ram bytes out: ", bytes_out, "\n" );
 
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
@@ -180,11 +166,11 @@ namespace eosiosystem {
       if( res_itr ==  userres.end() ) {
          res_itr = userres.emplace( receiver, [&]( auto& res ) {
                res.owner = receiver;
-               res.storage_bytes = uint64_t(bytes_out);
+               res.storage_bytes = bytes_out;
             });
       } else {
          userres.modify( res_itr, receiver, [&]( auto& res ) {
-               res.storage_bytes += uint64_t(bytes_out);
+               res.storage_bytes += bytes_out;
             });
       }
       set_resource_limits( res_itr->owner, res_itr->storage_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
@@ -197,35 +183,30 @@ namespace eosiosystem {
     *  and selling ram.
     */
    void system_contract::sellram( account_name account, uint32_t bytes ) {
+      require_auth( account );
+
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
       eosio_assert( res_itr != userres.end(), "no resource row" );
       eosio_assert( res_itr->storage_bytes >= bytes, "insufficient quota" );
 
-      const double system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
-      const double unstaked_token_supply = system_token_supply - _gstate.total_storage_stake.amount;
-
-      const double R = unstaked_token_supply;
-      const double C = _gstate.free_ram() + bytes;
-      const double F = _gstate.storage_reserve_ratio / 10000.0;
-      const double T = bytes;
-      const double ONE(1.0);
-
-      double E = -R * (ONE - std::pow( ONE + T/C, F ) );
-
-      E *= .99; /// 1% fee on every conversion, 
-                /// let the system contract profit on speculation while preventing abuse caused by rounding errors
-      
-      int64_t tokens_out = int64_t(E);
-      eosio_assert( tokens_out > 0, "must free at least one token" );
+      asset tokens_out;
+      auto itr = _rammarket.find(S(4,RAMEOS));
+      _rammarket.modify( itr, 0, [&]( auto& es ) {
+          tokens_out = es.convert( asset(bytes,S(0,RAM)),  S(4,EOS) );
+          print( "out: ", tokens_out, "\n" );
+      });
 
       _gstate.total_storage_bytes_reserved -= bytes;
-      _gstate.total_storage_stake.amount   -= tokens_out;
+      _gstate.total_storage_stake.amount   -= tokens_out.amount;
+
+      //// this shouldn't happen, but just in case it does we should prevent it
+      eosio_assert( _gstate.total_storage_stake.amount >= 0, "error, attempt to unstake more tokens than previously staked" );
 
       userres.modify( res_itr, account, [&]( auto& res ) {
           res.storage_bytes -= bytes;
       });
-      set_resource_limits( res_itr->owner, res_itr->storage_bytes, uint64_t(res_itr->net_weight.amount), uint64_t(res_itr->cpu_weight.amount) );
+      set_resource_limits( res_itr->owner, res_itr->storage_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
       if( N(eosio) != account ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
@@ -281,7 +262,7 @@ namespace eosiosystem {
             });
       }
 
-      set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, uint64_t(tot_itr->net_weight.amount), uint64_t(tot_itr->cpu_weight.amount) );
+      set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
       if( N(eosio) != from) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
