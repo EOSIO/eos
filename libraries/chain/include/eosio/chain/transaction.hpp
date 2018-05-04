@@ -137,6 +137,7 @@ namespace eosio { namespace chain {
       void               set_transaction(const transaction& t, const vector<bytes>& cfd, compression_type _compression = none);
    };
 
+   using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
 
    /**
     *  When a transaction is generated it can be scheduled to occur

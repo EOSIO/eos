@@ -58,6 +58,7 @@ const static uint32_t   default_max_block_net_usage                 = 1024 * 102
 const static uint32_t   default_target_block_net_usage_pct           = 10 * percent_1; /// we target 1000 TPS
 const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 10;
 const static uint32_t   default_base_per_transaction_net_usage       = 12;  // 12 bytes (11 bytes for worst case of transaction_receipt_header + 1 byte for static_variant tag)
+const static uint32_t   default_net_usage_leeway                     = 500; // TODO: is this reasonable?
 const static uint32_t   default_context_free_discount_net_usage_num  = 20; // TODO: is this reasonable?
 const static uint32_t   default_context_free_discount_net_usage_den  = 100;
 const static uint32_t   transaction_id_net_usage                     = 32; // 32 bytes for the size of a transaction id
@@ -69,6 +70,7 @@ const static uint32_t   default_base_per_transaction_cpu_usage      = 512;      
 const static uint32_t   default_base_per_action_cpu_usage           = 1024;
 const static uint32_t   default_base_setcode_cpu_usage              = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
 const static uint32_t   default_per_signature_cpu_usage             = 100 * 1024; // TODO: is this reasonable?
+const static uint32_t   default_cpu_usage_leeway                    = 2048; // TODO: is this reasonable?
 const static uint32_t   default_context_free_discount_cpu_usage_num = 20;
 const static uint32_t   default_context_free_discount_cpu_usage_den = 100;
 
@@ -98,6 +100,11 @@ const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio:
  *  The number of sequential blocks produced by a single producer
  */
 const static int producer_repetitions = 12;
+const static int max_producers = 125;
+
+const static size_t maximum_tracked_dpos_confirmations = 1024;     ///<
+static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1) * producer_repetitions, "Settings never allow for DPOS irreversibility" );
+
 
 /**
  * The number of blocks produced per round is based upon all producers having a chance

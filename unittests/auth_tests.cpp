@@ -268,6 +268,32 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(link_then_update_auth) { try {
+   TESTER chain;
+
+   chain.create_account("alice");
+
+   const auto first_priv_key = chain.get_private_key("alice", "first");
+   const auto first_pub_key = first_priv_key.get_public_key();
+   const auto second_priv_key = chain.get_private_key("alice", "second");
+   const auto second_pub_key = second_priv_key.get_public_key();
+
+   chain.set_authority("alice", "first", first_pub_key, "active");
+
+   chain.link_authority("alice", "eosio", "first",  "reqauth");
+   chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key });
+
+   chain.produce_blocks(13); // Wait at least 6 seconds for first push_reqauth transaction to expire.
+
+   // Update "first" auth public key
+   chain.set_authority("alice", "first", second_pub_key, "active");
+   // Authority updated, using previous "first" auth should fail on linked auth
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key }), tx_missing_sigs);
+   // Using updated authority, should succeed
+   chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { second_priv_key });
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(create_account) {
 try {
    TESTER chain;
@@ -291,11 +317,11 @@ try {
 
    // Create duplicate name
    BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
-                         assert_message_ends_with("Cannot create account named joe, as that name is already taken"));
+                         fc_exception_message_is("Cannot create account named joe, as that name is already taken"));
 
    // Creating account with name more than 12 chars
    BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
-                         assert_message_ends_with("account names can only be 12 chars long"));
+                         fc_exception_message_is("account names can only be 12 chars long"));
 
 
    // Creating account with eosio. prefix with privileged account
@@ -303,7 +329,7 @@ try {
 
    // Creating account with eosio. prefix with non-privileged account, should fail
    BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
-                         assert_message_ends_with("only privileged accounts can have names that start with 'eosio.'"));
+                         fc_exception_message_is("only privileged accounts can have names that start with 'eosio.'"));
 
 } FC_LOG_AND_RETHROW() }
 

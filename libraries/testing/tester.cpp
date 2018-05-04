@@ -9,6 +9,11 @@
 
 namespace eosio { namespace testing {
 
+   bool expect_assert_message(const fc::exception& ex, string expected) {
+      BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
+      return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
+   }
+
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
       fc::mutable_variant_object res;
       for( auto& entry : filter ) {
@@ -83,7 +88,14 @@ namespace eosio { namespace testing {
    }
 
    signed_block_ptr base_tester::push_block(signed_block_ptr b) {
+      control->abort_block();
       control->push_block(b);
+
+      auto itr = last_produced_block.find(b->producer);
+      if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
+         last_produced_block[b->producer] = b->id();
+      }
+
       return b;
    }
 
@@ -92,12 +104,8 @@ namespace eosio { namespace testing {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
 
-      if( !control->pending_block_state() ) {
-         control->start_block( next_time );
-      } else if( control->pending_block_state()->header.timestamp != next_time ) {
-         wlog( "aborting current pending block and starting a new one" );
-         control->abort_block();
-         control->start_block( next_time );
+      if( !control->pending_block_state() || control->pending_block_state()->header.timestamp != next_time ) {
+         _start_block( next_time );
       }
 
       auto producer = control->head_block_state()->get_scheduled_producer(next_time);
@@ -118,16 +126,8 @@ namespace eosio { namespace testing {
             while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
       }
 
-      auto hb = control->head_block_state();
-      auto pb = control->pending_block_state();
-      const auto& lpp_map = hb->producer_to_last_produced;
-      auto pitr = lpp_map.find( pb->header.producer );
-      if( pitr != lpp_map.end() ) {
-         if( pb->block_num == pitr->second ) {
-            wdump((pb->block_num));
-         }
-         control->pending_block_state()->set_confirmed( pb->block_num - pitr->second );
-      }
+
+
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {
                     return priv_key.sign(d);
@@ -135,9 +135,26 @@ namespace eosio { namespace testing {
 
       control->commit_block();
       control->log_irreversible_blocks();
-      control->start_block( next_time + fc::microseconds(config::block_interval_us));
+      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
+
+      _start_block( next_time + fc::microseconds(config::block_interval_us));
       return control->head_block_state()->block;
    }
+
+   void base_tester::_start_block(fc::time_point block_time) {
+      auto head_block_number = control->head_block_num();
+      auto producer = control->head_block_state()->get_scheduled_producer(block_time);
+
+      auto last_produced_block_num = control->last_irreversible_block_num();
+      auto itr = last_produced_block.find(producer.producer_name);
+      if (itr != last_produced_block.end()) {
+         last_produced_block_num = block_header::num_from_id(itr->second);
+      }
+
+      control->abort_block();
+      control->start_block( block_time, head_block_number - last_produced_block_num );
+   }
+
 
    void base_tester::produce_blocks( uint32_t n, bool empty ) {
       if( empty ) {
@@ -195,7 +212,7 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
-         control->start_block();
+         _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
       if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
       if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
@@ -206,7 +223,7 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
-         control->start_block();
+         _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
       if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
       if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
@@ -650,6 +667,7 @@ namespace eosio { namespace testing {
          for( int i = 1; i <= a.control->head_block_num(); ++i ) {
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
+               b.control->abort_block();
                b.control->push_block(block); //, eosio::chain::validation_steps::created_block);
             }
          }
@@ -688,14 +706,13 @@ namespace eosio { namespace testing {
       return tid;
    }
 
-   bool assert_message_ends_with::operator()( const fc::exception& ex ) {
+   bool fc_exception_message_is::operator()( const fc::exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
-      return boost::algorithm::ends_with( message, expected );
-   }
-
-   bool assert_message_contains::operator()( const fc::exception& ex ) {
-      auto message = ex.get_log().at( 0 ).get_message();
-      return boost::algorithm::contains( message, expected );
+      bool match = (message == expected);
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
+      }
+      return match;
    }
 
    bool fc_exception_message_starts_with::operator()( const fc::exception& ex ) {
@@ -763,7 +780,7 @@ namespace eosio { namespace testing {
       return match;
    }
 
-} }  /// eosio::test
+} }  /// eosio::testing
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
    //fc::json::to_stream( osm, v );

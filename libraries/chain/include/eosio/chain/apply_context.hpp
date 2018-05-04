@@ -606,11 +606,9 @@ class apply_context {
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
 
-      vector<action_receipt>                      executed;
       action_trace                                trace;
 
       uint64_t                                    cpu_usage = 0;
-      uint64_t                                    total_cpu_usage = 0;
       uint64_t                                    cpu_usage_limit = 0;
 
    private:

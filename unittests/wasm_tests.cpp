@@ -515,7 +515,7 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
 
 // test cpu usage
 BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
-
+#warning This test does not appear to be very robust.
    create_accounts( {N(f_tests)} );
    bool pass = false;
 
@@ -539,8 +539,15 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    set_code(N(f_tests), code.c_str());
    produce_blocks(10);
 
-   int limit = 190;
-   while (!pass && limit < 200) {
+   uint32_t start = config::default_per_signature_cpu_usage + config::default_base_per_transaction_cpu_usage;
+   start += 100 * (config::default_base_per_action_cpu_usage + config::determine_payers_cpu_overhead_per_authorization);
+   start += config::resource_processing_cpu_overhead_per_billed_account;
+   start /= 1024;
+   --start;
+   wdump((start));
+   uint32_t end   = start + 5;
+   uint32_t limit = start;
+   for( limit = start; limit < end; ++limit ) {
       signed_transaction trx;
 
       for (int i = 0; i < 100; ++i) {
@@ -559,21 +566,20 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
          push_transaction(trx);
          produce_blocks(1);
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-         pass = true;
+         break;
       } catch (eosio::chain::tx_cpu_usage_exceeded &) {
-         produce_blocks(1);
       }
 
       BOOST_REQUIRE_EQUAL(true, validate());
    }
-// NOTE: limit is 197
-   BOOST_REQUIRE_EQUAL(true, limit > 190 && limit < 200);
+   wdump((limit));
+   BOOST_CHECK_EQUAL(true, start < limit && limit < end);
 } FC_LOG_AND_RETHROW()
 
 
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
-
+#warning This test does not appear to be very robust.
    resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
    create_accounts( {N(f_tests)} );
    create_accounts( {N(acc2)} );

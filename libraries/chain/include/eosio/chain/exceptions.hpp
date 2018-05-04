@@ -217,7 +217,8 @@ namespace eosio { namespace chain {
                                     3080005, "transaction CPU usage is too much for the remaining allowable usage of the current block" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_deadline_exceeded, resource_exhausted_exception,
                                     3080006, "transaction took too long" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( action_cpu_usage_exceeded, resource_exhausted_exception,
+                                    3080007, "action took too long" )
 
    FC_DECLARE_DERIVED_EXCEPTION( misc_exception, chain_exception,
                                  3090000, "Miscellaneous exception" )

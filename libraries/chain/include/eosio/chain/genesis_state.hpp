@@ -21,6 +21,7 @@ struct genesis_state {
       .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
       .max_transaction_net_usage            = config::default_max_transaction_net_usage,
       .base_per_transaction_net_usage       = config::default_base_per_transaction_net_usage,
+      .net_usage_leeway                     = config::default_net_usage_leeway,
       .context_free_discount_net_usage_num  = config::default_context_free_discount_net_usage_num,
       .context_free_discount_net_usage_den  = config::default_context_free_discount_net_usage_den,
 
@@ -31,6 +32,7 @@ struct genesis_state {
       .base_per_action_cpu_usage            = config::default_base_per_action_cpu_usage,
       .base_setcode_cpu_usage               = config::default_base_setcode_cpu_usage,
       .per_signature_cpu_usage              = config::default_per_signature_cpu_usage,
+      .cpu_usage_leeway                     = config::default_cpu_usage_leeway,
       .context_free_discount_cpu_usage_num  = config::default_context_free_discount_cpu_usage_num,
       .context_free_discount_cpu_usage_den  = config::default_context_free_discount_cpu_usage_den,
 

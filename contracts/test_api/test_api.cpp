@@ -41,7 +41,8 @@ extern "C" {
       }
       WASM_TEST_HANDLER(test_action, assert_true_cf);
 
-      require_auth(code);
+      if (action != WASM_TEST_ACTION("test_transaction", "stateful_api") && action != WASM_TEST_ACTION("test_transaction", "context_free_api"))
+         require_auth(code);
 
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
@@ -139,6 +140,8 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
+      WASM_TEST_HANDLER(test_transaction, stateful_api);
+      WASM_TEST_HANDLER(test_transaction, context_free_api);
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);

@@ -98,11 +98,6 @@ struct check_auth {
 
 FC_REFLECT(check_auth, (account)(permission)(pubkeys) );
 
-bool expect_assert_message(const fc::exception& ex, string expected) {
-   BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
-   return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
-}
-
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
@@ -523,6 +518,113 @@ BOOST_FIXTURE_TEST_CASE(cfa_tx_signature, TESTER)  try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
+
+   create_account( N(testapi) );
+	produce_blocks(1);
+	set_code( N(testapi), test_api_wast );
+
+   account_name a = N(testapi2);
+   account_name creator = N(eosio);
+
+   signed_transaction trx;
+
+   trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                 newaccount{
+                                 .creator  = creator,
+                                 .name     = a,
+                                 .owner    = authority( get_public_key( a, "owner" ) ),
+                                 .active   = authority( get_public_key( a, "active" ) ),
+                                 .recovery = authority( get_public_key( a, "recovery" ) ),
+                                 });
+   action act({}, test_api_action<TEST_METHOD("test_transaction", "stateful_api")>{});
+   trx.context_free_actions.push_back(act);
+   set_transaction_headers(trx);
+   trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+   BOOST_CHECK_EXCEPTION(push_transaction( trx ), fc::exception,
+      [&](const fc::exception &e) {
+         return expect_assert_message(e, "only context free api's can be used in this context");
+      });
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
+
+   create_account( N(testapi) );
+	produce_blocks(1);
+	set_code( N(testapi), test_api_wast );
+
+   account_name a = N(testapi2);
+   account_name creator = N(eosio);
+
+   signed_transaction trx;
+
+   trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                 newaccount{
+                                 .creator  = creator,
+                                 .name     = a,
+                                 .owner    = authority( get_public_key( a, "owner" ) ),
+                                 .active   = authority( get_public_key( a, "active" ) ),
+                                 .recovery = authority( get_public_key( a, "recovery" ) ),
+                                 });
+   action act({}, test_api_action<TEST_METHOD("test_transaction", "stateful_api")>{});
+   trx.context_free_actions.push_back(act);
+   set_transaction_headers(trx, 10, 2);
+   trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+
+   BOOST_CHECK_EXCEPTION(push_transaction( trx ), fc::exception,
+      [&](const fc::exception &e) {
+         return expect_assert_message(e, "only context free api's can be used in this context");
+      });
+
+   produce_blocks(10);
+
+   // CFA failed, testapi2 not created
+   create_account( N(testapi2) );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
+
+   create_account( N(testapi) );
+	produce_blocks(1);
+	set_code( N(testapi), test_api_wast );
+
+   account_name a = N(testapi2);
+   account_name creator = N(eosio);
+
+   signed_transaction trx;
+
+   trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                 newaccount{
+                                 .creator  = creator,
+                                 .name     = a,
+                                 .owner    = authority( get_public_key( a, "owner" ) ),
+                                 .active   = authority( get_public_key( a, "active" ) ),
+                                 .recovery = authority( get_public_key( a, "recovery" ) ),
+                                 });
+   action act({}, test_api_action<TEST_METHOD("test_transaction", "context_free_api")>{});
+   trx.context_free_actions.push_back(act);
+   set_transaction_headers(trx, 10, 2);
+   trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+   auto trace = push_transaction( trx );
+   BOOST_REQUIRE(trace != nullptr);
+   if (trace) {
+      BOOST_REQUIRE_EQUAL(transaction_receipt_header::status_enum::delayed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(1, trace->action_traces.size());
+   }
+   produce_blocks(10);
+
+   // CFA success, testapi2 created
+   BOOST_CHECK_EXCEPTION(create_account( N(testapi2) ), fc::exception,
+      [&](const fc::exception &e) {
+         return expect_assert_message(e, "Cannot create account named testapi2, as that name is already taken");
+      });
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW()
+
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
@@ -544,7 +646,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
 	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
 	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
-   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000), fc::milliseconds(-1)} );
+   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000)} );
    t.produce_blocks(2);
 
    t.create_account( N(testapi) );

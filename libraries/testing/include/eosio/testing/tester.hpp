@@ -60,6 +60,8 @@ namespace eosio { namespace testing {
 
    void copy_row(const chain::key_value_object& obj, vector<char>& data);
 
+   bool expect_assert_message(const fc::exception& ex, string expected);
+
    /**
     *  @class tester
     *  @brief provides utility function to simplify the creation of unit tests
@@ -92,7 +94,7 @@ namespace eosio { namespace testing {
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const vector<permission_level>& auths, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
 
 
-         action get_action( account_name code, action_name acttype, vector<permission_level> auths, 
+         action get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                          const variant_object& data )const;
 
          void                 set_transaction_headers(signed_transaction& trx,
@@ -221,6 +223,7 @@ namespace eosio { namespace testing {
 
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
+         void             _start_block(fc::time_point block_time);
 
       // Fields:
       protected:
@@ -232,6 +235,7 @@ namespace eosio { namespace testing {
       protected:
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
+         map<account_name, block_id_type>              last_produced_block;
    };
 
    class tester : public base_tester {
@@ -324,23 +328,11 @@ namespace eosio { namespace testing {
    };
 
    /**
-    * Utility predicate to check whether an FC_ASSERT message ends with a given string
+    * Utility predicate to check whether an fc::exception message is equivalent to a given string
     */
-   struct assert_message_ends_with {
-      assert_message_ends_with( string expected )
-            : expected( expected ) {}
-
-      bool operator()( const fc::exception& ex );
-
-      string expected;
-   };
-
-   /**
-    * Utility predicate to check whether an FC_ASSERT message contains a given string
-    */
-   struct assert_message_contains {
-      assert_message_contains( string expected )
-            : expected( expected ) {}
+   struct fc_exception_message_is {
+      fc_exception_message_is( const string& msg )
+            : expected( msg ) {}
 
       bool operator()( const fc::exception& ex );
 
