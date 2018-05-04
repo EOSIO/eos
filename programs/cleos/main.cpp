@@ -69,11 +69,10 @@ Options:
   -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
 ```
 */
+
 #include <string>
 #include <vector>
 #include <regex>
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
 #include <iostream>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
@@ -84,12 +83,22 @@ Options:
 #include <fc/variant_object.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
+#include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 
+#pragma push_macro("N")
+#undef N
+
+#include <boost/asio.hpp>
+#include <boost/format.hpp>
+#include <boost/dll/runtime_symbol_info.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/process.hpp>
+#include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -97,6 +106,8 @@ Options:
 #include <boost/algorithm/string/split.hpp>
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
+
+#pragma pop_macro("N")
 
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
@@ -408,6 +419,16 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
                         config::system_account_name, N(buyrambytes), act_payload);
 }
 
+chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu) {
+   fc::variant act_payload = fc::mutable_variant_object()
+         ("from", from.to_string())
+         ("receiver", receiver.to_string())
+         ("stake_net_quantity", net.to_string())
+         ("stake_cpu_quantity", cpu.to_string());
+   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{from,config::active_name}} : get_account_permissions(tx_permission),
+                        config::system_account_name, N(delegatebw), act_payload);
+}
+
 fc::variant regproducer_variant(const account_name& producer,
                                 public_key_type key,
                                 string url) {
@@ -623,6 +644,44 @@ struct set_action_permission_subcommand {
    }
 };
 
+bool port_busy( uint16_t port ) {
+   using namespace boost::asio;
+   
+   io_service ios;
+   boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+   boost::asio::ip::tcp::socket socket(ios);
+   boost::system::error_code ec = error::would_block;
+   //connecting/failing to connect to localhost should be always fast - don't care about timeouts
+   socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
+   do {
+      ios.run_one();
+   } while (ec == error::would_block);
+   return !ec;
+}
+
+void start_keosd( uint16_t wallet_port ) {
+   auto binPath = boost::dll::program_location();
+   boost::filesystem::path keosPath = binPath.parent_path().append("keosd"); //cleos and keosd are in the same installation directory
+   if ( !boost::filesystem::exists(keosPath) ) {
+      keosPath = binPath.parent_path().parent_path().append("keosd").append("keosd"); //build directory
+   }
+   if ( boost::filesystem::exists( keosPath ) ) {
+      namespace bp = boost::process;
+      keosPath = boost::filesystem::canonical( keosPath );
+      ::boost::process::child keos( keosPath, "--http-server-address=127.0.0.1:"+std::to_string(wallet_port),
+                                    bp::std_in.close(),
+                                    bp::std_out > bp::null,
+                                    bp::std_err > bp::null);
+      if (keos.running()) {
+         std::cerr << keosPath << " launched" << std::endl;
+         keos.detach();
+      } else {
+         std::cerr << "No wallet service listening on 127.0.0.1:" << std::to_string(wallet_port) << ". Failed to launch " << keosPath << std::endl;
+      }
+   } else {
+      std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port) << ". Cannot automatically start keosd because keosd was not found." << std::endl;
+   }
+}
 
 CLI::callback_t old_host_port = [](CLI::results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
@@ -652,6 +711,58 @@ struct register_producer_subcommand {
 
          auto regprod_var = regproducer_variant(producer_str, producer_key, url );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
+      });
+   }
+};
+
+struct create_account_subcommand {
+   string creator;
+   string account_name;
+   string owner_key_str;
+   string active_key_str;
+   string stake_net;
+   string stake_cpu;
+   uint32_t buy_ram_bytes_in_kbytes = 8;
+   string buy_ram_eos;
+   bool simple;
+
+   create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
+      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "createaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
+      createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
+      createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
+      createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
+      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
+
+      if (!simple) {
+         createAccount->add_option("--stake-net", stake_net,
+                                   (localized("The amount of EOS delegated for net bandwidth")))->required();
+         createAccount->add_option("--stake-cpu", stake_cpu,
+                                   (localized("The amount of EOS delegated for CPU bandwidth")))->required();
+         createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
+                                   (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
+         createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
+                                   (localized("The amount of RAM bytes to purchase for the new account in EOS")));
+      }
+
+      add_standard_transaction_options(createAccount);
+
+      createAccount->set_callback([this] {
+            public_key_type owner_key, active_key;
+            try {
+               owner_key = public_key_type(owner_key_str);
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str));
+            try {
+               active_key = public_key_type(active_key_str);
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
+            auto create = create_newaccount(creator, account_name, owner_key, active_key);
+            if (!simple) {
+               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, asset::from_string(buy_ram_eos))
+                  : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
+               action delegate = create_delegate( creator, account_name, asset::from_string(stake_net), asset::from_string(stake_cpu) );
+               send_actions( { create, buyram, delegate } );
+            } else {
+               send_actions( { create } );
+            }
       });
    }
 };
@@ -729,7 +840,6 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_storage_quantity", stake_storage_amount, localized("The amount of EOS to stake for storage"))->required();
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
@@ -737,8 +847,7 @@ struct delegate_bandwidth_subcommand {
                   ("from", from_str)
                   ("receiver", receiver_str)
                   ("stake_net_quantity", stake_net_amount + " EOS")
-                  ("stake_cpu_quantity", stake_cpu_amount + " EOS")
-                  ("stake_storage_quantity", stake_storage_amount + " EOS");
+                  ("stake_cpu_quantity", stake_cpu_amount + " EOS");
                   wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
@@ -758,7 +867,6 @@ struct undelegate_bandwidth_subcommand {
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
       undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to undelegate for network bandwidth"))->required();
       undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to undelegate for CPU bandwidth"))->required();
-      undelegate_bandwidth->add_option("unstake_storage_bytes", unstake_storage_bytes, localized("The amount of byte storage to undelegate"))->required();
       add_standard_transaction_options(undelegate_bandwidth);
 
       undelegate_bandwidth->set_callback([this] {
@@ -766,10 +874,50 @@ struct undelegate_bandwidth_subcommand {
                   ("from", from_str)
                   ("receiver", receiver_str)
                   ("unstake_net_quantity", unstake_net_amount + " EOS")
-                  ("unstake_cpu_quantity", unstake_cpu_amount + " EOS")
-                  ("unstake_storage_bytes", unstake_storage_bytes);
+                  ("unstake_cpu_quantity", unstake_cpu_amount + " EOS");
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
       });
+   }
+};
+
+struct buyram_subcommand {
+   string from_str;
+   string receiver_str;
+   string amount;
+
+   buyram_subcommand(CLI::App* actionRoot) {
+      auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
+      buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
+      buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
+      buyram->add_option("tokens", amount, localized("The amount of EOS to pay for RAM"))->required();
+      add_standard_transaction_options(buyram);
+      buyram->set_callback([this] {
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("payer", from_str)
+               ("receiver", receiver_str)
+               ("quant", asset::from_string(amount));
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
+         });
+   }
+};
+
+struct sellram_subcommand {
+   string from_str;
+   string receiver_str;
+   uint64_t amount;
+
+   sellram_subcommand(CLI::App* actionRoot) {
+      auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
+      sellram->add_option("account", receiver_str, localized("The account to receive EOS for sold RAM"))->required();
+      sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
+      add_standard_transaction_options(sellram);
+
+      sellram->set_callback([this] {
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("account", receiver_str)
+               ("bytes", amount);
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
+         });
    }
 };
 
@@ -882,12 +1030,120 @@ struct canceldelay_subcommand {
    }
 };
 
-int main( int argc, char** argv ) {
-   fc::path binPath = argv[0];
-   if (binPath.is_relative()) {
-      binPath = relative(binPath, fc::current_path());
+void get_account( const string& accountName ) {
+   auto json = call(get_account_func, fc::mutable_variant_object("account_name", accountName));
+   auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
+   std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
+
+   constexpr size_t indent_size = 5;
+   const string indent(indent_size, ' ');
+
+   std::cout << "permissions: " << std::endl;
+   unordered_map<name, vector<name>/*children*/> tree;
+   vector<name> roots; //we don't have multiple roots, but we can easily handle them here, so let's do it just in case
+   unordered_map<name, eosio::chain_apis::permission> cache;
+   for ( auto& perm : res.permissions ) {
+      if ( perm.parent ) {
+         tree[perm.parent].push_back( perm.perm_name );
+      } else {
+         roots.push_back( perm.perm_name );
+      }
+      auto name = perm.perm_name; //keep copy before moving `perm`, since thirst argument of emplace can be evaluated first
+      // looks a little crazy, but should be efficient
+      cache.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(perm)) );
+   }
+   std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
+      auto& p = cache.at(name);
+      std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
+      for ( auto& key : p.required_auth.keys ) {
+         std::cout << key.weight << ' ' << string(key.key) << ", ";
+      }
+      for ( auto& acc : p.required_auth.accounts ) {
+         std::cout << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission) << ", ";
+      }
+      std::cout << std::endl;
+      auto it = tree.find( name );
+      if (it != tree.end()) {
+         auto& children = it->second;
+         sort( children.begin(), children.end() );
+         for ( auto& n : children ) {
+            // we have a tree, not a graph, so no need to check for already visited nodes
+            dfs_print( n, depth+1 );
+         }
+      } // else it's a leaf node
+   };
+   std::sort(roots.begin(), roots.end());
+   for ( auto r : roots ) {
+      dfs_print( r, 0 );
    }
 
+   std::cout << "memory: " << std::endl
+             << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
+   //std::cout << "     staked: " << "XXX" << " EOS" << std::endl << std::endl;
+
+   std::cout << "net bandwidth:" << std::endl;
+   if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
+      asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
+      auto net_others = asset::from_string(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+      std::cout << indent << "staked:" << std::setw(20) << net_own
+                << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                << indent << "delegated:" << std::setw(17) << net_others
+                << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+   }
+   std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.net_limit.current_per_block)) << " bytes/block"
+             << std::string(3, ' ') << "(assuming current congestion and current usage)" << std::endl
+             << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.net_limit.max_per_block)) << " bytes/block"
+             << std::string(3, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+             << indent << "guaranteed: " << std::setw(11) << res.net_limit.guaranteed_per_day << " bytes/day"
+             << std::string(5, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+             << std::endl;
+
+
+   std::cout << "cpu bandwidth:" << std::endl;
+   if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
+      asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
+      auto cpu_others = asset::from_string(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+      std::cout << indent << "staked:" << std::setw(20) << cpu_own
+                << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                << indent << "delegated:" << std::setw(17) << cpu_others
+                << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+   }
+
+   std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.cpu_limit.current_per_block/1024)) << " kcycle/block"
+             << std::string(2, ' ') << "(assuming current congestion and current usage)" << std::endl
+             << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.cpu_limit.max_per_block/1024)) << " kcycle/block"
+             << std::string(2, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+             << indent << "guaranteed:" << std::setw(12) << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day"
+             << std::string(4, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+             << std::endl;
+
+   if ( res.voter_info.is_object() ) {
+      auto& obj = res.voter_info.get_object();
+      string proxy = obj["proxy"].as_string();
+      if ( proxy.empty() ) {
+         auto& prods = obj["producers"].get_array();
+         std::cout << "producers:";
+         if ( !prods.empty() ) {
+            for ( int i = 0; i < prods.size(); ++i ) {
+               if ( i%3 == 0 ) {
+                  std::cout << std::endl << indent;
+               }
+               std::cout << std::setw(16) << std::left << prods[i].as_string();
+            }
+            std::cout << std::endl;
+         } else {
+            std::cout << indent << "<not voted>" << std::endl;
+         }
+      } else {
+         std::cout << "proxy:" << indent << proxy << std::endl;
+      }
+   }
+   std::cout << std::endl;
+
+   //std::cout << fc::json::to_pretty_string(json) << std::endl;
+}
+
+int main( int argc, char** argv ) {
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
@@ -901,6 +1157,15 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+
+   auto parsed_url = parse_url( wallet_url );
+   auto wallet_port_uint = std::stoi(parsed_url.port);
+   if ( wallet_port_uint < 0 || 65535 < wallet_port_uint ) {
+      FC_THROW("port is not in valid range");
+   }
+   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( uint16_t(wallet_port_uint) ) ) {
+      start_keosd( uint16_t(wallet_port_uint) );
+   }
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -926,41 +1191,7 @@ int main( int argc, char** argv ) {
    });
 
    // create account
-   string creator;
-   string account_name;
-   string owner_key_str;
-   string active_key_str;
-   uint32_t buy_ram_bytes_in_kbytes = 8;
-   string buy_ram_eos;
-
-   auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
-   createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
-   createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
-   createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
-   createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
-   createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
-                             (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
-   createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
-                             (localized("The amount of RAM bytes to purchase for the new account in EOS")));
-   add_standard_transaction_options(createAccount, "creator@active");
-   createAccount->set_callback([&] {
-      public_key_type owner_key, active_key;
-      try {
-         owner_key = public_key_type(owner_key_str);
-      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str))
-      try {
-         active_key = public_key_type(active_key_str);
-      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
-      if( !buy_ram_eos.empty() ) {
-         action buyact = create_buyram(creator, account_name, asset::from_string(buy_ram_eos));
-         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
-      } else if( buy_ram_bytes_in_kbytes > 0 ){
-         action buyact = create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024 * 1024);
-         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
-      } else {
-         send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
-      }
-   });
+   auto createAccount = create_account_subcommand( create, true /*simple*/ );
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
@@ -984,11 +1215,7 @@ int main( int argc, char** argv ) {
    string accountName;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
-   getAccount->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(call(get_account_func,
-                                                   fc::mutable_variant_object("account_name", accountName)))
-                << std::endl;
-   });
+   getAccount->set_callback([&]() { get_account(accountName); });
 
    // get code
    string codeFilename;
@@ -1124,6 +1351,7 @@ int main( int argc, char** argv ) {
    });
 
    // get actions
+   string account_name;
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;
@@ -1506,6 +1734,16 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
+   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
+   stopKeosd->set_callback([] {
+      const auto& v = call(wallet_url, keosd_stop);
+      if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
+         std::cerr << fc::json::to_pretty_string(v) << std::endl;
+      } else {
+         std::cout << "OK" << std::endl;
+      }
+   });
+
    // sign subcommand
    string trx_json_to_sign;
    string str_private_key;
@@ -1867,6 +2105,7 @@ int main( int argc, char** argv ) {
    auto system = app.add_subcommand("system", localized("Send eosio.system contract action to the blockchain."), false);
    system->require_subcommand();
 
+   auto createAccountSystem = create_account_subcommand( system, false /*simple*/ );
    auto registerProducer = register_producer_subcommand(system);
    auto unregisterProducer = unregister_producer_subcommand(system);
 
@@ -1877,6 +2116,9 @@ int main( int argc, char** argv ) {
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
+
+   auto biyram = buyram_subcommand(system);
+   auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
 
