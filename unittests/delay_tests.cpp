@@ -91,9 +91,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
 
    const auto& tester_account = N(tester);
 
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
    chain.produce_blocks(10);
@@ -235,9 +232,6 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
 
    const auto& tester_account = N(tester);
 
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
    chain.produce_blocks(10);
@@ -259,8 +253,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
            ("permission", "first")),
    permission_query_exception,
    [] (const permission_query_exception &e)->bool {
-      std::string check_str = "3010001 permission_query_exception: Permission Query Exception\nFailed to retrieve permission";
-      BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
+      expect_assert_message(e, "permission_query_exception: Permission Query Exception\nFailed to retrieve permission");
       return true;
    });
 
@@ -335,8 +328,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
            ("permission", "first")),
    action_validate_exception,
    [] (const action_validate_exception &e)->bool {
-      std::string check_str = "3040000 action_validate_exception: message validation exception\nCannot delete a linked authority";
-      BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
+      expect_assert_message(e, "action_validate_exception: message validation exception\nCannot delete a linked authority");
       return true;
    });
 
@@ -379,9 +371,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
@@ -523,9 +512,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
@@ -673,9 +659,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
@@ -870,9 +853,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
@@ -1074,9 +1054,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
 
    const auto& tester_account = N(tester);
 
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
    chain.produce_blocks(10);
@@ -1170,8 +1147,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
       30, 3),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         std::string check_str = "3030000 transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (3 sec)";
-         BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
+         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (3 sec)");
          return true;
       }
    );
@@ -1282,9 +1258,6 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
 
    const auto& tester_account = N(tester);
 
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
    chain.produce_blocks(10);
@@ -1369,8 +1342,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
       30, 7),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         std::string check_str = "3030000 transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)";
-         BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
+         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
          return true;
       }
    );
@@ -1477,9 +1449,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
@@ -1675,9 +1644,6 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
 
    const auto& tester_account = N(tester);
 
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
    chain.produce_blocks(10);
@@ -1811,8 +1777,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    TESTER chain;
    const auto& tester_account = N(tester);
    std::vector<transaction_id_type> ids;
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
@@ -1907,8 +1871,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
       ),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         std::string check_str = "3030000 transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)";
-         BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
+         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
          return true;
       }
    );
@@ -2054,8 +2017,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
 
    chain.produce_blocks();
    chain.create_account(N(eosio.token));
@@ -2324,9 +2285,6 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
 
    const auto& tester_account = N(tester);
 
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
    chain.produce_blocks();
    chain.create_account(N(tester));
    chain.produce_blocks(10);
@@ -2338,9 +2296,9 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
                         ("parent", "active")
                         ("auth",  authority(chain.get_public_key(tester_account, "first"), 50*86400)) ), // 50 days delay
       chain::action_validate_exception,
-      [&](const chain::transaction_exception& ex) {
-         string expected = "message validation exception (3040000)\nCannot set delay longer than max_transacton_delay, which is 3888000 seconds";
-         return expected == string(ex.to_string()).substr(0, expected.size());
+      [&](const chain::transaction_exception& e) {
+         expect_assert_message(e, "Cannot set delay longer than max_transacton_delay");
+         return true;
       }
    );
 } FC_LOG_AND_RETHROW() }
@@ -2352,16 +2310,12 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 
    const auto& tester_account = N(tester);
 
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
    chain.create_account(N(eosio.token));
    chain.set_code(N(eosio.token), eosio_token_wast);
    chain.set_abi(N(eosio.token), eosio_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
-   chain.produce_blocks(10);
 
    chain.produce_blocks();
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
@@ -2393,28 +2347,37 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
                      ("requirement", "first"));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
 
+   chain.produce_blocks();
+
    //change max_transaction_delay to 60 sec
    chain.control->db().modify( chain.control->get_global_properties(),
                               [&]( auto& gprops ) {
                                  gprops.configuration.max_transaction_delay = 60;
                               });
+#ifndef NON_VALIDATING_TEST
+   chain.validating_node->db().modify( chain.validating_node->get_global_properties(),
+                              [&]( auto& gprops ) {
+                                 gprops.configuration.max_transaction_delay = 60;
+                              });
+#endif
 
+   chain.produce_blocks();
    //should be able to create transaction with delay 60 sec, despite permission delay being 30 days, because max_transaction_delay is 60 sec
    trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
-                             ("from", "tester")
-                             ("to", "eosio.token")
-                             ("quantity", "9.0000 CUR")
-                             ("memo", "" ),
-                             120, 60
-   );
-   chain.produce_block();
+                           ("from", "tester")
+                           ("to", "eosio.token")
+                           ("quantity", "9.0000 CUR")
+                           ("memo", "" ), 120, 60);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+
+   chain.produce_blocks();
+   
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
 
    //check that the delayed transaction executed after after 60 sec
-   chain.produce_block( fc::seconds(60) );
+   chain.produce_blocks(120);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(0, gen_size);
 
