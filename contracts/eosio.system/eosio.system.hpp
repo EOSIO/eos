@@ -8,6 +8,7 @@
 #include <eosiolib/asset.hpp>
 #include <eosiolib/privileged.hpp>
 #include <eosiolib/singleton.hpp>
+#include <eosio.system/exchange_state.hpp>
 
 #include <string>
 
@@ -116,6 +117,7 @@ namespace eosiosystem {
          global_state_singleton _global;
 
          eosio_global_state     _gstate;
+         rammarket              _rammarket;
 
       public:
          system_contract( account_name s );
@@ -181,8 +183,6 @@ namespace eosiosystem {
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
 
          void regproxy( const account_name proxy, bool isproxy );
-
-         void nonce( const std::string& /*value*/ ) {}
 
          // functions defined in producer_pay.cpp
          void claimrewards( const account_name& owner );

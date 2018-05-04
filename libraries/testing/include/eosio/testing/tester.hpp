@@ -72,7 +72,7 @@ namespace eosio { namespace testing {
 
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
-         void              init(bool push_genesis = true, controller::config::runtime_limits limits = controller::config::runtime_limits());
+         void              init(bool push_genesis = true);
          void              init(controller::config config);
 
          void              close();
@@ -223,6 +223,7 @@ namespace eosio { namespace testing {
 
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
+         void             _start_block(fc::time_point block_time);
 
       // Fields:
       protected:
@@ -234,15 +235,16 @@ namespace eosio { namespace testing {
       protected:
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
+         map<account_name, block_id_type>              last_produced_block;
    };
 
    class tester : public base_tester {
    public:
-      tester(bool push_genesis, controller::config::runtime_limits limits = controller::config::runtime_limits()) {
-         init(push_genesis, limits);
+      tester(bool push_genesis) {
+         init(push_genesis);
       }
-      tester(controller::config::runtime_limits limits = controller::config::runtime_limits()) {
-         init(true, limits);
+      tester() {
+         init(true);
       }
 
       tester(controller::config config) {
@@ -271,7 +273,7 @@ namespace eosio { namespace testing {
             wdump((e.to_detail_string()));
          }
       }
-      validating_tester(controller::config::runtime_limits limits = controller::config::runtime_limits()) {
+      validating_tester() {
          controller::config vcfg;
          vcfg.block_log_dir      = tempdir.path() / "vblocklog";
          vcfg.shared_memory_dir  = tempdir.path() / "vshared";
@@ -279,7 +281,6 @@ namespace eosio { namespace testing {
 
          vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
          vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-         vcfg.limits = limits;
 
          for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
             if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
@@ -290,7 +291,7 @@ namespace eosio { namespace testing {
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->startup();
-         init(true, limits);
+         init(true);
       }
 
       validating_tester(controller::config config) {

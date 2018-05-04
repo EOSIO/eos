@@ -8,6 +8,7 @@
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -45,8 +46,10 @@ class producer_plugin_impl {
       std::map<chain::public_key_type, chain::private_key_type> _private_keys;
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
+      std::map<chain::account_name, uint32_t>                   _producer_watermarks;
 
       int32_t                                                   _max_deferred_transaction_time_ms;
+      int32_t                                                   _max_pending_transaction_time_ms;
 
       block_production_condition::block_production_condition_enum _prev_result = block_production_condition::produced;
       uint32_t _prev_result_count = 0;
@@ -57,7 +60,14 @@ class producer_plugin_impl {
 
       producer_plugin* _self = nullptr;
 
-      channels::incoming_block::channel_type::handle   _incoming_block_subscription;
+      channels::incoming_block::channel_type::handle          _incoming_block_subscription;
+      channels::incoming_transaction::channel_type::handle    _incoming_transaction_subscription;
+
+      methods::incoming_block_sync::method_type::handle       _incoming_block_sync_provider;
+      methods::incoming_transaction_sync::method_type::handle _incoming_transaction_sync_provider;
+      methods::start_coordinator::method_type::handle         _start_coordinator_provider;
+
+      void startup();
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -66,8 +76,12 @@ class producer_plugin_impl {
 
          const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
 
-         auto active_producers = boost::adaptors::keys( boost::make_iterator_range( bsp->producer_to_last_produced.begin(),
-                                                                                    bsp->producer_to_last_produced.end()   ) );
+         flat_set<account_name> active_producers;
+         active_producers.reserve(bsp->active_schedule.producers.size());
+         for (const auto& p: bsp->active_schedule.producers) {
+            active_producers.insert(p.producer_name);
+         }
+
          std::set_intersection( _producers.begin(), _producers.end(),
                                 active_producers.begin(), active_producers.end(),
                                 boost::make_function_output_iterator( [&]( const chain::account_name& producer )
@@ -96,13 +110,24 @@ class producer_plugin_impl {
          // abort the pending block
          chain.abort_block();
 
-         try {
-            // push the new block
-            chain.push_block(block);
-         } FC_LOG_AND_DROP();
+         // exceptions throw out, make sure we restart our loop
+         auto ensure = fc::make_scoped_exit([this](){
+            // restart our production loop
+            schedule_production_loop();
+         });
+         // push the new block
+         chain.push_block(block);
 
-         // restart our production loop
-         schedule_production_loop();
+         ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+              ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(0,16))
+              ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
+              ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed) );
+
+      }
+
+      transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         return chain.sync_push(std::make_shared<transaction_metadata>(*trx), fc::time_point::now() + fc::milliseconds(_max_pending_transaction_time_ms));
       }
 };
 
@@ -146,6 +171,8 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(30),
+          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
           "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("required-participation", boost::program_options::value<uint32_t>()
@@ -211,33 +238,45 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    }
 
    my->_max_deferred_transaction_time_ms = options.at("max-deferred-transaction-time").as<int32_t>();
+   my->_max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
+
 
    my->_incoming_block_subscription = app().get_channel<channels::incoming_block>().subscribe([this](const signed_block_ptr& block){
-      my->on_incoming_block(block);
+      try {
+         my->on_incoming_block(block);
+      } FC_LOG_AND_DROP();
    });
+
+   my->_incoming_transaction_subscription = app().get_channel<channels::incoming_transaction>().subscribe([this](const packed_transaction_ptr& trx){
+      try {
+         my->on_incoming_transaction(trx);
+      } FC_LOG_AND_DROP();
+   });
+
+   static const int my_priority = 1;
+
+   my->_incoming_block_sync_provider = app().get_method<methods::incoming_block_sync>().register_provider([this](const signed_block_ptr& block){
+      my->on_incoming_block(block);
+   }, my_priority);
+
+   my->_incoming_transaction_sync_provider = app().get_method<methods::incoming_transaction_sync>().register_provider([this](const packed_transaction_ptr& trx) -> transaction_trace_ptr {
+      return my->on_incoming_transaction(trx);
+   }, my_priority);
+
+
+   my->_start_coordinator_provider = app().get_method<methods::start_coordinator>().register_provider([this]() {
+      my->startup();
+   }, my_priority);
+
 
 } FC_LOG_AND_RETHROW() }
 
 void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   chain.accepted_block.connect( [&]( const auto& bsp ){ my->on_block( bsp ); } );
 
-   if (!my->_producers.empty())
-   {
-      ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
-      if(my->_production_enabled)
-      {
-         if(chain.head_block_num() == 0)
-            new_chain_banner(chain);
-         //my->_production_skip_flags |= eosio::chain::skip_undo_history_check;
-      }
-      my->schedule_production_loop();
-   } else
-      elog("No producers configured! Please add producer IDs and private keys to configuration.");
-      ilog("producer plugin:  plugin_startup() end");
-   } FC_CAPTURE_AND_RETHROW() }
+   ilog("producer plugin:  plugin_startup() end");
+} FC_CAPTURE_AND_RETHROW() }
 
 void producer_plugin::plugin_shutdown() {
    try {
@@ -245,6 +284,25 @@ void producer_plugin::plugin_shutdown() {
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
    }
+}
+
+void producer_plugin_impl::startup() {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain.accepted_block.connect( [this]( const auto& bsp ){ on_block( bsp ); } );
+
+   if (!_producers.empty())
+   {
+      ilog("Launching block production for ${n} producers.", ("n", _producers.size()));
+      if(_production_enabled)
+      {
+         if(chain.head_block_num() == 0)
+            new_chain_banner(chain);
+         //_production_skip_flags |= eosio::chain::skip_undo_history_check;
+      }
+      schedule_production_loop();
+   } else
+      elog("No producers configured! Please add producer IDs and private keys to configuration.");
+
 }
 
 void producer_plugin_impl::schedule_production_loop() {
@@ -267,8 +325,25 @@ void producer_plugin_impl::schedule_production_loop() {
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    try {
+      // determine how many blocks this producer can confirm
+      // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
+      // 2) if it is a producer on this node that has never produced, the conservative approach is to assume no
+      //    confirmations to make sure we don't double sign after a crash TODO: make these watermarks durable?
+      // 3) if it is a producer on this node where this node knows the last block it produced, safely set it -UNLESS-
+      // 4) the producer on this node's last watermark is higher (meaning on a different fork)
+      const auto& hbs = chain.head_block_state();
+      auto producer_name = hbs->get_scheduled_producer(block_time).producer_name;
+      uint16_t blocks_to_confirm = 0;
+      auto itr = _producer_watermarks.find(producer_name);
+      if (itr != _producer_watermarks.end()) {
+         auto watermark = itr->second;
+         if (watermark < hbs->block_num) {
+            blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
+         }
+      }
+
       chain.abort_block();
-      chain.start_block(block_time);
+      chain.start_block(block_time, blocks_to_confirm);
    } FC_LOG_AND_DROP();
 
    if (chain.pending_block_state()) {
@@ -334,10 +409,10 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
             auto producer  = db.head_block_producer();
             auto pending   = db.head_block_state();
 
-            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}",
+            ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
                  ("p",producer)("id",fc::variant(pending->id).as_string().substr(0,16))
                  ("n",pending->block_num)("t",pending->block->timestamp)
-                 ("count",pending->block->transactions.size())("lib",db.last_irreversible_block_num())(capture) );
+                 ("count",pending->block->transactions.size())("lib",db.last_irreversible_block_num())("confs", pending->header.confirmed)(capture) );
             break;
          }
          case block_production_condition::not_synced:
@@ -361,6 +436,9 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
          case block_production_condition::exception_producing_block:
             elog( "exception producing block" );
             break;
+         case block_production_condition::fork_below_watermark:
+            elog( "Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})" );
+            break;
          }
    }
    schedule_production_loop();
@@ -369,7 +447,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   const auto& hbs = *chain.head_block_state();
+   block_state_ptr hbs = chain.head_block_state();
    fc::time_point now = fc::time_point::now();
 
    /*
@@ -380,7 +458,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {
-      if( hbs.header.timestamp.next().to_time_point() >= now )
+      if( hbs->header.timestamp.next().to_time_point() >= now )
          _production_enabled = true;
       else
          return block_production_condition::not_synced;
@@ -398,7 +476,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    //
    assert( now > chain.head_block_time() );
 
-   const auto& scheduled_producer = hbs.get_scheduled_producer( pending_block_timestamp );
+   const auto& scheduled_producer = hbs->get_scheduled_producer( pending_block_timestamp );
    // we must control the producer scheduled to produce the next block.
    if( _producers.find( scheduled_producer.producer_name ) == _producers.end() )
    {
@@ -414,7 +492,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::no_private_key;
    }
 
-   /*uint32_t prate = hbs.producer_participation_rate();
+   /*uint32_t prate = hbs->producer_participation_rate();
    if( prate < _required_producer_participation )
    {
       capture("pct", uint32_t(prate / config::percent_1));
@@ -427,13 +505,41 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       return block_production_condition::lag;
    }
 
-  // idump( (fc::time_point::now() - chain.pending_block_time()) );
+   // determine if our watermark excludes us from producing at this point
+   auto itr = _producer_watermarks.find(scheduled_producer.producer_name);
+   if (itr != _producer_watermarks.end()) {
+      if (itr->second >= hbs->block_num + 1) {
+         capture("producer", scheduled_producer.producer_name)("watermark",itr->second)("head_block_num",hbs->block_num);
+         return block_production_condition::fork_below_watermark;
+      }
+   }
+
+   //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
    chain.sign_block( [&]( const digest_type& d ) { return private_key_itr->second.sign(d); } );
    chain.commit_block();
    auto hbt = chain.head_block_time();
    //idump((fc::time_point::now() - hbt));
 
+   block_state_ptr new_bs = chain.head_block_state();
+   // for newly installed producers we can set their watermarks to the block they became
+   if (hbs->active_schedule.version != new_bs->active_schedule.version) {
+      flat_set<account_name> new_producers;
+      new_producers.reserve(new_bs->active_schedule.producers.size());
+      for( const auto& p: new_bs->active_schedule.producers) {
+         if (_producers.count(p.producer_name) > 0)
+            new_producers.insert(p.producer_name);
+      }
+
+      for( const auto& p: hbs->active_schedule.producers) {
+         new_producers.erase(p.producer_name);
+      }
+
+      for (const auto& new_producer: new_producers) {
+         _producer_watermarks[new_producer] = chain.head_block_num();
+      }
+   }
+   _producer_watermarks[scheduled_producer.producer_name] = chain.head_block_num();
    return block_production_condition::produced;
 }
 

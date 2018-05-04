@@ -37,18 +37,18 @@ public:
       create_accounts( { N(eosio.token) } );
       produce_blocks( 100 );
 
-      set_code( config::system_account_name, eosio_system_wast );
-      set_abi( config::system_account_name, eosio_system_abi );
-
       set_code( N(eosio.token), eosio_token_wast );
       set_abi( N(eosio.token), eosio_token_abi );
 
-      create_currency( N(eosio.token), config::system_account_name, asset::from_string("1000000000.0000 EOS") );
-      issue(config::system_account_name, "100000000.0000 EOS");
+      create_currency( N(eosio.token), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
+      issue(config::system_account_name,      "1000000000.0000 EOS");
+      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+
+      set_code( config::system_account_name, eosio_system_wast );
+      set_abi( config::system_account_name, eosio_system_abi );
 
       produce_blocks();
 
-      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
       create_account_with_resources( N(alice), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(bob), N(eosio), asset::from_string("0.4500 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(carol), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
@@ -313,6 +313,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), buyram( "alice", "bob", "200.0000 EOS" ) );
    BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 100 ) );
    BOOST_REQUIRE_EQUAL( success(), sellram( "bob", 100 ) );
+   BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 10000 ) );
 
 
 
@@ -606,7 +607,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    //call regproducer again to change parameters
    fc::variant params2 = producer_parameters_example(2);
 
-   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("EOSR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
+   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("PUB_R1_6EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key2 )

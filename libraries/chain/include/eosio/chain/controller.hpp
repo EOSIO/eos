@@ -34,18 +34,12 @@ namespace eosio { namespace chain {
    class controller {
       public:
          struct config {
-            struct runtime_limits {
-               fc::microseconds     max_push_block_us = fc::microseconds(100000);
-               fc::microseconds     max_push_transaction_us = fc::microseconds(1000'000);
-            };
-
             path         block_log_dir       =  chain::config::default_block_log_dir;
             path         shared_memory_dir   =  chain::config::default_shared_memory_dir;
             uint64_t     shared_memory_size  =  chain::config::default_shared_memory_size;
             bool         read_only           =  false;
 
             genesis_state                  genesis;
-            runtime_limits                 limits;
             wasm_interface::vm_type        wasm_runtime = chain::config::default_wasm_runtime;
          };
 
@@ -59,7 +53,7 @@ namespace eosio { namespace chain {
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time = block_timestamp_type() );
+         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0 );
 
          void  abort_block();
 
@@ -142,6 +136,8 @@ namespace eosio { namespace chain {
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
 
+         block_id_type get_block_id_for_num( uint32_t block_num )const;
+
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
@@ -173,10 +169,14 @@ namespace eosio { namespace chain {
 
 
          optional<abi_serializer> get_abi_serializer( account_name n )const {
-            const auto& a = get_account(n);
-            abi_def abi;
-            if( abi_serializer::to_abi( a.abi, abi ) )
-               return abi_serializer(abi);
+            if( n.good() ) {
+               try {
+                  const auto& a = get_account( n );
+                  abi_def abi;
+                  if( abi_serializer::to_abi( a.abi, abi ))
+                     return abi_serializer( abi );
+               } FC_CAPTURE_AND_LOG((n))
+            }
             return optional<abi_serializer>();
          }
 
@@ -195,10 +195,9 @@ namespace eosio { namespace chain {
 
 } }  /// eosio::chain
 
-FC_REFLECT( eosio::chain::controller::config::runtime_limits, (max_push_block_us)(max_push_transaction_us) )
 FC_REFLECT( eosio::chain::controller::config,
             (block_log_dir)
             (shared_memory_dir)(shared_memory_size)(read_only)
             (genesis)
-            (limits)(wasm_runtime)
+            (wasm_runtime)
           )

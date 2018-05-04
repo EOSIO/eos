@@ -214,23 +214,12 @@ eosio::chain_apis::read_only::get_info_results get_info() {
    return ::call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-string generate_nonce_value() {
+string generate_nonce_string() {
    return fc::to_string(fc::time_point::now().time_since_epoch().count());
 }
 
-chain::action generate_nonce() {
-   auto v = generate_nonce_value();
-   variant nonce = fc::mutable_variant_object()
-         ("value", v);
-
-   try {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", name(config::system_account_name)));
-      abi_serializer eosio_serializer(result["abi"].as<abi_def>());
-      return chain::action( {}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce));
-   }
-   catch (...) {
-      EOS_THROW(account_query_exception, "A system contract is required to use nonce");
-   }
+chain::action generate_nonce_action() {
+   return chain::action( {}, config::nobody_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
 fc::variant determine_required_keys(const signed_transaction& trx) {
@@ -267,7 +256,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    trx.set_reference_block(ref_block_id);
 
    if (tx_force_unique) {
-      trx.context_free_actions.emplace_back( generate_nonce() );
+      trx.context_free_actions.emplace_back( generate_nonce_action() );
    }
 
    auto required_keys = determine_required_keys(trx);
@@ -399,6 +388,24 @@ chain::action create_action(const vector<permission_level>& authorization, const
    auto result = call(json_to_bin_func, arg);
    wlog("result=${r}",("r",result));
    return chain::action{authorization, code, act, result.get_object()["binargs"].as<bytes>()};
+}
+
+chain::action create_buyram(const name& creator, const name& newaccount, const asset& quantity) {
+   fc::variant act_payload = fc::mutable_variant_object()
+         ("payer", creator.to_string())
+         ("receiver", newaccount.to_string())
+         ("quant", quantity.to_string());
+   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+                        config::system_account_name, N(buyram), act_payload);
+}
+
+chain::action create_buyrambytes(const name& creator, const name& newaccount, uint32_t numbytes) {
+   fc::variant act_payload = fc::mutable_variant_object()
+         ("payer", creator.to_string())
+         ("receiver", newaccount.to_string())
+         ("bytes", numbytes);
+   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+                        config::system_account_name, N(buyrambytes), act_payload);
 }
 
 fc::variant regproducer_variant(const account_name& producer,
@@ -923,12 +930,18 @@ int main( int argc, char** argv ) {
    string account_name;
    string owner_key_str;
    string active_key_str;
+   uint32_t buy_ram_bytes_in_kbytes = 8;
+   string buy_ram_eos;
 
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
    createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
    createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
+   createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
+                             (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
+   createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
+                             (localized("The amount of RAM bytes to purchase for the new account in EOS")));
    add_standard_transaction_options(createAccount, "creator@active");
    createAccount->set_callback([&] {
       public_key_type owner_key, active_key;
@@ -938,7 +951,15 @@ int main( int argc, char** argv ) {
       try {
          active_key = public_key_type(active_key_str);
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
-      send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
+      if( !buy_ram_eos.empty() ) {
+         action buyact = create_buyram(creator, account_name, asset::from_string(buy_ram_eos));
+         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
+      } else if( buy_ram_bytes_in_kbytes > 0 ){
+         action buyact = create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024 * 1024);
+         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
+      } else {
+         send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
+      }
    });
 
    // Get subcommand
@@ -1354,7 +1375,7 @@ int main( int argc, char** argv ) {
       signed_transaction trx;
       if (tx_force_unique && memo.size() == 0) {
          // use the memo to add a nonce
-         memo = generate_nonce_value();
+         memo = generate_nonce_string();
          tx_force_unique = false;
       }
 

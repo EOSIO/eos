@@ -239,11 +239,11 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
       issue( N(alice), N(alice), asset::from_string("-1.000 TKN"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: comparison of assets with different symbols is not allowed" ),
+   BOOST_REQUIRE_EQUAL( success(),
       issue( N(alice), N(alice), asset::from_string("1.00 TKN"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: comparison of assets with different symbols is not allowed" ),
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: asset symbol has higher precision than expected" ),
       issue( N(alice), N(alice), asset::from_string("1.0000 TKN"), "hola" )
    );
 
@@ -299,7 +299,7 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
       transfer( N(alice), N(bob), asset::from_string("-1000 CERO"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: attempt to subtract asset with different symbol" ),
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: asset symbol has higher precision than expected" ),
       transfer( N(alice), N(bob), asset::from_string("1.0 CERO"), "hola" )
    );
 
