@@ -194,6 +194,19 @@ void apply_context::require_recipient( account_name recipient ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
+   auto* code = control.db().find<account_object, by_name>(a.account);
+   EOS_ASSERT( code != nullptr, action_validate_exception,
+               "inline action's code account ${account} does not exist", ("account", a.account) );
+
+   for( const auto& auth : a.authorization ) {
+      auto* actor = control.db().find<account_object, by_name>(auth.actor);
+      EOS_ASSERT( actor != nullptr, action_validate_exception,
+                  "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
+      EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
+                  "inline action's authorizations include a non-existent permission: {permission}",
+                  ("permission", auth) );
+   }
+
    if ( !privileged ) {
       if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
          const auto delay = control.limit_delay( control.get_authorization_manager()
@@ -214,7 +227,13 @@ void apply_context::execute_inline( action&& a ) {
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
-   FC_ASSERT( a.authorization.size() == 0, "context free actions cannot have authorizations" );
+   auto* code = control.db().find<account_object, by_name>(a.account);
+   EOS_ASSERT( code != nullptr, action_validate_exception,
+               "inline action's code account ${account} does not exist", ("account", a.account) );
+
+   EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
+               "context-free actions cannot have authorizations" );
+
    _cfa_inline_actions.emplace_back( move(a) );
 }
 
