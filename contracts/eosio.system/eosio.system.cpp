@@ -4,6 +4,7 @@
 #include "delegate_bandwidth.cpp"
 #include "producer_pay.cpp"
 #include "voting.cpp"
+#include "exchange_state.cpp"
 
 
 namespace eosiosystem {
@@ -12,10 +13,27 @@ namespace eosiosystem {
    :native(s),
     _voters(_self,_self),
     _producers(_self,_self),
-    _global(_self,_self)
+    _global(_self,_self),
+    _rammarket(_self,_self)
    {
       print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
+
+      auto itr = _rammarket.find(S(4,RAMEOS));
+
+      if( itr == _rammarket.end() ) {
+         auto system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+         itr = _rammarket.emplace( _self, [&]( auto& m ) {
+            m.supply.amount = 100000000000000ll;
+            m.supply.symbol = S(4,RAMEOS);
+            m.base.balance.amount = int64_t(_gstate.free_ram());
+            m.base.balance.symbol = S(0,RAM);
+            m.quote.balance.amount = system_token_supply / 1000;
+            m.quote.balance.symbol = S(4,EOS);
+         });
+      } else {
+         print( "ram market already created" );
+      }
    }
 
    eosio_global_state system_contract::get_default_parameters() {

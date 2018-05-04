@@ -43,6 +43,7 @@ class currency_tester : public TESTER {
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
+
          set_transaction_headers(trx);
          trx.sign(get_private_key(signer, "active"), chain_id_type());
          return push_transaction(trx);
@@ -316,7 +317,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // invalid - contains lower case characters, no validation
    {
       BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,EoS)),
-                            fc::assert_exception, fc_assert_exception_message_is("invalid symbol"));
+                            fc::assert_exception, fc_assert_exception_message_is("invalid symbol: EoS"));
    }
 
    // invalid - contains lower case characters, exception thrown
