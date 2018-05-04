@@ -42,7 +42,7 @@ uint32_t instruction_counter::bcnt = 0;
 std::queue<uint32_t> instruction_counter::fcnts;
 
 int32_t  checktime_injection::idx = 0;
-int32_t  checktime_block_type::idx = -1;
+int32_t  checktime_injection::chktm_idx = 0;
 std::stack<size_t>                   checktime_block_type::block_stack;
 std::stack<size_t>                   checktime_block_type::type_stack;
 std::queue<std::vector<size_t>>      checktime_block_type::orderings;

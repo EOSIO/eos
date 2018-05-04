@@ -231,7 +231,6 @@ namespace eosio { namespace testing {
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
-
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
       if (authorizer) {
