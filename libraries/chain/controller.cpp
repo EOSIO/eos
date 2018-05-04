@@ -130,6 +130,9 @@ struct controller_impl {
       }
    }
 
+   void emit_transaction(const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace) {
+
+   }
 
    void on_irreversible( const block_state_ptr& s ) {
       if( !blog.head() )
@@ -547,6 +550,11 @@ struct controller_impl {
          (trx->on_result)(trace);
          trx->on_result = decltype(trx->on_result)(); //assign empty std::function
       }
+
+      if (!trx->accepted) {
+         emit( self.accepted_transaction, trx);
+         trx->accepted = true;
+      }
    }
 
    /**
@@ -609,8 +617,8 @@ struct controller_impl {
             fc::move_append( pending->_actions, move(trx_context.executed) );
 
             transaction_trace_notify( trx, trace );
-
             emit( self.applied_transaction, trace );
+
             trx_context.squash();
             return;
          } catch( ... ) {
@@ -620,8 +628,10 @@ struct controller_impl {
             throw;
          }
       } catch( const fc::exception& e ) {
-         trace->hard_except = e;
-         trace->hard_except_ptr = std::current_exception();
+         if (trace) {
+            trace->hard_except = e;
+            trace->hard_except_ptr = std::current_exception();
+         }
       }
       transaction_trace_notify( trx, trace );
    } FC_CAPTURE_AND_RETHROW() } /// push_transaction
@@ -1163,13 +1173,10 @@ void controller::log_irreversible_blocks() {
    */
 }
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
-   idump((id));
    auto state = my->fork_db.get_block(id);
    if( state ) return state->block;
-   edump((block_header::num_from_id(id)));
    auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
    if( bptr && bptr->id() == id ) return bptr;
-   elog( "not found" );
    return signed_block_ptr();
 }
 
@@ -1179,8 +1186,16 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
       return blk_state->block;
    }
 
-   ilog( "blog read by number ${n}", ("n", block_num) );
    return my->blog.read_block_by_num(block_num);
+} FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
+block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
+   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
+   if( blk_state ) {
+      return blk_state->id;
+   }
+
+   return my->blog.read_block_by_num(block_num)->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 void controller::pop_block() {

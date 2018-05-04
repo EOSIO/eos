@@ -20,6 +20,7 @@ class transaction_metadata {
       signed_transaction                    trx;
       packed_transaction                    packed_trx;
       optional<flat_set<public_key_type>>   signing_keys;
+      bool                                  accepted = false;
 
       std::function<void(const transaction_trace_ptr&)>       on_result;
 
