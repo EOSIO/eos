@@ -69,11 +69,10 @@ Options:
   -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
 ```
 */
+
 #include <string>
 #include <vector>
 #include <regex>
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
 #include <iostream>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
@@ -84,12 +83,22 @@ Options:
 #include <fc/variant_object.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
+#include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 
+#pragma push_macro("N")
+#undef N
+
+#include <boost/asio.hpp>
+#include <boost/format.hpp>
+#include <boost/dll/runtime_symbol_info.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/process.hpp>
+#include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -97,6 +106,8 @@ Options:
 #include <boost/algorithm/string/split.hpp>
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
+
+#pragma pop_macro("N")
 
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
@@ -644,6 +655,44 @@ struct set_action_permission_subcommand {
    }
 };
 
+bool port_busy( uint16_t port ) {
+   using namespace boost::asio;
+   
+   io_service ios;
+   boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+   boost::asio::ip::tcp::socket socket(ios);
+   boost::system::error_code ec = error::would_block;
+   //connecting/failing to connect to localhost should be always fast - don't care about timeouts
+   socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
+   do {
+      ios.run_one();
+   } while (ec == error::would_block);
+   return !ec;
+}
+
+void start_keosd( uint16_t wallet_port ) {
+   auto binPath = boost::dll::program_location();
+   boost::filesystem::path keosPath = binPath.parent_path().append("keosd"); //cleos and keosd are in the same installation directory
+   if ( !boost::filesystem::exists(keosPath) ) {
+      keosPath = binPath.parent_path().parent_path().append("keosd").append("keosd"); //build directory
+   }
+   if ( boost::filesystem::exists( keosPath ) ) {
+      namespace bp = boost::process;
+      keosPath = boost::filesystem::canonical( keosPath );
+      ::boost::process::child keos( keosPath, "--http-server-address=127.0.0.1:"+std::to_string(wallet_port),
+                                    bp::std_in.close(),
+                                    bp::std_out > bp::null,
+                                    bp::std_err > bp::null);
+      if (keos.running()) {
+         std::cerr << keosPath << " launched" << std::endl;
+         keos.detach();
+      } else {
+         std::cerr << "No wallet service listening on 127.0.0.1:" << std::to_string(wallet_port) << ". Failed to launch " << keosPath << std::endl;
+      }
+   } else {
+      std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port) << ". Cannot automatically start keosd because keosd was not found." << std::endl;
+   }
+}
 
 CLI::callback_t old_host_port = [](CLI::results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
@@ -1104,11 +1153,6 @@ void get_account( const string& accountName ) {
 }
 
 int main( int argc, char** argv ) {
-   fc::path binPath = argv[0];
-   if (binPath.is_relative()) {
-      binPath = relative(binPath, fc::current_path());
-   }
-
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
@@ -1122,6 +1166,15 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+
+   auto parsed_url = parse_url( wallet_url );
+   auto wallet_port_uint = std::stoi(parsed_url.port);
+   if ( wallet_port_uint < 0 || 65535 < wallet_port_uint ) {
+      FC_THROW("port is not in valid range");
+   }
+   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( uint16_t(wallet_port_uint) ) ) {
+      start_keosd( uint16_t(wallet_port_uint) );
+   }
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -1688,6 +1741,16 @@ int main( int argc, char** argv ) {
    listKeys->set_callback([] {
       const auto& v = call(wallet_url, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
+   stopKeosd->set_callback([] {
+      const auto& v = call(wallet_url, keosd_stop);
+      if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
+         std::cerr << fc::json::to_pretty_string(v) << std::endl;
+      } else {
+         std::cout << "OK" << std::endl;
+      }
    });
 
    // sign subcommand
