@@ -27,7 +27,6 @@ namespace eosiosystem {
    using eosio::transaction;
 
 
-   static constexpr uint32_t blocks_per_year = 52*7*24*2*3600; // half seconds per year
    static constexpr uint32_t blocks_per_producer = 12;
 
 
@@ -69,15 +68,6 @@ namespace eosiosystem {
       _producers.modify( prod, 0, [&]( producer_info& info ){
          info.producer_key = eosio::public_key();
       });
-   }
-
-
-   eosio::asset system_contract::payment_per_block(uint32_t percent_of_max_inflation_rate) {
-      const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
-      const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
-      const double continuous_rate = std::log1p(annual_rate);
-      int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));
-      return eosio::asset(payment, system_token_symbol);
    }
 
    void system_contract::update_elected_producers(time cycle_time) {

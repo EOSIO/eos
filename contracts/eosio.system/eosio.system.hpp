@@ -105,7 +105,7 @@ namespace eosiosystem {
 
    typedef eosio::singleton<N(global), eosio_global_state> global_state_singleton;
 
-   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
+   //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
    static constexpr uint64_t     system_token_symbol = S(4,EOS);
 
@@ -187,7 +187,9 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
       private:
-         eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
+         eosio::asset payment_per_block( double rate );
+
+         eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket );
 
          void update_elected_producers(time cycle_time);
 
