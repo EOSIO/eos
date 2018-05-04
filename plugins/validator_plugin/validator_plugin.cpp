@@ -4,6 +4,7 @@
  */
 #include <eosio/validator_plugin/validator_plugin.hpp>
 #include <eosio/chain/plugin_interface.hpp>
+#include <fc/scoped_exit.hpp>
 
 using std::string;
 using std::vector;
@@ -39,13 +40,14 @@ class validator_plugin_impl {
          // abort the pending block
          chain.abort_block();
 
-         try {
-            // push the new block
-            chain.push_block(block);
-         } FC_LOG_AND_DROP();
+         // exceptions throw out, make sure we restart our loop
+         auto ensure = fc::make_scoped_exit([this](){
+            // restart a block
+            start_block();
+         });
 
-         // restart our production loop
-         start_block();
+         // push the new block
+         chain.push_block(block);
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
@@ -79,11 +81,15 @@ void validator_plugin::plugin_initialize(const boost::program_options::variables
 
 
    my->_incoming_block_subscription = app().get_channel<channels::incoming_block>().subscribe([this](const signed_block_ptr& block){
-      my->on_incoming_block(block);
+      try {
+         my->on_incoming_block(block);
+      } FC_LOG_AND_DROP();
    });
 
    my->_incoming_transaction_subscription = app().get_channel<channels::incoming_transaction>().subscribe([this](const packed_transaction_ptr& trx){
-      my->on_incoming_transaction(trx);
+      try {
+         my->on_incoming_transaction(trx);
+      } FC_LOG_AND_DROP();
    });
 
    // this is a low priority default plugin
