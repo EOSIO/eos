@@ -706,6 +706,8 @@ struct create_account_subcommand {
                                    (localized("The amount of RAM bytes to purchase for the new account in EOS")));
       }
 
+      add_standard_transaction_options(createAccount);
+
       createAccount->set_callback([this] {
             public_key_type owner_key, active_key;
             try {
