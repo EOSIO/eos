@@ -41,12 +41,6 @@
       "fields": [
         {"name":"from", "type":"account_name"}
       ]
-    },{
-      "name": "nonce",
-      "base": "",
-      "fields": [
-        {"name":"value", "type":"string"}
-      ]
     }],
   "actions": [{
       "name": "setalimits",
@@ -67,10 +61,6 @@
     },{
       "name": "reqauth",
       "type": "require_auth",
-      "ricardian_contract": ""
-    },{
-      "name": "nonce",
-      "type": "nonce",
       "ricardian_contract": ""
     }
   ],

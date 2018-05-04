@@ -136,6 +136,8 @@ namespace eosio { namespace chain {
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
 
+         block_id_type get_block_id_for_num( uint32_t block_num )const;
+
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
@@ -167,10 +169,14 @@ namespace eosio { namespace chain {
 
 
          optional<abi_serializer> get_abi_serializer( account_name n )const {
-            const auto& a = get_account(n);
-            abi_def abi;
-            if( abi_serializer::to_abi( a.abi, abi ) )
-               return abi_serializer(abi);
+            if( n.good() ) {
+               try {
+                  const auto& a = get_account( n );
+                  abi_def abi;
+                  if( abi_serializer::to_abi( a.abi, abi ))
+                     return abi_serializer( abi );
+               } FC_CAPTURE_AND_LOG((n))
+            }
             return optional<abi_serializer>();
          }
 

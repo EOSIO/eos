@@ -117,6 +117,12 @@ class producer_plugin_impl {
          });
          // push the new block
          chain.push_block(block);
+
+         ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+              ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(0,16))
+              ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
+              ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed) );
+
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
@@ -403,7 +409,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
             auto producer  = db.head_block_producer();
             auto pending   = db.head_block_state();
 
-            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}, confirmed: ${confs}",
+            ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
                  ("p",producer)("id",fc::variant(pending->id).as_string().substr(0,16))
                  ("n",pending->block_num)("t",pending->block->timestamp)
                  ("count",pending->block->transactions.size())("lib",db.last_irreversible_block_num())("confs", pending->header.confirmed)(capture) );
@@ -508,7 +514,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       }
    }
 
-  // idump( (fc::time_point::now() - chain.pending_block_time()) );
+   //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
    chain.sign_block( [&]( const digest_type& d ) { return private_key_itr->second.sign(d); } );
    chain.commit_block();

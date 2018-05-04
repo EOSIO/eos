@@ -369,11 +369,9 @@ namespace eosio { namespace testing {
         // lets also push a context free action, the multi chain test will then also include a context free action
         ("context_free_actions", fc::variants({
             fc::mutable_variant_object()
-               ("account", name(config::system_account_name))
+               ("account", name(config::nobody_account_name))
                ("name", "nonce")
-               ("data", fc::mutable_variant_object()
-                  ("value", v)
-               )
+               ("data", fc::raw::pack(v))
             })
          );
 

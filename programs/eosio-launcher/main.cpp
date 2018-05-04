@@ -1042,6 +1042,11 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
                   ( "host", instance.name )
              ) );
     log_config.loggers.front().appenders.push_back("net");
+    fc::logger_config p2p ("net_plugin_impl");
+    p2p.level=fc::log_level::debug;
+    p2p.appenders.push_back ("stderr");
+    p2p.appenders.push_back ("net");
+    log_config.loggers.emplace_back(p2p);
   }
 
   auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );

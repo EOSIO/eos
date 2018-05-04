@@ -71,9 +71,9 @@ using namespace eosio::chain;
      eosio::detail::txn_test_gen_empty result;
 
 struct txn_test_gen_plugin_impl {
-   transaction_trace_ptr push_transaction( signed_transaction& trx ) { try {
-      controller& cc = app().get_plugin<chain_plugin>().chain();
-      return cc.push_transaction( std::make_shared<transaction_metadata>(trx) );
+   void push_transaction( signed_transaction& trx ) { try {
+      chain_plugin& cp = app().get_plugin<chain_plugin>();
+      return cp.accept_transaction( packed_transaction(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
@@ -147,11 +147,9 @@ struct txn_test_gen_plugin_impl {
          {
             setabi handler;
             handler.account = newaccountC;
-            handler.abi = eosio_token_abi_def;
+            handler.abi = json::from_string(eosio_token_abi).as<abi_def>();
             trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
          }
-
-         abi_serializer eosio_token_serializer(eosio_token_abi_def);
 
          {
             action act;
@@ -253,7 +251,7 @@ struct txn_test_gen_plugin_impl {
       fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
       static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
-      abi_serializer eosio_serializer(cc.get_database().find<account_object, by_name>(config::system_account_name)->get_abi());
+      abi_serializer eosio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
 
       uint32_t reference_block_num = cc.last_irreversible_block_num();
       if (txn_reference_block_lag >= 0) {
@@ -269,11 +267,9 @@ struct txn_test_gen_plugin_impl {
 
       for(unsigned int i = 0; i < batch; ++i) {
       {
-      variant nonce_vo = fc::mutable_variant_object()
-         ("value", fc::to_string(nonce++));
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
-      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
+      trx.context_free_actions.emplace_back(action({}, config::nobody_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(reference_block_id);
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;
@@ -282,11 +278,9 @@ struct txn_test_gen_plugin_impl {
       }
 
       {
-      variant nonce_vo = fc::mutable_variant_object()
-         ("value", fc::to_string(nonce++));
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
-      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
+      trx.context_free_actions.emplace_back(action({}, config::nobody_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(reference_block_id);
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;
@@ -313,7 +307,9 @@ struct txn_test_gen_plugin_impl {
    action act_a_to_b;
    action act_b_to_a;
 
-   abi_serializer currency_serializer = fc::json::from_string(eosio_token_abi).as<abi_def>();
+   int32_t txn_reference_block_lag;
+
+   abi_serializer eosio_token_serializer = fc::json::from_string(eosio_token_abi).as<abi_def>();
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}
