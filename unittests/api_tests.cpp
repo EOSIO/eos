@@ -824,15 +824,6 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
             return expect_assert_message(e, "inline action recursion depth reached");
          }
       );
-
-   // test send_transaction_expiring_late
-   /*
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_transaction", "send_transaction_expiring_late", fc::raw::pack(N(testapi))),
-                         eosio::chain::transaction_exception,  [](const eosio::chain::transaction_exception& e) {
-                                                                  return expect_assert_message(e, "Transaction expiration is too far");
-                                                               }
-      );
-   */
    
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }

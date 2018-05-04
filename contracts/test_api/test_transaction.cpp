@@ -226,24 +226,6 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint6
    eosio_assert(false, "send_transaction_large() should've thrown an error");
 }
 
-// Test no longer needed since the system just sets the expiration of a generated transaction to an appropriate value
-// similar to how it sets the TaPoS.
-/*
-void test_transaction::send_transaction_expiring_late(uint64_t receiver, uint64_t, uint64_t) {
-   using namespace eosio;
-   account_name cur_send;
-   read_action_data( &cur_send, sizeof(account_name) );
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
-   copy_data((char*)&cur_send, sizeof(account_name), test_action.data);
-
-   auto trx = transaction(now() + 60*60*24*365);
-   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send(0, receiver);
-
-   eosio_assert(false, "send_transaction_expiring_late() should've thrown an error");
-}
-*/
-
 /**
  * deferred transaction
  */

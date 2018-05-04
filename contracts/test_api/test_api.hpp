@@ -162,7 +162,6 @@ struct test_transaction {
   static void assert_false_error_handler(const eosio::transaction&);
   static void send_transaction_max();
   static void send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action);
-  //static void send_transaction_expiring_late(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
   static void deferred_print();
   static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
