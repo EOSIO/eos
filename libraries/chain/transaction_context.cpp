@@ -165,6 +165,10 @@ namespace eosio { namespace chain {
       deadline = d;
       is_input = true;
       init( initial_net_usage, initial_cpu_usage );
+      control.validate_tapos( trx );
+      control.validate_referenced_accounts( trx );
+      control.validate_expiration( trx );
+      record_transaction( id, trx.expiration ); /// checks for dupes
    }
 
    void transaction_context::init_for_deferred_trx( fc::time_point d,
@@ -180,30 +184,25 @@ namespace eosio { namespace chain {
    void transaction_context::exec() {
       FC_ASSERT( is_initialized, "must first initialize" );
 
-      //trx.validate(); // Not needed anymore since overflow is prevented by using uint64_t instead of uint32_t
-      control.validate_tapos( trx );
-      control.validate_referenced_accounts( trx );
-
-      if( is_input ) { /// signed transaction from user rather than a deferred transaction
-         control.validate_expiration( trx );
-         record_transaction( id, trx.expiration ); /// checks for dupes
-      }
-
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
             trace->action_traces.emplace_back();
-            trace->action_traces.back() = dispatch_action( act, true );
+            dispatch_action( trace->action_traces.back(), act, true );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
             trace->action_traces.emplace_back();
-            trace->action_traces.back() = dispatch_action( act );
+            dispatch_action( trace->action_traces.back(), act );
          }
       } else {
          schedule_transaction();
       }
+   }
+
+   void transaction_context::finalize() {
+      FC_ASSERT( is_initialized, "must first initialize" );
 
       add_cpu_usage( validate_ram_usage.size() * config::ram_usage_validation_overhead_per_account );
 
@@ -314,7 +313,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   action_trace transaction_context::dispatch_action( const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
+   void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
       apply_context  acontext( control, *this, a, recurse_depth );
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
@@ -322,11 +321,15 @@ namespace eosio { namespace chain {
       try {
          acontext.exec();
       } catch( const action_cpu_usage_exceeded& e ) {
+         trace = move(acontext.trace);
          add_action_cpu_usage( acontext.cpu_usage, context_free ); // Will update cpu_usage to latest value and throw appropriate exception
          FC_ASSERT(false, "should not have reached here" );
+      } catch( ... ) {
+         trace = move(acontext.trace);
+         throw;
       }
 
-      return move(acontext.trace);
+      trace = move(acontext.trace);
    }
 
    void transaction_context::schedule_transaction() {
