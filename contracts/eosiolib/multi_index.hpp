@@ -127,16 +127,26 @@ namespace _multi_index_detail {
  *
  *  Example:
  *  @code
- *  struct record {
- *    uint64_t    primary;
- *    uint128_t   secondary;
- *    uint64_t primary_key() const { return primary; }
- *    uint64_t get_secondary() const { return secondary; }
- *    EOSLIB_SERIALIZE( record, (primary)(secondary) )
- *  };
- *  multi_index<mytable, record,
- *    indexed_by< N(bysecondary), const_mem_fun<record,
- *    uint128_t, &record::get_secondary> > > table( code, scope);
+ *  #include <eosiolib/eosio.hpp>
+ *  using namespace eosio;
+ *  class mycontract: eosio::contract {
+ *    struct record {
+ *       uint64_t    primary;
+ *       uint128_t   secondary;
+ *       uint64_t primary_key() const { return primary; }
+ *       uint64_t get_secondary() const { return secondary; }
+ *       EOSLIB_SERIALIZE( record, (primary)(secondary) )
+ *     };
+ *    public:
+ *      mycontract( account_name self ):contract(self){}
+ *      void myaction() {
+ *        auto code = _self;
+ *        auto scope = _self;
+ *        multi_index<N(mytable), record,
+ *                   indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> > > table( code, scope);
+ *      }
+ *  }
+ *  EOSIO_ABI( mycontract, (myaction) )
  *  @endcode
  */
 template<uint64_t IndexName, typename Extractor>
@@ -146,9 +156,10 @@ struct indexed_by {
 };
 
 /**
- *  @defgroup multiindex Multi Index (Database) C++ API
+ *  @defgroup multiindex Multi Index (Database) C++ API 
+ *  @ingroup database
+ * 
  *  @brief Defines an interface to EOSIO database
- *  @ingroup contractdev
  *  
  *  EOSIO Multi-Index API provides a C++ interface to the EOSIO database. It is patterned after Boost Multi Index Container.
  *  EOSIO Multi-Index table requires exactly a uint64_t primary key. For the table to be able to retrieve the primary key,
@@ -166,28 +177,39 @@ struct indexed_by {
  *
  *  Example:
  *  @code
- *  struct record {
- *    uint64_t    primary;
- *    uint64_t    secondary_1;
- *    uint128_t   secondary_2;
- *    uint256_t   secondary_3;
- *    double      secondary_4;
- *    long double secondary_5;
- *    uint64_t primary_key() const { return primary; }
- *    uint64_t get_secondary_1() const { return secondary_1; }
- *    uint128_t get_secondary_2() const { return secondary_2; }
- *    uint256_t get_secondary_3() const { return secondary_3; }
- *    double get_secondary_4() const { return secondary_4; }
- *    long double get_secondary_5() const { return secondary_5; }
- *    EOSLIB_SERIALIZE( record, (primary)(secondary_1)(secondary_2)(secondary_3)(secondary_4)(secondary_5) )
- *  };
- *  multi_index<mytable, record,
- *    indexed_by< N(bysecondary1), const_mem_fun<record, uint64_t, &record::get_secondary_1> >,
- *    indexed_by< N(bysecondary2), const_mem_fun<record, uint128_t, &record::get_secondary_2> >,
- *    indexed_by< N(bysecondary3), const_mem_fun<record, uint256_t, &record::get_secondary_3> >,
- *    indexed_by< N(bysecondary4), const_mem_fun<record, double, &record::get_secondary_4> >,
- *    indexed_by< N(bysecondary5), const_mem_fun<record, long double, &record::get_secondary_5> >,
- *  > table( code, scope);
+ *  #include <eosiolib/eosio.hpp>
+ *  using namespace eosio;
+ *  class mycontract: contract {
+ *    struct record {
+ *      uint64_t    primary;
+ *      uint64_t    secondary_1;
+ *      uint128_t   secondary_2;
+ *      uint256_t   secondary_3;
+ *      double      secondary_4;
+ *      long double secondary_5;
+ *      uint64_t primary_key() const { return primary; }
+ *      uint64_t get_secondary_1() const { return secondary_1; }
+ *      uint128_t get_secondary_2() const { return secondary_2; }
+ *      uint256_t get_secondary_3() const { return secondary_3; }
+ *      double get_secondary_4() const { return secondary_4; }
+ *      long double get_secondary_5() const { return secondary_5; }
+ *      EOSLIB_SERIALIZE( record, (primary)(secondary_1)(secondary_2)(secondary_3)(secondary_4)(secondary_5) )
+ *    };
+ *    public:
+ *      mycontract( account_name self ):contract(self){}
+ *      void myaction() {
+ *        auto code = _self;
+ *        auto scope = _self;
+ *        multi_index<N(mytable), record,
+ *          indexed_by< N(bysecondary1), const_mem_fun<record, uint64_t, &record::get_secondary_1> >,
+ *          indexed_by< N(bysecondary2), const_mem_fun<record, uint128_t, &record::get_secondary_2> >,
+ *          indexed_by< N(bysecondary3), const_mem_fun<record, uint256_t, &record::get_secondary_3> >,
+ *          indexed_by< N(bysecondary4), const_mem_fun<record, double, &record::get_secondary_4> >,
+ *          indexed_by< N(bysecondary5), const_mem_fun<record, long double, &record::get_secondary_5> >
+ *        > table( code, scope);
+ *      }
+ *  }
+ *  EOSIO_ABI( mycontract, (myaction) )
  *  @endcode
  *  @{
  */
@@ -575,18 +597,28 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       multi_index( uint64_t code, uint64_t scope )
@@ -601,19 +633,29 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(N(dan), N(dan)); // code, scope
-       *  eosio_assert(addresses.get_code() == N(dan), "Codes don't match.");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(N(dan), N(dan)); // code, scope
+       *        eosio_assert(addresses.get_code() == N(dan), "Codes don't match.");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       uint64_t get_code()const  { return _code; }
@@ -626,19 +668,29 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(N(dan), N(dan)); // code, scope
-       *  eosio_assert(addresses.get_scope() == N(dan), "Scopes don't match.");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(N(dan), N(dan)); // code, scope
+       *        eosio_assert(addresses.get_code() == N(dan), "Scopes don't match");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       uint64_t get_scope()const { return _scope; }
@@ -709,32 +761,39 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  auto itr = addresses.find(N(dan));
-       *  eosio_assert(itr == addresses.cbegin(), "Only address is not at front.");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr == addresses.cbegin(), "Only address is not at front.");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator cbegin()const {
@@ -749,32 +808,39 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  auto itr = addresses.find(N(dan));
-       *  eosio_assert(itr == addresses.begin(), "Only address is not at front.");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr == addresses.begin(), "Only address is not at front.");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator begin()const  { return cbegin(); }
@@ -787,22 +853,39 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  // address_index is typedef of our multi_index over table address
-       *  // address table is auto "created" if needed
-       *  address_index addresses(_self, _self); // code, scope
-       *  auto itr = addresses.find(account);
-       *  eosio_assert(itr == addresses.cend(), "Address for account already exists");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr != addresses.cend(), "Address for account doesn't exist");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator cend()const   { return const_iterator( this ); }
@@ -815,22 +898,39 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  // address_index is typedef of our multi_index over table address
-       *  // address table is auto "created" if needed
-       *  address_index addresses(_self, _self); // code, scope
-       *  auto itr = addresses.find(account);
-       *  eosio_assert(itr == addresses.end(), "Address for account already exists");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr != addresses.end(), "Address for account doesn't exist");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator end()const    { return cend(); }
@@ -843,41 +943,49 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  // address_index is typedef of our multi_index over table address
-       *  // address table is auto "created" if needed
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add some data 
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(brendan);
-       *    address.first_name = "Brendan";
-       *    address.last_name = "Blumer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Hong Kong";
-       *    address.state = "HK";
-       *  });
-       *  auto itr = addresses.crbegin();
-       *  eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
-       *  itr++;
-       *  eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *        });
+       *        auto itr = addresses.crbegin();
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
+       *        itr++;
+       *        eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
@@ -890,41 +998,49 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  // address_index is typedef of our multi_index over table address
-       *  // address table is auto "created" if needed
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add some data
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(brendan);
-       *    address.first_name = "Brendan";
-       *    address.last_name = "Blumer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Hong Kong";
-       *    address.state = "HK";
-       *  });
-       *  auto itr = addresses.rbegin();
-       *  eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
-       *  itr++;
-       *  eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *        });
+       *        auto itr = addresses.rbegin();
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
+       *        itr++;
+       *        eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator rbegin()const  { return crbegin(); }
@@ -937,42 +1053,50 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  // address_index is typedef of our multi_index over table address
-       *  // address table is auto "created" if needed
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add some data
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(brendan);
-       *    address.first_name = "Brendan";
-       *    address.last_name = "Blumer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Hong Kong";
-       *    address.state = "HK";
-       *  });
-       *  auto itr = addresses.crend();
-       *  itr--;
-       *  eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
-       *  itr--;
-       *  eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *        });
+       *        auto itr = addresses.crend();
+       *        itr--;
+       *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
+       *        itr--;
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
@@ -985,42 +1109,50 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  // address_index is typedef of our multi_index over table address
-       *  // address table is auto "created" if needed
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add some data
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(brendan);
-       *    address.first_name = "Brendan";
-       *    address.last_name = "Blumer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Hong Kong";
-       *    address.state = "HK";
-       *  });
-       *  auto itr = addresses.rend();
-       *  itr--;
-       *  eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
-       *  itr--;
-       *  eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *        });
+       *        auto itr = addresses.rend();
+       *        itr--;
+       *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
+       *        itr--;
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator rend()const    { return crend(); }
@@ -1035,43 +1167,57 @@ class multi_index
        *
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint32_t zip = 0;
-       *    uint64_t liked = 0;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *    address.zip = 93446;
-       *    address.liked = 0;
-       *  });
-       *  uint32_t zipnumb = 93446;
-       *  auto zip_index = addresses.get_index<N(zip)>();
-       *  auto itr = zip_index.lower_bound(zipnumb);
-       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
-       *    zip_index.modify( itr, 0, [&]( auto &address ) {
-       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
-       *          address.liked++;
-       *    });
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint32_t zip = 0;
+       *       uint64_t primary_key() const { return account_name; }
+       *       uint64_t by_zip() const { return zip; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address, indexed_by< N(zip), const_mem_fun<address, uint64_t, &address::by_zip> > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *          address.zip = 93446;
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *          address.zip = 93445;
+       *        });
+       *        uint32_t zipnumb = 93445;
+       *        auto zip_index = addresses.get_index<N(zip)>();
+       *        auto itr = zip_index.lower_bound(zipnumb);
+       *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Lower Bound Record ");
+       *        itr++;
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Lower Bound Record");
+       *        itr++;
+       *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
+       *      } 
        *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator lower_bound( uint64_t primary )const {
@@ -1091,43 +1237,56 @@ class multi_index
        *
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint32_t zip = 0;
-       *    uint64_t liked = 0;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *    address.zip = 93446;
-       *    address.liked = 0;
-       *  });
-       *  uint32_t zipnumb = 93446;
-       *  auto zip_index = addresses.get_index<N(zip)>();
-       *  auto itr = zip_index.upper_bound(zipnumb);
-       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
-       *    zip_index.modify( itr, 0, [&]( auto &address ) {
-       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
-       *          address.liked++;
-       *    });
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint32_t zip = 0;
+       *       uint64_t liked = 0;
+       *       uint64_t primary_key() const { return account_name; }
+       *       uint64_t by_zip() const { return zip; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address, indexed_by< N(zip), const_mem_fun<address, uint64_t, &address::by_zip> > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *          address.zip = 93446;
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *          address.zip = 93445;
+       *        });
+       *        uint32_t zipnumb = 93445;
+       *        auto zip_index = addresses.get_index<N(zip)>();
+       *        auto itr = zip_index.upper_bound(zipnumb);
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
+       *        itr++;
+       *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
+       *      } 
        *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator upper_bound( uint64_t primary )const {
@@ -1149,30 +1308,37 @@ class multi_index
        *
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t key;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return key; }
-       *    EOSLIB_SERIALIZE( address, (key)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.key = addresses.available_primary_key();
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t key;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return key; }
+       *       EOSLIB_SERIALIZE( address, (key)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.key = addresses.available_primary_key();
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       uint64_t available_primary_key()const {
@@ -1204,43 +1370,44 @@ class multi_index
        *
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint32_t zip = 0;
-       *    uint64_t liked = 0;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *    address.zip = 93446;
-       *    address.liked = 0;
-       *  });
-       *  uint32_t zipnumb = 93446;
-       *  auto zip_index = addresses.get_index<N(zip)>();
-       *  auto itr = zip_index.lower_bound(zipnumb);
-       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
-       *    zip_index.modify( itr, 0, [&]( auto &address ) {
-       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
-       *          address.liked++;
-       *    });
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint32_t zip = 0;
+       *       uint64_t primary_key() const { return account_name; }
+       *       uint64_t by_zip() const { return zip; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address, indexed_by< N(zip), const_mem_fun<address, uint64_t, &address::by_zip> > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self);  // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *          address.zip = 93446;
+       *        });
+       *        uint32_t zipnumb = 93446;
+       *        auto zip_index = addresses.get_index<N(zip)>();
+       *        auto itr = zip_index.find(zipnumb);
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect Record ");
+       *      } 
        *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<uint64_t IndexName>
@@ -1266,43 +1433,55 @@ class multi_index
        *
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint32_t zip = 0;
-       *    uint64_t liked = 0;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *    address.zip = 93446;
-       *    address.liked = 0;
-       *  });
-       *  uint32_t zipnumb = 93446;
-       *  auto zip_index = addresses.get_index<N(zip)>();
-       *  auto itr = zip_index.lower_bound(zipnumb);
-       *  for (; itr != zip_index.end() && itr->zip == zipnumb; ++itr) {
-       *    zip_index.modify( itr, 0, [&]( auto &address ) {
-       *          eosio::print("Liking: ", address.first_name.c_str(), " ", address.last_name.c_str(), " ");
-       *          address.liked++;
-       *    });
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint32_t zip = 0;
+       *       uint64_t primary_key() const { return account_name; }
+       *       uint64_t by_zip() const { return zip; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address, indexed_by< N(zip), const_mem_fun<address, uint64_t, &address::by_zip> > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *          address.zip = 93446;
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *          address.zip = 93445;
+       *        });
+       *        uint32_t zipnumb = 93445;
+       *        auto zip_index = addresses.get_index<N(zip)>();
+       *        auto itr = zip_index.upper_bound(zipnumb);
+       *        eosio_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
+       *        itr++;
+       *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
+       *      } 
        *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<uint64_t IndexName>
@@ -1328,37 +1507,52 @@ class multi_index
        *
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint32_t zip = 0;
-       *    uint64_t liked = 0;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip)(liked) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *    address.zip = 93446;
-       *    address.liked = 0;
-       *  });
-       *  auto user = addresses.get(N(dan));
-       *  auto itr = address.find(N(dan));
-       *  eosio_assert(iterator_to(user) == itr, "Invalid iterator");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint32_t zip = 0;
+       *       uint64_t primary_key() const { return account_name; }
+       *       uint64_t by_zip() const { return zip; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address, indexed_by< N(zip), const_mem_fun<address, uint64_t, &address::by_zip> > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *          address.zip = 93446;
+       *        });
+       *        addresses.emplace(payer, [&](auto& address) {
+       *          address.account_name = N(brendan);
+       *          address.first_name = "Brendan";
+       *          address.last_name = "Blumer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Hong Kong";
+       *          address.state = "HK";
+       *          address.zip = 93445;
+       *        });
+       *        auto user = addresses.get(N(dan));
+       *        auto itr = address.find(N(dan));
+       *        eosio_assert(iterator_to(user) == itr, "Invalid iterator");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator iterator_to( const T& obj )const {
@@ -1384,30 +1578,37 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<typename Lambda>
@@ -1477,36 +1678,43 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  auto itr = addresses.find(N(dan));
-       *  eosio_assert(itr != addresses.end(), "Address for account not found");
-       *  addresses.modify( itr, account payer, [&]( auto& address ) {
-       *    address.city = "San Luis Obispo";
-       *    address.state = "CA";
-       *  });
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr != addresses.end(), "Address for account not found");
+       *        addresses.modify( itr, account payer, [&]( auto& address ) {
+       *          address.city = "San Luis Obispo";
+       *          address.state = "CA";
+       *        });
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<typename Lambda>
@@ -1538,37 +1746,44 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  auto itr = addresses.find(N(dan));
-       *  eosio_assert(itr != addresses.end(), "Address for account not found");
-       *  addresses.modify( *itr, payer, [&]( auto& address ) {
-       *    address.city = "San Luis Obispo";
-       *    address.state = "CA";
-       *  });
-       *  eosio_assert(itr->city == "San Luis Obispo", "Address not modified");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr != addresses.end(), "Address for account not found");
+       *        addresses.modify( *itr, payer, [&]( auto& address ) {
+       *          address.city = "San Luis Obispo";
+       *          address.state = "CA";
+       *        });
+       *        eosio_assert(itr->city == "San Luis Obispo", "Address not modified");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<typename Lambda>
@@ -1638,32 +1853,39 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  auto user = addresses.get(N(dan));
-       *  eosio_assert(user.first_name == "Daniel", "Couldn't get him.");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto user = addresses.get(N(dan));
+       *        eosio_assert(user.first_name == "Daniel", "Couldn't get him.");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const T& get( uint64_t primary )const {
@@ -1681,22 +1903,39 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  // address_index is typedef of our multi_index over table address
-       *  // address table is auto "created" if needed
-       *  address_index addresses(_self, _self); // code, scope
-       *  auto itr = addresses.find(N(dan));
-       *  eosio_assert(itr == addresses.end(), "Address for account already exists");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr != addresses.end(), "Couldn't get him.");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator find( uint64_t primary )const {
@@ -1732,33 +1971,41 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  auto itr = addresses.find(N(dan));
-       *  eosio_assert(itr != addresses.end(), "Address for account not found");
-       *  addresses.erase( itr );
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr != addresses.end(), "Address for account not found");
+       *        addresses.erase( itr );
+       *        eosio_assert(itr != addresses.end(), "Address not erased properly");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator erase( const_iterator itr ) {
@@ -1789,35 +2036,42 @@ class multi_index
        * 
        *  Example:
        *  @code
-       *  struct address {
-       *    uint64_t account_name;
-       *    string first_name;
-       *    string last_name;
-       *    string street;
-       *    string city;
-       *    string state;
-       *    uint64_t primary_key() const { return account_name; }
-       *    EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
-       *  };
-       *  typedef eosio::multi_index< N(address), address > address_index;
-       *  address_index addresses(_self, _self); // code, scope
-       *  // add to table, first argument is account to bill for storage
-       *  // each entry will be pilled to the associated account
-       *  // we could have instead chosen to bill _self for all the storage
-       *  auto payer = _self;
-       *  addresses.emplace(payer, [&](auto& address) {
-       *    address.account_name = N(dan);
-       *    address.first_name = "Daniel";
-       *    address.last_name = "Larimer";
-       *    address.street = "1 EOS Way";
-       *    address.city = "Blacksburg";
-       *    address.state = "VA";
-       *  });
-       *  auto itr = addresses.find(N(dan));
-       *  eosio_assert(itr != addresses.end(), "Record is not found");
-       *  addresses.erase(*itr);
-       *  itr = addresses.find(N(dan));   
-       *  eosio_assert(itr == addresses.end(), "Record is not deleted");
+       *  #include <eosiolib/eosio.hpp>
+       *  using namespace eosio;
+       *  using namespace std;
+       *  class addressbook: contract {
+       *    struct address {
+       *       uint64_t account_name;
+       *       string first_name;
+       *       string last_name;
+       *       string street;
+       *       string city;
+       *       string state;
+       *       uint64_t primary_key() const { return account_name; }
+       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *    };
+       *    public:
+       *      addressbook(account_name self):contract(self) {}
+       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      void myaction() {
+       *        address_index addresses(_self, _self); // code, scope
+       *        // add to table, first argument is account to bill for storage
+       *        addresses.emplace(_self, [&](auto& address) {
+       *          address.account_name = N(dan);
+       *          address.first_name = "Daniel";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 EOS Way";
+       *          address.city = "Blacksburg";
+       *          address.state = "VA";
+       *        });
+       *        auto itr = addresses.find(N(dan));
+       *        eosio_assert(itr != addresses.end(), "Record is not found");
+       *        addresses.erase(*itr);
+       *        itr = addresses.find(N(dan));   
+       *        eosio_assert(itr == addresses.end(), "Record is not deleted");
+       *      } 
+       *  }
+       *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       void erase( const T& obj ) {
