@@ -1664,7 +1664,7 @@ class multi_index
        *  @param payer - account name of the payer for the Storage usage of the updated row
        *  @param updater - lambda function that updates the target object
        * 
-       *  @pre itr points to an existing element, or obj is an existing object in the table
+       *  @pre itr points to an existing element
        *  @pre payer is a valid account that is authorized to execute the action and be billed for storage usage.
        *  
        *  @post The modified object is serialized, then replaces the existing object in the table.
@@ -1732,7 +1732,7 @@ class multi_index
        *  @param payer - account name of the payer for the Storage usage of the updated row
        *  @param updater - lambda function that updates the target object
        * 
-       *  @pre itr points to an existing element, or obj is an existing object in the table
+       *  @pre obj is an existing object in the table
        *  @pre payer is a valid account that is authorized to execute the action and be billed for storage usage.
        *  
        *  @post The modified object is serialized, then replaces the existing object in the table.
@@ -1958,6 +1958,7 @@ class multi_index
        *
        *  @param itr - An iterator pointing to the object to be removed
        *  
+       *  @pre itr points to an existing element
        *  @post The object is removed from the table and all associated storage is reclaimed.
        *  @post Secondary indices associated with the table are updated.
        *  @post The existing payer for storage usage of the object is refunded for the table and secondary indices usage of the removed object, and if the table and indices are removed, for the associated overhead.
@@ -2025,6 +2026,7 @@ class multi_index
        *
        *  @param obj - Object to be removed
        *  
+       *  @pre obj is an existing object in the table
        *  @post The object is removed from the table and all associated storage is reclaimed.
        *  @post Secondary indices associated with the table are updated.
        *  @post The existing payer for storage usage of the object is refunded for the table and secondary indices usage of the removed object, and if the table and indices are removed, for the associated overhead.
