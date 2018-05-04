@@ -419,6 +419,16 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
                         config::system_account_name, N(buyrambytes), act_payload);
 }
 
+chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu) {
+   fc::variant act_payload = fc::mutable_variant_object()
+         ("from", from.to_string())
+         ("receiver", receiver.to_string())
+         ("stake_net_quantity", net.to_string())
+         ("stake_cpu_quantity", cpu.to_string());
+   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{from,config::active_name}} : get_account_permissions(tx_permission),
+                        config::system_account_name, N(delegatebw), act_payload);
+}
+
 fc::variant regproducer_variant(const account_name& producer,
                                 public_key_type key,
                                 string url) {
@@ -663,6 +673,56 @@ struct register_producer_subcommand {
 
          auto regprod_var = regproducer_variant(producer_str, producer_key, url );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
+      });
+   }
+};
+
+struct create_account_subcommand {
+   string creator;
+   string account_name;
+   string owner_key_str;
+   string active_key_str;
+   string stake_net;
+   string stake_cpu;
+   uint32_t buy_ram_bytes_in_kbytes = 8;
+   string buy_ram_eos;
+   bool simple;
+
+   create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
+      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "createaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
+      createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
+      createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
+      createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
+      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
+
+      if (!simple) {
+         createAccount->add_option("--stake-net", stake_net,
+                                   (localized("The amount of EOS delegated for net bandwidth")))->required();
+         createAccount->add_option("--stake-cpu", stake_cpu,
+                                   (localized("The amount of EOS delegated for CPU bandwidth")))->required();
+         createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
+                                   (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
+         createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
+                                   (localized("The amount of RAM bytes to purchase for the new account in EOS")));
+      }
+
+      createAccount->set_callback([this] {
+            public_key_type owner_key, active_key;
+            try {
+               owner_key = public_key_type(owner_key_str);
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str));
+            try {
+               active_key = public_key_type(active_key_str);
+            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
+            auto create = create_newaccount(creator, account_name, owner_key, active_key);
+            if (!simple) {
+               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, asset::from_string(buy_ram_eos))
+                  : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
+               action delegate = create_delegate( creator, account_name, asset::from_string(stake_net), asset::from_string(stake_cpu) );
+               send_actions( { create, buyram, delegate } );
+            } else {
+               send_actions( { create } );
+            }
       });
    }
 };
@@ -1087,41 +1147,7 @@ int main( int argc, char** argv ) {
    });
 
    // create account
-   string creator;
-   string account_name;
-   string owner_key_str;
-   string active_key_str;
-   uint32_t buy_ram_bytes_in_kbytes = 8;
-   string buy_ram_eos;
-
-   auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
-   createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
-   createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
-   createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
-   createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
-   createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
-                             (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
-   createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
-                             (localized("The amount of RAM bytes to purchase for the new account in EOS")));
-   add_standard_transaction_options(createAccount, "creator@active");
-   createAccount->set_callback([&] {
-      public_key_type owner_key, active_key;
-      try {
-         owner_key = public_key_type(owner_key_str);
-      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str))
-      try {
-         active_key = public_key_type(active_key_str);
-      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
-      if( !buy_ram_eos.empty() ) {
-         action buyact = create_buyram(creator, account_name, asset::from_string(buy_ram_eos));
-         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
-      } else if( buy_ram_bytes_in_kbytes > 0 ){
-         action buyact = create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024 * 1024);
-         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
-      } else {
-         send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
-      }
-   });
+   auto createAccount = create_account_subcommand( create, true /*simple*/ );
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
@@ -1281,6 +1307,7 @@ int main( int argc, char** argv ) {
    });
 
    // get actions
+   string account_name;
    string skip_seq_str;
    string num_seq_str;
    bool printjson = false;
@@ -2024,6 +2051,7 @@ int main( int argc, char** argv ) {
    auto system = app.add_subcommand("system", localized("Send eosio.system contract action to the blockchain."), false);
    system->require_subcommand();
 
+   auto createAccountSystem = create_account_subcommand( system, false /*simple*/ );
    auto registerProducer = register_producer_subcommand(system);
    auto unregisterProducer = unregister_producer_subcommand(system);
 
