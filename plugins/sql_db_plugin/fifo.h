@@ -29,7 +29,7 @@ template<typename T>
 T fifo<T>::pop()
 {
     std::lock_guard<std::mutex> lock(m_mux);
-    auto e = m_deque.front();
+    auto e = std::move(m_deque.front());
     m_deque.pop_front();
     return e;
 }
