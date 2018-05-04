@@ -2005,9 +2005,15 @@ namespace eosio {
          if(!conn->socket) {
             return;
          }
+         connection_wptr weak_conn = conn;
          conn->socket->async_read_some
             (conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
-             [this,conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+               auto conn = weak_conn.lock();
+               if (!conn) {
+                  return;
+               }
+
                try {
                   if( !ec ) {
                      if (bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {

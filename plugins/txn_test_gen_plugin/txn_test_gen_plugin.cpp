@@ -72,8 +72,8 @@ using namespace eosio::chain;
 
 struct txn_test_gen_plugin_impl {
    void push_transaction( signed_transaction& trx ) { try {
-      controller& cc = app().get_plugin<chain_plugin>().chain();
-      return cc.push_transaction( std::make_shared<transaction_metadata>(trx) );
+      chain_plugin& cp = app().get_plugin<chain_plugin>();
+      return cp.accept_transaction( packed_transaction(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {

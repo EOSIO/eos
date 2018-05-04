@@ -1165,13 +1165,10 @@ void controller::log_irreversible_blocks() {
    */
 }
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
-   idump((id));
    auto state = my->fork_db.get_block(id);
    if( state ) return state->block;
-   edump((block_header::num_from_id(id)));
    auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
    if( bptr && bptr->id() == id ) return bptr;
-   elog( "not found" );
    return signed_block_ptr();
 }
 
@@ -1181,7 +1178,6 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
       return blk_state->block;
    }
 
-   ilog( "blog read by number ${n}", ("n", block_num) );
    return my->blog.read_block_by_num(block_num);
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
@@ -1191,7 +1187,6 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
       return blk_state->id;
    }
 
-   ilog( "blog read by number ${n}", ("n", block_num) );
    return my->blog.read_block_by_num(block_num)->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
