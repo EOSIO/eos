@@ -253,8 +253,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
            ("permission", "first")),
    permission_query_exception,
    [] (const permission_query_exception &e)->bool {
-      std::string check_str = "permission_query_exception: Permission Query Exception\nFailed to retrieve permission";
-      BOOST_ASSERT(e.to_detail_string().find(check_str) != std::string::npos);
+      expect_assert_message(e, "permission_query_exception: Permission Query Exception\nFailed to retrieve permission");
       return true;
    });
 
@@ -329,8 +328,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
            ("permission", "first")),
    action_validate_exception,
    [] (const action_validate_exception &e)->bool {
-      std::string check_str = "action_validate_exception: message validation exception\nCannot delete a linked authority";
-      BOOST_ASSERT(e.to_detail_string().find(check_str) != std::string::npos);
+      expect_assert_message(e, "action_validate_exception: message validation exception\nCannot delete a linked authority");
       return true;
    });
 
@@ -1149,8 +1147,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
       30, 3),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         std::string check_str = "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (3 sec)";
-         BOOST_ASSERT(e.to_detail_string().find(check_str) != std::string::npos);
+         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (3 sec)");
          return true;
       }
    );
@@ -1345,8 +1342,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
       30, 7),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         std::string check_str = "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)";
-         BOOST_ASSERT(e.to_detail_string().find(check_str) != std::string::npos);
+         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
          return true;
       }
    );
@@ -1875,8 +1871,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
       ),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         std::string check_str = "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)";
-         BOOST_ASSERT(e.to_detail_string().find(check_str) != std::string::npos);
+         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
          return true;
       }
    );
@@ -2301,9 +2296,8 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
                         ("parent", "active")
                         ("auth",  authority(chain.get_public_key(tester_account, "first"), 50*86400)) ), // 50 days delay
       chain::action_validate_exception,
-      [&](const chain::transaction_exception& ex) {
-         string check_str = "Cannot set delay longer than max_transacton_delay";
-         BOOST_ASSERT(e.to_detail_string().find(check_str) != std::string::npos);
+      [&](const chain::transaction_exception& e) {
+         expect_assert_message(e, "Cannot set delay longer than max_transacton_delay");
          return true;
       }
    );
@@ -2353,12 +2347,21 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
                      ("requirement", "first"));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
 
+   chain.produce_blocks();
+
    //change max_transaction_delay to 60 sec
    chain.control->db().modify( chain.control->get_global_properties(),
                               [&]( auto& gprops ) {
                                  gprops.configuration.max_transaction_delay = 60;
                               });
+#ifndef NON_VALIDATING_TEST
+   chain.validating_node->db().modify( chain.validating_node->get_global_properties(),
+                              [&]( auto& gprops ) {
+                                 gprops.configuration.max_transaction_delay = 60;
+                              });
+#endif
 
+   chain.produce_blocks();
    //should be able to create transaction with delay 60 sec, despite permission delay being 30 days, because max_transaction_delay is 60 sec
    trace = chain.push_action(N(eosio.token), name("transfer"), N(tester), fc::mutable_variant_object()
                            ("from", "tester")
@@ -2367,7 +2370,6 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
                            ("memo", "" ), 120, 60);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
 
-   #if 0 // FIXME: seems block signing is broken in produce_block
    chain.produce_blocks();
    
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
@@ -2382,7 +2384,6 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    //check that the transfer really happened
    auto liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("91.0000 CUR"), liquid_balance);
-   #endif
 
 } FC_LOG_AND_RETHROW() }
 
