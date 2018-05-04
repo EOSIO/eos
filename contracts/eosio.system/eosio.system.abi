@@ -64,6 +64,15 @@
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
+      "name": "user_resources",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"storage_bytes", "type":"uint64"}
+      ]
+    },{
       "name": "total_resources",
       "base": "",
       "fields": [
@@ -267,6 +276,12 @@
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["account_name"]
+    },{
+      "name": "userres",
+      "type": "user_resources",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
     },{
       "name": "totalband",
       "type": "total_resources",
