@@ -55,15 +55,13 @@ namespace eosio {
 
    struct onerror {
       uint128_t    sender_id;
-      uint64_t     published;
-      account_name payer;
       transaction  sent_trx;
 
       static onerror from_current_action() {
          return unpack_action_data<onerror>();
       }
 
-      EOSLIB_SERIALIZE( onerror, (sender_id)(published)(payer)(sent_trx) )
+      EOSLIB_SERIALIZE( onerror, (sender_id)(sent_trx) )
    };
 
    /**

@@ -388,7 +388,7 @@ struct controller_impl {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{},
-                                 onerror( gto.sender_id, gto.published, gto.payer, gto.packed_trx.data(), gto.packed_trx.size() ) );
+                                 onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
 
@@ -396,6 +396,7 @@ struct controller_impl {
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx( deadline, 0, cpu_usage );
+         trx_context.published = gto.published;
          trx_context.trace->action_traces.emplace_back();
          trx_context.dispatch_action( trx_context.trace->action_traces.back(), etrx.actions.back(), gto.sender );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
