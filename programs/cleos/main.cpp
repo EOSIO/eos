@@ -981,120 +981,122 @@ struct canceldelay_subcommand {
    }
 };
 
-void get_account( const string& accountName ) {
+void get_account( const string& accountName, bool json_format ) {
    auto json = call(get_account_func, fc::mutable_variant_object("account_name", accountName));
    auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
-   std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
 
-   constexpr size_t indent_size = 5;
-   const string indent(indent_size, ' ');
+   if (!json_format) {
+      std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
 
-   std::cout << "permissions: " << std::endl;
-   unordered_map<name, vector<name>/*children*/> tree;
-   vector<name> roots; //we don't have multiple roots, but we can easily handle them here, so let's do it just in case
-   unordered_map<name, eosio::chain_apis::permission> cache;
-   for ( auto& perm : res.permissions ) {
-      if ( perm.parent ) {
-         tree[perm.parent].push_back( perm.perm_name );
-      } else {
-         roots.push_back( perm.perm_name );
-      }
-      auto name = perm.perm_name; //keep copy before moving `perm`, since thirst argument of emplace can be evaluated first
-      // looks a little crazy, but should be efficient
-      cache.insert( std::make_pair(name, std::move(perm)) );
-   }
-   std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
-      auto& p = cache.at(name);
-      std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
-      for ( auto it = p.required_auth.keys.begin(); it != p.required_auth.keys.end(); ++it ) {
-         if ( it != p.required_auth.keys.begin() ) {
-            std::cout  << ", ";
+      constexpr size_t indent_size = 5;
+      const string indent(indent_size, ' ');
+
+      std::cout << "permissions: " << std::endl;
+      unordered_map<name, vector<name>/*children*/> tree;
+      vector<name> roots; //we don't have multiple roots, but we can easily handle them here, so let's do it just in case
+      unordered_map<name, eosio::chain_apis::permission> cache;
+      for ( auto& perm : res.permissions ) {
+         if ( perm.parent ) {
+            tree[perm.parent].push_back( perm.perm_name );
+         } else {
+            roots.push_back( perm.perm_name );
          }
-         std::cout << it->weight << ' ' << string(it->key);
+         auto name = perm.perm_name; //keep copy before moving `perm`, since thirst argument of emplace can be evaluated first
+         // looks a little crazy, but should be efficient
+         cache.insert( std::make_pair(name, std::move(perm)) );
       }
-      for ( auto& acc : p.required_auth.accounts ) {
-         std::cout << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission) << ", ";
+      std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
+         auto& p = cache.at(name);
+         std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
+         for ( auto it = p.required_auth.keys.begin(); it != p.required_auth.keys.end(); ++it ) {
+            if ( it != p.required_auth.keys.begin() ) {
+               std::cout  << ", ";
+            }
+            std::cout << it->weight << ' ' << string(it->key);
+         }
+         for ( auto& acc : p.required_auth.accounts ) {
+            std::cout << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission) << ", ";
+         }
+         std::cout << std::endl;
+         auto it = tree.find( name );
+         if (it != tree.end()) {
+            auto& children = it->second;
+            sort( children.begin(), children.end() );
+            for ( auto& n : children ) {
+               // we have a tree, not a graph, so no need to check for already visited nodes
+               dfs_print( n, depth+1 );
+            }
+         } // else it's a leaf node
+      };
+      std::sort(roots.begin(), roots.end());
+      for ( auto r : roots ) {
+         dfs_print( r, 0 );
+      }
+
+      std::cout << "memory: " << std::endl
+                << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
+
+      std::cout << "net bandwidth:" << std::endl;
+      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
+         asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
+         auto net_others = asset::from_string(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+         std::cout << indent << "staked:" << std::setw(20) << net_own
+                   << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                   << indent << "delegated:" << std::setw(17) << net_others
+                   << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+      }
+      std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.net_limit.current_per_block)) << " bytes/block"
+                << std::string(3, ' ') << "(assuming current congestion and current usage)" << std::endl
+                << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.net_limit.max_per_block)) << " bytes/block"
+                << std::string(3, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+                << indent << "guaranteed: " << std::setw(11) << res.net_limit.guaranteed_per_day << " bytes/day"
+                << std::string(5, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+                << std::endl;
+
+
+      std::cout << "cpu bandwidth:" << std::endl;
+      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
+         asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
+         auto cpu_others = asset::from_string(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+         std::cout << indent << "staked:" << std::setw(20) << cpu_own
+                   << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                   << indent << "delegated:" << std::setw(17) << cpu_others
+                   << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+      }
+
+      std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.cpu_limit.current_per_block/1024)) << " kcycle/block"
+                << std::string(2, ' ') << "(assuming current congestion and current usage)" << std::endl
+                << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.cpu_limit.max_per_block/1024)) << " kcycle/block"
+                << std::string(2, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+                << indent << "guaranteed:" << std::setw(12) << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day"
+                << std::string(4, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+                << std::endl;
+
+      if ( res.voter_info.is_object() ) {
+         auto& obj = res.voter_info.get_object();
+         string proxy = obj["proxy"].as_string();
+         if ( proxy.empty() ) {
+            auto& prods = obj["producers"].get_array();
+            std::cout << "producers:";
+            if ( !prods.empty() ) {
+               for ( int i = 0; i < prods.size(); ++i ) {
+                  if ( i%3 == 0 ) {
+                     std::cout << std::endl << indent;
+                  }
+                  std::cout << std::setw(16) << std::left << prods[i].as_string();
+               }
+               std::cout << std::endl;
+            } else {
+               std::cout << indent << "<not voted>" << std::endl;
+            }
+         } else {
+            std::cout << "proxy:" << indent << proxy << std::endl;
+         }
       }
       std::cout << std::endl;
-      auto it = tree.find( name );
-      if (it != tree.end()) {
-         auto& children = it->second;
-         sort( children.begin(), children.end() );
-         for ( auto& n : children ) {
-            // we have a tree, not a graph, so no need to check for already visited nodes
-            dfs_print( n, depth+1 );
-         }
-      } // else it's a leaf node
-   };
-   std::sort(roots.begin(), roots.end());
-   for ( auto r : roots ) {
-      dfs_print( r, 0 );
+   } else {
+      std::cout << fc::json::to_pretty_string(json) << std::endl;
    }
-
-   std::cout << "memory: " << std::endl
-             << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
-   //std::cout << "     staked: " << "XXX" << " EOS" << std::endl << std::endl;
-
-   std::cout << "net bandwidth:" << std::endl;
-   if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-      asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
-      auto net_others = asset::from_string(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
-      std::cout << indent << "staked:" << std::setw(20) << net_own
-                << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
-                << indent << "delegated:" << std::setw(17) << net_others
-                << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
-   }
-   std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.net_limit.current_per_block)) << " bytes/block"
-             << std::string(3, ' ') << "(assuming current congestion and current usage)" << std::endl
-             << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.net_limit.max_per_block)) << " bytes/block"
-             << std::string(3, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
-             << indent << "guaranteed: " << std::setw(11) << res.net_limit.guaranteed_per_day << " bytes/day"
-             << std::string(5, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
-             << std::endl;
-
-
-   std::cout << "cpu bandwidth:" << std::endl;
-   if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-      asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
-      auto cpu_others = asset::from_string(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
-      std::cout << indent << "staked:" << std::setw(20) << cpu_own
-                << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
-                << indent << "delegated:" << std::setw(17) << cpu_others
-                << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
-   }
-
-   std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.cpu_limit.current_per_block/1024)) << " kcycle/block"
-             << std::string(2, ' ') << "(assuming current congestion and current usage)" << std::endl
-             << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.cpu_limit.max_per_block/1024)) << " kcycle/block"
-             << std::string(2, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
-             << indent << "guaranteed:" << std::setw(12) << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day"
-             << std::string(4, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
-             << std::endl;
-
-   if ( res.voter_info.is_object() ) {
-      auto& obj = res.voter_info.get_object();
-      string proxy = obj["proxy"].as_string();
-      if ( proxy.empty() ) {
-         auto& prods = obj["producers"].get_array();
-         std::cout << "producers:";
-         if ( !prods.empty() ) {
-            for ( int i = 0; i < prods.size(); ++i ) {
-               if ( i%3 == 0 ) {
-                  std::cout << std::endl << indent;
-               }
-               std::cout << std::setw(16) << std::left << prods[i].as_string();
-            }
-            std::cout << std::endl;
-         } else {
-            std::cout << indent << "<not voted>" << std::endl;
-         }
-      } else {
-         std::cout << "proxy:" << indent << proxy << std::endl;
-      }
-   }
-   std::cout << std::endl;
-
-   //std::cout << fc::json::to_pretty_string(json) << std::endl;
 }
 
 int main( int argc, char** argv ) {
@@ -1163,9 +1165,11 @@ int main( int argc, char** argv ) {
 
    // get account
    string accountName;
+   bool print_json;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
-   getAccount->set_callback([&]() { get_account(accountName); });
+   getAccount->add_flag("--json,-j", print_json, localized("Output in JSON format") );
+   getAccount->set_callback([&]() { get_account(accountName, print_json); });
 
    // get code
    string codeFilename;
