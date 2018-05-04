@@ -20,17 +20,21 @@
 
 account_name global_receiver;
 
+struct onerror_args {
+   uint128_t          sender_id;
+   eosio::transaction etrx;
+};
+
 extern "C" {
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      if( code == N(eosio) && action == N(onerror) ) {
-         auto error_dtrx = eosio::deferred_transaction::from_current_action();
+      if( action == N(onerror) ) {
+         auto error_dtrx = eosio::unpack_action_data<onerror_args>().etrx;
          eosio::print("onerror called\n");
          auto error_action = error_dtrx.actions.at(0).name;
 
          // Error handlers for deferred transactions in these tests currently only support the first action
 
          WASM_TEST_ERROR_HANDLER("test_action", "assert_false", test_transaction, assert_false_error_handler );
-
 
          return;
       }
