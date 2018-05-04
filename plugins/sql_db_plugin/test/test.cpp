@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE chainbase test
+#define BOOST_TEST_MODULE "sql_db_plugin"
 
 #include <boost/test/unit_test.hpp>
-//#include <chainbase/chainbase.hpp>
+

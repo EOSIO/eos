@@ -1,6 +1,6 @@
 find_package(Soci REQUIRED)
 
-include_directories(include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} include)
 
 add_library(sql_db_plugin
     sql_db_plugin.cpp
