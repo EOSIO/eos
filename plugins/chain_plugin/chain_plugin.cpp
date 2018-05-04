@@ -567,36 +567,36 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );
       //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(userres) ));
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.total_resources = abis.binary_to_variant( abis.get_action_type( N(userres) ), data );
+            result.total_resources = abis.binary_to_variant( "user_resources", data );
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), params.account_name, N(delband) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.delegated_bandwidth = abis.binary_to_variant( abis.get_action_type( N(delband) ), data );
+            result.delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(voters) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( abis.get_action_type( N(producerinfo) ), data );
+            result.voter_info = abis.binary_to_variant( "voter_info", data );
          }
       }
    }

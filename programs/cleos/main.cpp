@@ -775,7 +775,7 @@ struct buyram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("buyer", from_str)
                ("receiver", receiver_str)
-               ("tokens", amount + " EOS");
+               ("tokens", asset::from_string(amount));
             send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
          });
    }
@@ -915,7 +915,8 @@ void get_account( const string& accountName ) {
    auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
    std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
 
-   const string ident = "     ";
+   constexpr size_t indent_size = 5;
+   const string indent(indent_size, ' ');
 
    std::cout << "permissions: " << std::endl;
    unordered_map<name, vector<name>/*children*/> tree;
@@ -933,7 +934,7 @@ void get_account( const string& accountName ) {
    }
    std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
       auto& p = cache.at(name);
-      std::cout << ident << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
+      std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
       for ( auto& key : p.required_auth.keys ) {
          std::cout << key.weight << ' ' << string(key.key) << ", ";
       }
@@ -957,25 +958,69 @@ void get_account( const string& accountName ) {
    }
 
    std::cout << "memory: " << std::endl
-             << ident << "quota: " << res.ram_quota << " bytes    used: " << res.ram_usage << " bytes     staked: " << "XXX" << " EOS" << std::endl << std::endl;
+             << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
+   //std::cout << "     staked: " << "XXX" << " EOS" << std::endl << std::endl;
 
-   std::cout << "net bandwidth:" << std::endl
-             << "staked: " << "XXX EOS" << "   (total stake delegated from account to self)" << std::endl
-             << "delegated: " << "XXX EOS" << "   (total staked delegated to account from others)" << std::endl
-             << "current:   ~" << res.net_limit.current_per_block << " bytes/block  (assuming current congestion and current usage)" << std::endl
-             << "max: ~" << res.net_limit.max_per_block << " bytes/block  (assuming current congestion and 0 usage in current window)" << std::endl
-             << "guaranteed: " << res.net_limit.guaranteed_per_day << " bytes/day .  (assuming 100% congestion and 0 usage in current window)" << std::endl
+   std::cout << "net bandwidth:" << std::endl;
+   if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
+      asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
+      auto net_others = asset::from_string(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+      std::cout << indent << "staked:" << std::setw(20) << net_own
+                << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                << indent << "delegated:" << std::setw(17) << net_others
+                << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+   }
+   std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.net_limit.current_per_block)) << " bytes/block"
+             << std::string(3, ' ') << "(assuming current congestion and current usage)" << std::endl
+             << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.net_limit.max_per_block)) << " bytes/block"
+             << std::string(3, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+             << indent << "guaranteed: " << std::setw(11) << res.net_limit.guaranteed_per_day << " bytes/day"
+             << std::string(5, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
              << std::endl;
 
-   std::cout << "net cpu:" << std::endl
-             << "staked: " << "XXX EOS" << "   (total stake delegated from account to self)" << std::endl
-             << "delegated: " << "XXX EOS" << "   (total staked delegated to account from others)" << std::endl
-             << "current:   ~" << res.cpu_limit.current_per_block/1024 << " kcycle/block  (assuming current congestion and current usage)" << std::endl
-             << "max: ~" << res.cpu_limit.max_per_block/1024 << " kcycle/block  (assuming current congestion and 0 usage in current window)" << std::endl
-             << "guaranteed: " << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day .  (assuming 100% congestion and 0 usage in current window)" << std::endl
+
+   std::cout << "cpu bandwidth:" << std::endl;
+   if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
+      asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
+      auto cpu_others = asset::from_string(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+      std::cout << indent << "staked:" << std::setw(20) << cpu_own
+                << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                << indent << "delegated:" << std::setw(17) << cpu_others
+                << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+   }
+
+   std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.cpu_limit.current_per_block/1024)) << " kcycle/block"
+             << std::string(2, ' ') << "(assuming current congestion and current usage)" << std::endl
+             << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.cpu_limit.max_per_block/1024)) << " kcycle/block"
+             << std::string(2, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+             << indent << "guaranteed:" << std::setw(12) << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day"
+             << std::string(4, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
              << std::endl;
 
-   std::cout << fc::json::to_pretty_string(json) << std::endl;
+   if ( res.voter_info.is_object() ) {
+      auto& obj = res.voter_info.get_object();
+      string proxy = obj["proxy"].as_string();
+      if ( proxy.empty() ) {
+         auto& prods = obj["producers"].get_array();
+         std::cout << "producers:";
+         if ( !prods.empty() ) {
+            for ( int i = 0; i < prods.size(); ++i ) {
+               if ( i%3 == 0 ) {
+                  std::cout << std::endl << indent;
+               }
+               std::cout << std::setw(16) << std::left << prods[i].as_string();
+            }
+            std::cout << std::endl;
+         } else {
+            std::cout << indent << "<not voted>" << std::endl;
+         }
+      } else {
+         std::cout << "proxy:" << indent << proxy << std::endl;
+      }
+   }
+   std::cout << std::endl;
+
+   //std::cout << fc::json::to_pretty_string(json) << std::endl;
 }
 
 int main( int argc, char** argv ) {
