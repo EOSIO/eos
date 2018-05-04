@@ -99,6 +99,17 @@ namespace eosio { namespace chain {
 
 } } // eosio::chain
 
+namespace std {
+   template<> struct hash<eosio::chain::name> : private hash<uint64_t> {
+      typedef eosio::chain::name argument_type;
+      typedef typename hash<uint64_t>::result_type result_type;
+      result_type operator()(const argument_type& name) const noexcept
+      {
+         return hash<uint64_t>::operator()(name.value);
+      }
+   };
+};
+
 namespace fc {
   class variant;
   void to_variant(const eosio::chain::name& c, fc::variant& v);

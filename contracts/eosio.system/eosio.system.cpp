@@ -65,6 +65,4 @@ EOSIO_ABI( eosiosystem::system_contract,
      //XXX
      (onblock)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
-     // defined in eosio.system.hpp
-     (nonce)
 )

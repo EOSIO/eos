@@ -202,7 +202,7 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
    trx.send(0, receiver);
 }
 
-void test_transaction::assert_false_error_handler(const eosio::deferred_transaction& dtrx) {
+void test_transaction::assert_false_error_handler(const eosio::transaction& dtrx) {
    auto onerror_action = eosio::get_action(1, 0);
    eosio_assert( onerror_action.authorization.at(0).actor == dtrx.actions.at(0).account,
                 "authorizer of onerror action does not match receiver of original action in the deferred transaction" );
@@ -224,20 +224,6 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint6
    trx.send(0, receiver);
 
    eosio_assert(false, "send_transaction_large() should've thrown an error");
-}
-
-void test_transaction::send_transaction_expiring_late(uint64_t receiver, uint64_t, uint64_t) {
-   using namespace eosio;
-   account_name cur_send;
-   read_action_data( &cur_send, sizeof(account_name) );
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
-   copy_data((char*)&cur_send, sizeof(account_name), test_action.data);
-
-   auto trx = transaction(now() + 60*60*24*365);
-   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send(0, receiver);
-
-   eosio_assert(false, "send_transaction_expiring_late() should've thrown an error");
 }
 
 /**

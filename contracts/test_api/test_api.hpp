@@ -8,7 +8,7 @@
 
 
 namespace eosio {
-   class deferred_transaction;
+   class transaction;
 }
 
 
@@ -31,7 +31,7 @@ namespace eosio {
 
 #define WASM_TEST_ERROR_HANDLER(CALLED_CLASS_STR, CALLED_METHOD_STR, HANDLER_CLASS, HANDLER_METHOD) \
 if( error_action == WASM_TEST_ACTION(CALLED_CLASS_STR, CALLED_METHOD_STR) ) { \
-   HANDLER_CLASS::HANDLER_METHOD(error_dtrx); \
+   HANDLER_CLASS::HANDLER_METHOD(error.sent_trx); \
    return; \
 }
 
@@ -159,10 +159,9 @@ struct test_transaction {
   static void send_transaction(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_transaction_trigger_error_handler(uint64_t receiver, uint64_t code, uint64_t action);
-  static void assert_false_error_handler(const eosio::deferred_transaction&);
+  static void assert_false_error_handler(const eosio::transaction&);
   static void send_transaction_max();
   static void send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action);
-  static void send_transaction_expiring_late(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
   static void deferred_print();
   static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);

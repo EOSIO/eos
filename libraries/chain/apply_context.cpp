@@ -40,10 +40,6 @@ action_trace apply_context::exec_one()
    const auto& cfg = control.get_global_properties().configuration;
    checktime( cfg.base_per_action_cpu_usage );
    try {
-      if( act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name ) {
-         checktime( cfg.base_setcode_cpu_usage );
-      }
-
       const auto &a = control.get_account(receiver);
       privileged = a.privileged;
       auto native = control.find_apply_handler(receiver, act.account, act.name);
@@ -51,7 +47,8 @@ action_trace apply_context::exec_one()
          (*native)(*this);
       }
 
-      if( a.code.size() > 0 && !(act.account == config::system_account_name && act.name == N(setcode)) ) {
+      if( a.code.size() > 0
+          && !(act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name) ) {
          try {
             control.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
@@ -104,12 +101,14 @@ void apply_context::exec()
    }
 
    for( const auto& inline_action : _cfa_inline_actions ) {
-      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, true, recurse_depth + 1 ) );
+      trace.inline_traces.emplace_back();
+      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, true, recurse_depth + 1 );
       trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
    for( const auto& inline_action : _inline_actions ) {
-      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, false, recurse_depth + 1 ) );
+      trace.inline_traces.emplace_back();
+      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, false, recurse_depth + 1 );
       trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
@@ -195,6 +194,19 @@ void apply_context::require_recipient( account_name recipient ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
+   auto* code = control.db().find<account_object, by_name>(a.account);
+   EOS_ASSERT( code != nullptr, action_validate_exception,
+               "inline action's code account ${account} does not exist", ("account", a.account) );
+
+   for( const auto& auth : a.authorization ) {
+      auto* actor = control.db().find<account_object, by_name>(auth.actor);
+      EOS_ASSERT( actor != nullptr, action_validate_exception,
+                  "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
+      EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
+                  "inline action's authorizations include a non-existent permission: {permission}",
+                  ("permission", auth) );
+   }
+
    if ( !privileged ) {
       if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
          const auto delay = control.limit_delay( control.get_authorization_manager()
@@ -215,17 +227,22 @@ void apply_context::execute_inline( action&& a ) {
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
-   FC_ASSERT( a.authorization.size() == 0, "context free actions cannot have authorizations" );
+   auto* code = control.db().find<account_object, by_name>(a.account);
+   EOS_ASSERT( code != nullptr, action_validate_exception,
+               "inline action's code account ${account} does not exist", ("account", a.account) );
+
+   EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
+               "context-free actions cannot have authorizations" );
+
    _cfa_inline_actions.emplace_back( move(a) );
 }
 
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
-   trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
-   //trx.validate(); // Not needed anymore since overflow is prevented by using uint64_t instead of uint32_t
    FC_ASSERT( trx.context_free_actions.size() == 0, "context free actions are not currently allowed in generated transactions" );
+   trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
+   trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
    control.validate_referenced_accounts( trx );
-   control.validate_expiration( trx );
 
    // Charge ahead of time for the additional net usage needed to retire the deferred transaction
    // whether that be by successfully executing, soft failure, hard failure, or expiration.

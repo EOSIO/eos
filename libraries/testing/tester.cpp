@@ -213,10 +213,8 @@ namespace eosio { namespace testing {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
-      if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
-      if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
-      if( r->hard_except)  throw *r->hard_except;
-      if( r->soft_except ) throw *r->soft_except;
+      if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
+      if( r->except ) throw *r->except;
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
@@ -224,10 +222,8 @@ namespace eosio { namespace testing {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
-      if( r->hard_except_ptr ) std::rethrow_exception( r->hard_except_ptr );
-      if( r->soft_except_ptr ) std::rethrow_exception( r->soft_except_ptr );
-      if( r->hard_except)  throw *r->hard_except;
-      if( r->soft_except ) throw *r->soft_except;
+      if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
+      if( r->except)  throw *r->except;
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
@@ -372,11 +368,9 @@ namespace eosio { namespace testing {
         // lets also push a context free action, the multi chain test will then also include a context free action
         ("context_free_actions", fc::variants({
             fc::mutable_variant_object()
-               ("account", name(config::system_account_name))
+               ("account", name(config::nobody_account_name))
                ("name", "nonce")
-               ("data", fc::mutable_variant_object()
-                  ("value", v)
-               )
+               ("data", fc::raw::pack(v))
             })
          );
 

@@ -220,8 +220,8 @@ struct unlinkauth {
 };
 
 struct onerror {
-   uint128_t sender_id;
-   bytes     sent_trx;
+   uint128_t      sender_id;
+   bytes          sent_trx;
 
    onerror( uint128_t sid, const char* data, size_t len )
    :sender_id(sid),sent_trx(data,data+len){}

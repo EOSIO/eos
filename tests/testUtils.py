@@ -488,7 +488,7 @@ class Node(object):
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
-        cmd="%s %s create account -j --buy-ram-bytes 0 %s %s %s %s" % (
+        cmd="%s %s create account -j %s %s %s %s" % (
             Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey)
 
@@ -513,7 +513,7 @@ class Node(object):
         return trans
 
     def getEosAccount(self, name):
-        cmd="%s %s get account %s" % (Utils.EosClientPath, self.endpointArgs, name)
+        cmd="%s %s get account -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
