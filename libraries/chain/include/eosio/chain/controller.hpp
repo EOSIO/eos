@@ -169,10 +169,14 @@ namespace eosio { namespace chain {
 
 
          optional<abi_serializer> get_abi_serializer( account_name n )const {
-            const auto& a = get_account(n);
-            abi_def abi;
-            if( abi_serializer::to_abi( a.abi, abi ) )
-               return abi_serializer(abi);
+            if( n.good() ) {
+               try {
+                  const auto& a = get_account( n );
+                  abi_def abi;
+                  if( abi_serializer::to_abi( a.abi, abi ))
+                     return abi_serializer( abi );
+               } FC_CAPTURE_AND_LOG((n))
+            }
             return optional<abi_serializer>();
          }
 
