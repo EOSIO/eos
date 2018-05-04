@@ -27,9 +27,9 @@ namespace eosio { namespace chain { namespace resource_limits {
    };
 
    struct account_resource_limit {
-      int64_t current_per_block;
-      int64_t max_per_block;
-      int64_t guaranteed_per_day;
+      int64_t current_per_block = 0;
+      int64_t max_per_block = 0;
+      int64_t guaranteed_per_day = 0;
    };
 
    class resource_limits_manager {

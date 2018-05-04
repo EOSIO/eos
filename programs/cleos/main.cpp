@@ -689,7 +689,7 @@ struct create_account_subcommand {
    bool simple;
 
    create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
-      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "createaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
+      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "newaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
@@ -1012,13 +1012,16 @@ void get_account( const string& accountName ) {
       }
       auto name = perm.perm_name; //keep copy before moving `perm`, since thirst argument of emplace can be evaluated first
       // looks a little crazy, but should be efficient
-      cache.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(std::move(perm)) );
+      cache.insert( std::make_pair(name, std::move(perm)) );
    }
    std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
       auto& p = cache.at(name);
       std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
-      for ( auto& key : p.required_auth.keys ) {
-         std::cout << key.weight << ' ' << string(key.key) << ", ";
+      for ( auto it = p.required_auth.keys.begin(); it != p.required_auth.keys.end(); ++it ) {
+         if ( it != p.required_auth.keys.begin() ) {
+            std::cout  << ", ";
+         }
+         std::cout << it->weight << ' ' << string(it->key);
       }
       for ( auto& acc : p.required_auth.accounts ) {
          std::cout << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission) << ", ";

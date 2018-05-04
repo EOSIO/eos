@@ -95,7 +95,7 @@ public:
 
       account_resource_limit     net_limit;
       account_resource_limit     cpu_limit;
-      int64_t                    ram_usage;
+      int64_t                    ram_usage = 0;
 
       vector<permission>         permissions;
 
