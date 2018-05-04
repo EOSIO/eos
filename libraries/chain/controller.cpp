@@ -130,6 +130,9 @@ struct controller_impl {
       }
    }
 
+   void emit_transaction(const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace) {
+
+   }
 
    void on_irreversible( const block_state_ptr& s ) {
       if( !blog.head() )
@@ -547,6 +550,11 @@ struct controller_impl {
          (trx->on_result)(trace);
          trx->on_result = decltype(trx->on_result)(); //assign empty std::function
       }
+
+      if (!trx->accepted) {
+         emit( self.accepted_transaction, trx);
+         trx->accepted = true;
+      }
    }
 
    /**
@@ -609,8 +617,8 @@ struct controller_impl {
             fc::move_append( pending->_actions, move(trx_context.executed) );
 
             transaction_trace_notify( trx, trace );
-
             emit( self.applied_transaction, trace );
+
             trx_context.squash();
             return;
          } catch( ... ) {
