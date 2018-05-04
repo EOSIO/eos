@@ -48,6 +48,7 @@ class producer_plugin_impl {
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
 
       int32_t                                                   _max_deferred_transaction_time_ms;
+      int32_t                                                   _max_pending_transaction_time_ms;
 
       block_production_condition::block_production_condition_enum _prev_result = block_production_condition::produced;
       uint32_t _prev_result_count = 0;
@@ -58,7 +59,14 @@ class producer_plugin_impl {
 
       producer_plugin* _self = nullptr;
 
-      channels::incoming_block::channel_type::handle   _incoming_block_subscription;
+      channels::incoming_block::channel_type::handle          _incoming_block_subscription;
+      channels::incoming_transaction::channel_type::handle    _incoming_transaction_subscription;
+
+      methods::incoming_block_sync::method_type::handle       _incoming_block_sync_provider;
+      methods::incoming_transaction_sync::method_type::handle _incoming_transaction_sync_provider;
+      methods::start_coordinator::method_type::handle         _start_coordinator_provider;
+
+      void startup();
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -109,6 +117,11 @@ class producer_plugin_impl {
          // restart our production loop
          schedule_production_loop();
       }
+
+      transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         return chain.sync_push(std::make_shared<transaction_metadata>(*trx), fc::time_point::now() + fc::milliseconds(_max_pending_transaction_time_ms));
+      }
 };
 
 void new_chain_banner(const eosio::chain::controller& db)
@@ -151,6 +164,8 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(30),
+          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
           "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("required-participation", boost::program_options::value<uint32_t>()
@@ -216,33 +231,41 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    }
 
    my->_max_deferred_transaction_time_ms = options.at("max-deferred-transaction-time").as<int32_t>();
+   my->_max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
+
 
    my->_incoming_block_subscription = app().get_channel<channels::incoming_block>().subscribe([this](const signed_block_ptr& block){
       my->on_incoming_block(block);
    });
+
+   my->_incoming_transaction_subscription = app().get_channel<channels::incoming_transaction>().subscribe([this](const packed_transaction_ptr& trx){
+      my->on_incoming_transaction(trx);
+   });
+
+   static const int my_priority = 1;
+
+   my->_incoming_block_sync_provider = app().get_method<methods::incoming_block_sync>().register_provider([this](const signed_block_ptr& block){
+      my->on_incoming_block(block);
+   }, my_priority);
+
+   my->_incoming_transaction_sync_provider = app().get_method<methods::incoming_transaction_sync>().register_provider([this](const packed_transaction_ptr& trx) -> transaction_trace_ptr {
+      return my->on_incoming_transaction(trx);
+   }, my_priority);
+
+
+   my->_start_coordinator_provider = app().get_method<methods::start_coordinator>().register_provider([this]() {
+      my->startup();
+   }, my_priority);
+
 
 } FC_LOG_AND_RETHROW() }
 
 void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   chain.accepted_block.connect( [&]( const auto& bsp ){ my->on_block( bsp ); } );
 
-   if (!my->_producers.empty())
-   {
-      ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
-      if(my->_production_enabled)
-      {
-         if(chain.head_block_num() == 0)
-            new_chain_banner(chain);
-         //my->_production_skip_flags |= eosio::chain::skip_undo_history_check;
-      }
-      my->schedule_production_loop();
-   } else
-      elog("No producers configured! Please add producer IDs and private keys to configuration.");
-      ilog("producer plugin:  plugin_startup() end");
-   } FC_CAPTURE_AND_RETHROW() }
+   ilog("producer plugin:  plugin_startup() end");
+} FC_CAPTURE_AND_RETHROW() }
 
 void producer_plugin::plugin_shutdown() {
    try {
@@ -250,6 +273,25 @@ void producer_plugin::plugin_shutdown() {
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
    }
+}
+
+void producer_plugin_impl::startup() {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain.accepted_block.connect( [this]( const auto& bsp ){ on_block( bsp ); } );
+
+   if (!_producers.empty())
+   {
+      ilog("Launching block production for ${n} producers.", ("n", _producers.size()));
+      if(_production_enabled)
+      {
+         if(chain.head_block_num() == 0)
+            new_chain_banner(chain);
+         //_production_skip_flags |= eosio::chain::skip_undo_history_check;
+      }
+      schedule_production_loop();
+   } else
+      elog("No producers configured! Please add producer IDs and private keys to configuration.");
+
 }
 
 void producer_plugin_impl::schedule_production_loop() {
