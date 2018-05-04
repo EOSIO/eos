@@ -123,6 +123,9 @@ namespace eosio { namespace chain {
          check_net_usage();  // Fail early if current net usage is already greater than the calculated limit
       check_cpu_usage(); // Fail early if current CPU usage is already greater than the calculated limit
 
+      control.validate_tapos( trx );
+      control.validate_referenced_accounts( trx );
+
       is_initialized = true;
    }
 
@@ -165,6 +168,8 @@ namespace eosio { namespace chain {
       deadline = d;
       is_input = true;
       init( initial_net_usage, initial_cpu_usage );
+      control.validate_expiration( trx );
+      record_transaction( id, trx.expiration ); /// checks for dupes
    }
 
    void transaction_context::init_for_deferred_trx( fc::time_point d,
@@ -179,15 +184,6 @@ namespace eosio { namespace chain {
 
    void transaction_context::exec() {
       FC_ASSERT( is_initialized, "must first initialize" );
-
-      //trx.validate(); // Not needed anymore since overflow is prevented by using uint64_t instead of uint32_t
-      control.validate_tapos( trx );
-      control.validate_referenced_accounts( trx );
-
-      if( is_input ) { /// signed transaction from user rather than a deferred transaction
-         control.validate_expiration( trx );
-         record_transaction( id, trx.expiration ); /// checks for dupes
-      }
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
@@ -204,6 +200,10 @@ namespace eosio { namespace chain {
       } else {
          schedule_transaction();
       }
+   }
+
+   void transaction_context::finalize() {
+      FC_ASSERT( is_initialized, "must first initialize" );
 
       add_cpu_usage( validate_ram_usage.size() * config::ram_usage_validation_overhead_per_account );
 

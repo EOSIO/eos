@@ -138,7 +138,7 @@ transaction_trace_ptr CallAction(TESTER& test, T ac, const vector<account_name>&
    auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
    trx.get_signature_keys(chain_id_type());
    auto res = test.push_transaction(trx);
-   BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
+   BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    test.produce_block();
    return res;
 }
@@ -162,7 +162,7 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
       auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
       auto res = test.push_transaction(trx);
-      BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       test.produce_block();
       return res;
    }
@@ -291,7 +291,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       test.set_transaction_headers(trx);
       trx.sign(test.get_private_key(N(inita), "active"), chain_id_type());
       auto res = test.push_transaction(trx);
-      BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
    BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), tx_missing_sigs,
          [](const tx_missing_sigs& e) {
@@ -345,7 +345,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       trx.sign(get_private_key(N(acc3), "active"), chain_id_type());
       trx.sign(get_private_key(N(acc4), "active"), chain_id_type());
       auto res = push_transaction(trx);
-      BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    }
 
    uint64_t now = static_cast<uint64_t>( control->head_block_time().time_since_epoch().count() );
@@ -431,7 +431,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
       auto res = push_transaction(trx);
 
-      BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
 
       // attempt to access context free api in non context free action
 
@@ -612,7 +612,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
    auto trace = push_transaction( trx );
    BOOST_REQUIRE(trace != nullptr);
    if (trace) {
-      BOOST_REQUIRE_EQUAL(transaction_receipt_header::status_enum::delayed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(transaction_receipt_header::status_enum::delayed, trace->receipt->status);
       BOOST_REQUIRE_EQUAL(1, trace->action_traces.size());
    }
    produce_blocks(10);
@@ -664,7 +664,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
       auto res = test.push_transaction(trx);
-      BOOST_CHECK_EQUAL(res->receipt.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       test.produce_block();
    };
 
@@ -800,7 +800,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    control->push_next_scheduled_transaction();
 
    BOOST_CHECK(trace);
-   BOOST_CHECK_EQUAL(trace->receipt.status, transaction_receipt::soft_fail);
+   BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
 #endif
 
    // test test_transaction_size

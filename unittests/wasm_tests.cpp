@@ -93,7 +93,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       set_transaction_headers(trx);
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
       auto result = push_transaction( trx );
-      BOOST_CHECK_EQUAL(result->receipt.status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL(result->receipt->status, transaction_receipt::executed);
       BOOST_CHECK_EQUAL(result->action_traces.size(), 1);
       BOOST_CHECK_EQUAL(result->action_traces.at(0).receipt.receiver.to_string(),  name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.account.to_string(), name(N(asserter)).to_string() );

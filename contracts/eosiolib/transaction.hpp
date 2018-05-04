@@ -53,18 +53,17 @@ namespace eosio {
       EOSLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions) )
    };
 
-   class deferred_transaction : public transaction {
-      public:
-         uint128_t     sender_id;
-         account_name  sender;
-         account_name  payer;
-         time          execute_after;
+   struct onerror {
+      uint128_t    sender_id;
+      uint64_t     published;
+      account_name payer;
+      transaction  sent_trx;
 
-         static deferred_transaction from_current_action() {
-            return unpack_action_data<deferred_transaction>();
-         }
+      static onerror from_current_action() {
+         return unpack_action_data<onerror>();
+      }
 
-         EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(payer)(execute_after) )
+      EOSLIB_SERIALIZE( onerror, (sender_id)(published)(payer)(sent_trx) )
    };
 
    /**

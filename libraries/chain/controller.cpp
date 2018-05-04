@@ -18,6 +18,7 @@
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -361,6 +362,24 @@ struct controller_impl {
       self.log_irreversible_blocks();
    }
 
+   fc::scoped_exit<std::function<void()>> make_block_restore_point() {
+      auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
+      auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
+      auto orig_state_actions_size      = pending->_actions.size();
+
+      std::function<void()> callback = [this,
+                                        orig_block_transactions_size,
+                                        orig_state_transactions_size,
+                                        orig_state_actions_size]()
+      {
+         pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
+         pending->_pending_block_state->trxs.resize(orig_state_transactions_size);
+         pending->_actions.resize(orig_state_actions_size);
+      };
+
+      return fc::make_scoped_exit( std::move(callback) );
+   }
+
    transaction_trace_ptr apply_onerror( const generated_transaction_object& gto,
                                         fc::time_point deadline,
                                         uint64_t cpu_usage,
@@ -368,8 +387,7 @@ struct controller_impl {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{{gto.sender,config::active_name}},
-                                 gto.sender, onerror::get_name(),
-                                 fc::raw::pack( onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) ) );
+                                 onerror( gto.sender_id, gto.published, gto.payer, gto.packed_trx.data(), gto.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
 
@@ -377,30 +395,25 @@ struct controller_impl {
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx( deadline, 0, cpu_usage );
-
-         trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+         trx_context.trace->action_traces.emplace_back();
+         trx_context.trace->action_traces.back() = trx_context.dispatch_action( etrx.actions.back(), gto.sender );
+         trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 
-         auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
-         auto orig_state_actions_size      = pending->_actions.size();
-         try {
-            trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail, trace->cpu_usage, trace->net_usage );
-            fc::move_append( pending->_actions, move(trx_context.executed) );
+         auto restore = make_block_restore_point();
+         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail, trace->cpu_usage, trace->net_usage );
+         fc::move_append( pending->_actions, move(trx_context.executed) );
 
-            remove_scheduled_transaction( gto );
+         remove_scheduled_transaction( gto );
 
-            emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, trace );
 
-            trx_context.squash();
-            return trace;
-         } catch( ... ) {
-            pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
-            pending->_actions.resize(orig_state_actions_size);
-            throw;
-         }
+         trx_context.squash();
+         restore.cancel();
+         return trace;
       } catch( const fc::exception& e ) {
-         trace->hard_except = e;
-         trace->hard_except_ptr = std::current_exception();
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
       }
       return trace;
    }
@@ -443,18 +456,20 @@ struct controller_impl {
       bool abort_on_error = false;
       try {
          trx_context.init_for_deferred_trx( deadline, gto.published );
-
          bill_to_accounts = trx_context.bill_to_accounts;
          max_cpu = trx_context.initial_max_billable_cpu;
-         trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+         trx_context.exec();
+         trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 
-         fc::move_append( pending->_actions, move(trx_context.executed) );
+         auto restore = make_block_restore_point();
 
          trace->receipt = push_receipt( gto.trx_id,
                                         transaction_receipt::executed,
                                         trace->cpu_usage,
                                         trace->net_usage );
+
+         fc::move_append( pending->_actions, move(trx_context.executed) );
 
          remove_scheduled_transaction( gto );
 
@@ -466,12 +481,13 @@ struct controller_impl {
          }
          trx_context.squash();
          undo_session.squash();
+         restore.cancel();
          return;
       } catch( const fc::exception& e ) {
          if( abort_on_error ) // abort_on_error should  normally should not be set at this point, but if it is then that means
             throw;            // something went wrong while emitting the applied_transaction signal and we should abort
-         trace->soft_except = e;
-         trace->soft_except_ptr = std::current_exception();
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - start;
       }
       trx_context.undo_session.undo();
@@ -480,21 +496,16 @@ struct controller_impl {
 
       if( gto.sender != account_name() ) {
          // Attempt error handling for the generated transaction.
-         edump((trace->soft_except->to_detail_string()));
+         edump((trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trace->cpu_usage, start );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
-         if( !trace->hard_except_ptr ) {
+         if( !trace->except_ptr ) {
             undo_session.squash();
             return;
          }
-      } else {
-         // Soft failures are not allowed for delayed transactions; upgrade to hard failure.
-         trace->hard_except     = std::move(trace->soft_except);
-         trace->soft_except.reset();
-         trace->hard_except_ptr = trace->soft_except_ptr;
-         trace->soft_except_ptr = nullptr;
       }
+
       // Only hard failure logic below:
 
       trace->cpu_usage = ((trace->cpu_usage + 1023)/1024)*1024; // Round up cpu_usage to nearest multiple of 1024
@@ -587,41 +598,38 @@ struct controller_impl {
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                      ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );
 
-         trx_context.exec(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+         trx_context.exec();
+         trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 
-         auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
-         auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
-         auto orig_state_actions_size      = pending->_actions.size();
+         auto restore = make_block_restore_point();
 
-         try {
-            if( !implicit ) {
-               transaction_receipt::status_enum s = ( trx_context.delay == fc::seconds(0) )
-                                                    ? transaction_receipt::executed
-                                                    : transaction_receipt::delayed;
-               trace->receipt = push_receipt( trx->packed_trx, s, trace->cpu_usage, trace->net_usage );
-               pending->_pending_block_state->trxs.emplace_back(trx);
-            } else {
-               trace->receipt.status          = transaction_receipt::executed;
-               trace->receipt.kcpu_usage      = trace->cpu_usage / 1024;
-               trace->receipt.net_usage_words = trace->net_usage / 8;
-            }
-            fc::move_append( pending->_actions, move(trx_context.executed) );
-
-            transaction_trace_notify( trx, trace );
-
-            emit( self.applied_transaction, trace );
-            trx_context.squash();
-            return;
-         } catch( ... ) {
-            pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
-            pending->_pending_block_state->trxs.resize(orig_state_transactions_size);
-            pending->_actions.resize(orig_state_actions_size);
-            throw;
+         if( !implicit ) {
+            transaction_receipt::status_enum s = ( trx_context.delay == fc::seconds(0) )
+                                                 ? transaction_receipt::executed
+                                                 : transaction_receipt::delayed;
+            trace->receipt = push_receipt( trx->packed_trx, s, trace->cpu_usage, trace->net_usage );
+            pending->_pending_block_state->trxs.emplace_back(trx);
+         } else {
+            transaction_receipt_header r;
+            r.status          = transaction_receipt::executed;
+            r.kcpu_usage      = trace->cpu_usage / 1024;
+            r.net_usage_words = trace->net_usage / 8;
+            trace->receipt = r;
          }
+
+         fc::move_append( pending->_actions, move(trx_context.executed) );
+
+         transaction_trace_notify( trx, trace );
+
+         emit( self.applied_transaction, trace );
+
+         trx_context.squash();
+         restore.cancel();
+         return;
       } catch( const fc::exception& e ) {
-         trace->hard_except = e;
-         trace->hard_except_ptr = std::current_exception();
+         trace->except = e;
+         trace->except_ptr = std::current_exception();
       }
       transaction_trace_notify( trx, trace );
    } FC_CAPTURE_AND_RETHROW() } /// push_transaction

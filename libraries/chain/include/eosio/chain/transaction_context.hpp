@@ -27,6 +27,7 @@ namespace eosio { namespace chain {
                                      fc::time_point published );
 
          void exec();
+         void finalize();
          void squash();
 
          inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
@@ -44,6 +45,7 @@ namespace eosio { namespace chain {
 
       private:
 
+         friend struct controller_impl;
          friend class apply_context;
 
          action_trace dispatch_action( const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
@@ -76,7 +78,7 @@ namespace eosio { namespace chain {
          uint64_t                      max_cpu = 0;
          uint64_t                      eager_cpu_limit = 0; ///< cpu usage limit (in virtual CPU instructions) to check against eagerly
          /// the maximum number of virtual CPU instructions of the transaction that can be safely billed to the billable accounts
-         uint64_t                      initial_max_billable_cpu = 0; 
+         uint64_t                      initial_max_billable_cpu = 0;
 
          fc::microseconds              delay;
          bool                          is_input           = false;

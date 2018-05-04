@@ -220,11 +220,13 @@ struct unlinkauth {
 };
 
 struct onerror {
-   uint128_t sender_id;
-   bytes     sent_trx;
+   uint128_t      sender_id;
+   fc::time_point published;
+   account_name   payer;
+   bytes          sent_trx;
 
-   onerror( uint128_t sid, const char* data, size_t len )
-   :sender_id(sid),sent_trx(data,data+len){}
+   onerror( uint128_t sid, fc::time_point published_time, account_name payer_acct, const char* data, size_t len )
+   :sender_id(sid),published(published_time),payer(payer_acct),sent_trx(data,data+len){}
 
    static account_name get_account() {
       return config::system_account_name;
@@ -308,4 +310,4 @@ FC_REFLECT( eosio::chain::postrecovery                     , (account)(auth)(mem
 FC_REFLECT( eosio::chain::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::vetorecovery                     , (account) )
 FC_REFLECT( eosio::chain::canceldelay                      , (canceling_auth)(trx_id) )
-FC_REFLECT( eosio::chain::onerror                          , (sender_id)(sent_trx) )
+FC_REFLECT( eosio::chain::onerror                          , (sender_id)(published)(payer)(sent_trx) )

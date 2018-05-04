@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
        ("memo", "hi" )
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
            ("parent", "active")
            ("auth",  authority(chain.get_public_key(tester_account, "first"), 10))
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
        ("memo", "hi" ),
        20, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -303,7 +303,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    chain.produce_blocks();
 
@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
        ("memo", "hi" )
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    liquid_balance = get_currency_balance(chain, N(eosio.token));
    BOOST_REQUIRE_EQUAL(asset::from_string("999900.0000 CUR"), liquid_balance);
@@ -345,14 +345,14 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
            ("account", "tester")
            ("code", "eosio.token")
            ("type", "transfer"));
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    // delete auth
    trace = chain.push_action(config::system_account_name, deleteauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
            ("permission", "first"));
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    chain.produce_blocks(1);;
 
@@ -362,7 +362,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
        ("quantity", "3.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    chain.produce_blocks();
 
@@ -428,7 +428,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -446,7 +446,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
        ("memo", "hi" )
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
            ("parent", "owner")
            ("auth",  authority(chain.get_public_key(tester_account, "active"), 15))
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -478,7 +478,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
        ("memo", "hi" ),
        20, 15
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -578,7 +578,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -596,7 +596,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
        ("memo", "hi" )
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -615,7 +615,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
            ("parent", "active")
            ("auth",  authority(chain.get_public_key(tester_account, "first"), 20))
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -628,7 +628,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
        ("memo", "hi" ),
        30, 20
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -722,7 +722,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -742,7 +742,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        30, 10
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -763,7 +763,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
            ("parent", "active")
            ("auth",  authority(chain.get_public_key(tester_account, "first"))),
            30, 10);
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -790,7 +790,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -833,7 +833,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        ("quantity", "10.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    chain.produce_blocks();
 
@@ -925,7 +925,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -945,7 +945,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
        30, 10
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -968,7 +968,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
            30, 10
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -996,7 +996,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
        30, 10
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1033,7 +1033,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
        ("memo", "hi" )
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(1, gen_size);
 
@@ -1128,7 +1128,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -1147,7 +1147,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1184,7 +1184,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
            ("requirement", "second"),
            30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1211,7 +1211,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_CHECK_EQUAL(0, trace->action_traces.size());
@@ -1248,7 +1248,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
        ("quantity", "10.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(1, gen_size);
 
@@ -1330,7 +1330,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    chain.produce_blocks();
 
@@ -1347,7 +1347,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1382,7 +1382,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
            ("type", "transfer"),
            30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1409,7 +1409,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1446,7 +1446,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
        ("quantity", "10.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    chain.produce_blocks();
 
@@ -1538,7 +1538,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -1557,7 +1557,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1579,7 +1579,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
            ("requirement", "third"),
            30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_CHECK_EQUAL(0, trace->action_traces.size());
@@ -1606,7 +1606,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_CHECK_EQUAL(0, trace->action_traces.size());
@@ -1643,7 +1643,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
        ("quantity", "10.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(1, gen_size);
 
@@ -1710,7 +1710,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -1728,7 +1728,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
        ("memo", "hi" )
    );
 
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -1766,7 +1766,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    chain.set_transaction_headers(trx, 30, 10);
    trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
    trace = chain.push_transaction(trx);
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -1859,7 +1859,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -1879,7 +1879,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    );
    //wdump((fc::json::to_pretty_string(trace)));
    ids.push_back(trace->id);
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(1, gen_size);
    BOOST_CHECK_EQUAL(0, trace->action_traces.size());
@@ -1923,7 +1923,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    );
    //wdump((fc::json::to_pretty_string(trace)));
    ids.push_back(trace->id);
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);
    BOOST_CHECK_EQUAL(0, trace->action_traces.size());
@@ -1952,7 +1952,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    );
    //wdump((fc::json::to_pretty_string(trace)));
    ids.push_back(trace->id);
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(3, gen_size);
    BOOST_CHECK_EQUAL(0, trace->action_traces.size());
@@ -1973,7 +1973,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
    trace = chain.push_transaction(trx);
    //wdump((fc::json::to_pretty_string(trace)));
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(2, gen_size);
 
@@ -2015,7 +2015,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
        ("memo", "hi" )
    );
    //wdump((fc::json::to_pretty_string(trace)));
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_CHECK_EQUAL(1, gen_size);
@@ -2108,7 +2108,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -2130,7 +2130,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
           30, 5
       );
       auto trx_id = trace->id;
-      BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(1, gen_size);
       BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -2174,7 +2174,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
       trace = chain.push_transaction(trx);
 
-      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -2214,7 +2214,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
           30, 5
       );
       auto trx_id = trace->id;
-      BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
       auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_CHECK_EQUAL(1, gen_size);
       BOOST_CHECK_EQUAL(0, trace->action_traces.size());
@@ -2238,7 +2238,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       trx.sign(chain.get_private_key(N(tester), "first"), chain_id_type());
       trace = chain.push_transaction(trx);
 
-      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -2266,7 +2266,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
           30, 5
       );
       auto trx_id = trace->id;
-      BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(1, gen_size);
       BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
@@ -2300,7 +2300,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       trx.sign(chain.get_private_key(N(tester), "owner"), chain_id_type());
       trace = chain.push_transaction(trx);
 
-      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
       gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
       BOOST_REQUIRE_EQUAL(0, gen_size);
 
@@ -2384,14 +2384,14 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
                      ("parent", "active")
                      ("auth",  authority(chain.get_public_key(tester_account, "first"), 30*86400)) // 30 days delay
    );
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    trace = chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
                      ("account", "tester")
                      ("code", "eosio.token")
                      ("type", "transfer")
                      ("requirement", "first"));
-   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    //change max_transaction_delay to 60 sec
    chain.control->db().modify( chain.control->get_global_properties(),
@@ -2408,7 +2408,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
                              120, 60
    );
    chain.produce_block();
-   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt.status);
+   BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
    BOOST_REQUIRE_EQUAL(1, gen_size);
    BOOST_REQUIRE_EQUAL(0, trace->action_traces.size());
