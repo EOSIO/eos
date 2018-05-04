@@ -396,7 +396,7 @@ struct controller_impl {
       try {
          trx_context.init_for_implicit_trx( deadline, 0, cpu_usage );
          trx_context.trace->action_traces.emplace_back();
-         trx_context.trace->action_traces.back() = trx_context.dispatch_action( etrx.actions.back(), gto.sender );
+         trx_context.dispatch_action( trx_context.trace->action_traces.back(), etrx.actions.back(), gto.sender );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
          trace->elapsed = fc::time_point::now() - start;
 

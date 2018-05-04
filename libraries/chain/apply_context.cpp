@@ -104,12 +104,14 @@ void apply_context::exec()
    }
 
    for( const auto& inline_action : _cfa_inline_actions ) {
-      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, true, recurse_depth + 1 ) );
+      trace.inline_traces.emplace_back();
+      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, true, recurse_depth + 1 );
       trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
    for( const auto& inline_action : _inline_actions ) {
-      trace.inline_traces.emplace_back( trx_context.dispatch_action( inline_action, inline_action.account, false, recurse_depth + 1 ) );
+      trace.inline_traces.emplace_back();
+      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, false, recurse_depth + 1 );
       trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 

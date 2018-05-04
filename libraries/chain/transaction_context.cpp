@@ -188,14 +188,14 @@ namespace eosio { namespace chain {
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
             trace->action_traces.emplace_back();
-            trace->action_traces.back() = dispatch_action( act, true );
+            dispatch_action( trace->action_traces.back(), act, true );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
             trace->action_traces.emplace_back();
-            trace->action_traces.back() = dispatch_action( act );
+            dispatch_action( trace->action_traces.back(), act );
          }
       } else {
          schedule_transaction();
@@ -314,7 +314,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   action_trace transaction_context::dispatch_action( const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
+   void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
       apply_context  acontext( control, *this, a, recurse_depth );
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
@@ -322,11 +322,15 @@ namespace eosio { namespace chain {
       try {
          acontext.exec();
       } catch( const action_cpu_usage_exceeded& e ) {
+         trace = move(acontext.trace);
          add_action_cpu_usage( acontext.cpu_usage, context_free ); // Will update cpu_usage to latest value and throw appropriate exception
          FC_ASSERT(false, "should not have reached here" );
+      } catch( ... ) {
+         trace = move(acontext.trace);
+         throw;
       }
 
-      return move(acontext.trace);
+      trace = move(acontext.trace);
    }
 
    void transaction_context::schedule_transaction() {
