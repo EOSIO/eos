@@ -401,6 +401,24 @@ chain::action create_action(const vector<permission_level>& authorization, const
    return chain::action{authorization, code, act, result.get_object()["binargs"].as<bytes>()};
 }
 
+chain::action create_buyram(const name& creator, const name& newaccount, const asset& quantity) {
+   fc::variant act_payload = fc::mutable_variant_object()
+         ("payer", creator.to_string())
+         ("receiver", newaccount.to_string())
+         ("quant", quantity.to_string());
+   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+                        config::system_account_name, N(buyram), act_payload);
+}
+
+chain::action create_buyrambytes(const name& creator, const name& newaccount, uint32_t numbytes) {
+   fc::variant act_payload = fc::mutable_variant_object()
+         ("payer", creator.to_string())
+         ("receiver", newaccount.to_string())
+         ("bytes", numbytes);
+   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+                        config::system_account_name, N(buyrambytes), act_payload);
+}
+
 fc::variant regproducer_variant(const account_name& producer,
                                 public_key_type key,
                                 string url) {
@@ -923,12 +941,18 @@ int main( int argc, char** argv ) {
    string account_name;
    string owner_key_str;
    string active_key_str;
+   uint32_t buy_ram_bytes_in_kbytes = 8;
+   string buy_ram_eos;
 
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
    createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
    createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
+   createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
+                             (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
+   createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
+                             (localized("The amount of RAM bytes to purchase for the new account in EOS")));
    add_standard_transaction_options(createAccount, "creator@active");
    createAccount->set_callback([&] {
       public_key_type owner_key, active_key;
@@ -938,7 +962,15 @@ int main( int argc, char** argv ) {
       try {
          active_key = public_key_type(active_key_str);
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
-      send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
+      if( !buy_ram_eos.empty() ) {
+         action buyact = create_buyram(creator, account_name, asset::from_string(buy_ram_eos));
+         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
+      } else if( buy_ram_bytes_in_kbytes > 0 ){
+         action buyact = create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024 * 1024);
+         send_actions({create_newaccount(creator, account_name, owner_key, active_key), buyact});
+      } else {
+         send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
+      }
    });
 
    // Get subcommand

@@ -297,3 +297,12 @@ void test_transaction::context_free_api() {
    char buf[128] = {0};
    get_context_free_data(0, buf, sizeof(buf));
 }
+
+extern "C" { int is_feature_active(int64_t); }
+void test_transaction::new_feature() {
+   eosio_assert(false == is_feature_active(N(newfeature)), "we should not have new features unless hardfork");
+}
+
+void test_transaction::active_new_feature() {
+   activate_feature(N(newfeature));
+}

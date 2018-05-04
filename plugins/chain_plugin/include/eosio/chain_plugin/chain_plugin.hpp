@@ -354,9 +354,6 @@ public:
    // Only call this after plugin_startup()!
    const controller& chain() const;
 
-   // Calculate deadline for controller push_transaction
-   fc::time_point get_transaction_deadline()const;
-
    void get_chain_id(chain::chain_id_type& cid) const;
 
 private:

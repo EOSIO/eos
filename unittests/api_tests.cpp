@@ -646,7 +646,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
 	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
 	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
-   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000)} );
+   TESTER t;
    t.produce_blocks(2);
 
    t.create_account( N(testapi) );
@@ -1648,6 +1648,59 @@ BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
    produce_blocks(1000);
 
    CALL_TEST_FUNCTION( *this, "test_datastream", "test_basic", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
+ * new api feature test
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
+   
+   produce_blocks(1);
+   create_account(N(testapi) );
+   produce_blocks(1);
+   set_code(N(testapi), test_api_wast);
+   produce_blocks(1);
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} ), 
+      assert_exception,
+      [](const fc::exception& e) {
+         return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
+      });
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ), 
+      assert_exception,
+      [](const fc::exception& e) {
+         return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
+      });
+
+   // change privilege
+   {
+      chainbase::database &db = control->db();
+      const account_object &account = db.get<account_object, by_name>(N(testapi));
+      db.modify(account, [&](account_object &v) {
+         v.privileged = true;
+      });
+   }
+
+#ifndef NON_VALIDATING_TEST
+   {
+      chainbase::database &db = validating_node->db();
+      const account_object &account = db.get<account_object, by_name>(N(testapi));
+      db.modify(account, [&](account_object &v) {
+         v.privileged = true;
+      });
+   }
+#endif
+
+   CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} );
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ), 
+      assert_exception,
+      [](const fc::exception& e) {
+         return expect_assert_message(e, "Unsupported Hardfork Detected");
+      });
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
