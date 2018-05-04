@@ -769,15 +769,15 @@ struct buyram_subcommand {
 
    buyram_subcommand(CLI::App* actionRoot) {
       auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
-      buyram->add_option("buyer", from_str, localized("The account paying for RAM"))->required();
-      buyram->add_option("receiver", receiver_str, localized("The account to receive bought RAM"))->required();
+      buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
+      buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
       buyram->add_option("tokens", amount, localized("The amount of EOS to pay for RAM"))->required();
       add_standard_transaction_options(buyram);
       buyram->set_callback([this] {
             fc::variant act_payload = fc::mutable_variant_object()
-               ("buyer", from_str)
+               ("payer", from_str)
                ("receiver", receiver_str)
-               ("tokens", asset::from_string(amount));
+               ("quant", asset::from_string(amount));
             send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
          });
    }
@@ -790,13 +790,13 @@ struct sellram_subcommand {
 
    sellram_subcommand(CLI::App* actionRoot) {
       auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
-      sellram->add_option("receiver", receiver_str, localized("The account to receive EOS for sold RAM"))->required();
+      sellram->add_option("account", receiver_str, localized("The account to receive EOS for sold RAM"))->required();
       sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
       add_standard_transaction_options(sellram);
 
       sellram->set_callback([this] {
             fc::variant act_payload = fc::mutable_variant_object()
-               ("receiver", receiver_str)
+               ("account", receiver_str)
                ("bytes", amount);
             send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
          });
