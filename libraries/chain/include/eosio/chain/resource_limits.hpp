@@ -26,6 +26,12 @@ namespace eosio { namespace chain { namespace resource_limits {
       void validate()const; // throws if the parameters do not satisfy basic sanity checks
    };
 
+   struct account_resource_limit {
+      int64_t current_per_block = 0;
+      int64_t max_per_block = 0;
+      int64_t guaranteed_per_day = 0;
+   };
+
    class resource_limits_manager {
       public:
          explicit resource_limits_manager(chainbase::database& db)
@@ -59,9 +65,15 @@ namespace eosio { namespace chain { namespace resource_limits {
 
          int64_t get_account_cpu_limit( const account_name& name ) const;
          int64_t get_account_net_limit( const account_name& name ) const;
+
+         account_resource_limit get_account_cpu_limit_ex( const account_name& name ) const;
+         account_resource_limit get_account_net_limit_ex( const account_name& name ) const;
+
          int64_t get_account_ram_usage( const account_name& name ) const;
 
       private:
          chainbase::database& _db;
    };
 } } } /// eosio::chain
+
+FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (current_per_block)(max_per_block)(guaranteed_per_day) )
