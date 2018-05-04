@@ -1652,4 +1652,57 @@ BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+/*************************************************************************************
+ * new api feature test
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
+   
+   produce_blocks(1);
+   create_account(N(testapi) );
+   produce_blocks(1);
+   set_code(N(testapi), test_api_wast);
+   produce_blocks(1);
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} ), 
+      assert_exception,
+      [](const fc::exception& e) {
+         return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
+      });
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ), 
+      assert_exception,
+      [](const fc::exception& e) {
+         return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
+      });
+
+   // change privilege
+   {
+      chainbase::database &db = control->db();
+      const account_object &account = db.get<account_object, by_name>(N(testapi));
+      db.modify(account, [&](account_object &v) {
+         v.privileged = true;
+      });
+   }
+
+#ifndef NON_VALIDATING_TEST
+   {
+      chainbase::database &db = validating_node->db();
+      const account_object &account = db.get<account_object, by_name>(N(testapi));
+      db.modify(account, [&](account_object &v) {
+         v.privileged = true;
+      });
+   }
+#endif
+
+   CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} );
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ), 
+      assert_exception,
+      [](const fc::exception& e) {
+         return expect_assert_message(e, "Unsupported Hardfork Detected");
+      });
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
