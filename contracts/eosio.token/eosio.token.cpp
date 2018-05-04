@@ -45,6 +45,10 @@ void token::issue( account_name to, asset quantity, string memo )
     require_auth( st.issuer );
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must issue positive quantity" );
+
+    if ( quantity.symbol.precision() != st.supply.symbol.precision() )
+       quantity.adjust_precision( st.supply.symbol );
+    
     eosio_assert( quantity <= st.max_supply - st.supply, "quantity exceeds available supply");
 
     statstable.modify( st, 0, [&]( auto& s ) {
