@@ -10,6 +10,7 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
@@ -80,6 +81,7 @@ public:
       name                       producer_name;
    };
 
+   using account_resource_limit = chain::resource_limits::account_resource_limit;
 
    struct get_account_results {
       name                       account_name;
@@ -91,9 +93,9 @@ public:
       int64_t                    net_weight = 0;
       int64_t                    cpu_weight = 0;
 
-      int64_t                    net_limit = 0;
-      int64_t                    cpu_limit = 0;
-      int64_t                    ram_usage = 0;
+      account_resource_limit     net_limit;
+      account_resource_limit     cpu_limit;
+      int64_t                    ram_usage;
 
       vector<permission>         permissions;
 
