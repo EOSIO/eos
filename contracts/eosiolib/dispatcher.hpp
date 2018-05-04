@@ -66,7 +66,7 @@ namespace eosio {
 #define EOSIO_API_CALL( r, OP, elem ) \
    case ::eosio::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
       eosio::execute_action( &thiscontract, &OP::elem ); \
-      return;
+      break;
 
 #define EOSIO_API( TYPE,  MEMBERS ) \
    BOOST_PP_SEQ_FOR_EACH( EOSIO_API_CALL, TYPE, MEMBERS )
@@ -80,7 +80,7 @@ extern "C" { \
          switch( action ) { \
             EOSIO_API( TYPE, MEMBERS ) \
          } \
-         eosio_exit(0); \
+         /* does not allow destructor of thiscontract to run: eosio_exit(0); */ \
       } \
    } \
 } \
