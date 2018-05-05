@@ -75,11 +75,13 @@ if(ENABLE_COVERAGE_TESTING)
 
     COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
 
-    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info
-    COMMAND ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.base ${Coverage_NAME}.info ${Coverage_NAME}.total ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned
+    COMMAND ${LCOV_PATH} -remove ${Coverage_NAME}.info 'boost/*' '/usr/lib/*' '/usr/include/*' '/externals/*' 'fc/*' 'wasm-jit/*' --output-file ${Coverage_NAME}_filtered.info
+
+    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info
+    COMMAND ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.base ${Coverage_NAME}.info ${Coverage_NAME}_filtered.info ${Coverage_NAME}.total ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info.cleaned
 
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    COMMENT "Resetting code coverage counters to zero. Processing code coverage counters and generating report."
+    COMMENT "Resetting code coverage counters to zero. Processing code coverage counters and generating report. Report published in ./${Coverage_NAME}"
     )
 
   # Show info where to find the report
