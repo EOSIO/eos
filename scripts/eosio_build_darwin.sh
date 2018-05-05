@@ -73,11 +73,11 @@
 				$RUBY -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 				if [ $? -ne 0 ]; then
 					echo "Unable to install homebrew at this time. Exiting now."
-					exit 0;
+					exit 1;
 				fi
 				break;;
 				[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
-						exit;;
+						exit 1;;
 				* ) echo "Please enter 1 for yes or 2 for no.";;
 			esac
 		done
@@ -143,7 +143,7 @@
 					if [ $? -ne 0 ]; then
 						printf "\tUnable to update Home Brew at this time.\n"
 						printf "\tExiting now.\n\n"
-						exit;
+						exit 1;
 					fi
 					printf "\tInstalling Dependencies.\n"
 					if [ "${BOOST_CHECK}" = 1 ]; then
@@ -153,13 +153,13 @@
 					if [ $? -ne 0 ]; then
 						printf "\tHomebrew exited with the above errors.\n"
 						printf "\tExiting now.\n\n"
-						exit;
+						exit 1;
 					fi
 					brew unlink $DEP && brew link --force $DEP
 					if [ $? -ne 0 ]; then
 						printf "\tHomebrew exited with the above errors.\n"
 						printf "\tExiting now.\n\n"
-						exit;
+						exit 1;
 					fi
 				break;;
 				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
@@ -171,8 +171,8 @@
 	fi
 		
 	printf "\n\tChecking boost library installation.\n"
-	BVERSION=`cat "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null | grep "#define BOOST_VERSION" | tail -1 | tr -s ' ' | cut -d\  -f3`
-	if [ "${BVERSION}" -ne 106600 ]; then
+	BVERSION=`cat "/usr/local/include/boost/version.hpp" 2>/dev/null | grep "#define BOOST_VERSION" | tail -1 | tr -s ' ' | cut -d\  -f3`
+	if [ "${BVERSION}" != "106600" ]; then
 		if [ ! -z "${BVERSION}" ]; then
 			printf "\tFound Boost Version ${BVERSION}.\n"
 			printf "\tEOS.IO requires Boost version 1.66.\n"
@@ -180,26 +180,29 @@
 			select yn in "Yes" "No"; do
 				case $yn in
 					[Yy]* )
-						printf "\tRemoving Boost Version ${BVERSION}.\n"
-						if [ -L "/usr/local/include/boost/version.hpp" ]; then 
-							brew remove boost 2>/dev/null
-							if [ $? -ne 0 ]; then
+						if brew list | grep "boost"
+						then 
+							printf "\tUnlinking Boost Version ${BVERSION}.\n"
+							echo unlinking boost "${BVERSION}"				
+							if ! brew unlink boost
+							then
 								printf "\tUnable to remove boost libraries at this time. 0\n"
 								printf "\tExiting now.\n\n"
 								exit 1;
 							fi
 						else
+							printf "\tRemoving Boost Version ${BVERSION}.\n"
 							sudo rm -rf "${BOOST_ROOT}/include/boost"
 							if [ $? -ne 0 ]; then
 								printf "\tUnable to remove boost libraries at this time. 1\n"
 								printf "\tExiting now.\n\n"
-								exit;
+								exit 1;
 							fi
 							sudo rm -rf "${BOOST_ROOT}/lib/libboost*"
 							if [ $? -ne 0 ]; then
 								printf "\tUnable to remove boost libraries at this time. 2\n"
 								printf "\tExiting now.\n\n"
-								exit;
+								exit 1;
 							fi
 						fi
 					break;;
@@ -209,32 +212,31 @@
 			done
 		fi
 		printf "\tInstalling boost libraries.\n"
-		cd ${TEMP_DIR}
-		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2)
-		if [ "${STATUS}" -ne 200 ]; then
-			printf "\tUnable to download Boost libraries at this time.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if [ ! -d "/usr/local/Cellar/boost/1.66.0" ]; then
+			if ! brew install "https://raw.githubusercontent.com/Homebrew/homebrew-core/76a83d798d76aa43459ceb145b721ba4a16a54a6/Formula/boost.rb"
+			then
+				printf "\tUnable to install boost 1.66 libraries at this time. 0\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			printf "\tPinning boost libraries.\n"
+			if ! brew pin boost
+			then
+				printf "\tUnable to pin boost libraries at this time. 2\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+		else
+			if ! brew switch boost 1.66.0
+			then
+				printf "\tUnable to swtich boost libraries to 1.66.0 at this time. 1\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
 		fi
-		tar xf ${TEMP_DIR}/boost_1_66_0.tar.bz2
-		rm -f  ${TEMP_DIR}/boost_1_66_0.tar.bz2
-		cd ${TEMP_DIR}/boost_1_66_0/
-		./bootstrap.sh "--prefix=$BOOST_ROOT"
-		if [ $? -ne 0 ]; then
-			printf "\n\tInstallation of boost libraries failed. 0\n"
-			printf "\n\tExiting now.\n"
-			exit 1
-		fi
-		./b2 install
-		if [ $? -ne 0 ]; then
-			printf "\n\tInstallation of boost libraries failed. 1\n"
-			printf "\n\tExiting now.\n"
-			exit 1
-		fi
-		rm -rf ${TEMP_DIR}/boost_1_66_0/
-		printf "\tBoost 1.66.0 successfully installed @ ${BOOST_ROOT}.\n"
+		printf "\tBoost 1.66.0 successfully installed @ /usr/local.\n"
 	else
-		printf "\tBoost 1.66.0 found at ${BOOST_ROOT}.\n"
+		printf "\tBoost 1.66.0 found at /usr/local.\n"
 	fi
 
 	printf "\n\tChecking MongoDB C++ driver installation.\n"
@@ -373,7 +375,6 @@
 	function print_instructions()
 	{
 		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
-		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
-		printf "\tcd ${HOME}/eos/build; make test\n\n"
+		printf "\tcd ${BUILD_DIR}; make test\n\n"
 	return 0
 	}
