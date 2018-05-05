@@ -336,6 +336,9 @@ namespace eosio { namespace chain {
 
       fc::microseconds max_delay;
 
+      map<permission_level, bool> permissions_to_satisfy;
+      // bool value indicates whether the delay encountered in the check should not contribute to max_delay.
+
       for( const auto& act : actions ) {
          bool special_case = false;
          bool ignore_delay = false;
@@ -383,19 +386,32 @@ namespace eosio { namespace chain {
                }
             }
 
-            //if( should_check_signatures() ) {
-               if( ignore_delay )
-                  checker.get_permission_visitor().pause_delay_tracking();
-               EOS_ASSERT( checker.satisfied(declared_auth), tx_missing_sigs,
-                           "transaction declares authority '${auth}', but does not have signatures for it.",
-                           ("auth", declared_auth) );
-               if( ignore_delay )
-                  checker.get_permission_visitor().resume_delay_tracking();
-            //}
+            auto res = permissions_to_satisfy.emplace( declared_auth, ignore_delay );
+            if( !res.second && res.first->second ) { // if the declared_auth was already in the map and without delay tracking specified
+               res.first->second = ignore_delay;
+            }
          }
       }
 
-      if( !allow_unused_keys ) { //&& should_check_signatures() ) {
+      // Now verify that all the declared authorizations are satisfied:
+
+      // Although this can be made parallel (especially for input transactions) with the optimistic assumption that the
+      // CPU limit is not reached, because of the CPU limit the protocol must officially specify a sequential algorithm
+      // for checking the set of declared authorizations.
+      // The permission_levels are traversed in ascending order, which is:
+      // ascending order of the actor name with ties broken by ascending order of the permission name.
+      for( const auto& p : permissions_to_satisfy ) {
+         checktime( config::base_authority_checker_cpu_per_permission ); // TODO: this should eventually move into authority_checker instead
+         if( p.second )
+            checker.get_permission_visitor().pause_delay_tracking();
+         EOS_ASSERT( checker.satisfied(p.first), tx_missing_sigs,
+                     "transaction declares authority '${auth}', but does not have signatures for it.",
+                     ("auth", p.first) );
+         if( p.second )
+            checker.get_permission_visitor().resume_delay_tracking();
+      }
+
+      if( !allow_unused_keys ) {
          EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
                      "transaction bears irrelevant signatures from these keys: ${keys}",
                      ("keys", checker.unused_keys()) );
