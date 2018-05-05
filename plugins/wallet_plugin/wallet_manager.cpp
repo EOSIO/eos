@@ -154,6 +154,7 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
    }
    auto& w = wallets.at(name);
    if (!w->is_locked()) {
+      EOS_THROW(chain::wallet_unlocked_exception, "Wallet is already unlocked: ${w}", ("w", name));
       return;
    }
    w->unlock(password);
