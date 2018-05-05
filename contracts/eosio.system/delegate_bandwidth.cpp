@@ -269,22 +269,26 @@ namespace eosiosystem {
                                                        { from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
       }
 
-      print( "voters" );
+      print( "voters \n" );
       auto from_voter = _voters.find(from);
       if( from_voter == _voters.end() ) {
-         print( " create voter" );
+         print( " create voter \n" );
          from_voter = _voters.emplace( from, [&]( auto& v ) {
             v.owner  = from;
             v.staked = uint64_t(total_stake);
+            print( "    vote weight: ", v.last_vote_weight, "\n" );
          });
       } else {
          _voters.modify( from_voter, 0, [&]( auto& v ) {
             v.staked += uint64_t(total_stake);
+            print( "    vote weight: ", v.last_vote_weight, "\n" );
          });
       }
 
-      print( "voteproducer" );
-      voteproducer( from, from_voter->proxy, from_voter->producers );
+      print( "voteproducer\n" );
+      if( from_voter->producers.size() || from_voter->proxy ) {
+         voteproducer( from, from_voter->proxy, from_voter->producers );
+      }
    } // delegatebw
 
    void system_contract::undelegatebw( account_name from, account_name receiver,
@@ -304,6 +308,7 @@ namespace eosiosystem {
 
       _voters.modify( _voters.get(from), 0, [&]( auto& v ) {
          v.staked -= uint64_t(total_refund);
+         print( "    vote weight: ", v.last_vote_weight, "\n" );
       });
 
 
@@ -349,7 +354,10 @@ namespace eosiosystem {
       out.send( from, receiver );
 
       const auto& fromv = _voters.get( from );
-      voteproducer( from, fromv.proxy, fromv.producers );
+
+      if( fromv.producers.size() || fromv.proxy ) {
+         voteproducer( from, fromv.proxy, fromv.producers );
+      }
    } // undelegatebw
 
 

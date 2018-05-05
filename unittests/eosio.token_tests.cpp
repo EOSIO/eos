@@ -240,7 +240,7 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
    );
 
    BOOST_REQUIRE_EQUAL( success(),
-      issue( N(alice), N(alice), asset::from_string("1.00 TKN"), "hola" )
+      issue( N(alice), N(alice), asset::from_string("1.000 TKN"), "hola" )
    );
 
 

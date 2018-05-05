@@ -154,7 +154,6 @@ namespace eosiosystem {
          }
       }
 
-      print( __FILE__, ":", __LINE__, "   ");
       auto voter = _voters.find(voter_name);
       eosio_assert( voter != _voters.end(), "user must stake before they can vote" ); /// staking creates voter object
 
@@ -180,6 +179,7 @@ namespace eosiosystem {
          auto old_proxy = _voters.find( voter->proxy );
          _voters.modify( old_proxy, 0, [&]( auto& vp ) {
              vp.proxied_vote_weight -= voter->last_vote_weight;
+            print( "    vote weight: ", vp.last_vote_weight, "\n" );
          });
       }
 
@@ -188,13 +188,16 @@ namespace eosiosystem {
          eosio_assert( new_proxy != _voters.end() && new_proxy->is_proxy, "invalid proxy specified" );
          _voters.modify( new_proxy, 0, [&]( auto& vp ) {
              vp.proxied_vote_weight += new_vote_weight;
+            print( "    vote weight: ", vp.last_vote_weight, "\n" );
          });
       }
 
       _voters.modify( voter, 0, [&]( auto& av ) {
+                      print( "new_vote_weight: ", new_vote_weight, "\n" );
          av.last_vote_weight = new_vote_weight;
          av.producers = producers;
          av.proxy     = proxy;
+         print( "    vote weight: ", av.last_vote_weight, "\n" );
       });
 
       print( __FILE__, ":", __LINE__, "   ");
@@ -229,6 +232,7 @@ namespace eosiosystem {
 
       _voters.modify( pitr, 0, [&]( auto& p ) {
          p.is_proxy = isproxy;
+         print( "    vote weight: ", p.last_vote_weight, "\n" );
       });
    }
 
