@@ -112,15 +112,10 @@ namespace eosiosystem {
       _gstate.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
       _gstate.blocks_per_cycle = blocks_per_producer * schedule.producers.size();
 
-      if (_gstate.max_ram_size <_gstate.total_ram_bytes_reserved ) {
-         _gstate.max_ram_size =_gstate.total_ram_bytes_reserved;
-      }
-
       auto issue_quantity =_gstate.blocks_per_cycle * (_gstate.payment_per_block +_gstate.payment_to_eos_bucket);
       INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
                                                  {N(eosio), issue_quantity, std::string("producer pay")} );
 
-      set_blockchain_parameters( _gstate );
    }
 
    /**
@@ -200,7 +195,6 @@ namespace eosiosystem {
          print( "    vote weight: ", av.last_vote_weight, "\n" );
       });
 
-      print( __FILE__, ":", __LINE__, "   ");
       for( const auto& pd : producer_deltas ) {
          auto pitr = _producers.find( pd.first );
          if( pitr != _producers.end() ) {

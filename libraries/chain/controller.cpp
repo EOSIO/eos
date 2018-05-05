@@ -579,7 +579,7 @@ struct controller_impl {
                           fc::time_point deadline = fc::time_point::maximum(),
                           bool implicit = false )
    { try {
-      if( deadline == fc::time_point() ) {
+      if( deadline == fc::time_point() && !implicit ) {
          unapplied_transactions[trx->signed_id] = trx;
          return;
       }
@@ -588,11 +588,10 @@ struct controller_impl {
       transaction_context trx_context( self, trx->trx, trx->id);
       transaction_trace_ptr trace = trx_context.trace;
       try {
-         unapplied_transactions.erase( trx->signed_id );
-
          if( implicit ) {
             trx_context.init_for_implicit_trx( deadline );
          } else {
+            unapplied_transactions.erase( trx->signed_id );
             trx_context.init_for_input_trx( deadline,
                                             trx->packed_trx.get_unprunable_size(),
                                             trx->packed_trx.get_prunable_size(),
@@ -865,9 +864,11 @@ struct controller_impl {
       // Update resource limits:
       resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
+      uint32_t max_virtual_mult = 10000;
+      uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
       resource_limits.set_block_parameters(
-         {EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct), chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}},
-         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}}
+         { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
+         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
       );
       resource_limits.process_block_usage(pending->_pending_block_state->block_num);
 

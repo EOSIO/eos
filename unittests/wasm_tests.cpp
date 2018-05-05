@@ -611,7 +611,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
    while (count < 4) {
       signed_transaction trx;
 
-      for (int i = 0; i < 100; ++i) {
+      for (int i = 0; i < 1000; ++i) {
          action act;
          act.account = N(f_tests);
          act.name = N() + (i * 16);

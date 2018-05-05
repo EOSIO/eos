@@ -5,12 +5,12 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 // These contracts are still under dev
-#if _READY
-#endif
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
+#include <eosio.msig/eosio.msig.wast.hpp>
+#include <eosio.msig/eosio.msig.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -29,6 +29,27 @@ using namespace eosio::testing;
 using namespace fc;
 
 using mvo = fc::mutable_variant_object;
+
+struct genesis_account {
+   account_name aname;
+   uint64_t     initial_balance;
+};
+
+std::vector<genesis_account> test_genesis( {
+  {N(b1),    100'000'000'0000ll},
+  {N(whale4), 40'000'000'0000ll},
+  {N(whale3), 30'000'000'0000ll},
+  {N(whale2), 20'000'000'0000ll},
+  {N(p1),      1'000'000'0000ll},
+  {N(p2),      1'000'000'0000ll},
+  {N(p3),      1'000'000'0000ll},
+  {N(p4),      1'000'000'0000ll},
+  {N(p5),      1'000'000'0000ll},
+  {N(minow1),        100'0000ll},
+  {N(minow2),          1'0000ll},
+  {N(minow3),          1'0000ll},
+  {N(masses),800'000'000'0000ll}
+});
 
 class bootseq_tester : public TESTER
 {
@@ -72,7 +93,7 @@ public:
     }
 
 
-    void create_currency( name contract, name manager, asset maxsupply ) {
+    void create_currency( name contract, name manager, asset maxsupply, const private_key_type* signer = nullptr ) {
         auto act =  mutable_variant_object()
                 ("issuer",       manager )
                 ("maximum_supply", maxsupply )
@@ -127,11 +148,11 @@ public:
         );
     }
 
-    void set_code_abi(const account_name& account, const char* wast, const char* abi)
+    void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr)
     {
        wdump((account));
-        set_code(account, wast);
-        set_abi(account, abi);
+        set_code(account, wast, signer);
+        set_abi(account, abi, signer);
         produce_blocks();
     }
 
@@ -143,22 +164,41 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
+        //set_code_abi(config::system_account_name, eosio_bios_wast, eosio_bios_abi);
 
         // Create the following accounts:
         //  eosio.msig
         //  eosio.token
         create_accounts({N(eosio.msig), N(eosio.token)});
+        /*
+        auto eosio_active = authority( 1, {}, {{{N(eosio),N(active)},1}} );
+        auto eosio_active_pk = get_private_key( N(eosio), "active" );
+
+        base_tester::push_action(  N(eosio), N(newaccount), vector<permission_level>{{N(eosio),config::active_name}},
+                                   fc::variant(newaccount{
+                                      .creator  = N(eosio),
+                                      .name     = N(eosio.msig),
+                                      .owner    = eosio_active,
+                                      .active   = eosio_active,
+                                      .recovery = eosio_active 
+                                   }).get_object() );
+
+        base_tester::push_action(  N(eosio), N(newaccount), vector<permission_level>{{N(eosio),config::active_name}},
+                                   fc::variant(newaccount{
+                                      .creator  = N(eosio),
+                                      .name     = N(eosio.token),
+                                      .owner    = eosio_active,
+                                      .active   = eosio_active,
+                                      .recovery = eosio_active 
+                                   }).get_object() );
+                                   */
 
         // Set code for the following accounts:
         //  eosio.system  (code: eosio.bios)
         //  eosio.msig (code: eosio.msig)
         //  eosio.token    (code: eosio.token)
-// These contracts are still under dev
-#if _READY
-        set_code_abi(N(eosio.msig), eosio_msig_wast, eosio_msig_abi);
-#endif
-//        set_code_abi(config::system_account_name, eosio_bios_wast, eosio_bios_abi);
-        set_code_abi(N(eosio.token), eosio_token_wast, eosio_token_abi);
+        set_code_abi(N(eosio.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
+        set_code_abi(N(eosio.token), eosio_token_wast, eosio_token_abi); //, &eosio_active_pk);
 
         ilog(".");
         // Set privileges for eosio.msig
@@ -172,29 +212,90 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Todo : how to check the privilege is set? (use is_priv action)
 
 
-        auto expected = asset::from_string("1000000000.0000 EOS");
+        auto max_supply = asset::from_string("10000000000.0000 EOS"); /// 1x larger than 1B initial tokens
+        auto initial_supply = asset::from_string("1000000000.0000 EOS"); /// 1x larger than 1B initial tokens
+
         // Create EOS tokens in eosio.token, set its manager as eosio.system
-        create_currency(N(eosio.token), config::system_account_name, expected);
+        create_currency(N(eosio.token), config::system_account_name, max_supply );
 
-        ilog(".");
 
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
-        issue(N(eosio.token), config::system_account_name, config::system_account_name, expected);
+        issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
 
-        ilog(".");
 
         auto actual = get_balance(config::system_account_name);
-        BOOST_REQUIRE_EQUAL(expected, actual);
-        ilog(".");
+        BOOST_REQUIRE_EQUAL(initial_supply, actual);
 
         // Create a few genesis accounts
-        std::vector<account_name> gen_accounts{N(inita), N(initb), N(initc)};
-        ilog(".");
-        create_accounts(gen_accounts);
-        ilog(".");
+        //std::vector<account_name> gen_accounts{N(inita), N(initb), N(initc)};
+        //create_accounts(gen_accounts);
+
+        for( const auto& a : test_genesis ) {
+           create_account( a.aname, N(eosio) );
+           base_tester::push_action(N(eosio.token), N(transfer), config::system_account_name, mutable_variant_object()
+                    ("from", name(config::system_account_name))
+                    ("to", name(a.aname))
+                    ("quantity", asset(a.initial_balance))
+                    ("memo", "" ) );
+        }
+        set_code_abi(N(eosio), eosio_system_wast, eosio_system_abi); //, &eosio_active_pk);
+
+        for( const auto& a : test_genesis ) {
+           auto ib = a.initial_balance;
+           auto ram = 1000;
+           auto net = (ib - ram) / 2;
+           auto cpu = ib - net - ram;
+
+           base_tester::push_action(N(eosio), N(buyram), a.aname, mutable_variant_object()
+                    ("payer", name(a.aname))
+                    ("receiver", name(a.aname))
+                    ("quant", asset(ram)) 
+                    );
+
+           base_tester::push_action(N(eosio), N(delegatebw), a.aname, mutable_variant_object()
+                    ("from", name(a.aname))
+                    ("receiver", name(a.aname))
+                    ("stake_net_quantity", asset(net)) 
+                    ("stake_cpu_quantity", asset(cpu)) 
+                    );
+        }
+
+        produce_blocks(10);
+
+        for( auto pro : { N(p1), N(p2), N(p3), N(p4), N(p5) } ) {
+           base_tester::push_action(N(eosio), N(regproducer), pro, mutable_variant_object()
+                       ("producer",  name(pro))
+                       ("producer_key", get_public_key( pro, "active" ) )
+                       ("url", "" )
+                    );
+        }
+        produce_blocks(100);
+
+        auto votepro = [&]( account_name voter, vector<account_name> producers ) {
+          std::sort( producers.begin(), producers.end() );
+          base_tester::push_action(N(eosio), N(voteproducer), voter, mvo()
+                                ("voter",  name(voter))
+                                ("proxy", name(0) )
+                                ("producers", producers) 
+                     );
+        };
+
+        produce_blocks(100);
+
+        votepro( N(b1), {N(p1), N(p2)} );
+
+        wlog("pb" );
+        produce_block( fc::days(1) );
+        wdump((control->head_block_state()->active_schedule));
+        produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
+        wlog("minow" );
+        votepro( N(minow1), {N(p1), N(p2)} );
+
+
+
         // Transfer EOS to genesis accounts
-        for (auto gen_acc : gen_accounts) {
+        /*for (auto gen_acc : gen_accounts) {
             auto quantity = "10000.0000 EOS";
             auto stake_quantity = "5000.0000 EOS";
 
@@ -218,6 +319,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
             BOOST_REQUIRE_EQUAL(asset::from_string(stake_quantity).amount, total["cpu_weight"].as_uint64());
 #endif
         }
+        */
         ilog(".");
 
 #warning Complete this test

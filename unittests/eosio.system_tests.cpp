@@ -229,9 +229,9 @@ public:
          ("max_inline_action_depth", 4 + n)
          ("max_authority_depth", 6 + n)
          ("max_generated_transaction_count", 10 + n)
-         ("max_storage_size", (n % 10 + 1) * 1024 * 1024)
+         ("max_ram_size", (n % 10 + 1) * 1024 * 1024)
          ("percent_of_max_inflation_rate", 50 + n)
-         ("storage_reserve_ratio", 100 + n);
+         ("ram_reserve_ratio", 100 + n);
    }
 
    action_result regproducer( const account_name& acnt, int params_fixture = 1 ) {
@@ -380,7 +380,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0000 EOS"), get_voter_info( "alice" ) );
 
-   auto bytes = total["storage_bytes"].as_uint64();
+   auto bytes = total["ram_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
@@ -419,7 +419,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                                     ("receiver", "bob")
                                     ("stake_net_quantity", "10.0000 EOS")
                                     ("stake_cpu_quantity", "10.0000 EOS")
-                                    ("stake_storage_quantity", "10.0000 EOS"),
+                                    ("stake_ram_quantity", "10.0000 EOS"),
                                     false
                         )
    );
