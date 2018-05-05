@@ -32,11 +32,7 @@ void consumer::run(std::future<void> future_obj)
 {
     dlog("Consumer thread Start");
     while (future_obj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout)
-    {
         consume();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-    }
     dlog("Consumer thread End");
 }
 
