@@ -16,7 +16,8 @@ public:
     consumer_irreversible_block(std::shared_ptr<database> db);
 
     void push(const chain::signed_block& b);
-    void consume() final;
+    void consume() override;
+    void stop() override;
 
 private:
     fifo<chain::signed_block> m_fifo;

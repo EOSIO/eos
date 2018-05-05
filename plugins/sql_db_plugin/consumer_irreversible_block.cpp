@@ -19,4 +19,10 @@ void consumer_irreversible_block::consume()
     ilog(block.id().str());
 }
 
+void consumer_irreversible_block::stop()
+{
+    m_fifo.release_all();
+    consumer::stop();
+}
+
 } // namespace

@@ -17,7 +17,7 @@ public:
     virtual void consume() = 0;
 
     void start();
-    void stop();
+    virtual void stop();
 
 private:
     void run(std::future<void> future_obj);
