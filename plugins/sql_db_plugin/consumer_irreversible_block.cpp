@@ -16,7 +16,7 @@ void consumer_irreversible_block::push(const chain::signed_block &block)
 void consumer_irreversible_block::consume()
 {
     auto block = m_fifo.pop();
-    ilog(block.id().str());
+    ilog(block->id().str());
 }
 
 void consumer_irreversible_block::stop()
