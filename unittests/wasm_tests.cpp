@@ -526,12 +526,12 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    (table 0 anyfunc)
    (memory $0 1)
    (export "apply" (func $apply))
-   (func $i64_trunc_u_f64 (param $0 f64) (result i64) (i64.trunc_u/f64 (get_local $0)))
-   (func $test (param $0 i64))
+   (func $test1 (param $0 i64))
+   (func $test2 (param $0 i64) (result i64) (i64.add (get_local $0) (i64.const 32)))
    (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
    )=====";
    for (int i = 0; i < 1024; ++i) {
-      code += "(call $test (call $i64_trunc_u_f64 (f64.const 1)))\n";
+      code += "(call $test1 (call $test2(i64.const 1)))\n";
    }
    code += "))";
 
@@ -543,6 +543,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    start += 100 * (config::default_base_per_action_cpu_usage + config::determine_payers_cpu_overhead_per_authorization);
    start += config::resource_processing_cpu_overhead_per_billed_account;
    start /= 1024;
+   start += 3077; // injected checktime amount
    --start;
    wdump((start));
    uint32_t end   = start + 5;

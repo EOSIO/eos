@@ -195,18 +195,6 @@ class privileged_api : public context_aware_api {
 
 };
 
-/*
-class checktime_api : public context_aware_api {
-public:
-   explicit checktime_api( apply_context& ctx )
-   :context_aware_api(ctx,true){}
-
-   void checktime(uint32_t instruction_count) {
-      context.checktime(instruction_count);
-   }
-};
-*/
-
 class softfloat_api : public context_aware_api {
    public:
       // TODO add traps on truncations for special cases (NaN or outside the range which rounds to an integer)
