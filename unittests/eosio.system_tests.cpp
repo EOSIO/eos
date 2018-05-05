@@ -521,9 +521,9 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), stake ( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
 
    auto total = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("620.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
    //all voting power goes to alice
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0000 EOS" ), get_voter_info( "alice" ) );
    //but not to bob
@@ -537,9 +537,9 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    issue( "carol", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "carol", "bob", "20.0000 EOS", "10.0000 EOS" ) );
    total = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("962.0000 EOS"), get_balance( "carol" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("230.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("970.0000 EOS"), get_balance( "carol" ) );
    REQUIRE_MATCHING_OBJECT( voter( "carol", "30.0000 EOS" ), get_voter_info( "carol" ) );
 
    //alice should not be able to unstake money staked by carol
@@ -552,10 +552,10 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    );
 
    total = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("230.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS"), total["cpu_weight"].as<asset>());
    //balance should not change after unsuccessfull attempts to unstake
-   BOOST_REQUIRE_EQUAL( asset::from_string("620.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
    //voting power too
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0000 EOS" ), get_voter_info( "alice" ) );
    REQUIRE_MATCHING_OBJECT( voter( "carol", "30.0000 EOS" ), get_voter_info( "carol" ) );
