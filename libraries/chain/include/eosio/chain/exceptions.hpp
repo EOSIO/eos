@@ -259,6 +259,8 @@ namespace eosio { namespace chain {
                                     3110005, "Invalid wallet password" )
       FC_DECLARE_DERIVED_EXCEPTION( wallet_not_available_exception,    wallet_exception,
                                     3110006, "No available wallet" )
+      FC_DECLARE_DERIVED_EXCEPTION( wallet_unlocked_exception,         wallet_exception,
+                                    3110007, "Already unlocked" )
 
 
 } } // eosio::chain
