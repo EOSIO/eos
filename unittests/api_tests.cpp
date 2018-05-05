@@ -804,7 +804,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 #endif
 
    // test test_transaction_size
-   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(53) ); // TODO: Need a better way to test this.
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(54) ); // TODO: Need a better way to test this.
    control->push_next_scheduled_transaction();
 
    // test test_read_transaction

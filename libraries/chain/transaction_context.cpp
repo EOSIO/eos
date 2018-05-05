@@ -21,6 +21,7 @@ namespace eosio { namespace chain {
    {
       trace->id = id;
       executed.reserve( trx.total_actions() );
+      FC_ASSERT( trx.transaction_extensions.size() == 0, "we don't support any extensions yet" );
    }
 
    void transaction_context::init(uint64_t initial_net_usage, uint64_t initial_cpu_usage )

@@ -155,6 +155,7 @@ namespace eosio { namespace chain {
    */
   block_header_state block_header_state::next( const signed_block_header& h )const {
     FC_ASSERT( h.timestamp != block_timestamp_type(), "", ("h",h) );
+    FC_ASSERT( h.header_extensions.size() == 0, "no supported extensions" );
 
     FC_ASSERT( h.timestamp > header.timestamp, "block must be later in time" );
     FC_ASSERT( h.previous == id, "block must link to current state" );

@@ -9,6 +9,8 @@
 
 namespace eosio {
 
+   typedef std::vector<std::tuple<uint16_t,std::vector<char>>> extensions_type;
+
    /**
     *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
     *

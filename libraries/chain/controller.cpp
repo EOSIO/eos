@@ -699,6 +699,7 @@ struct controller_impl {
 
    void apply_block( const signed_block_ptr& b ) { try {
       try {
+         FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
          start_block( b->timestamp, b->confirmed );
 
          for( const auto& receipt : b->transactions ) {

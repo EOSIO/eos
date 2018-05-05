@@ -35,12 +35,12 @@ namespace eosiosystem {
       account_name  owner;
       asset         net_weight;
       asset         cpu_weight;
-      int64_t       storage_bytes = 0;
+      int64_t       ram_bytes = 0;
 
       uint64_t primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(storage_bytes) )
+      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(ram_bytes) )
    };
 
 
@@ -107,7 +107,7 @@ namespace eosiosystem {
       });
 
       set_resource_limits( newact, 
-                          0,//  r->storage_bytes, 
+                          0,//  r->ram_bytes, 
                            0, 0 );
                     //       r->net_weight.amount, 
                     //       r->cpu_weight.amount );
@@ -131,7 +131,7 @@ namespace eosiosystem {
     *  the receiver may reclaim the tokens via the sellram action. The receiver pays for the
     *  storage of all database records associated with this action.
     *
-    *  RAM is a scarce resource whose supply is defined by global properties max_storage_size. RAM is
+    *  RAM is a scarce resource whose supply is defined by global properties max_ram_size. RAM is
     *  priced using the bancor algorithm such that price-per-byte with a constant reserve ratio of 100:1. 
     */
    void system_contract::buyram( account_name payer, account_name receiver, asset quant ) 
@@ -158,22 +158,22 @@ namespace eosiosystem {
 
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
-      _gstate.total_storage_bytes_reserved += uint64_t(bytes_out);
-      _gstate.total_storage_stake.amount   += quant.amount;
+      _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
+      _gstate.total_ram_stake.amount   += quant.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
       if( res_itr ==  userres.end() ) {
          res_itr = userres.emplace( receiver, [&]( auto& res ) {
                res.owner = receiver;
-               res.storage_bytes = bytes_out;
+               res.ram_bytes = bytes_out;
             });
       } else {
          userres.modify( res_itr, receiver, [&]( auto& res ) {
-               res.storage_bytes += bytes_out;
+               res.ram_bytes += bytes_out;
             });
       }
-      set_resource_limits( res_itr->owner, res_itr->storage_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
+      set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
    }
 
 
@@ -188,7 +188,7 @@ namespace eosiosystem {
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
       eosio_assert( res_itr != userres.end(), "no resource row" );
-      eosio_assert( res_itr->storage_bytes >= bytes, "insufficient quota" );
+      eosio_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
 
       asset tokens_out;
       auto itr = _rammarket.find(S(4,RAMEOS));
@@ -197,16 +197,16 @@ namespace eosiosystem {
           print( "out: ", tokens_out, "\n" );
       });
 
-      _gstate.total_storage_bytes_reserved -= bytes;
-      _gstate.total_storage_stake.amount   -= tokens_out.amount;
+      _gstate.total_ram_bytes_reserved -= bytes;
+      _gstate.total_ram_stake.amount   -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
-      eosio_assert( _gstate.total_storage_stake.amount >= 0, "error, attempt to unstake more tokens than previously staked" );
+      eosio_assert( _gstate.total_ram_stake.amount >= 0, "error, attempt to unstake more tokens than previously staked" );
 
       userres.modify( res_itr, account, [&]( auto& res ) {
-          res.storage_bytes -= bytes;
+          res.ram_bytes -= bytes;
       });
-      set_resource_limits( res_itr->owner, res_itr->storage_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
+      set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
       if( N(eosio) != account ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
@@ -262,7 +262,7 @@ namespace eosiosystem {
             });
       }
 
-      set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
+      set_resource_limits( tot_itr->owner, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
       if( N(eosio) != from) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
@@ -327,7 +327,7 @@ namespace eosiosystem {
             tot.cpu_weight -= unstake_cpu_quantity;
       });
 
-      set_resource_limits( receiver, totals.storage_bytes, totals.net_weight.amount, totals.cpu_weight.amount );
+      set_resource_limits( receiver, totals.ram_bytes, totals.net_weight.amount, totals.cpu_weight.amount );
 
       refunds_table refunds_tbl( _self, from );
       //create refund request
@@ -378,16 +378,5 @@ namespace eosiosystem {
       refunds_tbl.erase( req );
    }
 
-   void system_contract::setparams( uint64_t max_storage_size, uint32_t storage_reserve_ratio ) {
-      require_auth( _self );
-
-      eosio_assert( storage_reserve_ratio > 0, "invalid reserve ratio" );
-
-      eosio_assert( max_storage_size > _gstate.total_storage_bytes_reserved, "attempt to set max below reserved" );
-
-      _gstate.max_storage_size = max_storage_size;
-      _gstate.storage_reserve_ratio = storage_reserve_ratio;
-      _global.set( _gstate, _self );
-   }
 
 } //namespace eosiosystem

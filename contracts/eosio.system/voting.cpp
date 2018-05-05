@@ -112,8 +112,8 @@ namespace eosiosystem {
       _gstate.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
       _gstate.blocks_per_cycle = blocks_per_producer * schedule.producers.size();
 
-      if (_gstate.max_storage_size <_gstate.total_storage_bytes_reserved ) {
-         _gstate.max_storage_size =_gstate.total_storage_bytes_reserved;
+      if (_gstate.max_ram_size <_gstate.total_ram_bytes_reserved ) {
+         _gstate.max_ram_size =_gstate.total_ram_bytes_reserved;
       }
 
       auto issue_quantity =_gstate.blocks_per_cycle * (_gstate.payment_per_block +_gstate.payment_to_eos_bucket);

@@ -19,19 +19,18 @@ namespace eosiosystem {
    using eosio::const_mem_fun;
 
    struct eosio_parameters : eosio::blockchain_parameters {
-      uint64_t          max_storage_size = 64ll*1024 * 1024 * 1024;
+      uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
       uint32_t          percent_of_max_inflation_rate = 0;
-      uint32_t          storage_reserve_ratio = 100;      // ratio * 10000
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_storage_size)(percent_of_max_inflation_rate)(storage_reserve_ratio) )
+      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size)(percent_of_max_inflation_rate) )
    };
 
    struct eosio_global_state : eosio_parameters {
-      uint64_t free_ram()const { return max_storage_size - total_storage_bytes_reserved; }
+      uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
-      uint64_t             total_storage_bytes_reserved = 0;
-      eosio::asset         total_storage_stake;
+      uint64_t             total_ram_bytes_reserved = 0;
+      eosio::asset         total_ram_stake;
       eosio::asset         payment_per_block;
       eosio::asset         payment_to_eos_bucket;
 
@@ -42,7 +41,7 @@ namespace eosiosystem {
       eosio::asset         eos_bucket;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake)
+      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (payment_per_block)(payment_to_eos_bucket)(first_block_time_in_cycle)(blocks_per_cycle)
                                 (last_bucket_fill_time)(eos_bucket) )
    };
@@ -178,7 +177,7 @@ namespace eosiosystem {
 
          void unregprod( const account_name producer );
 
-         void setparams( uint64_t max_storage_size, uint32_t storage_reserve_ratio );
+         void setram( uint64_t max_ram_size );
 
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
 
