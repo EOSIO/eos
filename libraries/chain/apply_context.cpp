@@ -214,7 +214,7 @@ void apply_context::execute_inline( action&& a ) {
                                       .check_authorization( {a},
                                                             {},
                                                             {{receiver, permission_name()}},
-                                                            fc::microseconds(0),
+                                                            control.pending_block_time() - trx_context.published,
                                                             std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                                             false
                                                           )
@@ -255,6 +255,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    trx_context.add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
                                + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
 
+   auto delay = fc::seconds(trx.delay_sec);
+
    fc::microseconds required_delay;
 
    if( !privileged ) {
@@ -277,7 +279,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                                       .check_authorization( trx.actions,
                                                             {},
                                                             {{receiver, permission_name()}},
-                                                            fc::microseconds(0),
+                                                            delay,
                                                             std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                                             false
                                                           )
@@ -285,7 +287,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       }
    }
 
-   auto delay = fc::seconds(trx.delay_sec);
    EOS_ASSERT( delay >= required_delay, transaction_exception,
                "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
