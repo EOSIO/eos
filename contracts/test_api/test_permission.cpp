@@ -28,8 +28,13 @@ void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint
 
    auto self = receiver;
    auto params = unpack_action_data<check_auth_msg>();
-   uint64_t res64 = (uint64_t)::check_authorization( params.account, params.permission, 
+   auto packed_pubkeys = pack(params.pubkeys);
+   uint64_t res64 = (uint64_t)::check_authorization( params.account, params.permission,
+                                                     packed_pubkeys.data(), packed_pubkeys.size() );
+   /*
+   uint64_t res64 = (uint64_t)::check_authorization( params.account, params.permission,
         (char*)params.pubkeys.data(), params.pubkeys.size()*sizeof(public_key) );
+   */
 
    auto itr = db_lowerbound_i64(self, self, self, 1);
    if(itr == -1) {

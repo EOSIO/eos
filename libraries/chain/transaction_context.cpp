@@ -241,6 +241,11 @@ namespace eosio { namespace chain {
       undo_session.squash();
    }
 
+   void transaction_context::add_cpu_usage_and_check_time( uint32_t u ) {
+      add_cpu_usage( u );
+      check_time();
+   }
+
    uint64_t transaction_context::add_action_cpu_usage( uint64_t u, bool context_free ) {
       const auto& cfg = control.get_global_properties().configuration;
 

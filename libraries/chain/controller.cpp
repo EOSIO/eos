@@ -599,11 +599,21 @@ struct controller_impl {
                                             trx->trx.signatures.size()             );
          }
 
+         trx_context.delay = fc::seconds(trx->trx.delay_sec);
+
          fc::microseconds required_delay(0);
          if( !implicit ) {
-            required_delay = limit_delay( authorization.check_authorization( trx->trx.actions, trx->recover_keys() ) );
+            required_delay = limit_delay(
+                                  authorization.check_authorization(
+                                    trx->trx.actions,
+                                    trx->recover_keys(),
+                                    {},
+                                    trx_context.delay,
+                                    std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context, std::placeholders::_1),
+                                    false
+                                 )
+                             );
          }
-         trx_context.delay = fc::seconds(trx->trx.delay_sec);
          EOS_ASSERT( trx_context.delay >= required_delay, transaction_exception,
                      "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
                      ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );

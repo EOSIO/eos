@@ -15,6 +15,8 @@
 #include <boost/range/algorithm/find.hpp>
 #include <boost/algorithm/cxx11/all_of.hpp>
 
+#include <functional>
+
 namespace eosio { namespace chain {
 
 namespace detail {
@@ -54,13 +56,14 @@ namespace detail {
    template<typename PermissionToAuthorityFunc, typename PermissionVisitorFunc>
    class authority_checker {
       private:
-         PermissionToAuthorityFunc  permission_to_authority;
-         PermissionVisitorFunc      permission_visitor;
-         uint16_t                   recursion_depth_limit;
-         vector<public_key_type>    signing_keys;
-         flat_set<account_name>     _provided_auths; /// accounts which have authorized the transaction at owner level
-         flat_set<permission_level> _provided_levels;
-         vector<bool>               _used_keys;
+         PermissionToAuthorityFunc            permission_to_authority;
+         PermissionVisitorFunc                permission_visitor;
+         uint16_t                             recursion_depth_limit;
+         vector<public_key_type>              signing_keys;
+         flat_set<permission_level>           provided_permissions;
+         vector<bool>                         _used_keys;
+         fc::microseconds                     minimum_delay;
+         const std::function<void(uint32_t)>& checktime;
 
          struct weight_tally_visitor {
             using result_type = uint32_t;
@@ -102,24 +105,30 @@ namespace detail {
          };
 
          bool has_permission( const permission_level& level )const {
-            return _provided_auths.find( level.actor ) != _provided_auths.end()
-               || _provided_levels.find( level ) != _provided_levels.end();
+            return ( provided_permissions.find( level ) != provided_permissions.end() )
+                   || ( provided_permissions.find( {level.actor, permission_name()} ) != provided_permissions.end() );
          }
 
       public:
          authority_checker( PermissionToAuthorityFunc permission_to_authority,
                             PermissionVisitorFunc permission_visitor,
-                            uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys,
-                            const flat_set<account_name>& provided_auths = flat_set<account_name>(),
-                            const flat_set<permission_level>& provided_levels = flat_set<permission_level>())
-            : permission_to_authority(permission_to_authority),
-              permission_visitor(permission_visitor),
-              recursion_depth_limit(recursion_depth_limit),
-              signing_keys(signing_keys.begin(), signing_keys.end()),
-              _provided_auths(provided_auths.begin(), provided_auths.end()),
-              _provided_levels(provided_levels.begin(), provided_levels.end()),
-              _used_keys(signing_keys.size(), false)
-         {}
+                            uint16_t recursion_depth_limit,
+                            const flat_set<public_key_type>& signing_keys,
+                            const flat_set<permission_level>& provided_permissions,
+                            fc::microseconds minimum_delay,
+                            const std::function<void(uint32_t)>& checktime
+                         )
+         :permission_to_authority(permission_to_authority)
+         ,permission_visitor(permission_visitor)
+         ,recursion_depth_limit(recursion_depth_limit)
+         ,signing_keys(signing_keys.begin(), signing_keys.end())
+         ,provided_permissions(provided_permissions.begin(), provided_permissions.end())
+         ,_used_keys(signing_keys.size(), false)
+         ,minimum_delay(minimum_delay) //TODO: Use the minimum_delay
+         ,checktime( checktime )
+         {
+            FC_ASSERT( static_cast<bool>(checktime), "checktime cannot be empty" );
+         }
 
          bool satisfied(const permission_level& permission, uint16_t depth = 0) {
             if( has_permission( permission ) )
@@ -177,13 +186,25 @@ namespace detail {
    }; /// authority_checker
 
    template<typename PermissionToAuthorityFunc, typename PermissionVisitorFunc>
-   auto make_auth_checker(PermissionToAuthorityFunc&& pta,
-                          PermissionVisitorFunc&& permission_visitor,
-                          uint16_t recursion_depth_limit,
-                          const flat_set<public_key_type>& signing_keys,
-                          const flat_set<account_name>& accounts = flat_set<account_name>(),
-                          const flat_set<permission_level>& levels = flat_set<permission_level>() ) {
-      return authority_checker<PermissionToAuthorityFunc, PermissionVisitorFunc>(std::forward<PermissionToAuthorityFunc>(pta), std::forward<PermissionVisitorFunc>(permission_visitor), recursion_depth_limit, signing_keys, accounts, levels);
+   auto make_auth_checker( PermissionToAuthorityFunc&& pta,
+                           PermissionVisitorFunc&& permission_visitor,
+                           uint16_t recursion_depth_limit,
+                           const flat_set<public_key_type>& signing_keys,
+                           const flat_set<permission_level>& provided_permissions = flat_set<permission_level>(),
+                           fc::microseconds minimum_delay = fc::microseconds(0),
+                           const std::function<void(uint32_t)>& _checktime = std::function<void(uint32_t)>()
+                         )
+   {
+      auto noop_checktime = []( uint32_t ) {};
+      const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : noop_checktime );
+      return authority_checker< PermissionToAuthorityFunc,
+                                PermissionVisitorFunc      >( std::forward<PermissionToAuthorityFunc>(pta),
+                                                              std::forward<PermissionVisitorFunc>(permission_visitor),
+                                                              recursion_depth_limit,
+                                                              signing_keys,
+                                                              provided_permissions,
+                                                              minimum_delay,
+                                                              checktime );
    }
 
    class noop_permission_visitor {

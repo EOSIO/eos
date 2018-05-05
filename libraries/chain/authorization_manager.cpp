@@ -311,25 +311,28 @@ namespace eosio { namespace chain {
       bool _track_delay;
    };
 
-   /**
-    * @param actions - the actions to check authorization across
-    * @param provided_keys - the set of public keys which have authorized the transaction
-    * @param allow_unused_signatures - true if method should not assert on unused signatures
-    * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
-    *
-    * @return fc::microseconds set to the max delay that this authorization requires to complete
-    */
-   fc::microseconds authorization_manager::check_authorization( const vector<action>& actions,
-                                                                const flat_set<public_key_type>& provided_keys,
-                                                                bool                             allow_unused_signatures,
-                                                                flat_set<account_name>           provided_accounts,
-                                                                flat_set<permission_level>       provided_levels
-                                                              )const
+   void noop_checktime( uint32_t ) {}
+
+   fc::microseconds
+   authorization_manager::check_authorization( const vector<action>& actions,
+                                               const flat_set<public_key_type>& provided_keys,
+                                               flat_set<permission_level>       provided_permissions,
+                                               fc::microseconds minimum_delay,
+                                               const std::function<void(uint32_t)>& _checktime,
+                                               bool allow_unused_keys
+                                             )const
    {
+      auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
+      const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
+
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                         permission_visitor(*this),
                                         _control.get_global_properties().configuration.max_authority_depth,
-                                        provided_keys, provided_accounts, provided_levels );
+                                        provided_keys,
+                                        provided_permissions,
+                                        minimum_delay,
+                                        checktime
+                                      );
 
       fc::microseconds max_delay;
 
@@ -365,6 +368,8 @@ namespace eosio { namespace chain {
 
          for( const auto& declared_auth : act.authorization ) {
 
+            checktime( config::base_check_authorization_cpu_per_authorization );
+
             if( !special_case ) {
                auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
                if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is eosio.any
@@ -391,57 +396,69 @@ namespace eosio { namespace chain {
          }
       }
 
-      if( !allow_unused_signatures ) { //&& should_check_signatures() ) {
+      if( !allow_unused_keys ) { //&& should_check_signatures() ) {
          EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
                      "transaction bears irrelevant signatures from these keys: ${keys}",
                      ("keys", checker.unused_keys()) );
       }
 
-      const auto checker_max_delay = checker.get_permission_visitor().get_max_delay();
+      max_delay = std::max( max_delay, checker.get_permission_visitor().get_max_delay() );
 
-      return std::max(max_delay, checker_max_delay);
+      return max_delay;
    }
 
-   /**
-    * @param account - the account owner of the permission
-    * @param permission - the permission name to check for authorization
-    * @param provided_keys - a set of public keys
-    *
-    * @return true if the provided keys are sufficient to authorize the account permission
-    */
+
    bool authorization_manager::check_authorization( account_name account, permission_name permission,
                                                     flat_set<public_key_type> provided_keys,
-                                                    bool allow_unused_signatures
+                                                    const std::function<void(uint32_t)>& _checktime,
+                                                    bool allow_unused_keys
                                                   )const
    {
+      auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
+      const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
+
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                         noop_permission_visitor(),
                                         _control.get_global_properties().configuration.max_authority_depth,
-                                        provided_keys);
+                                        provided_keys,
+                                        {},
+                                        fc::microseconds(0),
+                                        checktime
+                                      );
 
       auto satisfied = checker.satisfied({account, permission});
 
-      if( satisfied && !allow_unused_signatures ) {
+      if( satisfied && !allow_unused_keys ) {
+         if( !checker.all_keys_used() )
+            return false;
+         /*
          EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                     "irrelevant signatures from these keys: ${keys}",
                     ("keys", checker.unused_keys()));
+         */
       }
 
       return satisfied;
    }
 
    flat_set<public_key_type> authorization_manager::get_required_keys( const transaction& trx,
-                                                                       const flat_set<public_key_type>& candidate_keys
+                                                                       const flat_set<public_key_type>& candidate_keys,
+                                                                       fc::microseconds minimum_delay
                                                                      )const
    {
+      auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                         noop_permission_visitor(),
                                         _control.get_global_properties().configuration.max_authority_depth,
-                                        candidate_keys);
+                                        candidate_keys,
+                                        {},
+                                        minimum_delay,
+                                        _noop_checktime
+                                      );
 
       for (const auto& act : trx.actions ) {
          for (const auto& declared_auth : act.authorization) {
-            if (!checker.satisfied(declared_auth)) {
+            if( !checker.satisfied(declared_auth) ) {
                EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
                           "transaction declares authority '${auth}', but does not have signatures for it.",
                           ("auth", declared_auth));

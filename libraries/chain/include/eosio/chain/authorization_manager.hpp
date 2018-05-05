@@ -7,6 +7,9 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/permission_object.hpp>
 
+#include <utility>
+#include <functional>
+
 namespace eosio { namespace chain {
 
    class controller;
@@ -57,32 +60,42 @@ namespace eosio { namespace chain {
          /**
           * @param actions - the actions to check authorization across
           * @param provided_keys - the set of public keys which have authorized the transaction
-          * @param allow_unused_signatures - true if method should not assert on unused signatures
-          * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
+          * @param provided_permissions - the set of permissions which have authorized the transaction (empty permission name acts as wildcard)
+          * @param minimum_delay - the delay that will already satisfied (allows optimizing authorization check)
+          * @param checktime - the function that can be called to track CPU usage and time during the process of checking authorization
+          * @param allow_unused_keys - true if method should not assert on unused keys
           *
-          * @return fc::microseconds set to the max delay that this authorization requires to complete
+          * @return the minimum imposed delay
           */
-         fc::microseconds check_authorization( const vector<action>& actions,
-                                               const flat_set<public_key_type>& provided_keys,
-                                               bool                             allow_unused_signatures = false,
-                                               flat_set<account_name>           provided_accounts = flat_set<account_name>(),
-                                               flat_set<permission_level>       provided_levels = flat_set<permission_level>()
-                                             )const;
+         fc::microseconds
+         check_authorization( const vector<action>& actions,
+                              const flat_set<public_key_type>& provided_keys,
+                              flat_set<permission_level>       provided_permissions = flat_set<permission_level>(),
+                              fc::microseconds minimum_delay = fc::microseconds(0),
+                              const std::function<void(uint32_t)>& checktime = std::function<void(uint32_t)>(),
+                              bool allow_unused_keys = false
+                            )const;
+
 
          /**
           * @param account - the account owner of the permission
           * @param permission - the permission name to check for authorization
           * @param provided_keys - a set of public keys
+          * @param checktime - the function that can be called to track CPU usage and time during the process of checking authorization
+          * @param allow_unused_keys - true if method does not require all keys to be used
           *
           * @return true if the provided keys are sufficient to authorize the account permission
           */
-         bool check_authorization( account_name account, permission_name permission,
+         bool check_authorization( account_name account,
+                                   permission_name permission,
                                    flat_set<public_key_type> provided_keys,
-                                   bool allow_unused_signatures
+                                   const std::function<void(uint32_t)>& checktime = std::function<void(uint32_t)>(),
+                                   bool allow_unused_keys = false
                                  )const;
 
          flat_set<public_key_type> get_required_keys( const transaction& trx,
-                                                      const flat_set<public_key_type>& candidate_keys
+                                                      const flat_set<public_key_type>& candidate_keys,
+                                                      fc::microseconds minimum_delay = fc::microseconds(0)
                                                     )const;
 
 

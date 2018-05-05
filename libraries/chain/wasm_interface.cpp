@@ -773,6 +773,9 @@ class permission_api : public context_aware_api {
 
       bool check_authorization( account_name account, permission_name permission, array_ptr<char> packed_pubkeys, size_t datalen) {
 
+         vector<public_key_type> pub_keys = fc::raw::unpack<vector<public_key_type>>( packed_pubkeys, datalen );
+
+         /*
          vector<public_key_type> pub_keys;
          datastream<const char*> ds( packed_pubkeys, datalen );
          while(ds.remaining()) {
@@ -780,12 +783,15 @@ class permission_api : public context_aware_api {
             fc::raw::unpack(ds, pub);
             pub_keys.emplace_back(pub);
          }
+         */
 
-         return context.control.get_authorization_manager().check_authorization(
-            account, permission,
-            {pub_keys.begin(), pub_keys.end()},
-            false
-         );
+         return context.control.get_authorization_manager()
+                               .check_authorization( account,
+                                                     permission,
+                                                     {pub_keys.begin(), pub_keys.end()},
+                                                     std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                                     false
+                                                   );
       }
 };
 
@@ -1397,13 +1403,13 @@ class compiler_builtins : public context_aware_api {
          return softfloat_api::from_softfloat64(i32_to_f64(i));
       }
       void __floatsitf( float128_t& ret, int32_t i ) {
-         ret = i32_to_f128(i); 
+         ret = i32_to_f128(i);
       }
       void __floatditf( float128_t& ret, uint64_t a ) {
          ret = i64_to_f128( a );
       }
       void __floatunsitf( float128_t& ret, uint32_t i ) {
-         ret = ui32_to_f128(i); 
+         ret = ui32_to_f128(i);
       }
       void __floatunditf( float128_t& ret, uint64_t a ) {
          ret = ui64_to_f128( a );

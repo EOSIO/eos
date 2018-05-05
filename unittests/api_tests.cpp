@@ -824,7 +824,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
             return expect_assert_message(e, "inline action recursion depth reached");
          }
       );
-   
+
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
@@ -1505,7 +1505,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    );
    BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
 
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(testapi),
          .permission = N(active),
@@ -1513,11 +1513,9 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
             get_public_key(N(testapi), "active"),
             public_key_type(string("EOS7GfRtyDWWgxV88a5TRaYY59XmHptyfjsFmHHfioGNJtPjpSmGX"))
          }
-      })), tx_irrelevant_sig,
-       [](const tx_irrelevant_sig& e) {
-         return expect_assert_message(e, "irrelevant signatures from these keys: [\"EOS7GfRtyDWWgxV88a5TRaYY59XmHptyfjsFmHHfioGNJtPjpSmGX\"]");
-      }
+      })
    );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() ); // Failure due to irrelevant signatures 
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {

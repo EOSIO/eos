@@ -209,11 +209,16 @@ void apply_context::execute_inline( action&& a ) {
 
    if ( !privileged ) {
       if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
-         const auto delay = control.limit_delay( control.get_authorization_manager()
-                                                        .check_authorization( {a},
-                                                                              flat_set<public_key_type>(),
-                                                                              false,
-                                                                              {receiver}                   ) );
+         const auto delay = control.limit_delay(
+                               control.get_authorization_manager()
+                                      .check_authorization( {a},
+                                                            {},
+                                                            {{receiver, permission_name()}},
+                                                            fc::microseconds(0),
+                                                            std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                                            false
+                                                          )
+                            );
          FC_ASSERT( trx_context.published + delay <= control.pending_block_time(),
                     "authorization for inline action imposes a delay of ${delay} seconds that is not met",
                     ("delay", delay.to_seconds()) );
@@ -267,12 +272,16 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          }
       }
       if( check_auth ) {
-         required_delay = control.limit_delay( control.get_authorization_manager()
-                                                      .check_authorization( trx.actions,
-                                                                            flat_set<public_key_type>(),
-                                                                            false,
-                                                                            {receiver}                   ) );
-
+         required_delay = control.limit_delay(
+                               control.get_authorization_manager()
+                                      .check_authorization( trx.actions,
+                                                            {},
+                                                            {{receiver, permission_name()}},
+                                                            fc::microseconds(0),
+                                                            std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                                            false
+                                                          )
+                          );
       }
    }
 
@@ -427,11 +436,14 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 }
 
 void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
-   control.get_authorization_manager().check_authorization( trx.actions,
-                                                            {},
-                                                            true,
-                                                            {},
-                                                            flat_set<permission_level>(perm.begin(), perm.end()) );
+   control.get_authorization_manager()
+          .check_authorization( trx.actions,
+                                {},
+                                {perm.begin(), perm.end()},
+                                fc::microseconds(0),
+                                std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                false
+                              );
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
