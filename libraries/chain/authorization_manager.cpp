@@ -380,16 +380,15 @@ namespace eosio { namespace chain {
                               irrelevant_auth_exception,
                               "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                               ("auth", declared_auth)("min", permission_level{min_permission.owner, min_permission.name}) );
-                  max_delay = std::max( max_delay, *delay );
                }
             }
 
             //if( should_check_signatures() ) {
                if( ignore_delay )
                   checker.get_permission_visitor().pause_delay_tracking();
-               EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
-                          "transaction declares authority '${auth}', but does not have signatures for it.",
-                          ("auth", declared_auth));
+               EOS_ASSERT( checker.satisfied(declared_auth), tx_missing_sigs,
+                           "transaction declares authority '${auth}', but does not have signatures for it.",
+                           ("auth", declared_auth) );
                if( ignore_delay )
                   checker.get_permission_visitor().resume_delay_tracking();
             //}

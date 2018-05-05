@@ -84,20 +84,18 @@ namespace detail {
                return total_weight;
             }
             uint32_t operator()(const permission_level_weight& permission) {
-               if (recursion_depth < checker.recursion_depth_limit) {
-                  checker.permission_visitor.push_undo();
-                  checker.permission_visitor(permission.permission);
-
+               if( recursion_depth < checker.recursion_depth_limit ) {
                   if( checker.has_permission( permission.permission ) ) {
                      total_weight += permission.weight;
-                     checker.permission_visitor.squash_undo();
-                     // Satisfied by owner may throw off visitor expectations...
-                     // TODO: Figure out what a permission_visitor actually needs and should expect.
-                  } else if( checker.satisfied(permission.permission, recursion_depth + 1) ) {
-                     total_weight += permission.weight;
-                     checker.permission_visitor.squash_undo();
+                     checker.permission_visitor(permission.permission);
                   } else {
-                     checker.permission_visitor.pop_undo();
+                     checker.permission_visitor.push_undo();
+                     if( checker.satisfied(permission.permission, recursion_depth + 1) ) {
+                        total_weight += permission.weight;
+                        checker.permission_visitor.squash_undo();
+                     } else {
+                        checker.permission_visitor.pop_undo();
+                     }
                   }
                }
                return total_weight;
@@ -131,6 +129,7 @@ namespace detail {
          }
 
          bool satisfied(const permission_level& permission, uint16_t depth = 0) {
+            permission_visitor( permission );
             if( has_permission( permission ) )
                return true;
             try {
