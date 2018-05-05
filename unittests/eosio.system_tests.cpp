@@ -268,37 +268,11 @@ public:
 
    fc::variant get_total_stake( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, act, N(userres), act );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "total_resources", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data );
    }
 
    fc::variant get_voter_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
-
-   struct voter_info {
-      account_name                owner = 0; /// the voter
-      account_name                proxy = 0; /// the proxy set by the voter, if any
-      std::vector<account_name>   producers; /// the producers approved by this voter if no proxy set
-      uint64_t                    staked = 0;
-
-      /**
-       *  Every time a vote is cast we must first "undo" the last vote weight, before casting the
-       *  new vote weight.  Vote weight is calculated as:
-       *
-       *  stated.amount * 2 ^ ( weeks_since_launch/weeks_per_year)
-       */
-      double                      last_vote_weight = 0; /// the vote weight cast the last time the vote was updated
-   };
-   if( data.size() ) {
-      voter_info inf;
-      fc::datastream<const char*> ds( data.data(), data.size() );
-      fc::raw::unpack( ds, inf.owner );
-      fc::raw::unpack( ds, inf.proxy);
-      fc::raw::unpack( ds, inf.producers);
-      fc::raw::unpack( ds, inf.staked);
-      fc::raw::unpack( ds, inf.last_vote_weight);
-      idump((inf.last_vote_weight));
-   }
-
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data );
    }
 
@@ -518,26 +492,26 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "200.0000 EOS", "100.0000 EOS" ) );
 
    auto total = get_total_stake( "alice" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
 
    //trying to unstake more net bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
-                        unstake( "alice", "200.0001 EOS", "0.0000 EOS", 0 )
+                        unstake( "alice", "200.0001 EOS", "0.0000 EOS" )
    );
 
    //trying to unstake more cpu bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked cpu bandwidth"),
-                        unstake( "alice", "000.0000 EOS", "100.0001 EOS", 0 )
+                        unstake( "alice", "0.0000 EOS", "100.0001 EOS" )
    );
 
    //check that nothing has changed
    total = get_total_stake( "alice" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
 } FC_LOG_AND_RETHROW()
 
 
