@@ -3,10 +3,7 @@
 
 #include <thread>
 #include <future>
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/block_trace.hpp>
 
-#include "fifo.h"
 #include "database.h"
 
 namespace eosio {
@@ -15,11 +12,9 @@ class consumer
 {
 public:
     consumer(std::shared_ptr<database> db);
+    virtual ~consumer();
 
-    void push(const chain::block_trace& t);
-    void push(const chain::signed_block& b);
-
-    void consume();
+    virtual void consume() = 0;
 
     void start();
     void stop();
@@ -28,8 +23,6 @@ private:
     void run(std::future<void> future_obj);
 
     std::shared_ptr<database> m_db;
-    fifo<chain::block_trace> m_block_trace_fifo;
-    fifo<chain::signed_block> m_block_trace_process_fifo;
     std::shared_ptr<std::thread> m_thread;
     std::promise<void> m_exit_signal;
 };

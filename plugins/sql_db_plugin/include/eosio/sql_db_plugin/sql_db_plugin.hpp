@@ -10,7 +10,7 @@
 
 namespace eosio {
 
-class consumer;
+class consumer_irreversible_block;
 
 /**
  * Provides persistence to SQL DB for:
@@ -43,7 +43,7 @@ public:
     void plugin_shutdown();
 
 private:
-    std::unique_ptr<consumer> m_consumer;
+    std::unique_ptr<consumer_irreversible_block> m_consumer_irreversible_block;
 };
 
 }

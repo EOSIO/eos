@@ -10,6 +10,7 @@ add_library(sql_db_plugin
     blocks_table.cpp
     actions_table.cpp
     consumer.cpp
+    consumer_irreversible_block.cpp
     )
 
 target_link_libraries(sql_db_plugin

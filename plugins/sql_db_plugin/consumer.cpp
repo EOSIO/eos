@@ -1,5 +1,7 @@
 #include "consumer.h"
 
+#include <fc/log/logger.hpp>
+
 namespace eosio {
 
 consumer::consumer(std::shared_ptr<database> db):
@@ -8,19 +10,9 @@ consumer::consumer(std::shared_ptr<database> db):
 
 }
 
-void consumer::push(const chain::block_trace &t)
+consumer::~consumer()
 {
-    m_block_trace_fifo.push(t);
-}
 
-void consumer::push(const chain::signed_block &b)
-{
-    m_block_trace_process_fifo.push(b);
-}
-
-void consumer::consume()
-{
-    dlog("consumer::consume");
 }
 
 void consumer::start()
@@ -38,14 +30,14 @@ void consumer::stop()
 
 void consumer::run(std::future<void> future_obj)
 {
-    dlog("Thread Start");
+    dlog("Consumer thread Start");
     while (future_obj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout)
     {
         consume();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     }
-    dlog("Thread End");
+    dlog("Consumer thread End");
 }
 
 } // namespace
