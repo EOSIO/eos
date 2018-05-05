@@ -19,6 +19,7 @@
 #include <fc/io/raw.hpp>
 
 #include <softfloat.hpp>
+#include <compiler_builtins.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
@@ -145,6 +146,7 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_key> producers;
          fc::raw::unpack(ds, producers);
+         EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          // check that producers are unique
          std::set<account_name> unique_producers;
          for (const auto& p: producers) {
@@ -191,16 +193,6 @@ class privileged_api : public context_aware_api {
          });
       }
 
-};
-
-class checktime_api : public context_aware_api {
-public:
-   explicit checktime_api( apply_context& ctx )
-   :context_aware_api(ctx,true){}
-
-   void checktime(uint32_t instruction_count) {
-      context.checktime(instruction_count);
-   }
 };
 
 class softfloat_api : public context_aware_api {
@@ -1313,6 +1305,7 @@ class compiler_builtins : public context_aware_api {
          ret = lhs;
       }
 
+      // arithmetic long double
       void __addtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
@@ -1334,8 +1327,83 @@ class compiler_builtins : public context_aware_api {
          ret = f128_div( a, b );
       }
       void __negtf2( float128_t& ret, uint64_t la, uint64_t ha ) {
-         float128_t a = {{ la, (ha ^ ((uint64_t)1 << 63)) }};
-         a = ret;
+         ret = {{ la, (ha ^ (uint64_t)1 << 63) }};
+      }
+
+      // conversion long double
+      void __extendsftf2( float128_t& ret, float f ) {
+         ret = f32_to_f128( softfloat_api::to_softfloat32(f) );
+      }
+      void __extenddftf2( float128_t& ret, double d ) {
+         ret = f64_to_f128( softfloat_api::to_softfloat64(d) );
+      }
+      double __trunctfdf2( uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         return softfloat_api::from_softfloat64(f128_to_f64( f ));
+      }
+      float __trunctfsf2( uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         return softfloat_api::from_softfloat32(f128_to_f32( f ));
+      }
+      int32_t __fixtfsi( uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         return f128_to_i32( f, 0, false );
+      }
+      int64_t __fixtfdi( uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         return f128_to_i64( f, 0, false );
+      }
+      void __fixtfti( __int128& ret, uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         ret = ___fixtfti( f );
+      }
+      uint32_t __fixunstfsi( uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         return f128_to_ui32( f, 0, false );
+      }
+      uint64_t __fixunstfdi( uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         return f128_to_ui64( f, 0, false );
+      }
+      void __fixunstfti( unsigned __int128& ret, uint64_t l, uint64_t h ) {
+         float128_t f = {{ l, h }};
+         ret = ___fixunstfti( f );
+      }
+      void __fixsfti( __int128& ret, float a ) {
+         ret = ___fixsfti( softfloat_api::to_softfloat32(a).v );
+      }
+      void __fixdfti( __int128& ret, double a ) {
+         ret = ___fixdfti( softfloat_api::to_softfloat64(a).v );
+      }
+      void __fixunssfti( unsigned __int128& ret, float a ) {
+         ret = ___fixunssfti( softfloat_api::to_softfloat32(a).v );
+      }
+      void __fixunsdfti( unsigned __int128& ret, double a ) {
+         ret = ___fixunsdfti( softfloat_api::to_softfloat64(a).v );
+      }
+      double __floatsidf( int32_t i ) {
+         return softfloat_api::from_softfloat64(i32_to_f64(i));
+      }
+      void __floatsitf( float128_t& ret, int32_t i ) {
+         ret = i32_to_f128(i); 
+      }
+      void __floatditf( float128_t& ret, uint64_t a ) {
+         ret = i64_to_f128( a );
+      }
+      void __floatunsitf( float128_t& ret, uint32_t i ) {
+         ret = ui32_to_f128(i); 
+      }
+      void __floatunditf( float128_t& ret, uint64_t a ) {
+         ret = ui64_to_f128( a );
+      }
+      double __floattidf( uint64_t l, uint64_t h ) {
+         fc::uint128_t v(h, l);
+         unsigned __int128 val = (unsigned __int128)v;
+         return ___floattidf( *(__int128*)&val );
+      }
+      double __floatuntidf( uint64_t l, uint64_t h ) {
+         fc::uint128_t v(h, l);
+         return ___floatuntidf( (unsigned __int128)v );
       }
       int ___cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb, int return_value_if_nan ) {
          float128_t a = {{ la, ha }};
@@ -1375,87 +1443,6 @@ class compiler_builtins : public context_aware_api {
          if ( softfloat_api::is_nan(a) || softfloat_api::is_nan(b) )
             return 1;
          return 0;
-      }
-      double __floatsidf( int32_t i ) {
-         edump((i)( "warning returning float64") );
-         float64_t ret = i32_to_f64(i);
-         return *reinterpret_cast<double*>(&ret);
-      }
-      void __floatsitf( float128_t& ret, int32_t i ) {
-         ret = i32_to_f128(i); /// TODO: should be 128
-      }
-      void __floatunsitf( float128_t& ret, uint32_t i ) {
-         ret = ui32_to_f128(i); /// TODO: should be 128
-      }
-      void __floatditf( float128_t& ret, uint64_t a ) {
-         ret = i64_to_f128( a );
-      }
-      void __floatunditf( float128_t& ret, uint64_t a ) {
-         ret = ui64_to_f128( a );
-      }
-      double __floattidf( uint64_t l, uint64_t h ) {
-         auto ret = i64_to_f64( l );
-         return *(double*)&ret;
-      }
-      double __floatuntidf( uint64_t l, uint64_t h ) {
-         auto ret = ui64_to_f64( l );
-         return *(double*)&ret;
-      }
-      void __extendsftf2( float128_t& ret, uint32_t f ) {
-         float32_t in = { f };
-         ret = f32_to_f128( in );
-      }
-      void __extenddftf2( float128_t& ret, double in ) {
-         edump(("warning in flaot64..." ));
-         ret = f64_to_f128( float64_t{*(uint64_t*)&in} );
-      }
-      void __fixtfti( __int128& ret, uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         ret = f128_to_i64( f, 0, false );
-      }
-      int64_t __fixtfdi( uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         return f128_to_i64( f, 0, false );
-      }
-      int32_t __fixtfsi( uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         return f128_to_i32( f, 0, false );
-      }
-      void __fixunstfti( unsigned __int128& ret, uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         ret = f128_to_ui64( f, 0, false );
-      }
-      uint64_t __fixunstfdi( uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         return f128_to_ui64( f, 0, false );
-      }
-      uint32_t __fixunstfsi( uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         return f128_to_ui32( f, 0, false );
-      }
-      void __fixsfti( __int128& ret, float a ) {
-         float32_t f = {*(uint32_t*)&a};
-         ret = f32_to_i64( f, 0, false );
-      }
-      void __fixdfti( __int128& ret, double a ) {
-         float64_t f = {*(uint64_t*)&a};
-         ret = f64_to_i64( f, 0, false );
-      }
-      void __fixunssfti( unsigned __int128& ret, float a ) {
-         float32_t f = {*(uint32_t*)&a};
-         ret = f32_to_ui64( f, 0, false );
-      }
-      void __fixunsdfti( unsigned __int128& ret, double a ) {
-         float64_t f = {*(uint64_t*)&a};
-         ret = f64_to_ui64( f, 0, false );
-      }
-      uint64_t __trunctfdf2( uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         return f128_to_f64( f ).v;
-      }
-      uint32_t __trunctfsf2( uint64_t l, uint64_t h ) {
-         float128_t f = {{ l, h }};
-         return f128_to_f32( f ).v;
       }
 
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
@@ -1593,7 +1580,7 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__floattidf,   double (int64_t, int64_t)                      )
    (__floatuntidf, double (int64_t, int64_t)                      )
    (__floatsidf,   double(int)                                    )
-   (__extendsftf2, void(int, int)                                 )
+   (__extendsftf2, void(int, float)                               )
    (__extenddftf2, void(int, double)                              )
    (__fixtfti,     void(int, int64_t, int64_t)                    )
    (__fixtfdi,     int64_t(int64_t, int64_t)                      )
@@ -1603,10 +1590,10 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__fixunstfsi,  int(int64_t, int64_t)                          )
    (__fixsfti,     void(int, float)                               )
    (__fixdfti,     void(int, double)                              )
-   (__fixunssfti,     void(int, float)                            )
-   (__fixunsdfti,     void(int, double)                           )
-   (__trunctfdf2,  int64_t(int64_t, int64_t)                      )
-   (__trunctfsf2,  int(int64_t, int64_t)                          )
+   (__fixunssfti,  void(int, float)                               )
+   (__fixunsdfti,  void(int, double)                              )
+   (__trunctfdf2,  double(int64_t, int64_t)                       )
+   (__trunctfsf2,  float(int64_t, int64_t)                        )
 );
 
 REGISTER_INTRINSICS(privileged_api,
@@ -1621,7 +1608,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INJECTED_INTRINSICS(checktime_api,
+REGISTER_INJECTED_INTRINSICS(apply_context,
    (checktime,      void(int))
 );
 

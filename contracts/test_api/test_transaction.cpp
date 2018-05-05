@@ -202,7 +202,7 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
    trx.send(0, receiver);
 }
 
-void test_transaction::assert_false_error_handler(const eosio::deferred_transaction& dtrx) {
+void test_transaction::assert_false_error_handler(const eosio::transaction& dtrx) {
    auto onerror_action = eosio::get_action(1, 0);
    eosio_assert( onerror_action.authorization.at(0).actor == dtrx.actions.at(0).account,
                 "authorizer of onerror action does not match receiver of original action in the deferred transaction" );
@@ -224,20 +224,6 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint6
    trx.send(0, receiver);
 
    eosio_assert(false, "send_transaction_large() should've thrown an error");
-}
-
-void test_transaction::send_transaction_expiring_late(uint64_t receiver, uint64_t, uint64_t) {
-   using namespace eosio;
-   account_name cur_send;
-   read_action_data( &cur_send, sizeof(account_name) );
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
-   copy_data((char*)&cur_send, sizeof(account_name), test_action.data);
-
-   auto trx = transaction(now() + 60*60*24*365);
-   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send(0, receiver);
-
-   eosio_assert(false, "send_transaction_expiring_late() should've thrown an error");
 }
 
 /**
@@ -286,4 +272,23 @@ void test_transaction::send_cf_action_fail() {
    action act(vector<permission_level>{{N(dummy), N(active)}}, cfa);
    act.send_context_free();
    eosio_assert(false, "send_cfa_action_fail() should've thrown an error");
+}
+
+void test_transaction::stateful_api() {
+   char buf[4] = {1};
+   db_store_i64(N(test_transaction), N(table), N(test_transaction), 0, buf, 4);
+}
+
+void test_transaction::context_free_api() {
+   char buf[128] = {0};
+   get_context_free_data(0, buf, sizeof(buf));
+}
+
+extern "C" { int is_feature_active(int64_t); }
+void test_transaction::new_feature() {
+   eosio_assert(false == is_feature_active(N(newfeature)), "we should not have new features unless hardfork");
+}
+
+void test_transaction::active_new_feature() {
+   activate_feature(N(newfeature));
 }

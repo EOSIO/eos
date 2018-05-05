@@ -130,8 +130,16 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    return transaction::get_signature_keys(signatures, chain_id, context_free_data, allow_duplicate_keys);
 }
 
-uint32_t packed_transaction::get_billable_size()const {
-   auto size = fc::raw::pack_size(*this);
+uint32_t packed_transaction::get_unprunable_size()const {
+   uint64_t size = config::fixed_net_overhead_of_packed_trx;
+   size += packed_trx.size();
+   FC_ASSERT( size <= std::numeric_limits<uint32_t>::max(), "packed_transaction is too big" );
+   return static_cast<uint32_t>(size);
+}
+
+uint32_t packed_transaction::get_prunable_size()const {
+   uint64_t size = fc::raw::pack_size(signatures);
+   size += packed_context_free_data.size();
    FC_ASSERT( size <= std::numeric_limits<uint32_t>::max(), "packed_transaction is too big" );
    return static_cast<uint32_t>(size);
 }
@@ -273,25 +281,40 @@ vector<bytes> packed_transaction::get_context_free_data()const
    } FC_CAPTURE_AND_RETHROW((compression)(packed_context_free_data))
 }
 
+time_point_sec packed_transaction::expiration()const
+{
+   local_unpack();
+   return unpacked_trx->expiration;
+}
+
 transaction_id_type packed_transaction::id()const
 {
-   try {
-      return get_transaction().id();
-   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
+   local_unpack();
+   return get_transaction().id();
+}
+
+void packed_transaction::local_unpack()const
+{
+   if (!unpacked_trx) {
+      try {
+         switch(compression) {
+         case none:
+            unpacked_trx = unpack_transaction(packed_trx);
+            break;
+         case zlib:
+            unpacked_trx = zlib_decompress_transaction(packed_trx);
+            break;
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+         }
+      } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
+   }
 }
 
 transaction packed_transaction::get_transaction()const
 {
-   try {
-      switch(compression) {
-         case none:
-            return unpack_transaction(packed_trx);
-         case zlib:
-            return zlib_decompress_transaction(packed_trx);
-         default:
-            FC_THROW("Unknown transaction compression algorithm");
-      }
-   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
+   local_unpack();
+   return transaction(*unpacked_trx);
 }
 
 signed_transaction packed_transaction::get_signed_transaction() const

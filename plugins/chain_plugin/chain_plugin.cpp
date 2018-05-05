@@ -45,6 +45,10 @@ public:
    ,accepted_transaction_channel(app().get_channel<channels::accepted_transaction>())
    ,applied_transaction_channel(app().get_channel<channels::applied_transaction>())
    ,accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
+   ,incoming_block_channel(app().get_channel<channels::incoming_block>())
+   ,incoming_block_sync_method(app().get_method<methods::incoming_block_sync>())
+   ,incoming_transaction_sync_method(app().get_method<methods::incoming_transaction_sync>())
+   ,start_coordinator_method(app().get_method<methods::start_coordinator>())
    {}
    
    bfs::path                        block_log_dir;
@@ -59,9 +63,6 @@ public:
    fc::optional<controller::config> chain_config = controller::config();
    fc::optional<controller>         chain;
    chain_id_type                    chain_id;
-   int32_t                          max_reversible_block_time_ms;
-   int32_t                          max_pending_transaction_time_ms;
-   int32_t                          max_deferred_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
 
@@ -72,6 +73,12 @@ public:
    channels::accepted_transaction::channel_type&   accepted_transaction_channel;
    channels::applied_transaction::channel_type&    applied_transaction_channel;
    channels::accepted_confirmation::channel_type&  accepted_confirmation_channel;
+   channels::incoming_block::channel_type&         incoming_block_channel;
+
+   // retained references to methods for easy calling
+   methods::incoming_block_sync::method_type&       incoming_block_sync_method;
+   methods::incoming_transaction_sync::method_type& incoming_transaction_sync_method;
+   methods::start_coordinator::method_type&         start_coordinator_method;
 
    // method provider handles
    methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
@@ -95,12 +102,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("max-reversible-block-time", bpo::value<int32_t>()->default_value(-1),
-          "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
-         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
-          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
-         ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
-          "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Maximum size MB of database shared memory file")
 
@@ -180,10 +181,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    }
 
-   my->max_reversible_block_time_ms = options.at("max-reversible-block-time").as<int32_t>();
-   my->max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
-   my->max_deferred_transaction_time_ms = options.at("max-deferred-transaction-time").as<int32_t>();
-
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
 
@@ -201,29 +198,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
 
-   if (my->max_reversible_block_time_ms > 0) {
-      my->chain_config->limits.max_push_block_us = fc::milliseconds(my->max_reversible_block_time_ms);
-   }
-
-   if (my->max_pending_transaction_time_ms > 0) {
-      my->chain_config->limits.max_push_transaction_us = fc::milliseconds(my->max_pending_transaction_time_ms);
-   }
-
-   if (my->max_deferred_transaction_time_ms > 0 ) {
-      my->chain_config->limits.max_deferred_transactions_us = fc::milliseconds(my->max_deferred_transaction_time_ms);
-   }
-
    if(my->wasm_runtime)
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
    my->chain.emplace(*my->chain_config);
 
    // set up method providers
-   my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider([this](uint32_t block_num) -> const signed_block_ptr& {
+   my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider([this](uint32_t block_num) -> signed_block_ptr {
       return my->chain->fetch_block_by_number(block_num);
    });
 
-   my->get_block_by_id_provider = app().get_method<methods::get_block_by_id>().register_provider([this](block_id_type id) -> const signed_block_ptr& {
+   my->get_block_by_id_provider = app().get_method<methods::get_block_by_id>().register_provider([this](block_id_type id) -> signed_block_ptr {
       return my->chain->fetch_block_by_id(id);
    });
 
@@ -259,6 +244,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->chain->accepted_confirmation.connect([this](const header_confirmation& conf){
       my->accepted_confirmation_channel.publish(conf);
    });
+
 }
 
 void chain_plugin::plugin_startup()
@@ -275,6 +261,8 @@ void chain_plugin::plugin_startup()
 
    my->chain_config.reset();
 
+   my->start_coordinator_method();
+
 } FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
@@ -286,11 +274,11 @@ chain_apis::read_write chain_plugin::get_read_write_api() {
 }
 
 void chain_plugin::accept_block(const signed_block_ptr& block ) {
-   chain().push_block( block );
+   my->incoming_block_sync_method(block);
 }
 
 void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   chain().push_transaction( std::make_shared<transaction_metadata>(trx), get_transaction_deadline() );
+   my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -308,10 +296,6 @@ const controller& chain_plugin::chain() const { return *my->chain; }
 
 void chain_plugin::get_chain_id(chain_id_type &cid)const {
    memcpy(cid.data(), my->chain_id.data(), cid.data_size());
-}
-
-fc::time_point chain_plugin::get_transaction_deadline()const {
-   return fc::time_point::now() + fc::milliseconds(my->max_pending_transaction_time_ms);
 }
 
 namespace chain_apis {
@@ -468,18 +452,13 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-   FC_ASSERT( chain_plug != nullptr, "Unable to retrieve chain_plugin" );
-
-   packed_transaction pretty_input;
+   auto pretty_input = std::make_shared<packed_transaction>();
    auto resolver = make_resolver(this);
    try {
-      abi_serializer::from_variant(params, pretty_input, resolver);
+      abi_serializer::from_variant(params, *pretty_input, resolver);
    } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto trx_trace_ptr = db.sync_push(
-           std::make_shared<transaction_metadata>(move(pretty_input)),
-           chain_plug->get_transaction_deadline() );
+   auto trx_trace_ptr = app().get_method<methods::incoming_transaction_sync>()(pretty_input);
 
    fc::variant pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
    //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
@@ -536,8 +515,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.last_code_update = a.last_code_update;
    result.created          = a.creation_date;
 
-   result.net_limit = rm.get_account_net_limit( result.account_name );
-   result.cpu_limit = rm.get_account_cpu_limit( result.account_name );
+   result.net_limit = rm.get_account_net_limit_ex( result.account_name );
+   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name );
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
@@ -559,7 +538,45 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       ++perm;
    }
 
+   const auto& code_account = db.db().get<account_object,by_name>( N(eosio) );
+   //const abi_def abi = get_abi( db, N(eosio) );
+   abi_def abi;
+   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+      abi_serializer abis( abi );
+      //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.total_resources = abis.binary_to_variant( "user_resources", data );
+         }
+      }
 
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
+         }
+      }
+
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.voter_info = abis.binary_to_variant( "voter_info", data );
+         }
+      }
+   }
    return result;
 }
 

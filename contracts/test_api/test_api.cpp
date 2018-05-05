@@ -23,9 +23,9 @@ account_name global_receiver;
 extern "C" {
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       if( code == N(eosio) && action == N(onerror) ) {
-         auto error_dtrx = eosio::deferred_transaction::from_current_action();
+         auto error = eosio::onerror::from_current_action();
          eosio::print("onerror called\n");
-         auto error_action = error_dtrx.actions.at(0).name;
+         auto error_action = error.sent_trx.actions.at(0).name;
 
          // Error handlers for deferred transactions in these tests currently only support the first action
 
@@ -41,7 +41,8 @@ extern "C" {
       }
       WASM_TEST_HANDLER(test_action, assert_true_cf);
 
-      require_auth(code);
+      if (action != WASM_TEST_ACTION("test_transaction", "stateful_api") && action != WASM_TEST_ACTION("test_transaction", "context_free_api"))
+         require_auth(code);
 
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
@@ -132,13 +133,16 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_transaction, send_transaction_trigger_error_handler);
       WASM_TEST_HANDLER_EX(test_transaction, send_transaction_large);
       WASM_TEST_HANDLER_EX(test_transaction, send_action_sender);
-      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_expiring_late);
       WASM_TEST_HANDLER(test_transaction, deferred_print);
       WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, send_deferred_tx_given_payer);
       WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
+      WASM_TEST_HANDLER(test_transaction, stateful_api);
+      WASM_TEST_HANDLER(test_transaction, context_free_api);
+      WASM_TEST_HANDLER(test_transaction, new_feature);
+      WASM_TEST_HANDLER(test_transaction, active_new_feature);
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);

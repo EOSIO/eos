@@ -31,23 +31,20 @@ namespace eosio { namespace chain {
    };
 
    struct transaction_trace;
-   typedef std::shared_ptr<transaction_trace> transaction_trace_ptr;
+   using transaction_trace_ptr = std::shared_ptr<transaction_trace>;
 
    struct transaction_trace {
-      transaction_id_type          id;
-      transaction_receipt_header   receipt;
-      fc::microseconds             elapsed;
-      uint64_t                     net_usage = 0;
-      uint64_t                     cpu_usage = 0;
-      bool                         scheduled = false;
-      vector<action_trace>         action_traces; ///< disposable
+      transaction_id_type                        id;
+      fc::optional<transaction_receipt_header>   receipt;
+      fc::microseconds                           elapsed;
+      uint64_t                                   net_usage = 0;
+      uint64_t                                   cpu_usage = 0;
+      bool                                       scheduled = false;
+      vector<action_trace>                       action_traces; ///< disposable
 
-      transaction_trace_ptr         failed_dtrx_trace;
-      fc::optional<fc::exception>   soft_except;
-      fc::optional<fc::exception>   hard_except;
-      std::exception_ptr            soft_except_ptr;
-      std::exception_ptr            hard_except_ptr;
-
+      transaction_trace_ptr                      failed_dtrx_trace;
+      fc::optional<fc::exception>                except;
+      std::exception_ptr                         except_ptr;
    };
 
    struct block_trace {
@@ -55,7 +52,7 @@ namespace eosio { namespace chain {
       uint64_t                        cpu_usage;
       vector<transaction_trace_ptr>   trx_traces;
    };
-   typedef std::shared_ptr<block_trace> block_trace_ptr;
+   using block_trace_ptr = std::shared_ptr<block_trace>;
 
 } }  /// namespace eosio::chain
 
@@ -65,6 +62,6 @@ FC_REFLECT( eosio::chain::base_action_trace,
 FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )
 
-FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(net_usage)(cpu_usage)(scheduled)(action_traces)
-                                             (failed_dtrx_trace)(soft_except)(hard_except) )
+FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(net_usage)(cpu_usage)(scheduled)
+                                             (action_traces)(failed_dtrx_trace)(except) )
 FC_REFLECT( eosio::chain::block_trace, (elapsed)(cpu_usage)(trx_traces) )

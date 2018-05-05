@@ -9,26 +9,23 @@
 namespace eosio { namespace chain {
 
    transaction_context::transaction_context( controller& c,
-                                             transaction_trace_ptr& trace_ptr,
                                              const signed_transaction& t,
-                                             const transaction_id_type& trx_id,
-                                             fc::time_point d,
-                                             fc::time_point p,
-                                             uint64_t initial_net_usage,
-                                             uint64_t initial_cpu_usage         )
+                                             const transaction_id_type& trx_id )
    :control(c)
    ,trx(t)
    ,id(trx_id)
    ,undo_session(c.db().start_undo_session(true))
    ,trace(std::make_shared<transaction_trace>())
-   ,deadline(d)
-   ,published(p)
    ,net_usage(trace->net_usage)
    ,cpu_usage(trace->cpu_usage)
    {
       trace->id = id;
-      trace_ptr = trace;
       executed.reserve( trx.total_actions() );
+   }
+
+   void transaction_context::init(uint64_t initial_net_usage, uint64_t initial_cpu_usage )
+   {
+      FC_ASSERT( !is_initialized, "cannot initialize twice" );
 
       // Record accounts to be billed for network and CPU usage
       uint64_t determine_payers_cpu_cost = 0;
@@ -55,6 +52,25 @@ namespace eosio { namespace chain {
       if( trx_specified_cpu_usage_limit > 0 )
          max_cpu = std::min( max_cpu, trx_specified_cpu_usage_limit );
 
+      eager_net_limit = max_net;
+      eager_cpu_limit = max_cpu;
+
+      // Update usage values of accounts to reflect new time
+      auto& rl = control.get_mutable_resource_limits_manager();
+      rl.add_transaction_usage( bill_to_accounts, 0, 0, block_timestamp_type(control.pending_block_time()).slot );
+
+      uint64_t block_net_limit = rl.get_block_net_limit();
+      uint64_t block_cpu_limit = rl.get_block_cpu_limit();
+
+      if( block_net_limit < eager_net_limit ) {
+         eager_net_limit = block_net_limit;
+         net_limit_due_to_block = true;
+      }
+      if( block_cpu_limit < eager_cpu_limit ) {
+         eager_cpu_limit = block_cpu_limit;
+         cpu_limit_due_to_block = true;
+      }
+
       // Initial billing for network usage
       if( initial_net_usage > 0 )
          add_net_usage( initial_net_usage );
@@ -66,95 +82,127 @@ namespace eosio { namespace chain {
                      + bill_to_accounts.size() * config::resource_processing_cpu_overhead_per_billed_account );
       // Fails early if current CPU usage is already greater than the current limit (which may still go lower).
 
-      // Update usage values of accounts to reflect new time
-      auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_transaction_usage( bill_to_accounts, 0, 0, block_timestamp_type(control.pending_block_time()).slot );
+
+      eager_net_limit = max_net;
+      eager_cpu_limit = max_cpu;
+      net_limit_due_to_block = false;
+      cpu_limit_due_to_block = false;
 
       // Lower limits to what the billed accounts can afford to pay
-      max_net = std::min( max_net, rl.get_block_net_limit() );
-      max_cpu = std::min( max_cpu, rl.get_block_cpu_limit() );
       for( const auto& a : bill_to_accounts ) {
          auto net_limit = rl.get_account_net_limit(a);
          if( net_limit >= 0 )
-            max_net = std::min( max_net, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
+            eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
+
          auto cpu_limit = rl.get_account_cpu_limit(a);
          if( cpu_limit >= 0 )
-            max_cpu = std::min( max_cpu, static_cast<uint64_t>(cpu_limit) ); // reduce max_cpu to the amount the account is able to pay
+            eager_cpu_limit = std::min( eager_cpu_limit, static_cast<uint64_t>(cpu_limit) ); // reduce max_cpu to the amount the account is able to pay
+      }
+
+      initial_max_billable_cpu = eager_cpu_limit; // Possibly used for hard failure purposes
+
+      eager_net_limit += cfg.net_usage_leeway;
+      eager_net_limit = std::min(eager_net_limit, max_net);
+      eager_cpu_limit += cfg.cpu_usage_leeway;
+      eager_cpu_limit = std::min(eager_cpu_limit, max_cpu);
+
+      if( block_net_limit < eager_net_limit ) {
+         eager_net_limit = block_net_limit;
+         net_limit_due_to_block = true;
+      }
+      if( block_cpu_limit < eager_cpu_limit ) {
+         eager_cpu_limit = block_cpu_limit;
+         cpu_limit_due_to_block = true;
       }
 
       // Round down network and CPU usage limits so that comparison to actual usage is more efficient
-      max_net = (max_net/8)*8;       // Round down to nearest multiple of word size (8 bytes)
-      max_cpu = (max_cpu/1024)*1024; // Round down to nearest multiple of 1024
+      eager_net_limit = (eager_net_limit/8)*8;       // Round down to nearest multiple of word size (8 bytes)
+      eager_cpu_limit = (eager_cpu_limit/1024)*1024; // Round down to nearest multiple of 1024
+
       if( initial_net_usage > 0 )
-         check_net_usage();
+         check_net_usage();  // Fail early if current net usage is already greater than the calculated limit
       check_cpu_usage(); // Fail early if current CPU usage is already greater than the calculated limit
+
+      is_initialized = true;
    }
 
-   uint64_t transaction_context::calculate_initial_net_usage( const controller& c,
-                                                              const signed_transaction& t,
-                                                              uint64_t packed_trx_billable_size ) {
-      const auto& cfg = c.get_global_properties().configuration;
-      uint64_t initial_net_usage = static_cast<uint64_t>(cfg.base_per_transaction_net_usage) + packed_trx_billable_size;
-      if( t.delay_sec.value > 0 ) {
+   void transaction_context::init_for_implicit_trx( fc::time_point d, uint64_t initial_net_usage, uint64_t initial_cpu_usage )
+   {
+      published = control.pending_block_time();
+      deadline = d;
+      init( initial_net_usage, initial_cpu_usage );
+   }
+
+   void transaction_context::init_for_input_trx( fc::time_point d,
+                                                 uint64_t packed_trx_unprunable_size,
+                                                 uint64_t packed_trx_prunable_size,
+                                                 uint32_t num_signatures              )
+   {
+      const auto& cfg = control.get_global_properties().configuration;
+
+      uint64_t discounted_size_for_pruned_data = packed_trx_prunable_size;
+      if( cfg.context_free_discount_net_usage_den > 0
+          && cfg.context_free_discount_net_usage_num < cfg.context_free_discount_net_usage_den )
+      {
+         discounted_size_for_pruned_data *= cfg.context_free_discount_net_usage_num;
+         discounted_size_for_pruned_data =  ( discounted_size_for_pruned_data + cfg.context_free_discount_net_usage_den - 1)
+                                                                                    / cfg.context_free_discount_net_usage_den; // rounds up
+      }
+
+      uint64_t initial_net_usage = static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
+                                    + packed_trx_unprunable_size + discounted_size_for_pruned_data;
+
+      uint64_t initial_cpu_usage = num_signatures * cfg.per_signature_cpu_usage;
+
+      if( trx.delay_sec.value > 0 ) {
           // If delayed, also charge ahead of time for the additional net usage needed to retire the delayed transaction
           // whether that be by successfully executing, soft failure, hard failure, or expiration.
          initial_net_usage += static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
                                + static_cast<uint64_t>(config::transaction_id_net_usage);
       }
-      return initial_net_usage;
+
+      published = control.pending_block_time();
+      deadline = d;
+      is_input = true;
+      init( initial_net_usage, initial_cpu_usage );
+      control.validate_tapos( trx );
+      control.validate_referenced_accounts( trx );
+      control.validate_expiration( trx );
+      record_transaction( id, trx.expiration ); /// checks for dupes
    }
 
-   transaction_context::transaction_context( transaction_trace_ptr& trace_ptr,
-                                             controller& c,
-                                             const signed_transaction& t,
-                                             const transaction_id_type& trx_id,
-                                             fc::time_point d,
-                                             fc::time_point p                   )
-   :transaction_context( c, trace_ptr, t, trx_id, d, p, 0, 0 )
+   void transaction_context::init_for_deferred_trx( fc::time_point d,
+                                                    fc::time_point p )
    {
+      published = p;
+      deadline = d;
       trace->scheduled = true;
-      is_input = false;
       apply_context_free = false;
-   }
-
-   transaction_context::transaction_context( transaction_trace_ptr& trace_ptr,
-                                             controller& c,
-                                             const signed_transaction& t,
-                                             const transaction_id_type& trx_id,
-                                             fc::time_point d,
-                                             bool is_implicit,
-                                             uint64_t packed_trx_billable_size,
-                                             uint64_t initial_cpu_usage         )
-   :transaction_context( c, trace_ptr, t, trx_id, d, c.pending_block_time(),
-                         calculate_initial_net_usage(c, t, packed_trx_billable_size), initial_cpu_usage )
-   {
-      trace->scheduled = false;
-      is_input = !is_implicit;
+      init( 0, 0 );
    }
 
    void transaction_context::exec() {
-      //trx.validate(); // Not needed anymore since overflow is prevented by using uint64_t instead of uint32_t
-      control.validate_tapos( trx );
-      control.validate_referenced_accounts( trx );
-
-      if( is_input ) { /// signed transaction from user rather than a deferred transaction
-         control.validate_expiration( trx );
-         record_transaction( id, trx.expiration ); /// checks for dupes
-      }
+      FC_ASSERT( is_initialized, "must first initialize" );
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            dispatch_action( act, true );
+            trace->action_traces.emplace_back();
+            dispatch_action( trace->action_traces.back(), act, true );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            dispatch_action( act );
+            trace->action_traces.emplace_back();
+            dispatch_action( trace->action_traces.back(), act );
          }
       } else {
          schedule_transaction();
       }
+   }
+
+   void transaction_context::finalize() {
+      FC_ASSERT( is_initialized, "must first initialize" );
 
       add_cpu_usage( validate_ram_usage.size() * config::ram_usage_validation_overhead_per_account );
 
@@ -163,34 +211,98 @@ namespace eosio { namespace chain {
          rl.verify_account_ram_usage( a );
       }
 
+      eager_net_limit = max_net;
+      eager_cpu_limit = max_cpu;
+      net_limit_due_to_block = false;
+      cpu_limit_due_to_block = false;
+
+      // Lower limits to what the billed accounts can afford to pay
+      for( const auto& a : bill_to_accounts ) {
+         auto net_limit = rl.get_account_net_limit(a);
+         if( net_limit >= 0 )
+            eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
+
+         auto cpu_limit = rl.get_account_cpu_limit(a);
+         if( cpu_limit >= 0 )
+            eager_cpu_limit = std::min( eager_cpu_limit, static_cast<uint64_t>(cpu_limit) ); // reduce max_cpu to the amount the account is able to pay
+      }
+
       net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
       cpu_usage = ((cpu_usage + 1023)/1024)*1024; // Round up to nearest multiple of 1024
-      control.get_mutable_resource_limits_manager()
-             .add_transaction_usage( bill_to_accounts, cpu_usage, net_usage,
-                                     block_timestamp_type(control.pending_block_time()).slot );
+
+      check_net_usage();
+      check_cpu_usage();
+
+      rl.add_transaction_usage( bill_to_accounts, cpu_usage, net_usage,
+                                block_timestamp_type(control.pending_block_time()).slot ); // Should never fail
    }
 
    void transaction_context::squash() {
       undo_session.squash();
    }
 
+   uint64_t transaction_context::add_action_cpu_usage( uint64_t u, bool context_free ) {
+      const auto& cfg = control.get_global_properties().configuration;
+
+      uint64_t discounted_cpu_usage = u;
+      if( context_free && cfg.context_free_discount_cpu_usage_den > 0
+          && cfg.context_free_discount_cpu_usage_num < cfg.context_free_discount_cpu_usage_den )
+      {
+         discounted_cpu_usage *= cfg.context_free_discount_cpu_usage_num;
+         discounted_cpu_usage =  ( discounted_cpu_usage + cfg.context_free_discount_cpu_usage_den - 1)
+                                                               / cfg.context_free_discount_cpu_usage_den; // rounds up
+      }
+
+      add_cpu_usage( discounted_cpu_usage );
+      return discounted_cpu_usage;
+   }
+
+   uint64_t transaction_context::get_action_cpu_usage_limit( bool context_free )const {
+      check_cpu_usage();
+      uint64_t diff = max_cpu - cpu_usage;
+      if( !context_free ) return diff;
+
+      const auto& cfg = control.get_global_properties().configuration;
+      uint64_t n = cfg.context_free_discount_cpu_usage_num;
+      uint64_t d = cfg.context_free_discount_cpu_usage_den;
+
+      if( d == 0 || n >= d ) return diff;
+
+      if( n == 0 ) return std::numeric_limits<uint64_t>::max();
+
+      return (diff * d)/n;
+   }
+
    void transaction_context::check_net_usage()const {
-      EOS_ASSERT( BOOST_LIKELY(net_usage <= max_net), tx_resource_exhausted,
-                  "net usage of transaction is too high: ${actual_net_usage} > ${net_usage_limit}",
-                  ("actual_net_usage", net_usage)("net_usage_limit", max_net) );
+      if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
+         if( BOOST_UNLIKELY( net_limit_due_to_block ) ) {
+            EOS_THROW( tx_soft_net_usage_exceeded,
+                       "not enough space left in block: ${actual_net_usage} > ${net_usage_limit}",
+                       ("actual_net_usage", net_usage)("net_usage_limit", max_net) );
+         } else {
+            EOS_THROW( tx_net_usage_exceeded,
+                       "net usage of transaction is too high: ${actual_net_usage} > ${net_usage_limit}",
+                       ("actual_net_usage", net_usage)("net_usage_limit", max_net) );
+         }
+      }
    }
 
    void transaction_context::check_cpu_usage()const {
-      EOS_ASSERT( BOOST_LIKELY(cpu_usage <= max_cpu), tx_resource_exhausted,
-                  "cpu usage of transaction is too high: ${actual_net_usage} > ${cpu_usage_limit}",
-                  ("actual_net_usage", cpu_usage)("cpu_usage_limit", max_cpu) );
+      if( BOOST_UNLIKELY(cpu_usage > eager_cpu_limit) ) {
+         if( BOOST_UNLIKELY( cpu_limit_due_to_block ) ) {
+            EOS_THROW( tx_soft_cpu_usage_exceeded,
+                       "not enough CPU usage allotment left in block: ${actual_cpu_usage} > ${cpu_usage_limit}",
+                       ("actual_cpu_usage", cpu_usage)("cpu_usage_limit", max_cpu) );
+         } else {
+            EOS_THROW( tx_cpu_usage_exceeded,
+                       "cpu usage of transaction is too high: ${actual_cpu_usage} > ${cpu_usage_limit}",
+                       ("actual_cpu_usage", cpu_usage)("cpu_usage_limit", max_cpu) );
+         }
+      }
    }
 
    void transaction_context::check_time()const {
-      if( BOOST_UNLIKELY(fc::time_point::now() > deadline) ) {
-         wlog( "deadline passed" );
-         throw checktime_exceeded();
-      }
+      EOS_ASSERT( BOOST_LIKELY(fc::time_point::now() <= deadline), tx_deadline_exceeded, "deadline exceeded" );
    }
 
    void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
@@ -201,15 +313,23 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::dispatch_action( const action& a, account_name receiver, bool context_free ) {
-      apply_context  acontext( control, *this, a );
+   void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
+      apply_context  acontext( control, *this, a, recurse_depth );
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
-      acontext.exec();
 
-      fc::move_append(executed, move(acontext.executed) );
+      try {
+         acontext.exec();
+      } catch( const action_cpu_usage_exceeded& e ) {
+         trace = move(acontext.trace);
+         add_action_cpu_usage( acontext.cpu_usage, context_free ); // Will update cpu_usage to latest value and throw appropriate exception
+         FC_ASSERT(false, "should not have reached here" );
+      } catch( ... ) {
+         trace = move(acontext.trace);
+         throw;
+      }
 
-      trace->action_traces.emplace_back( move(acontext.trace) );
+      trace = move(acontext.trace);
    }
 
    void transaction_context::schedule_transaction() {
@@ -245,7 +365,7 @@ namespace eosio { namespace chain {
               transaction.expiration = expire;
           });
       } catch ( ... ) {
-          EOS_ASSERT( false, transaction_exception,
+          EOS_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );
       }
    } /// record_transaction

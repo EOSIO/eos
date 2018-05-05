@@ -7,6 +7,8 @@
 
 namespace eosio { namespace chain { namespace resource_limits {
 
+static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
+
 static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_usage, const elastic_limit_parameters& params) {
    uint64_t result = current_limit;
    if (average_usage > params.target ) {
@@ -17,6 +19,15 @@ static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_us
 
    return std::min(std::max(result, params.max), params.max * params.max_multiplier);
 }
+
+void elastic_limit_parameters::validate()const {
+   // At the very least ensure parameters are not set to values that will cause divide by zero errors later on.
+   // Stricter checks for sensible values can be added later.
+   FC_ASSERT( periods > 0, "elastic limit parameter 'periods' cannot be zero" );
+   FC_ASSERT( contract_rate.denominator > 0, "elastic limit parameter 'contract_rate' is not a well-defined ratio" );
+   FC_ASSERT( expand_rate.denominator > 0,   "elastic limit parameter 'expand_rate' is not a well-defined ratio" );
+}
+
 
 void resource_limits_state_object::update_virtual_cpu_limit( const resource_limits_config_object& cfg ) {
    virtual_cpu_limit = update_elastic_limit(virtual_cpu_limit, average_block_cpu_usage.average(), cfg.cpu_limit_parameters);
@@ -58,6 +69,8 @@ void resource_limits_manager::initialize_account(const account_name& account) {
 }
 
 void resource_limits_manager::set_block_parameters(const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters ) {
+   cpu_limit_parameters.validate();
+   net_limit_parameters.validate();
    const auto& config = _db.get<resource_limits_config_object>();
    _db.modify(config, [&](resource_limits_config_object& c){
       c.cpu_limit_parameters = cpu_limit_parameters;
@@ -84,7 +97,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
 
          EOS_ASSERT( state.total_cpu_weight > 0 && (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
-                     tx_resource_exhausted,
+                     tx_cpu_usage_exceeded,
                      "authorizing account '${n}' has insufficient cpu resources for this transaction",
                      ("n",                    name(a))
                      ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
@@ -99,7 +112,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
 
          EOS_ASSERT( state.total_net_weight > 0 && (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
-                     tx_resource_exhausted,
+                     tx_net_usage_exceeded,
                      "authorizing account '${n}' has insufficient net resources for this transaction",
                      ("n",                    name(a))
                      ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)
@@ -142,10 +155,10 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    get_account_limits( account, ram_bytes, net_weight, cpu_weight );
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
-   if( ram_bytes >= 0 && usage.ram_usage > ram_bytes ) {
-      tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
-      e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",usage.ram_usage)("m",ram_bytes)));
-      throw e;
+   if( ram_bytes >= 0 ) {
+      EOS_ASSERT( usage.ram_usage <= ram_bytes, ram_usage_exceeded,
+                  "account ${account} has insufficient ram bytes; needs ${available} has ${needs}",
+                  ("account", account)("available",usage.ram_usage)("needs",ram_bytes)              );
    }
 }
 
@@ -312,6 +325,7 @@ int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name
 
    uint128_t consumed_ex = (uint128_t)usage.cpu_usage.consumed * (uint128_t)config::rate_limiting_precision;
    uint128_t virtual_capacity_ex = (uint128_t)state.virtual_cpu_limit * (uint128_t)config::rate_limiting_precision;
+
    uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
 
    if (usable_capacity_ex < consumed_ex) {
@@ -319,6 +333,37 @@ int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name
    }
 
    return (int64_t)((usable_capacity_ex - consumed_ex) / (uint128_t)config::rate_limiting_precision);
+}
+
+account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const account_name& name ) const {
+   const auto& cfg = _db.get<resource_limits_config_object>();
+   const auto& state = _db.get<resource_limits_state_object>();
+   const auto& usage = _db.get<resource_usage_object, by_owner>(name);
+   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
+   if (limits.cpu_weight < 0) {
+      return { -1, -1, -1 };
+   }
+
+   auto total_cpu_weight = state.total_cpu_weight;
+   if( total_cpu_weight == 0 ) total_cpu_weight = 1;
+
+   uint128_t consumed_ex = (uint128_t)usage.cpu_usage.consumed * (uint128_t)config::rate_limiting_precision;
+   uint128_t virtual_capacity_ex = (uint128_t)state.virtual_cpu_limit * (uint128_t)config::rate_limiting_precision;
+
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
+
+   uint128_t real_capacity_ex = (uint128_t)cfg.cpu_limit_parameters.target * (uint128_t)config::rate_limiting_precision;
+   uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
+
+   uint128_t blocks_per_day = 86400 * 1000 / config::block_interval_ms;
+
+   if (usable_capacity_ex < consumed_ex) {
+      consumed_ex = usable_capacity_ex;
+   }
+   return { (int64_t)(std::min(usable_capacity_ex - consumed_ex, real_capacity_ex) / (uint128_t)config::rate_limiting_precision),
+         (int64_t)(std::min(usable_capacity_ex, real_capacity_ex) / (uint128_t)config::rate_limiting_precision),
+         (int64_t)(guaranteed_capacity_ex * blocks_per_day / cfg.cpu_limit_parameters.periods / (uint128_t)config::rate_limiting_precision)
+         };
 }
 
 int64_t resource_limits_manager::get_account_net_limit( const account_name& name ) const {
@@ -335,7 +380,7 @@ int64_t resource_limits_manager::get_account_net_limit( const account_name& name
    auto total_net_weight = state.total_net_weight;
    if( total_net_weight == 0 ) total_net_weight = 1;
 
-   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight;
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight; // max
 
    if (usable_capacity_ex < consumed_ex) {
       return 0;
@@ -343,6 +388,37 @@ int64_t resource_limits_manager::get_account_net_limit( const account_name& name
 
    return (int64_t)((usable_capacity_ex - consumed_ex) / (uint128_t)config::rate_limiting_precision);
 
+}
+
+account_resource_limit resource_limits_manager::get_account_net_limit_ex( const account_name& name ) const {
+   const auto& cfg = _db.get<resource_limits_config_object>();
+   const auto& state = _db.get<resource_limits_state_object>();
+   const auto& usage = _db.get<resource_usage_object, by_owner>(name);
+   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
+   if (limits.net_weight < 0) {
+      return { -1, -1, -1 };
+   }
+
+   auto total_net_weight = state.total_net_weight;
+   if( total_net_weight == 0 ) total_net_weight = 1;
+
+   uint128_t consumed_ex = (uint128_t)usage.net_usage.consumed * (uint128_t)config::rate_limiting_precision;
+   uint128_t virtual_capacity_ex = (uint128_t)state.virtual_net_limit * (uint128_t)config::rate_limiting_precision;
+
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight; // max
+
+   uint128_t real_capacity_ex = (uint128_t)cfg.net_limit_parameters.target * (uint128_t)config::rate_limiting_precision;
+   uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight;
+
+   uint128_t blocks_per_day = 86400 * 1000 / config::block_interval_ms;
+
+   if (usable_capacity_ex < consumed_ex) {
+      consumed_ex = usable_capacity_ex;
+   }
+   return { (int64_t)(std::min(usable_capacity_ex - consumed_ex, real_capacity_ex) / (uint128_t)config::rate_limiting_precision),
+         (int64_t)(std::min(usable_capacity_ex, real_capacity_ex) / (uint128_t)config::rate_limiting_precision),
+         (int64_t)(guaranteed_capacity_ex * blocks_per_day / cfg.net_limit_parameters.periods / (uint128_t)config::rate_limiting_precision)
+         };
 }
 
 

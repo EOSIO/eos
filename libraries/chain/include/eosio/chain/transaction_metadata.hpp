@@ -20,6 +20,7 @@ class transaction_metadata {
       signed_transaction                    trx;
       packed_transaction                    packed_trx;
       optional<flat_set<public_key_type>>   signing_keys;
+      bool                                  accepted = false;
 
       std::function<void(const transaction_trace_ptr&)>       on_result;
 
@@ -48,6 +49,6 @@ class transaction_metadata {
       uint32_t total_actions()const { return trx.context_free_actions.size() + trx.actions.size(); }
 };
 
-typedef std::shared_ptr<transaction_metadata> transaction_metadata_ptr;
+using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
 
 } } // eosio::chain

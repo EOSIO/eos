@@ -118,7 +118,8 @@ namespace eosio { namespace chain {
          set_transaction(t, std::move(t.context_free_data), _compression);
       }
 
-      uint32_t get_billable_size()const;
+      uint32_t get_unprunable_size()const;
+      uint32_t get_prunable_size()const;
 
       digest_type packed_digest()const;
 
@@ -127,6 +128,7 @@ namespace eosio { namespace chain {
       bytes                                   packed_context_free_data;
       bytes                                   packed_trx;
 
+      time_point_sec     expiration()const;
       transaction_id_type id()const;
       bytes              get_raw_transaction()const;
       vector<bytes>      get_context_free_data()const;
@@ -134,8 +136,13 @@ namespace eosio { namespace chain {
       signed_transaction get_signed_transaction()const;
       void               set_transaction(const transaction& t, compression_type _compression = none);
       void               set_transaction(const transaction& t, const vector<bytes>& cfd, compression_type _compression = none);
+
+   private:
+      mutable optional<transaction>           unpacked_trx; // <-- intermediate buffer used to retrieve values
+      void local_unpack()const;
    };
 
+   using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
 
    /**
     *  When a transaction is generated it can be scheduled to occur
