@@ -70,7 +70,7 @@ namespace eosio { namespace chain { namespace resource_limits {
             }
 
             consumed += units;
-            value_ex += units * Precision / (uint64_t)window_size;
+            value_ex += units * Precision;
          }
       };
 
