@@ -8,10 +8,10 @@
 
 namespace eosio {
 
-class consumer_irreversible_block : public consumer<chain::signed_block>
+class consumer_irreversible_block
 {
 public:
-    void consume(const std::vector<chain::signed_block> &blocks) override;
+    void consume(const std::vector<chain::signed_block> &blocks);
 };
 
 } // namespace

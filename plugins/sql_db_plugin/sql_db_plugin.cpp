@@ -5,7 +5,6 @@
 #include <eosio/sql_db_plugin/sql_db_plugin.hpp>
 
 #include "database.h"
-#include "consumer_irreversible_block.h"
 
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
@@ -55,7 +54,7 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     }
     ilog("connecting to ${u}", ("u", uri_str));
     auto db = std::make_shared<database>(uri_str);
-    m_consumer_irreversible_block = std::make_unique<consumer_irreversible_block>();
+    //m_consumer_irreversible_block = std::make_unique<consumer<chain::signed_block>>();
 
     if (options.at(RESYNC_OPTION).as<bool>()) {
         ilog("Resync requested: wiping database");
@@ -64,18 +63,21 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
         ilog("Replay requested: wiping mongo database on startup");
     }
 
+    //consumer_irreversible_block aaaa;
+    //consumer<chain::signed_block> c([&](const std::vector<chain::signed_block>&){});
+
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
     FC_ASSERT(chain_plug);
 //    chain_plug->chain_config().applied_block_callbacks.emplace_back(
 //                [=](const chain::block_trace& t) { m_consumer_irreversible_block->push(t); });
-    chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
-                [=](const chain::signed_block& b) { m_consumer_irreversible_block->push(b); });
+//    chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
+//                [=](const chain::signed_block& b) {c.push(b); });
 }
 
 void sql_db_plugin::plugin_startup()
 {
     ilog("startup");
-    m_consumer_irreversible_block->start();
+   // m_consumer_irreversible_block->start();
 
     //   if (my->configured) {
     //      ilog("starting db plugin");
@@ -90,7 +92,7 @@ void sql_db_plugin::plugin_startup()
 void sql_db_plugin::plugin_shutdown()
 {
     ilog("shutdown");
-    m_consumer_irreversible_block->stop();
+   // m_consumer_irreversible_block->stop();
 }
 
 } // namespace eosio

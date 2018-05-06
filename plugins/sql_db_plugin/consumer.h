@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <atomic>
+#include <vector>
 #include <fc/log/logger.hpp>
 
 #include "fifo.h"
@@ -13,7 +14,7 @@ template<typename T>
 class consumer
 {
 public:
-    consumer();
+    consumer(std::function<const std::vector<T>&> f);
     virtual ~consumer(){}
 
     void push(const T& b);
@@ -21,19 +22,19 @@ public:
     void start();
     void stop();
 
-    virtual void consume(const std::vector<T>& elements) = 0;
-
 private:
     void run();
 
     fifo<T> m_fifo;
     std::shared_ptr<std::thread> m_thread;
     std::atomic<bool> m_exit;
+    std::function<const std::vector<T>&> consume;
 };
 
 template<typename T>
-consumer<T>::consumer():
-    m_fifo(fifo<T>::behavior::blocking)
+consumer<T>::consumer(std::function<const std::vector<T>&> f):
+    m_fifo(fifo<T>::behavior::blocking),
+    consume(f)
 {
 
 }
