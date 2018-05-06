@@ -338,13 +338,9 @@ void print_result( const fc::variant& result ) { try {
       cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
 
       if( status == "hard_fail" ) {
-         auto soft_except = processed["soft_except"].as<optional<fc::exception>>();
+         auto soft_except = processed["except"].as<optional<fc::exception>>();
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
-         }
-         auto hard_except = processed["hard_except"].as<optional<fc::exception>>();
-         if( hard_except ) {
-            edump((hard_except->to_detail_string()));
          }
       } else {
          const auto& actions = processed["action_traces"].get_array();
