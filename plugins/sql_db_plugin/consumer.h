@@ -14,7 +14,9 @@ template<typename T>
 class consumer
 {
 public:
-    consumer(std::function<const std::vector<T>&> f);
+    using consume_function = std::function<void(const std::vector<T>&)>;
+
+    consumer(consume_function consume);
     virtual ~consumer(){}
 
     void push(const T& b);
@@ -28,13 +30,13 @@ private:
     fifo<T> m_fifo;
     std::shared_ptr<std::thread> m_thread;
     std::atomic<bool> m_exit;
-    std::function<const std::vector<T>&> consume;
+    consume_function m_consume_function;
 };
 
 template<typename T>
-consumer<T>::consumer(std::function<const std::vector<T>&> f):
+consumer<T>::consumer(consume_function consume):
     m_fifo(fifo<T>::behavior::blocking),
-    consume(f)
+    m_consume_function(consume)
 {
 
 }
@@ -67,7 +69,7 @@ void consumer<T>::run()
     while (!m_exit)
     {
         auto elements = m_fifo.pop_all();
-        consume(elements);
+        m_consume_function(elements);
     }
     dlog("Consumer thread End");
 }
