@@ -17,12 +17,9 @@ public:
     using consume_function = std::function<void(const std::vector<T>&)>;
 
     consumer(consume_function consume);
-    virtual ~consumer(){}
+    ~consumer();
 
     void push(const T& b);
-
-    void start();
-    void stop();
 
 private:
     void run();
@@ -38,28 +35,22 @@ consumer<T>::consumer(consume_function consume):
     m_fifo(fifo<T>::behavior::blocking),
     m_consume_function(consume)
 {
+    m_exit = false;
+    m_thread = std::make_shared<std::thread>([&]{this->run();});
+}
 
+template<typename T>
+consumer<T>::~consumer()
+{
+    m_fifo.set_behavior(fifo<T>::behavior::not_blocking);
+    m_exit = true;
+    m_thread->join();
 }
 
 template<typename T>
 void consumer<T>::push(const T& block)
 {
     m_fifo.push(block);
-}
-
-template<typename T>
-void consumer<T>::start()
-{
-    m_exit = false;
-    m_thread = std::make_shared<std::thread>([&]{this->run();});
-}
-
-template<typename T>
-void consumer<T>::stop()
-{
-    m_fifo.set_behavior(fifo<T>::behavior::not_blocking);
-    m_exit = true;
-    m_thread->join();
 }
 
 template<typename T>
