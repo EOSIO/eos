@@ -275,12 +275,12 @@ namespace eosiosystem {
          print( " create voter \n" );
          from_voter = _voters.emplace( from, [&]( auto& v ) {
             v.owner  = from;
-            v.staked = uint64_t(total_stake);
+            v.staked = total_stake;
             print( "    vote weight: ", v.last_vote_weight, "\n" );
          });
       } else {
          _voters.modify( from_voter, 0, [&]( auto& v ) {
-            v.staked += uint64_t(total_stake);
+            v.staked += total_stake;
             print( "    vote weight: ", v.last_vote_weight, "\n" );
          });
       }
@@ -292,12 +292,11 @@ namespace eosiosystem {
    } // delegatebw
 
 
-   void validate_b1_vesting( uint64_t stake ) {
+   void validate_b1_vesting( int64_t stake ) {
       const int64_t seconds_per_year = 60*60*24*365;
       const int64_t base_time = 1527811200; /// 2018-06-01
-      const int64_t end_time  = seconds_per_year*10 + 1527811200; /// 2018-06-01
       const int64_t max_claimable = 100'000'000'0000ll;
-      const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / seconds_per_year);
+      const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
 
       eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
    }
@@ -318,7 +317,7 @@ namespace eosiosystem {
       auto total_refund = unstake_cpu_quantity.amount + unstake_net_quantity.amount;
 
       _voters.modify( _voters.get(from), 0, [&]( auto& v ) {
-         v.staked -= uint64_t(total_refund);
+         v.staked -= total_refund;
          if( from == N(b1) ) {
             validate_b1_vesting( v.staked );
          }

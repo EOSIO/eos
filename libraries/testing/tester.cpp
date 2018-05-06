@@ -221,7 +221,15 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
+      auto c = packed_transaction::none;
+
+      if( fc::raw::pack_size(trx) > 1000 )
+      {
+         wdump((fc::raw::pack_size(trx)));
+         c = packed_transaction::zlib;
+      }
+
+      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx,c), deadline );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;

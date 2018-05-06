@@ -1487,7 +1487,8 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       if (max_net_usage) trx.max_net_usage_words = max_net_usage;
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       try {
-         push_transaction(trx);
+         packed_transaction ptrx(trx);
+         push_transaction(ptrx);
          produce_blocks(1);
          return true;
       } catch (tx_net_usage_exceeded &) {
@@ -1497,7 +1498,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       }
    };
    BOOST_REQUIRE_EQUAL(true, check(1024, 0)); // default behavior
-   BOOST_REQUIRE_EQUAL(false, check(1024, 1000)); // transaction max_net_usage too small
+   BOOST_REQUIRE_EQUAL(false, check(1024, 100)); // transaction max_net_usage too small
    BOOST_REQUIRE_EQUAL(false, check(10240, 0)); // larger than global maximum
 
 } FC_LOG_AND_RETHROW()
@@ -1538,7 +1539,8 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
       set_transaction_headers(trx);
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       try {
-         push_transaction(trx);
+         packed_transaction ptrx(trx);
+         push_transaction(ptrx );
          produce_blocks(1);
          return true;
       } catch (tx_net_usage_exceeded &) {

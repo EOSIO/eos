@@ -57,6 +57,10 @@ namespace eosio {
       account_name producer_name;
       public_key   block_signing_key;
 
+      friend bool operator < ( const producer_key& a, const producer_key& b ) {
+         return a.producer_name < b.producer_name;
+      }
+
       EOSLIB_SERIALIZE( producer_key, (producer_name)(block_signing_key) )
    };
 

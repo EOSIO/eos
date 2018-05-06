@@ -32,21 +32,27 @@ namespace eosiosystem {
       eosio::asset         total_ram_stake;
 
       block_timestamp      last_producer_schedule_update = 0;
+      block_timestamp      last_pervote_bucket_fill = 0;
       eosio::asset         eos_bucket;
       eosio::asset         savings;
+      checksum160          last_producer_schedule_id;
+
       int64_t              total_activiated_stake = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
-                                (last_producer_schedule_update)(eos_bucket)(savings)(total_activiated_stake) )
+                                (last_producer_schedule_update)
+                                (last_pervote_bucket_fill)
+                                (eos_bucket)(savings)(last_producer_schedule_id)(total_activiated_stake) )
    };
 
    struct producer_info {
       account_name          owner;
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
-      eosio::asset          per_block_payments;
+      uint32_t              produced_blocks;
       time                  last_rewards_claim = 0;
+      uint16_t              location = 0;
       block_timestamp       time_became_active = 0;
       block_timestamp       last_produced_block_time = 0;
 
@@ -56,7 +62,7 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)
-                        (per_block_payments)(last_rewards_claim)
+                        (produced_blocks)(last_rewards_claim)
                         (time_became_active)(last_produced_block_time) )
    };
 
@@ -64,7 +70,7 @@ namespace eosiosystem {
       account_name                owner = 0; /// the voter
       account_name                proxy = 0; /// the proxy set by the voter, if any
       std::vector<account_name>   producers; /// the producers approved by this voter if no proxy set
-      uint64_t                    staked = 0;
+      int64_t                     staked = 0;
 
       /**
        *  Every time a vote is cast we must first "undo" the last vote weight, before casting the

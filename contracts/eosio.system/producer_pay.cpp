@@ -5,6 +5,7 @@
 namespace eosiosystem {
 
    const int64_t  min_daily_tokens = 100;
+   /*
    const double   continuous_rate  = std::log1p(0.05); // 5% annual rate
    const double   per_block_rate   = 0.0025;           // 0.25%
    const double   standby_rate     = 0.0075;           // 0.75%
@@ -16,10 +17,31 @@ namespace eosiosystem {
       const int64_t payment = static_cast<int64_t>( (rate * double(token_supply.amount)) / double(blocks_per_year) );
       return eosio::asset( payment, token_supply.symbol );
    }
+   */
    
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
-      
       using namespace eosio;
+      
+      /** until activated stake crosses this threshold no new rewards are paid */
+      if( _gstate.total_activiated_stake < 150'000'000'0000 ) 
+         return;
+
+      if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
+         _gstate.last_pervote_bucket_fill = timestamp;
+
+      _producers.modify( _producers.get(producer), 0, [&](auto& p ) {
+         p.produced_blocks++;
+         p.last_produced_block_time = timestamp;
+      });
+
+      if( timestamp - _gstate.last_producer_schedule_update > 120 ) {
+         update_elected_producers( timestamp );
+      }
+
+      /// only update block producers once every minute, block_timestamp is in half seconds
+      /*
+      if( timestamp % 120 != 0 ) 
+         return;
       
       const asset token_supply     = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
       const asset issued           = payment_per_block( continuous_rate, token_supply );
@@ -29,17 +51,12 @@ namespace eosiosystem {
       
       INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
                                                  {N(eosio), issued, std::string("issue tokens per block")} );
+                                                 */
    
+      /*
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {{N(eosio),N(active)}},
                                                     {N(eosio), N(eosio), to_savings, std::string("transfer to savings per block")} );
-      // update producer info and balance
-      auto prod = _producers.find(producer);
-      if ( prod != _producers.end() ) {
-         _producers.modify( prod, 0, [&](auto& p) {
-               p.per_block_payments      += producer_payment;
-               p.last_produced_block_time = timestamp;
-            });
-      }
+
 
       auto parameters = _global.exists() ? _global.get() : get_default_parameters();
       parameters.eos_bucket += to_eos_bucket;
@@ -50,7 +67,7 @@ namespace eosiosystem {
       if ( producer_schedule_update == 0 || producer_schedule_update < timestamp + blocks_per_hour ) {
          update_elected_producers( producer_schedule_update );
       }
-      
+                                                    */
    }
    
    eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket ) {
@@ -102,7 +119,10 @@ namespace eosiosystem {
       if( prod->last_rewards_claim > 0 ) {
          eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
       }
+
+      /// calcualte the price-per-block 
       
+      /*
       eosio::asset rewards = prod->per_block_payments;
       
       if ( _global.exists() ) {
@@ -121,12 +141,13 @@ namespace eosiosystem {
       
       _producers.modify( prod, 0, [&](auto& p) {
             p.last_rewards_claim = now();
-            p.per_block_payments.amount = 0;
+            p.produced_blocks = 0;
          });
       
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
                                                     { N(eosio), owner, rewards, std::string("producer claiming rewards") } );
       
+                                                    */
    }
 
 } //namespace eosiosystem
