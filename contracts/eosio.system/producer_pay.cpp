@@ -108,12 +108,13 @@ namespace eosiosystem {
       const asset issue_amount  = to_eos_bucket + to_savings + perblock_pay;
       
       INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
-                                                 {N(eosio), issue_amount, std::string("issue tokens for producer pay")} );
+                                                 {N(eosio), issue_amount, std::string("issue tokens for producer pay and savings")} );
 
       const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_eos_bucket + parameters.eos_bucket );
 
       parameters.eos_bucket += ( to_eos_bucket - pervote_pay );
       parameters.last_pervote_bucket_fill = now();
+      parameters.savings += to_savings;
       _global.set( parameters, _self );
       
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
@@ -124,8 +125,6 @@ namespace eosiosystem {
             p.produced_blocks = 0;
          });
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {{N(eosio),N(active)}},
-                                                    { N(eosio), N(eosio), to_savings, std::string("transfer to savings") } );
    }
 
 } //namespace eosiosystem
