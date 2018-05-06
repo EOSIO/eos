@@ -89,7 +89,7 @@ int main(int argc, char** argv)
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio/nodeos/data" );
       app().set_default_config_dir(root / "eosio/nodeos/config" );
-      if(!app().initialize<chain_plugin, http_plugin, validator_plugin, net_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, validator_plugin, net_plugin, producer_plugin>(argc, argv))
          return -1;
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", eosio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
