@@ -10,7 +10,7 @@ namespace eosio {
 
 class consumer_irreversible_block : public consumer<chain::signed_block>
 {
-private:
+public:
     void consume(const std::vector<chain::signed_block> &blocks) override;
 };
 

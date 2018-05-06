@@ -21,8 +21,9 @@ public:
     void start();
     void stop();
 
-private:
     virtual void consume(const std::vector<T>& elements) = 0;
+
+private:
     void run();
 
     fifo<T> m_fifo;
