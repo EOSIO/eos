@@ -102,7 +102,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
                         ));
 
    //fail to execute before approval
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"alice\",\"permission\":\"active\"}', but does not have signatures for it."),
+   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"alice\",\"permission\":\"active\"}', but does not have signatures for it under a provided delay of 0 ms."),
                         push_action( N(alice), N(exec), mvo()
                                      ("proposer",      "alice")
                                      ("proposal_name", "first")
@@ -152,7 +152,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
                                                 ("level",         permission_level{ N(alice), config::active_name })
                         ));
 
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"alice\",\"permission\":\"active\"}', but does not have signatures for it."),
+   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"alice\",\"permission\":\"active\"}', but does not have signatures for it under a provided delay of 0 ms."),
                         push_action( N(alice), N(exec), mvo()
                                      ("proposer",      "alice")
                                      ("proposal_name", "first")
@@ -178,7 +178,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
                         ));
 
    //fail because approval by bob is missing
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"bob\",\"permission\":\"active\"}', but does not have signatures for it."),
+   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"bob\",\"permission\":\"active\"}', but does not have signatures for it under a provided delay of 0 ms."),
                         push_action( N(alice), N(exec), mvo()
                                      ("proposer",      "alice")
                                      ("proposal_name", "first")
@@ -210,7 +210,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
 BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name },  { N(bob), config::active_name } } );
    //try with not enough requested auth
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"bob\",\"permission\":\"active\"}', but does not have signatures for it."),
+   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"bob\",\"permission\":\"active\"}', but does not have signatures for it under a provided delay of 0 ms."),
                         push_action( N(alice), N(propose), mvo()
                                      ("proposer",      "alice")
                                      ("proposal_name", "third")

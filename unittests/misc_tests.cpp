@@ -189,6 +189,8 @@ struct permission_visitor {
       permissions.push_back(permission);
    }
 
+   void operator()(const permission_level& permission, bool repeat ) {}
+
    void push_undo() {
       if( _log )
          ilog("push_undo called");

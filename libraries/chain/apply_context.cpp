@@ -209,19 +209,14 @@ void apply_context::execute_inline( action&& a ) {
 
    if ( !privileged ) {
       if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
-         const auto delay = control.limit_delay(
-                               control.get_authorization_manager()
-                                      .check_authorization( {a},
-                                                            {},
-                                                            {{receiver, permission_name()}},
-                                                            control.pending_block_time() - trx_context.published,
-                                                            std::bind(&apply_context::checktime, this, std::placeholders::_1),
-                                                            false
-                                                          )
-                            );
-         FC_ASSERT( trx_context.published + delay <= control.pending_block_time(),
-                    "authorization for inline action imposes a delay of ${delay} seconds that is not met",
-                    ("delay", delay.to_seconds()) );
+         control.get_authorization_manager()
+                .check_authorization( {a},
+                                      {},
+                                      {{receiver, permission_name()}},
+                                      control.pending_block_time() - trx_context.published,
+                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                      false
+                                    );
 
          //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
          //          with sending an inline action that requires a delay even though the decision to send that inline
@@ -257,8 +252,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    auto delay = fc::seconds(trx.delay_sec);
 
-   fc::microseconds required_delay;
-
    if( !privileged ) {
       if (payer != receiver) {
          require_authorization(payer); /// uses payer's storage
@@ -274,23 +267,16 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          }
       }
       if( check_auth ) {
-         required_delay = control.limit_delay(
-                               control.get_authorization_manager()
-                                      .check_authorization( trx.actions,
-                                                            {},
-                                                            {{receiver, permission_name()}},
-                                                            delay,
-                                                            std::bind(&apply_context::checktime, this, std::placeholders::_1),
-                                                            false
-                                                          )
-                          );
+         control.get_authorization_manager()
+                .check_authorization( trx.actions,
+                                      {},
+                                      {{receiver, permission_name()}},
+                                      delay,
+                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                      false
+                                    );
       }
    }
-
-   EOS_ASSERT( delay >= required_delay, transaction_exception,
-               "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
-               ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
-
 
    uint32_t trx_size = 0;
    auto& d = control.db();

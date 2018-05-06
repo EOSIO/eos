@@ -601,22 +601,16 @@ struct controller_impl {
 
          trx_context.delay = fc::seconds(trx->trx.delay_sec);
 
-         fc::microseconds required_delay(0);
          if( !implicit ) {
-            required_delay = limit_delay(
-                                  authorization.check_authorization(
-                                    trx->trx.actions,
-                                    trx->recover_keys(),
-                                    {},
-                                    trx_context.delay,
-                                    std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context, std::placeholders::_1),
-                                    false
-                                 )
-                             );
+            authorization.check_authorization(
+               trx->trx.actions,
+               trx->recover_keys(),
+               {},
+               trx_context.delay,
+               std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context, std::placeholders::_1),
+               false
+            );
          }
-         EOS_ASSERT( trx_context.delay >= required_delay, transaction_exception,
-                     "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
-                     ("required_delay", required_delay.to_seconds())("specified_delay", trx_context.delay.to_seconds()) );
 
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
@@ -946,11 +940,6 @@ struct controller_impl {
       while( (!dedupe_index.empty()) && ( now > fc::time_point(dedupe_index.begin()->expiration) ) ) {
          transaction_idx.remove(*dedupe_index.begin());
       }
-   }
-
-   fc::microseconds limit_delay( fc::microseconds delay )const {
-      auto max_delay = fc::seconds( self.get_global_properties().configuration.max_transaction_delay );
-      return std::min(delay, max_delay);
    }
 
    /*
@@ -1304,10 +1293,6 @@ const account_object& controller::get_account( account_name name )const
 
 const map<digest_type, transaction_metadata_ptr>&  controller::unapplied_transactions()const {
    return my->unapplied_transactions;
-}
-
-fc::microseconds controller::limit_delay( fc::microseconds delay )const {
-   return my->limit_delay( delay );
 }
 
 void controller::validate_referenced_accounts( const transaction& trx )const {

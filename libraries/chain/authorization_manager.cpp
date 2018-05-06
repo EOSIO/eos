@@ -265,15 +265,23 @@ namespace eosio { namespace chain {
 
    class permission_visitor {
    public:
-      permission_visitor( const authorization_manager& authorization )
-      : _authorization(authorization), _track_delay(true) {
+      permission_visitor( const authorization_manager& authorization, fc::microseconds delay_max_limit )
+      :_authorization(authorization)
+      ,_delay_max_limit(delay_max_limit)
+      ,_track_delay(true)
+      {
          _max_delay_stack.emplace_back();
       }
 
-      void operator()( const permission_level& perm_level ) {
+      void operator()( const permission_level& perm_level ) {}
+
+      void operator()( const permission_level& perm_level, bool repeat ) {
+         if( repeat ) return;
+
          const auto obj = _authorization.get_permission(perm_level);
-         if( _track_delay && _max_delay_stack.back() < obj.delay )
-            _max_delay_stack.back() = obj.delay;
+         if( _track_delay ) {
+            _max_delay_stack.back() = std::max( _max_delay_stack.back(), std::min( obj.delay, _delay_max_limit ) );
+         }
       }
 
       void push_undo() {
@@ -308,33 +316,36 @@ namespace eosio { namespace chain {
    private:
       const authorization_manager& _authorization;
       vector<fc::microseconds> _max_delay_stack;
+      fc::microseconds _delay_max_limit;
       bool _track_delay;
    };
 
    void noop_checktime( uint32_t ) {}
 
    fc::microseconds
-   authorization_manager::check_authorization( const vector<action>& actions,
-                                               const flat_set<public_key_type>& provided_keys,
-                                               flat_set<permission_level>       provided_permissions,
-                                               fc::microseconds minimum_delay,
+   authorization_manager::check_authorization( const vector<action>&                actions,
+                                               const flat_set<public_key_type>&     provided_keys,
+                                               const flat_set<permission_level>&    provided_permissions,
+                                               fc::microseconds                     provided_delay,
                                                const std::function<void(uint32_t)>& _checktime,
-                                               bool allow_unused_keys
+                                               bool                                 allow_unused_keys
                                              )const
    {
       auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
 
+      auto delay_max_limit = fc::seconds( _control.get_global_properties().configuration.max_transaction_delay );
+
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
-                                        permission_visitor(*this),
+                                        permission_visitor(*this, delay_max_limit),
                                         _control.get_global_properties().configuration.max_authority_depth,
                                         provided_keys,
                                         provided_permissions,
-                                        minimum_delay,
+                                        ( provided_delay >= delay_max_limit ) ? fc::microseconds::maximum() : provided_delay,
                                         checktime
                                       );
 
-      fc::microseconds max_delay;
+      fc::microseconds max_delay = provided_delay;
 
       map<permission_level, bool> permissions_to_satisfy;
       // bool value indicates whether the delay encountered in the check should not contribute to max_delay.
@@ -393,6 +404,8 @@ namespace eosio { namespace chain {
          }
       }
 
+      max_delay = std::min( max_delay, delay_max_limit );
+
       // Now verify that all the declared authorizations are satisfied:
 
       // Although this can be made parallel (especially for input transactions) with the optimistic assumption that the
@@ -405,11 +418,17 @@ namespace eosio { namespace chain {
          if( p.second )
             checker.get_permission_visitor().pause_delay_tracking();
          EOS_ASSERT( checker.satisfied(p.first), tx_missing_sigs,
-                     "transaction declares authority '${auth}', but does not have signatures for it.",
-                     ("auth", p.first) );
+                     "transaction declares authority '${auth}', "
+                     "but does not have signatures for it under a provided delay of ${provided_delay} ms.",
+                     ("auth", p.first)("provided_delay", provided_delay.count()/1000) );
          if( p.second )
             checker.get_permission_visitor().resume_delay_tracking();
       }
+
+      max_delay = std::max( max_delay, checker.get_permission_visitor().get_max_delay() );
+      EOS_ASSERT( provided_delay >= max_delay, transaction_exception,
+                  "authorization imposes a delay (${required_delay} ms) greater than the provided delay (${provided_delay} ms)",
+                  ("required_delay", max_delay.count()/1000)("provided_delay", provided_delay.count()/1000) );
 
       if( !allow_unused_keys ) {
          EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
@@ -417,16 +436,15 @@ namespace eosio { namespace chain {
                      ("keys", checker.unused_keys()) );
       }
 
-      max_delay = std::max( max_delay, checker.get_permission_visitor().get_max_delay() );
-
       return max_delay;
    }
 
 
-   bool authorization_manager::check_authorization( account_name account, permission_name permission,
-                                                    flat_set<public_key_type> provided_keys,
+   bool authorization_manager::check_authorization( account_name                         account,
+                                                    permission_name                      permission,
+                                                    const flat_set<public_key_type>&     provided_keys,
                                                     const std::function<void(uint32_t)>& _checktime,
-                                                    bool allow_unused_keys
+                                                    bool                                 allow_unused_keys
                                                   )const
    {
       auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
@@ -458,7 +476,7 @@ namespace eosio { namespace chain {
 
    flat_set<public_key_type> authorization_manager::get_required_keys( const transaction& trx,
                                                                        const flat_set<public_key_type>& candidate_keys,
-                                                                       fc::microseconds minimum_delay
+                                                                       fc::microseconds delay_threshold
                                                                      )const
    {
       auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
@@ -467,7 +485,7 @@ namespace eosio { namespace chain {
                                         _control.get_global_properties().configuration.max_authority_depth,
                                         candidate_keys,
                                         {},
-                                        minimum_delay,
+                                        delay_threshold,
                                         _noop_checktime
                                       );
 
