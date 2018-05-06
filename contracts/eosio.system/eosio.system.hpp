@@ -32,7 +32,7 @@ namespace eosiosystem {
       eosio::asset         total_ram_stake;
 
       block_timestamp      last_producer_schedule_update = 0;
-      block_timestamp      last_pervote_bucket_fill = 0;
+      time                 last_pervote_bucket_fill = 0;
       eosio::asset         eos_bucket;
       eosio::asset         savings;
       checksum160          last_producer_schedule_id;
@@ -188,9 +188,11 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
       private:
-         eosio::asset payment_per_block( double rate, const eosio::asset& token_supply );
+         eosio::asset payment_per_block( double rate, const eosio::asset& token_supply,  uint32_t num_blocks );
 
          eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket );
+         
+         eosio::asset supply_growth( double rate, const eosio::asset& token_supply, time seconds );
 
          void update_elected_producers( block_timestamp timestamp );
 
