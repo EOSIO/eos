@@ -18,7 +18,7 @@ BOOST_AUTO_TEST_CASE(instantiate)
     c.push(2);
     c.push(3);
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

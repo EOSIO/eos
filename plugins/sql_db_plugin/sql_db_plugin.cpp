@@ -4,6 +4,7 @@
  */
 #include <eosio/sql_db_plugin/sql_db_plugin.hpp>
 
+#include "consumer.h"
 #include "database.h"
 
 namespace {
@@ -66,18 +67,25 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     //consumer_irreversible_block aaaa;
     //consumer<chain::signed_block> c([&](const std::vector<chain::signed_block>&){});
 
+    consumer_signed_block::consume_function consume_function = [](const std::vector<chain::signed_block>& elements){
+        for (const auto& block : elements)
+            ilog(block.id().str());
+    };
+
+    m_consumer_irreversible_block = std::make_unique<consumer_signed_block>(consume_function);
+
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
     FC_ASSERT(chain_plug);
-//    chain_plug->chain_config().applied_block_callbacks.emplace_back(
-//                [=](const chain::block_trace& t) { m_consumer_irreversible_block->push(t); });
-//    chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
-//                [=](const chain::signed_block& b) {c.push(b); });
+    //    chain_plug->chain_config().applied_block_callbacks.emplace_back(
+    //                [=](const chain::block_trace& t) { m_consumer_irreversible_block->push(t); });
+    chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
+                [=](const chain::signed_block& b) {m_consumer_irreversible_block->push(b);});
 }
 
 void sql_db_plugin::plugin_startup()
 {
     ilog("startup");
-   // m_consumer_irreversible_block->start();
+    // m_consumer_irreversible_block->start();
 
     //   if (my->configured) {
     //      ilog("starting db plugin");
@@ -92,7 +100,8 @@ void sql_db_plugin::plugin_startup()
 void sql_db_plugin::plugin_shutdown()
 {
     ilog("shutdown");
-   // m_consumer_irreversible_block->stop();
+
+    // m_consumer_irreversible_block->stop();
 }
 
 } // namespace eosio

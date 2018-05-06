@@ -10,8 +10,8 @@
 
 namespace eosio {
 
-//template<typename T> class consumer;
-//using consumer_i = consumer<chain::signed_block>;
+template<typename T> class consumer;
+using consumer_signed_block = consumer<chain::signed_block>;
 
 /**
  * Provides persistence to SQL DB for:
@@ -44,7 +44,7 @@ public:
     void plugin_shutdown();
 
 private:
-   // std::unique_ptr<consumer<chain::signed_block>> m_consumer_irreversible_block;
+    std::unique_ptr<consumer_signed_block> m_consumer_irreversible_block;
 };
 
 }
