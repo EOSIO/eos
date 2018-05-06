@@ -9,7 +9,6 @@ add_library(sql_db_plugin
     transactions_table.cpp
     blocks_table.cpp
     actions_table.cpp
-    consumer.cpp
     consumer_irreversible_block.cpp
     )
 

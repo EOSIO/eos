@@ -6,22 +6,12 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/block_trace.hpp>
 
-#include "fifo.h"
-
 namespace eosio {
 
-class consumer_irreversible_block : public consumer
+class consumer_irreversible_block : public consumer<chain::signed_block>
 {
-public:
-    consumer_irreversible_block();
-
-    void push(const chain::signed_block& b);
-    void consume() override;
-    void stop() override;
-
 private:
-    using signed_block_fifo = fifo<chain::signed_block>;
-    signed_block_fifo m_fifo;
+    void consume(const std::vector<chain::signed_block> &blocks) override;
 };
 
 } // namespace
