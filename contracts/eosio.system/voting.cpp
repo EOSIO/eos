@@ -15,7 +15,6 @@
 #include <eosio.token/eosio.token.hpp>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 
 namespace eosiosystem {
@@ -25,11 +24,6 @@ namespace eosiosystem {
    using eosio::print;
    using eosio::singleton;
    using eosio::transaction;
-
-
-   static constexpr uint32_t blocks_per_year = 52*7*24*2*3600; // half seconds per year
-   static constexpr uint32_t blocks_per_producer = 12;
-
 
    /**
     *  This method will create a producer_config and producer_info object for 'producer'
@@ -71,22 +65,33 @@ namespace eosiosystem {
       });
    }
 
-
-   eosio::asset system_contract::payment_per_block(uint32_t percent_of_max_inflation_rate) {
-      const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
-      const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
-      const double continuous_rate = std::log1p(annual_rate);
-      int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));
-      return eosio::asset(payment, system_token_symbol);
-   }
-
-   void system_contract::update_elected_producers(time cycle_time) {
+   void system_contract::update_elected_producers( block_timestamp block_time ) {
       auto idx = _producers.get_index<N(prototalvote)>();
 
       eosio::producer_schedule schedule;
       schedule.producers.reserve(21);
       size_t n = 0;
       for ( auto it = idx.crbegin(); it != idx.crend() && n < 21 && 0 < it->total_votes; ++it ) {
+         if ( it->active() && 
+              it->time_became_active == 0 ) {
+
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.time_became_active = block_time;
+               });
+
+         } else if ( it->active() &&
+                     block_time > 21 * 12 + it->time_became_active &&
+                     block_time > it->last_produced_block_time + blocks_per_day ) {
+
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.producer_key = public_key();
+                  p.time_became_active = 0;
+                  p.last_produced_block_time = 0;
+               });
+
+            continue;
+         }
+
          if ( it->active() ) {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;
@@ -103,19 +108,7 @@ namespace eosiosystem {
       set_active_producers( packed_schedule.data(),  packed_schedule.size() );
 
       // not voted on
-      _gstate.first_block_time_in_cycle = cycle_time;
-
-      // derived parameters
-      auto half_of_percentage = _gstate.percent_of_max_inflation_rate / 2;
-      auto other_half_of_percentage = _gstate.percent_of_max_inflation_rate - half_of_percentage;
-      _gstate.payment_per_block = payment_per_block(half_of_percentage);
-      _gstate.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
-      _gstate.blocks_per_cycle = blocks_per_producer * schedule.producers.size();
-
-      auto issue_quantity =_gstate.blocks_per_cycle * (_gstate.payment_per_block +_gstate.payment_to_eos_bucket);
-      INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
-                                                 {N(eosio), issue_quantity, std::string("producer pay")} );
-
+      _gstate.last_producer_schedule_update = block_time;
    }
 
    /**
@@ -230,4 +223,4 @@ namespace eosiosystem {
       });
    }
 
-}
+} /// namespace eosiosystem

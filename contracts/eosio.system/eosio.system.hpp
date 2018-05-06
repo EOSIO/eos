@@ -20,10 +20,9 @@ namespace eosiosystem {
 
    struct eosio_parameters : eosio::blockchain_parameters {
       uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
-      uint32_t          percent_of_max_inflation_rate = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size)(percent_of_max_inflation_rate) )
+      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
    };
 
    struct eosio_global_state : eosio_parameters {
@@ -31,19 +30,14 @@ namespace eosiosystem {
 
       uint64_t             total_ram_bytes_reserved = 0;
       eosio::asset         total_ram_stake;
-      eosio::asset         payment_per_block;
-      eosio::asset         payment_to_eos_bucket;
 
-      time                 first_block_time_in_cycle = 0;
-      uint32_t             blocks_per_cycle = 0;
-      time                 last_bucket_fill_time = 0;
-
+      block_timestamp      last_producer_schedule_update = 0;
       eosio::asset         eos_bucket;
+      eosio::asset         savings;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
-                                (payment_per_block)(payment_to_eos_bucket)(first_block_time_in_cycle)(blocks_per_cycle)
-                                (last_bucket_fill_time)(eos_bucket) )
+                                (last_producer_schedule_update)(eos_bucket)(savings) )
    };
 
    struct producer_info {
@@ -52,8 +46,8 @@ namespace eosiosystem {
       eosio::public_key     producer_key; /// a packed public key object
       eosio::asset          per_block_payments;
       time                  last_rewards_claim = 0;
-      time                  time_became_active = 0;
-      time                  last_produced_block_time = 0;
+      block_timestamp       time_became_active = 0;
+      block_timestamp       last_produced_block_time = 0;
 
       uint64_t    primary_key()const { return owner;                        }
       double      by_votes()const    { return -total_votes;                 }
@@ -105,7 +99,7 @@ namespace eosiosystem {
 
    typedef eosio::singleton<N(global), eosio_global_state> global_state_singleton;
 
-   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
+   //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
    static constexpr uint64_t     system_token_symbol = S(4,EOS);
 
@@ -187,9 +181,11 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
       private:
-         eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
+         eosio::asset payment_per_block( double rate, const eosio::asset& token_supply );
 
-         void update_elected_producers(time cycle_time);
+         eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket );
+
+         void update_elected_producers( block_timestamp timestamp );
 
          // Implementation details:
 

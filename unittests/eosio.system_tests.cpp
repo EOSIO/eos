@@ -944,7 +944,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester ) try {
    //alice becomes a producer
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   auto key = get_public_key( N(alice), "active" );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", get_public_key( N(alice), "active") )
@@ -953,7 +953,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester ) try {
    );
    //bob becomes a producer
    params = producer_parameters_example(2);
-   key = fc::raw::pack( get_public_key( N(bob), "active" ) );
+   key = get_public_key( N(bob), "active" );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(regproducer), mvo()
                                                ("producer",  "bob")
                                                ("producer_key", get_public_key( N(alice), "active") )
@@ -1166,19 +1166,13 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   issue( "alice", "100.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), get_balance( "alice" ) );
+   issue( "alice", "10000.0000 EOS", config::system_account_name);
+   BOOST_REQUIRE_EQUAL( asset::from_string("10000.0000 EOS"), get_balance( "alice" ) );
 
    fc::variant params = producer_parameters_example(50);
 
    // 1 block produced
-
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(regproducer), mvo()
-                                              ("producer",  "alice")
-                                              ("producer_key", get_public_key( N(alice), "active") )
-                                              ("url", "")
-                                              )
-                       );
+   BOOST_REQUIRE_EQUAL(success(), regproducer(N(alice)));
 
    auto prod = get_producer_info( N(alice) );
 
