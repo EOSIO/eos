@@ -291,6 +291,17 @@ namespace eosiosystem {
       }
    } // delegatebw
 
+
+   void validate_b1_vesting( uint64_t stake ) {
+      const int64_t seconds_per_year = 60*60*24*365;
+      const int64_t base_time = 1527811200; /// 2018-06-01
+      const int64_t end_time  = seconds_per_year*10 + 1527811200; /// 2018-06-01
+      const int64_t max_claimable = 100'000'000'0000ll;
+      const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / seconds_per_year);
+
+      eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
+   }
+
    void system_contract::undelegatebw( account_name from, account_name receiver,
                                        asset unstake_net_quantity, asset unstake_cpu_quantity )
    {
@@ -308,7 +319,9 @@ namespace eosiosystem {
 
       _voters.modify( _voters.get(from), 0, [&]( auto& v ) {
          v.staked -= uint64_t(total_refund);
-         print( "    vote weight: ", v.last_vote_weight, "\n" );
+         if( from == N(b1) ) {
+            validate_b1_vesting( v.staked );
+         }
       });
 
 

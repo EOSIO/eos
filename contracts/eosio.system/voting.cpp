@@ -71,7 +71,7 @@ namespace eosiosystem {
       eosio::producer_schedule schedule;
       schedule.producers.reserve(21);
       size_t n = 0;
-      for ( auto it = idx.crbegin(); it != idx.crend() && n < 21 && 0 < it->total_votes; ++it ) {
+      for ( auto it = idx.cbegin(); it != idx.cend() && n < 21 && 0 < it->total_votes; ++it ) {
          if ( it->active() && 
               it->time_became_active == 0 ) {
 
@@ -104,12 +104,13 @@ namespace eosiosystem {
       }
 
       // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
-      bytes packed_schedule = pack(schedule);
+      bytes packed_schedule = pack(schedule.producers);
       set_active_producers( packed_schedule.data(),  packed_schedule.size() );
 
       // not voted on
       _gstate.last_producer_schedule_update = block_time;
    }
+
 
    /**
     *  @pre producers must be sorted from lowest to highest and must be registered and active
@@ -144,6 +145,15 @@ namespace eosiosystem {
 
       auto voter = _voters.find(voter_name);
       eosio_assert( voter != _voters.end(), "user must stake before they can vote" ); /// staking creates voter object
+
+      /**
+       * The first time someone votes we calculate and set last_vote_weight, since they cannot unstake until
+       * after total_activiated_stake hits threshold, we can use last_vote_weight to determine that this is
+       * their first vote and should consider their stake activated.
+       */
+      if( voter->last_vote_weight <= 0.0 ) {
+         _gstate.total_activiated_stake += voter->staked;
+      }
 
       auto weight = int64_t(now() / (seconds_per_day * 7)) / double( 52 );
       double new_vote_weight = double(voter->staked) * std::pow(2,weight);
