@@ -6,7 +6,6 @@
 
 namespace eosio {
 
-template <typename T>
 class consumer
 {
 public:
