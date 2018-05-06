@@ -13,6 +13,8 @@ namespace eosio {
 template<typename T> class consumer;
 using consumer_signed_block = consumer<chain::signed_block>;
 
+class irreversible_block_storage;
+
 /**
  * Provides persistence to SQL DB for:
  *   Blocks
@@ -30,12 +32,11 @@ using consumer_signed_block = consumer<chain::signed_block>;
  *
  *   If SQL DB env not available (#ifndef SQL DB) this plugin is a no-op.
  */
-class sql_db_plugin : public plugin<sql_db_plugin> {
+class sql_db_plugin final : public plugin<sql_db_plugin> {
 public:
     APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
     sql_db_plugin();
-    virtual ~sql_db_plugin();
 
     virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
@@ -45,6 +46,7 @@ public:
 
 private:
     std::unique_ptr<consumer_signed_block> m_consumer_irreversible_block;
+    std::unique_ptr<irreversible_block_storage> m_irreversible_block_storage;
 };
 
 }

@@ -8,7 +8,7 @@ BOOST_AUTO_TEST_SUITE(consumer_test)
 
 BOOST_AUTO_TEST_CASE(instantiate)
 {
-    auto f = [](consumer<int>::elements elements){
+    auto f = [](consumer<int>::vector elements){
         for ( auto element : elements)
             std::cout << element << std::endl;
     };
