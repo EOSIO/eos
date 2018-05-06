@@ -72,7 +72,8 @@ namespace eosiosystem {
       schedule.producers.reserve(21);
       size_t n = 0;
       for ( auto it = idx.cbegin(); it != idx.cend() && n < 21 && 0 < it->total_votes; ++it ) {
-         if ( it->active() && 
+#if 0
+        if ( it->active() && 
               it->time_became_active == 0 ) {
 
             _producers.modify( *it, 0, [&](auto& p) {
@@ -91,7 +92,7 @@ namespace eosiosystem {
 
             continue;
          }
-
+#endif
          if ( it->active() ) {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;

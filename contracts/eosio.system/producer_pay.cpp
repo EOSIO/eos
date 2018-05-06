@@ -5,7 +5,7 @@
 namespace eosiosystem {
 
    const int64_t  min_daily_tokens = 100;
-   const double   continuous_rate  = std::log1p(0.05); // 5% annual rate
+   const double   continuous_rate  = 0.04879; //std::log1p(0.05); // 5% annual rate
    const double   per_block_rate   = 0.0025;           // 0.25%
    const double   standby_rate     = 0.0075;           // 0.75%
    const uint32_t blocks_per_year  = 52*7*24*2*3600;   // half seconds per year
