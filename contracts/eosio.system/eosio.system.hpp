@@ -34,10 +34,11 @@ namespace eosiosystem {
       block_timestamp      last_producer_schedule_update = 0;
       eosio::asset         eos_bucket;
       eosio::asset         savings;
+      int64_t              total_activiated_stake = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
-                                (last_producer_schedule_update)(eos_bucket)(savings) )
+                                (last_producer_schedule_update)(eos_bucket)(savings)(total_activiated_stake) )
    };
 
    struct producer_info {

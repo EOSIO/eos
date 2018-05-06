@@ -284,10 +284,13 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_blocks(100);
 
         votepro( N(b1), {N(p1), N(p2)} );
+        votepro( N(whale2), {N(p2), N(p3)} );
+        votepro( N(whale3), {N(p2), N(p4), N(p5)} );
 
         wlog("pb" );
-        produce_block( fc::days(1) );
+        produce_blocks(10);
         wdump((control->head_block_state()->active_schedule));
+        return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
         wlog("minow" );
         votepro( N(minow1), {N(p1), N(p2)} );
