@@ -4,12 +4,6 @@
 
 namespace eosio {
 
-consumer::consumer(std::shared_ptr<database> db):
-    m_db(db)
-{
-
-}
-
 consumer::~consumer()
 {
 
@@ -17,21 +11,20 @@ consumer::~consumer()
 
 void consumer::start()
 {
-    m_thread = std::make_shared<std::thread>(
-                [&]{this->run(m_exit_signal.get_future());}
-    );
+    m_exit = false;
+    m_thread = std::make_shared<std::thread>([&]{this->run();});
 }
 
 void consumer::stop()
 {
-    m_exit_signal.set_value();
+    m_exit = true;
     m_thread->join();
 }
 
-void consumer::run(std::future<void> future_obj)
+void consumer::run()
 {
     dlog("Consumer thread Start");
-    while (future_obj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout)
+    while (!m_exit)
         consume();
     dlog("Consumer thread End");
 }

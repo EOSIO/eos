@@ -2,8 +2,7 @@
 
 namespace eosio {
 
-consumer_irreversible_block::consumer_irreversible_block(std::shared_ptr<database> db):
-    consumer(db),
+consumer_irreversible_block::consumer_irreversible_block():
     m_fifo(signed_block_fifo::behavior::blocking)
 {
 

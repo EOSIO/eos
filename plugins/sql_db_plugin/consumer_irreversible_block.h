@@ -13,7 +13,7 @@ namespace eosio {
 class consumer_irreversible_block : public consumer
 {
 public:
-    consumer_irreversible_block(std::shared_ptr<database> db);
+    consumer_irreversible_block();
 
     void push(const chain::signed_block& b);
     void consume() override;

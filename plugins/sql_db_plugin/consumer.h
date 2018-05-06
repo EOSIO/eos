@@ -2,16 +2,14 @@
 #define CONSUMER_H
 
 #include <thread>
-#include <future>
-
-#include "database.h"
+#include <atomic>
 
 namespace eosio {
 
+template <typename T>
 class consumer
 {
 public:
-    consumer(std::shared_ptr<database> db);
     virtual ~consumer();
 
     virtual void consume() = 0;
@@ -20,11 +18,10 @@ public:
     virtual void stop();
 
 private:
-    void run(std::future<void> future_obj);
+    void run();
 
-    std::shared_ptr<database> m_db;
     std::shared_ptr<std::thread> m_thread;
-    std::promise<void> m_exit_signal;
+    std::atomic<bool> m_exit;
 };
 
 } // namespace
