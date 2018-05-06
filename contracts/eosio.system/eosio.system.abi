@@ -131,11 +131,14 @@
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",              "type":"account_name"},
-         {"name":"total_votes",        "type":"uint128"},
-         {"name":"packed_key",         "type":"public_key"},
-         {"name":"per_block_payments", "type":"uint64"},
-         {"name":"last_claim_time",    "type":"time"}
+         {"name":"owner",                    "type":"account_name"},
+         {"name":"total_votes",              "type":"float64"},
+         {"name":"producer_key",             "type":"public_key"},
+         {"name":"produced_blocks",          "type":"uint32"},
+         {"name":"last_claim_time",          "type":"time"},
+         {"name":"location",                 "type":"uint16"},
+         {"name":"time_became_active",       "type":"time"},
+         {"name":"last_produced_block_time", "type":"time"}
       ]
     },{
       "name": "regproducer",

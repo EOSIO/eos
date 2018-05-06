@@ -51,7 +51,7 @@ namespace eosiosystem {
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
       uint32_t              produced_blocks;
-      time                  last_rewards_claim = 0;
+      time                  last_claim_time = 0;
       uint16_t              location = 0;
       block_timestamp       time_became_active = 0;
       block_timestamp       last_produced_block_time = 0;
@@ -62,7 +62,7 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)
-                        (produced_blocks)(last_rewards_claim)
+                        (produced_blocks)(last_claim_time)(location)
                         (time_became_active)(last_produced_block_time) )
    };
 

@@ -94,8 +94,8 @@ namespace eosiosystem {
       
       auto prod = _producers.find( owner );
       eosio_assert( prod != _producers.end(), "account name is not in producer list" );
-      if( prod->last_rewards_claim > 0 ) {
-         eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
+      if( prod->last_claim_time > 0 ) {
+         eosio_assert(now() >= prod->last_claim_time + seconds_per_day, "already claimed rewards within a day");
       }
 
       auto parameters = _global.get();      
@@ -118,10 +118,10 @@ namespace eosiosystem {
       _global.set( parameters, _self );
       
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                    { N(eosio), owner, perblock_pay + perblock_pay, std::string("producer claiming rewards") } );
+                                                    { N(eosio), owner, perblock_pay + pervote_pay, std::string("producer claiming rewards") } );
 
       _producers.modify( prod, 0, [&](auto& p) {
-            p.last_rewards_claim = now();
+            p.last_claim_time = now();
             p.produced_blocks = 0;
          });
 
