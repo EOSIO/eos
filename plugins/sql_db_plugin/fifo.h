@@ -5,11 +5,12 @@
 #include <atomic>
 #include <deque>
 #include <vector>
+#include <boost/noncopyable.hpp>
 
 namespace eosio {
 
 template<typename T>
-class fifo
+class fifo : public boost::noncopyable
 {
 public:
     enum class behavior {blocking, not_blocking};

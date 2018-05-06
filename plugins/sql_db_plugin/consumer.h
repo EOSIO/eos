@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <vector>
+#include <boost/noncopyable.hpp>
 #include <fc/log/logger.hpp>
 
 #include "fifo.h"
@@ -11,7 +12,7 @@
 namespace eosio {
 
 template<typename T>
-class consumer
+class consumer : public boost::noncopyable
 {
 public:
     using consume_function = std::function<void(const std::vector<T>&)>;
