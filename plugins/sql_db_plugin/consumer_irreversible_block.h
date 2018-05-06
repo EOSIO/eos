@@ -20,7 +20,8 @@ public:
     void stop() override;
 
 private:
-    fifo<chain::signed_block> m_fifo;
+    using signed_block_fifo = fifo<chain::signed_block>;
+    signed_block_fifo m_fifo;
 };
 
 } // namespace

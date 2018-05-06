@@ -1,12 +1,9 @@
-#ifndef FIFO_H
-#define FIFO_H
+#pragma once
 
 #include <mutex>
 #include <condition_variable>
-#include <chrono>
-#include <boost/optional.hpp>
-#include <boost/optional/optional_io.hpp>
 #include <deque>
+#include <vector>
 
 namespace eosio {
 
@@ -14,27 +11,29 @@ template<typename T>
 class fifo
 {
 public:
-    fifo();
+    enum class behavior {blocking, not_blocking};
 
-    void push(boost::optional<T> element);
-    boost::optional<T> pop(std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
-    void release_all();
+    fifo(behavior value);
+
+    void push(const T& element);
+    std::vector<T> pop_all();
+    void set_behavior(behavior value);
 
 private:
     std::mutex m_mux;
     std::condition_variable m_cond;
-    std::atomic<bool> m_release_all;
-    std::deque<boost::optional<T>> m_deque;
+    std::atomic<behavior> m_behavior;
+    std::deque<T> m_deque;
 };
 
 template<typename T>
-fifo<T>::fifo()
+fifo<T>::fifo(behavior value)
 {
-    m_release_all = false;
+    m_behavior = value;
 }
 
 template<typename T>
-void fifo<T>::push(boost::optional<T> element)
+void fifo<T>::push(const T& element)
 {
     std::lock_guard<std::mutex> lock(m_mux);
     m_deque.push_back(element);
@@ -42,25 +41,28 @@ void fifo<T>::push(boost::optional<T> element)
 }
 
 template<typename T>
-boost::optional<T> fifo<T>::pop(std::chrono::milliseconds timeout)
+std::vector<T> fifo<T>::pop_all()
 {
     std::unique_lock<std::mutex> lock(m_mux);
-    m_cond.wait(lock, [&]{return m_release_all || !m_deque.empty();});
-    if (m_release_all)
-        throw std::domain_error("nothing to pop");
+    m_cond.wait(lock, [&]{return m_behavior == behavior::blocking || !m_deque.empty();});
 
-    auto element = std::move(m_deque.front());
-    m_deque.pop_front();
-    return element;
+    std::vector<T> result;
+    while(!m_deque.empty())
+    {
+        auto element = std::move(m_deque.front());
+        m_deque.pop_front();
+        result.push_back(element);
+    }
+    return result;
 }
 
 template<typename T>
-void fifo<T>::release_all()
+void fifo<T>::set_behavior(behavior value)
 {
-    m_release_all = true;
+    m_behavior = value;
     m_cond.notify_all();
 }
 
 } // namespace
 
-#endif // FIFO_H
+
