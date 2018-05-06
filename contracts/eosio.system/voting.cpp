@@ -26,10 +26,6 @@ namespace eosiosystem {
    using eosio::singleton;
    using eosio::transaction;
 
-
-   static constexpr uint32_t blocks_per_producer = 12;
-
-
    /**
     *  This method will create a producer_config and producer_info object for 'producer'
     *
@@ -70,7 +66,7 @@ namespace eosiosystem {
       });
    }
 
-   void system_contract::update_elected_producers(time cycle_time) {
+   void system_contract::update_elected_producers(block_timestamp block_time) {
       auto idx = _producers.get_index<N(prototalvote)>();
 
       eosio::producer_schedule schedule;
@@ -93,19 +89,7 @@ namespace eosiosystem {
       set_active_producers( packed_schedule.data(),  packed_schedule.size() );
 
       // not voted on
-      _gstate.first_block_time_in_cycle = cycle_time;
-
-      // derived parameters
-      auto half_of_percentage = _gstate.percent_of_max_inflation_rate / 2;
-      auto other_half_of_percentage = _gstate.percent_of_max_inflation_rate - half_of_percentage;
-      _gstate.payment_per_block = payment_per_block(half_of_percentage);
-      _gstate.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
-      _gstate.blocks_per_cycle = blocks_per_producer * schedule.producers.size();
-
-      auto issue_quantity =_gstate.blocks_per_cycle * (_gstate.payment_per_block +_gstate.payment_to_eos_bucket);
-      INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
-                                                 {N(eosio), issue_quantity, std::string("producer pay")} );
-
+      _gstate.last_producer_schedule_update = block_time;
    }
 
    /**
@@ -220,4 +204,4 @@ namespace eosiosystem {
       });
    }
 
-}
+} /// namespace eosiosystem
