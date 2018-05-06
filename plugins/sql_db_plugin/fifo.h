@@ -45,14 +45,13 @@ template<typename T>
 std::vector<T> fifo<T>::pop_all()
 {
     std::unique_lock<std::mutex> lock(m_mux);
-    m_cond.wait(lock, [&]{return m_behavior == behavior::blocking || !m_deque.empty();});
+    m_cond.wait(lock, [&]{return m_behavior == behavior::not_blocking || !m_deque.empty();});
 
     std::vector<T> result;
     while(!m_deque.empty())
     {
-        auto element = std::move(m_deque.front());
+        result.push_back(std::move(m_deque.front()));
         m_deque.pop_front();
-        result.push_back(element);
     }
     return result;
 }
