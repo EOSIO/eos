@@ -2114,7 +2114,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
                                   chain::canceldelay{{N(tester), config::active_name}, trx_id});
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
-         BOOST_REQUIRE_THROW( chain.push_transaction(trx), fc::exception );
+         BOOST_REQUIRE_EXCEPTION( chain.push_transaction(trx), action_validate_exception,
+                                  fc_exception_message_is("canceling_auth in canceldelay action was not found as authorization in the original delayed transaction") );
       }
 
       // attempt canceldelay with "second" permission for delayed transfer of 1.0000 CUR
@@ -2125,6 +2126,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "second"), chain_id_type());
          BOOST_REQUIRE_THROW( chain.push_transaction(trx), irrelevant_auth_exception );
+         BOOST_REQUIRE_EXCEPTION( chain.push_transaction(trx), irrelevant_auth_exception,
+                                  fc_exception_message_starts_with("canceldelay action declares irrelevant authority") );
       }
 
       // canceldelay with "active" permission for delayed transfer of 1.0000 CUR

@@ -415,14 +415,19 @@ namespace eosio { namespace chain {
       // ascending order of the actor name with ties broken by ascending order of the permission name.
       for( const auto& p : permissions_to_satisfy ) {
          checktime( config::base_authority_checker_cpu_per_permission ); // TODO: this should eventually move into authority_checker instead
-         if( p.second )
+         bool res = false;
+         if( p.second ) {
             checker.get_permission_visitor().pause_delay_tracking();
-         EOS_ASSERT( checker.satisfied(p.first), tx_missing_sigs,
+            res = checker.satisfied( p.first, fc::microseconds::maximum() );
+            checker.get_permission_visitor().resume_delay_tracking();
+         } else {
+            res = checker.satisfied( p.first );
+         }
+         EOS_ASSERT( res, tx_missing_sigs,
                      "transaction declares authority '${auth}', "
                      "but does not have signatures for it under a provided delay of ${provided_delay} ms.",
                      ("auth", p.first)("provided_delay", provided_delay.count()/1000) );
-         if( p.second )
-            checker.get_permission_visitor().resume_delay_tracking();
+
       }
 
       max_delay = std::max( max_delay, checker.get_permission_visitor().get_max_delay() );

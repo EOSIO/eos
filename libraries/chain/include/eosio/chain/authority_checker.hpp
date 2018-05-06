@@ -94,14 +94,45 @@ namespace detail {
 
          typedef map<permission_level, permission_cache_status> permission_cache_type;
 
+         bool satisfied( const permission_level& permission,
+                         fc::microseconds override_delay_threshold,
+                         permission_cache_type* cached_perms = nullptr
+                       )
+         {
+            auto delay_threshold_reverter = fc::make_scoped_exit([this, delay = delay_threshold] () mutable {
+               delay_threshold = delay;
+            });
+
+            delay_threshold = override_delay_threshold;
+
+            return satisfied( permission, cached_perms );
+         }
+
          bool satisfied( const permission_level& permission, permission_cache_type* cached_perms = nullptr ) {
             permission_cache_type cached_permissions;
 
             if( cached_perms == nullptr )
                cached_perms = initialize_permission_cache( cached_permissions );
 
+
+
             weight_tally_visitor visitor(*this, *cached_perms, 0);
             return ( visitor(permission_level_weight{permission, 1}) > 0 );
+         }
+
+         template<typename AuthorityType>
+         bool satisfied( const AuthorityType& authority,
+                         fc::microseconds override_delay_threshold,
+                         permission_cache_type* cached_perms = nullptr
+                       )
+         {
+            auto delay_threshold_reverter = fc::make_scoped_exit([this, delay = delay_threshold] () mutable {
+               delay_threshold = delay;
+            });
+
+            delay_threshold = override_delay_threshold;
+
+            return satisfied( authority, cached_perms );
          }
 
          template<typename AuthorityType>
