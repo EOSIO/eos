@@ -67,7 +67,8 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     //consumer_irreversible_block aaaa;
     //consumer<chain::signed_block> c([&](const std::vector<chain::signed_block>&){});
 
-    consumer_signed_block::consume_function consume_function = [](const std::vector<chain::signed_block>& elements){
+    auto consume_function = [](consumer_signed_block::elements elements)
+    {
         for (const auto& block : elements)
             ilog(block.id().str());
     };

@@ -15,18 +15,19 @@ template<typename T>
 class consumer : public boost::noncopyable
 {
 public:
-    using consume_function = std::function<void(const std::vector<T>&)>;
+    using elements = const std::vector<T>&;
+    using consume_function = std::function<void(elements)>;
 
     consumer(consume_function consume);
     ~consumer();
 
-    void push(const T& b);
+    void push(const T& element);
 
 private:
     void run();
 
     fifo<T> m_fifo;
-    std::shared_ptr<std::thread> m_thread;
+    std::unique_ptr<std::thread> m_thread;
     std::atomic<bool> m_exit;
     consume_function m_consume_function;
 };
@@ -37,7 +38,7 @@ consumer<T>::consumer(consume_function consume):
     m_consume_function(consume)
 {
     m_exit = false;
-    m_thread = std::make_shared<std::thread>([&]{this->run();});
+    m_thread = std::make_unique<std::thread>([&]{this->run();});
 }
 
 template<typename T>
@@ -49,9 +50,9 @@ consumer<T>::~consumer()
 }
 
 template<typename T>
-void consumer<T>::push(const T& block)
+void consumer<T>::push(const T& element)
 {
-    m_fifo.push(block);
+    m_fifo.push(element);
 }
 
 template<typename T>
