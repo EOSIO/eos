@@ -9,8 +9,9 @@ namespace eosiosystem {
    const double   per_block_rate   = 0.0025;           // 0.25%
    const double   standby_rate     = 0.0075;           // 0.75%
    const uint32_t blocks_per_year  = 52*7*24*2*3600;   // half seconds per year
+   const uint32_t blocks_per_day   = 2 * 24 * 3600;
    const uint32_t blocks_per_hour  = 2 * 3600;
-   
+
    eosio::asset system_contract::payment_per_block( double rate, const eosio::asset& token_supply ) {
       const int64_t payment = static_cast<int64_t>( (rate * double(token_supply.amount)) / double(blocks_per_year) );
       return eosio::asset( payment, token_supply.symbol );

@@ -15,7 +15,6 @@
 #include <eosio.token/eosio.token.hpp>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 
 namespace eosiosystem {
@@ -66,13 +65,33 @@ namespace eosiosystem {
       });
    }
 
-   void system_contract::update_elected_producers(block_timestamp block_time) {
+   void system_contract::update_elected_producers( block_timestamp block_time ) {
       auto idx = _producers.get_index<N(prototalvote)>();
 
       eosio::producer_schedule schedule;
       schedule.producers.reserve(21);
       size_t n = 0;
       for ( auto it = idx.crbegin(); it != idx.crend() && n < 21 && 0 < it->total_votes; ++it ) {
+         if ( it->active() && 
+              it->time_became_active == 0 ) {
+
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.time_became_active = block_time;
+               });
+
+         } else if ( it->active() &&
+                     block_time > 21 * 12 + it->time_became_active &&
+                     block_time > it->last_produced_block_time + blocks_per_day ) {
+
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.producer_key = public_key();
+                  p.time_became_active = 0;
+                  p.last_produced_block_time = 0;
+               });
+
+            continue;
+         }
+
          if ( it->active() ) {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;

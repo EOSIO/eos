@@ -49,7 +49,7 @@ public:
 
       produce_blocks();
 
-      create_account_with_resources( N(alice), N(eosio), asset::from_string("100.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      create_account_with_resources( N(alice), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(bob), N(eosio), asset::from_string("0.4500 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(carol), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );

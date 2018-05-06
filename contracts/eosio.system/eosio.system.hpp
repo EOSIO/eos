@@ -20,10 +20,9 @@ namespace eosiosystem {
 
    struct eosio_parameters : eosio::blockchain_parameters {
       uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
-      uint32_t          percent_of_max_inflation_rate = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size)(percent_of_max_inflation_rate) )
+      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
    };
 
    struct eosio_global_state : eosio_parameters {
