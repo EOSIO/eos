@@ -53,11 +53,11 @@ namespace detail {
     * @tparam F A callable which takes a single argument of type @ref AccountPermission and returns the corresponding
     * authority
     */
-   template<typename PermissionToAuthorityFunc, typename PermissionVisitorFunc>
+   template<typename PermissionToAuthorityFunc, typename PermissionVisitor>
    class authority_checker {
       private:
          PermissionToAuthorityFunc            permission_to_authority;
-         PermissionVisitorFunc                permission_visitor;
+         PermissionVisitor                    permission_visitor;
          const std::function<void(uint32_t)>& checktime;
          vector<public_key_type>              signing_keys; // Making this a flat_set<public_key_type> causes runtime problems with utilities::filter_data_by_marker for some reason. TODO: Figure out why.
          flat_set<permission_level>           provided_permissions;
@@ -67,7 +67,7 @@ namespace detail {
 
       public:
          authority_checker( PermissionToAuthorityFunc            permission_to_authority,
-                            PermissionVisitorFunc                permission_visitor,
+                            PermissionVisitor                    permission_visitor,
                             uint16_t                             recursion_depth_limit,
                             const flat_set<public_key_type>&     signing_keys,
                             const flat_set<permission_level>&    provided_permissions,
@@ -88,6 +88,7 @@ namespace detail {
 
          enum permission_cache_status {
             being_evaluated,
+            permission_provided,
             permission_unsatisfied,
             permission_satisfied
          };
@@ -156,7 +157,7 @@ namespace detail {
             return {range.begin(), range.end()};
          }
 
-         PermissionVisitorFunc& get_permission_visitor() {
+         PermissionVisitor& get_permission_visitor() {
             return permission_visitor;
          }
 
@@ -178,7 +179,7 @@ namespace detail {
       private:
          permission_cache_type* initialize_permission_cache( permission_cache_type& cached_permissions ) {
             for( const auto& p : provided_permissions ) {
-               cached_permissions.emplace_hint( cached_permissions.end(), p, permission_satisfied );
+               cached_permissions.emplace_hint( cached_permissions.end(), p, permission_provided );
             }
             return &cached_permissions;
          }
@@ -241,7 +242,7 @@ namespace detail {
 
                      bool propagate_error = false;
                      try {
-                        auto&& auth = checker.permission_to_authority(permission.permission);
+                        auto&& auth = checker.permission_to_authority( permission.permission );
                         propagate_error = true;
                         if( fc::microseconds(auth.delay_sec) > checker.delay_threshold ) {
                            checker.permission_visitor.pop_undo();
@@ -275,6 +276,21 @@ namespace detail {
                   total_weight += permission.weight;
                   checker.permission_visitor( permission.permission, true );
                   checker.permission_visitor.squash_undo();
+               } else if( *status == permission_provided ) {
+                  auto res = cached_permissions.emplace( permission.permission, permission_provided );
+                  
+                  try {
+                     checker.permission_to_authority( permission.permission ); // make sure permission exists
+                  } catch( const permission_query_exception& ) {
+                     res.first->second = permission_unsatisfied; // do not bother checking again
+                     checker.permission_visitor.pop_undo();
+                     return total_weight; // if the permission doesn't exist, continue without it
+                  }
+
+                  total_weight += permission.weight;
+                  res.first->second = permission_satisfied;
+                  checker.permission_visitor( permission.permission, false );
+                  checker.permission_visitor.squash_undo();
                }
                return total_weight;
             }
@@ -282,9 +298,9 @@ namespace detail {
 
    }; /// authority_checker
 
-   template<typename PermissionToAuthorityFunc, typename PermissionVisitorFunc>
+   template<typename PermissionToAuthorityFunc, typename PermissionVisitor>
    auto make_auth_checker( PermissionToAuthorityFunc&&          pta,
-                           PermissionVisitorFunc&&              permission_visitor,
+                           PermissionVisitor&&                  permission_visitor,
                            uint16_t                             recursion_depth_limit,
                            const flat_set<public_key_type>&     signing_keys,
                            const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
@@ -295,8 +311,8 @@ namespace detail {
       auto noop_checktime = []( uint32_t ) {};
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : noop_checktime );
       return authority_checker< PermissionToAuthorityFunc,
-                                PermissionVisitorFunc      >( std::forward<PermissionToAuthorityFunc>(pta),
-                                                              std::forward<PermissionVisitorFunc>(permission_visitor),
+                                PermissionVisitor          >( std::forward<PermissionToAuthorityFunc>(pta),
+                                                              std::forward<PermissionVisitor>(permission_visitor),
                                                               recursion_depth_limit,
                                                               signing_keys,
                                                               provided_permissions,
@@ -309,8 +325,12 @@ namespace detail {
       void push_undo()   {}
       void pop_undo()    {}
       void squash_undo() {}
-      void operator()(const permission_level& perm_level) {} // Called when entering a permission level
+      void operator()(const permission_level& perm_level) {} // Called when entering a permission level (may not exist)
       void operator()(const permission_level& perm_level, bool repeat) {} // Called when permission level was satisfied
+      // if repeat == false, the perm_level could possibly not exist; but if repeat == true, then it must exist.
+
+      // Note: permission "existing" assumes that permission_to_authority successfully returns an authority if the permission exists,
+      //       and throws a permission_query_exception exception if the permission does not exist.
    };
 
 } } // namespace eosio::chain

@@ -164,10 +164,10 @@ namespace eosio { namespace chain {
       published = control.pending_block_time();
       deadline = d;
       is_input = true;
-      init( initial_net_usage, initial_cpu_usage );
+      control.validate_expiration( trx );
       control.validate_tapos( trx );
       control.validate_referenced_accounts( trx );
-      control.validate_expiration( trx );
+      init( initial_net_usage, initial_cpu_usage );
       record_transaction( id, trx.expiration ); /// checks for dupes
    }
 

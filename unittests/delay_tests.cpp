@@ -1145,11 +1145,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
       ("type", "transfer")
       ("requirement", "second"),
       30, 3),
-      transaction_exception,
-      [] (const transaction_exception &e)->bool {
-         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (3 sec)");
-         return true;
-      }
+      insufficient_delay_exception,
+      fc_exception_message_starts_with("authorization imposes a delay")
    );
 
    // this transaction will be delayed 20 blocks
@@ -1340,11 +1337,8 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
       ("code", eosio_token)
       ("type", "transfer"),
       30, 7),
-      transaction_exception,
-      [] (const transaction_exception &e)->bool {
-         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
-         return true;
-      }
+      insufficient_delay_exception,
+      fc_exception_message_starts_with("authorization imposes a delay")
    );
 
    // this transaction will be delayed 20 blocks
@@ -1869,11 +1863,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
             ("auth",  authority(chain.get_public_key(tester_account, "first"))),
             30, 7
       ),
-      transaction_exception,
-      [] (const transaction_exception &e)->bool {
-         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
-         return true;
-      }
+      insufficient_delay_exception,
+      fc_exception_message_starts_with("authorization imposes a delay")
    );
 
    // this transaction will be delayed 20 blocks
@@ -2298,11 +2289,8 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
                         ("permission", "first")
                         ("parent", "active")
                         ("auth",  authority(chain.get_public_key(tester_account, "first"), 50*86400)) ), // 50 days delay
-      chain::action_validate_exception,
-      [&](const chain::transaction_exception& e) {
-         expect_assert_message(e, "Cannot set delay longer than max_transacton_delay");
-         return true;
-      }
+      action_validate_exception,
+      fc_exception_message_starts_with("Cannot set delay longer than max_transacton_delay")
    );
 } FC_LOG_AND_RETHROW() }
 

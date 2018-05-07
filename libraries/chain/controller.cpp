@@ -578,7 +578,9 @@ struct controller_impl {
    void push_transaction( const transaction_metadata_ptr& trx,
                           fc::time_point deadline = fc::time_point::maximum(),
                           bool implicit = false )
-   { try {
+   {
+      transaction_trace_ptr trace;
+   try {
       if( deadline == fc::time_point() ) {
          unapplied_transactions[trx->signed_id] = trx;
          return;
@@ -586,7 +588,7 @@ struct controller_impl {
 
       auto start = fc::time_point::now();
       transaction_context trx_context( self, trx->trx, trx->id);
-      transaction_trace_ptr trace = trx_context.trace;
+      trace = trx_context.trace;
       try {
          unapplied_transactions.erase( trx->signed_id );
 
@@ -646,7 +648,7 @@ struct controller_impl {
          trace->except_ptr = std::current_exception();
       }
       transaction_trace_notify( trx, trace );
-   } FC_CAPTURE_AND_RETHROW() } /// push_transaction
+   } FC_CAPTURE_AND_RETHROW((trace)) } /// push_transaction
 
 
    void start_block( block_timestamp_type when, uint16_t confirm_block_count ) {
@@ -1299,7 +1301,7 @@ void controller::validate_referenced_accounts( const transaction& trx )const {
    for( const auto& a : trx.context_free_actions ) {
       auto* code = my->db.find<account_object, by_name>(a.account);
       EOS_ASSERT( code != nullptr, transaction_exception,
-                  "action's code account ${account} does not exist", ("account", a.account) );
+                  "action's code account '${account}' does not exist", ("account", a.account) );
       EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
                   "context-free actions cannot have authorizations" );
    }
@@ -1307,12 +1309,12 @@ void controller::validate_referenced_accounts( const transaction& trx )const {
    for( const auto& a : trx.actions ) {
       auto* code = my->db.find<account_object, by_name>(a.account);
       EOS_ASSERT( code != nullptr, transaction_exception,
-                  "action's code account ${account} does not exist", ("account", a.account) );
+                  "action's code account '${account}' does not exist", ("account", a.account) );
       for( const auto& auth : a.authorization ) {
          one_auth = true;
          auto* actor = my->db.find<account_object, by_name>(auth.actor);
          EOS_ASSERT( actor  != nullptr, transaction_exception,
-                     "action's authorizing actor ${account} does not exist", ("account", auth.actor) );
+                     "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
          EOS_ASSERT( my->authorization.find_permission(auth) != nullptr, transaction_exception,
                      "action's authorizations include a non-existent permission: {permission}",
                      ("permission", auth) );

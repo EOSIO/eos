@@ -112,10 +112,5 @@ extern "C" {
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
 
-   /**
-    * Check that prodived authorizations is enough to execute the transaction
-    */
-   void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
-
    ///@ } transactioncapi
 }
