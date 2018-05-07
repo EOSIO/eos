@@ -1194,16 +1194,20 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
                                               )
                        );
 
-   produce_blocks(20);
+   produce_blocks(200);
    prod = get_producer_info("alice");
    // this test fails as there isn't enough total activated stake and onblock is a noop
-   BOOST_REQUIRE(prod["produced_blocks"].as<uint32_t>() > 0);
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(claimrewards), mvo()
-                                              ("owner",     "alice")
-                                              )
-                       );
+   BOOST_REQUIRE(1 < prod["produced_blocks"].as<uint32_t>());
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(claimrewards), mvo()("owner", "alice")));
+
+   // push_action above produces one block with alice as producer
    prod = get_producer_info("alice");
-   BOOST_REQUIRE_EQUAL(0, prod["produced_blocks"].as<uint32_t>());
+   BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
+
+   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within a day"),
+                       push_action(N(alice), N(claimrewards), mvo()("owner", "alice")));
+
+   produce_block(fc::seconds(1));
 
  } FC_LOG_AND_RETHROW()
 

@@ -13,6 +13,7 @@ namespace eosiosystem {
    const uint32_t seconds_per_year = 52*7*24*3600;
    const uint32_t blocks_per_day   = 2 * 24 * 3600;
    const uint32_t blocks_per_hour  = 2 * 3600;
+   const uint64_t useconds_per_day = 24 * 3600 * uint64_t(1000000);
    
    eosio::asset system_contract::payment_per_block( double rate, const eosio::asset& token_supply,  uint32_t num_blocks ) {
       const int64_t payment = static_cast<int64_t>( (rate * double(token_supply.amount) * double(num_blocks)) / double(blocks_per_year) );
@@ -98,15 +99,15 @@ namespace eosiosystem {
       auto prod = _producers.find( owner );
       eosio_assert( prod != _producers.end(), "account name is not in producer list" );
       if( prod->last_claim_time > 0 ) {
-         eosio_assert(now() >= prod->last_claim_time + seconds_per_day, "already claimed rewards within a day");
+         eosio_assert(current_time() >= prod->last_claim_time + useconds_per_day, "already claimed rewards within a day");
       }
 
-      auto parameters = _global.get();      
+      auto parameters = _global.get();
       const asset token_supply = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
-      const time time_since_last_fill = now() - parameters.last_pervote_bucket_fill;
+      const uint32_t secs_since_last_fill = static_cast<uint32_t>( (current_time() - parameters.last_pervote_bucket_fill) / 1000000 );
 
-      const asset to_eos_bucket = supply_growth( standby_rate, token_supply, time_since_last_fill );
-      const asset to_savings    = supply_growth( continuous_rate - (perblock_rate + standby_rate), token_supply, time_since_last_fill );
+      const asset to_eos_bucket = supply_growth( standby_rate, token_supply, secs_since_last_fill );
+      const asset to_savings    = supply_growth( continuous_rate - (perblock_rate + standby_rate), token_supply, secs_since_last_fill );
       const asset perblock_pay  = payment_per_block( perblock_rate, token_supply, prod->produced_blocks );
       const asset issue_amount  = to_eos_bucket + to_savings + perblock_pay;
       
@@ -116,7 +117,7 @@ namespace eosiosystem {
       const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_eos_bucket + parameters.eos_bucket );
 
       parameters.eos_bucket += ( to_eos_bucket - pervote_pay );
-      parameters.last_pervote_bucket_fill = now();
+      parameters.last_pervote_bucket_fill = current_time();
       parameters.savings += to_savings;
       _global.set( parameters, _self );
       
@@ -124,7 +125,7 @@ namespace eosiosystem {
                                                     { N(eosio), owner, perblock_pay + pervote_pay, std::string("producer claiming rewards") } );
 
       _producers.modify( prod, 0, [&](auto& p) {
-            p.last_claim_time = now();
+            p.last_claim_time = current_time();
             p.produced_blocks = 0;
          });
 

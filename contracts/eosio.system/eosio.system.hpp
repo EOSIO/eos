@@ -32,7 +32,7 @@ namespace eosiosystem {
       eosio::asset         total_ram_stake;
 
       block_timestamp      last_producer_schedule_update = 0;
-      time                 last_pervote_bucket_fill = 0;
+      uint64_t             last_pervote_bucket_fill = 0;
       eosio::asset         eos_bucket;
       eosio::asset         savings;
       checksum160          last_producer_schedule_id;
@@ -51,7 +51,7 @@ namespace eosiosystem {
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
       uint32_t              produced_blocks;
-      time                  last_claim_time = 0;
+      uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
       block_timestamp       time_became_active = 0;
       block_timestamp       last_produced_block_time = 0;

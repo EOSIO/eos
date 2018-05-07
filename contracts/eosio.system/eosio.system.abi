@@ -126,7 +126,7 @@
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
          {"name":"total_ram_stake",               "type":"asset"},
          {"name":"last_producer_schedule_update", "type":"time"},
-         {"name":"last_pervote_bucket_fill",      "type":"time"},
+         {"name":"last_pervote_bucket_fill",      "type":"uint64"},
          {"name":"eos_bucket",                    "type":"asset"},
          {"name":"savings",                       "type":"asset"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
@@ -140,10 +140,10 @@
          {"name":"total_votes",              "type":"float64"},
          {"name":"producer_key",             "type":"public_key"},
          {"name":"produced_blocks",          "type":"uint32"},
-         {"name":"last_claim_time",          "type":"time"},
+         {"name":"last_claim_time",          "type":"uint64"},
          {"name":"location",                 "type":"uint16"},
-         {"name":"time_became_active",       "type":"time"},
-         {"name":"last_produced_block_time", "type":"time"}
+         {"name":"time_became_active",       "type":"uint32"},
+         {"name":"last_produced_block_time", "type":"uint32"}
       ]
     },{
       "name": "regproducer",
