@@ -322,6 +322,8 @@ namespace eosio { namespace chain {
 
    void noop_checktime( uint32_t ) {}
 
+   std::function<void(uint32_t)> authorization_manager::_noop_checktime{std::bind(&noop_checktime, std::placeholders::_1)};
+
    fc::microseconds
    authorization_manager::check_authorization( const vector<action>&                actions,
                                                const flat_set<public_key_type>&     provided_keys,
@@ -331,7 +333,6 @@ namespace eosio { namespace chain {
                                                bool                                 allow_unused_keys
                                              )const
    {
-      auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
 
       auto delay_max_limit = fc::seconds( _control.get_global_properties().configuration.max_transaction_delay );
@@ -454,7 +455,6 @@ namespace eosio { namespace chain {
                                                bool                                 allow_unused_keys
                                              )const
    {
-      auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
 
       auto delay_max_limit = fc::seconds( _control.get_global_properties().configuration.max_transaction_delay );
@@ -490,8 +490,6 @@ namespace eosio { namespace chain {
                                                                        fc::microseconds delay_threshold
                                                                      )const
    {
-      auto _noop_checktime = std::bind(&noop_checktime, std::placeholders::_1);
-
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                         noop_permission_visitor(),
                                         _control.get_global_properties().configuration.max_authority_depth,

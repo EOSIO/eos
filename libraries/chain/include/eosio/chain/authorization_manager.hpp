@@ -108,6 +108,7 @@ namespace eosio { namespace chain {
                                                     )const;
 
 
+         static std::function<void(uint32_t)> _noop_checktime;
 
       private:
          const controller&    _control;
