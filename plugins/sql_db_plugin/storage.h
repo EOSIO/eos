@@ -7,7 +7,7 @@
 namespace eosio {
 
 class storage {
-    void storage(const std::vector<chain::signed_block>& blocks) = 0;
+    virtual void store(const std::vector<chain::signed_block>& blocks) = 0;
 };
 
 } // namespace

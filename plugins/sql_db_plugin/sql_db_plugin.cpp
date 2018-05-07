@@ -62,7 +62,7 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
 
     m_consumer_irreversible_block = std::make_unique<consumer_signed_block>(
                 [this](const consumer_signed_block::vector& blocks){
-        m_irreversible_block_storage->storage(blocks);
+        m_irreversible_block_storage->store(blocks);
     });
 
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();

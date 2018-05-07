@@ -2,12 +2,7 @@
 
 namespace eosio {
 
-irreversible_block_storage::irreversible_block_storage()
-{
-
-}
-
-void irreversible_block_storage::storage(const std::vector<chain::signed_block>& blocks)
+void irreversible_block_storage::store(const std::vector<chain::signed_block>& blocks)
 {
     for (const auto& block : blocks)
         ilog(block.id().str());
