@@ -48,7 +48,6 @@ public:
    ,incoming_block_channel(app().get_channel<channels::incoming_block>())
    ,incoming_block_sync_method(app().get_method<methods::incoming_block_sync>())
    ,incoming_transaction_sync_method(app().get_method<methods::incoming_transaction_sync>())
-   ,start_coordinator_method(app().get_method<methods::start_coordinator>())
    {}
    
    bfs::path                        block_log_dir;
@@ -78,7 +77,6 @@ public:
    // retained references to methods for easy calling
    methods::incoming_block_sync::method_type&       incoming_block_sync_method;
    methods::incoming_transaction_sync::method_type& incoming_transaction_sync_method;
-   methods::start_coordinator::method_type&         start_coordinator_method;
 
    // method provider handles
    methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
@@ -260,8 +258,6 @@ void chain_plugin::plugin_startup()
         ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
 
    my->chain_config.reset();
-
-   my->start_coordinator_method();
 
 } FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
