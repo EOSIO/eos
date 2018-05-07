@@ -839,15 +839,19 @@ namespace eosio {
          }
       }
       size_t count = 0;
-      if (bstack.back()->previous == lib_id) {
-         count = bstack.size();
-         while (bstack.size()) {
-            enqueue (*bstack.back());
-            bstack.pop_back();
+      if (!bstack.empty()) {
+         if (bstack.back()->previous == lib_id) {
+            count = bstack.size();
+            while (bstack.size()) {
+               enqueue(*bstack.back());
+               bstack.pop_back();
+            }
          }
+         fc_ilog(logger, "Sent ${n} blocks on my fork",("n",count));
+      } else {
+         fc_ilog(logger, "Nothing to send on fork request");
       }
 
-      fc_ilog(logger, "Sent ${n} blocks on my fork",("n",count));
       syncing = false;
    }
 

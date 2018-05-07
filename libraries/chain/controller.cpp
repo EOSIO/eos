@@ -650,8 +650,11 @@ struct controller_impl {
       FC_ASSERT( db.revision() == head->block_num, "",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-      pending = db.start_undo_session(true);
+      auto guard_pending = fc::make_scoped_exit([this](){
+         pending.reset();
+      });
 
+      pending = db.start_undo_session(true);
 
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
@@ -686,6 +689,7 @@ struct controller_impl {
 
       clear_expired_input_transactions();
       update_producers_authority();
+      guard_pending.cancel();
    } // start_block
 
 
