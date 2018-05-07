@@ -4,19 +4,16 @@ import subprocess
 import time
 import glob
 import shutil
-import time
 import os
 import platform
 from collections import namedtuple
 import re
 import string
 import signal
-import time
 import datetime
 import inspect
 import sys
 import random
-import io
 import json
 
 ###########################################################################################
@@ -38,8 +35,8 @@ class Utils:
     @staticmethod
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
-        str=' '*stackDepth
-        sys.stdout.write(str)
+        s=' '*stackDepth
+        sys.stdout.write(s)
         print(*args, **kwargs)
 
     SyncStrategy=namedtuple("ChainSyncStrategy", "name id arg")
@@ -111,26 +108,14 @@ class Utils:
     @staticmethod
     def waitForBool(lam, timeout=None):
         myLam = lambda: True if lam() else None
-        ret=Utils.waitForObj(myLam)
+        ret=Utils.waitForObj(myLam, timeout)
         return False if ret is None else ret
 
 
 ###########################################################################################
-class Table(object):
-    def __init__(self, name):
-        self.name=name
-        self.keys=[]
-        self.data=[]
-
-###########################################################################################
-class Transaction(object):
-    def __init__(self, transId):
-        self.transId=transId
-        self.tType=None
-        self.amount=0
-
-###########################################################################################
 class Account(object):
+    # pylint: disable=too-few-public-methods
+
     def __init__(self, name):
         self.name=name
         self.balance=0
@@ -145,8 +130,11 @@ class Account(object):
         return "Name: %s" % (self.name)
 
 ###########################################################################################
+# pylint: disable=too-many-public-methods
 class Node(object):
 
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-arguments
     def __init__(self, host, port, pid=None, cmd=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
         self.host=host
         self.port=port
@@ -182,8 +170,8 @@ class Node(object):
     def runCmdReturnJson(cmd, trace=False):
         retStr=Utils.checkOutput(cmd.split())
         jStr=Node.filterJsonObject(retStr)
-        trace and Utils.Print ("RAW > %s"% retStr)
-        trace and Utils.Print ("JSON> %s"% jStr)
+        if trace: Utils.Print ("RAW > %s"% (retStr))
+        if trace: Utils.Print ("JSON> %s"% (jStr))
         if not jStr:
             msg="Expected JSON response"
             Utils.Print ("ERROR: "+ msg)
@@ -204,15 +192,15 @@ class Node(object):
     def __runCmdArrReturnJson(cmdArr, trace=False):
         retStr=Utils.checkOutput(cmdArr)
         jStr=Node.filterJsonObject(retStr)
-        trace and Utils.Print ("RAW > %s"% retStr)
-        trace and Utils.Print ("JSON> %s"% jStr)
+        if trace: Utils.Print ("RAW > %s"% (retStr))
+        if trace: Utils.Print ("JSON> %s"% (jStr))
         jsonData=json.loads(jStr)
         return jsonData
 
     @staticmethod
     def runCmdReturnStr(cmd, trace=False):
         retStr=Node.__checkOutput(cmd.split())
-        trace and Utils.Print ("RAW > %s"% retStr)
+        if trace: Utils.Print ("RAW > %s"% (retStr))
         return retStr
 
     @staticmethod
@@ -254,7 +242,7 @@ class Node(object):
 
     @staticmethod
     def runMongoCmdReturnJson(cmdArr, subcommand, trace=False):
-        retId,outs,errs=Node.stdinAndCheckOutput(cmdArr, subcommand)
+        retId,outs=Node.stdinAndCheckOutput(cmdArr, subcommand)
         if retId is not 0:
             return None
         outStr=Node.byteArrToStr(outs)
@@ -266,19 +254,10 @@ class Node(object):
         jStr=Node.normalizeJsonObject(extJStr)
         if not jStr:
             return None
-        trace and Utils.Print ("RAW > %s"% outStr)
+        if trace: Utils.Print ("RAW > %s"% (outStr))
         #trace and Utils.Print ("JSON> %s"% jStr)
         jsonData=json.loads(jStr)
         return jsonData
-
-    @staticmethod
-    def getTransId_nj(trans):
-        """Retrieve transaction id from cleos non-json output."""
-        # parse out transaction id
-        pattern="executed transaction:\s+(\w+)\s+"
-        m=re.search(pattern, trans, re.MULTILINE)
-        assert(m is not None)
-        return m.group(1)
 
     @staticmethod
     def getTransId(trans):
@@ -297,10 +276,11 @@ class Node(object):
     def setWalletEndpointArgs(self, args):
         self.endpointArgs="--url http://%s:%d %s" % (self.host, self.port, args)
 
+    # pylint: disable=too-many-branches
     def getBlock(self, blockNum, retry=True, silentErrors=False):
         if not self.enableMongo:
             cmd="%s %s get block %s" % (Utils.EosClientPath, self.endpointArgs, blockNum)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
                 trans=Node.runCmdReturnJson(cmd)
                 return trans
@@ -310,10 +290,10 @@ class Node(object):
                     Utils.Print("ERROR: Exception during get block. %s" % (msg))
                 return None
         else:
-            for i in range(2):
+            for _ in range(2):
                 cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
                 subcommand='db.Blocks.findOne( { "block_num": %s } )' % (blockNum)
-                Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+                if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
                 try:
                     trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
                     if trans is not None:
@@ -326,16 +306,16 @@ class Node(object):
                 if not retry:
                     break
                 if self.mongoSyncTime is not None:
-                    Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                    if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
 
         return None
 
     def getBlockById(self, blockId, retry=True, silentErrors=False):
-        for i in range(2):
+        for _ in range(2):
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.Blocks.findOne( { "block_id": "%s" } )' % (blockId)
-            Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+            if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
             try:
                 trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
                 if trans is not None:
@@ -348,11 +328,10 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
         return None
-
 
     def doesNodeHaveBlockNum(self, blockNum):
         assert isinstance(blockNum, int)
@@ -366,10 +345,11 @@ class Node(object):
         else:
             return True
 
+    # pylint: disable=too-many-branches
     def getTransaction(self, transId, retry=True, silentErrors=False):
         if not self.enableMongo:
             cmd="%s %s get transaction %s" % (Utils.EosClientPath, self.endpointArgs, transId)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
                 trans=Node.runCmdReturnJson(cmd)
                 return trans
@@ -382,10 +362,10 @@ class Node(object):
                     Utils.Print("ERROR: Exception during transaction retrieval. %s" % (msg))
                 return None
         else:
-            for i in range(2):
+            for _ in range(2):
                 cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
                 subcommand='db.Transactions.findOne( { $and : [ { "transaction_id": "%s" }, {"pending":false} ] } )' % (transId)
-                Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+                if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
                 try:
                     trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
                     return trans
@@ -397,16 +377,16 @@ class Node(object):
                 if not retry:
                     break
                 if self.mongoSyncTime is not None:
-                    Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                    if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
 
         return None
 
     def getTransByBlockId(self, blockId, retry=True, silentErrors=False):
-        for i in range(2):
+        for _ in range(2):
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.Transactions.find( { "block_id": "%s" } )' % (blockId)
-            Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+            if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
             try:
                 trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, True)
                 if trans is not None:
@@ -419,7 +399,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
         return None
@@ -427,10 +407,10 @@ class Node(object):
 
 
     def getActionFromDb(self, transId, retry=True, silentErrors=False):
-        for i in range(2):
+        for _ in range(2):
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.Actions.findOne( { "transaction_id": "%s" } )' % (transId)
-            Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+            if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
             try:
                 trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
                 if trans is not None:
@@ -443,16 +423,16 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
         return None
 
     def getMessageFromDb(self, transId, retry=True, silentErrors=False):
-        for i in range(2):
+        for _ in range(2):
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.Messages.findOne( { "transaction_id": "%s" } )' % (transId)
-            Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+            if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
             try:
                 trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
                 if trans is not None:
@@ -465,7 +445,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
         return None
@@ -482,7 +462,7 @@ class Node(object):
             blockNum=int(trans["ref_block_num"])
 
         blockNum += 1
-        Utils.Debug and Utils.Print("Check if block %d is irreversible." % (blockNum))
+        if Utils.Debug: Utils.Print("Check if block %d is irreversible." % (blockNum))
         return self.doesNodeHaveBlockNum(blockNum)
 
     # Create account and return creation transactions. Return transaction json object
@@ -492,7 +472,7 @@ class Node(object):
             Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey)
 
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
             trans=Node.runCmdReturnJson(cmd)
@@ -514,7 +494,7 @@ class Node(object):
 
     def getEosAccount(self, name):
         cmd="%s %s get account -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
@@ -526,7 +506,7 @@ class Node(object):
     def getEosAccountFromDb(self, name):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
         subcommand='db.Accounts.findOne({"name" : "%s"})' % (name)
-        Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+        if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
             trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
             return trans
@@ -535,32 +515,28 @@ class Node(object):
             Utils.Print("ERROR: Exception during get account from db. %s" % (msg))
             return None
 
-
-    def getEosCurrencyBalance(self, name):
-        cmd="%s %s get currency balance eosio %s EOS" % (Utils.EosClientPath, self.endpointArgs, name)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+    def getTable(self, contract, scope, table):
+        cmd="%s %s get table %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, scope, table)
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnStr(cmd)
+            trans=Node.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get EOS balance. %s" % (msg))
+            Utils.Print("ERROR: Exception during table retrieval. %s" % (msg))
             return None
 
-    def getCurrencyBalance(self, contract, account, symbol):
-        cmd="%s %s get currency balance %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, account, symbol)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Node.runCmdReturnStr(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get currency balance. %s" % (msg))
+    def getNodeAccountEosBalance(self, scope):
+        contract="eosio.token"
+        table="accounts"
+        trans = self.getTable(contract, scope, table)
+        if trans is None:
             return None
+        return trans["rows"][0]["balance"]
 
     def getCurrencyStats(self, contract, symbol=""):
         cmd="%s %s get currency stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
@@ -580,7 +556,7 @@ class Node(object):
                     return None
                 return ret
         else:
-            for i in range(2):
+            for _ in range(2):
                 ret=self.getEosAccountFromDb(account.name)
                 if ret is not None:
                     account_name=ret["name"]
@@ -589,7 +565,7 @@ class Node(object):
                         return None
                     return ret
                 if self.mongoSyncTime is not None:
-                    Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                    if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
 
         return None
@@ -622,7 +598,7 @@ class Node(object):
         if force:
             cmdArr.append("-f")
         s=" ".join(cmdArr)
-        Utils.Debug and Utils.Print("cmd: %s" % (s))
+        if Utils.Debug: Utils.Print("cmd: %s" % (s))
         trans=None
         try:
             trans=Node.__runCmdArrReturnJson(cmdArr)
@@ -633,9 +609,9 @@ class Node(object):
             return None
 
     def validateSpreadFundsOnNode(self, adminAccount, accounts, expectedTotal):
-        actualTotal=self.getAccountBalance(adminAccount.name)
+        actualTotal=self.getAccountEosBalance(adminAccount.name)
         for account in accounts:
-            fund = self.getAccountBalance(account.name)
+            fund = self.getAccountEosBalance(account.name)
             if fund != account.balance:
                 Utils.Print("ERROR: validateSpreadFunds> Expected: %d, actual: %d for account %s" %
                         (account.balance, fund, account.name))
@@ -650,15 +626,15 @@ class Node(object):
         return True
 
     def getSystemBalance(self, adminAccount, accounts):
-        balance=self.getAccountBalance(adminAccount.name)
+        balance=self.getAccountEosBalance(adminAccount.name)
         for account in accounts:
-            balance += self.getAccountBalance(account.name)
+            balance += self.getAccountEosBalance(account.name)
         return balance
 
     # Gets accounts mapped to key. Returns json object
     def getAccountsByKey(self, key):
         cmd="%s %s get accounts %s" % (Utils.EosClientPath, self.endpointArgs, key)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
@@ -675,7 +651,7 @@ class Node(object):
 
     def getServants(self, name):
         cmd="%s %s get servants %s" % (Utils.EosClientPath, self.endpointArgs, name)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
@@ -689,31 +665,37 @@ class Node(object):
         servants=trans["controlled_accounts"]
         return servants
 
-    def getAccountBalance(self, name):
+    def getAccountEosBalanceStr(self, scope):
+        """Returns EOS currency account balance from cleos get table command. Returned balance is string following syntax "98.0311 EOS". """
+        assert isinstance(scope, str)
         if not self.enableMongo:
-            amount=self.getEosCurrencyBalance(name)
-            Utils.Debug and Utils.Print("getEosCurrencyBalance %s %s", name, amount)
-            balanceStr=amount.split()[0]
-            balance=int(decimal.Decimal(balanceStr[1:])*10000)
-            return balance
+            amount=self.getNodeAccountEosBalance(scope)
+            if Utils.Debug: Utils.Print("getNodeAccountEosBalance %s %s" % (scope, amount))
+            assert isinstance(amount, str)
+            return amount
         else:
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+                if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
-            account=self.getEosAccountFromDb(name)
+            account=self.getEosAccountFromDb(scope)
             if account is not None:
-                field=account["eos_balance"]
-                balanceStr=field.split()[0]
-                balance=int(float(balanceStr)*10000)
+                balance=account["eos_balance"]
                 return balance
 
         return None
 
+    def getAccountEosBalance(self, scope):
+        """Returns EOS currency account balance from cleos get table command. Returned balance is an integer e.g. 980311. """
+        balanceStr=self.getAccountEosBalanceStr(scope)
+        balanceStr=balanceStr.split()[0]
+        balance=int(decimal.Decimal(balanceStr[1:])*10000)
+        return balance
+
     # transactions lookup by id. Returns json object
     def getTransactionsByAccount(self, name):
         cmd="%s %s get transactions -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
@@ -728,17 +710,17 @@ class Node(object):
         transactions=trans["transactions"]
         transArr=[]
         for transaction in transactions:
-            id=transaction["transaction_id"]
-            transArr.append(id)
+            transId=transaction["transaction_id"]
+            transArr.append(transId)
         return transArr
 
     def getAccountCodeHash(self, account):
         cmd="%s %s get code %s" % (Utils.EosClientPath, self.endpointArgs, account)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             retStr=Utils.checkOutput(cmd.split())
             #Utils.Print ("get code> %s"% retStr)
-            p=re.compile('code\shash: (\w+)\n', re.MULTILINE)
+            p=re.compile(r'code\shash: (\w+)\n', re.MULTILINE)
             m=p.search(retStr)
             if m is None:
                 msg="Failed to parse code hash."
@@ -746,8 +728,6 @@ class Node(object):
                 return None
 
             return m.group(1)
-            trans=Node.runCmdReturnJson(cmd, True)
-            return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during code hash retrieval. %s" % (msg))
@@ -758,7 +738,7 @@ class Node(object):
         cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.endpointArgs, account, contractDir)
         cmd += "" if wastFile is None else (" "+ wastFile)
         cmd += "" if abiFile is None else (" " + abiFile)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
             trans=Node.runCmdReturnJson(cmd, trace=False)
@@ -786,17 +766,6 @@ class Node(object):
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
             return None
         return trans
-
-    def getTable(self, contract, scope, table):
-        cmd="%s %s get table %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, scope, table)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Node.runCmdReturnJson(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during table retrieval. %s" % (msg))
-            return None
 
     def getTableRows(self, contract, scope, table):
         jsonData=self.getTable(contract, scope, table)
@@ -830,7 +799,7 @@ class Node(object):
         if opts is not None:
             cmdArr += opts.split()
         s=" ".join(cmdArr)
-        Utils.Debug and Utils.Print("cmd: %s" % (s))
+        if Utils.Debug: Utils.Print("cmd: %s" % (s))
         try:
             trans=Node.__runCmdArrReturnJson(cmdArr)
             return (True, trans)
@@ -843,7 +812,7 @@ class Node(object):
     def setPermission(self, account, code, pType, requirement, waitForTransBlock=False):
         cmd="%s %s set action permission -j %s %s %s %s" % (
             Utils.EosClientPath, self.endpointArgs, account, code, pType, requirement)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
             trans=Node.runCmdReturnJson(cmd)
@@ -859,7 +828,7 @@ class Node(object):
 
     def getInfo(self, silentErrors=False):
         cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
@@ -872,7 +841,7 @@ class Node(object):
     def getBlockFromDb(self, idx):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
         subcommand="db.Blocks.find().sort({\"_id\":%d}).limit(1).pretty()" % (idx)
-        Utils.Debug and Utils.Print("cmd: echo \"%s\" | %s" % (subcommand, cmd))
+        if Utils.Debug: Utils.Print("cmd: echo \"%s\" | %s" % (subcommand, cmd))
         try:
             trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
             return trans
@@ -883,10 +852,7 @@ class Node(object):
 
     def checkPulse(self):
         info=self.getInfo(True)
-        if info is not None:
-            return True
-        else:
-            return False
+        return False if info is None else True
 
     def getHeadBlockNum(self):
         if not self.enableMongo:
@@ -914,30 +880,30 @@ class Node(object):
         return None
 
     def kill(self, killSignal):
+        if Utils.Debug: Utils.Print("Killing node: %s" % (self.cmd))
+        assert(self.pid is not None)
         try:
-            Utils.Debug and Utils.Print("Killing node: %s" % (self.cmd))
             os.kill(self.pid, killSignal)
-
-            # wait for kill validation
-            def myFunc():
-                try:
-                    os.kill(self.pid, 0) #check if process with pid is running
-                except Exception as ex:
-                    return True
-                return False
-
-            lam = lambda: myFunc()
-            if not Utils.waitForBool(lam):
-                Utils.Print("ERROR: Failed to kill node (%s)." % (self.cmd), ex)
-                return False
-
-            # mark node as killed
-            self.killed=True
-            return True
-        except Exception as ex:
+        except OSError as ex:
             Utils.Print("ERROR: Failed to kill node (%d)." % (self.cmd), ex)
+            return False
 
-        return False
+        # wait for kill validation
+        def myFunc():
+            try:
+                os.kill(self.pid, 0) #check if process with pid is running
+            except OSError as _:
+                return True
+            return False
+
+        if not Utils.waitForBool(myFunc):
+            Utils.Print("ERROR: Failed to kill node (%s)." % (self.cmd), ex)
+            return False
+
+        # mark node as killed
+        self.pid=None
+        self.killed=True
+        return True
 
     # TBD: make nodeId an internal property
     def relaunch(self, nodeId, chainArg):
@@ -945,13 +911,13 @@ class Node(object):
         running=True
         try:
             os.kill(self.pid, 0) #check if process with pid is running
-        except Exception as ex:
+        except OSError as _:
             running=False
 
         if running:
             Utils.Print("WARNING: A process with pid (%d) is already running." % (self.pid))
         else:
-            Utils.Debug and Utils.Print("Launching node process, Id: %d" % (nodeId))
+            if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
             dataDir="var/lib/node_%02d" % (nodeId)
             dt = datetime.datetime.now()
             dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
@@ -967,41 +933,16 @@ class Node(object):
         self.killed=False
         return True
 
-    def relaunchEosInstances(self):
-
-        chainArg=self.__chainSyncStrategy.arg
-
-        for i in range(0, len(self.nodes)):
-            node=self.nodes[i]
-            running=True
-            try:
-                os.kill(node.pid, 0) #check if instance is running
-            except Exception as ex:
-                running=False
-
-            if running is False:
-                dataDir="var/lib/node_%02d" % (i)
-                dt = datetime.datetime.now()
-                dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
-                    dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-                stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
-                stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
-                with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-                    cmd=node.cmd + ("" if chainArg is None else (" " + chainArg))
-                    Utils.Print("cmd: %s" % (cmd))
-                    popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-                    self.nodes[i].pid=popen.pid
-
-        return self.updateNodesStatus()
-
     
 ###########################################################################################
 
 Wallet=namedtuple("Wallet", "name password host port")
+# pylint: disable=too-many-instance-attributes
 class WalletMgr(object):
     __walletLogFile="test_keosd_output.log"
     __walletDataDir="test_wallet_0"
 
+    # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
     def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=8899, host="localhost"):
         self.walletd=walletd
@@ -1024,7 +965,7 @@ class WalletMgr(object):
 
         cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.__walletPid=popen.pid
@@ -1036,11 +977,11 @@ class WalletMgr(object):
     def create(self, name):
         wallet=self.wallets.get(name)
         if wallet is not None:
-            Utils.Debug and Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
+            if Utils.Debug: Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
             return wallet
-        p = re.compile('\n\"(\w+)\"\n', re.MULTILINE)
+        p = re.compile(r'\n\"(\w+)\"\n', re.MULTILINE)
         cmd="%s %s wallet create --name %s" % (Utils.EosClientPath, self.endpointArgs, name)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("create: %s" % (retStr))
         m=p.search(retStr)
@@ -1057,9 +998,9 @@ class WalletMgr(object):
         warningMsg="Key already in wallet"
         cmd="%s %s wallet import --name %s %s" % (
             Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+            subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             if warningMsg in msg:
@@ -1073,9 +1014,9 @@ class WalletMgr(object):
         else:
             cmd="%s %s wallet import --name %s %s" % (
                 Utils.EosClientPath, self.endpointArgs, wallet.name, account.activePrivateKey)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
-                retStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+                subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
                 if warningMsg in msg:
@@ -1089,7 +1030,7 @@ class WalletMgr(object):
 
     def lockWallet(self, wallet):
         cmd="%s %s wallet lock --name %s" % (Utils.EosClientPath, self.endpointArgs, wallet.name)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             Utils.Print("ERROR: Failed to lock wallet %s." % (wallet.name))
             return False
@@ -1098,9 +1039,9 @@ class WalletMgr(object):
 
     def unlockWallet(self, wallet):
         cmd="%s %s wallet unlock --name %s" % (Utils.EosClientPath, self.endpointArgs, wallet.name)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         popen=subprocess.Popen(cmd.split(), stdout=Utils.FNull, stdin=subprocess.PIPE)
-        outs, errs = popen.communicate(input=wallet.password.encode("utf-8"))
+        _, errs = popen.communicate(input=wallet.password.encode("utf-8"))
         if 0 != popen.wait():
             Utils.Print("ERROR: Failed to unlock wallet %s: %s" % (wallet.name, errs.decode("utf-8")))
             return False
@@ -1109,7 +1050,7 @@ class WalletMgr(object):
 
     def lockAllWallets(self):
         cmd="%s %s wallet lock_all" % (Utils.EosClientPath, self.endpointArgs)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             Utils.Print("ERROR: Failed to lock all wallets.")
             return False
@@ -1119,9 +1060,9 @@ class WalletMgr(object):
     def getOpenWallets(self):
         wallets=[]
 
-        p = re.compile('\s+\"(\w+)\s\*\",?\n', re.MULTILINE)
+        p = re.compile(r'\s+\"(\w+)\s\*\",?\n', re.MULTILINE)
         cmd="%s %s wallet list" % (Utils.EosClientPath, self.endpointArgs)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("retStr: %s" % (retStr))
         m=p.findall(retStr)
@@ -1135,9 +1076,9 @@ class WalletMgr(object):
     def getKeys(self):
         keys=[]
 
-        p = re.compile('\n\s+\"(\w+)\"\n', re.MULTILINE)
+        p = re.compile(r'\n\s+\"(\w+)\"\n', re.MULTILINE)
         cmd="%s %s wallet keys" % (Utils.EosClientPath, self.endpointArgs)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("retStr: %s" % (retStr))
         m=p.findall(retStr)
@@ -1157,12 +1098,14 @@ class WalletMgr(object):
             with open(WalletMgr.__walletLogFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
 
-    def killall(self):
+    @staticmethod
+    def killall():
         cmd="pkill -9 %s" % (Utils.EosWalletName)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         subprocess.call(cmd.split())
 
-    def cleanup(self):
+    @staticmethod
+    def cleanup():
         dataDir=WalletMgr.__walletDataDir
         if os.path.isdir(dataDir) and os.path.exists(dataDir):
             shutil.rmtree(WalletMgr.__walletDataDir)
@@ -1172,13 +1115,14 @@ class WalletMgr(object):
 ###########################################################################################
 class Cluster(object):
     __chainSyncStrategies=Utils.getChainStrategies()
+    __chainSyncStrategy=None
     __WalletName="MyWallet"
     __localHost="localhost"
     __lastTrans=None
     __BiosHost="localhost"
     __BiosPort=8788
     
-    
+    # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=None, initbPrvtKey=None, staging=False):
         """Cluster container.
@@ -1221,6 +1165,7 @@ class Cluster(object):
         self.initaAccount=Account("inita")
         self.initbAccount=Account("initb")
         self.eosioAccount=Account("eosio")
+        print ("Type of initaAccount", type(self.initaAccount))
         self.initaAccount.ownerPrivateKey=initaPrvtKey
         self.initaAccount.activePrivateKey=initaPrvtKey
         self.initbAccount.ownerPrivateKey=initbPrvtKey
@@ -1230,12 +1175,16 @@ class Cluster(object):
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
         if self.__chainSyncStrategy is None:
-            self.__chainSyncStrategy= __chainSyncStrategies.get("none")
+            self.__chainSyncStrategy=self.__chainSyncStrategies.get("none")
 
     def setWalletMgr(self, walletMgr):
         self.walletMgr=walletMgr
 
     # launch local nodes and set self.nodes
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-return-statements
+    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontKill=False):
         """Launch cluster.
         pnodes: producer nodes count
@@ -1269,12 +1218,12 @@ class Cluster(object):
             cmdArr.append(nodeosArgs)
 
         s=" ".join(cmdArr)
-        Utils.Debug and Utils.Print("cmd: %s" % (s))
+        if Utils.Debug: Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch.")
             return False
 
-        self.nodes=range(totalNodes) # placeholder for cleanup purposes only
+        self.nodes=list(range(totalNodes)) # placeholder for cleanup purposes only
 
         nodes=self.discoverLocalNodes(totalNodes, timeout=Utils.systemWaitTimeout)
         if nodes is None or totalNodes != len(nodes):
@@ -1329,7 +1278,7 @@ class Cluster(object):
     def initializeNodes(self, initaPrvtKey=None, initbPrvtKey=None):
         node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         node.setWalletEndpointArgs(self.walletEndpointArgs)
-        Utils.Debug and Utils.Print("Node:", node)
+        if Utils.Debug: Utils.Print("Node:", node)
 
         node.checkPulse()
         self.nodes=[node]
@@ -1369,7 +1318,7 @@ class Cluster(object):
             host=n["host"]
             node=Node(host, port)
             node.setWalletEndpointArgs(self.walletEndpointArgs)
-            Utils.Debug and Utils.Print("Node:", node)
+            if Utils.Debug: Utils.Print("Node:", node)
 
             node.checkPulse()
             nodes.append(node)
@@ -1385,11 +1334,11 @@ class Cluster(object):
     #  Wait on this block number on each cluster node
     def waitOnClusterSync(self, timeout=None):
         targetHeadBlockNum=self.nodes[0].getHeadBlockNum() #get root nodes head block num
-        Utils.Debug and Utils.Print("Head block number on root node: %d" % (targetHeadBlockNum))
+        if Utils.Debug: Utils.Print("Head block number on root node: %d" % (targetHeadBlockNum))
         if targetHeadBlockNum == -1:
             return False
 
-        return self.waitOnClusterBlockNumSync(targetHeadBlockNum)
+        return self.waitOnClusterBlockNumSync(targetHeadBlockNum, timeout)
 
     def waitOnClusterBlockNumSync(self, targetHeadBlockNum, timeout=None):
 
@@ -1408,10 +1357,10 @@ class Cluster(object):
     def createAccountKeys(count):
         accounts=[]
         p = re.compile('Private key: (.+)\nPublic key: (.+)\n', re.MULTILINE)
-        for i in range(0, count):
+        for _ in range(0, count):
             try:
                 cmd="%s create key" % (Utils.EosClientPath)
-                Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+                if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
                 m=p.match(keyStr)
                 if m is None:
@@ -1422,7 +1371,7 @@ class Cluster(object):
                 ownerPublic=m.group(2)
 
                 cmd="%s create key" % (Utils.EosClientPath)
-                Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+                if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
                 m=p.match(keyStr)
                 if m is None:
@@ -1439,7 +1388,7 @@ class Cluster(object):
                 account.activePrivateKey=activePrivate
                 account.activePublicKey=activePublic
                 accounts.append(account)
-                Utils.Debug and Utils.Print("name: %s, key: ['%s', '%s]-owner; ['%s', '%s']-active" % (name, ownerPublic, ownerPrivate, activePublic, activePrivate))
+                if Utils.Debug: Utils.Print("name: %s, key: ['%s', '%s]-owner; ['%s', '%s']-active" % (name, ownerPublic, ownerPrivate, activePublic, activePrivate))
 
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
@@ -1485,8 +1434,8 @@ class Cluster(object):
         self.accounts=accounts
         return True
 
-    def getNode(self, id=0):
-        return self.nodes[id]
+    def getNode(self, nodeId=0):
+        return self.nodes[nodeId]
 
     def getNodes(self):
         return self.nodes
@@ -1510,14 +1459,14 @@ class Cluster(object):
         if transId is None:
             return False
         self.__lastTrans=transId
-        Utils.Debug and Utils.Print("Funds transfered on transaction id %s." % (transId))
+        if Utils.Debug: Utils.Print("Funds transfered on transaction id %s." % (transId))
         self.accounts[0].balance += transferAmount
 
         nextEosIdx=-1
         for i in range(0, count):
             account=self.accounts[i]
             nextInstanceFound=False
-            for n in range(0, count):
+            for _ in range(0, count):
                 #Utils.Print("nextEosIdx: %d, n: %d" % (nextEosIdx, n))
                 nextEosIdx=(nextEosIdx + 1)%count
                 if not self.nodes[nextEosIdx].killed:
@@ -1531,7 +1480,7 @@ class Cluster(object):
 
             #Utils.Print("nextEosIdx: %d, count: %d" % (nextEosIdx, count))
             node=self.nodes[nextEosIdx]
-            Utils.Debug and Utils.Print("Wait for trasaction id %s on node port %d" % (transId, node.port))
+            if Utils.Debug: Utils.Print("Wait for trasaction id %s on node port %d" % (transId, node.port))
             if node.waitForTransIdOnNode(transId) is False:
                 Utils.Print("ERROR: Selected node never received transaction id %s" % (transId))
                 return False
@@ -1547,15 +1496,15 @@ class Cluster(object):
             if transId is None:
                 return False
             self.__lastTrans=transId
-            Utils.Debug and Utils.Print("Funds transfered on block num %s." % (transId))
+            if Utils.Debug: Utils.Print("Funds transfered on block num %s." % (transId))
 
             self.accounts[i].balance -= transferAmount
             if i < (count-1):
-                 self.accounts[i+1].balance += transferAmount
+                self.accounts[i+1].balance += transferAmount
 
         # As an extra step wait for last transaction on the root node
         node=self.nodes[0]
-        Utils.Debug and Utils.Print("Wait for trasaction id %s on node port %d" % (transId, node.port))
+        if Utils.Debug: Utils.Print("Wait for trasaction id %s on node port %d" % (transId, node.port))
         if node.waitForTransIdOnNode(transId) is False:
             Utils.Print("ERROR: Selected node never received transaction id %s" % (transId))
             return False
@@ -1565,7 +1514,7 @@ class Cluster(object):
     def validateSpreadFunds(self, expectedTotal):
         for node in self.nodes:
             if not node.killed:
-                Utils.Debug and Utils.Print("Validate funds on %s server port %d." %
+                if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
                                             (Utils.EosServerName, node.port))
                 if node.validateSpreadFundsOnNode(self.initaAccount, self.accounts, expectedTotal) is False:
                     Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
@@ -1574,9 +1523,9 @@ class Cluster(object):
         return True
 
     def spreadFundsAndValidate(self, amount=1):
-        Utils.Debug and Utils.Print("Get system balance.")
+        if Utils.Debug: Utils.Print("Get system balance.")
         initialFunds=self.nodes[0].getSystemBalance(self.initaAccount, self.accounts)
-        Utils.Debug and Utils.Print("Initial system balance: %d" % (initialFunds))
+        if Utils.Debug: Utils.Print("Initial system balance: %d" % (initialFunds))
 
         if False == self.spreadFunds(amount):
             Utils.Print("ERROR: Failed to spread funds across nodes.")
@@ -1606,11 +1555,11 @@ class Cluster(object):
 
     @staticmethod
     def nodeNameToId(name):
-        """Convert node name to decimal id. Node name regex is "node_([\d]+)". "node_bios" is a special name which returns -1. Examples: node_00 => 0, node_21 => 21, node_bios => -1. """
+        r"""Convert node name to decimal id. Node name regex is "node_([\d]+)". "node_bios" is a special name which returns -1. Examples: node_00 => 0, node_21 => 21, node_bios => -1. """
         if name == "node_bios":
             return -1
 
-        m=re.search("node_([\d]+)", name)
+        m=re.search(r"node_([\d]+)", name)
         return int(m.group(1))
 
         
@@ -1622,24 +1571,24 @@ class Cluster(object):
         with open(configFile, 'r') as f:
             configStr=f.read()
 
-        pattern="^\s*private-key\s*=\W+(\w+)\W+(\w+)\W+$"
+        pattern=r"^\s*private-key\s*=\W+(\w+)\W+(\w+)\W+$"
         m=re.search(pattern, configStr, re.MULTILINE)
         if m is None:
-            Utils.Debug and Utils.Print("Failed to find producer keys")
+            if Utils.Debug: Utils.Print("Failed to find producer keys")
             return None
 
         pubKey=m.group(1)
         privateKey=m.group(2)
 
-        pattern="^\s*producer-name\s*=\W*(\w+)\W*$"
+        pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
         matches=re.findall(pattern, configStr, re.MULTILINE)
         if matches is None:
-            Utils.Debug and Utils.Print("Failed to find producers.")
+            if Utils.Debug: Utils.Print("Failed to find producers.")
             return None
 
         producerKeys={}
         for m in matches:
-            Utils.Debug and Utils.Print ("Found producer : %s" % (m))
+            if Utils.Debug: Utils.Print ("Found producer : %s" % (m))
             nodeId=Cluster.nodeNameToId(nodeName)
             keys={"name": m, "node": nodeId, "private": privateKey, "public": pubKey}
             producerKeys[m]=keys
@@ -1652,7 +1601,7 @@ class Cluster(object):
 
         node="node_bios"
         configFile="etc/eosio/%s/config.ini" % (node)
-        Utils.Debug and Utils.Print("Parsing config file %s" % configFile)
+        if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         producerKeys=Cluster.parseProducerKeys(configFile, node)
         if producerKeys is None:
             Utils.Print("ERROR: Failed to parse eosio private keys from cluster config files.")
@@ -1661,7 +1610,7 @@ class Cluster(object):
         for i in range(0, totalNodes):
             node="node_%02d" % (i)
             configFile="etc/eosio/%s/config.ini" % (node)
-            Utils.Debug and Utils.Print("Parsing config file %s" % configFile)
+            if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
 
             keys=Cluster.parseProducerKeys(configFile, node)
             if keys is not None:
@@ -1742,14 +1691,14 @@ class Cluster(object):
             if not onlyBios:
                 if prodCount == -1:
                     setProdsFile="setprods.json"
-                    Utils.Debug and Utils.Print("Reading in setprods file %s." % (setProdsFile))
+                    if Utils.Debug: Utils.Print("Reading in setprods file %s." % (setProdsFile))
                     with open(setProdsFile, "r") as f:
                         setProdsStr=f.read()
 
                         Utils.Print("Setting producers.")
                         opts="--permission eosio@active"
-                        trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
-                        if trans is None or not trans[0]:
+                        myTrans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+                        if myTrans is None or not myTrans[0]:
                             Utils.Print("ERROR: Failed to set producers.")
                             return False
                 else:
@@ -1770,7 +1719,7 @@ class Cluster(object):
                         counts[keys["node"]] += 1
 
                     setProdsStr += ' ] }'
-                    Utils.Debug and Utils.Print("setprods: %s" % (setProdsStr))
+                    if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
                     Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
                     opts="--permission eosio@active"
                     trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
@@ -1813,6 +1762,7 @@ class Cluster(object):
 
             Node.validateTransaction(trans)
 
+            # TBD: Loading this requires upping the max peding transaction timeout
             # contract="eosio.system"
             # contractDir="contracts/%s" % (contract)
             # wastFile="contracts/%s/%s.wast" % (contract, contract)
@@ -1854,15 +1804,13 @@ class Cluster(object):
             transId=Node.getTransId(trans[1])
             biosNode.waitForTransIdOnNode(transId)
 
-            # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-            #  Uncomment when functional
-            # expectedAmount=10000000000000
-            # Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
-            # actualAmount=biosNode.getAccountBalance(eosioAccount.name)
-            # if expectedAmount != actualAmount:
-            #     Utils.Print("ERROR: Issue verification failed. Excepted %d, actual: %d" %
-            #                 (expectedAmount, actualAmount))
-            #     return False
+            expectedAmount="1000000000.0000 EOS"
+            Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
+            actualAmount=biosNode.getAccountEosBalanceStr(eosioTokenAccount.name)
+            if expectedAmount != actualAmount:
+                Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
+                            (expectedAmount, actualAmount))
+                return False
 
             initialFunds="1000000.0000 EOS"
             Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
@@ -1872,7 +1820,6 @@ class Cluster(object):
             for name, keys in producerKeys.items():
                 data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (eosioTokenAccount.name, name, initialFunds, "init transfer")
                 opts="--permission %s@active" % (eosioTokenAccount.name)
-                Utils.Print("Ciju here")
                 trans=biosNode.pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
                     Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (eosioTokenAccount.name, name))
@@ -1907,38 +1854,31 @@ class Cluster(object):
         def myFunc():
             psOut=None
             try:
-                Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+                if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 psOut=subprocess.check_output(cmd.split()).decode("utf-8")
                 return psOut
-            except subprocess.CalledProcessError as ex:
+            except subprocess.CalledProcessError as _:
                 pass
             return None
 
-        lam = lambda:  myFunc()
-        psOut=Utils.waitForObj(lam)
+        psOut=Utils.waitForObj(myFunc, timeout)
         if psOut is None:
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
 
-        Utils.Debug and Utils.Print("pgrep output: \"%s\"" % psOut)
+        if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOut)
         for i in range(0, totalNodes):
-            pattern="[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
+            pattern=r"[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
             m=re.search(pattern, psOut, re.MULTILINE)
             if m is None:
                 Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
                 break
             instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
             instance.setWalletEndpointArgs(self.walletEndpointArgs)
-            Utils.Debug and Utils.Print("Node>", instance)
+            if Utils.Debug: Utils.Print("Node>", instance)
             nodes.append(instance)
 
         return nodes
-
-    # Check state of running nodeos process and update EosInstanceInfos
-    #def updateEosInstanceInfos(eosInstanceInfos):
-    # def updateNodesStatus(self):
-    #     for node in self.nodes:
-    #         node.checkPulse()
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
@@ -1957,7 +1897,6 @@ class Cluster(object):
                 break
 
         time.sleep(1) # Give processes time to stand down
-        # return self.updateNodesStatus()
         return True
 
     def relaunchEosInstances(self):
@@ -1971,7 +1910,8 @@ class Cluster(object):
 
         return True
 
-    def dumpErrorDetailImpl(self,fileName):
+    @staticmethod
+    def dumpErrorDetailImpl(fileName):
         Utils.Print("=================================================================")
         Utils.Print("Contents of %s:" % (fileName))
         if os.path.exists(fileName):
@@ -1982,44 +1922,45 @@ class Cluster(object):
 
     def dumpErrorDetails(self):
         fileName="etc/eosio/node_bios/config.ini"
-        self.dumpErrorDetailImpl(fileName)
+        Cluster.dumpErrorDetailImpl(fileName)
         fileName="var/lib/node_bios/stderr.txt"
-        self.dumpErrorDetailImpl(fileName)
+        Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
             fileName="etc/eosio/node_%02d/config.ini" % (i)
-            self.dumpErrorDetailImpl(fileName)
+            Cluster.dumpErrorDetailImpl(fileName)
             fileName="var/lib/node_%02d/stderr.txt" % (i)
-            self.dumpErrorDetailImpl(fileName)
+            Cluster.dumpErrorDetailImpl(fileName)
 
     def killall(self, silent=True):
         cmd="%s -k 15" % (Utils.EosLauncherPath)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            not silent and Utils.Print("Launcher failed to shut down eos cluster.")
+            if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
 
         # ocassionally the launcher cannot kill the eos server
         cmd="pkill -9 %s" % (Utils.EosServerName)
-        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            not silent and Utils.Print("Failed to shut down eos cluster.")
+            if not silent: Utils.Print("Failed to shut down eos cluster.")
 
         # another explicit nodes shutdown
         for node in self.nodes:
             try:
-                os.kill(node.pid, signal.SIGKILL)
-            except:
+                if node.pid is not None:
+                    os.kill(node.pid, signal.SIGKILL)
+            except OSError as _:
                 pass
 
     def isMongodDbRunning(self):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
         subcommand="db.version()"
-        Utils.Debug and Utils.Print("echo %s | %s" % (subcommand, cmd))
+        if Utils.Debug: Utils.Print("echo %s | %s" % (subcommand, cmd))
         ret,outs,errs=Node.stdinAndCheckOutput(cmd.split(), subcommand)
         if ret is not 0:
             Utils.Print("ERROR: Failed to check database version: %s" % (Node.byteArrToStr(errs)) )
             return False
-        Utils.Debug and Utils.Print("MongoDb response: %s" % (outs))
+        if Utils.Debug: Utils.Print("MongoDb response: %s" % (outs))
         return True
 
     def waitForNextBlock(self, timeout=None):
@@ -2037,8 +1978,8 @@ class Cluster(object):
         if self.enableMongo:
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand="db.dropDatabase()"
-            Utils.Debug and Utils.Print("echo %s | %s" % (subcommand, cmd))
-            ret,outs,errs=Node.stdinAndCheckOutput(cmd.split(), subcommand)
+            if Utils.Debug: Utils.Print("echo %s | %s" % (subcommand, cmd))
+            ret,_,errs=Node.stdinAndCheckOutput(cmd.split(), subcommand)
             if ret is not 0:
                 Utils.Print("ERROR: Failed to drop database: %s" % (Node.byteArrToStr(errs)) )
 
@@ -2050,17 +1991,17 @@ class Cluster(object):
 
         transId=None
         for account in self.accounts:
-            Utils.Debug and Utils.Print("Create account %s." % (account.name))
+            if Utils.Debug: Utils.Print("Create account %s." % (account.name))
             trans=self.createAccountAndVerify(account, creator, stakedDeposit)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s." % (account.name))
                 return False
-            Utils.Debug and Utils.Print("Account %s created." % (account.name))
+            if Utils.Debug: Utils.Print("Account %s created." % (account.name))
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and transId is not None:
             node=self.nodes[0]
-            Utils.Debug and Utils.Print("Wait for transaction id %s on server port %d." % ( transId, node.port))
+            if Utils.Debug: Utils.Print("Wait for transaction id %s on server port %d." % ( transId, node.port))
             if node.waitForTransIdOnNode(transId) is False:
                 Utils.Print("ERROR: Failed waiting for transaction id %s on server port %d." % (
                     transId, node.port))
