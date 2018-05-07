@@ -7,6 +7,7 @@
 #include <boost/noncopyable.hpp>
 #include <fc/log/logger.hpp>
 
+#include "storage.h"
 #include "fifo.h"
 
 namespace eosio {
@@ -17,7 +18,7 @@ class consumer : public boost::noncopyable
 public:
     using vector = std::vector<T>;
 
-    consumer(std::function<void(const vector&)> consume_function);
+    consumer(storage&& s);
     ~consumer();
 
     void push(const T& element);
@@ -28,13 +29,13 @@ private:
     fifo<T> m_fifo;
     std::unique_ptr<std::thread> m_thread;
     std::atomic<bool> m_exit;
-    std::function<void(const vector&)> m_consume_function;
+    storage& m_storage;
 };
 
 template<typename T>
-consumer<T>::consumer(std::function<void(const vector&)> consume_function):
+consumer<T>::consumer(storage &&s):
     m_fifo(fifo<T>::behavior::blocking),
-    m_consume_function(consume_function)
+    m_storage(s)
 {
     m_exit = false;
     m_thread = std::make_unique<std::thread>([&]{this->run();});
@@ -61,7 +62,7 @@ void consumer<T>::run()
     while (!m_exit)
     {
         auto elements = m_fifo.pop_all();
-        m_consume_function(elements);
+        m_storage.store(elements);
     }
     dlog("Consumer thread End");
 }

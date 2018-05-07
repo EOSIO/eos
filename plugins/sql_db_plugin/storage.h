@@ -7,6 +7,7 @@
 namespace eosio {
 
 class storage {
+public:
     virtual void store(const std::vector<chain::signed_block>& blocks) = 0;
 };
 
