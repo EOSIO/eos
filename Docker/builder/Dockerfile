@@ -73,3 +73,9 @@ RUN git clone --depth 1 --single-branch --branch master https://github.com/ucb-b
     && mv ../../source/include /opt/berkeley-softfloat-3/include && cd - && rm -rf berkeley-softfloat-3
 
 ENV SOFTFLOAT_ROOT /opt/berkeley-softfloat-3
+
+RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
+    && cd eos \
+    && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
+       -DCMAKE_C_COMPILER=clang -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true \
+    && cmake --build /tmp/build --target install && rm -rf /tmp/build /eos
