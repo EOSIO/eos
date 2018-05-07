@@ -32,6 +32,7 @@ namespace eosio { namespace chain {
 
          inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
          inline void add_cpu_usage( uint64_t u ) { cpu_usage += u; check_cpu_usage(); }
+         void add_cpu_usage_and_check_time( uint32_t u );
 
          /// returns cpu usage amount that was actually added
          uint64_t add_action_cpu_usage( uint64_t u, bool context_free );

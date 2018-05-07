@@ -209,14 +209,14 @@ void apply_context::execute_inline( action&& a ) {
 
    if ( !privileged ) {
       if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
-         const auto delay = control.limit_delay( control.get_authorization_manager()
-                                                        .check_authorization( {a},
-                                                                              flat_set<public_key_type>(),
-                                                                              false,
-                                                                              {receiver}                   ) );
-         FC_ASSERT( trx_context.published + delay <= control.pending_block_time(),
-                    "authorization for inline action imposes a delay of ${delay} seconds that is not met",
-                    ("delay", delay.to_seconds()) );
+         control.get_authorization_manager()
+                .check_authorization( {a},
+                                      {},
+                                      {{receiver, permission_name()}},
+                                      control.pending_block_time() - trx_context.published,
+                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                      false
+                                    );
 
          //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
          //          with sending an inline action that requires a delay even though the decision to send that inline
@@ -250,7 +250,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    trx_context.add_net_usage( static_cast<uint64_t>(cfg.base_per_transaction_net_usage)
                                + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
 
-   fc::microseconds required_delay;
+   auto delay = fc::seconds(trx.delay_sec);
 
    if( !privileged ) {
       if (payer != receiver) {
@@ -267,20 +267,16 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          }
       }
       if( check_auth ) {
-         required_delay = control.limit_delay( control.get_authorization_manager()
-                                                      .check_authorization( trx.actions,
-                                                                            flat_set<public_key_type>(),
-                                                                            false,
-                                                                            {receiver}                   ) );
-
+         control.get_authorization_manager()
+                .check_authorization( trx.actions,
+                                      {},
+                                      {{receiver, permission_name()}},
+                                      delay,
+                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                      false
+                                    );
       }
    }
-
-   auto delay = fc::seconds(trx.delay_sec);
-   EOS_ASSERT( delay >= required_delay, transaction_exception,
-               "authorization imposes a delay (${required_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
-               ("required_delay", required_delay.to_seconds())("specified_delay", delay.to_seconds()) );
-
 
    uint32_t trx_size = 0;
    auto& d = control.db();
@@ -427,11 +423,14 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 }
 
 void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
-   control.get_authorization_manager().check_authorization( trx.actions,
-                                                            {},
-                                                            true,
-                                                            {},
-                                                            flat_set<permission_level>(perm.begin(), perm.end()) );
+   control.get_authorization_manager()
+          .check_authorization( trx.actions,
+                                {},
+                                {perm.begin(), perm.end()},
+                                fc::microseconds(0),
+                                std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                false
+                              );
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {

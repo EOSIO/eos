@@ -1145,11 +1145,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
       ("type", "transfer")
       ("requirement", "second"),
       30, 3),
-      transaction_exception,
-      [] (const transaction_exception &e)->bool {
-         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (3 sec)");
-         return true;
-      }
+      insufficient_delay_exception,
+      fc_exception_message_starts_with("authorization imposes a delay")
    );
 
    // this transaction will be delayed 20 blocks
@@ -1340,11 +1337,8 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
       ("code", eosio_token)
       ("type", "transfer"),
       30, 7),
-      transaction_exception,
-      [] (const transaction_exception &e)->bool {
-         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
-         return true;
-      }
+      insufficient_delay_exception,
+      fc_exception_message_starts_with("authorization imposes a delay")
    );
 
    // this transaction will be delayed 20 blocks
@@ -1869,11 +1863,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
             ("auth",  authority(chain.get_public_key(tester_account, "first"))),
             30, 7
       ),
-      transaction_exception,
-      [] (const transaction_exception &e)->bool {
-         expect_assert_message(e, "transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)");
-         return true;
-      }
+      insufficient_delay_exception,
+      fc_exception_message_starts_with("authorization imposes a delay")
    );
 
    // this transaction will be delayed 20 blocks
@@ -2114,7 +2105,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
                                   chain::canceldelay{{N(tester), config::active_name}, trx_id});
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
-         BOOST_REQUIRE_THROW( chain.push_transaction(trx), fc::exception );
+         BOOST_REQUIRE_EXCEPTION( chain.push_transaction(trx), action_validate_exception,
+                                  fc_exception_message_is("canceling_auth in canceldelay action was not found as authorization in the original delayed transaction") );
       }
 
       // attempt canceldelay with "second" permission for delayed transfer of 1.0000 CUR
@@ -2125,6 +2117,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
          chain.set_transaction_headers(trx);
          trx.sign(chain.get_private_key(N(tester), "second"), chain_id_type());
          BOOST_REQUIRE_THROW( chain.push_transaction(trx), irrelevant_auth_exception );
+         BOOST_REQUIRE_EXCEPTION( chain.push_transaction(trx), irrelevant_auth_exception,
+                                  fc_exception_message_starts_with("canceldelay action declares irrelevant authority") );
       }
 
       // canceldelay with "active" permission for delayed transfer of 1.0000 CUR
@@ -2295,11 +2289,8 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_create ) { try {
                         ("permission", "first")
                         ("parent", "active")
                         ("auth",  authority(chain.get_public_key(tester_account, "first"), 50*86400)) ), // 50 days delay
-      chain::action_validate_exception,
-      [&](const chain::transaction_exception& e) {
-         expect_assert_message(e, "Cannot set delay longer than max_transacton_delay");
-         return true;
-      }
+      action_validate_exception,
+      fc_exception_message_starts_with("Cannot set delay longer than max_transacton_delay")
    );
 } FC_LOG_AND_RETHROW() }
 

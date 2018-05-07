@@ -83,7 +83,8 @@ const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
 const static uint32_t   default_max_gen_trx_count              = 16;
 
-
+const static uint32_t   base_check_authorization_cpu_per_authorization      = 64;  // TODO: is this reasonable?
+const static uint32_t   base_authority_checker_cpu_per_permission           = 128; // TODO: is this reasonable?
 const static uint32_t   resource_processing_cpu_overhead_per_billed_account = 256; // TODO: is this reasonable?
 const static uint32_t   determine_payers_cpu_overhead_per_authorization     = 64;  // TODO: is this reasonable?
 const static uint32_t   ram_usage_validation_overhead_per_account           = 64;  // TODO: is this reasonable?

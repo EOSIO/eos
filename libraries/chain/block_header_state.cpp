@@ -169,7 +169,7 @@ namespace eosio { namespace chain {
        FC_ASSERT( itr->second <= result.block_num - h.confirmed, "producer double-confirming known range" );
     }
 
-    // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mistmatch block merkle root" );
+    // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mismatch block merkle root" );
 
      /// below this point is state changes that cannot be validated with headers alone, but never-the-less,
      /// must result in header state changes
