@@ -195,22 +195,12 @@ class privileged_api : public context_aware_api {
 
 };
 
-/*
-class checktime_api : public context_aware_api {
-public:
-   explicit checktime_api( apply_context& ctx )
-   :context_aware_api(ctx,true){}
-
-   void checktime(uint32_t instruction_count) {
-      context.checktime(instruction_count);
-   }
-};
-*/
-
 class softfloat_api : public context_aware_api {
    public:
       // TODO add traps on truncations for special cases (NaN or outside the range which rounds to an integer)
-      using context_aware_api::context_aware_api;
+      softfloat_api( apply_context& ctx )
+      :context_aware_api(ctx, true) {}
+
       // float binops
       float _eosio_f32_add( float a, float b ) {
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );

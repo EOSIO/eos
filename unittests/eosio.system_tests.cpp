@@ -69,6 +69,50 @@ public:
       */
    }
 
+
+   void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(eosio) ) {
+      for( auto a : accounts ) {
+         create_account_with_resources( a, creator );
+      }
+   }
+
+   transaction_trace_ptr create_account_with_resources( account_name a, account_name creator ) {
+      signed_transaction trx;
+      set_transaction_headers(trx);
+
+      authority owner_auth;
+      owner_auth =  authority( get_public_key( a, "owner" ) );
+
+      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                newaccount{
+                                   .creator  = creator,
+                                   .name     = a,
+                                   .owner    = owner_auth,
+                                   .active   = authority( get_public_key( a, "active" ) ),
+                                   .recovery = authority( get_public_key( a, "recovery" ) ),
+                                });
+
+      trx.actions.emplace_back( get_action( N(eosio), N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
+                                            mvo()
+                                            ("payer", creator)
+                                            ("receiver", a)
+                                            ("bytes", 8000) )
+                              );
+      trx.actions.emplace_back( get_action( N(eosio), N(stake), vector<permission_level>{{creator,config::active_name}},
+                                            mvo()
+                                            ("from", creator)
+                                            ("receiver", a)
+                                            ("stake_net_quantity", "10.0000 EOS" )
+                                            ("stake_cpu_quantity", "10.0000 EOS" )
+                                          )
+                                );
+
+      set_transaction_headers(trx);
+      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      return push_transaction( trx );
+
+
+   }
    transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig ) {
       signed_transaction trx;
       set_transaction_headers(trx);
@@ -96,6 +140,15 @@ public:
                                             ("receiver", a)
                                             ("quant", ramfunds) )
                               );
+
+      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+                                            mvo()
+                                            ("from", creator)
+                                            ("receiver", a)
+                                            ("stake_net_quantity", "10.0000 EOS" )
+                                            ("stake_cpu_quantity", "10.0000 EOS" )
+                                          )
+                                );
 
       set_transaction_headers(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
@@ -176,15 +229,15 @@ public:
          ("max_inline_action_depth", 4 + n)
          ("max_authority_depth", 6 + n)
          ("max_generated_transaction_count", 10 + n)
-         ("max_storage_size", (n % 10 + 1) * 1024 * 1024)
+         ("max_ram_size", (n % 10 + 1) * 1024 * 1024)
          ("percent_of_max_inflation_rate", 50 + n)
-         ("storage_reserve_ratio", 100 + n);
+         ("ram_reserve_ratio", 100 + n);
    }
 
    action_result regproducer( const account_name& acnt, int params_fixture = 1 ) {
       return push_action( acnt, N(regproducer), mvo()
                           ("producer",  acnt )
-                          ("producer_key", fc::raw::pack( get_public_key( acnt, "active" ) ) )
+                          ("producer_key", get_public_key( acnt, "active" ) )
                           ("url", "" )
       );
    }
@@ -215,7 +268,7 @@ public:
 
    fc::variant get_total_stake( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, act, N(userres), act );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "total_resources", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data );
    }
 
    fc::variant get_voter_info( const account_name& act ) {
@@ -263,18 +316,19 @@ fc::mutable_variant_object voter( account_name acct ) {
    return mutable_variant_object()
       ("owner", acct)
       ("proxy", name(0).to_string())
-      ("is_proxy", 0)
-      ("staked", asset())
-      ("unstaking", asset())
-      ("unstake_per_week", asset())
-      ("proxied_votes", 0)
       ("producers", variants() )
+      ("staked", int64_t(0))
+      ("last_vote_weight", double(0))
+      ("proxied_vote_weight", double(0))
+      ("is_proxy", 0)
       ("deferred_trx_id", 0)
-      ("last_unstake", 0);
+      ("last_unstake_time", fc::time_point_sec() )
+      ("unstaking", asset() )
+      ;
 }
 
 fc::mutable_variant_object voter( account_name acct, const string& vote_stake ) {
-   return voter( acct )( "staked", asset::from_string( vote_stake ) );
+   return voter( acct )( "staked", asset::from_string( vote_stake ).amount );
 }
 
 fc::mutable_variant_object proxy( account_name acct ) {
@@ -326,7 +380,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0000 EOS"), get_voter_info( "alice" ) );
 
-   auto bytes = total["storage_bytes"].as_uint64();
+   auto bytes = total["ram_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
@@ -365,7 +419,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                                     ("receiver", "bob")
                                     ("stake_net_quantity", "10.0000 EOS")
                                     ("stake_cpu_quantity", "10.0000 EOS")
-                                    ("stake_storage_quantity", "10.0000 EOS"),
+                                    ("stake_ram_quantity", "10.0000 EOS"),
                                     false
                         )
    );
@@ -412,7 +466,9 @@ BOOST_FIXTURE_TEST_CASE( unstake_negative, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0001 EOS", "100.0001 EOS" ) );
 
    auto total = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0001 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0001 EOS"), total["net_weight"].as<asset>());
+   auto vinfo = get_voter_info("alice" );
+   wdump((vinfo));
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0002 EOS" ), get_voter_info( "alice" ) );
 
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
@@ -436,26 +492,26 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "200.0000 EOS", "100.0000 EOS" ) );
 
    auto total = get_total_stake( "alice" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
 
    //trying to unstake more net bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
-                        unstake( "alice", "200.0001 EOS", "0.0000 EOS", 0 )
+                        unstake( "alice", "200.0001 EOS", "0.0000 EOS" )
    );
 
    //trying to unstake more cpu bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked cpu bandwidth"),
-                        unstake( "alice", "000.0000 EOS", "100.0001 EOS", 0 )
+                        unstake( "alice", "0.0000 EOS", "100.0001 EOS" )
    );
 
    //check that nothing has changed
    total = get_total_stake( "alice" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
 } FC_LOG_AND_RETHROW()
 
 
@@ -465,9 +521,9 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), stake ( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
 
    auto total = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("620.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
    //all voting power goes to alice
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0000 EOS" ), get_voter_info( "alice" ) );
    //but not to bob
@@ -481,9 +537,9 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    issue( "carol", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "carol", "bob", "20.0000 EOS", "10.0000 EOS" ) );
    total = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("962.0000 EOS"), get_balance( "carol" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("230.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("970.0000 EOS"), get_balance( "carol" ) );
    REQUIRE_MATCHING_OBJECT( voter( "carol", "30.0000 EOS" ), get_voter_info( "carol" ) );
 
    //alice should not be able to unstake money staked by carol
@@ -496,10 +552,10 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    );
 
    total = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS"), total["net_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("230.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS"), total["cpu_weight"].as<asset>());
    //balance should not change after unsuccessfull attempts to unstake
-   BOOST_REQUIRE_EQUAL( asset::from_string("620.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
    //voting power too
    REQUIRE_MATCHING_OBJECT( voter( "alice", "300.0000 EOS" ), get_voter_info( "alice" ) );
    REQUIRE_MATCHING_OBJECT( voter( "carol", "30.0000 EOS" ), get_voter_info( "carol" ) );
@@ -589,37 +645,26 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
+   auto key =  fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
-                                               ("prefs", params)
+                                               ("url", "")
                         )
    );
 
    auto info = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
-   REQUIRE_MATCHING_OBJECT( params, info["prefs"] );
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(info["packed_key"]) );
 
 
    //call regproducer again to change parameters
    fc::variant params2 = producer_parameters_example(2);
 
-   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("PUB_R1_6EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
-                                               ("producer",  "alice")
-                                               ("producer_key", key2 )
-                                               ("prefs", params2)
-                        )
-   );
-
    info = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
    REQUIRE_MATCHING_OBJECT( params2, info["prefs"] );
-   BOOST_REQUIRE_EQUAL( string(key2.begin(), key2.end()), to_string(info["packed_key"]) );
 
    //unregister producer
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(unregprod), mvo()
@@ -647,18 +692,16 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
 BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key( N(alice), "active") )
+                                               ("url", "")
                         )
    );
    auto prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
 
    issue( "bob", "2000.0000 EOS",  config::system_account_name );
    issue( "carol", "3000.0000 EOS",  config::system_account_name );
@@ -681,7 +724,6 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( 111111, prod["total_votes"].as_uint64() );
    BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
 
    //carol makes stake
    BOOST_REQUIRE_EQUAL( success(), stake( "carol", "22.0000 EOS", "0.2222 EOS", "0.0000 EOS" ) );
@@ -731,7 +773,6 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    //check that the producer parameters stay the same after all
    BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
    //carol should receive funds in 3 days
    produce_block( fc::days(3) );
    produce_block();
@@ -757,11 +798,10 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester ) try
    //alice registers as a producer
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key( N(alice), "active") )
+                                               ("url", "")
                         )
    );
    //and then unregisters
@@ -810,11 +850,10 @@ BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, eosio_system_tester ) try 
    //alice becomes a producer
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key(N(alice), "active") )
+                                               ("url", "")
                         )
    );
 
@@ -839,8 +878,8 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key( N(alice), "active") )
+                                               ("url", "")
                         )
    );
 
@@ -877,8 +916,8 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    params = producer_parameters_example(2);
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key( N(alice), "active") )
+                                               ("url", "")
                         )
    );
    prod = get_producer_info( "alice" );
@@ -889,8 +928,8 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    params = producer_parameters_example(3);
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key( N(alice), "active") )
+                                               ("url","")
                         )
    );
    prod = get_producer_info( "alice" );
@@ -898,7 +937,6 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( 135791, prod["total_votes"].as_uint64() );
    //check parameters just in case
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -906,20 +944,20 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester ) try {
    //alice becomes a producer
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   auto key = get_public_key( N(alice), "active" );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key( N(alice), "active") )
+                                               ("url","")
                         )
    );
    //bob becomes a producer
    params = producer_parameters_example(2);
-   key = fc::raw::pack( get_public_key( N(bob), "active" ) );
+   key = get_public_key( N(bob), "active" );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(regproducer), mvo()
                                                ("producer",  "bob")
-                                               ("producer_key", key )
-                                               ("prefs", params)
+                                               ("producer_key", get_public_key( N(alice), "active") )
+                                               ("url","")
                         )
    );
 
@@ -1049,7 +1087,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_stake_unstake_keeps_proxy_flag, eosio_system_test
 
 
 BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) try {
-   create_accounts( {  N(producer1), N(producer2), N(producer3) } );
+   create_accounts_with_resources( {  N(producer1), N(producer2), N(producer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 3) );
@@ -1128,27 +1166,19 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   issue( "alice", "100.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), get_balance( "alice" ) );
+   issue( "alice", "10000.0000 EOS", config::system_account_name);
+   BOOST_REQUIRE_EQUAL( asset::from_string("10000.0000 EOS"), get_balance( "alice" ) );
 
    fc::variant params = producer_parameters_example(50);
-   vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
 
    // 1 block produced
-
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(regproducer), mvo()
-                                              ("producer",  "alice")
-                                              ("producer_key", key )
-                                              ("prefs", params)
-                                              )
-                       );
+   BOOST_REQUIRE_EQUAL(success(), regproducer(N(alice)));
 
    auto prod = get_producer_info( N(alice) );
 
    BOOST_REQUIRE_EQUAL("alice", prod["owner"].as_string());
    BOOST_REQUIRE_EQUAL(0, prod["total_votes"].as_uint64());
    REQUIRE_EQUAL_OBJECTS(params, prod["prefs"]);
-   BOOST_REQUIRE_EQUAL(string(key.begin(), key.end()), to_string(prod["packed_key"]));
 
 
    issue("bob", "2000.0000 EOS", config::system_account_name);
@@ -1182,7 +1212,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
 
 
 BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system_tester ) try {
-   create_accounts( { N(donald), N(producer1), N(producer2), N(producer3) } );
+   create_accounts_with_resources( { N(donald), N(producer1), N(producer2), N(producer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 3) );
@@ -1458,7 +1488,7 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
 }
 
 BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) try {
-   create_accounts( {  N(producer1), N(producer2), N(producer3) } );
+   create_accounts_with_resources( {  N(producer1), N(producer2), N(producer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 3) );

@@ -170,6 +170,13 @@ namespace eosio { namespace chain {
    using bytes               = vector<char>;
 
 
+   /**
+    *  Extentions are prefixed with type and are a buffer that can be 
+    *  interpreted by code that is aware and ignored by unaware code.
+    */
+   typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
+
+
 } }  // eosio::chain
 
 

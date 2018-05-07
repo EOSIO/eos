@@ -38,6 +38,8 @@ namespace eosio { namespace chain {
 
       eosio::chain::abi_def get_abi()const {
          eosio::chain::abi_def a;
+         FC_ASSERT( abi.size() != 0, "No ABI set on account ${n}", ("n",name) );
+
          fc::datastream<const char*> ds( abi.data(), abi.size() );
          fc::raw::unpack( ds, a );
          return a;

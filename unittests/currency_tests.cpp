@@ -558,29 +558,6 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
       BOOST_CHECK_EQUAL(1000000, get_balance(N(alice)).amount);
    }
 
-   // transfer from alice to bob using no decimal point
-   {
-      auto trace = transfer(N(alice), N(bob), "13 CUR");
-
-      BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
-      BOOST_CHECK_EQUAL(asset::from_string("13.0000 CUR"), get_balance(N(bob)));
-      BOOST_CHECK_EQUAL(asset::from_string("87.0000 CUR"), get_balance(N(alice)));
-   }
-
-   // transfer from bob to carl using lower precision
-   {
-      auto trace = transfer(N(bob), N(carl), "2.01 CUR");
-
-      BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
-      BOOST_CHECK_EQUAL(asset::from_string("2.0100 CUR"),  get_balance(N(carl)));
-      BOOST_CHECK_EQUAL(asset::from_string("10.9900 CUR"), get_balance(N(bob)));
-   }
-
-   // transfer using higher precision fails
-   {
-      BOOST_REQUIRE_EXCEPTION( transfer(N(alice), N(carl), "5.34567 CUR"), fc::assert_exception,
-                               eosio_assert_message_is("asset symbol has higher precision than expected") );
-   }
 
    // transfer using different symbol name fails
    {
@@ -592,30 +569,9 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
       auto trace = issue(N(alice), "25.0256 CUR");
       
       BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
-      BOOST_CHECK_EQUAL(asset::from_string("112.0256 CUR"), get_balance(N(alice)));
+      BOOST_CHECK_EQUAL(asset::from_string("125.0256 CUR"), get_balance(N(alice)));
    }
 
-   // issue to alice again using lower precision
-   {
-      auto trace = issue(N(alice), "21.03 CUR");
-
-      BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
-      BOOST_CHECK_EQUAL(asset::from_string("133.0556 CUR"), get_balance(N(alice)));
-   }
-
-   // no decimal point
-   {
-      auto trace = issue(N(alice), "67 CUR");
-
-      BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
-      BOOST_CHECK_EQUAL(asset::from_string("200.0556 CUR"), get_balance(N(alice)));
-   }
-
-   // issue using higher precision fails
-   {
-      BOOST_REQUIRE_EXCEPTION(issue(N(alice), "5.340067 CUR"), fc::assert_exception,
-                              eosio_assert_message_is("asset symbol has higher precision than expected") );
-   }
 
 } FC_LOG_AND_RETHROW() /// test_currency
 

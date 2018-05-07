@@ -526,12 +526,12 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    (table 0 anyfunc)
    (memory $0 1)
    (export "apply" (func $apply))
-   (func $i64_trunc_u_f64 (param $0 f64) (result i64) (i64.trunc_u/f64 (get_local $0)))
-   (func $test (param $0 i64))
+   (func $test1 (param $0 i64))
+   (func $test2 (param $0 i64) (result i64) (i64.add (get_local $0) (i64.const 32)))
    (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
    )=====";
    for (int i = 0; i < 1024; ++i) {
-      code += "(call $test (call $i64_trunc_u_f64 (f64.const 1)))\n";
+      code += "(call $test1 (call $test2(i64.const 1)))\n";
    }
    code += "))";
 
@@ -545,6 +545,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
                     + config::base_check_authorization_cpu_per_authorization );
    start += config::resource_processing_cpu_overhead_per_billed_account;
    start /= 1024;
+   start += 3077; // injected checktime amount
    --start;
    wdump((start));
    uint32_t end   = start + 5;
@@ -612,7 +613,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
    while (count < 4) {
       signed_transaction trx;
 
-      for (int i = 0; i < 100; ++i) {
+      for (int i = 0; i < 1000; ++i) {
          action act;
          act.account = N(f_tests);
          act.name = N() + (i * 16);
@@ -1488,7 +1489,8 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       if (max_net_usage) trx.max_net_usage_words = max_net_usage;
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       try {
-         push_transaction(trx);
+         packed_transaction ptrx(trx);
+         push_transaction(ptrx);
          produce_blocks(1);
          return true;
       } catch (tx_net_usage_exceeded &) {
@@ -1498,7 +1500,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       }
    };
    BOOST_REQUIRE_EQUAL(true, check(1024, 0)); // default behavior
-   BOOST_REQUIRE_EQUAL(false, check(1024, 1000)); // transaction max_net_usage too small
+   BOOST_REQUIRE_EQUAL(false, check(1024, 100)); // transaction max_net_usage too small
    BOOST_REQUIRE_EQUAL(false, check(10240, 0)); // larger than global maximum
 
 } FC_LOG_AND_RETHROW()
@@ -1539,7 +1541,8 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
       set_transaction_headers(trx);
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       try {
-         push_transaction(trx);
+         packed_transaction ptrx(trx);
+         push_transaction(ptrx );
          produce_blocks(1);
          return true;
       } catch (tx_net_usage_exceeded &) {

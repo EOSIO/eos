@@ -19,42 +19,42 @@ namespace eosiosystem {
    using eosio::const_mem_fun;
 
    struct eosio_parameters : eosio::blockchain_parameters {
-      uint64_t          max_storage_size = 64ll*1024 * 1024 * 1024;
-      uint32_t          percent_of_max_inflation_rate = 0;
-      uint32_t          storage_reserve_ratio = 100;      // ratio * 10000
+      uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_storage_size)(percent_of_max_inflation_rate)(storage_reserve_ratio) )
+      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
    };
 
    struct eosio_global_state : eosio_parameters {
-      uint64_t free_ram()const { return max_storage_size - total_storage_bytes_reserved; }
+      uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
-      uint64_t             total_storage_bytes_reserved = 0;
-      eosio::asset         total_storage_stake;
-      eosio::asset         payment_per_block;
-      eosio::asset         payment_to_eos_bucket;
+      uint64_t             total_ram_bytes_reserved = 0;
+      eosio::asset         total_ram_stake;
 
-      time                 first_block_time_in_cycle = 0;
-      uint32_t             blocks_per_cycle = 0;
-      time                 last_bucket_fill_time = 0;
-
+      block_timestamp      last_producer_schedule_update = 0;
+      block_timestamp      last_pervote_bucket_fill = 0;
       eosio::asset         eos_bucket;
+      eosio::asset         savings;
+      checksum160          last_producer_schedule_id;
+
+      int64_t              total_activiated_stake = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake)
-                                (payment_per_block)(payment_to_eos_bucket)(first_block_time_in_cycle)(blocks_per_cycle)
-                                (last_bucket_fill_time)(eos_bucket) )
+      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
+                                (last_producer_schedule_update)
+                                (last_pervote_bucket_fill)
+                                (eos_bucket)(savings)(last_producer_schedule_id)(total_activiated_stake) )
    };
 
    struct producer_info {
       account_name          owner;
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
-      eosio::asset          per_block_payments;
+      uint32_t              produced_blocks;
       time                  last_rewards_claim = 0;
-      time                  time_became_active = 0;
-      time                  last_produced_block_time = 0;
+      uint16_t              location = 0;
+      block_timestamp       time_became_active = 0;
+      block_timestamp       last_produced_block_time = 0;
 
       uint64_t    primary_key()const { return owner;                        }
       double      by_votes()const    { return -total_votes;                 }
@@ -62,7 +62,7 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)
-                        (per_block_payments)(last_rewards_claim)
+                        (produced_blocks)(last_rewards_claim)
                         (time_became_active)(last_produced_block_time) )
    };
 
@@ -70,7 +70,7 @@ namespace eosiosystem {
       account_name                owner = 0; /// the voter
       account_name                proxy = 0; /// the proxy set by the voter, if any
       std::vector<account_name>   producers; /// the producers approved by this voter if no proxy set
-      uint64_t                    staked = 0;
+      int64_t                     staked = 0;
 
       /**
        *  Every time a vote is cast we must first "undo" the last vote weight, before casting the
@@ -106,7 +106,7 @@ namespace eosiosystem {
 
    typedef eosio::singleton<N(global), eosio_global_state> global_state_singleton;
 
-   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
+   //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
    static constexpr uint64_t     system_token_symbol = S(4,EOS);
 
@@ -178,7 +178,7 @@ namespace eosiosystem {
 
          void unregprod( const account_name producer );
 
-         void setparams( uint64_t max_storage_size, uint32_t storage_reserve_ratio );
+         void setram( uint64_t max_ram_size );
 
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
 
@@ -188,9 +188,11 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
       private:
-         eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
+         eosio::asset payment_per_block( double rate, const eosio::asset& token_supply );
 
-         void update_elected_producers(time cycle_time);
+         eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket );
+
+         void update_elected_producers( block_timestamp timestamp );
 
          // Implementation details:
 

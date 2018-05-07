@@ -221,12 +221,19 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
+      auto c = packed_transaction::none;
+
+      if( fc::raw::pack_size(trx) > 1000 )
+      {
+         wdump((fc::raw::pack_size(trx)));
+         c = packed_transaction::zlib;
+      }
+
+      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx,c), deadline );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
-
 
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
@@ -299,11 +306,11 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration)(delay_sec) ) }
 
    action base_tester::get_action( account_name code, action_name acttype, vector<permission_level> auths,
-                                   const variant_object& data )const {
-      const auto& acnt = control->db().get<account_object,by_name>(code);
+                                   const variant_object& data )const { try {
+      const auto& acnt = control->get_account(code);
       auto abi = acnt.get_abi();
       chain::abi_serializer abis(abi);
-      auto a = control->db().get<account_object,by_name>(code).get_abi();
+    //  auto a = control->get_account(code).get_abi();
 
       string action_type_name = abis.get_action_type(acttype);
       FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
@@ -315,7 +322,8 @@ namespace eosio { namespace testing {
       act.authorization = auths;
       act.data = abis.variant_to_binary(action_type_name, data);
       return act;
-   }
+   } FC_CAPTURE_AND_RETHROW() }
+
    transaction_trace_ptr base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
@@ -526,12 +534,12 @@ namespace eosio { namespace testing {
    }
 
 
-   void base_tester::set_code( account_name account, const char* wast ) try {
-      set_code(account, wast_to_wasm(wast));
+   void base_tester::set_code( account_name account, const char* wast, const private_key_type* signer  ) try {
+      set_code(account, wast_to_wasm(wast), signer);
    } FC_CAPTURE_AND_RETHROW( (account) )
 
 
-   void base_tester::set_code( account_name account, const vector<uint8_t> wasm ) try {
+   void base_tester::set_code( account_name account, const vector<uint8_t> wasm, const private_key_type* signer ) try {
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 setcode{
@@ -542,12 +550,16 @@ namespace eosio { namespace testing {
                                 });
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      if( signer ) {
+         trx.sign( *signer, chain_id_type()  );
+      } else {
+         trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      }
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account) )
 
 
-   void base_tester::set_abi( account_name account, const char* abi_json) {
+   void base_tester::set_abi( account_name account, const char* abi_json, const private_key_type* signer ) {
       auto abi = fc::json::from_string(abi_json).template as<abi_def>();
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
@@ -557,7 +569,11 @@ namespace eosio { namespace testing {
                                 });
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      if( signer ) {
+         trx.sign( *signer, chain_id_type()  );
+      } else {
+         trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      }
       push_transaction( trx );
    }
 

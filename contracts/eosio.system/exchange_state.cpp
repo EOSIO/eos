@@ -29,6 +29,12 @@ namespace eosiosystem {
       real_type ONE(1.0);
 
 
+     // potentially more accurate: 
+     // The functions std::expm1 and std::log1p are useful for financial calculations, for example, 
+     // when calculating small daily interest rates: (1+x)n
+     // -1 can be expressed as std::expm1(n * std::log1p(x)). 
+     // real_type T = C * std::expm1( F * std::log1p(E/R) );
+      
       real_type T = C * (std::pow( ONE + E/R, F) - ONE);
       //print( "T: ", T, "\n");
       int64_t out = int64_t(T);

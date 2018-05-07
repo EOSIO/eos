@@ -21,6 +21,7 @@ namespace eosio { namespace chain {
    {
       trace->id = id;
       executed.reserve( trx.total_actions() );
+      FC_ASSERT( trx.transaction_extensions.size() == 0, "we don't support any extensions yet" );
    }
 
    void transaction_context::init(uint64_t initial_net_usage, uint64_t initial_cpu_usage )
@@ -54,6 +55,7 @@ namespace eosio { namespace chain {
 
       eager_net_limit = max_net;
       eager_cpu_limit = max_cpu;
+      //idump((eager_cpu_limit)(max_cpu));
 
       // Update usage values of accounts to reflect new time
       auto& rl = control.get_mutable_resource_limits_manager();
@@ -68,6 +70,7 @@ namespace eosio { namespace chain {
       }
       if( block_cpu_limit < eager_cpu_limit ) {
          eager_cpu_limit = block_cpu_limit;
+         //idump((eager_cpu_limit)(max_cpu));
          cpu_limit_due_to_block = true;
       }
 
@@ -85,6 +88,7 @@ namespace eosio { namespace chain {
 
       eager_net_limit = max_net;
       eager_cpu_limit = max_cpu;
+      //idump((eager_cpu_limit)(max_cpu));
       net_limit_due_to_block = false;
       cpu_limit_due_to_block = false;
 
@@ -95,8 +99,9 @@ namespace eosio { namespace chain {
             eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
 
          auto cpu_limit = rl.get_account_cpu_limit(a);
-         if( cpu_limit >= 0 )
+         if( cpu_limit >= 0 ) {
             eager_cpu_limit = std::min( eager_cpu_limit, static_cast<uint64_t>(cpu_limit) ); // reduce max_cpu to the amount the account is able to pay
+         }
       }
 
       initial_max_billable_cpu = eager_cpu_limit; // Possibly used for hard failure purposes
@@ -104,7 +109,9 @@ namespace eosio { namespace chain {
       eager_net_limit += cfg.net_usage_leeway;
       eager_net_limit = std::min(eager_net_limit, max_net);
       eager_cpu_limit += cfg.cpu_usage_leeway;
+    //  idump((eager_cpu_limit)(max_cpu));
       eager_cpu_limit = std::min(eager_cpu_limit, max_cpu);
+    //  idump((eager_cpu_limit)(max_cpu));
 
       if( block_net_limit < eager_net_limit ) {
          eager_net_limit = block_net_limit;
@@ -118,11 +125,13 @@ namespace eosio { namespace chain {
       // Round down network and CPU usage limits so that comparison to actual usage is more efficient
       eager_net_limit = (eager_net_limit/8)*8;       // Round down to nearest multiple of word size (8 bytes)
       eager_cpu_limit = (eager_cpu_limit/1024)*1024; // Round down to nearest multiple of 1024
+      //idump((eager_cpu_limit));
 
       if( initial_net_usage > 0 )
          check_net_usage();  // Fail early if current net usage is already greater than the calculated limit
       check_cpu_usage(); // Fail early if current CPU usage is already greater than the calculated limit
 
+      //idump((eager_cpu_limit));
       is_initialized = true;
    }
 
@@ -213,6 +222,7 @@ namespace eosio { namespace chain {
 
       eager_net_limit = max_net;
       eager_cpu_limit = max_cpu;
+
       net_limit_due_to_block = false;
       cpu_limit_due_to_block = false;
 
@@ -300,8 +310,8 @@ namespace eosio { namespace chain {
                        ("actual_cpu_usage", cpu_usage)("cpu_usage_limit", max_cpu) );
          } else {
             EOS_THROW( tx_cpu_usage_exceeded,
-                       "cpu usage of transaction is too high: ${actual_cpu_usage} > ${cpu_usage_limit}",
-                       ("actual_cpu_usage", cpu_usage)("cpu_usage_limit", max_cpu) );
+                       "cpu usage of transaction is too high: ${actual_cpu_usage} > ${eager_cpu_limit}",
+                       ("actual_cpu_usage", cpu_usage)("cpu_usage_limit", max_cpu)("eager_cpu_limit", eager_cpu_limit) );
          }
       }
    }
