@@ -45,6 +45,7 @@ namespace eosiosystem {
          if( producer_key != prod->producer_key ) {
              _producers.modify( prod, producer, [&]( producer_info& info ){
                   info.producer_key = producer_key;
+                  info.url = url;
              });
          }
       } else {
@@ -52,6 +53,7 @@ namespace eosiosystem {
                info.owner       = producer;
                info.total_votes = 0;
                info.producer_key =  producer_key;
+               info.url         = url;
          });
       }
    }
