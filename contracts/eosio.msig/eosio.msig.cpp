@@ -1,5 +1,6 @@
 #include <eosio.msig/eosio.msig.hpp>
 #include <eosiolib/action.hpp>
+#include <eosiolib/permission.hpp>
 
 namespace eosio {
 
@@ -9,7 +10,7 @@ because parsing data in the dispatcher uses too much CPU in case if proposed tra
 
 If we use dispatcher the function signature should be:
 
-void multisig::propose( account_name proposer, 
+void multisig::propose( account_name proposer,
                         name proposal_name,
                         vector<permission_level> requested,
                         transaction  trx)
@@ -33,13 +34,18 @@ void multisig::propose() {
    ds >> trx_header;
 
    require_auth( proposer );
-   eosio_assert( trx_header.expiration > now(), "transaction expired" );
+   eosio_assert( trx_header.expiration >= now(), "transaction expired" );
    //eosio_assert( trx_header.actions.size() > 0, "transaction must have at least one action" );
 
    proposals proptable( _self, proposer );
    eosio_assert( proptable.find( proposal_name ) == proptable.end(), "proposal with the same name exists" );
 
-   check_auth( buffer+trx_pos, size-trx_pos, requested );
+   bytes packed_requested = pack(requested);
+   auto res = ::check_transaction_authorization( buffer+trx_pos, size-trx_pos,
+                                                 (const char*)0, 0,
+                                                 packed_requested.data(), packed_requested.size()
+                                               );
+   eosio_assert( res >= 0, "transaction authorization failed" );
 
    proptable.emplace( proposer, [&]( auto& prop ) {
       prop.proposal_name       = proposal_name;
@@ -57,7 +63,7 @@ void multisig::approve( account_name proposer, name proposal_name, permission_le
 
    auto itr = std::find( prop_it->requested_approvals.begin(), prop_it->requested_approvals.end(), level );
    eosio_assert( itr != prop_it->requested_approvals.end(), "approval is not on the list of requested approvals" );
- 
+
    proptable.modify( prop_it, proposer, [&]( auto& mprop ) {
       mprop.provided_approvals.push_back( level );
       mprop.requested_approvals.erase( itr );
@@ -103,11 +109,22 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    transaction_header trx_header;
    datastream<const char*> ds( prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
    ds >> trx_header;
+   eosio_assert( trx_header.expiration >= now(), "transaction expired" );
+
+   // Updating expiration is not necessary because the expiration field of a deferred transaction is modified to be valid anyway
+   /*
    trx_header.expiration = now() + 60;
    ds.seekp(0);
    ds << trx_header;
+   */
 
-   check_auth( prop_it->packed_transaction, prop_it->provided_approvals );
+   bytes packed_provided_approvals = pack(prop_it->provided_approvals);
+   auto res = ::check_transaction_authorization( prop_it->packed_transaction.data(), prop_it->packed_transaction.size(),
+                                                 (const char*)0, 0,
+                                                 packed_provided_approvals.data(), packed_provided_approvals.size()
+                                               );
+   eosio_assert( res >= 0, "transaction authorization failed" );
+
    send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
 
    proptable.erase(prop_it);

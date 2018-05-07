@@ -40,9 +40,6 @@ namespace eosio { namespace chain { namespace plugin_interface {
       // synchronously push a block/trx to a single provider
       using incoming_block_sync       = method_decl<chain_plugin_interface, void(const signed_block_ptr&), first_provider_policy>;
       using incoming_transaction_sync = method_decl<chain_plugin_interface, transaction_trace_ptr(const packed_transaction_ptr&), first_provider_policy>;
-
-      // start the "best" coordinator
-      using start_coordinator      = method_decl<chain_plugin_interface, void(), first_provider_policy>;
    }
 
 } } }

@@ -9,6 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <eosio/chain/authority.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio {
 
@@ -96,6 +97,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    wm.lock("test");
    BOOST_CHECK(wm.list_wallets().at(0).find("*") == std::string::npos);
    wm.unlock("test", pw);
+   BOOST_CHECK_THROW(wm.unlock("test", pw), chain::wallet_unlocked_exception);
    BOOST_CHECK(wm.list_wallets().at(0).find("*") != std::string::npos);
    wm.import_key("test", key1);
    BOOST_CHECK_EQUAL(2, wm.list_keys().size());

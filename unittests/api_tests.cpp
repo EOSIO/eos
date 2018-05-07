@@ -824,7 +824,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
             return expect_assert_message(e, "inline action recursion depth reached");
          }
       );
-   
+
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
@@ -1468,7 +1468,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    set_code( N(testapi), test_api_wast );
    produce_blocks(1);
 
-   auto get_result_uint64 = [&]() -> uint64_t {
+   auto get_result_int64 = [&]() -> int64_t {
       const auto& db = control->db();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(testapi), N(testapi), N(testapi)));
 
@@ -1480,7 +1480,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
       FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
 
       FC_ASSERT( 0 != itr->value.size(), "unexpected result size");
-      return *reinterpret_cast<const uint64_t *>(itr->value.data());
+      return *reinterpret_cast<const int64_t *>(itr->value.data());
    };
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
@@ -1492,7 +1492,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( uint64_t(1), get_result_uint64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1503,9 +1503,9 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
 
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(testapi),
          .permission = N(active),
@@ -1513,11 +1513,9 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
             get_public_key(N(testapi), "active"),
             public_key_type(string("EOS7GfRtyDWWgxV88a5TRaYY59XmHptyfjsFmHHfioGNJtPjpSmGX"))
          }
-      })), tx_irrelevant_sig,
-       [](const tx_irrelevant_sig& e) {
-         return expect_assert_message(e, "irrelevant signatures from these keys: [\"EOS7GfRtyDWWgxV88a5TRaYY59XmHptyfjsFmHHfioGNJtPjpSmGX\"]");
-      }
+      })
    );
+   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() ); // Failure due to irrelevant signatures
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1528,7 +1526,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1537,7 +1535,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          .pubkeys    = {}
       })
    );
-   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1548,7 +1546,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
 
    /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",

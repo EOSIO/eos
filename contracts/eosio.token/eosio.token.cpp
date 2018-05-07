@@ -46,7 +46,7 @@ void token::issue( account_name to, asset quantity, string memo )
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must issue positive quantity" );
 
-    eosio_assert( quantity.symbol == st.supply.symbol, "symbol precision mistmatch" );
+    eosio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
     eosio_assert( quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
 
     statstable.modify( st, 0, [&]( auto& s ) {
@@ -79,7 +79,7 @@ void token::transfer( account_name from,
 
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must transfer positive quantity" );
-    eosio_assert( quantity.symbol == st.supply.symbol, "symbol precision mistmatch" );
+    eosio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
 
 
     sub_balance( from, quantity, st );

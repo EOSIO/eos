@@ -761,21 +761,79 @@ class permission_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      bool check_authorization( account_name account, permission_name permission, array_ptr<char> packed_pubkeys, size_t datalen) {
+      void unpack_provided_keys( flat_set<public_key_type>& keys, const char* pubkeys_data, size_t pubkeys_size ) {
+         keys.clear();
+         if( pubkeys_size == 0 ) return;
 
-         vector<public_key_type> pub_keys;
-         datastream<const char*> ds( packed_pubkeys, datalen );
-         while(ds.remaining()) {
-            public_key_type pub;
-            fc::raw::unpack(ds, pub);
-            pub_keys.emplace_back(pub);
-         }
+         keys = fc::raw::unpack<flat_set<public_key_type>>( pubkeys_data, pubkeys_size );
+      }
 
-         return context.control.get_authorization_manager().check_authorization(
-            account, permission,
-            {pub_keys.begin(), pub_keys.end()},
-            false
-         );
+      void unpack_provided_permissions( flat_set<permission_level>& permissions, const char* perms_data, size_t perms_size ) {
+         permissions.clear();
+         if( perms_size == 0 ) return;
+
+         permissions = fc::raw::unpack<flat_set<permission_level>>( perms_data, perms_size );
+      }
+
+      int64_t check_transaction_authorization( array_ptr<char> trx_data,     size_t trx_size,
+                                               array_ptr<char> pubkeys_data, size_t pubkeys_size,
+                                               array_ptr<char> perms_data,   size_t perms_size
+                                             )
+      {
+         transaction trx = fc::raw::unpack<transaction>( trx_data, trx_size );
+
+         flat_set<public_key_type> provided_keys;
+         unpack_provided_keys( provided_keys, pubkeys_data, pubkeys_size );
+
+         flat_set<permission_level> provided_permissions;
+         unpack_provided_permissions( provided_permissions, perms_data, perms_size );
+
+         try {
+            auto delay = context.control
+                                .get_authorization_manager()
+                                .check_authorization( trx.actions,
+                                                      provided_keys,
+                                                      provided_permissions,
+                                                      fc::seconds(trx.delay_sec),
+                                                      std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                                      false
+                                                    );
+            return delay.count();
+         } catch( const authorization_exception& e ) {}
+
+         return -1;
+      }
+
+      int64_t check_permission_authorization( account_name account, permission_name permission,
+                                              array_ptr<char> pubkeys_data, size_t pubkeys_size,
+                                              array_ptr<char> perms_data,   size_t perms_size,
+                                              uint64_t delay_us
+                                            )
+      {
+         EOS_ASSERT( delay_us <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
+                     action_validate_exception, "provided delay is too large" );
+
+         flat_set<public_key_type> provided_keys;
+         unpack_provided_keys( provided_keys, pubkeys_data, pubkeys_size );
+
+         flat_set<permission_level> provided_permissions;
+         unpack_provided_permissions( provided_permissions, perms_data, perms_size );
+
+         try {
+            auto delay = context.control
+                                .get_authorization_manager()
+                                .check_authorization( account,
+                                                      permission,
+                                                      provided_keys,
+                                                      provided_permissions,
+                                                      fc::microseconds(delay_us),
+                                                      std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                                      false
+                                                    );
+            return delay.count();
+         } catch( const authorization_exception& e ) {}
+
+         return -1;
       }
 };
 
@@ -1191,12 +1249,6 @@ class context_free_transaction_api : public context_aware_api {
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
          return context.get_action( type, index, buffer, buffer_size );
       }
-
-      void check_auth( array_ptr<char> trx_data, size_t trx_size, array_ptr<char> perm_data, size_t perm_size ) {
-         transaction trx = fc::raw::unpack<transaction>( trx_data, trx_size );
-         vector<permission_level> perm = fc::raw::unpack<vector<permission_level>>( perm_data, perm_size );
-         return context.check_auth( trx, perm );
-      }
 };
 
 class compiler_builtins : public context_aware_api {
@@ -1387,13 +1439,13 @@ class compiler_builtins : public context_aware_api {
          return softfloat_api::from_softfloat64(i32_to_f64(i));
       }
       void __floatsitf( float128_t& ret, int32_t i ) {
-         ret = i32_to_f128(i); 
+         ret = i32_to_f128(i);
       }
       void __floatditf( float128_t& ret, uint64_t a ) {
          ret = i64_to_f128( a );
       }
       void __floatunsitf( float128_t& ret, uint32_t i ) {
-         ret = ui32_to_f128(i); 
+         ret = ui32_to_f128(i);
       }
       void __floatunditf( float128_t& ret, uint64_t a ) {
          ret = ui64_to_f128( a );
@@ -1674,9 +1726,12 @@ REGISTER_INTRINSICS(crypto_api,
    (ripemd160,              void(int, int, int)           )
 );
 
+
 REGISTER_INTRINSICS(permission_api,
-   (check_authorization,  int(int64_t, int64_t, int, int))
+   (check_transaction_authorization, int64_t(int, int, int, int, int, int)                  )
+   (check_permission_authorization,  int64_t(int64_t, int64_t, int, int, int, int, int64_t) )
 );
+
 
 REGISTER_INTRINSICS(system_api,
    (abort,        void()         )
@@ -1721,7 +1776,6 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
    (get_action,             int (int, int, int, int) )
-   (check_auth,             void(int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(transaction_api,

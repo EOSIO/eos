@@ -80,22 +80,6 @@ namespace eosio {
       return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
    }
 
-   inline void check_auth(const bytes& trx_packed, const vector<permission_level>& permissions) {
-      auto perm_packed = pack(permissions);
-      ::check_auth( trx_packed.data(), trx_packed.size(), perm_packed.data(), perm_packed.size() );
-   }
-
-   inline void check_auth(const char *serialized_transaction, size_t size, const vector<permission_level>& permissions) {
-      auto perm_packed = pack(permissions);
-      ::check_auth( serialized_transaction, size, perm_packed.data(), perm_packed.size() );
-   }
-
-   inline void check_auth(const transaction& trx, const vector<permission_level>& permissions) {
-      auto trx_packed = pack(trx);
-      check_auth( trx_packed, permissions );
-      //return res > 0;
-   }
-
    ///@} transactioncpp api
 
 } // namespace eos
