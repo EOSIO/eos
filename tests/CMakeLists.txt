@@ -38,7 +38,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensus-validation-malicious-produc
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
-add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --only-bios --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO removed on slim: add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO removed on slim: add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 #if(BUILD_MONGO_DB_PLUGIN)

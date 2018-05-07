@@ -4,7 +4,6 @@ import testUtils
 
 import decimal
 import argparse
-import random
 import re
 
 ###############################################################
@@ -17,8 +16,8 @@ Print=testUtils.Utils.Print
 errorExit=testUtils.Utils.errorExit
 
 
-def cmdError(name, code=0, exitNow=False):
-    msg="FAILURE - %s%s" % (name, ("" if code == 0 else (" returned error code %d" % code)))
+def cmdError(name, cmdCode=0, exitNow=False):
+    msg="FAILURE - %s%s" % (name, ("" if cmdCode == 0 else (" returned error code %d" % cmdCode)))
     if exitNow:
         errorExit(msg, True)
     else:
@@ -50,7 +49,7 @@ parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upo
                     action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
-parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_false')
+parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -65,6 +64,7 @@ keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 dontKill=args.dont_kill
 prodCount=args.prod_count
+onlyBios=args.only_bios
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
@@ -94,7 +94,7 @@ try:
         cluster.killall()
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=True, dontKill=dontKill) is False:
+        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -193,7 +193,7 @@ try:
         expectedkeys.append(account.activePrivateKey)
     noMatch=list(set(expectedkeys) - set(actualKeys))
     if len(noMatch) > 0:
-        errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=true)
+        errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():
@@ -215,7 +215,7 @@ try:
     expectedkeys=[initaAccount.ownerPrivateKey]
     noMatch=list(set(expectedkeys) - set(actualKeys))
     if len(noMatch) > 0:
-        errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=true)
+        errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     node=cluster.getNode(0)
     if node is None:
@@ -238,14 +238,12 @@ try:
         errorExit("Failed to transfer funds %d from account %s to %s" % (
             transferAmount, initaAccount.name, testeraAccount.name))
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment when functional
-    # expectedAmount=transferAmount
-    # Print("Verify transfer, Expected: %d" % (expectedAmount))
-    # actualAmount=node.getAccountBalance(testeraAccount.name)
-    # if expectedAmount != actualAmount:
-    #     cmdError("FAILURE - transfer failed")
-    #     errorExit("Transfer verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+    expectedAmount=transferAmount
+    Print("Verify transfer, Expected: %s" % (expectedAmount))
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
+    if expectedAmount != actualAmount:
+        cmdError("FAILURE - transfer failed")
+        errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
     transferAmount="0.0100 EOS"
     Print("Force transfer funds %s from account %s to %s" % (
@@ -255,14 +253,12 @@ try:
         errorExit("Failed to force transfer funds %d from account %s to %s" % (
             transferAmount, initaAccount.name, testeraAccount.name))
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment when functional
-    # expectedAmount=975421
-    # Print("Verify transfer, Expected: %d" % (expectedAmount))
-    # actualAmount=node.getAccountBalance(testeraAccount.name)
-    # if expectedAmount != actualAmount:
-    #     cmdError("FAILURE - transfer failed")
-    #     errorExit("Transfer verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+    expectedAmount="97.5421 EOS"
+    Print("Verify transfer, Expected: %s" % (expectedAmount))
+    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
+    if expectedAmount != actualAmount:
+        cmdError("FAILURE - transfer failed")
+        errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
     Print("Create new account %s via %s" % (currencyAccount.name, initbAccount.name))
     transId=node.createAccount(currencyAccount, initbAccount, stakedDeposit=5000)
@@ -296,17 +292,12 @@ try:
             transferAmount, initaAccount.name, testeraAccount.name))
     transId=testUtils.Node.getTransId(trans)
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment when functional
-    # expectedAmount=975311+5000 # 5000 initial deposit
-    # Print("Verify transfer, Expected: %d" % (expectedAmount))
-    # actualAmount=node.getAccountBalance(currencyAccount.name)
-    # if actualAmount is None:
-    #     cmdError("%s get account currency" % (ClientName))
-    #     errorExit("Failed to retrieve balance for account %s" % (currencyAccount.name))
-    # if expectedAmount != actualAmount:
-    #     cmdError("FAILURE - transfer failed")
-    #     errorExit("Transfer verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+    expectedAmount="98.0311 EOS" # 5000 initial deposit
+    Print("Verify transfer, Expected: %s" % (expectedAmount))
+    actualAmount=node.getAccountEosBalanceStr(currencyAccount.name)
+    if expectedAmount != actualAmount:
+        cmdError("FAILURE - transfer failed")
+        errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
     # Pre-mature exit on slim branch. This will pushed futher out as code stablizes.
     testSuccessful=True
@@ -493,7 +484,6 @@ try:
         cmdError("%s get transaction trans_id" % (ClientName))
         errorExit("Failed to verify push message transaction id.")
 
-    # TODO need to update eosio.system contract to use new currency and update cleos and chain_plugin for interaction
     Print("read current contract balance")
     contract="currency"
     table="accounts"
