@@ -11,45 +11,34 @@ extern "C" {
  *  @defgroup database Database API
  *  @brief APIs that store and retreive data on the blockchain
  *  @ingroup contractdev
- *
+ *  
+ *  @details
  *  EOS.IO organizes data according to the following broad structure:
- *
  *  - **code** - the account name which has write permission
  *     - **scope** - an area where the data is stored
  *        - **table** - a name for the table that is being stored
  *           - **record** - a row in the table
- *
- *  Every transaction specifies the set of valid scopes that may be read and/or written
- *  to. The code that is running determines what can be written to; therefore, write operations
- *  do not allow you to specify/configure the code.
- *
- *  @note Attempts to read and/or write outside the valid scope and/or code sections will
- *  cause your transaction to fail.
- *
- *
- *  @section tabletypes table Types
- *  These are the supported table types identified by the number and
- *  size of the index:
- *
- *  1. @ref dbi64
- *
- *  The @ref databaseCpp provides a simple interface for storing any fixed-size struct as
- *  a database row.
- *
  */
 
 /**
  *  @defgroup databaseC Database C API
  *  @brief C APIs for interfacing with the database.
  *  @ingroup database
+ *  
+ *  @details Database C API provides low level interface to EOSIO database.
+ * 
+ *  @section tabletypes Supported Table Types
+ *  Following are the table types supported by the C API:
+ *  1. Primary Table
+ *    - 64-bit integer key
+ *  2. Secondary Index Table
+ *    - 64-bit integer key
+ *    - 128-bit integer key
+ *    - 256-bit integer key
+ *    - double key
+ *    - long double
+ *  @{
  */
-
-
- /**
-  *  @defgroup databaseC64BitIndex Single 64-bit Index Table
-  *  @brief C APIs for interfacing with a Single 64-bit Index Table.
-  *  @ingroup database
-  */
 
 /**
   *
@@ -108,7 +97,7 @@ void db_remove_i64(int32_t iterator);
   *  Get a record inside a primary 64-bit integer index table
   *
   *  @brief Get a record inside a primary 64-bit integer index table
-  *  @param Iterator - The iterator to the record
+  *  @param iterator - The iterator to the record
   *  @param data - The buffer which will be replaced with the retrieved record
   *  @param len - Size of the buffer
   *  @return size of the retrieved record
@@ -210,7 +199,7 @@ int32_t db_upperbound_i64(account_name code, account_name scope, table_name tabl
   *
   *  @brief Find the latest record inside a primary 64-bit integer index table
   *  @param code - The name of the owner of the table
-  *  @param code - The scope where the table resides
+  *  @param scope - The scope where the table resides
   *  @param table - The table name
   *  @return iterator to the last record
   */
@@ -503,7 +492,8 @@ int32_t db_idx128_end(account_name code, account_name scope, table_name table);
   *  @param table - The table name where the secondary index will be stored
   *  @param payer - The account that is paying for this storage
   *  @param id - The primary key of the record which secondary index to be stored
-  *  @param secondary - The pointer to the key of the secondary index to store
+  *  @param data - The pointer to the key of the secondary index to store
+  *  @param data_len - Size of the key of the secondary index to store
   *  @return iterator to the newly created secondary index
   */
 int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const void* data, uint32_t data_len );
@@ -515,7 +505,8 @@ int32_t db_idx256_store(account_name scope, table_name table, account_name payer
   *  @brief Update a record's secondary index inside a secondary 256-bit integer index table
   *  @param iterator - The iterator to the secondary index
   *  @param payer - The account that is paying for this storage
-  *  @param secondary - The pointer to the **new** key of the secondary index
+  *  @param data - The pointer to the **new** key of the secondary index
+  *  @param data_len - Size of the **new** key of the secondary index to store
   */
 void db_idx256_update(int32_t iterator, account_name payer, const void* data, uint32_t data_len);
 
@@ -558,10 +549,11 @@ int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
   *  @param code - The owner of the secondary index table
   *  @param scope - The scope where the secondary index resides
   *  @param table - The table where the secondary index resides
-  *  @param secondary - It will be replaced with the secondary index key
+  *  @param data - The buffer which will be replaced with the secondary index key
+  *  @param data_len - The buffer size
   *  @param primary - The record's primary key
   *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
+  *  @post The data param will contains the appropriate secondary index key
   *  @post The primary param will contains the record that corresponds to the appropriate secondary index
   *  @return iterator to the secondary index which contains the given record's primary key
   */
@@ -575,10 +567,11 @@ int32_t db_idx256_find_primary(account_name code, account_name scope, table_name
   *  @param code - The owner of the secondary index table
   *  @param scope - The scope where the secondary index resides
   *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key
+  *  @param data - The pointer to the secondary index key
+  *  @param data_len - Size of the secondary index key 
   *  @param primary - It will be replaced with the primary key of the record which the secondary index contains
   *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
+  *  @post The data param will contains the appropriate secondary index key
   *  @post The primary param will contains the record that corresponds to the appropriate secondary index
   *  @return iterator to the secondary index which contains the given secondary index key
   */
@@ -593,10 +586,11 @@ int32_t db_idx256_find_secondary(account_name code, account_name scope, table_na
   *  @param code - The owner of the secondary index table
   *  @param scope - The scope where the secondary index resides
   *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
+  *  @param data - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
+  *  @param data_len - Size of the secondary index key 
   *  @param primary - It will be replaced with the primary key of the record which the lowerbound secondary index contains
   *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the lowerbound secondary index key
+  *  @post The data param will contains the lowerbound secondary index key
   *  @post The primary param will contains the record that corresponds to the lowerbound secondary index
   *  @return iterator to the lowerbound secondary index
   */
@@ -611,10 +605,11 @@ int32_t db_idx256_lowerbound(account_name code, account_name scope, table_name t
   *  @param code - The owner of the secondary index table
   *  @param scope - The scope where the secondary index resides
   *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as upperbound pivot point, later on it will be replaced with the upperbound secondary index key
+  *  @param data - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
+  *  @param data_len - Size of the secondary index key 
   *  @param primary - It will be replaced with the primary key of the record which the upperbound secondary index contains
   *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the upperbound secondary index key
+  *  @post The data param will contains the upperbound secondary index key
   *  @post The primary param will contains the record that corresponds to the upperbound secondary index
   *  @return iterator to the upperbound secondary index
   */
@@ -908,4 +903,5 @@ int32_t db_idx_long_double_upperbound(account_name code, account_name scope, tab
   */
 int32_t db_idx_long_double_end(account_name code, account_name scope, table_name table);
 
+///@}
 }
