@@ -860,14 +860,13 @@ struct vote_producers_subcommand {
 };
 
 struct list_producers_subcommand {
-   bool print_json;
-   bool sort_names;
-   bool sort_votes;
+   bool print_json = false;
+   bool sort_names = false;
 
    list_producers_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
-      list_producers->add_flag("--sort-account-names,-n", sort_votes, localized("Sort by account names (default order is by votes)") );
+      list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
       list_producers->set_callback([this] {
             auto result = call(get_table_func, fc::mutable_variant_object("json", true)
                                ("code", name(config::system_account_name).to_string())
@@ -902,6 +901,9 @@ struct list_producers_subcommand {
                   std::cout << "No producers found" << std::endl;
                }
             } else {
+               if ( sort_names ) {
+                  FC_THROW("Sorting producers is not supported for JSON format");
+               }
                std::cout << fc::json::to_pretty_string(result)
                          << std::endl;
             }
