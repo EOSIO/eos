@@ -76,8 +76,6 @@ extern "C" {
      *  @brief Cancels a deferred transaction.
      *
      *  @param sender_id - The id of the sender
-     *  @param length - Data length
-     *  @param hash - `checksum256*` hash to compare to
      *
      *  @pre The deferred transaction ID exists.
      *  @pre The deferred transaction ID has not yet been published.
