@@ -24,7 +24,7 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
 void wallet_manager::check_timeout() {
    if (timeout_time != timepoint_t::max()) {
       const auto& now = std::chrono::system_clock::now();
-      if (now >= timeout_time + timeout) {
+      if (now >= timeout_time) {
          lock_all();
       }
       timeout_time = now + timeout;
@@ -154,6 +154,7 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
    }
    auto& w = wallets.at(name);
    if (!w->is_locked()) {
+      EOS_THROW(chain::wallet_unlocked_exception, "Wallet is already unlocked: ${w}", ("w", name));
       return;
    }
    w->unlock(password);

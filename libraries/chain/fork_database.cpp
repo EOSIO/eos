@@ -94,7 +94,7 @@ namespace eosio { namespace chain {
       idump((states.size()));
 
 
-      /// we don't normally indicate the head block as irreversible 
+      /// we don't normally indicate the head block as irreversible
       /// we cannot normally prune the lib if it is the head block because
       /// the next block needs to build off of the head block. We are exiting
       /// now so we can prune this block as irreversible before exiting.
@@ -263,7 +263,8 @@ namespace eosio { namespace chain {
       while( nitr != numidx.end() && (*nitr)->block_num == num ) {
          auto itr_to_remove = nitr;
          ++nitr;
-         remove( (*itr_to_remove)->id );
+         auto id = (*itr_to_remove)->id;
+         remove( id );
       }
    }
 

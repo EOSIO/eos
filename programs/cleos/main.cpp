@@ -554,6 +554,42 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
    }
 }
 
+asset to_asset( const string& code, const string& s ) {
+   static map<eosio::chain::symbol_code, eosio::chain::symbol> cache;
+   auto a = asset::from_string( s );
+   eosio::chain::symbol_code sym = a.sym.to_symbol_code();
+   auto it = cache.find( sym );
+   auto sym_str = a.symbol_name();
+   if ( it == cache.end() ) {
+      auto json = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
+                       ("code", code)
+                       ("symbol", sym_str)
+      );
+      auto obj = json.get_object();
+      auto obj_it = obj.find( sym_str );
+      if (obj_it != obj.end()) {
+         auto result = obj_it->value().as<eosio::chain_apis::read_only::get_currency_stats_result>();
+         auto p = cache.insert(make_pair( sym, result.max_supply.sym ));
+         it = p.first;
+      } else {
+         FC_THROW("Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
+      }
+   }
+   auto expected_symbol = it->second;
+   if ( a.decimals() < expected_symbol.decimals() ) {
+      auto factor = expected_symbol.precision() / a.precision();
+      auto a_old = a;
+      a = asset( a.amount * factor, expected_symbol );
+   } else if ( a.decimals() > expected_symbol.decimals() ) {
+      FC_THROW("Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
+   } // else precision matches
+   return a;
+}
+
+inline asset to_asset( const string& s ) {
+   return to_asset( "eosio.token", s );
+}
+
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
@@ -752,9 +788,9 @@ struct create_account_subcommand {
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
-               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, asset::from_string(buy_ram_eos))
+               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
-               action delegate = create_delegate( creator, account_name, asset::from_string(stake_net), asset::from_string(stake_cpu) );
+               action delegate = create_delegate( creator, account_name, to_asset(stake_net), to_asset(stake_cpu) );
                send_actions( { create, buyram, delegate } );
             } else {
                send_actions( { create } );
@@ -893,8 +929,8 @@ struct delegate_bandwidth_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
                   ("receiver", receiver_str)
-                  ("stake_net_quantity", stake_net_amount + " EOS")
-                  ("stake_cpu_quantity", stake_cpu_amount + " EOS");
+                  ("stake_net_quantity", to_asset(stake_net_amount))
+                  ("stake_cpu_quantity", to_asset(stake_cpu_amount));
                   wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
@@ -920,8 +956,8 @@ struct undelegate_bandwidth_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
                   ("receiver", receiver_str)
-                  ("unstake_net_quantity", unstake_net_amount + " EOS")
-                  ("unstake_cpu_quantity", unstake_cpu_amount + " EOS");
+                  ("unstake_net_quantity", to_asset(unstake_net_amount))
+                  ("unstake_cpu_quantity", to_asset(unstake_cpu_amount));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
       });
    }
@@ -942,7 +978,7 @@ struct buyram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("payer", from_str)
                ("receiver", receiver_str)
-               ("quant", asset::from_string(amount));
+               ("quant", to_asset(amount));
             send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
          });
    }
@@ -1135,7 +1171,7 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << "net bandwidth:" << std::endl;
       if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
          asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
-         auto net_others = asset::from_string(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+         auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
          std::cout << indent << "staked:" << std::setw(20) << net_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
                    << indent << "delegated:" << std::setw(17) << net_others
@@ -1153,7 +1189,7 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << "cpu bandwidth:" << std::endl;
       if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
          asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
-         auto cpu_others = asset::from_string(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+         auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
          std::cout << indent << "staked:" << std::setw(20) << cpu_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
                    << indent << "delegated:" << std::setw(17) << cpu_others
@@ -1661,7 +1697,7 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(con,sender, recipient, asset::from_string(amount), memo)});
+      send_actions({create_transfer(con,sender, recipient, to_asset(amount), memo)});
    });
 
    // Net subcommand

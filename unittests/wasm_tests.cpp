@@ -540,7 +540,9 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    produce_blocks(10);
 
    uint32_t start = config::default_per_signature_cpu_usage + config::default_base_per_transaction_cpu_usage;
-   start += 100 * (config::default_base_per_action_cpu_usage + config::determine_payers_cpu_overhead_per_authorization);
+   start += 100 * ( config::default_base_per_action_cpu_usage
+                    + config::determine_payers_cpu_overhead_per_authorization
+                    + config::base_check_authorization_cpu_per_authorization );
    start += config::resource_processing_cpu_overhead_per_billed_account;
    start /= 1024;
    start += 3077; // injected checktime amount

@@ -173,10 +173,10 @@ namespace eosio { namespace chain {
       published = control.pending_block_time();
       deadline = d;
       is_input = true;
-      init( initial_net_usage, initial_cpu_usage );
+      control.validate_expiration( trx );
       control.validate_tapos( trx );
       control.validate_referenced_accounts( trx );
-      control.validate_expiration( trx );
+      init( initial_net_usage, initial_cpu_usage );
       record_transaction( id, trx.expiration ); /// checks for dupes
    }
 
@@ -249,6 +249,11 @@ namespace eosio { namespace chain {
 
    void transaction_context::squash() {
       undo_session.squash();
+   }
+
+   void transaction_context::add_cpu_usage_and_check_time( uint32_t u ) {
+      add_cpu_usage( u );
+      check_time();
    }
 
    uint64_t transaction_context::add_action_cpu_usage( uint64_t u, bool context_free ) {

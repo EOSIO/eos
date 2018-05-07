@@ -9,7 +9,6 @@
 #include <eosio/history_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/validator_plugin/validator_plugin.hpp>
 #include <eosio/utilities/common.hpp>
 
 #include <fc/log/logger_config.hpp>
@@ -89,7 +88,7 @@ int main(int argc, char** argv)
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio/nodeos/data" );
       app().set_default_config_dir(root / "eosio/nodeos/config" );
-      if(!app().initialize<chain_plugin, http_plugin, validator_plugin, net_plugin, producer_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
          return -1;
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", eosio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));

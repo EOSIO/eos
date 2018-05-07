@@ -4,7 +4,6 @@ add_subdirectory(http_plugin)
 add_subdirectory(chain_plugin)
 add_subdirectory(chain_api_plugin)
 add_subdirectory(producer_plugin)
-add_subdirectory(validator_plugin)
 add_subdirectory(history_plugin)
 add_subdirectory(history_api_plugin)
 

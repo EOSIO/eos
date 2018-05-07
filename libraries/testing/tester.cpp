@@ -264,11 +264,11 @@ namespace eosio { namespace testing {
                                                    uint32_t delay_sec
                                                  )
 
-   { try {
+   {
       vector<permission_level> auths;
-      auths.push_back(permission_level{actor, config::active_name});
-      return push_action(code, acttype, auths, data, expiration, delay_sec);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
+      auths.push_back( permission_level{actor, config::active_name} );
+      return push_action( code, acttype, auths, data, expiration, delay_sec );
+   }
 
    transaction_trace_ptr base_tester::push_action( const account_name& code,
                                                    const action_name& acttype,
@@ -278,13 +278,13 @@ namespace eosio { namespace testing {
                                                    uint32_t delay_sec
                                                  )
 
-   { try {
+   {
       vector<permission_level> auths;
       for (const auto& actor : actors) {
-         auths.push_back(permission_level{actor, config::active_name});
+         auths.push_back( permission_level{actor, config::active_name} );
       }
-      return push_action(code, acttype, auths, data, expiration, delay_sec);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
+      return push_action( code, acttype, auths, data, expiration, delay_sec );
+   }
 
    transaction_trace_ptr base_tester::push_action( const account_name& code,
                                                    const action_name& acttype,
@@ -296,14 +296,14 @@ namespace eosio { namespace testing {
 
    { try {
       signed_transaction trx;
-      trx.actions.emplace_back(get_action( code, acttype, auths, data ));
-      set_transaction_headers(trx, expiration, delay_sec);
+      trx.actions.emplace_back( get_action( code, acttype, auths, data ) );
+      set_transaction_headers( trx, expiration, delay_sec );
       for (const auto& auth : auths) {
-         trx.sign(get_private_key(auth.actor, auth.permission.to_string()), chain_id_type());
+         trx.sign( get_private_key( auth.actor, auth.permission.to_string() ), chain_id_type() );
       }
 
-      return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
+      return push_transaction( trx );
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration)(delay_sec) ) }
 
    action base_tester::get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                    const variant_object& data )const { try {
