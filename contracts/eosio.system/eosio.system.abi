@@ -123,9 +123,14 @@
       "name": "eosio_global_state",
       "base": "eosio_parameters",
       "fields": [
-         {"name":"total_ram_bytes_reserved", "type":"uint64"},
-         {"name":"total_ram_stake", "type":"uint64"},
-         {"name":"payment_per_block", "type":"uint64"}
+         {"name":"total_ram_bytes_reserved",      "type":"uint64"},
+         {"name":"total_ram_stake",               "type":"asset"},
+         {"name":"last_producer_schedule_update", "type":"time"},
+         {"name":"last_pervote_bucket_fill",      "type":"time"},
+         {"name":"eos_bucket",                    "type":"asset"},
+         {"name":"savings",                       "type":"asset"},
+         {"name":"last_producer_schedule_id",     "type":"checksum160"},
+         {"name":"total_activatied_stake",        "type":"int64"}
       ]
     },{
       "name": "producer_info",
@@ -182,7 +187,7 @@
         {"name":"owner",                "type":"account_name"},
         {"name":"proxy",                "type":"account_name"},
         {"name":"producers",            "type":"account_name[]"},
-        {"name":"staked",               "type":"uint64"},
+        {"name":"staked",               "type":"int64"},
         {"name":"last_vote_weight",     "type":"float64"},
         {"name":"proxied_vote_weight",  "type":"float64"},
         {"name":"is_proxy",             "type":"bool"},

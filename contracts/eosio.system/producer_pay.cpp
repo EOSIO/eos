@@ -26,18 +26,21 @@ namespace eosiosystem {
 
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace eosio;
-      
+
       /** until activated stake crosses this threshold no new rewards are paid */
-      if( _gstate.total_activiated_stake < 150'000'000'0000 ) 
+      if( _gstate.total_activated_stake < 150'000'000'0000 )
          return;
 
       if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
          _gstate.last_pervote_bucket_fill = timestamp;
 
-      _producers.modify( _producers.get(producer), 0, [&](auto& p ) {
-         p.produced_blocks++;
-         p.last_produced_block_time = timestamp;
-      });
+      auto prod = _producers.find(producer);
+      if ( prod != _producers.end() ) {
+         _producers.modify( prod, 0, [&](auto& p ) {
+               p.produced_blocks++;
+               p.last_produced_block_time = timestamp;
+         });
+      }
 
       /// only update block producers once every minute, block_timestamp is in half seconds
       if( timestamp - _gstate.last_producer_schedule_update > 120 ) {
@@ -91,7 +94,7 @@ namespace eosiosystem {
       using namespace eosio;
 
       require_auth(owner);
-      
+
       auto prod = _producers.find( owner );
       eosio_assert( prod != _producers.end(), "account name is not in producer list" );
       if( prod->last_claim_time > 0 ) {

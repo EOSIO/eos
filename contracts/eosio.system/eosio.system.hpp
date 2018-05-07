@@ -37,13 +37,13 @@ namespace eosiosystem {
       eosio::asset         savings;
       checksum160          last_producer_schedule_id;
 
-      int64_t              total_activiated_stake = 0;
+      int64_t              total_activated_stake = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)
                                 (last_pervote_bucket_fill)
-                                (eos_bucket)(savings)(last_producer_schedule_id)(total_activiated_stake) )
+                                (eos_bucket)(savings)(last_producer_schedule_id)(total_activated_stake) )
    };
 
    struct producer_info {
