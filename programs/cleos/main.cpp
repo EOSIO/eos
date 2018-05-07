@@ -879,7 +879,7 @@ struct list_producers_subcommand {
                std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
                for ( auto& row : res.rows ) {
                   auto& r = row.get_object();
-                  v.push_back({ r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() });
+                  v.emplace_back( r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() );
 
                }
                if ( !v.empty() ) {
