@@ -859,6 +859,59 @@ struct vote_producers_subcommand {
    }
 };
 
+struct list_producers_subcommand {
+   bool print_json = false;
+   bool sort_names = false;
+
+   list_producers_subcommand(CLI::App* actionRoot) {
+      auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
+      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
+      list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
+      list_producers->set_callback([this] {
+            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", name(config::system_account_name).to_string())
+                               ("table", "producers")
+            );
+
+            if ( !print_json ) {
+               auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+               std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
+               for ( auto& row : res.rows ) {
+                  auto& r = row.get_object();
+                  v.emplace_back( r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() );
+
+               }
+               if ( !v.empty() ) {
+                  if ( sort_names ) {
+                     std::sort( v.begin(), v.end(), [](auto a, auto b) { return std::get<0>(a) < std::get<0>(b); } );
+                  } else {
+                     std::sort( v.begin(), v.end(), [](auto a, auto b) {
+                           return std::get<1>(a) < std::get<1>(b) || (std::get<1>(a) == std::get<1>(b) && std::get<0>(a) < std::get<0>(b)); }
+                     );
+                  }
+
+                  std::cout << std::left << std::setw(14) << "Producer" << std::setw(55) << "Producer key"
+                            << std::setw(50) << "Url" << "Total votes" << std::endl;
+                  for ( auto& x : v ) {
+                     std::cout << std::left << std::setw(14) << std::get<0>(x) << std::setw(55) << std::get<2>(x)
+                               << std::setw(50) << std::get<3>(x) << std::get<1>(x) << std::endl;
+                  }
+               } else {
+                  std::cout << "No producers found" << std::endl;
+               }
+            } else {
+               if ( sort_names ) {
+                  FC_THROW("Sorting producers is not supported for JSON format");
+               }
+               std::cout << fc::json::to_pretty_string(result)
+                         << std::endl;
+            }
+         }
+      );
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
@@ -2152,6 +2205,8 @@ int main( int argc, char** argv ) {
    voteProducer->require_subcommand();
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
+
+   auto listProducers = list_producers_subcommand(system);
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
