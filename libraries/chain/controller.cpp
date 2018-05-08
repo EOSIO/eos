@@ -6,7 +6,6 @@
 #include <eosio/chain/fork_database.hpp>
 
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
@@ -104,9 +103,12 @@ struct controller_impl {
    SET_APP_HANDLER( eosio, eosio, deleteauth );
    SET_APP_HANDLER( eosio, eosio, linkauth );
    SET_APP_HANDLER( eosio, eosio, unlinkauth );
+/*
    SET_APP_HANDLER( eosio, eosio, postrecovery );
    SET_APP_HANDLER( eosio, eosio, passrecovery );
    SET_APP_HANDLER( eosio, eosio, vetorecovery );
+*/
+
    SET_APP_HANDLER( eosio, eosio, canceldelay );
 
    fork_db.irreversible.connect( [&]( auto b ) {
@@ -208,7 +210,6 @@ struct controller_impl {
       db.add_index<block_summary_multi_index>();
       db.add_index<transaction_multi_index>();
       db.add_index<generated_transaction_multi_index>();
-      db.add_index<scope_sequence_multi_index>();
 
       authorization.add_indices();
       resource_limits.add_indices();
