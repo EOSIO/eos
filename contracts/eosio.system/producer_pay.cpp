@@ -33,7 +33,7 @@ namespace eosiosystem {
          return;
 
       if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
-         _gstate.last_pervote_bucket_fill = timestamp;
+         _gstate.last_pervote_bucket_fill = current_time();
 
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
@@ -102,9 +102,8 @@ namespace eosiosystem {
          eosio_assert(current_time() >= prod->last_claim_time + useconds_per_day, "already claimed rewards within a day");
       }
 
-      auto parameters = _global.get();
       const asset token_supply = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
-      const uint32_t secs_since_last_fill = static_cast<uint32_t>( (current_time() - parameters.last_pervote_bucket_fill) / 1000000 );
+      const uint32_t secs_since_last_fill = static_cast<uint32_t>( (current_time() - _gstate.last_pervote_bucket_fill) / 1000000 );
 
       const asset to_eos_bucket = supply_growth( standby_rate, token_supply, secs_since_last_fill );
       const asset to_savings    = supply_growth( continuous_rate - (perblock_rate + standby_rate), token_supply, secs_since_last_fill );
@@ -114,12 +113,11 @@ namespace eosiosystem {
       INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
                                                  {N(eosio), issue_amount, std::string("issue tokens for producer pay and savings")} );
 
-      const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_eos_bucket + parameters.eos_bucket );
+      const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_eos_bucket + _gstate.eos_bucket );
 
-      parameters.eos_bucket += ( to_eos_bucket - pervote_pay );
-      parameters.last_pervote_bucket_fill = current_time();
-      parameters.savings += to_savings;
-      _global.set( parameters, _self );
+      _gstate.eos_bucket              += ( to_eos_bucket - pervote_pay );
+      _gstate.last_pervote_bucket_fill = current_time();
+      _gstate.savings                 += to_savings;
       
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
                                                     { N(eosio), owner, perblock_pay + pervote_pay, std::string("producer claiming rewards") } );

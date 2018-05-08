@@ -45,8 +45,6 @@ public:
       issue(config::system_account_name,      "1000000000.0000 EOS");
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
-      //      create_accounts_with_resources ( { N(inita), N(initb), N(voter1), N(voter2) }, asset::from_string("100000.0000 EOS") );
-
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
 
@@ -62,10 +60,18 @@ public:
 
       produce_blocks();
 
-      const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
-      abi_def abi;
-      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-      abi_ser.set_abi(abi);
+      {
+         const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
+         abi_def abi;
+         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+         abi_ser.set_abi(abi);
+      }
+      {
+         const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
+         abi_def abi;
+         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+         token_abi_ser.set_abi(abi);
+      }
       /*
       const global_property_object &gpo = control->get_global_properties();
       FC_ASSERT(0 < gpo.active_producers.producers.size(), "No producers");
@@ -311,8 +317,25 @@ public:
                                 );
    }
 
+   fc::variant get_stats( const string& symbolname ) {
+      auto symb = eosio::chain::symbol::from_string(symbolname);
+      auto symbol_code = symb.to_symbol_code().value;
+      vector<char> data = get_row_by_account( N(eosio.token), symbol_code, N(stat), symbol_code );
+      return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data );
+   }
+
+   asset get_token_supply() {
+      return get_stats("4,EOS")["supply"].as<asset>();
+   }
+
+   fc::variant get_global_state() {
+      vector<char> data = get_row_by_account( N(eosio), N(eosio), N(global), N(global) );
+      if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data );
+   }
 
    abi_serializer abi_ser;
+   abi_serializer token_abi_ser;
 };
 
 fc::mutable_variant_object voter( account_name acct ) {
@@ -1180,7 +1203,6 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
 
    produce_block();
 
-   // 1 block produced
    BOOST_REQUIRE_EQUAL(success(), regproducer(N(inita)));
 
    auto prod = get_producer_info( N(inita) );
@@ -1197,19 +1219,66 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
                                               )
                        );
 
-   produce_blocks(200);
-   prod = get_producer_info("inita");
+   // inita is the only active producer
+   // produce enough blocks so new schedule kicks in and inita produces some blocks
+   {
+      produce_blocks(50);
 
-   BOOST_REQUIRE(1 < prod["produced_blocks"].as<uint32_t>());
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+      const auto initial_global_state   = get_global_state();
+      const uint64_t initial_claim_time = initial_global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    initial_eos_bucket = initial_global_state["eos_bucket"].as<asset>();
+      const asset    initial_savings    = initial_global_state["savings"].as<asset>();
+      prod = get_producer_info("inita");
+      const uint32_t produced_blocks = prod["produced_blocks"].as<uint32_t>();
+      BOOST_REQUIRE(1 < produced_blocks);
+      BOOST_REQUIRE_EQUAL(0, prod["last_claim_time"].as<uint64_t>());
+      const asset initial_supply  = get_token_supply();
+      const asset initial_balance = get_balance(N(inita));
+      
+      BOOST_REQUIRE_EQUAL(success(), push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+      
+      const auto global_state   = get_global_state();
+      const uint64_t claim_time = global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    eos_bucket = global_state["eos_bucket"].as<asset>();
+      const asset    savings    = global_state["savings"].as<asset>();
+      prod = get_producer_info("inita");
+      BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
+      const asset supply  = get_token_supply();
+      const asset balance = get_balance(N(inita));
 
-   prod = get_producer_info("inita");
-   BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
+      BOOST_REQUIRE_EQUAL(claim_time, prod["last_claim_time"].as<uint64_t>());
+      const int32_t secs_between_fills = static_cast<int32_t>((claim_time - initial_claim_time) / 1000000);
+      
+      BOOST_REQUIRE_EQUAL(0, initial_eos_bucket.amount);
+      BOOST_REQUIRE_EQUAL(0, eos_bucket.amount);
+      BOOST_REQUIRE_EQUAL(int64_t( (initial_supply.amount * secs_between_fills * ((4.879-1.0)/100.0)) / (52*7*24*3600) ),
+                          savings.amount - initial_savings.amount);
+      
+      int64_t block_payments  = int64_t( initial_supply.amount * produced_blocks * (0.25/100.0) / (52*7*24*3600*2) );
+      int64_t from_eos_bucket = int64_t( initial_supply.amount * secs_between_fills * (0.75/100.0) / (52*7*24*3600) );
+      
+      BOOST_REQUIRE_EQUAL(block_payments + from_eos_bucket, balance.amount - initial_balance.amount);
+   }
+   
+   {
+      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within a day"),
+                          push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+   }
 
-   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within a day"),
-                       push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+   // inita waits for 23 hours and 55 minutes, can't claim rewards yet
+   {
+      produce_block(fc::seconds(23 * 3600 + 55 * 60));
+      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within a day"),
+                          push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+   }
 
-   produce_block(fc::seconds(1));
+   // wait 5 more minutes, inita can now claim rewards again
+   {
+      produce_block(fc::seconds(5 * 60));
+      BOOST_REQUIRE_EQUAL(success(),
+                          push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+      BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
+   }
 
  } FC_LOG_AND_RETHROW()
 
