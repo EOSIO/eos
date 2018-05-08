@@ -45,9 +45,9 @@ public:
    ,accepted_transaction_channel(app().get_channel<channels::accepted_transaction>())
    ,applied_transaction_channel(app().get_channel<channels::applied_transaction>())
    ,accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
-   ,incoming_block_channel(app().get_channel<channels::incoming_block>())
-   ,incoming_block_sync_method(app().get_method<methods::incoming_block_sync>())
-   ,incoming_transaction_sync_method(app().get_method<methods::incoming_transaction_sync>())
+   ,incoming_block_channel(app().get_channel<incoming::channels::block>())
+   ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
+   ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
    {}
    
    bfs::path                        block_log_dir;
@@ -72,11 +72,11 @@ public:
    channels::accepted_transaction::channel_type&   accepted_transaction_channel;
    channels::applied_transaction::channel_type&    applied_transaction_channel;
    channels::accepted_confirmation::channel_type&  accepted_confirmation_channel;
-   channels::incoming_block::channel_type&         incoming_block_channel;
+   incoming::channels::block::channel_type&         incoming_block_channel;
 
    // retained references to methods for easy calling
-   methods::incoming_block_sync::method_type&       incoming_block_sync_method;
-   methods::incoming_transaction_sync::method_type& incoming_transaction_sync_method;
+   incoming::methods::block_sync::method_type&       incoming_block_sync_method;
+   incoming::methods::transaction_sync::method_type& incoming_transaction_sync_method;
 
    // method provider handles
    methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
@@ -454,7 +454,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
       abi_serializer::from_variant(params, *pretty_input, resolver);
    } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto trx_trace_ptr = app().get_method<methods::incoming_transaction_sync>()(pretty_input);
+   auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input);
 
    fc::variant pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
    //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
