@@ -204,8 +204,7 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
 
 void test_transaction::assert_false_error_handler(const eosio::transaction& dtrx) {
    auto onerror_action = eosio::get_action(1, 0);
-   eosio_assert( onerror_action.authorization.at(0).actor == dtrx.actions.at(0).account,
-                "authorizer of onerror action does not match receiver of original action in the deferred transaction" );
+   eosio::require_auth(eosio::permission_level{N(eosio),N(active)});
 }
 
 /**
