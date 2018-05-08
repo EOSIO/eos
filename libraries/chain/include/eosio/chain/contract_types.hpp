@@ -107,7 +107,6 @@ struct newaccount {
    account_name                     name;
    authority                        owner;
    authority                        active;
-   authority                        recovery;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -259,7 +258,7 @@ FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
 FC_REFLECT( eosio::chain::abi_def                          , (types)(structs)(actions)(tables)(ricardian_clauses) )
 
-FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active)(recovery) )
+FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
 FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) 
 FC_REFLECT( eosio::chain::setabi                           , (account)(abi) )
 FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(auth) )

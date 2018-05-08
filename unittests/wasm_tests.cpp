@@ -1048,8 +1048,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
                                    .creator  = config::system_account_name,
                                    .name     = a,
                                    .owner    = owner_auth,
-                                   .active   = authority( get_public_key( a, "active" ) ),
-                                   .recovery = authority( get_public_key( a, "recovery" ) ),
+                                   .active   = authority( get_public_key( a, "active" ) )
                              });
    set_transaction_headers(trx);
    trx.sign( get_private_key( config::system_account_name, "active" ), chain_id_type()  );

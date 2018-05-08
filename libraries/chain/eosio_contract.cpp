@@ -53,7 +53,6 @@ void apply_eosio_newaccount(apply_context& context) {
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
-   EOS_ASSERT( validate(create.recovery), action_validate_exception, "Invalid recovery authority");
 
    auto& db = context.db;
 
@@ -74,7 +73,7 @@ void apply_eosio_newaccount(apply_context& context) {
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   for( const auto& auth : { create.owner, create.active, create.recovery } ){
+   for( const auto& auth : { create.owner, create.active } ){
       validate_authority_precondition( context, auth );
    }
 
