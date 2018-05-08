@@ -62,6 +62,10 @@ namespace eosio {
          return unpack_action_data<onerror>();
       }
 
+      transaction unpack_sent_trx() const {
+         return unpack<transaction>(sent_trx);
+      }
+
       EOSLIB_SERIALIZE( onerror, (sender_id)(sent_trx) )
    };
 
