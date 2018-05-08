@@ -1,4 +1,4 @@
 #!/bin/sh
 # run ctest, disregard failure code
-ctest $@
+ctest --output-on-failure $@
 exit 0

@@ -330,14 +330,13 @@ void print_action_tree( const fc::variant& action ) {
 void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
-      const auto& receipt = processed["receipt"].get_object() ;
-      const auto& status = receipt["status"].as_string() ;
-      auto net = receipt["net_usage_words"].as_int64()*8;
-      auto cpu = receipt["kcpu_usage"].as_int64();
+      string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+      auto net = processed["net_usage"].as_int64()*8;
+      auto cpu = processed["cpu_usage"].as_int64() / 1024;
 
       cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
 
-      if( status == "hard_fail" ) {
+      if( status == "failed" ) {
          auto soft_except = processed["except"].as<optional<fc::exception>>();
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
@@ -859,6 +858,59 @@ struct vote_producers_subcommand {
    }
 };
 
+struct list_producers_subcommand {
+   bool print_json = false;
+   bool sort_names = false;
+
+   list_producers_subcommand(CLI::App* actionRoot) {
+      auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
+      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
+      list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
+      list_producers->set_callback([this] {
+            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", name(config::system_account_name).to_string())
+                               ("table", "producers")
+            );
+
+            if ( !print_json ) {
+               auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+               std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
+               for ( auto& row : res.rows ) {
+                  auto& r = row.get_object();
+                  v.emplace_back( r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() );
+
+               }
+               if ( !v.empty() ) {
+                  if ( sort_names ) {
+                     std::sort( v.begin(), v.end(), [](auto a, auto b) { return std::get<0>(a) < std::get<0>(b); } );
+                  } else {
+                     std::sort( v.begin(), v.end(), [](auto a, auto b) {
+                           return std::get<1>(a) < std::get<1>(b) || (std::get<1>(a) == std::get<1>(b) && std::get<0>(a) < std::get<0>(b)); }
+                     );
+                  }
+
+                  std::cout << std::left << std::setw(14) << "Producer" << std::setw(55) << "Producer key"
+                            << std::setw(50) << "Url" << "Total votes" << std::endl;
+                  for ( auto& x : v ) {
+                     std::cout << std::left << std::setw(14) << std::get<0>(x) << std::setw(55) << std::get<2>(x)
+                               << std::setw(50) << std::get<3>(x) << std::get<1>(x) << std::endl;
+                  }
+               } else {
+                  std::cout << "No producers found" << std::endl;
+               }
+            } else {
+               if ( sort_names ) {
+                  FC_THROW("Sorting producers is not supported for JSON format");
+               }
+               std::cout << fc::json::to_pretty_string(result)
+                         << std::endl;
+            }
+         }
+      );
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
@@ -1118,8 +1170,8 @@ void get_account( const string& accountName, bool json_format ) {
                 << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
 
       std::cout << "net bandwidth:" << std::endl;
-      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-         asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
+      if ( res.total_resources.is_object() ) {
+         asset net_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) : 0 );
          auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
          std::cout << indent << "staked:" << std::setw(20) << net_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
@@ -1136,8 +1188,8 @@ void get_account( const string& accountName, bool json_format ) {
 
 
       std::cout << "cpu bandwidth:" << std::endl;
-      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-         asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
+      if ( res.total_resources.is_object() ) {
+         asset cpu_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : 0 );
          auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
          std::cout << indent << "staked:" << std::setw(20) << cpu_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
@@ -2152,6 +2204,8 @@ int main( int argc, char** argv ) {
    voteProducer->require_subcommand();
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
+
+   auto listProducers = list_producers_subcommand(system);
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
