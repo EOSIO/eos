@@ -441,7 +441,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       trx.actions.clear();
       trx.actions.push_back(act2);
       set_transaction_headers(trx);
-      // run normal passing case
+      // run (dummy_action.b = 200) case looking for invalid use of context_free api
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
       BOOST_CHECK_EXCEPTION(push_transaction(trx), assert_exception,
                             [](const fc::exception& e) {
@@ -458,7 +458,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
 
          trx.actions.push_back(act1);
          // attempt to access non context free api
-         for (uint32_t i = 200; i <= 204; ++i) {
+         for (uint32_t i = 200; i <= 211; ++i) {
             trx.context_free_actions.clear();
             trx.context_free_data.clear();
             cfa.payload = i;

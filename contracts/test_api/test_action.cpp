@@ -101,6 +101,16 @@ void test_action::test_cf_action() {
       memccpy(&v, &i, sizeof(i), sizeof(i));
       // verify transaction api access
       eosio_assert(transaction_size() > 0, "transaction_size failed");
+      // verify softfloat api access
+      float f1 = 1.0f, f2 = 2.0f;
+      float f3 = f1 + f2;
+      eosio_assert( f3 >  2.0f, "Unable to add float.");
+      // verify compiler builtin api access
+      __int128 ret;
+      __divti3(ret, 2, 2, 2, 2);
+      // verify context_free_system_api
+      eosio_assert( true, "verify eosio_assert can be called" );
+
 
    } else if ( cfa.payload == 200 ) {
       // attempt to access non context free api, privileged_api
@@ -120,10 +130,31 @@ void test_action::test_cf_action() {
       db_idx64_store( N(testapi), N(testapi), N(testapi), 0, &i );
       eosio_assert( false, "db_api should not be allowed" );
    } else if ( cfa.payload == 204 ) {
+      db_find_i64( N(testapi), N(testapi), N(testapi), 1);
+      eosio_assert( false, "db_api should not be allowed" );
+   } else if ( cfa.payload == 205 ) {
       // attempt to access non context free api, send action
       eosio::action dum_act;
       dum_act.send();
       eosio_assert( false, "action send should not be allowed" );
+   } else if ( cfa.payload == 206 ) {
+      eosio::require_auth(N(test));
+      eosio_assert( false, "authorization_api should not be allowed" );
+   } else if ( cfa.payload == 207 ) {
+      now();
+      eosio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 208 ) {
+      current_time();
+      eosio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 209 ) {
+      publication_time();
+      eosio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 210 ) {
+      send_inline( "hello", 6 );
+      eosio_assert( false, "transaction_api should not be allowed" );
+   } else if ( cfa.payload == 211 ) {
+      send_deferred( N(testapi), N(testapi), "hello", 6 );
+      eosio_assert( false, "transaction_api should not be allowed" );
    }
 
 }
