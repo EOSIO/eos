@@ -5,7 +5,7 @@
 
 namespace eosio {
 
-class irreversible_block_storage : public storage
+class irreversible_block_storage : public storage<chain::signed_block>
 {
 public:
     void store(const std::vector<chain::signed_block>& blocks) override;

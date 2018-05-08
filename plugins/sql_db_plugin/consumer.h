@@ -18,7 +18,7 @@ class consumer : public boost::noncopyable
 public:
     using vector = std::vector<T>;
 
-    consumer(storage&& s);
+    consumer(storage<T> &&s);
     ~consumer();
 
     void push(const T& element);
@@ -29,11 +29,11 @@ private:
     fifo<T> m_fifo;
     std::unique_ptr<std::thread> m_thread;
     std::atomic<bool> m_exit;
-    storage& m_storage;
+    storage<T>& m_storage;
 };
 
 template<typename T>
-consumer<T>::consumer(storage &&s):
+consumer<T>::consumer(storage<T> &&s):
     m_fifo(fifo<T>::behavior::blocking),
     m_storage(s)
 {
