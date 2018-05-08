@@ -55,8 +55,8 @@ namespace eosio {
    };
 
    struct onerror {
-      uint128_t    sender_id;
-      transaction  sent_trx;
+      uint128_t sender_id;
+      bytes     sent_trx;
 
       static onerror from_current_action() {
          return unpack_action_data<onerror>();

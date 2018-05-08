@@ -852,8 +852,6 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       BOOST_TEST(trace->action_traces.back().console == "deferred executed\n");
    }
 
-#warning TODO: FIX THE FOLLOWING TESTS
-#if 0
    //schedule twice (second deferred transaction should replace first one)
    {
       transaction_trace_ptr trace;
@@ -893,7 +891,6 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       props.configuration.max_generated_transaction_count = 0;
    });
    BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
-#endif
 
 {
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
