@@ -85,7 +85,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             }
 
             // update the start function
-            if ( module.startFunctionIndex != -1 ) {
+            if ( module.startFunctionIndex != UINTPTR_MAX ) {
                module.startFunctionIndex++;
             }
 
