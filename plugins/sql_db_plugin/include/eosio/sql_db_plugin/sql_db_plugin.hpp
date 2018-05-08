@@ -8,6 +8,8 @@
 #include <appbase/application.hpp>
 #include <memory>
 
+#include "consumer.h"
+
 namespace eosio {
 
 template<typename T> class consumer;
@@ -45,8 +47,8 @@ public:
     void plugin_shutdown();
 
 private:
-    std::unique_ptr<consumer_signed_block> m_consumer_irreversible_block;
-    std::unique_ptr<irreversible_block_storage> m_irreversible_block_storage;
+    consumer<chain::signed_block> m_consumer_irreversible_block;
+    consumer<chain::block_trace> m_consumer_block;
 };
 
 }

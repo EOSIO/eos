@@ -18,15 +18,10 @@ BOOST_AUTO_TEST_CASE(instantiate)
         }
     };
 
-    consumer<int> c(foo);
-    //consumer
-    //    auto f = [](consumer<int>::vector elements){
-    //        for ( auto element : elements)
-    //            std::cout << element << std::endl;
-    //    };
-    //    consumer<int> c(f);
-
-    //    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    consumer<int> c(std::make_unique<foo>());
+    c.push(1);
+    c.push(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

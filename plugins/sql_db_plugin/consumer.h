@@ -18,7 +18,7 @@ class consumer : public boost::noncopyable
 public:
     using vector = std::vector<T>;
 
-    consumer(storage<T> &&s);
+    consumer(std::unique_ptr<storage<T>> s);
     ~consumer();
 
     void push(const T& element);
@@ -29,13 +29,13 @@ private:
     fifo<T> m_fifo;
     std::unique_ptr<std::thread> m_thread;
     std::atomic<bool> m_exit;
-    storage<T>& m_storage;
+    std::unique_ptr<storage<T>> m_storage;
 };
 
 template<typename T>
-consumer<T>::consumer(storage<T> &&s):
+consumer<T>::consumer(std::unique_ptr<storage<T>> s):
     m_fifo(fifo<T>::behavior::blocking),
-    m_storage(s)
+    m_storage(std::move(s))
 {
     m_exit = false;
     m_thread = std::make_unique<std::thread>([&]{this->run();});
@@ -62,7 +62,7 @@ void consumer<T>::run()
     while (!m_exit)
     {
         auto elements = m_fifo.pop_all();
-        m_storage.store(elements);
+        m_storage->store(elements);
     }
     dlog("Consumer thread End");
 }
