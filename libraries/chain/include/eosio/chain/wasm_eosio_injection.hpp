@@ -76,17 +76,17 @@ namespace eosio { namespace chain { namespace wasm_injections {
             // prepend to the head of the imports
             module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
             injected_index_mapping.emplace( index, actual_index ); 
+
             // shift all exported functions by 1
-            bool have_updated_start = false;
             for ( int i=0; i < module.exports.size(); i++ ) {
                if ( module.exports[i].kind == IR::ObjectKind::function ) {
-                  // update the start function
-                  if ( !have_updated_start && module.exports[i].index == module.startFunctionIndex ) {
-                     module.startFunctionIndex++;
-                     have_updated_start = true;
-                  }
                   module.exports[i].index++;
                }
+            }
+
+            // update the start function
+            if ( module.startFunctionIndex != -1 ) {
+               module.startFunctionIndex++;
             }
 
             // shift all table entries for call indirect
