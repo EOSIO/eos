@@ -35,6 +35,7 @@ public:
       produce_blocks( 2 );
 
       create_accounts( { N(eosio.token) } );
+
       produce_blocks( 100 );
 
       set_code( N(eosio.token), eosio_token_wast );
@@ -44,6 +45,8 @@ public:
       issue(config::system_account_name,      "1000000000.0000 EOS");
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
+      //      create_accounts_with_resources ( { N(inita), N(initb), N(voter1), N(voter2) }, asset::from_string("100000.0000 EOS") );
+
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
 
@@ -52,6 +55,14 @@ public:
       create_account_with_resources( N(alice), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(bob), N(eosio), asset::from_string("0.4500 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(carol), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+
+      const asset large_asset = asset::from_string("100000000.0000 EOS");
+      create_account_with_resources( N(inita), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+      create_account_with_resources( N(initb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+
+      create_account_with_resources( N(vota), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+      create_account_with_resources( N(votb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
       // eosio pays it self for these...
       //BOOST_REQUIRE_EQUAL( asset::from_string("999999998.5000 EOS"), get_balance( "eosio" ) );
@@ -102,8 +113,8 @@ public:
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
-                                            ("stake_net_quantity", "10.0000 EOS" )
-                                            ("stake_cpu_quantity", "10.0000 EOS" )
+                                            ("stake_net_quantity", "100000000.0000 EOS" )
+                                            ("stake_cpu_quantity", "100000000.0000 EOS" )
                                           )
                                 );
 
@@ -113,7 +124,8 @@ public:
 
 
    }
-   transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig ) {
+      transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig,
+                                                           asset net = asset::from_string("10.0000 EOS"), asset cpu = asset::from_string("10.0000 EOS") ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -145,8 +157,8 @@ public:
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
-                                            ("stake_net_quantity", "10.0000 EOS" )
-                                            ("stake_cpu_quantity", "10.0000 EOS" )
+                                            ("stake_net_quantity", net )
+                                            ("stake_cpu_quantity", cpu )
                                           )
                                 );
 
@@ -1166,46 +1178,39 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   issue( "alice", "10000.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL( asset::from_string("10000.0000 EOS"), get_balance( "alice" ) );
+
+   issue( "vota", "400000000.0000 EOS", config::system_account_name);
+
+   produce_block();
 
    // 1 block produced
-   BOOST_REQUIRE_EQUAL(success(), regproducer(N(alice)));
+   BOOST_REQUIRE_EQUAL(success(), regproducer(N(inita)));
 
-   auto prod = get_producer_info( N(alice) );
+   auto prod = get_producer_info( N(inita) );
 
-   BOOST_REQUIRE_EQUAL("alice", prod["owner"].as_string());
+   BOOST_REQUIRE_EQUAL("inita", prod["owner"].as_string());
    BOOST_REQUIRE_EQUAL(0, prod["total_votes"].as_uint64());
 
-   issue("bob", "2000.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL( asset::from_string("2000.0000 EOS"), get_balance( "bob" ) );
+   BOOST_REQUIRE_EQUAL(success(), stake("vota", "100000000.0000 EOS", "100000000.0000 EOS"));
 
-   // bob makes stake
-   // 1 block produced
-
-   BOOST_REQUIRE_EQUAL(success(), stake("bob", "11.0000 EOS", "10.1111 EOS"));
-
-   // bob votes for alice
-   // 1 block produced
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(bob), N(voteproducer), mvo()
-                                              ("voter",  "bob")
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(vota), N(voteproducer), mvo()
+                                              ("voter",  "vota")
                                               ("proxy", name(0).to_string())
-                                              ("producers", vector<account_name>{ N(alice) })
+                                              ("producers", vector<account_name>{ N(inita) })
                                               )
                        );
 
    produce_blocks(200);
-   prod = get_producer_info("alice");
-   // this test fails as there isn't enough total activated stake and onblock is a noop
-   BOOST_REQUIRE(1 < prod["produced_blocks"].as<uint32_t>());
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(claimrewards), mvo()("owner", "alice")));
+   prod = get_producer_info("inita");
 
-   // push_action above produces one block with alice as producer
-   prod = get_producer_info("alice");
+   BOOST_REQUIRE(1 < prod["produced_blocks"].as<uint32_t>());
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+
+   prod = get_producer_info("inita");
    BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
 
    BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within a day"),
-                       push_action(N(alice), N(claimrewards), mvo()("owner", "alice")));
+                       push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
 
    produce_block(fc::seconds(1));
 

@@ -29,7 +29,7 @@ namespace eosiosystem {
       using namespace eosio;
 
       /** until activated stake crosses this threshold no new rewards are paid */
-      if( _gstate.total_activated_stake < 150'000'000'0000 )
+      if( _gstate.total_activated_stake < 1500000000000 /* 150'000'000'0000 */ )
          return;
 
       if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
