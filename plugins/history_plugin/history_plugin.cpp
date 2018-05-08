@@ -27,7 +27,7 @@ namespace eosio {
       id_type      id;
       uint64_t     action_sequence_num; ///< the sequence number of the relevant action
 
-      shared_vector<char>  packed_action_trace;
+      shared_string        packed_action_trace;
       uint32_t             block_num;
       block_timestamp_type block_time;
       transaction_id_type  trx_id;

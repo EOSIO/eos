@@ -52,7 +52,7 @@ namespace eosio { namespace chain {
       //Hard: Kick off instantiation in a separate thread at this location
 	   }
 
-   void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
+   void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
       my->get_instantiated_module(code_id, code)->apply(context);
    }
 
