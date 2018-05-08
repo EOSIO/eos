@@ -8,7 +8,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.types.push_back( type_def{"account_name","name"} );
    eos_abi.types.push_back( type_def{"table_name","name"} );
    eos_abi.types.push_back( type_def{"share_type","int64"} );
-   eos_abi.types.push_back( type_def{"onerror","bytes"} );
    eos_abi.types.push_back( type_def{"context_free_type","bytes"} );
    eos_abi.types.push_back( type_def{"weight_type","uint16"} );
    eos_abi.types.push_back( type_def{"fields","field[]"} );
