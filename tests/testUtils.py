@@ -15,6 +15,7 @@ import inspect
 import sys
 import random
 import json
+import shlex
 
 ###########################################################################################
 class Utils:
@@ -80,7 +81,8 @@ class Utils:
     @staticmethod
     def checkOutput(cmd):
         assert(isinstance(cmd, list))
-        retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
+        #retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
+        retStr=subprocess.check_output(cmd).decode("utf-8")
         return retStr
 
     @staticmethod
@@ -168,7 +170,8 @@ class Node(object):
 
     @staticmethod
     def runCmdReturnJson(cmd, trace=False):
-        retStr=Utils.checkOutput(cmd.split())
+        cmdArr=shlex.split(cmd)
+        retStr=Utils.checkOutput(cmdArr)
         jStr=Node.filterJsonObject(retStr)
         if trace: Utils.Print ("RAW > %s"% (retStr))
         if trace: Utils.Print ("JSON> %s"% (jStr))
@@ -180,13 +183,12 @@ class Node(object):
 
         try:
             jsonData=json.loads(jStr)
+            return jsonData
         except json.decoder.JSONDecodeError as ex:
             Utils.Print (ex)
             Utils.Print ("RAW > %s"% retStr)
             Utils.Print ("JSON> %s"% jStr)
             raise
-
-        return jsonData
 
     @staticmethod
     def __runCmdArrReturnJson(cmdArr, trace=False):
@@ -464,6 +466,32 @@ class Node(object):
         blockNum += 1
         if Utils.Debug: Utils.Print("Check if block %d is irreversible." % (blockNum))
         return self.doesNodeHaveBlockNum(blockNum)
+
+    # Create & initialize account and return creation transactions. Return transaction json object
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
+        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 EOS" --stake-cpu "100 EOS" --buy-ram-EOS "100 EOS"' % (
+            Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
+            account.ownerPublicKey, account.activePublicKey)
+
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        trans=None
+        try:
+            trans=Node.runCmdReturnJson(cmd)
+            transId=Node.getTransId(trans)
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during account creation. %s" % (msg))
+            return None
+
+        if stakedDeposit > 0:
+            self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
+            trans = self.transferFunds(creatorAccount, account, "%0.04f EOS" % (stakedDeposit/10000), "init")
+            transId=Node.getTransId(trans)
+
+        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+            return None
+
+        return trans
 
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
@@ -1207,7 +1235,7 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs=""
+        nodeosArgs="--max-pending-transaction-time 5000"
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
@@ -1759,22 +1787,6 @@ class Cluster(object):
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return False
-
-            Node.validateTransaction(trans)
-
-            # TBD: Loading this requires upping the max peding transaction timeout
-            # contract="eosio.system"
-            # contractDir="contracts/%s" % (contract)
-            # wastFile="contracts/%s/%s.wast" % (contract, contract)
-            # abiFile="contracts/%s/%s.abi" % (contract, contract)
-            # Utils.Print("Publish %s contract" % (contract))
-            # trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
-            # if trans is None:
-            #     Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-            #     return False
-
-            # Node.validateTransaction(trans)
-
             
             # Create currency, followed by issue currency
             contract=eosioTokenAccount.name
@@ -1792,7 +1804,7 @@ class Cluster(object):
             contract=eosioTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))
             action="issue"
-            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 EOS\",\"memo\":\"initial issue\"}" % (eosioTokenAccount.name)
+            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 EOS\",\"memo\":\"initial issue\"}" % (eosioAccount.name)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
@@ -1806,11 +1818,23 @@ class Cluster(object):
 
             expectedAmount="1000000000.0000 EOS"
             Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
-            actualAmount=biosNode.getAccountEosBalanceStr(eosioTokenAccount.name)
+            actualAmount=biosNode.getAccountEosBalanceStr(eosioAccount.name)
             if expectedAmount != actualAmount:
                 Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
                             (expectedAmount, actualAmount))
                 return False
+
+            contract="eosio.system"
+            contractDir="contracts/%s" % (contract)
+            wastFile="contracts/%s/%s.wast" % (contract, contract)
+            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            Utils.Print("Publish %s contract" % (contract))
+            trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+            if trans is None:
+                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+                return False
+
+            Node.validateTransaction(trans)
 
             initialFunds="1000000.0000 EOS"
             Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
@@ -1818,8 +1842,8 @@ class Cluster(object):
             contract=eosioTokenAccount.name
             action="transfer"
             for name, keys in producerKeys.items():
-                data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (eosioTokenAccount.name, name, initialFunds, "init transfer")
-                opts="--permission %s@active" % (eosioTokenAccount.name)
+                data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (eosioAccount.name, name, initialFunds, "init transfer")
+                opts="--permission %s@active" % (eosioAccount.name)
                 trans=biosNode.pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
                     Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (eosioTokenAccount.name, name))
