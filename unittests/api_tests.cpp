@@ -535,8 +535,7 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
                                  .creator  = creator,
                                  .name     = a,
                                  .owner    = authority( get_public_key( a, "owner" ) ),
-                                 .active   = authority( get_public_key( a, "active" ) ),
-                                 .recovery = authority( get_public_key( a, "recovery" ) ),
+                                 .active   = authority( get_public_key( a, "active" ) )
                                  });
    action act({}, test_api_action<TEST_METHOD("test_transaction", "stateful_api")>{});
    trx.context_free_actions.push_back(act);
@@ -566,8 +565,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
                                  .creator  = creator,
                                  .name     = a,
                                  .owner    = authority( get_public_key( a, "owner" ) ),
-                                 .active   = authority( get_public_key( a, "active" ) ),
-                                 .recovery = authority( get_public_key( a, "recovery" ) ),
+                                 .active   = authority( get_public_key( a, "active" ) )
                                  });
    action act({}, test_api_action<TEST_METHOD("test_transaction", "stateful_api")>{});
    trx.context_free_actions.push_back(act);
@@ -603,8 +601,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
                                  .creator  = creator,
                                  .name     = a,
                                  .owner    = authority( get_public_key( a, "owner" ) ),
-                                 .active   = authority( get_public_key( a, "active" ) ),
-                                 .recovery = authority( get_public_key( a, "recovery" ) ),
+                                 .active   = authority( get_public_key( a, "active" ) )
                                  });
    action act({}, test_api_action<TEST_METHOD("test_transaction", "context_free_api")>{});
    trx.context_free_actions.push_back(act);
