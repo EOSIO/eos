@@ -8,7 +8,7 @@
 #include <appbase/application.hpp>
 #include <memory>
 
-#include "consumer.h"
+#include "runner.h"
 
 namespace eosio {
 
@@ -47,8 +47,8 @@ public:
     void plugin_shutdown();
 
 private:
-    consumer<chain::signed_block> m_consumer_irreversible_block;
-    consumer<chain::block_trace> m_consumer_block;
+    runner<chain::signed_block> m_irreversible_block_consumer;
+    runner<chain::block_trace> m_block_consumer;
 };
 
 }

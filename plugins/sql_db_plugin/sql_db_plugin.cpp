@@ -24,8 +24,8 @@ namespace eosio {
 static appbase::abstract_plugin& _sql_db_plugin = app().register_plugin<sql_db_plugin>();
 
 sql_db_plugin::sql_db_plugin():
-    m_consumer_irreversible_block(std::make_unique<irreversible_block_storage>()),
-    m_consumer_block(std::make_unique<block_storage>())
+    m_irreversible_block_consumer(std::make_unique<irreversible_block_storage>()),
+    m_block_consumer(std::make_unique<block_storage>())
 {
 
 }
@@ -67,9 +67,9 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     FC_ASSERT(chain_plug);
     auto& chain_config = chain_plug->chain_config();
     chain_plug->chain_config().applied_block_callbacks.emplace_back(
-                [=](const chain::block_trace& t) { m_consumer_block.push(t); });
+                [=](const chain::block_trace& t) { m_block_consumer.push(t); });
     chain_config.applied_irreversible_block_callbacks.emplace_back(
-                [=](const chain::signed_block& b) {m_consumer_irreversible_block.push(b);});
+                [=](const chain::signed_block& b) {m_irreversible_block_consumer.push(b);});
 }
 
 void sql_db_plugin::plugin_startup()

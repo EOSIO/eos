@@ -1,14 +1,14 @@
 #ifndef IRREVERSIBLE_BLOCK_STORAGE_H
 #define IRREVERSIBLE_BLOCK_STORAGE_H
 
-#include "storage.h"
+#include "consumer.h"
 
 namespace eosio {
 
-class irreversible_block_storage : public storage<chain::signed_block>
+class irreversible_block_storage : public consumer<chain::signed_block>
 {
 public:
-    void store(const std::vector<chain::signed_block>& blocks) override;
+    void consume(const std::vector<chain::signed_block>& blocks) override;
 };
 
 } // namespace

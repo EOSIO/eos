@@ -1,72 +1,19 @@
-#ifndef CONSUMER_H
-#define CONSUMER_H
+#ifndef STORAGE_H
+#define STORAGE_H
 
-#include <thread>
-#include <atomic>
 #include <vector>
-#include <boost/noncopyable.hpp>
-#include <fc/log/logger.hpp>
-
-#include "storage.h"
-#include "fifo.h"
+#include <eosio/chain/block.hpp>
 
 namespace eosio {
 
 template<typename T>
-class consumer : public boost::noncopyable
-{
+class consumer {
 public:
-    using vector = std::vector<T>;
-
-    consumer(std::unique_ptr<storage<T>> s);
-    ~consumer();
-
-    void push(const T& element);
-
-private:
-    void run();
-
-    fifo<T> m_fifo;
-    std::unique_ptr<std::thread> m_thread;
-    std::atomic<bool> m_exit;
-    std::unique_ptr<storage<T>> m_storage;
+    virtual ~consumer() {}
+    virtual void consume(const std::vector<T>& blocks) = 0;
 };
-
-template<typename T>
-consumer<T>::consumer(std::unique_ptr<storage<T>> s):
-    m_fifo(fifo<T>::behavior::blocking),
-    m_storage(std::move(s))
-{
-    m_exit = false;
-    m_thread = std::make_unique<std::thread>([&]{this->run();});
-}
-
-template<typename T>
-consumer<T>::~consumer()
-{
-    m_fifo.set_behavior(fifo<T>::behavior::not_blocking);
-    m_exit = true;
-    m_thread->join();
-}
-
-template<typename T>
-void consumer<T>::push(const T& element)
-{
-    m_fifo.push(element);
-}
-
-template<typename T>
-void consumer<T>::run()
-{
-    dlog("Consumer thread Start");
-    while (!m_exit)
-    {
-        auto elements = m_fifo.pop_all();
-        m_storage->store(elements);
-    }
-    dlog("Consumer thread End");
-}
 
 } // namespace
 
-#endif // CONSUMER_H
+#endif // STORAGE_H
+
