@@ -330,7 +330,6 @@ void print_action_tree( const fc::variant& action ) {
 void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
-      //const auto& receipt = processed["receipt"].get_object() ;
       string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
       auto net = processed["net_usage"].as_int64()*8;
       auto cpu = processed["cpu_usage"].as_int64() / 1024;
