@@ -339,11 +339,6 @@ struct controller_impl {
                                                                              majority_permission.id,
                                                                              active_producers_authority,
                                                                              conf.genesis.initial_timestamp );
-      const auto& any_producer_permission = authorization.create_permission( config::producers_account_name,
-                                                                             config::any_producer_permission_name,
-                                                                             minority_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
    }
 
 
@@ -920,9 +915,6 @@ struct controller_impl {
       update_permission( authorization.get_permission({config::producers_account_name,
                                                        config::minority_producers_permission_name}),
                          calculate_threshold( 1, 3 ) /* more than one-third */                       );
-
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::any_producer_permission_name}), 1     );
 
       //TODO: Add tests
    }
