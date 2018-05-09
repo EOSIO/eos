@@ -1303,7 +1303,9 @@ class Cluster(object):
         return True
 
     # Initialize the default nodes (at present just the root node)
-    def initializeNodes(self, initaPrvtKey=None, initbPrvtKey=None):
+    def initializeNodes(self, initaPrvtKey=None, initbPrvtKey=None, onlyBios=False):
+        port=Cluster.__BiosPort if onlyBios else self.port
+        host=Cluster.__BiosHost if onlyBios else self.host
         node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         node.setWalletEndpointArgs(self.walletEndpointArgs)
         if Utils.Debug: Utils.Print("Node:", node)

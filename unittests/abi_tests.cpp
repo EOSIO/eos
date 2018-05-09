@@ -460,203 +460,145 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
 {  try {
 
    const char* all_types = R"=====(
-    #include <eosiolib/types.hpp>
-    #include <eosiolib/asset.hpp>
-    #include <string>
+   #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+   #include <eosiolib/types.hpp>
+   #include <eosiolib/asset.hpp>
+   #include <eosiolib/action.hpp>
+   #include <string>
 
-    typedef int field;
-    typedef int struct_def;
-    typedef int fields;
-    typedef int permission_level;
-    typedef int action;
-    typedef int permission_level_weight;
-    typedef int transaction;
-    typedef int signed_transaction;
-    typedef int key_weight;
-    typedef int authority;
-    typedef int chain_config;
-    typedef int type_def;
-    typedef int action_def;
-    typedef int table_def;
-    typedef int abi_def;
-    typedef int nonce;
+   typedef eosio::symbol_type symbol;
 
    //@abi action
    struct test_struct {
-      std::string             field1;
-      time                    field2;
-      signature               field3;
-      checksum256             field4;
-      field_name              field5;
-      fixed_string32          field6;
-      fixed_string16          field7;
-      type_name               field8;
-      uint8_t                 field9;
-      uint16_t                field10;
-      uint32_t                field11;
-      uint64_t                field12;
-      uint128_t               field13;
-      //uint256                 field14;
-      int8_t                  field15;
-      int16_t                 field16;
-      int32_t                 field17;
-      int64_t                 field18;
-      eosio::name             field19;
-      field                   field20;
-      struct_def              field21;
-      fields                  field22;
-      account_name            field23;
-      permission_name         field24;
-      action_name             field25;
-      scope_name              field26;
-      permission_level        field27;
-      action                  field28;
-      permission_level_weight field29;
-      transaction             field30;
-      signed_transaction      field31;
-      key_weight              field32;
-      authority               field33;
-      chain_config            field34;
-      type_def                field35;
-      action_def              field36;
-      table_def               field37;
-      abi_def                 field38;
-      public_key              field39;
-      eosio::asset            field40;
+     std::string             field1;
+     time                    field2;
+     signature               field3;
+     checksum256             field4;
+     field_name              field5;
+     fixed_string32          field6;
+     fixed_string16          field7;
+     type_name               field8;
+     uint8_t                 field9;
+     uint16_t                field10;
+     uint32_t                field11;
+     uint64_t                field12;
+     uint128_t               field13;
+     int8_t                  field15;
+     int16_t                 field16;
+     int32_t                 field17;
+     int64_t                 field18;
+     eosio::name             field19;
+     account_name            field23;
+     permission_name         field24;
+     action_name             field25;
+     scope_name              field26;
+     eosio::permission_level field27;
+     public_key              field39;
+     eosio::asset            field40;
+     eosio::extended_asset   field41;
+     symbol                  field42;
    };
    )=====";
 
    const char* all_types_abi = R"=====(
    {
-       "types": [],
-       "structs": [{
-          "name" : "test_struct",
-          "base" : "",
-          "fields" : [{
-               "name": "field1",
-               "type": "string"
-          },{
+     "types": [],
+     "structs": [{
+         "name": "test_struct",
+         "base": "",
+         "fields": [{
+             "name": "field1",
+             "type": "string"
+           },{
              "name": "field2",
              "type": "time"
-          },{
+           },{
              "name": "field3",
              "type": "signature"
-          },{
+           },{
              "name": "field4",
              "type": "checksum256"
-          },{
+           },{
              "name": "field5",
              "type": "field_name"
-          },{
+           },{
              "name": "field6",
              "type": "fixed_string32"
-          },{
+           },{
              "name": "field7",
              "type": "fixed_string16"
-          },{
+           },{
              "name": "field8",
              "type": "type_name"
-          },{
+           },{
              "name": "field9",
              "type": "uint8"
-          },{
+           },{
              "name": "field10",
              "type": "uint16"
-          },{
+           },{
              "name": "field11",
              "type": "uint32"
-          },{
+           },{
              "name": "field12",
              "type": "uint64"
-          },{
+           },{
              "name": "field13",
              "type": "uint128"
-          },{
+           },{
              "name": "field15",
              "type": "int8"
-          },{
+           },{
              "name": "field16",
              "type": "int16"
-          },{
+           },{
              "name": "field17",
              "type": "int32"
-          },{
+           },{
              "name": "field18",
              "type": "int64"
-          },{
+           },{
              "name": "field19",
              "type": "name"
-          },{
-             "name": "field20",
-             "type": "field"
-          },{
-             "name": "field21",
-             "type": "struct_def"
-          },{
-             "name": "field22",
-             "type": "fields"
-          },{
+           },{
              "name": "field23",
              "type": "account_name"
-          },{
+           },{
              "name": "field24",
              "type": "permission_name"
-          },{
+           },{
              "name": "field25",
              "type": "action_name"
-          },{
+           },{
              "name": "field26",
              "type": "scope_name"
-          },{
+           },{
              "name": "field27",
              "type": "permission_level"
-          },{
-             "name": "field28",
-             "type": "action"
-          },{
-             "name": "field29",
-             "type": "permission_level_weight"
-          },{
-             "name": "field30",
-             "type": "transaction"
-          },{
-             "name": "field31",
-             "type": "signed_transaction"
-          },{
-             "name": "field32",
-             "type": "key_weight"
-          },{
-             "name": "field33",
-             "type": "authority"
-          },{
-             "name": "field34",
-             "type": "chain_config"
-          },{
-             "name": "field35",
-             "type": "type_def"
-          },{
-             "name": "field36",
-             "type": "action_def"
-          },{
-             "name": "field37",
-             "type": "table_def"
-          },{
-             "name": "field38",
-             "type": "abi_def"
-          },{
+           },{
              "name": "field39",
              "type": "public_key"
-          },{
+           },{
              "name": "field40",
              "type": "asset"
-          }]
-           }],
-           "actions": [{
-              "name" : "teststruct",
-              "type" : "test_struct"
-           }],
-       "tables": [],
-       "ricardian_clauses": []
+           },{
+             "name": "field41",
+             "type": "extended_asset"
+           },{
+             "name": "field42",
+             "type": "symbol"
+           }
+         ]
+       }
+     ],
+     "actions": [{
+         "name": "teststruct",
+         "type": "test_struct",
+         "ricardian_contract": ""
+       }
+     ],
+     "tables": [],
+     "ricardian_clauses": []
    }
    )=====";
    BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
