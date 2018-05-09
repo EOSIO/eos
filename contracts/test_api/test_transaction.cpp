@@ -203,9 +203,12 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
 }
 
 void test_transaction::assert_false_error_handler(const eosio::transaction& dtrx) {
-   auto onerror_action = eosio::get_action(1, 0);
-   eosio_assert( onerror_action.authorization.at(0).actor == dtrx.actions.at(0).account,
-                "authorizer of onerror action does not match receiver of original action in the deferred transaction" );
+   eosio_assert(dtrx.actions.size() == 1, "transaction should only have one action");
+   eosio_assert(dtrx.actions[0].account == N(testapi), "transaction has wrong code");
+   eosio_assert(dtrx.actions[0].name == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name");
+   eosio_assert(dtrx.actions[0].authorization.size() == 1, "action should only have one authorization");
+   eosio_assert(dtrx.actions[0].authorization[0].actor == N(testapi), "action's authorization has wrong actor");
+   eosio_assert(dtrx.actions[0].authorization[0].permission == N(active), "action's authorization has wrong permission");
 }
 
 /**
