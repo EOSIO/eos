@@ -10,6 +10,7 @@ Simple and fast setup of EOS.IO on Docker is also available.
 ## Docker Requirement
 
 - At least 8GB RAM (Docker -> Preferences -> Advanced -> Memory -> 8GB or above)
+- If the build below fails, make sure you've adjusted Docker Memory settings and try again.
 
 ## Build eos image
 

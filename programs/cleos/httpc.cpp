@@ -100,9 +100,9 @@ namespace eosio { namespace client { namespace http {
       return res;
    }
 
-   fc::variant call( const std::string& server_url,
-                     const std::string& path,
-                     const fc::variant& postdata ) {
+   fc::variant do_http_call( const std::string& server_url,
+                             const std::string& path,
+                             const fc::variant& postdata ) {
    std::string postjson;
    if( !postdata.is_null() )
       postjson = fc::json::to_string( postdata );
