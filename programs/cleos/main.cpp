@@ -1107,7 +1107,7 @@ int main( int argc, char** argv ) {
       }
       auto result = call(get_transactions_func, arg);
       if( printjson ) {
-         std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
+         std::cout << fc::json::to_pretty_string(result) << std::endl;
       }
       else {
          const auto& trxs = result.get_object()["transactions"].get_array();
@@ -1115,7 +1115,7 @@ int main( int argc, char** argv ) {
 
             const auto& tobj = t.get_object();
             const auto& trx  = tobj["transaction"].get_object();
-            const auto& data = trx["data"].get_object();
+            const auto& data = trx["transaction"].get_object();
             const auto& msgs = data["actions"].get_array();
 
             for( const auto& msg : msgs ) {
