@@ -7,21 +7,10 @@
 
 extern "C" {
    /**
-    * @defgroup transactionapi transaction API
+    * @defgroup transactionapi Transaction API
     * @ingroup contractdev
-    * @brief Define API for sending transactions and inline messages
+    * @brief Define API for sending transactions and inline actions
     *
-    * A EOS.IO transaction has the following abstract structure:
-    *
-    * ```
-    *   struct transaction {
-    *     Name scope[]; ///< accounts whose data may be read or written
-    *     Name readScope[]; ///< accounts whose data may be read
-    *     message messages[]; ///< accounts that have approved this message
-    *   };
-    * ```
-    *
-    * This API enables your contract to construct and send transactions
     *
     * Deferred transactions will not be processed until a future block.  They
     * can therefore have no effect on the success of failure of their parent
@@ -37,16 +26,11 @@ extern "C" {
     * which is processed immediately after the current message's processing
     * ends such that the success or failure of the parent transaction is
     * dependent on the success of the message. If an inline message fails in
-    * processing then the whole tree of transactions and messages rooted in the
+    * processing then the whole tree of transactions and actions rooted in the
     * block will me marked as failing and none of effects on the database will
     * persist.
     *
-    * Because of this and the parallel nature of transaction application,
-    * inline messages may not affect any `scope` which is not listed in
-    * their parent transaction's `scope`.  They also may not read any `scope`
-    * not listed in either their parent transaction's `scope` or `readScope`.
-    *
-    * Inline messages and Deferred transactions must adhere to the permissions
+    * Inline actions and Deferred transactions must adhere to the permissions
     * available to the parent transaction or, in the future, delegated to the
     * contract account for future use.
     */
@@ -62,8 +46,8 @@ extern "C" {
 
     /**
      *  Sends a deferred transaction.
+     * 
      *  @brief Sends a deferred transaction.
-     *
      *  @param sender_id - ID of sender
      *  @param payer - Account paying for RAM
      *  @param serialized_transaction - Pointer of serialized transaction to be deferred 
@@ -73,8 +57,8 @@ extern "C" {
 
     /**
      *  Cancels a deferred transaction.
+     * 
      *  @brief Cancels a deferred transaction.
-     *
      *  @param sender_id - The id of the sender
      *
      *  @pre The deferred transaction ID exists.
@@ -91,6 +75,7 @@ extern "C" {
 
    /**
     * Access a copy of the currently executing transaction.
+    * 
     * @brief Access a copy of the currently executing transaction.
     * @param buffer - a buffer to write the current transaction to
     * @param size - the size of the buffer, 0 to return required size
@@ -100,6 +85,7 @@ extern "C" {
 
    /**
     * Gets the size of the currently executing transaction.
+    * 
     * @brief Gets the size of the currently executing transaction.
     * @return size of the currently executing transaction
     */
@@ -107,6 +93,7 @@ extern "C" {
 
    /**
     * Gets the block number used for TAPOS on the currently executing transaction.
+    * 
     * @brief Gets the block number used for TAPOS on the currently executing transaction.
     * @return block number used for TAPOS on the currently executing transaction
     * Example:
@@ -118,6 +105,7 @@ extern "C" {
 
    /**
     * Gets the block prefix used for TAPOS on the currently executing transaction.
+    * 
     * @brief Gets the block prefix used for TAPOS on the currently executing transaction.
     * @return block prefix used for TAPOS on the currently executing transaction
     * Example:
@@ -129,6 +117,7 @@ extern "C" {
 
    /**
     * Gets the expiration of the currently executing transaction.
+    * 
     * @brief Gets the expiration of the currently executing transaction.
     * @return expiration of the currently executing transaction
     * Example:
@@ -141,6 +130,7 @@ extern "C" {
 
    /**
     * Retrieves the indicated action from the active transaction.
+    * 
     * @brief Retrieves the indicated action from the active transaction.
     * @param type - 0 for context free action, 1 for action
     * @param index - the index of the requested action
@@ -152,6 +142,7 @@ extern "C" {
 
    /**
     * Retrieve the signed_transaction.context_free_data[index].
+    * 
     * @brief Retrieve the signed_transaction.context_free_data[index].
     * @param index - the index of the context_free_data entry to retrieve
     * @param buff - output buff of the context_free_data entry
@@ -162,6 +153,7 @@ extern "C" {
 
    /**
     * Checks that prodived authorizations is enough to execute the transaction.
+    * 
     * @brief Checks that prodived authorizations is enough to execute the transaction.
     * @param serialized_transaction - Pointer of serialized transaction to check authorization for
     * @param size - Size of transaction
