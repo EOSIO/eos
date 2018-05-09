@@ -50,9 +50,9 @@ public:
 
       produce_blocks();
 
-      create_account_with_resources( N(alice), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
-      create_account_with_resources( N(bob), N(eosio), asset::from_string("0.4500 EOS"), false );//{ N(alice), N(bob), N(carol) } );
-      create_account_with_resources( N(carol), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+      create_account_with_resources( N(alice), N(eosio), asset::from_string("1.0000 EOS"), false );
+      create_account_with_resources( N(bob), N(eosio), asset::from_string("0.4500 EOS"), false );
+      create_account_with_resources( N(carol), N(eosio), asset::from_string("1.0000 EOS"), false );
 
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
@@ -180,8 +180,7 @@ public:
                                          .creator  = creator,
                                          .name     = a,
                                          .owner    = owner_auth,
-                                         .active   = authority( get_public_key( a, "active" ) ),
-                                         .recovery = authority( get_public_key( a, "recovery" ) )
+                                         .active   = authority( get_public_key( a, "active" ) )
                                          });
 
          trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{ {creator, config::active_name} },
@@ -1387,7 +1386,13 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester) try {
    const double standby_rate = 0.750/100.;
    const double block_rate   = 0.250/100.;
 
-   // {inita, initb, ..., initz} register as producers
+   const asset large_asset = asset::from_string("100000000.0000 EOS");
+   create_account_with_resources( N(vota), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(votb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(votc), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+
+   // create accounts {inita, initb, ..., initz} and register as producers
+   setup_producer_accounts();
    std::vector<account_name> producer_names;
    {
       producer_names.reserve( 'z' - 'a' + 1);
