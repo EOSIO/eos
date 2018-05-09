@@ -824,11 +824,15 @@ class permission_api : public context_aware_api {
       }
 
       int64_t get_permission_last_used( account_name account, permission_name permission) {
-         return context.db.get<permission_usage_object, by_account_permission>(boost::make_tuple(account, permission)).last_used.time_since_epoch().count();
+         const auto& am = context.control.get_authorization_manager();
+         return am.get_permission_last_used( am.get_permission({account, permission}) ).time_since_epoch().count();
       };
 
       int64_t get_account_creation_date( account_name account ) {
-         return time_point(context.db.get<account_object, by_name>(account).creation_date).time_since_epoch().count();
+         auto* acct = context.db.find<account_object, by_name>(account);
+         EOS_ASSERT( acct != nullptr, action_validate_exception,
+                     "account '${account}' does not exist", ("account", account) );
+         return time_point(acct->creation_date).time_since_epoch().count();
       }
 
 

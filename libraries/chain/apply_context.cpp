@@ -222,6 +222,7 @@ void apply_context::execute_inline( action&& a ) {
          //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
       }
    }
+   
    _inline_actions.emplace_back( move(a) );
 }
 
