@@ -1282,7 +1282,9 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
 
    vector<transaction_id_type> result;
-   result.reserve(idx.size());
+
+   static const size_t max_reserve = 64;
+   result.reserve(std::min(idx.size(), max_reserve));
 
    auto itr = idx.begin();
    while( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
