@@ -358,21 +358,6 @@ static const abi_serializer& get_abi_serializer() {
 }
 
 
-static auto get_account_creation(const apply_context& context, const account_name& account) {
-   auto const& accnt = context.db.get<account_object, by_name>(account);
-   return (time_point)accnt.creation_date;
-};
-
-static auto get_permission_last_used(const apply_context& context, const account_name& account, const permission_name& permission) {
-   auto const* perm = context.db.find<permission_usage_object, by_account_permission>(boost::make_tuple(account, permission));
-   if (perm) {
-      return optional<time_point>(perm->last_used);
-   }
-
-   return optional<time_point>();
-};
-
-
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used

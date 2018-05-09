@@ -823,6 +823,15 @@ class permission_api : public context_aware_api {
          return -1;
       }
 
+      int64_t get_permission_last_used( account_name account, permission_name permission) {
+         return context.db.get<permission_usage_object, by_account_permission>(boost::make_tuple(account, permission)).last_used.time_since_epoch().count();
+      };
+
+      int64_t get_account_creation_date( account_name account ) {
+         return time_point(context.db.get<account_object, by_name>(account).creation_date).time_since_epoch().count();
+      }
+       
+
    private:
       void unpack_provided_keys( flat_set<public_key_type>& keys, const char* pubkeys_data, size_t pubkeys_size ) {
          keys.clear();
@@ -1684,6 +1693,8 @@ REGISTER_INTRINSICS(crypto_api,
 REGISTER_INTRINSICS(permission_api,
    (check_transaction_authorization, int64_t(int, int, int, int, int, int)                  )
    (check_permission_authorization,  int64_t(int64_t, int64_t, int, int, int, int, int64_t) )
+   (get_permission_last_used,        int64_t(int64_t, int64_t) )
+   (get_account_creation_date,       int64_t(int64_t) )
 );
 
 
