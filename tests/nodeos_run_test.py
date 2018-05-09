@@ -222,7 +222,7 @@ try:
         errorExit("Cluster in bad state, received None node")
 
     Print("Create new account %s via %s" % (testeraAccount.name, initaAccount.name))
-    transId=node.createAccount(testeraAccount, initaAccount, stakedDeposit=0, waitForTransBlock=False)
+    transId=node.createInitializeAccount(testeraAccount, initaAccount, stakedDeposit=0, waitForTransBlock=False)
     if transId is None:
         cmdError("%s create account" % (ClientName))
         errorExit("Failed to create account %s" % (testeraAccount.name))
@@ -261,13 +261,13 @@ try:
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
     Print("Create new account %s via %s" % (currencyAccount.name, initbAccount.name))
-    transId=node.createAccount(currencyAccount, initbAccount, stakedDeposit=5000)
+    transId=node.createInitializeAccount(currencyAccount, initbAccount, stakedDeposit=5000)
     if transId is None:
         cmdError("%s create account" % (ClientName))
         errorExit("Failed to create account %s" % (currencyAccount.name))
 
     Print("Create new account %s via %s" % (exchangeAccount.name, initaAccount.name))
-    transId=node.createAccount(exchangeAccount, initaAccount, waitForTransBlock=True)
+    transId=node.createInitializeAccount(exchangeAccount, initaAccount, waitForTransBlock=True)
     if transId is None:
         cmdError("%s create account" % (ClientName))
         errorExit("Failed to create account %s" % (exchangeAccount.name))

@@ -35,8 +35,7 @@ BOOST_FIXTURE_TEST_CASE( delay_create_account, validating_tester) { try {
                                 .creator  = creator,
                                 .name     = a,
                                 .owner    = owner_auth,
-                                .active   = authority( get_public_key( a, "active" ) ),
-                                .recovery = authority( get_public_key( a, "recovery" ) ),
+                                .active   = authority( get_public_key( a, "active" ) )
                              });
    set_transaction_headers(trx);
    trx.delay_sec = 3;
@@ -63,8 +62,7 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
                                 .creator  = N(bad), /// a does not exist, this should error when execute
                                 .name     = a,
                                 .owner    = owner_auth,
-                                .active   = authority( get_public_key( a, "active" ) ),
-                                .recovery = authority( get_public_key( a, "recovery" ) ),
+                                .active   = authority( get_public_key( a, "active" ) )
                              });
    set_transaction_headers(trx);
    trx.delay_sec = 3;

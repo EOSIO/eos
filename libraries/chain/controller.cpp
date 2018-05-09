@@ -6,7 +6,6 @@
 #include <eosio/chain/fork_database.hpp>
 
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
@@ -104,9 +103,12 @@ struct controller_impl {
    SET_APP_HANDLER( eosio, eosio, deleteauth );
    SET_APP_HANDLER( eosio, eosio, linkauth );
    SET_APP_HANDLER( eosio, eosio, unlinkauth );
+/*
    SET_APP_HANDLER( eosio, eosio, postrecovery );
    SET_APP_HANDLER( eosio, eosio, passrecovery );
    SET_APP_HANDLER( eosio, eosio, vetorecovery );
+*/
+
    SET_APP_HANDLER( eosio, eosio, canceldelay );
 
    fork_db.irreversible.connect( [&]( auto b ) {
@@ -169,6 +171,11 @@ struct controller_impl {
          initialize_fork_db(); // set head to genesis state
       }
 
+      while( db.revision() > head->block_num ) {
+         wlog( "warning database revision greater than head block, undoing pending changes" );
+         db.undo();
+      }
+
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
                  ("db",db.revision())("head",head->block_num) );
 
@@ -208,7 +215,6 @@ struct controller_impl {
       db.add_index<block_summary_multi_index>();
       db.add_index<transaction_multi_index>();
       db.add_index<generated_transaction_multi_index>();
-      db.add_index<scope_sequence_multi_index>();
 
       authorization.add_indices();
       resource_limits.add_indices();
@@ -651,8 +657,11 @@ struct controller_impl {
       FC_ASSERT( db.revision() == head->block_num, "",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-      pending = db.start_undo_session(true);
+      auto guard_pending = fc::make_scoped_exit([this](){
+         pending.reset();
+      });
 
+      pending = db.start_undo_session(true);
 
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
@@ -687,6 +696,7 @@ struct controller_impl {
 
       clear_expired_input_transactions();
       update_producers_authority();
+      guard_pending.cancel();
    } // start_block
 
 
@@ -999,6 +1009,7 @@ controller::controller( const controller::config& cfg )
 }
 
 controller::~controller() {
+   my->abort_block();
 }
 
 

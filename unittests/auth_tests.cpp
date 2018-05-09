@@ -403,8 +403,7 @@ try {
                                    .creator  = acc1,
                                    .name     = a,
                                    .owner    = owner_auth,
-                                   .active   = authority( chain.get_public_key( a, "active" ) ),
-                                   .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                   .active   = authority( chain.get_public_key( a, "active" ) )
                                 });
 
       chain.set_transaction_headers(trx);
@@ -456,8 +455,7 @@ try {
                                    .creator  = creator,
                                    .name     = a,
                                    .owner    = authority( chain.get_public_key( a, "owner" ) ),
-                                   .active   = invalid_auth,//authority( chain.get_public_key( a, "active" ) ),
-                                   .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                   .active   = invalid_auth//authority( chain.get_public_key( a, "active" ) ),
                                 });
 
       chain.set_transaction_headers(trx);

@@ -107,7 +107,6 @@ struct newaccount {
    account_name                     name;
    authority                        owner;
    authority                        active;
-   authority                        recovery;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -235,44 +234,6 @@ struct onerror {
    }
 };
 
-struct postrecovery {
-   account_name       account;
-   authority          auth;
-   string             memo;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(postrecovery);
-   }
-};
-
-struct passrecovery {
-   account_name   account;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(passrecovery);
-   }
-};
-
-
-struct vetorecovery {
-   account_name   account;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(vetorecovery);
-   }
-};
 
 struct canceldelay {
    permission_level      canceling_auth;
@@ -297,15 +258,12 @@ FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
 FC_REFLECT( eosio::chain::abi_def                          , (types)(structs)(actions)(tables)(ricardian_clauses) )
 
-FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active)(recovery) )
-FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
+FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
+FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) 
 FC_REFLECT( eosio::chain::setabi                           , (account)(abi) )
 FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(auth) )
 FC_REFLECT( eosio::chain::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::unlinkauth                       , (account)(code)(type) )
-FC_REFLECT( eosio::chain::postrecovery                     , (account)(auth)(memo) )
-FC_REFLECT( eosio::chain::passrecovery                     , (account) )
-FC_REFLECT( eosio::chain::vetorecovery                     , (account) )
 FC_REFLECT( eosio::chain::canceldelay                      , (canceling_auth)(trx_id) )
-FC_REFLECT( eosio::chain::onerror                          , (sender_id)(sent_trx) )
+FC_REFLECT( eosio::chain::onerror, (sender_id)(sent_trx) )
