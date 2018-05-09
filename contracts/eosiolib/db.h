@@ -11,6 +11,10 @@ extern "C" {
  *  @defgroup database Database API
  *  @brief APIs that store and retreive data on the blockchain
  *  @ingroup contractdev
+ * 
+ *  @defgroup databasecpp Database C++ API
+ *  @brief Defines an interface to EOSIO database
+ *  @ingroup database
  *  
  *  @details
  *  EOS.IO organizes data according to the following broad structure:
