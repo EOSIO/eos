@@ -97,7 +97,7 @@ namespace detail {
          typedef map<permission_level, permission_cache_status> permission_cache_type;
 
          bool satisfied( const permission_level& permission,
-                         bool delays_satisfied,
+                         fc::microseconds override_provided_delay,
                          permission_cache_type* cached_perms = nullptr
                        )
          {
@@ -105,8 +105,7 @@ namespace detail {
                provided_delay = delay;
             });
 
-            if( delays_satisfied )
-               provided_delay = fc::microseconds::maximum();
+            provided_delay = override_provided_delay;
 
             return satisfied( permission, cached_perms );
          }
@@ -123,7 +122,7 @@ namespace detail {
 
          template<typename AuthorityType>
          bool satisfied( const AuthorityType& authority,
-                         bool delays_satisfied,
+                         fc::microseconds override_provided_delay,
                          permission_cache_type* cached_perms = nullptr
                        )
          {
@@ -131,8 +130,7 @@ namespace detail {
                provided_delay = delay;
             });
 
-            if( delays_satisfied )
-               provided_delay = fc::microseconds::maximum();
+            provided_delay = override_provided_delay;
 
             return satisfied( authority, cached_perms );
          }

@@ -11,6 +11,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 
 namespace eosio { namespace chain {
 
@@ -131,7 +132,7 @@ namespace eosio { namespace chain {
       } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
    }
 
-   bool authorization_manager::check_updateauth_authorization( const updateauth& update,
+   void authorization_manager::check_updateauth_authorization( const updateauth& update,
                                                                const vector<permission_level>& auths
                                                              )const
    {
@@ -142,9 +143,7 @@ namespace eosio { namespace chain {
                   "the owner of the affected permission needs to be the actor of the declared authorization" );
 
       const auto* min_permission = find_permission({update.account, update.permission});
-      bool new_permission = false;
       if( !min_permission ) { // creating a new permission
-         new_permission = true;
          min_permission = &get_permission({update.account, update.parent});
       }
 
@@ -153,8 +152,6 @@ namespace eosio { namespace chain {
                   irrelevant_auth_exception,
                   "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                   ("auth", auth)("min", permission_level{update.account, min_permission->name}) );
-
-      return new_permission;
    }
 
    void authorization_manager::check_deleteauth_authorization( const deleteauth& del,
@@ -234,9 +231,9 @@ namespace eosio { namespace chain {
                   ("auth", auth)("min", permission_level{unlink.account, *unlinked_permission_name}) );
    }
 
-   void authorization_manager::check_canceldelay_authorization( const canceldelay& cancel,
-                                                                const vector<permission_level>& auths
-                                                              )const
+   fc::microseconds authorization_manager::check_canceldelay_authorization( const canceldelay& cancel,
+                                                                            const vector<permission_level>& auths
+                                                                          )const
    {
       EOS_ASSERT( auths.size() == 1, irrelevant_auth_exception,
                   "canceldelay action should only have one declared authorization" );
@@ -247,6 +244,32 @@ namespace eosio { namespace chain {
                   irrelevant_auth_exception,
                   "canceldelay action declares irrelevant authority '${auth}'; specified authority to satisfy is ${min}",
                   ("auth", auth)("min", cancel.canceling_auth) );
+
+      const auto& trx_id = cancel.trx_id;
+
+      const auto& generated_transaction_idx = _control.db().get_index<generated_transaction_multi_index>();
+      const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
+      const auto& itr = generated_index.lower_bound(trx_id);
+      FC_ASSERT( itr != generated_index.end() && itr->sender == account_name() && itr->trx_id == trx_id,
+                 "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",
+                 ("tid", trx_id) );
+
+      auto trx = fc::raw::unpack<transaction>(itr->packed_trx.data(), itr->packed_trx.size());
+      bool found = false;
+      for( const auto& act : trx.actions ) {
+         for( const auto& auth : act.authorization ) {
+            if( auth == cancel.canceling_auth ) {
+               found = true;
+               break;
+            }
+         }
+         if( found ) break;
+      }
+
+      EOS_ASSERT( found, action_validate_exception,
+                  "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction" );
+
+      return (itr->delay_until - itr->published);
    }
 
    void noop_checktime( uint32_t ) {}
@@ -266,28 +289,27 @@ namespace eosio { namespace chain {
 
       auto delay_max_limit = fc::seconds( _control.get_global_properties().configuration.max_transaction_delay );
 
+      auto effective_provided_delay =  (provided_delay >= delay_max_limit) ? fc::microseconds::maximum() : provided_delay;
+
       auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                         _control.get_global_properties().configuration.max_authority_depth,
                                         provided_keys,
                                         provided_permissions,
-                                        ( provided_delay >= delay_max_limit ) ? fc::microseconds::maximum() : provided_delay,
+                                        effective_provided_delay,
                                         checktime
                                       );
 
-      map<permission_level, bool> permissions_to_satisfy;
-      // bool value indicates whether any delays should be considered automatically satisfied
+      map<permission_level, fc::microseconds> permissions_to_satisfy;
 
       for( const auto& act : actions ) {
          bool special_case = false;
-         bool delays_satisfied = false;
+         fc::microseconds delay = effective_provided_delay;
 
          if( act.account == config::system_account_name ) {
             special_case = true;
 
             if( act.name == updateauth::get_name() ) {
-               bool new_permission = check_updateauth_authorization( act.data_as<updateauth>(), act.authorization );
-               if( new_permission )
-                  delays_satisfied = true;
+               check_updateauth_authorization( act.data_as<updateauth>(), act.authorization );
             } else if( act.name == deleteauth::get_name() ) {
                check_deleteauth_authorization( act.data_as<deleteauth>(), act.authorization );
             } else if( act.name == linkauth::get_name() ) {
@@ -295,8 +317,7 @@ namespace eosio { namespace chain {
             } else if( act.name == unlinkauth::get_name() ) {
                check_unlinkauth_authorization( act.data_as<unlinkauth>(), act.authorization );
             } else if( act.name ==  canceldelay::get_name() ) {
-               check_canceldelay_authorization(act.data_as<canceldelay>(), act.authorization);
-               delays_satisfied = true;
+               delay = std::max( delay, check_canceldelay_authorization(act.data_as<canceldelay>(), act.authorization) );
             } else {
                special_case = false;
             }
@@ -318,9 +339,9 @@ namespace eosio { namespace chain {
                }
             }
 
-            auto res = permissions_to_satisfy.emplace( declared_auth, delays_satisfied );
-            if( !res.second && res.first->second ) { // if the declared_auth was already in the map and with delays considered satisfied
-               res.first->second = delays_satisfied;
+            auto res = permissions_to_satisfy.emplace( declared_auth, delay );
+            if( !res.second && res.first->second > delay) { // if the declared_auth was already in the map and with a higher delay
+               res.first->second = delay;
             }
          }
       }
@@ -337,7 +358,9 @@ namespace eosio { namespace chain {
          EOS_ASSERT( checker.satisfied( p.first, p.second ), unsatisfied_authorization,
                      "transaction declares authority '${auth}', "
                      "but does not have signatures for it under a provided delay of ${provided_delay} ms",
-                     ("auth", p.first)("provided_delay", provided_delay.count()/1000) );
+                     ("auth", p.first)("provided_delay", provided_delay.count()/1000)
+                     ("delay_max_limit_ms", delay_max_limit.count()/1000)
+                   );
 
       }
 

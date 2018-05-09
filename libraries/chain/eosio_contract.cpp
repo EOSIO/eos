@@ -14,7 +14,6 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/producer_object.hpp>
@@ -382,28 +381,6 @@ void apply_eosio_canceldelay(apply_context& context) {
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
 
    const auto& trx_id = cancel.trx_id;
-
-   const auto& generated_transaction_idx = context.control.db().get_index<generated_transaction_multi_index>();
-   const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
-   const auto& itr = generated_index.lower_bound(trx_id);
-   FC_ASSERT (itr != generated_index.end() && itr->sender == account_name() && itr->trx_id == trx_id,
-              "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
-
-   auto trx = fc::raw::unpack<transaction>(itr->packed_trx.data(), itr->packed_trx.size());
-   bool found = false;
-   for( const auto& act : trx.actions ) {
-      for( const auto& auth : act.authorization ) {
-         if( auth == cancel.canceling_auth ) {
-            found = true;
-            break;
-         }
-         context.checktime( 20 );
-      }
-      if( found ) break;
-   }
-
-   EOS_ASSERT( found, action_validate_exception,
-               "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction" );
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 
