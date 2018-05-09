@@ -171,6 +171,11 @@ struct controller_impl {
          initialize_fork_db(); // set head to genesis state
       }
 
+      while( db.revision() > head->block_num ) {
+         wlog( "warning database revision greater than head block, undoing pending changes" );
+         db.undo();
+      }
+
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
                  ("db",db.revision())("head",head->block_num) );
 
@@ -1012,6 +1017,7 @@ controller::controller( const controller::config& cfg )
 }
 
 controller::~controller() {
+   my->abort_block();
 }
 
 
