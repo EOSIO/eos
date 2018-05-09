@@ -122,7 +122,7 @@ namespace eosiosystem {
 
       public:
          system_contract( account_name s );
-         [[noreturn]] ~system_contract();
+         ~system_contract();
 
          // Actions:
          void onblock( uint32_t timestamp_slot, account_name producer );
@@ -203,7 +203,7 @@ namespace eosiosystem {
          static eosio_global_state get_default_parameters();
 
          // defined in voting.cpp
-         void adjust_voting_power( account_name acnt, int64_t delta );
+         void propagate_weight_change( const voter_info& voter );
    };
 
 } /// eosiosystem

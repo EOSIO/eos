@@ -16,7 +16,7 @@ namespace eosiosystem {
     _global(_self,_self),
     _rammarket(_self,_self)
    {
-      print( "construct system\n" );
+      //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
 
       auto itr = _rammarket.find(S(4,RAMEOS));
@@ -32,7 +32,7 @@ namespace eosiosystem {
             m.quote.balance.symbol = S(4,EOS);
          });
       } else {
-         print( "ram market already created" );
+         //print( "ram market already created" );
       }
    }
 
@@ -44,9 +44,9 @@ namespace eosiosystem {
 
 
    system_contract::~system_contract() {
-      print( "destruct system\n" );
+      //print( "destruct system\n" );
       _global.set( _gstate, _self );
-      eosio_exit(0);
+      //eosio_exit(0);
    }
 
    void system_contract::setram( uint64_t max_ram_size ) {
