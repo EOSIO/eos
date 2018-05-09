@@ -1,5 +1,4 @@
-#ifndef CONSUMER_H
-#define CONSUMER_H
+#pragma once
 
 #include <thread>
 #include <atomic>
@@ -13,11 +12,9 @@
 namespace eosio {
 
 template<typename T>
-class consumer : public boost::noncopyable
+class consumer final : public boost::noncopyable
 {
 public:
-    using vector = std::vector<T>;
-
     consumer(std::unique_ptr<consumer_core<T>> c);
     ~consumer();
 
@@ -27,18 +24,19 @@ private:
     void run();
 
     fifo<T> m_fifo;
-    std::unique_ptr<std::thread> m_thread;
-    std::atomic<bool> m_exit;
     std::unique_ptr<consumer_core<T>> m_consumer;
+    std::atomic<bool> m_exit;
+    std::unique_ptr<std::thread> m_thread;
 };
 
 template<typename T>
 consumer<T>::consumer(std::unique_ptr<consumer_core<T> > c):
     m_fifo(fifo<T>::behavior::blocking),
-    m_consumer(std::move(c))
+    m_consumer(std::move(c)),
+    m_exit(false),
+    m_thread(std::make_unique<std::thread>([&]{this->run();}))
 {
-    m_exit = false;
-    m_thread = std::make_unique<std::thread>([&]{this->run();});
+
 }
 
 template<typename T>
@@ -69,4 +67,3 @@ void consumer<T>::run()
 
 } // namespace
 
-#endif // CONSUMER_H
