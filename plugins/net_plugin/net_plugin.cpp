@@ -9,6 +9,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/contract_types.hpp>
@@ -27,6 +28,8 @@
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
+
+using namespace eosio::chain::plugin_interface::compat;
 
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
@@ -189,6 +192,8 @@ namespace eosio {
 
       shared_ptr<tcp::resolver>     resolver;
 
+      channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
+
       void connect( connection_ptr c );
       void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
       void start_session( connection_ptr c );
@@ -207,6 +212,8 @@ namespace eosio {
       void accepted_transaction(const transaction_metadata_ptr&);
       void applied_transaction(const transaction_trace_ptr&);
       void accepted_confirmation(const header_confirmation&);
+
+      void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
 
       bool is_valid( const handshake_message &msg);
 
@@ -839,15 +846,19 @@ namespace eosio {
          }
       }
       size_t count = 0;
-      if (bstack.back()->previous == lib_id) {
-         count = bstack.size();
-         while (bstack.size()) {
-            enqueue (*bstack.back());
-            bstack.pop_back();
+      if (!bstack.empty()) {
+         if (bstack.back()->previous == lib_id) {
+            count = bstack.size();
+            while (bstack.size()) {
+               enqueue(*bstack.back());
+               bstack.pop_back();
+            }
          }
+         fc_ilog(logger, "Sent ${n} blocks on my fork",("n",count));
+      } else {
+         fc_ilog(logger, "Nothing to send on fork request");
       }
 
-      fc_ilog(logger, "Sent ${n} blocks on my fork",("n",count));
       syncing = false;
    }
 
@@ -2597,7 +2608,7 @@ namespace eosio {
 
    void net_plugin_impl::accepted_transaction(const transaction_metadata_ptr& md) {
       fc_ilog(logger,"signaled, id = ${id}",("id", md->id));
-      dispatcher->bcast_transaction(md->packed_trx);
+//      dispatcher->bcast_transaction(md->packed_trx);
    }
 
    void net_plugin_impl::applied_transaction(const transaction_trace_ptr& txn) {
@@ -2606,6 +2617,16 @@ namespace eosio {
 
    void net_plugin_impl::accepted_confirmation(const header_confirmation& head) {
       fc_ilog(logger,"signaled, id = ${id}",("id", head.block_id));
+   }
+
+   void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>& results) {
+      transaction_id_type id = results.second->id();
+      if (results.first) {
+         fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
+      } else {
+         fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
+         dispatcher->bcast_transaction(*results.second);
+      }
    }
 
    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
@@ -2887,6 +2908,9 @@ namespace eosio {
          cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
          cc.accepted_confirmation.connect( boost::bind(&net_plugin_impl::accepted_confirmation, my.get(), _1));
       }
+
+      my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
+
       my->start_monitors();
 
       for( auto seed_node : my->supplied_peers ) {

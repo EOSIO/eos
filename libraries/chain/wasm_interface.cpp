@@ -52,7 +52,7 @@ namespace eosio { namespace chain {
       //Hard: Kick off instantiation in a separate thread at this location
 	   }
 
-   void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
+   void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
       my->get_instantiated_module(code_id, code)->apply(context);
    }
 
@@ -667,6 +667,7 @@ class softfloat_api : public context_aware_api {
       static bool sign_bit( float64_t f ) { return f.v >> 63; }
 
 };
+
 class producer_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -761,20 +762,6 @@ class permission_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void unpack_provided_keys( flat_set<public_key_type>& keys, const char* pubkeys_data, size_t pubkeys_size ) {
-         keys.clear();
-         if( pubkeys_size == 0 ) return;
-
-         keys = fc::raw::unpack<flat_set<public_key_type>>( pubkeys_data, pubkeys_size );
-      }
-
-      void unpack_provided_permissions( flat_set<permission_level>& permissions, const char* perms_data, size_t perms_size ) {
-         permissions.clear();
-         if( perms_size == 0 ) return;
-
-         permissions = fc::raw::unpack<flat_set<permission_level>>( perms_data, perms_size );
-      }
-
       int64_t check_transaction_authorization( array_ptr<char> trx_data,     size_t trx_size,
                                                array_ptr<char> pubkeys_data, size_t pubkeys_size,
                                                array_ptr<char> perms_data,   size_t perms_size
@@ -835,33 +822,96 @@ class permission_api : public context_aware_api {
 
          return -1;
       }
+
+      int64_t get_permission_last_used( account_name account, permission_name permission) {
+         return context.db.get<permission_usage_object, by_account_permission>(boost::make_tuple(account, permission)).last_used.time_since_epoch().count();
+      };
+
+      int64_t get_account_creation_date( account_name account ) {
+         return time_point(context.db.get<account_object, by_name>(account).creation_date).time_since_epoch().count();
+      }
+       
+
+   private:
+      void unpack_provided_keys( flat_set<public_key_type>& keys, const char* pubkeys_data, size_t pubkeys_size ) {
+         keys.clear();
+         if( pubkeys_size == 0 ) return;
+
+         keys = fc::raw::unpack<flat_set<public_key_type>>( pubkeys_data, pubkeys_size );
+      }
+
+      void unpack_provided_permissions( flat_set<permission_level>& permissions, const char* perms_data, size_t perms_size ) {
+         permissions.clear();
+         if( perms_size == 0 ) return;
+
+         permissions = fc::raw::unpack<flat_set<permission_level>>( perms_data, perms_size );
+      }
+
+};
+
+class authorization_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+   void require_authorization( const account_name& account ) {
+      context.require_authorization( account );
+   }
+
+   bool has_authorization( const account_name& account )const {
+      return context.has_authorization( account );
+   }
+
+   void require_authorization(const account_name& account,
+                                                 const permission_name& permission) {
+      context.require_authorization( account, permission );
+   }
+
+   void require_recipient( account_name recipient ) {
+      context.require_recipient( recipient );
+   }
+
+   bool is_account( const account_name& account )const {
+      return context.is_account( account );
+   }
+
 };
 
 class system_api : public context_aware_api {
    public:
-      explicit system_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
-
-      void abort() {
-         edump(("abort() called"));
-         FC_ASSERT( false, "abort() called");
-      }
-
-      void eosio_assert(bool condition, null_terminated_ptr str) {
-         if( !condition ) {
-            std::string message( str );
-            edump((message));
-            FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
-         }
-      }
-
-      void eosio_exit(int32_t code) {
-         throw wasm_exit{code};
-      }
+      using context_aware_api::context_aware_api;
 
       uint64_t current_time() {
          return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
       }
+
+      uint64_t publication_time() {
+         return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
+      }
+
+};
+
+class context_free_system_api :  public context_aware_api {
+public:
+   explicit context_free_system_api( apply_context& ctx )
+   :context_aware_api(ctx,true){}
+
+   void abort() {
+      edump(("abort() called"));
+      FC_ASSERT( false, "abort() called");
+   }
+
+   void eosio_assert(bool condition, null_terminated_ptr str) {
+      if( !condition ) {
+         std::string message( str );
+         edump((message));
+         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+      }
+   }
+
+   void eosio_exit(int32_t code) {
+      throw wasm_exit{code};
+   }
+
 };
 
 class action_api : public context_aware_api {
@@ -881,10 +931,6 @@ class action_api : public context_aware_api {
 
       int action_data_size() {
          return context.act.data.size();
-      }
-
-      uint64_t publication_time() {
-         return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
       name current_receiver() {
@@ -1253,7 +1299,9 @@ class context_free_transaction_api : public context_aware_api {
 
 class compiler_builtins : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      compiler_builtins( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+
       void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
          fc::uint128_t i(high, low);
          i <<= shift;
@@ -1502,78 +1550,6 @@ class compiler_builtins : public context_aware_api {
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
 
-class math_api : public context_aware_api {
-   public:
-      math_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
-
-      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
-         fc::uint128_t s(*self);
-         const fc::uint128_t o(*other);
-         FC_ASSERT( o != 0, "divide by zero" );
-
-         s = s/o;
-         *self = (unsigned __int128)s;
-      }
-
-      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
-         fc::uint128_t s(*self);
-         const fc::uint128_t o(*other);
-         s *= o;
-         *self = (unsigned __int128)s;
-      }
-
-      uint64_t double_add(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
-                  + DOUBLE(*reinterpret_cast<double *>(&b));
-         double res = c.convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-
-      uint64_t double_mult(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
-                  * DOUBLE(*reinterpret_cast<double *>(&b));
-         double res = c.convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-
-      uint64_t double_div(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
-         FC_ASSERT(divisor != 0, "divide by zero");
-         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
-         double res = c.convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-
-      uint32_t double_eq(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
-      }
-
-      uint32_t double_lt(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
-      }
-
-      uint32_t double_gt(uint64_t a, uint64_t b) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
-      }
-
-      uint64_t double_to_i64(uint64_t n) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
-      }
-
-      uint64_t i64_to_double(int64_t n) {
-         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
-         double res = DOUBLE(n).convert_to<double>();
-         return *reinterpret_cast<uint64_t *>(&res);
-      }
-};
 
 /*
  * This api will be removed with fix for `eos #2561`
@@ -1589,19 +1565,6 @@ class call_depth_api : public context_aware_api {
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
    (call_depth_assert,  void()               )
-);
-
-REGISTER_INTRINSICS(math_api,
-   (diveq_i128,    void(int, int)            )
-   (multeq_i128,   void(int, int)            )
-   (double_add,    int64_t(int64_t, int64_t) )
-   (double_mult,   int64_t(int64_t, int64_t) )
-   (double_div,    int64_t(int64_t, int64_t) )
-   (double_eq,     int32_t(int64_t, int64_t) )
-   (double_lt,     int32_t(int64_t, int64_t) )
-   (double_gt,     int32_t(int64_t, int64_t) )
-   (double_to_i64, int64_t(int64_t)          )
-   (i64_to_double, int64_t(int64_t)          )
 );
 
 REGISTER_INTRINSICS(compiler_builtins,
@@ -1730,28 +1693,33 @@ REGISTER_INTRINSICS(crypto_api,
 REGISTER_INTRINSICS(permission_api,
    (check_transaction_authorization, int64_t(int, int, int, int, int, int)                  )
    (check_permission_authorization,  int64_t(int64_t, int64_t, int, int, int, int, int64_t) )
+   (get_permission_last_used,        int64_t(int64_t, int64_t) )
+   (get_account_creation_date,       int64_t(int64_t) )
 );
 
 
 REGISTER_INTRINSICS(system_api,
+   (current_time, int64_t()       )
+   (publication_time,   int64_t() )
+);
+
+REGISTER_INTRINSICS(context_free_system_api,
    (abort,        void()         )
    (eosio_assert, void(int, int) )
    (eosio_exit,   void(int)      )
-   (current_time, int64_t()      )
 );
 
 REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
-   (publication_time,   int64_t()          )
    (current_receiver,   int64_t()          )
 );
 
-REGISTER_INTRINSICS(apply_context,
+REGISTER_INTRINSICS(authorization_api,
    (require_recipient,     void(int64_t)          )
-   (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&))
-   (require_authorization, void(int64_t, int64_t), "require_auth2", void(apply_context::*)(const account_name&, const permission_name& permission))
-   (has_authorization,     int(int64_t), "has_auth", bool(apply_context::*)(const account_name&)const)
+   (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
+   (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
+   (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
 );
 

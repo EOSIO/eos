@@ -330,14 +330,13 @@ void print_action_tree( const fc::variant& action ) {
 void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
-      const auto& receipt = processed["receipt"].get_object() ;
-      const auto& status = receipt["status"].as_string() ;
-      auto net = receipt["net_usage_words"].as_int64()*8;
-      auto cpu = receipt["kcpu_usage"].as_int64();
+      string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+      auto net = processed["net_usage"].as_int64()*8;
+      auto cpu = processed["cpu_usage"].as_int64() / 1024;
 
       cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
 
-      if( status == "hard_fail" ) {
+      if( status == "failed" ) {
          auto soft_except = processed["except"].as<optional<fc::exception>>();
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
@@ -380,8 +379,7 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
          .creator      = creator,
          .name         = newaccount,
          .owner        = eosio::chain::authority{1, {{owner, 1}}, {}},
-         .active       = eosio::chain::authority{1, {{active, 1}}, {}},
-         .recovery     = eosio::chain::authority{1, {}, {{{creator, config::active_name}, 1}}}
+         .active       = eosio::chain::authority{1, {{active, 1}}, {}}
       }
    };
 }
@@ -1054,45 +1052,6 @@ struct unregproxy_subcommand {
    }
 };
 
-struct postrecovery_subcommand {
-   string account;
-   string json_str_or_file;
-   string memo;
-
-   postrecovery_subcommand(CLI::App* actionRoot) {
-      auto post_recovery = actionRoot->add_subcommand("postrecovery", localized("Post recovery request"));
-      post_recovery->add_option("account", account, localized("The account to post the recovery for"))->required();
-      post_recovery->add_option("data", json_str_or_file, localized("The authority to post the recovery with as EOS public key, JSON string, or filename"))->required();
-      post_recovery->add_option("memo", memo, localized("A memo describing the post recovery request"))->required();
-      add_standard_transaction_options(post_recovery);
-
-      post_recovery->set_callback([this] {
-         authority data_auth = parse_json_authority_or_key(json_str_or_file);
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("account", account)
-                  ("data", data_auth)
-                  ("memo", memo);
-         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(postrecovery), act_payload)});
-      });
-   }
-};
-
-struct vetorecovery_subcommand {
-   string account;
-
-   vetorecovery_subcommand(CLI::App* actionRoot) {
-      auto veto_recovery = actionRoot->add_subcommand("vetorecovery", localized("Veto a posted recovery"));
-      veto_recovery->add_option("account", account, localized("The account to veto the recovery for"))->required();
-      add_standard_transaction_options(veto_recovery);
-
-      veto_recovery->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("account", account);
-         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(vetorecovery), act_payload)});
-      });
-   }
-};
-
 struct canceldelay_subcommand {
    string cancelling_account;
    string cancelling_permission;
@@ -1171,8 +1130,8 @@ void get_account( const string& accountName, bool json_format ) {
                 << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
 
       std::cout << "net bandwidth:" << std::endl;
-      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-         asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
+      if ( res.total_resources.is_object() ) {
+         asset net_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) : 0 );
          auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
          std::cout << indent << "staked:" << std::setw(20) << net_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
@@ -1189,8 +1148,8 @@ void get_account( const string& accountName, bool json_format ) {
 
 
       std::cout << "cpu bandwidth:" << std::endl;
-      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-         asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
+      if ( res.total_resources.is_object() ) {
+         asset cpu_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : 0 );
          auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
          std::cout << indent << "staked:" << std::setw(20) << cpu_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
@@ -2218,9 +2177,6 @@ int main( int argc, char** argv ) {
 
    auto regProxy = regproxy_subcommand(system);
    auto unregProxy = unregproxy_subcommand(system);
-
-   auto postRecovery = postrecovery_subcommand(system);
-   auto vetoRecovery = vetorecovery_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
 

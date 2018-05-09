@@ -200,8 +200,7 @@ namespace eosio { namespace testing {
                                    .creator  = creator,
                                    .name     = a,
                                    .owner    = owner_auth,
-                                   .active   = authority( get_public_key( a, "active" ) ),
-                                   .recovery = authority( get_public_key( a, "recovery" ) ),
+                                   .active   = authority( get_public_key( a, "active" ) )
                                 });
 
       set_transaction_headers(trx);
