@@ -126,7 +126,7 @@
          {"name":"total_ram_stake",               "type":"asset"},
          {"name":"last_producer_schedule_update", "type":"time"},
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
-         {"name":"eos_bucket",                    "type":"asset"},
+         {"name":"pervote_bucket",                "type":"asset"},
          {"name":"savings",                       "type":"asset"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
          {"name":"total_activatied_stake",        "type":"int64"}

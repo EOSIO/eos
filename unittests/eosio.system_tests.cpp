@@ -1261,10 +1261,11 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    {
       produce_blocks(50);
 
-      const auto initial_global_state   = get_global_state();
-      const uint64_t initial_claim_time = initial_global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    initial_eos_bucket = initial_global_state["eos_bucket"].as<asset>();
-      const asset    initial_savings    = initial_global_state["savings"].as<asset>();
+      const auto     initial_global_state   = get_global_state();
+      const uint64_t initial_claim_time     = initial_global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    initial_pervote_bucket = initial_global_state["pervote_bucket"].as<asset>();
+      const asset    initial_savings        = initial_global_state["savings"].as<asset>();
+
       prod = get_producer_info("inita");
       const uint32_t produced_blocks = prod["produced_blocks"].as<uint32_t>();
       BOOST_REQUIRE(1 < produced_blocks);
@@ -1274,10 +1275,10 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
       
       BOOST_REQUIRE_EQUAL(success(), push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
       
-      const auto global_state   = get_global_state();
-      const uint64_t claim_time = global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    eos_bucket = global_state["eos_bucket"].as<asset>();
-      const asset    savings    = global_state["savings"].as<asset>();
+      const auto global_state       = get_global_state();
+      const uint64_t claim_time     = global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    pervote_bucket = global_state["pervote_bucket"].as<asset>();
+      const asset    savings        = global_state["savings"].as<asset>();
       prod = get_producer_info("inita");
       BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
       const asset supply  = get_token_supply();
@@ -1286,20 +1287,20 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
       BOOST_REQUIRE_EQUAL(claim_time, prod["last_claim_time"].as<uint64_t>());
       const int32_t secs_between_fills = static_cast<int32_t>((claim_time - initial_claim_time) / 1000000);
       
-      BOOST_REQUIRE_EQUAL(0, initial_eos_bucket.amount);
+      BOOST_REQUIRE_EQUAL(0, initial_pervote_bucket.amount);
 
       BOOST_REQUIRE_EQUAL(int64_t( (initial_supply.amount * secs_between_fills * ((4.879-1.0)/100.0)) / (52*7*24*3600) ),
                           savings.amount - initial_savings.amount);
       
       int64_t block_payments  = int64_t( initial_supply.amount * produced_blocks * (0.25/100.0) / (52*7*24*3600*2) );
-      int64_t from_eos_bucket = int64_t( initial_supply.amount * secs_between_fills * (0.75/100.0) / (52*7*24*3600) );
+      int64_t from_pervote_bucket = int64_t( initial_supply.amount * secs_between_fills * (0.75/100.0) / (52*7*24*3600) );
 
-      if (from_eos_bucket >= 100 * 10000) {
-         BOOST_REQUIRE_EQUAL(block_payments + from_eos_bucket, balance.amount - initial_balance.amount);
-         BOOST_REQUIRE_EQUAL(0, eos_bucket.amount);
+      if (from_pervote_bucket >= 100 * 10000) {
+         BOOST_REQUIRE_EQUAL(block_payments + from_pervote_bucket, balance.amount - initial_balance.amount);
+         BOOST_REQUIRE_EQUAL(0, pervote_bucket.amount);
       } else {
          BOOST_REQUIRE_EQUAL(block_payments, balance.amount - initial_balance.amount);
-         BOOST_REQUIRE_EQUAL(from_eos_bucket, eos_bucket.amount);
+         BOOST_REQUIRE_EQUAL(from_pervote_bucket, pervote_bucket.amount);
       }
 
       const int64_t max_supply_growth = int64_t( (initial_supply.amount * secs_between_fills * (4.879/100.0)) / (52*7*24*3600) );
@@ -1321,10 +1322,10 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    // wait 5 more minutes, inita can now claim rewards again
    {
       produce_block(fc::seconds(5 * 60));
-      const auto initial_global_state   = get_global_state();
-      const uint64_t initial_claim_time = initial_global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    initial_eos_bucket = initial_global_state["eos_bucket"].as<asset>();
-      const asset    initial_savings    = initial_global_state["savings"].as<asset>();
+      const auto     initial_global_state   = get_global_state();
+      const uint64_t initial_claim_time     = initial_global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    initial_pervote_bucket = initial_global_state["pervote_bucket"].as<asset>();
+      const asset    initial_savings        = initial_global_state["savings"].as<asset>();
 
       prod = get_producer_info("inita");
       const uint32_t produced_blocks = prod["produced_blocks"].as<uint32_t>();
@@ -1336,10 +1337,11 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
       BOOST_REQUIRE_EQUAL(success(),
                           push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
       
-      const auto global_state   = get_global_state();
-      const uint64_t claim_time = global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    eos_bucket = global_state["eos_bucket"].as<asset>();
-      const asset    savings    = global_state["savings"].as<asset>();
+      const auto     global_state   = get_global_state();
+      const uint64_t claim_time     = global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    pervote_bucket = global_state["pervote_bucket"].as<asset>();
+      const asset    savings        = global_state["savings"].as<asset>();
+
       prod = get_producer_info("inita");
       BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
       const asset supply  = get_token_supply();
@@ -1351,15 +1353,15 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
       BOOST_REQUIRE_EQUAL(int64_t( (initial_supply.amount * secs_between_fills * ((4.879-1.0)/100.0)) / (52*7*24*3600) ),
                           savings.amount - initial_savings.amount);
 
-      int64_t block_payments  = int64_t( initial_supply.amount * produced_blocks * (0.25/100.0) / (52*7*24*3600*2) );
-      int64_t from_eos_bucket = int64_t( initial_eos_bucket.amount + initial_supply.amount * secs_between_fills * (0.75/100.0) / (52*7*24*3600) );
+      int64_t block_payments      = int64_t( initial_supply.amount * produced_blocks * (0.25/100.0) / (52*7*24*3600*2) );
+      int64_t from_pervote_bucket = int64_t( initial_pervote_bucket.amount + initial_supply.amount * secs_between_fills * (0.75/100.0) / (52*7*24*3600) );
 
-      if (from_eos_bucket >= 100 * 10000) {
-         BOOST_REQUIRE_EQUAL(block_payments + from_eos_bucket, balance.amount - initial_balance.amount);
-         BOOST_REQUIRE_EQUAL(0, eos_bucket.amount);
+      if (from_pervote_bucket >= 100 * 10000) {
+         BOOST_REQUIRE_EQUAL(block_payments + from_pervote_bucket, balance.amount - initial_balance.amount);
+         BOOST_REQUIRE_EQUAL(0, pervote_bucket.amount);
       } else {
          BOOST_REQUIRE_EQUAL(block_payments, balance.amount - initial_balance.amount);
-         BOOST_REQUIRE_EQUAL(from_eos_bucket, eos_bucket.amount);
+         BOOST_REQUIRE_EQUAL(from_pervote_bucket, pervote_bucket.amount);
       }
 
       const int64_t max_supply_growth = int64_t( (initial_supply.amount * secs_between_fills * (4.879/100.0)) / (52*7*24*3600) );
@@ -1490,37 +1492,37 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester) try {
       const auto prod_name = producer_names[prod_index];
       const auto produced_blocks = get_producer_info(prod_name)["produced_blocks"].as<uint32_t>();
 
-      const auto initial_global_state   = get_global_state();
-      const uint64_t initial_claim_time = initial_global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    initial_eos_bucket = initial_global_state["eos_bucket"].as<asset>();
-      const asset    initial_savings    = initial_global_state["savings"].as<asset>();
-      const asset    initial_supply     = get_token_supply();
-      const asset    initial_balance    = get_balance(prod_name);
+      const auto    initial_global_state    = get_global_state();
+      const uint64_t initial_claim_time     = initial_global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    initial_pervote_bucket = initial_global_state["pervote_bucket"].as<asset>();
+      const asset    initial_savings        = initial_global_state["savings"].as<asset>();
+      const asset    initial_supply         = get_token_supply();
+      const asset    initial_balance        = get_balance(prod_name);
  
       BOOST_REQUIRE_EQUAL(success(), push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
       
-      const auto global_state   = get_global_state();
-      const uint64_t claim_time = global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    eos_bucket = global_state["eos_bucket"].as<asset>();
-      const asset    savings    = global_state["savings"].as<asset>();
-      const asset    supply     = get_token_supply();
-      const asset    balance    = get_balance(prod_name);
+      const auto     global_state   = get_global_state();
+      const uint64_t claim_time     = global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    pervote_bucket = global_state["pervote_bucket"].as<asset>();
+      const asset    savings        = global_state["savings"].as<asset>();
+      const asset    supply         = get_token_supply();
+      const asset    balance        = get_balance(prod_name);
 
       const int32_t secs_between_fills = static_cast<int32_t>((claim_time - initial_claim_time) / 1000000);
 
       BOOST_REQUIRE_EQUAL(int64_t( (initial_supply.amount * secs_between_fills * (cont_rate - standby_rate - block_rate)) / secs_per_year ),
                           savings.amount - initial_savings.amount);
       
-      int64_t block_payments      = int64_t( initial_supply.amount * produced_blocks * block_rate / blocks_per_year );
-      int64_t expected_eos_bucket = int64_t( initial_eos_bucket.amount + initial_supply.amount * secs_between_fills * standby_rate / secs_per_year ); 
-      int64_t from_eos_bucket     = int64_t( vote_shares[prod_index] * expected_eos_bucket );
+      int64_t block_payments          = int64_t( initial_supply.amount * produced_blocks * block_rate / blocks_per_year );
+      int64_t expected_pervote_bucket = int64_t( initial_pervote_bucket.amount + initial_supply.amount * secs_between_fills * standby_rate / secs_per_year ); 
+      int64_t from_pervote_bucket     = int64_t( vote_shares[prod_index] * expected_pervote_bucket );
       
-      if (from_eos_bucket >= 100 * 10000) {
-         BOOST_REQUIRE_EQUAL(block_payments + from_eos_bucket, balance.amount - initial_balance.amount);
-         BOOST_REQUIRE_EQUAL(expected_eos_bucket - from_eos_bucket, eos_bucket.amount);
+      if (from_pervote_bucket >= 100 * 10000) {
+         BOOST_REQUIRE_EQUAL(block_payments + from_pervote_bucket, balance.amount - initial_balance.amount);
+         BOOST_REQUIRE_EQUAL(expected_pervote_bucket - from_pervote_bucket, pervote_bucket.amount);
       } else {
          BOOST_REQUIRE_EQUAL(block_payments, balance.amount - initial_balance.amount);
-         BOOST_REQUIRE_EQUAL(expected_eos_bucket, eos_bucket.amount);
+         BOOST_REQUIRE_EQUAL(expected_pervote_bucket, pervote_bucket.amount);
       }
 
       produce_blocks(5);
@@ -1550,33 +1552,33 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester) try {
       const auto prod_name = producer_names[prod_index];
       const auto produced_blocks = get_producer_info(prod_name)["produced_blocks"].as<uint32_t>();
 
-      const auto initial_global_state   = get_global_state();
-      const uint64_t initial_claim_time = initial_global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    initial_eos_bucket = initial_global_state["eos_bucket"].as<asset>();
-      const asset    initial_savings    = initial_global_state["savings"].as<asset>();
-      const asset    initial_supply     = get_token_supply();
-      const asset    initial_balance    = get_balance(prod_name);
+      const auto     initial_global_state   = get_global_state();
+      const uint64_t initial_claim_time     = initial_global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    initial_pervote_bucket = initial_global_state["pervote_bucket"].as<asset>();
+      const asset    initial_savings        = initial_global_state["savings"].as<asset>();
+      const asset    initial_supply         = get_token_supply();
+      const asset    initial_balance        = get_balance(prod_name);
 
       BOOST_REQUIRE_EQUAL(success(), push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
 
-      const auto global_state   = get_global_state();
-      const uint64_t claim_time = global_state["last_pervote_bucket_fill"].as_uint64();
-      const asset    eos_bucket = global_state["eos_bucket"].as<asset>();
-      const asset    savings    = global_state["savings"].as<asset>();
-      const asset    supply     = get_token_supply();
-      const asset    balance    = get_balance(prod_name);
+      const auto     global_state   = get_global_state();
+      const uint64_t claim_time     = global_state["last_pervote_bucket_fill"].as_uint64();
+      const asset    pervote_bucket = global_state["pervote_bucket"].as<asset>();
+      const asset    savings        = global_state["savings"].as<asset>();
+      const asset    supply         = get_token_supply();
+      const asset    balance        = get_balance(prod_name);
 
       const int32_t secs_between_fills = static_cast<int32_t>((claim_time - initial_claim_time) / 1000000);
 
       BOOST_REQUIRE_EQUAL(int64_t( (initial_supply.amount * secs_between_fills * (cont_rate - standby_rate - block_rate)) / secs_per_year ),
                           savings.amount - initial_savings.amount);
 
-      int64_t block_payments      = int64_t( initial_supply.amount * produced_blocks * block_rate / blocks_per_year );
-      int64_t expected_eos_bucket = int64_t( initial_eos_bucket.amount + initial_supply.amount * secs_between_fills * standby_rate / secs_per_year );
-      int64_t from_eos_bucket     = int64_t( vote_shares[prod_index] * expected_eos_bucket );
+      int64_t block_payments          = int64_t( initial_supply.amount * produced_blocks * block_rate / blocks_per_year );
+      int64_t expected_pervote_bucket = int64_t( initial_pervote_bucket.amount + initial_supply.amount * secs_between_fills * standby_rate / secs_per_year );
+      int64_t from_pervote_bucket     = int64_t( vote_shares[prod_index] * expected_pervote_bucket );
 
-      BOOST_REQUIRE_EQUAL(block_payments + from_eos_bucket, balance.amount - initial_balance.amount);
-      BOOST_REQUIRE_EQUAL(expected_eos_bucket - from_eos_bucket, eos_bucket.amount);
+      BOOST_REQUIRE_EQUAL(block_payments + from_pervote_bucket, balance.amount - initial_balance.amount);
+      BOOST_REQUIRE_EQUAL(expected_pervote_bucket - from_pervote_bucket, pervote_bucket.amount);
 
       produce_blocks(5);
 
