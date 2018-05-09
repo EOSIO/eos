@@ -30,6 +30,7 @@ const static uint64_t eosio_all_scope        = N(eosio.all);
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
 const static uint64_t eosio_any_name = N(eosio.any);
+const static uint64_t eosio_code_name = N(eosio.code);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

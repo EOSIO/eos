@@ -36,8 +36,26 @@ uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
-      context.db.get<account_object, by_name>(a.permission.actor);
-      context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
+      auto* acct = context.db.find<account_object, by_name>(a.permission.actor);
+      EOS_ASSERT( acct != nullptr, action_validate_exception,
+                  "account '${account}' does not exist",
+                  ("account", a.permission.actor)
+                );
+
+      if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
+         continue; // account was already checked to exist, so its owner and active permissions should exist
+
+      if( a.permission.permission == config::eosio_code_name ) // virtual eosio.code permission does not really exist but is allowed
+         continue;
+
+      try {
+         context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
+      } catch( const permission_query_exception& ) {
+         EOS_THROW( action_validate_exception,
+                    "permission '${perm}' does not exist",
+                    ("perm", a.permission)
+                  );
+      }
    }
 }
 
@@ -74,10 +92,6 @@ void apply_eosio_newaccount(apply_context& context) {
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   for( const auto& auth : { create.owner, create.active, create.recovery } ){
-      validate_authority_precondition( context, auth );
-   }
-
    const auto& new_account = db.create<account_object>([&](auto& a) {
       a.name = create.name;
       a.creation_date = context.control.pending_block_time();
@@ -86,6 +100,10 @@ void apply_eosio_newaccount(apply_context& context) {
    db.create<account_sequence_object>([&](auto& a) {
       a.name = create.name;
    });
+
+   for( const auto& auth : { create.owner, create.active, create.recovery } ){
+      validate_authority_precondition( context, auth );
+   }
 
    const auto& owner_permission  = authorization.create_permission( create.name, config::owner_name, 0,
                                                                     std::move(create.owner) );

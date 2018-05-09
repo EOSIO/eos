@@ -212,7 +212,7 @@ void apply_context::execute_inline( action&& a ) {
          control.get_authorization_manager()
                 .check_authorization( {a},
                                       {},
-                                      {{receiver, permission_name()}},
+                                      {{receiver, config::eosio_code_name}},
                                       control.pending_block_time() - trx_context.published,
                                       std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                       false
@@ -270,7 +270,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          control.get_authorization_manager()
                 .check_authorization( trx.actions,
                                       {},
-                                      {{receiver, permission_name()}},
+                                      {{receiver, config::eosio_code_name}},
                                       delay,
                                       std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                       false

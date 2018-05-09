@@ -303,14 +303,14 @@ try {
    // Verify account created properly
    const auto& joe_owner_authority = chain.get<permission_object, by_owner>(boost::make_tuple("joe", "owner"));
    BOOST_TEST(joe_owner_authority.auth.threshold == 1);
-   BOOST_TEST(joe_owner_authority.auth.accounts.size() == 0);
+   BOOST_TEST(joe_owner_authority.auth.accounts.size() == 1);
    BOOST_TEST(joe_owner_authority.auth.keys.size() == 1);
    BOOST_TEST(string(joe_owner_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "owner")));
    BOOST_TEST(joe_owner_authority.auth.keys[0].weight == 1);
 
    const auto& joe_active_authority = chain.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
    BOOST_TEST(joe_active_authority.auth.threshold == 1);
-   BOOST_TEST(joe_active_authority.auth.accounts.size() == 0);
+   BOOST_TEST(joe_active_authority.auth.accounts.size() == 1);
    BOOST_TEST(joe_active_authority.auth.keys.size() == 1);
    BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "active")));
    BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1);
