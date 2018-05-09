@@ -288,8 +288,9 @@ namespace eosio { namespace testing {
             wdump((e.to_detail_string()));
          }
       }
+      controller::config vcfg;
+
       validating_tester() {
-         controller::config vcfg;
          vcfg.block_log_dir      = tempdir.path() / "vblocklog";
          vcfg.shared_memory_dir  = tempdir.path() / "vshared";
          vcfg.shared_memory_size = 1024*1024*8;
@@ -304,19 +305,24 @@ namespace eosio { namespace testing {
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
          }
 
+
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->startup();
+
          init(true);
       }
 
+      /*
       validating_tester(controller::config config) {
          validating_node = std::make_unique<controller>(config);
          init(config);
       }
+      */
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          auto sb = _produce_block(skip_time, false, skip_flag | 2);
          validating_node->push_block( sb );
+
          return sb;
       }
 
@@ -324,18 +330,29 @@ namespace eosio { namespace testing {
          control->abort_block();
          auto sb = _produce_block(skip_time, true, skip_flag | 2);
          validating_node->push_block( sb );
+
+
+
          return sb;
       }
 
       bool validate() {
+
+
         auto hbh = control->head_block_state()->header;
         auto vn_hbh = validating_node->head_block_state()->header;
-        return control->head_block_id() == validating_node->head_block_id() &&
+        bool ok = control->head_block_id() == validating_node->head_block_id() &&
                hbh.previous == vn_hbh.previous &&
                hbh.timestamp == vn_hbh.timestamp &&
                hbh.transaction_mroot == vn_hbh.transaction_mroot &&
                hbh.action_mroot == vn_hbh.action_mroot &&
                hbh.producer == vn_hbh.producer;
+
+        validating_node.reset();
+        validating_node = std::make_unique<controller>(vcfg);
+        validating_node->startup();
+
+        return ok;
       }
 
       unique_ptr<controller>                  validating_node;
