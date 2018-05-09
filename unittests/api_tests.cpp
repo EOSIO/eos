@@ -852,48 +852,48 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       BOOST_TEST(trace->action_traces.back().console == "deferred executed\n");
    }
 
-#warning TODO: FIX THE FOLLOWING TESTS
-#if 0
+   produce_blocks(10);
+
    //schedule twice (second deferred transaction should replace first one)
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      uint32_t count = 0;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       produce_block( fc::seconds(2) );
 
       //check that only one deferred transaction executed
       control->push_next_scheduled_transaction();
+      control->push_next_scheduled_transaction();
+      BOOST_CHECK_EQUAL(1, count);
       BOOST_CHECK(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
+      c.disconnect();
    }
+
+   produce_blocks(10);
 
    //schedule and cancel
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
       produce_block( fc::seconds(2) );
       control->push_next_scheduled_transaction();
       BOOST_CHECK(!trace);
-      //      BOOST_CHECK_EQUAL( 0, traces.size() );
+      c.disconnect();
    }
 
-   //cancel_deferred() before scheduling transaction should not prevent the transaction from being scheduled (check that previous bug is fixed)
-   CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
-   produce_block( fc::seconds(2) );
-   traces = control->push_deferred_transactions( true );
-   BOOST_CHECK_EQUAL( 1, traces.size() );
+   produce_blocks(10);
 
-   //verify that deferred transaction is dependent on max_generated_transaction_count configuration property
-   const auto& gpo = control->get_global_properties();
-   control->get_mutable_database().modify(gpo, [&]( auto& props ) {
-      props.configuration.max_generated_transaction_count = 0;
-   });
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
-#endif
+   //cancel_deferred() fails if no transaction is scheduled
+   {
+      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {}), transaction_exception);
+   }
+
+   produce_blocks(10);
 
 {
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
