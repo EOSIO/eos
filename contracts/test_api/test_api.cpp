@@ -25,7 +25,8 @@ extern "C" {
       if( code == N(eosio) && action == N(onerror) ) {
          auto error = eosio::onerror::from_current_action();
          eosio::print("onerror called\n");
-         auto error_action = error.sent_trx.actions.at(0).name;
+         auto error_trx = error.unpack_sent_trx();
+         auto error_action = error_trx.actions.at(0).name;
 
          // Error handlers for deferred transactions in these tests currently only support the first action
 
