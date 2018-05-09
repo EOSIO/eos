@@ -252,6 +252,8 @@ struct test_softfloat {
 
 struct test_permission {
   static void check_authorization(uint64_t receiver, uint64_t code, uint64_t action);
+  static void test_permission_last_used(uint64_t receiver, uint64_t code, uint64_t action);
+  static void test_account_creation_time(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_datastream {

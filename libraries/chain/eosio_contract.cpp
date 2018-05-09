@@ -242,11 +242,7 @@ void apply_eosio_updateauth(apply_context& context) {
 
       int64_t old_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      db.modify(*permission, [&update, &parent_id, &context](permission_object& po) {
-         po.auth = update.auth;
-         po.parent = parent_id;
-         po.last_updated = context.control.pending_block_time();
-      });
+      authorization.modify_permission( *permission, update.auth );
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
@@ -269,17 +265,10 @@ void apply_eosio_deleteauth(apply_context& context) {
    EOS_ASSERT(remove.permission != config::active_name, action_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != config::owner_name, action_validate_exception, "Cannot delete owner authority");
 
-   auto& authorization = context.control.get_authorization_manager();
+   auto& authorization = context.control.get_mutable_authorization_manager();
    auto& db = context.db;
 
-   const auto& permission = authorization.get_permission({remove.account, remove.permission});
 
-   { // Check for children
-      const auto& index = db.get_index<permission_index, by_parent>();
-      auto range = index.equal_range(permission.id);
-      EOS_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete an authority which has children. Delete the children first");
-   }
 
    { // Check for links to this permission
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
@@ -288,11 +277,12 @@ void apply_eosio_deleteauth(apply_context& context) {
                  "Cannot delete a linked authority. Unlink the authority first");
    }
 
-   context.trx_context.add_ram_usage(
-      permission.owner,
-      -(int64_t)(config::billable_size_v<permission_object> + permission.auth.get_billable_size())
-   );
-   db.remove(permission);
+   const auto& permission = authorization.get_permission({remove.account, remove.permission});
+   int64_t old_size = config::billable_size_v<permission_object> + permission.auth.get_billable_size();
+
+   authorization.remove_permission( permission );
+
+   context.trx_context.add_ram_usage( remove.account, -old_size );
 
    context.checktime( 3000 );
 }
