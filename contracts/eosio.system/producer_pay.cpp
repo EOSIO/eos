@@ -52,6 +52,7 @@ namespace eosiosystem {
    
    eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket ) {
       eosio::asset payment(0, S(4,EOS));
+      const int64_t min_daily_amount = 100 * 10000;
       if ( eos_bucket.amount < min_daily_tokens ) {
          return payment;
       }
@@ -75,7 +76,7 @@ namespace eosiosystem {
          
          total_producer_votes += itr->total_votes;
          running_payment_amount = (itr->total_votes) * double(eos_bucket.amount) / total_producer_votes;
-         if ( running_payment_amount < min_daily_tokens ) {
+         if ( running_payment_amount < min_daily_amount ) {
             if ( itr->owner == owner ) {
                to_be_payed = false;
             }
@@ -110,10 +111,17 @@ namespace eosiosystem {
       const asset perblock_pay  = payment_per_block( perblock_rate, token_supply, prod->produced_blocks );
       const asset issue_amount  = to_eos_bucket + to_savings + perblock_pay;
       
+      const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_eos_bucket + _gstate.eos_bucket );
+
+      if ( perblock_pay.amount + pervote_pay.amount == 0 ) {
+         _producers.modify( prod, 0, [&](auto& p) {
+               p.last_claim_time = current_time();
+            });
+         return;
+      }
+      
       INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
                                                  {N(eosio), issue_amount, std::string("issue tokens for producer pay and savings")} );
-
-      const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_eos_bucket + _gstate.eos_bucket );
 
       _gstate.eos_bucket              += ( to_eos_bucket - pervote_pay );
       _gstate.last_pervote_bucket_fill = current_time();
