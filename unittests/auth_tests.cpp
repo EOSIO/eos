@@ -26,7 +26,7 @@ BOOST_FIXTURE_TEST_CASE( missing_sigs, TESTER ) { try {
    create_accounts( {N(alice)} );
    produce_block();
 
-   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(alice), config::active_name}}, {} ), tx_missing_sigs );
+   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(alice), config::active_name}}, {} ), unsatisfied_authorization );
    auto trace = push_reqauth(N(alice), "owner");
 
    produce_block();
@@ -39,7 +39,7 @@ BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, TESTER ) { try {
     create_account(N(alice), config::system_account_name, true);
     produce_block();
 
-    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), tx_missing_sigs); // without multisig
+    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), unsatisfied_authorization); // without multisig
     auto trace = push_reqauth(N(alice), "owner", true); // with multisig
 
     produce_block();
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE(link_then_update_auth) { try {
    // Update "first" auth public key
    chain.set_authority("alice", "first", second_pub_key, "active");
    // Authority updated, using previous "first" auth should fail on linked auth
-   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key }), tx_missing_sigs);
+   BOOST_CHECK_THROW(chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { first_priv_key }), unsatisfied_authorization);
    // Using updated authority, should succeed
    chain.push_reqauth("alice", { permission_level{N(alice), "first"} }, { second_priv_key });
 

@@ -212,12 +212,12 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( authorization_exception, chain_exception,
                                  3090000, "Authorization exception" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,              authorization_exception,
-                                    3090001, "signatures do not satisfy declared authorizations" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,             authorization_exception,
-                                    3090002, "duplicate signature included" )
+                                    3090001, "duplicate signature included" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,            authorization_exception,
-                                    3090003, "irrelevant signature included" )
+                                    3090002, "irrelevant signature included" )
+      FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,    authorization_exception,
+                                    3090003, "provided keys, permissions, and delays do not satisfy declared authorizations" )
       FC_DECLARE_DERIVED_EXCEPTION( missing_auth_exception,       authorization_exception,
                                     3090004, "missing required authority" )
       FC_DECLARE_DERIVED_EXCEPTION( irrelevant_auth_exception,    authorization_exception,

@@ -49,7 +49,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, TESTER ) try {
     create_account(N(alice), config::system_account_name, true);
     produce_block();
 
-    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), tx_missing_sigs); // requires multisig authorization
+    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), unsatisfied_authorization); // requires multisig authorization
     push_reqauth(N(alice), "owner", true);
     produce_block();
 
@@ -73,7 +73,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, TESTER ) try {
     if (org_auth == auth) BOOST_TEST_FAIL("authority should have changed");
 
     produce_block();
-    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner", true), tx_missing_sigs);
+    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner", true), unsatisfied_authorization);
     auto first_new_nonce_id = push_reqauth(N(alice), "owner.recov")->id;
     produce_block();
     BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
@@ -105,7 +105,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner, TESTER ) try {
    produce_block();
 
    BOOST_REQUIRE_EQUAL(chain_has_transaction(last_old_nonce_id), true);
-   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), tx_missing_sigs);
+   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), unsatisfied_authorization);
    auto first_new_nonce_id = push_reqauth(N(alice), "owner.recov")->id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
@@ -145,7 +145,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, TESTER ) try {
 
    // make sure the old owner is still in control
 
-   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner.recov"), tx_missing_sigs);
+   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner.recov"), unsatisfied_authorization);
    auto first_new_nonce_id = push_reqauth(N(alice), "owner")->id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
@@ -176,22 +176,22 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, TESTER ) try {
    // try all types of veto from the bad partner
    {
       signed_transaction trx = make_vetorecovery(*this, N(alice), N(active), get_private_key(N(inita),"active"));
-      BOOST_REQUIRE_THROW(push_transaction(trx), tx_missing_sigs);
+      BOOST_REQUIRE_THROW(push_transaction(trx), unsatisfied_authorization);
    }
 
    {
       signed_transaction trx = make_vetorecovery(*this, N(alice), N(active), get_private_key(N(inita),"owner"));
-      BOOST_REQUIRE_THROW(push_transaction(trx), tx_missing_sigs);
+      BOOST_REQUIRE_THROW(push_transaction(trx), unsatisfied_authorization);
    }
 
    {
       signed_transaction trx = make_vetorecovery(*this, N(alice), N(owner), get_private_key(N(inita),"active"));
-      BOOST_REQUIRE_THROW(push_transaction(trx), tx_missing_sigs);
+      BOOST_REQUIRE_THROW(push_transaction(trx), unsatisfied_authorization);
    }
 
    {
       signed_transaction trx = make_vetorecovery(*this, N(alice), N(owner), get_private_key(N(inita),"owner"));
-      BOOST_REQUIRE_THROW(push_transaction(trx), tx_missing_sigs);
+      BOOST_REQUIRE_THROW(push_transaction(trx), unsatisfied_authorization);
    }
 
    produce_block();

@@ -422,17 +422,6 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    return copy_size;
 }
 
-void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
-   control.get_authorization_manager()
-          .check_authorization( trx.actions,
-                                {},
-                                {perm.begin(), perm.end()},
-                                fc::microseconds(0),
-                                std::bind(&apply_context::checktime, this, std::placeholders::_1),
-                                false
-                              );
-}
-
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
 }

@@ -199,10 +199,12 @@ void apply_eosio_updateauth(apply_context& context) {
    else
       EOS_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
 
-   auto max_delay = context.control.get_global_properties().configuration.max_transaction_delay;
-   EOS_ASSERT( update.auth.delay_sec <= max_delay, action_validate_exception,
-               "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds",
-               ("max_delay", max_delay) );
+   if( update.auth.waits.size() > 0 ) {
+      auto max_delay = context.control.get_global_properties().configuration.max_transaction_delay;
+      EOS_ASSERT( update.auth.waits.back().wait_sec <= max_delay, action_validate_exception,
+                  "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds",
+                  ("max_delay", max_delay) );
+   }
 
    validate_authority_precondition(context, update.auth);
 
@@ -230,7 +232,6 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.auth;
          po.parent = parent_id;
          po.last_updated = context.control.pending_block_time();
-         po.delay = fc::seconds(update.auth.delay_sec);
       });
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());

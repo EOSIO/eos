@@ -195,7 +195,7 @@ bool is_access_violation(const Runtime::Exception& e) { return true; }
 
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
-bool is_tx_missing_sigs(tx_missing_sigs const & e) { return true;}
+bool is_unsatisfied_authorization(unsatisfied_authorization const & e) { return true;}
 bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
 bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
 bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
@@ -293,8 +293,8 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       auto res = test.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
-   BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), tx_missing_sigs,
-         [](const tx_missing_sigs& e) {
+   BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), unsatisfied_authorization,
+         [](const unsatisfied_authorization& e) {
             return expect_assert_message(e, "transaction declares authority");
          }
       );
@@ -1492,7 +1492,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(1), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1503,7 +1503,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1515,7 +1515,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() ); // Failure due to irrelevant signatures
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() ); // Failure due to irrelevant signatures
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1526,7 +1526,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1535,7 +1535,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          .pubkeys    = {}
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1546,7 +1546,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",

@@ -35,7 +35,7 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
              cb(http_response_code, fc::json::to_string(result)); \
-          } catch (chain::tx_missing_sigs& e) { \
+          } catch (chain::unsatisfied_authorization& e) { \
              error_results results{401, "UnAuthorized", e}; \
              cb(401, fc::json::to_string(results)); \
           } catch (chain::tx_duplicate& e) { \

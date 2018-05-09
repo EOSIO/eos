@@ -972,7 +972,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
       trx.signatures.clear();
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
-      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_duplicate_sig);
 
       // Sign the transaction properly and push to the block
       trx.signatures.clear();
@@ -1128,7 +1128,7 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
                                 });
 
       chain.set_transaction_headers(trx);
-      BOOST_REQUIRE_THROW(chain.push_transaction(trx), tx_missing_sigs);
+      BOOST_REQUIRE_THROW(chain.push_transaction(trx), unsatisfied_authorization);
 
       const auto priv_key_not_needed_1 = chain.get_private_key("alice", "blah");
       const auto priv_key_not_needed_2 = chain.get_private_key("alice", "owner");

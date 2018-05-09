@@ -103,7 +103,7 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
       }
       bool successful_insertion = false;
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
-      EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_irrelevant_sig,
+      EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                   "transaction includes more than one signature signed using the same key associated with public key: ${key}",
                   ("key", recov)
                );
