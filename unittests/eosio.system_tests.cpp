@@ -53,6 +53,7 @@ public:
       create_account_with_resources( N(alice), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(bob), N(eosio), asset::from_string("0.4500 EOS"), false );//{ N(alice), N(bob), N(carol) } );
       create_account_with_resources( N(carol), N(eosio), asset::from_string("1.0000 EOS"), false );//{ N(alice), N(bob), N(carol) } );
+
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
       // eosio pays it self for these...
@@ -72,13 +73,7 @@ public:
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          token_abi_ser.set_abi(abi);
       }
-      /*
-      const global_property_object &gpo = control->get_global_properties();
-      FC_ASSERT(0 < gpo.active_producers.producers.size(), "No producers");
-      producer_name = (string)gpo.active_producers.producers.front().producer_name;
-      */
    }
-
 
    void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(eosio) ) {
       for( auto a : accounts ) {
@@ -119,11 +114,10 @@ public:
       set_transaction_headers(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
       return push_transaction( trx );
-
-
    }
-      transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig,
-                                                           asset net = asset::from_string("10.0000 EOS"), asset cpu = asset::from_string("10.0000 EOS") ) {
+
+   transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig,
+                                                        asset net = asset::from_string("10.0000 EOS"), asset cpu = asset::from_string("10.0000 EOS") ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -159,6 +153,62 @@ public:
                                           )
                                 );
 
+      set_transaction_headers(trx);
+      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      return push_transaction( trx );
+   }
+
+   transaction_trace_ptr setup_producers() {
+      std::vector<account_name> accounts;
+      accounts.reserve( 21 );
+      std::string root( "init" );
+      for ( char c = 'a'; c <= 'a' + 21; ++c ) {
+         accounts.emplace_back( root + std::string(1, c) );
+      }
+      
+      account_name creator(N(eosio));
+      signed_transaction trx;
+      set_transaction_headers(trx);
+      asset cpu = asset::from_string("100000000.0000 EOS");
+      asset net = asset::from_string("100000000.0000 EOS");
+      asset ram = asset::from_string("1.0000 EOS"); 
+
+      for (const auto& a: accounts) {
+         authority owner_auth( get_public_key( a, "owner" ) );
+         trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                                   newaccount{
+                                         .creator  = creator,
+                                         .name     = a,
+                                         .owner    = owner_auth,
+                                         .active   = authority( get_public_key( a, "active" ) ),
+                                         .recovery = authority( get_public_key( a, "recovery" ) )
+                                         });
+
+         trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},
+                                               mvo()
+                                               ("payer", creator)
+                                               ("receiver", a)
+                                               ("quant", ram) )
+                                   );
+         
+         trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+                                               mvo()
+                                               ("from", creator)
+                                               ("receiver", a)
+                                               ("stake_net_quantity", net)
+                                               ("stake_cpu_quantity", cpu )
+                                               )
+                                   );
+
+         trx.actions.emplace_back( get_action( N(eosio), N(regproducer), vector<permission_level>{{creator,config::active_name}},
+                                               mvo()
+                                               ("producer",  a )
+                                               ("producer_key", get_public_key( a, "active" ) )
+                                               ("url", "" )
+                                               )
+                                   );
+      }
+      
       set_transaction_headers(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
       return push_transaction( trx );
@@ -1199,17 +1249,12 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    create_account_with_resources( N(vota), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
    create_account_with_resources( N(votb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
-   issue( "vota", "400000000.0000 EOS", config::system_account_name);
-
-   produce_block();
-
    BOOST_REQUIRE_EQUAL(success(), regproducer(N(inita)));
-
    auto prod = get_producer_info( N(inita) );
-
    BOOST_REQUIRE_EQUAL("inita", prod["owner"].as_string());
    BOOST_REQUIRE_EQUAL(0, prod["total_votes"].as_double());
 
+   issue( "vota", "400000000.0000 EOS", config::system_account_name);
    BOOST_REQUIRE_EQUAL(success(), stake("vota", "100000000.0000 EOS", "100000000.0000 EOS"));
 
    BOOST_REQUIRE_EQUAL(success(), push_action(N(vota), N(voteproducer), mvo()
@@ -1258,6 +1303,9 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
       int64_t from_eos_bucket = int64_t( initial_supply.amount * secs_between_fills * (0.75/100.0) / (52*7*24*3600) );
       
       BOOST_REQUIRE_EQUAL(block_payments + from_eos_bucket, balance.amount - initial_balance.amount);
+      
+      const int64_t max_supply_growth = int64_t( (initial_supply.amount * secs_between_fills * (4.879/100.0)) / (52*7*24*3600) );
+      BOOST_REQUIRE(max_supply_growth >= supply.amount - initial_supply.amount);
    }
    
    {
@@ -1274,14 +1322,13 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
 
    // wait 5 more minutes, inita can now claim rewards again
    {
-      produce_block(fc::seconds(5 * 60));
+      produce_block(fc::seconds(5 * 60)); 
       BOOST_REQUIRE_EQUAL(success(),
                           push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
       BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
    }
 
- } FC_LOG_AND_RETHROW()
-
+} FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system_tester ) try {
    create_accounts_with_resources( { N(donald), N(producer1), N(producer2), N(producer3) } );
