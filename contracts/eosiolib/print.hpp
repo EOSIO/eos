@@ -15,6 +15,7 @@ namespace eosio {
 
    /**
     *  Prints string
+    * 
     *  @brief Prints string
     *  @param ptr - a null terminated string
     */
@@ -24,6 +25,7 @@ namespace eosio {
 
    /**
     * Prints signed integer
+    * 
     * @brief Prints signed integer as a 64 bit signed integer
     * @param num to be printed
     */
@@ -33,6 +35,7 @@ namespace eosio {
 
    /**
     * Prints 32 bit signed integer
+    * 
     * @brief Prints 32 bit signed integer as a 64 bit signed integer
     * @param num to be printed
     */
@@ -42,6 +45,7 @@ namespace eosio {
 
    /**
     * Prints 64 bit signed integer
+    * 
     * @brief Prints 64 bit signed integer as a 64 bit signed integer
     * @param num to be printed
     */
@@ -52,6 +56,7 @@ namespace eosio {
 
    /**
     * Prints unsigned integer
+    * 
     * @brief Prints unsigned integer as a 64 bit unsigned integer
     * @param num to be printed
     */
@@ -61,6 +66,7 @@ namespace eosio {
 
    /**
     * Prints 32 bit unsigned integer
+    * 
     * @brief Prints 32 bit unsigned integer as a 64 bit unsigned integer
     * @param num to be printed
     */
@@ -70,6 +76,7 @@ namespace eosio {
 
    /**
     * Prints 64 bit unsigned integer
+    * 
     * @brief Prints 64 bit unsigned integer as a 64 bit unsigned integer
     * @param num to be printed
     */
@@ -79,6 +86,7 @@ namespace eosio {
 
    /**
     * Prints 128 bit signed integer
+    * 
     * @brief Prints 128 bit signed integer
     * @param num to be printed
     */
@@ -88,6 +96,7 @@ namespace eosio {
 
    /**
     * Prints 128 bit unsigned integer
+    * 
     * @brief Prints 128 bit unsigned integer
     * @param num to be printed
     */
@@ -98,6 +107,7 @@ namespace eosio {
 
    /**
     * Prints single-precision floating point number
+    * 
     * @brief Prints single-precision floating point number (i.e. float)
     * @param num to be printed
     */
@@ -105,6 +115,7 @@ namespace eosio {
 
    /**
     * Prints double-precision floating point number
+    * 
     * @brief Prints double-precision floating point number (i.e. double)
     * @param num to be printed
     */
@@ -112,6 +123,7 @@ namespace eosio {
 
    /**
     * Prints quadruple-precision floating point number
+    * 
     * @brief Prints quadruple-precision floating point number (i.e. long double)
     * @param num to be printed
     */
@@ -120,6 +132,7 @@ namespace eosio {
 
    /**
     * Prints fixed_key as a hexidecimal string
+    * 
     * @brief Prints fixed_key as a hexidecimal string
     * @param val to be printed
     */
@@ -130,6 +143,12 @@ namespace eosio {
       printhex(static_cast<const void*>(arr.data()), arr.size());
    }
 
+  /**
+    * Prints fixed_key as a hexidecimal string
+    * 
+    * @brief Prints fixed_key as a hexidecimal string
+    * @param val to be printed
+    */
    template<size_t Size>
    inline void print( fixed_key<Size>& val ) {
       print(static_cast<const fixed_key<Size>&>(val));
@@ -137,6 +156,7 @@ namespace eosio {
 
    /**
     * Prints a 64 bit names as base32 encoded string
+    * 
     * @brief Prints a 64 bit names as base32 encoded string
     * @param name 64 bit name to be printed
     */
@@ -144,37 +164,41 @@ namespace eosio {
       printn(name.value);
    }
 
+  /**
+    * Prints bool
+    * 
+    * @brief Prints bool
+    * @param val to be printed
+    */
    inline void print( bool val ) {
       prints(val?"true":"false");
    }
 
 
+  /**
+    * Prints class object
+    * 
+    * @brief Prints class object
+    * @param t to be printed
+    * @pre T must implements print() function
+    */
    template<typename T>
    inline void print( T&& t ) {
       t.print();
    }
 
-
+   /**
+    * Prints null terminated string
+    * 
+    * @brief Prints null terminated string
+    * @param s null terminated string to be printed
+    */
    inline void print_f( const char* s ) {
       prints(s);
    }
 
-   template <typename Arg, typename... Args>
-   inline void print_f( const char* s, Arg val, Args... rest ) {
-      while ( *s != '\0' ) {
-         if ( *s == '%' ) {
-            print( val );
-            print_f( s+1, rest... );
-            return;
-         }
-         prints_l( s, 1 );
-         s++;
-      }
-   }
-
-
-   /**
-    *  @defgroup consoleCppapi Console C++ API
+ /**
+    *  @defgroup consolecppapi Console C++ API
     *  @ingroup consoleapi
     *  @brief C++ wrapper for Console C API
     *
@@ -196,11 +220,40 @@ namespace eosio {
     *  @{
     */
 
+
+   /**
+    * Prints formatted string. It behaves similar to C printf/
+    * 
+    * @brief Prints formatted string
+    * @tparam Arg - Type of the value used to replace the format specifier
+    * @tparam Args - Type of the value used to replace the format specifier
+    * @param s - Null terminated string with to be printed (it can contains format specifier)
+    * @param val - The value used to replace the format specifier
+    * @param rest - The values used to replace the format specifier
+    * 
+    * Example:
+    * @code
+    * print_f("Number of apples: %", 10);
+    * @endcode
+    */
+   template <typename Arg, typename... Args>
+   inline void print_f( const char* s, Arg val, Args... rest ) {
+      while ( *s != '\0' ) {
+         if ( *s == '%' ) {
+            print( val );
+            print_f( s+1, rest... );
+            return;
+         }
+         prints_l( s, 1 );
+         s++;
+      }
+   }
+
     /**
-     *  Print out value / list of values (except double)
+     *  Print out value / list of values 
      *  @brief Print out value  / list of values
-     *  @param a    Value to be printed
-     *  @param args Other values to be printed
+     *  @param a - The value to be printed
+     *  @param args - The other values to be printed
      *
      *  Example:
      *  @code
@@ -226,8 +279,9 @@ namespace eosio {
    /**
     *  Overload c++ iostream
     *  @brief Overload c++ iostream
-    *  @param out  Output strem
-    *  @param v    Value to be printed
+    *  @param out - Output strem
+    *  @param v - The value to be printed
+    *  @return iostream& - Reference to the input output stream
     *
     *  Example:
     *  @code
@@ -247,7 +301,7 @@ namespace eosio {
 
    static iostream cout;
 
-   /// @} consoleCppapi
+   /// @} consolecppapi
 
 
 }
