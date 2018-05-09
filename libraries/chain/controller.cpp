@@ -1031,6 +1031,8 @@ void controller::startup() {
 
 chainbase::database& controller::db()const { return my->db; }
 
+fork_database& controller::fork_db()const { return my->fork_db; }
+
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count ) {
    my->start_block(when, confirm_block_count);
