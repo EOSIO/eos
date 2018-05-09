@@ -751,9 +751,9 @@ class multi_index
          });
       }
 
-      const T& get( uint64_t primary )const {
+   const T& get( uint64_t primary, const char* error_msg = "unable to find key" )const {
          auto result = find( primary );
-         eosio_assert( result != cend(), "unable to find key" );
+         eosio_assert( result != cend(), error_msg );
          return *result;
       }
 

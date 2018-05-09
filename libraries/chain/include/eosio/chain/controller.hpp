@@ -31,6 +31,8 @@ namespace eosio { namespace chain {
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
 
+   class fork_database;
+
    class controller {
       public:
          struct config {
@@ -106,6 +108,8 @@ namespace eosio { namespace chain {
          void push_confirmation( const header_confirmation& c );
 
          chainbase::database& db()const;
+
+         fork_database& fork_db()const;
 
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;

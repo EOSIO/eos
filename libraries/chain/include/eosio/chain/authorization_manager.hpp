@@ -66,10 +66,8 @@ namespace eosio { namespace chain {
           *  @param provided_delay - the delay satisfied by the transaction
           *  @param checktime - the function that can be called to track CPU usage and time during the process of checking authorization
           *  @param allow_unused_keys - true if method should not assert on unused keys
-          *
-          *  @return the maximum delay among the authorities needed to satisfy the authorizations (throws if authorization was not satsified)
           */
-         fc::microseconds
+         void
          check_authorization( const vector<action>&                actions,
                               const flat_set<public_key_type>&     provided_keys,
                               const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
@@ -89,10 +87,8 @@ namespace eosio { namespace chain {
           *  @param provided_delay - the delay considered to be satisfied for the authorization check
           *  @param checktime - the function that can be called to track CPU usage and time during the process of checking authorization
           *  @param allow_unused_keys - true if method does not require all keys to be used
-          *
-          *  @return the maximum delay among the authorities needed to satisfy the authorizations (throws if authorization was not satsified)
           */
-         fc::microseconds
+         void
          check_authorization( account_name                         account,
                               permission_name                      permission,
                               const flat_set<public_key_type>&     provided_keys,
@@ -104,7 +100,7 @@ namespace eosio { namespace chain {
 
          flat_set<public_key_type> get_required_keys( const transaction& trx,
                                                       const flat_set<public_key_type>& candidate_keys,
-                                                      fc::microseconds delay_threshold = fc::microseconds(0)
+                                                      fc::microseconds provided_delay = fc::microseconds(0)
                                                     )const;
 
 
@@ -114,11 +110,11 @@ namespace eosio { namespace chain {
          const controller&    _control;
          chainbase::database& _db;
 
-         optional<fc::microseconds> check_updateauth_authorization( const updateauth& update, const vector<permission_level>& auths )const;
-         fc::microseconds check_deleteauth_authorization( const deleteauth& del, const vector<permission_level>& auths )const;
-         fc::microseconds check_linkauth_authorization( const linkauth& link, const vector<permission_level>& auths )const;
-         fc::microseconds check_unlinkauth_authorization( const unlinkauth& unlink, const vector<permission_level>& auths )const;
-         void             check_canceldelay_authorization( const canceldelay& cancel, const vector<permission_level>& auths )const;
+         void             check_updateauth_authorization( const updateauth& update, const vector<permission_level>& auths )const;
+         void             check_deleteauth_authorization( const deleteauth& del, const vector<permission_level>& auths )const;
+         void             check_linkauth_authorization( const linkauth& link, const vector<permission_level>& auths )const;
+         void             check_unlinkauth_authorization( const unlinkauth& unlink, const vector<permission_level>& auths )const;
+         fc::microseconds check_canceldelay_authorization( const canceldelay& cancel, const vector<permission_level>& auths )const;
 
          optional<permission_name> lookup_linked_permission( account_name authorizer_account,
                                                              scope_name code_account,

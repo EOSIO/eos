@@ -34,7 +34,7 @@ namespace eosio { namespace chain {
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
-         shared_vector<char>           packed_trx;
+         shared_string                 packed_trx;
 
          uint32_t set( const transaction& trx ) {
             auto trxsize = fc::raw::pack_size( trx );

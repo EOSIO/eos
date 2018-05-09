@@ -403,7 +403,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
    fc::time_point now = fc::time_point::now();
    fc::time_point base = std::max<fc::time_point>(now, chain.head_block_time());
-   int64_t min_time_to_next_block = (config::block_interval_us) - (now.time_since_epoch().count() % (config::block_interval_us) );
+   int64_t min_time_to_next_block = (config::block_interval_us) - (base.time_since_epoch().count() % (config::block_interval_us) );
    fc::time_point block_time = base + fc::microseconds(min_time_to_next_block);
 
 
