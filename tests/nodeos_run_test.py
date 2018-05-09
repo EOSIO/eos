@@ -289,7 +289,7 @@ try:
     if trans is None:
         cmdError("%s transfer" % (ClientName))
         errorExit("Failed to transfer funds %d from account %s to %s" % (
-            transferAmount, initaAccount.name, testeraAccount.name))
+            transferAmount, testeraAccount.name, currencyAccount.name))
     transId=testUtils.Node.getTransId(trans)
 
     expectedAmount="98.0311 EOS" # 5000 initial deposit
@@ -298,6 +298,15 @@ try:
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
+
+    Print("Validate last action for account %s" % (testeraAccount.name))
+    actions=node.getActions(testeraAccount, -1, -1)
+    assert(actions)
+    try:
+        assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
+    except AssertionError as e:
+        print("Last action validation failed. Actions: %s" % (actions))
+        raise
 
     # Pre-mature exit on slim branch. This will pushed futher out as code stablizes.
     testSuccessful=True

@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/config.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -18,6 +19,10 @@ namespace eosio { namespace chain { namespace resource_limits {
          return (value * r.numerator) / r.denominator;
       }
 
+      constexpr uint64_t integer_divide_ceil(uint64_t num, uint64_t den ) {
+         return (num / den) + ((num % den) > 0 ? 1 : 0);
+      }
+
       /**
        *  This class accumulates and exponential moving average based on inputs
        *  This accumulator assumes there are no drops in input data
@@ -28,6 +33,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       struct exponential_moving_average_accumulator
       {
          static_assert( Precision > 0, "Precision must be positive" );
+         static constexpr uint64_t max_raw_value = std::numeric_limits<uint64_t>::max() / Precision;
 
          exponential_moving_average_accumulator()
          : last_ordinal(0)
@@ -44,11 +50,18 @@ namespace eosio { namespace chain { namespace resource_limits {
           * return the average value
           */
          uint64_t average() const {
-            return value_ex / Precision;
+            return integer_divide_ceil(value_ex, Precision);
          }
 
          void add( uint64_t units, uint32_t ordinal, uint32_t window_size /* must be positive */ )
          {
+            // check for some numerical limits before doing any state mutations
+            EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+            EOS_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
+
+            auto value_ex_contrib = integer_divide_ceil(units * Precision, (uint64_t)window_size);
+            EOS_ASSERT(std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib, rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
+
             if( last_ordinal != ordinal ) {
                if( ordinal <= last_ordinal )
                   wdump((ordinal)(last_ordinal));
@@ -66,11 +79,11 @@ namespace eosio { namespace chain { namespace resource_limits {
                }
 
                last_ordinal = ordinal;
-               consumed = value_ex / Precision;
+               consumed = average();
             }
 
             consumed += units;
-            value_ex += units * Precision / (uint64_t)window_size;
+            value_ex += value_ex_contrib;
          }
       };
 
@@ -145,6 +158,9 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       elastic_limit_parameters cpu_limit_parameters = {EOS_PERCENT(config::default_max_block_cpu_usage, config::default_target_block_cpu_usage_pct), config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
       elastic_limit_parameters net_limit_parameters = {EOS_PERCENT(config::default_max_block_net_usage, config::default_target_block_net_usage_pct), config::default_max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
+
+      uint32_t account_cpu_usage_average_window = config::account_cpu_usage_average_window_ms / config::block_interval_ms;
+      uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;
    };
 
    using resource_limits_config_index = chainbase::shared_multi_index_container<

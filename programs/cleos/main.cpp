@@ -379,8 +379,7 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
          .creator      = creator,
          .name         = newaccount,
          .owner        = eosio::chain::authority{1, {{owner, 1}}, {}},
-         .active       = eosio::chain::authority{1, {{active, 1}}, {}},
-         .recovery     = eosio::chain::authority{1, {}, {{{creator, config::active_name}, 1}}}
+         .active       = eosio::chain::authority{1, {{active, 1}}, {}}
       }
    };
 }
@@ -1049,45 +1048,6 @@ struct unregproxy_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("proxy", proxy);
          send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(unregproxy), act_payload)});
-      });
-   }
-};
-
-struct postrecovery_subcommand {
-   string account;
-   string json_str_or_file;
-   string memo;
-
-   postrecovery_subcommand(CLI::App* actionRoot) {
-      auto post_recovery = actionRoot->add_subcommand("postrecovery", localized("Post recovery request"));
-      post_recovery->add_option("account", account, localized("The account to post the recovery for"))->required();
-      post_recovery->add_option("data", json_str_or_file, localized("The authority to post the recovery with as EOS public key, JSON string, or filename"))->required();
-      post_recovery->add_option("memo", memo, localized("A memo describing the post recovery request"))->required();
-      add_standard_transaction_options(post_recovery);
-
-      post_recovery->set_callback([this] {
-         authority data_auth = parse_json_authority_or_key(json_str_or_file);
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("account", account)
-                  ("data", data_auth)
-                  ("memo", memo);
-         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(postrecovery), act_payload)});
-      });
-   }
-};
-
-struct vetorecovery_subcommand {
-   string account;
-
-   vetorecovery_subcommand(CLI::App* actionRoot) {
-      auto veto_recovery = actionRoot->add_subcommand("vetorecovery", localized("Veto a posted recovery"));
-      veto_recovery->add_option("account", account, localized("The account to veto the recovery for"))->required();
-      add_standard_transaction_options(veto_recovery);
-
-      veto_recovery->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("account", account);
-         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(vetorecovery), act_payload)});
       });
    }
 };
@@ -2217,9 +2177,6 @@ int main( int argc, char** argv ) {
 
    auto regProxy = regproxy_subcommand(system);
    auto unregProxy = unregproxy_subcommand(system);
-
-   auto postRecovery = postrecovery_subcommand(system);
-   auto vetoRecovery = vetorecovery_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
 

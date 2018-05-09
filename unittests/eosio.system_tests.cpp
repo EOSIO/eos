@@ -92,8 +92,7 @@ public:
                                    .creator  = creator,
                                    .name     = a,
                                    .owner    = owner_auth,
-                                   .active   = authority( get_public_key( a, "active" ) ),
-                                   .recovery = authority( get_public_key( a, "recovery" ) ),
+                                   .active   = authority( get_public_key( a, "active" ) )
                                 });
 
       trx.actions.emplace_back( get_action( N(eosio), N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
@@ -135,8 +134,7 @@ public:
                                    .creator  = creator,
                                    .name     = a,
                                    .owner    = owner_auth,
-                                   .active   = authority( get_public_key( a, "active" ) ),
-                                   .recovery = authority( get_public_key( a, "recovery" ) ),
+                                   .active   = authority( get_public_key( a, "active" ) )
                                 });
 
       trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},

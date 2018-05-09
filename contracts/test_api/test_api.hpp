@@ -31,7 +31,7 @@ namespace eosio {
 
 #define WASM_TEST_ERROR_HANDLER(CALLED_CLASS_STR, CALLED_METHOD_STR, HANDLER_CLASS, HANDLER_METHOD) \
 if( error_action == WASM_TEST_ACTION(CALLED_CLASS_STR, CALLED_METHOD_STR) ) { \
-   HANDLER_CLASS::HANDLER_METHOD(error.sent_trx); \
+   HANDLER_CLASS::HANDLER_METHOD(error_trx); \
    return; \
 }
 
@@ -165,7 +165,7 @@ struct test_transaction {
   static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
   static void deferred_print();
   static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
-  static void send_deferred_tx_given_payer();
+  static void send_deferred_tx_with_dtt_action();
   static void cancel_deferred_transaction();
   static void send_cf_action();
   static void send_cf_action_fail();

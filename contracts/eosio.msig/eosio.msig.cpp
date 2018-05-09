@@ -45,7 +45,7 @@ void multisig::propose() {
                                                  (const char*)0, 0,
                                                  packed_requested.data(), packed_requested.size()
                                                );
-   eosio_assert( res >= 0, "transaction authorization failed" );
+   eosio_assert( res > 0, "transaction authorization failed" );
 
    proptable.emplace( proposer, [&]( auto& prop ) {
       prop.proposal_name       = proposal_name;
@@ -123,7 +123,7 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
                                                  (const char*)0, 0,
                                                  packed_provided_approvals.data(), packed_provided_approvals.size()
                                                );
-   eosio_assert( res >= 0, "transaction authorization failed" );
+   eosio_assert( res > 0, "transaction authorization failed" );
 
    send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
 
