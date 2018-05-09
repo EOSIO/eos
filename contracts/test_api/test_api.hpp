@@ -87,6 +87,8 @@ struct test_db {
    static void idx_double_nan_create_fail(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx_double_nan_modify_fail(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx_double_nan_lookup_fail(uint64_t receiver, uint64_t code, uint64_t action);
+
+   static void misaligned_secondary_key256_tests(uint64_t, uint64_t, uint64_t);
 };
 
 struct test_multi_index {

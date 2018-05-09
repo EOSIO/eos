@@ -163,7 +163,6 @@ namespace eosio { namespace chain {
     FC_ASSERT( result.header.producer == h.producer, "wrong producer specified" );
     FC_ASSERT( result.header.schedule_version == h.schedule_version, "schedule_version in signed block is corrupted" );
 
-    //idump((h.producer)(h.block_num()-h.confirmed)(h.block_num()));
     auto itr = producer_to_last_produced.find(h.producer);
     if( itr != producer_to_last_produced.end() ) {
        FC_ASSERT( itr->second <= result.block_num - h.confirmed, "producer double-confirming known range" );

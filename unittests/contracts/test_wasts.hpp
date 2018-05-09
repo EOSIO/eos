@@ -79,7 +79,7 @@ static const char misaligned_const_ref_wast[] = R"=====(
 (module
  (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
  (import "env" "assert_sha256" (func $assert_sha256 (param i32 i32 i32)))
- (import "env" "memcpy" (func $memcpy (param i32 i32 i32) (result i32)))
+ (import "env" "memmove" (func $memmove (param i32 i32 i32) (result i32)))
  (table 0 anyfunc)
  (memory $0 32)
  (data (i32.const 4) "hello")
@@ -92,7 +92,7 @@ static const char misaligned_const_ref_wast[] = R"=====(
    (i32.const 16)
   )
   (set_local $3
-   (call $memcpy
+   (call $memmove
     (i32.const 17)
     (i32.const 16)
     (i32.const 64) 

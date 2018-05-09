@@ -20,6 +20,7 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_db, idx_double_nan_create_fail);
       WASM_TEST_HANDLER_EX(test_db, idx_double_nan_modify_fail);
       WASM_TEST_HANDLER_EX(test_db, idx_double_nan_lookup_fail);
+      WASM_TEST_HANDLER_EX(test_db, misaligned_secondary_key256_tests);
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");
