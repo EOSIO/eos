@@ -158,11 +158,11 @@ public:
       return push_transaction( trx );
    }
 
-   transaction_trace_ptr setup_producers() {
+   transaction_trace_ptr setup_producer_accounts() {
       std::vector<account_name> accounts;
-      accounts.reserve( 21 );
+      accounts.reserve( 'z' - 'a' + 1);
       std::string root( "init" );
-      for ( char c = 'a'; c <= 'a' + 21; ++c ) {
+      for ( char c = 'a'; c <= 'z' ; ++c ) {
          accounts.emplace_back( root + std::string(1, c) );
       }
       
@@ -184,27 +184,19 @@ public:
                                          .recovery = authority( get_public_key( a, "recovery" ) )
                                          });
 
-         trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},
+         trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("payer", creator)
                                                ("receiver", a)
                                                ("quant", ram) )
                                    );
          
-         trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+         trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("from", creator)
                                                ("receiver", a)
                                                ("stake_net_quantity", net)
                                                ("stake_cpu_quantity", cpu )
-                                               )
-                                   );
-
-         trx.actions.emplace_back( get_action( N(eosio), N(regproducer), vector<permission_level>{{creator,config::active_name}},
-                                               mvo()
-                                               ("producer",  a )
-                                               ("producer_key", get_public_key( a, "active" ) )
-                                               ("url", "" )
                                                )
                                    );
       }
