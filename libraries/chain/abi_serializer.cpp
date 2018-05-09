@@ -63,6 +63,7 @@ namespace eosio { namespace chain {
 
       //asset.hpp
       built_in_types.emplace("asset",                     pack_unpack<asset>());
+      built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
 
       //native.hpp
       built_in_types.emplace("string",                    pack_unpack<string>());
