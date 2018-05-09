@@ -28,7 +28,8 @@ namespace eosio {
    bool operator<(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
     /**
-    *  @defgroup fixed_key fixed size key sorted lexicographically
+    *  @defgroup fixed_key Fixed Size Key
+    *  @brief Fixed size Key sorted lexicographically for Multi Index Table
     *  @ingroup types
     * @{
     */
