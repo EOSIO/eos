@@ -14,7 +14,6 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/producer_object.hpp>
@@ -36,8 +35,26 @@ uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
-      context.db.get<account_object, by_name>(a.permission.actor);
-      context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
+      auto* acct = context.db.find<account_object, by_name>(a.permission.actor);
+      EOS_ASSERT( acct != nullptr, action_validate_exception,
+                  "account '${account}' does not exist",
+                  ("account", a.permission.actor)
+                );
+
+      if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
+         continue; // account was already checked to exist, so its owner and active permissions should exist
+
+      if( a.permission.permission == config::eosio_code_name ) // virtual eosio.code permission does not really exist but is allowed
+         continue;
+
+      try {
+         context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
+      } catch( const permission_query_exception& ) {
+         EOS_THROW( action_validate_exception,
+                    "permission '${perm}' does not exist",
+                    ("perm", a.permission)
+                  );
+      }
    }
 }
 
@@ -73,10 +90,6 @@ void apply_eosio_newaccount(apply_context& context) {
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   for( const auto& auth : { create.owner, create.active } ){
-      validate_authority_precondition( context, auth );
-   }
-
    const auto& new_account = db.create<account_object>([&](auto& a) {
       a.name = create.name;
       a.creation_date = context.control.pending_block_time();
@@ -85,6 +98,10 @@ void apply_eosio_newaccount(apply_context& context) {
    db.create<account_sequence_object>([&](auto& a) {
       a.name = create.name;
    });
+
+   for( const auto& auth : { create.owner, create.active } ){
+      validate_authority_precondition( context, auth );
+   }
 
    const auto& owner_permission  = authorization.create_permission( create.name, config::owner_name, 0,
                                                                     std::move(create.owner) );
@@ -196,10 +213,12 @@ void apply_eosio_updateauth(apply_context& context) {
    else
       EOS_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
 
-   auto max_delay = context.control.get_global_properties().configuration.max_transaction_delay;
-   EOS_ASSERT( update.auth.delay_sec <= max_delay, action_validate_exception,
-               "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds",
-               ("max_delay", max_delay) );
+   if( update.auth.waits.size() > 0 ) {
+      auto max_delay = context.control.get_global_properties().configuration.max_transaction_delay;
+      EOS_ASSERT( update.auth.waits.back().wait_sec <= max_delay, action_validate_exception,
+                  "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds",
+                  ("max_delay", max_delay) );
+   }
 
    validate_authority_precondition(context, update.auth);
 
@@ -227,7 +246,6 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.auth;
          po.parent = parent_id;
          po.last_updated = context.control.pending_block_time();
-         po.delay = fc::seconds(update.auth.delay_sec);
       });
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
@@ -363,28 +381,6 @@ void apply_eosio_canceldelay(apply_context& context) {
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
 
    const auto& trx_id = cancel.trx_id;
-
-   const auto& generated_transaction_idx = context.control.db().get_index<generated_transaction_multi_index>();
-   const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
-   const auto& itr = generated_index.lower_bound(trx_id);
-   FC_ASSERT (itr != generated_index.end() && itr->sender == account_name() && itr->trx_id == trx_id,
-              "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
-
-   auto trx = fc::raw::unpack<transaction>(itr->packed_trx.data(), itr->packed_trx.size());
-   bool found = false;
-   for( const auto& act : trx.actions ) {
-      for( const auto& auth : act.authorization ) {
-         if( auth == cancel.canceling_auth ) {
-            found = true;
-            break;
-         }
-         context.checktime( 20 );
-      }
-      if( found ) break;
-   }
-
-   EOS_ASSERT( found, action_validate_exception,
-               "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction" );
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 

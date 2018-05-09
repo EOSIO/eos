@@ -671,9 +671,25 @@ class Node(object):
             Utils.Print("ERROR: Exception during accounts by key retrieval. %s" % (msg))
             return None
 
+    # Get actions mapped to an account (cleos get actions)
+    def getActions(self, account, pos=-1, offset=-1):
+        assert(isinstance(account, Account), isinstance(pos, int), isinstance(offset, int))
+
+        cmd="%s %s get actions -j %s %d %d" % (Utils.EosClientPath, self.endpointArgs, account.name, pos, offset)
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        try:
+            actions=Node.runCmdReturnJson(cmd)
+            return actions
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during actions by account retrieval. %s" % (msg))
+            return None
+
     # Gets accounts mapped to key. Returns array
     def getAccountsArrByKey(self, key):
         trans=self.getAccountsByKey(key)
+        assert(trans)
+        assert("account_names" in trans)
         accounts=trans["account_names"]
         return accounts
 

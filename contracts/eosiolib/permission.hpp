@@ -6,7 +6,6 @@
 
 #include <eosiolib/permission.h>
 #include <eosiolib/transaction.hpp>
-#include <eosiolib/optional.hpp>
 
 #include <set>
 #include <limits>
@@ -20,9 +19,9 @@ namespace eosio {
     *  @param provided_permissions - the set of permissions which have authorized the transaction (empty permission name acts as wildcard)
     *  @param provided_keys - the set of public keys which have authorized the transaction
     *
-    *  @return an optional of the minimum delay (in microseconds) required to satisfy the authorization (returns empty optional if transaction was not authorized by provided keys and permissions)
+    *  @return whether the transaction was authorized by provided keys and permissions
     */
-   optional<uint64_t>
+   bool
    check_transaction_authorization( const transaction&                 trx,
                                     const std::set<permission_level>&  provided_permissions ,
                                     const std::set<public_key>&        provided_keys = std::set<public_key>()
@@ -50,10 +49,7 @@ namespace eosio {
                                                     (nperms > 0) ? packed_perms.size() : 0
                                                   );
 
-      if( res >= 0 )
-         return static_cast<uint64_t>(res);
-      else
-         return optional<uint64_t>();
+      return (res > 0);
    }
 
    /**
@@ -65,9 +61,9 @@ namespace eosio {
     *  @param provided_permissions - the set of permissions which have authorized the transaction (empty permission name acts as wildcard)
     *  @param provided_delay_us - the provided delay in microseconds (cannot exceed INT64_MAX)
     *
-    *  @return an optional of the minimum delay (in microseconds) required to satisfy the authorization (returns empty optional if permission was not authorized by provided delay, keys, and permissions)
+    *  @return whether the permission was authorized by provided delay, keys, and permissions
     */
-   optional<uint64_t>
+   bool
    check_permission_authorization( account_name                       account,
                                    permission_name                    permission,
                                    const std::set<public_key>&        provided_keys,
@@ -96,10 +92,7 @@ namespace eosio {
                                                    provided_delay_us
                                                  );
 
-      if( res >= 0 )
-         return static_cast<uint64_t>(res);
-      else
-         return optional<uint64_t>();
+      return (res > 0);
    }
 
 }

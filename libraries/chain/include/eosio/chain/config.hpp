@@ -23,7 +23,6 @@ const static uint64_t producers_account_name = N(producers);
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
 const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
-const static uint64_t any_producer_permission_name       = N(prod.any);   // any producer needed to authorize
 
 const static uint64_t eosio_auth_scope       = N(eosio.auth);
 const static uint64_t eosio_all_scope        = N(eosio.all);
@@ -31,6 +30,7 @@ const static uint64_t eosio_all_scope        = N(eosio.all);
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
 const static uint64_t eosio_any_name = N(eosio.any);
+const static uint64_t eosio_code_name = N(eosio.code);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

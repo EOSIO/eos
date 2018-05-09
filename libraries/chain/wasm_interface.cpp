@@ -762,10 +762,10 @@ class permission_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int64_t check_transaction_authorization( array_ptr<char> trx_data,     size_t trx_size,
-                                               array_ptr<char> pubkeys_data, size_t pubkeys_size,
-                                               array_ptr<char> perms_data,   size_t perms_size
-                                             )
+      bool check_transaction_authorization( array_ptr<char> trx_data,     size_t trx_size,
+                                            array_ptr<char> pubkeys_data, size_t pubkeys_size,
+                                            array_ptr<char> perms_data,   size_t perms_size
+                                          )
       {
          transaction trx = fc::raw::unpack<transaction>( trx_data, trx_size );
 
@@ -776,26 +776,26 @@ class permission_api : public context_aware_api {
          unpack_provided_permissions( provided_permissions, perms_data, perms_size );
 
          try {
-            auto delay = context.control
-                                .get_authorization_manager()
-                                .check_authorization( trx.actions,
-                                                      provided_keys,
-                                                      provided_permissions,
-                                                      fc::seconds(trx.delay_sec),
-                                                      std::bind(&apply_context::checktime, &context, std::placeholders::_1),
-                                                      false
-                                                    );
-            return delay.count();
+            context.control
+                   .get_authorization_manager()
+                   .check_authorization( trx.actions,
+                                         provided_keys,
+                                         provided_permissions,
+                                         fc::seconds(trx.delay_sec),
+                                         std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                         false
+                                       );
+            return true;
          } catch( const authorization_exception& e ) {}
 
-         return -1;
+         return false;
       }
 
-      int64_t check_permission_authorization( account_name account, permission_name permission,
-                                              array_ptr<char> pubkeys_data, size_t pubkeys_size,
-                                              array_ptr<char> perms_data,   size_t perms_size,
-                                              uint64_t delay_us
-                                            )
+      bool check_permission_authorization( account_name account, permission_name permission,
+                                           array_ptr<char> pubkeys_data, size_t pubkeys_size,
+                                           array_ptr<char> perms_data,   size_t perms_size,
+                                           uint64_t delay_us
+                                         )
       {
          EOS_ASSERT( delay_us <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
                      action_validate_exception, "provided delay is too large" );
@@ -807,20 +807,20 @@ class permission_api : public context_aware_api {
          unpack_provided_permissions( provided_permissions, perms_data, perms_size );
 
          try {
-            auto delay = context.control
-                                .get_authorization_manager()
-                                .check_authorization( account,
-                                                      permission,
-                                                      provided_keys,
-                                                      provided_permissions,
-                                                      fc::microseconds(delay_us),
-                                                      std::bind(&apply_context::checktime, &context, std::placeholders::_1),
-                                                      false
-                                                    );
-            return delay.count();
+            context.control
+                   .get_authorization_manager()
+                   .check_authorization( account,
+                                         permission,
+                                         provided_keys,
+                                         provided_permissions,
+                                         fc::microseconds(delay_us),
+                                         std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                         false
+                                       );
+            return true;
          } catch( const authorization_exception& e ) {}
 
-         return -1;
+         return false;
       }
 
       int64_t get_permission_last_used( account_name account, permission_name permission) {
@@ -830,7 +830,7 @@ class permission_api : public context_aware_api {
       int64_t get_account_creation_date( account_name account ) {
          return time_point(context.db.get<account_object, by_name>(account).creation_date).time_since_epoch().count();
       }
-       
+
 
    private:
       void unpack_provided_keys( flat_set<public_key_type>& keys, const char* pubkeys_data, size_t pubkeys_size ) {
@@ -1691,8 +1691,8 @@ REGISTER_INTRINSICS(crypto_api,
 
 
 REGISTER_INTRINSICS(permission_api,
-   (check_transaction_authorization, int64_t(int, int, int, int, int, int)                  )
-   (check_permission_authorization,  int64_t(int64_t, int64_t, int, int, int, int, int64_t) )
+   (check_transaction_authorization, int(int, int, int, int, int, int)                  )
+   (check_permission_authorization,  int(int64_t, int64_t, int, int, int, int, int64_t) )
    (get_permission_last_used,        int64_t(int64_t, int64_t) )
    (get_account_creation_date,       int64_t(int64_t) )
 );

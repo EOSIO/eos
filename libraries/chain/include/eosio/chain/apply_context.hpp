@@ -516,9 +516,6 @@ class apply_context {
       bool                     all_authorizations_used()const;
       vector<permission_level> unused_authorizations()const;
 
-      void check_auth( const transaction& trx, const vector<permission_level>& perm );
-
-
    /// Console methods:
    public:
 
