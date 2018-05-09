@@ -854,7 +854,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
-      produce_block( fc::seconds(2) );
+      produce_blocks( 3 );
 
       //check that only one deferred transaction executed
       auto dtrxs = control->get_scheduled_transactions();
