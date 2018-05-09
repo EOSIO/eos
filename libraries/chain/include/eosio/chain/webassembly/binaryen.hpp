@@ -481,7 +481,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
 
    template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
-      std::cout << "Type from pointer " << typeid(T).name() << "\n";
       uint32_t ptr = args.at(offset).geti32();
       T* base = array_ptr_impl<T>(interface, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
@@ -496,7 +495,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
 
    template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
-      std::cout << "Type from pointer " << typeid(T).name() << "\n";
       uint32_t ptr = args.at(offset).geti32();
       T* base = array_ptr_impl<T>(interface, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
@@ -585,7 +583,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
-      std::cout << "Type from reference " << typeid(T).name() << " size " << sizeof(T) << "\n";
       uint32_t ptr = args.at(offset).geti32();
       FC_ASSERT(ptr != 0);
       T* base = array_ptr_impl<T>(interface, ptr, 1);
@@ -602,7 +599,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
-      std::cout << "Type from reference " << typeid(T).name() << sizeof(T) << "\n";
       uint32_t ptr = args.at(offset).geti32();
       FC_ASSERT(ptr != 0);
       T* base = array_ptr_impl<T>(interface, ptr, 1);
