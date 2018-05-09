@@ -171,6 +171,11 @@ struct controller_impl {
          initialize_fork_db(); // set head to genesis state
       }
 
+      while( db.revision() > head->block_num ) {
+         wlog( "warning database revision greater than head block, undoing pending changes" );
+         db.undo();
+      }
+
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
                  ("db",db.revision())("head",head->block_num) );
 
@@ -338,11 +343,6 @@ struct controller_impl {
       const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::minority_producers_permission_name,
                                                                              majority_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
-      const auto& any_producer_permission = authorization.create_permission( config::producers_account_name,
-                                                                             config::any_producer_permission_name,
-                                                                             minority_permission.id,
                                                                              active_producers_authority,
                                                                              conf.genesis.initial_timestamp );
    }
@@ -926,9 +926,6 @@ struct controller_impl {
                                                        config::minority_producers_permission_name}),
                          calculate_threshold( 1, 3 ) /* more than one-third */                       );
 
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::any_producer_permission_name}), 1     );
-
       //TODO: Add tests
    }
 
@@ -1012,6 +1009,7 @@ controller::controller( const controller::config& cfg )
 }
 
 controller::~controller() {
+   my->abort_block();
 }
 
 

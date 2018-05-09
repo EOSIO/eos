@@ -8,7 +8,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.types.push_back( type_def{"account_name","name"} );
    eos_abi.types.push_back( type_def{"table_name","name"} );
    eos_abi.types.push_back( type_def{"share_type","int64"} );
-   eos_abi.types.push_back( type_def{"onerror","bytes"} );
    eos_abi.types.push_back( type_def{"context_free_type","bytes"} );
    eos_abi.types.push_back( type_def{"weight_type","uint16"} );
    eos_abi.types.push_back( type_def{"fields","field[]"} );
@@ -174,13 +173,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
-      "permission_level_weight", "", {
-         {"permission", "permission_level"},
-         {"weight", "weight_type"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
       "transaction_header", "", {
          {"expiration", "time_point_sec"},
          {"ref_block_num", "uint16"},
@@ -213,11 +205,25 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
+      "permission_level_weight", "", {
+         {"permission", "permission_level"},
+         {"weight", "weight_type"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "wait_weight", "", {
+         {"wait_sec", "uint32"},
+         {"weight", "weight_type"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
       "authority", "", {
          {"threshold", "uint32"},
-         {"delay_sec", "uint32"},
          {"keys", "key_weight[]"},
-         {"accounts", "permission_level_weight[]"}
+         {"accounts", "permission_level_weight[]"},
+         {"waits", "wait_weight[]"}
       }
    });
 
@@ -278,6 +284,13 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
          "onblock", "", {
             {"header", "block_header"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+         "onerror", "", {
+            {"sender_id", "uint128"},
+            {"sent_trx",  "bytes"}
       }
    });
 

@@ -211,7 +211,7 @@ void apply_context::execute_inline( action&& a ) {
          control.get_authorization_manager()
                 .check_authorization( {a},
                                       {},
-                                      {{receiver, permission_name()}},
+                                      {{receiver, config::eosio_code_name}},
                                       control.pending_block_time() - trx_context.published,
                                       std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                       false
@@ -269,7 +269,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          control.get_authorization_manager()
                 .check_authorization( trx.actions,
                                       {},
-                                      {{receiver, permission_name()}},
+                                      {{receiver, config::eosio_code_name}},
                                       delay,
                                       std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                       false
@@ -419,17 +419,6 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    memcpy( buffer, trx.context_free_data[index].data(), copy_size );
 
    return copy_size;
-}
-
-void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
-   control.get_authorization_manager()
-          .check_authorization( trx.actions,
-                                {},
-                                {perm.begin(), perm.end()},
-                                fc::microseconds(0),
-                                std::bind(&apply_context::checktime, this, std::placeholders::_1),
-                                false
-                              );
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {

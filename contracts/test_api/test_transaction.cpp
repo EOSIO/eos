@@ -203,9 +203,12 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
 }
 
 void test_transaction::assert_false_error_handler(const eosio::transaction& dtrx) {
-   auto onerror_action = eosio::get_action(1, 0);
-   eosio_assert( onerror_action.authorization.at(0).actor == dtrx.actions.at(0).account,
-                "authorizer of onerror action does not match receiver of original action in the deferred transaction" );
+   eosio_assert(dtrx.actions.size() == 1, "transaction should only have one action");
+   eosio_assert(dtrx.actions[0].account == N(testapi), "transaction has wrong code");
+   eosio_assert(dtrx.actions[0].name == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name");
+   eosio_assert(dtrx.actions[0].authorization.size() == 1, "action should only have one authorization");
+   eosio_assert(dtrx.actions[0].authorization[0].actor == N(testapi), "action's authorization has wrong actor");
+   eosio_assert(dtrx.actions[0].authorization[0].permission == N(active), "action's authorization has wrong permission");
 }
 
 /**
@@ -242,17 +245,22 @@ void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, ui
    trx.send( 0xffffffffffffffff, receiver );
 }
 
-void test_transaction::send_deferred_tx_given_payer() {
+void test_transaction::send_deferred_tx_with_dtt_action() {
    using namespace eosio;
-   uint64_t payer;
-   read_action_data(&payer, action_data_size());
+   dtt_action dtt_act;
+   read_action_data(&dtt_act, action_data_size());
+
+   action deferred_act;
+   deferred_act.account = dtt_act.deferred_account;
+   deferred_act.name = dtt_act.deferred_action;
+   deferred_act.authorization = vector<permission_level>{{N(testapi), dtt_act.permission_name}};
 
    auto trx = transaction();
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
-   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.delay_sec = 2;
-   trx.send( 0xffffffffffffffff, payer );
+   trx.actions.emplace_back(deferred_act);
+   trx.delay_sec = dtt_act.delay_sec;
+   trx.send( 0xffffffffffffffff, dtt_act.payer );
 }
+
 
 void test_transaction::cancel_deferred_transaction() {
    using namespace eosio;

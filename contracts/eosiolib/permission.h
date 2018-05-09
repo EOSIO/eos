@@ -16,9 +16,9 @@ extern "C" {
     *  @param perms_data - pointer to the start of the serialized vector of provided permissions (empty permission name acts as wildcard)
     *  @param perms_size - size (in bytes) of the serialized vector of provided permissions
     *
-    *  @return the minimum delay (in microseconds) that was required to satisfy the authorization if the transaction is authorized, -1 otherwise
+    *  @return 1 if the transaction is authorized, 0 otherwise
     */
-   int64_t
+   int32_t
    check_transaction_authorization( const char* trx_data,     uint32_t trx_size,
                                     const char* pubkeys_data, uint32_t pubkeys_size,
                                     const char* perms_data,   uint32_t perms_size
@@ -35,9 +35,9 @@ extern "C" {
     *  @param perms_size - size (in bytes) of the serialized vector of provided permissions
     *  @param delay_us - the provided delay in microseconds (cannot exceed INT64_MAX)
     *
-    *  @return the minimum delay (in microseconds) that was required to satisfy the authorization if the permission is authorized, -1 otherwise
+    *  @return 1 if the permission is authorized, 0 otherwise
     */
-   int64_t
+   int32_t
    check_permission_authorization( account_name account,
                                    permission_name permission,
                                    const char* pubkeys_data, uint32_t pubkeys_size,

@@ -89,8 +89,8 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       const auto& usage = _db.get<resource_usage_object,by_owner>( a );
       const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, a));
       _db.modify( usage, [&]( auto& bu ){
-          bu.net_usage.add( net_usage, time_slot, config.net_limit_parameters.periods );
-          bu.cpu_usage.add( cpu_usage, time_slot, config.cpu_limit_parameters.periods );
+          bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
+          bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
       });
 
       if (limits.cpu_weight >= 0) {

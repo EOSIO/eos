@@ -49,6 +49,7 @@
 FC_REFLECT( dummy_action, (a)(b)(c) )
 FC_REFLECT( u128_action, (values) )
 FC_REFLECT( cf_action, (payload)(cfd_idx) )
+FC_REFLECT( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
 FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
 #ifdef NON_VALIDATING_TEST
@@ -195,7 +196,7 @@ bool is_access_violation(const Runtime::Exception& e) { return true; }
 
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
-bool is_tx_missing_sigs(tx_missing_sigs const & e) { return true;}
+bool is_unsatisfied_authorization(unsatisfied_authorization const & e) { return true;}
 bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
 bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
 bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
@@ -293,8 +294,8 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       auto res = test.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
-   BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), tx_missing_sigs,
-         [](const tx_missing_sigs& e) {
+   BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), unsatisfied_authorization,
+         [](const unsatisfied_authorization& e) {
             return expect_assert_message(e, "transaction declares authority");
          }
       );
@@ -787,10 +788,10 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
    control->push_next_scheduled_transaction();
 
-#warning TODO: FIX THE FOLLOWING TESTS
-#if 0
+   {
+   produce_blocks(10);
    transaction_trace_ptr trace;
-   control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+   auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->receipt->status != transaction_receipt::executed) { trace = t; } } );
 
    // test error handling on deferred transaction failure
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
@@ -798,7 +799,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 
    BOOST_CHECK(trace);
    BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
-#endif
+   }
 
    // test test_transaction_size
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(54) ); // TODO: Need a better way to test this.
@@ -835,7 +836,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    //schedule
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
       //check that it doesn't get executed immediately
       control->push_next_scheduled_transaction();
@@ -849,59 +850,107 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       //confirm printed message
       BOOST_TEST(!trace->action_traces.empty());
       BOOST_TEST(trace->action_traces.back().console == "deferred executed\n");
+      c.disconnect();
    }
 
-#warning TODO: FIX THE FOLLOWING TESTS
-#if 0
+   produce_blocks(10);
+
    //schedule twice (second deferred transaction should replace first one)
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      uint32_t count = 0;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       produce_block( fc::seconds(2) );
 
       //check that only one deferred transaction executed
       control->push_next_scheduled_transaction();
+      control->push_next_scheduled_transaction();
+      BOOST_CHECK_EQUAL(1, count);
       BOOST_CHECK(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
+      c.disconnect();
    }
+
+   produce_blocks(10);
 
    //schedule and cancel
    {
       transaction_trace_ptr trace;
-      control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
       produce_block( fc::seconds(2) );
       control->push_next_scheduled_transaction();
       BOOST_CHECK(!trace);
-      //      BOOST_CHECK_EQUAL( 0, traces.size() );
+      c.disconnect();
    }
 
-   //cancel_deferred() before scheduling transaction should not prevent the transaction from being scheduled (check that previous bug is fixed)
-   CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
-   produce_block( fc::seconds(2) );
-   traces = control->push_deferred_transactions( true );
-   BOOST_CHECK_EQUAL( 1, traces.size() );
+   produce_blocks(10);
 
-   //verify that deferred transaction is dependent on max_generated_transaction_count configuration property
-   const auto& gpo = control->get_global_properties();
-   control->get_mutable_database().modify(gpo, [&]( auto& props ) {
-      props.configuration.max_generated_transaction_count = 0;
-   });
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
-#endif
+   //cancel_deferred() fails if no transaction is scheduled
+   {
+      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {}), transaction_exception);
+   }
 
-   // Send deferred transaction with payer != receiver, payer is alice in this case, this should fail since we don't have authorization of alice
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_given_payer", fc::raw::pack(account_name("alice"))), missing_auth_exception);
+   produce_blocks(10);
 
-   // If we make testapi to be priviledge account, deferred transaction will work no matter who is the payer
+{
+   // Trigger a tx which in turn sends a deferred tx with payer != receiver
+   // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
+   dtt_action dtt_act1;
+   dtt_act1.payer = N(alice);
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1)), missing_auth_exception);
+
+   // Send a tx which in turn sends a deferred tx with the deferred tx's receiver != this tx receiver
+   // This will include the authorization of the receiver, and impose any related delay associated with the authority
+   // We set the authorization delay to be 10 sec here, and since the deferred tx delay is set to be 5 sec, so this tx should fail
+   dtt_action dtt_act2;
+   dtt_act2.deferred_account = N(testapi2);
+   dtt_act2.permission_name = N(additional);
+   dtt_act2.delay_sec = 5;
+
+   auto auth = authority(get_public_key("testapi", name(dtt_act2.permission_name).to_string()), 10);
+   auth.accounts.push_back( permission_level_weight{{N(testapi), config::eosio_code_name}, 1} );
+
+   push_action(config::system_account_name, updateauth::get_name(), "testapi", fc::mutable_variant_object()
+           ("account", "testapi")
+           ("permission", name(dtt_act2.permission_name))
+           ("parent", "active")
+           ("auth", auth)
+   );
+   push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
+           ("account", "testapi")
+           ("code", name(dtt_act2.deferred_account))
+           ("type", name(dtt_act2.deferred_action))
+           ("requirement", name(dtt_act2.permission_name)));
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2)), unsatisfied_authorization);
+
+   // But if the deferred transaction has a sufficient delay, then it should work.
+   dtt_act2.delay_sec = 10;
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2));
+
+   // Meanwhile, if the deferred tx receiver == this tx receiver, the delay will be ignored, this tx should succeed
+   dtt_action dtt_act3;
+   dtt_act3.deferred_account = N(testapi);
+   dtt_act3.permission_name = N(additional);
+   push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
+         ("account", "testapi")
+         ("code", name(dtt_act3.deferred_account))
+         ("type", name(dtt_act3.deferred_action))
+         ("requirement", name(dtt_act3.permission_name)));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act3));
+
+   // If we make testapi account to be priviledged account:
+   // - the deferred transaction will work no matter who is the payer
+   // - the deferred transaction will not care about the delay of the authorization
    push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
                                                        ("account", "testapi")
                                                        ("is_priv", 1));
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", fc::raw::pack(account_name("alice")));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2));
+}
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1489,7 +1538,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(1), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1500,7 +1549,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1512,7 +1561,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() ); // Failure due to irrelevant signatures
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() ); // Failure due to irrelevant signatures
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1523,7 +1572,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1532,7 +1581,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          .pubkeys    = {}
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1543,7 +1592,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          }
       })
    );
-   BOOST_CHECK_EQUAL( int64_t(-1), get_result_int64() );
+   BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
 
    /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
