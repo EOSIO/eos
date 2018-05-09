@@ -860,7 +860,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto dtrxs = control->get_scheduled_transactions();
       BOOST_CHECK_EQUAL(dtrxs.size(), 1);
       for (const auto& trx: dtrxs) {
-         control->push_scheduled_transaction(trx, fc:::time_point::maximum());
+         control->push_scheduled_transaction(trx, fc::time_point::maximum());
       }
       BOOST_CHECK_EQUAL(1, count);
       BOOST_CHECK(trace);
