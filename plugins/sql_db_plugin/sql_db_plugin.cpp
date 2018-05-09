@@ -6,7 +6,7 @@
 
 #include "database.h"
 
-#include "consumer.h"
+#include "consumer_core.h"
 #include "irreversible_block_storage.h"
 #include "block_storage.h"
 
