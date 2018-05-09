@@ -116,8 +116,7 @@
       "name": "eosio_parameters",
       "base": "blockchain_parameters",
       "fields": [
-         {"name":"max_ram_size", "type":"uint64"},
-         {"name":"percent_of_max_inflation_rate", "type":"uint32"}
+         {"name":"max_ram_size", "type":"uint64"}
       ]
     },{
       "name": "eosio_global_state",
@@ -127,7 +126,7 @@
          {"name":"total_ram_stake",               "type":"asset"},
          {"name":"last_producer_schedule_update", "type":"time"},
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
-         {"name":"eos_bucket",                    "type":"asset"},
+         {"name":"pervote_bucket",                "type":"asset"},
          {"name":"savings",                       "type":"asset"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
          {"name":"total_activatied_stake",        "type":"int64"}
