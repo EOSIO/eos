@@ -174,13 +174,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
-      "permission_level_weight", "", {
-         {"permission", "permission_level"},
-         {"weight", "weight_type"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
       "transaction_header", "", {
          {"expiration", "time_point_sec"},
          {"ref_block_num", "uint16"},
@@ -213,11 +206,25 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
+      "permission_level_weight", "", {
+         {"permission", "permission_level"},
+         {"weight", "weight_type"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "wait_weight", "", {
+         {"wait_sec", "uint32"},
+         {"weight", "weight_type"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
       "authority", "", {
          {"threshold", "uint32"},
-         {"delay_sec", "uint32"},
          {"keys", "key_weight[]"},
-         {"accounts", "permission_level_weight[]"}
+         {"accounts", "permission_level_weight[]"},
+         {"waits", "wait_weight[]"}
       }
    });
 
