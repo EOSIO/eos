@@ -12,11 +12,6 @@
 
 namespace eosio {
 
-template<typename T> class consumer;
-using consumer_signed_block = consumer<chain::signed_block>;
-
-class irreversible_block_storage;
-
 /**
  * Provides persistence to SQL DB for:
  *   Blocks
