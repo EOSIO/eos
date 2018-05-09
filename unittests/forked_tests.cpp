@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/fork_database.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
@@ -257,6 +258,100 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
 } FC_LOG_AND_RETHROW() 
 
 BOOST_AUTO_TEST_CASE(confirmation) try {
+
+   tester c;
+   c.produce_blocks(10);
+   auto r = c.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
+   auto res = c.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
+
+   private_key_type priv_sam = c.get_private_key( N(sam), "active" );
+   private_key_type priv_dan = c.get_private_key( N(dan), "active" );
+   private_key_type priv_pam = c.get_private_key( N(pam), "active" );
+   private_key_type priv_scott = c.get_private_key( N(scott), "active" );
+   private_key_type priv_invalid = c.get_private_key( N(invalid), "active" );
+
+   wlog("set producer schedule to [dan,sam,pam,scott]");
+   c.produce_blocks(50);
+   c.control->abort_block(); // discard pending block
+
+   BOOST_REQUIRE_EQUAL(61, c.control->head_block_num());
+
+   // 55 is by dan
+   block_state_ptr blk = c.control->fork_db().get_block_in_current_chain_by_num(55);
+   block_state_ptr blk61 = c.control->fork_db().get_block_in_current_chain_by_num(61);
+   block_state_ptr blk50 = c.control->fork_db().get_block_in_current_chain_by_num(50);
+
+   BOOST_REQUIRE_EQUAL(0, blk->bft_irreversible_blocknum);
+   BOOST_REQUIRE_EQUAL(0, blk->confirmations.size());
+   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
+
+   // invalid signature
+   BOOST_REQUIRE_EXCEPTION(c.control->push_confirmation(header_confirmation{blk->id, N(sam), priv_invalid.sign(blk->sig_digest())}),
+      fc::exception,
+      [] (const fc::exception &ex)->bool {
+      return ex.to_detail_string().find("confirmation not signed by expected key") != std::string::npos;
+      });
+
+   // invalid schedule
+   BOOST_REQUIRE_EXCEPTION(c.control->push_confirmation(header_confirmation{blk->id, N(invalid), priv_invalid.sign(blk->sig_digest())}),
+      fc::exception,
+      [] (const fc::exception &ex)->bool {
+      return ex.to_detail_string().find("producer not in current schedule") != std::string::npos;
+      });
+
+   // signed by sam
+   c.control->push_confirmation(header_confirmation{blk->id, N(sam), priv_sam.sign(blk->sig_digest())});
+
+   BOOST_REQUIRE_EQUAL(0, blk->bft_irreversible_blocknum);
+   BOOST_REQUIRE_EQUAL(1, blk->confirmations.size());
+   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
+
+   // double confirm not allowed
+   BOOST_REQUIRE_EXCEPTION(c.control->push_confirmation(header_confirmation{blk->id, N(sam), priv_sam.sign(blk->sig_digest())}),
+      fc::exception,
+      [] (const fc::exception &ex)->bool {
+      return ex.to_detail_string().find("block already confirmed by this producer") != std::string::npos;
+      });
+
+   // signed by dan
+   c.control->push_confirmation(header_confirmation{blk->id, N(dan), priv_dan.sign(blk->sig_digest())});
+
+   BOOST_REQUIRE_EQUAL(0, blk->bft_irreversible_blocknum);
+   BOOST_REQUIRE_EQUAL(2, blk->confirmations.size());
+   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
+
+   // signed by pam
+   c.control->push_confirmation(header_confirmation{blk->id, N(pam), priv_pam.sign(blk->sig_digest())});
+
+   // we have more than 2/3 of confirmations, bft irreversible number should be set
+   BOOST_REQUIRE_EQUAL(55, blk->bft_irreversible_blocknum);
+   BOOST_REQUIRE_EQUAL(55, blk61->bft_irreversible_blocknum); // bft irreversible number will propagate to higher block
+   BOOST_REQUIRE_EQUAL(0, blk50->bft_irreversible_blocknum); // bft irreversible number will not propagate to lower block
+   BOOST_REQUIRE_EQUAL(3, blk->confirmations.size());
+   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
+
+   // signed by scott
+   c.control->push_confirmation(header_confirmation{blk->id, N(scott), priv_scott.sign(blk->sig_digest())});
+
+   BOOST_REQUIRE_EQUAL(55, blk->bft_irreversible_blocknum);
+   BOOST_REQUIRE_EQUAL(4, blk->confirmations.size());
+   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
+
+   // let's confirm block 50 as well
+   c.control->push_confirmation(header_confirmation{blk50->id, N(sam), priv_sam.sign(blk50->sig_digest())});
+   c.control->push_confirmation(header_confirmation{blk50->id, N(dan), priv_dan.sign(blk50->sig_digest())});
+   c.control->push_confirmation(header_confirmation{blk50->id, N(pam), priv_pam.sign(blk50->sig_digest())});
+   BOOST_REQUIRE_EQUAL(50, blk50->bft_irreversible_blocknum); // bft irreversible number will not propagate to lower block
+
+   block_state_ptr blk54 = c.control->fork_db().get_block_in_current_chain_by_num(54);
+   BOOST_REQUIRE_EQUAL(50, blk54->bft_irreversible_blocknum);
+   BOOST_REQUIRE_EQUAL(55, blk->bft_irreversible_blocknum); // bft irreversible number will not be updated to lower value
+   BOOST_REQUIRE_EQUAL(55, blk61->bft_irreversible_blocknum);
+
+   c.produce_blocks(20);
+
+   block_state_ptr blk81 = c.control->fork_db().get_block_in_current_chain_by_num(81);
+   BOOST_REQUIRE_EQUAL(55, blk81->bft_irreversible_blocknum); // bft irreversible number will propagate into new blocks
 
 } FC_LOG_AND_RETHROW()
 
