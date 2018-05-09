@@ -194,6 +194,11 @@ BOOST_AUTO_TEST_CASE( forking ) try {
       });
 } FC_LOG_AND_RETHROW()
 
+
+/**
+ *  This test verifies that the fork-choice rule favors the branch with
+ *  the highest last irreversible block over one that is longer.
+ */
 BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    tester c;
    c.produce_blocks(10);
@@ -247,9 +252,7 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
       c.push_block(fb);
    }
 
-   // c's main chain should not be changed
-   // FIXME: uncomment it to reproduce the issue in #2835
-   //BOOST_REQUIRE_EQUAL(87, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(73, c.control->head_block_num());
 
 } FC_LOG_AND_RETHROW() 
 
