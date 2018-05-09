@@ -38,9 +38,14 @@ void token::create( account_name issuer,
 void token::issue( account_name to, asset quantity, string memo )
 {
     print( "issue" );
-    auto sym = quantity.symbol.name();
-    stats statstable( _self, sym );
-    const auto& st = statstable.get( sym );
+    auto sym = quantity.symbol;
+    eosio_assert( sym.is_valid(), "invalid symbol name" );
+
+    auto sym_name = sym.name();
+    stats statstable( _self, sym_name );
+    auto existing = statstable.find( sym_name );
+    eosio_assert( existing != statstable.end(), "token with symbol does not exist, create token before issue" );
+    const auto& st = *existing;
 
     require_auth( st.issuer );
     eosio_assert( quantity.is_valid(), "invalid quantity" );
@@ -55,8 +60,7 @@ void token::issue( account_name to, asset quantity, string memo )
 
     add_balance( st.issuer, quantity, st, st.issuer );
 
-    if( to != st.issuer )
-    {
+    if( to != st.issuer ) {
        SEND_INLINE_ACTION( *this, transfer, {st.issuer,N(active)}, {st.issuer, to, quantity, memo} );
     }
 }
