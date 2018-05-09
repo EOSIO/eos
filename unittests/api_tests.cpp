@@ -76,7 +76,7 @@ struct test_api_action {
 	}
 };
 
-FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL);
+FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL)
 
 template<uint64_t NAME>
 struct test_chain_action {
@@ -89,7 +89,7 @@ struct test_chain_action {
 	}
 };
 
-FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_SEQ_NIL);
+FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_SEQ_NIL)
 
 struct check_auth {
    account_name            account;
@@ -97,7 +97,15 @@ struct check_auth {
    vector<public_key_type> pubkeys;
 };
 
-FC_REFLECT(check_auth, (account)(permission)(pubkeys) );
+FC_REFLECT(check_auth, (account)(permission)(pubkeys) )
+
+struct test_permission_last_used_action {
+   account_name     account;
+   permission_name  permission;
+   fc::time_point   last_used_time;
+};
+
+FC_REFLECT( test_permission_last_used_action, (account)(permission)(last_used_time) )
 
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
@@ -1738,6 +1746,114 @@ BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
       [](const fc::exception& e) {
          return expect_assert_message(e, "Unsupported Hardfork Detected");
       });
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
+ * permission_usage_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
+   produce_block();
+   create_accounts( {N(testapi), N(alice), N(bob)} );
+   produce_block();
+   set_code(N(testapi), test_api_wast);
+   produce_block();
+
+   push_reqauth( N(alice), {{N(alice), config::active_name}}, {get_private_key(N(alice), "active")} );
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
+                       fc::raw::pack(test_permission_last_used_action{
+                           N(alice), config::active_name,
+                           control->pending_block_time()
+                       })
+   );
+
+   // Fails because the last used time is updated after the transaction executes.
+   BOOST_CHECK_THROW( CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
+                       fc::raw::pack(test_permission_last_used_action{
+                                       N(testapi), config::active_name,
+                                       control->head_block_time() + fc::milliseconds(config::block_interval_ms)
+                                     })
+   ), fc::assert_exception );
+
+   produce_blocks(5);
+
+   set_authority( N(bob), N(perm1), authority( get_private_key(N(bob), "perm1").get_public_key() ) );
+
+   push_action(config::system_account_name, linkauth::get_name(), N(bob), fc::mutable_variant_object()
+           ("account", "bob")
+           ("code", "eosio")
+           ("type", "reqauth")
+           ("requirement", "perm1")
+   );
+
+   auto permission_creation_time = control->pending_block_time();
+
+   produce_blocks(5);
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
+                       fc::raw::pack(test_permission_last_used_action{
+                                       N(bob), N(perm1),
+                                       permission_creation_time
+                                     })
+   );
+
+   produce_blocks(5);
+
+   push_reqauth( N(bob), {{N(bob), N(perm1)}}, {get_private_key(N(bob), "perm1")} );
+
+   auto perm1_last_used_time = control->pending_block_time();
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
+                       fc::raw::pack(test_permission_last_used_action{
+                                       N(bob), config::active_name,
+                                       permission_creation_time
+                                     })
+   );
+
+   BOOST_CHECK_THROW( CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
+                                          fc::raw::pack(test_permission_last_used_action{
+                                                            N(bob), N(perm1),
+                                                            permission_creation_time
+                                          })
+   ), fc::assert_exception );
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
+                       fc::raw::pack(test_permission_last_used_action{
+                                       N(bob), N(perm1),
+                                       perm1_last_used_time
+                                     })
+   );
+
+   produce_block();
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
+ * account_creation_time_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(account_creation_time_tests, TESTER) { try {
+   produce_block();
+   create_account( N(testapi) );
+   produce_block();
+   set_code(N(testapi), test_api_wast);
+   produce_block();
+
+   create_account( N(alice) );
+   auto alice_creation_time = control->pending_block_time();
+
+   produce_blocks(10);
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "test_account_creation_time",
+                       fc::raw::pack(test_permission_last_used_action{
+                           N(alice), config::active_name,
+                           alice_creation_time
+                       })
+   );
+
+   produce_block();
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
