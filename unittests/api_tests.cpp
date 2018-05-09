@@ -898,13 +898,17 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 {
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
    // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
-   dtt_action dtt_act1 = {.payer = N(alice)};
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1)), transaction_exception);
+   dtt_action dtt_act1;
+   dtt_act1.payer = N(alice);
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1)), missing_auth_exception);
          
    // Send a tx which in turn sends a deferred tx with the deferred tx's receiver != this tx receiver
    // This will include the authorization of the receiver, and impose any related delay associated with the authority
-   // We set the authorization delay to be 10 sec here, and since the deferred tx delay is set to be 2 sec, so this tx should fail
-   dtt_action dtt_act2 = {.deferred_account = N(testapi2), .permission_name = N(additional), .delay_sec = 2};
+   // We set the authorization delay to be 10 sec here, and since the deferred tx delay is set to be 5 sec, so this tx should fail
+   dtt_action dtt_act2;
+   dtt_act2.deferred_account = N(testapi2);
+   dtt_act2.permission_name = N(additional);
+   dtt_act2.delay_sec = 5;
    push_action(config::system_account_name, updateauth::get_name(), "testapi", fc::mutable_variant_object()
            ("account", "testapi")
            ("permission", name(dtt_act2.permission_name))
@@ -915,10 +919,12 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
            ("code", name(dtt_act2.deferred_account))
            ("type", name(dtt_act2.deferred_action))
            ("requirement", name(dtt_act2.permission_name)));
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2)), transaction_exception);
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2)), insufficient_delay_exception);
    
    // Meanwhile, if the deferred tx receiver == this tx receiver, the delay will be ignored, this tx should succeed
-   dtt_action dtt_act3 = {.deferred_account = N(testapi), .permission_name = N(additional)};
+   dtt_action dtt_act3;
+   dtt_act3.deferred_account = N(testapi);
+   dtt_act3.permission_name = N(additional);
    push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
          ("account", "testapi")
          ("code", name(dtt_act3.deferred_account))
@@ -931,7 +937,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    // - the deferred transaction will not care about the delay of the authorization
    push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
                                                        ("account", "testapi")
-                                                       ("is_priv", 1));
+                                                       ("is_priv", 1));                                           
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1));
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2));
 }
