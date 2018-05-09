@@ -5,6 +5,7 @@
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/plugin_interface.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -17,6 +18,19 @@
 #include <algorithm>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+
+namespace bmi = boost::multi_index;
+using bmi::indexed_by;
+using bmi::ordered_non_unique;
+using bmi::member;
+using bmi::tag;
+using bmi::hashed_unique;
+
+using boost::multi_index_container;
 
 using std::string;
 using std::vector;
@@ -27,6 +41,31 @@ static appbase::abstract_plugin& _producer_plugin = app().register_plugin<produc
 
 using namespace eosio::chain;
 using namespace eosio::chain::plugin_interface;
+
+namespace {
+   bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
+      auto code = e.code();
+      return (code == tx_soft_cpu_usage_exceeded::code_value) ||
+             (code == tx_soft_net_usage_exceeded::code_value) ||
+             (code == tx_deadline_exceeded::code_value && deadline_is_subjective);
+   }
+}
+
+struct blacklisted_transaction {
+   transaction_id_type     trx_id;
+   fc::time_point          expiry;
+};
+
+struct by_id;
+struct by_expiry;
+
+using blacklisted_transaction_index = multi_index_container<
+   blacklisted_transaction,
+   indexed_by<
+      hashed_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(blacklisted_transaction, transaction_id_type, trx_id)>,
+      ordered_non_unique<tag<by_expiry>, BOOST_MULTI_INDEX_MEMBER(blacklisted_transaction, fc::time_point, expiry)>
+   >
+>;
 
 class producer_plugin_impl {
    public:
@@ -49,8 +88,7 @@ class producer_plugin_impl {
       boost::asio::deadline_timer                               _timer;
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
 
-      int32_t                                                   _max_deferred_transaction_time_ms;
-      int32_t                                                   _max_pending_transaction_time_ms;
+      int32_t                                                   _max_transaction_time_ms;
 
       block_production_condition::block_production_condition_enum _prev_result = block_production_condition::produced;
       uint32_t _prev_result_count = 0;
@@ -68,6 +106,8 @@ class producer_plugin_impl {
 
       incoming::methods::block_sync::method_type::handle       _incoming_block_sync_provider;
       incoming::methods::transaction_sync::method_type::handle _incoming_transaction_sync_provider;
+
+      blacklisted_transaction_index                            _blacklisted_transactions;
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -164,13 +204,35 @@ class producer_plugin_impl {
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
-         return publish_results_of(trx, _transaction_ack_channel, [&]{
-            chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-            return chain.sync_push(std::make_shared<transaction_metadata>(*trx), fc::time_point::now() + fc::milliseconds(_max_pending_transaction_time_ms));
+         return publish_results_of(trx, _transaction_ack_channel, [&]() -> transaction_trace_ptr {
+            while (true) {
+               chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+               auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+               auto max_deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+               auto deadline = std::min(block_time, max_deadline);
+               auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
+
+               // if we failed because the block was exhausted push the block out and try again
+               if (trace->except) {
+                  if (failure_is_subjective(*trace->except, deadline == block_time)) {
+                     block_production_loop();
+                  } else {
+                     trace->except->dynamic_rethrow_exception();
+                  }
+               } else {
+                  return trace;
+               }
+            }
          });
       }
 
-      bool start_block();
+      enum class start_block_result {
+         succeeded,
+         failed,
+         exhausted
+      };
+
+      start_block_result start_block();
 };
 
 void new_chain_banner(const eosio::chain::controller& db)
@@ -213,10 +275,8 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(30),
+         ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
-         ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
-          "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("required-participation", boost::program_options::value<uint32_t>()
                                        ->default_value(uint32_t(config::required_producer_participation/config::percent_1))
                                        ->notifier([this](uint32_t e) {
@@ -279,8 +339,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       }
    }
 
-   my->_max_deferred_transaction_time_ms = options.at("max-deferred-transaction-time").as<int32_t>();
-   my->_max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
+   my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
 
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
@@ -336,7 +395,7 @@ void producer_plugin::plugin_shutdown() {
    }
 }
 
-bool producer_plugin_impl::start_block() {
+producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    const auto& hbs = chain.head_block_state();
 
@@ -380,32 +439,75 @@ bool producer_plugin_impl::start_block() {
    } FC_LOG_AND_DROP();
 
    if (chain.pending_block_state()) {
-      // TODO:  BIG BAD WARNING, THIS WILL HAPPILY BLOW PAST DEADLINES BUT CONTROLLER IS NOT YET SAFE FOR DEADLINE USAGE
-      try {
-         while (chain.push_next_unapplied_transaction(fc::time_point::maximum()));
-      } FC_LOG_AND_DROP();
+      bool exhausted = false;
+      auto unapplied_trxs = chain.get_unapplied_transactions();
+      for (const auto& trx : unapplied_trxs) {
+         if (exhausted) {
+            break;
+         }
 
-      try {
-         while (chain.push_next_scheduled_transaction(fc::time_point::maximum()));
-      } FC_LOG_AND_DROP();
+         try {
+            auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
+            auto trace = chain.push_transaction(trx, deadline);
+            if (trace->except) {
+               if (failure_is_subjective(*trace->except, deadline == block_time)) {
+                  exhausted = true;
+               } else {
+                  // this failed our configured maximum transaction time, we don't want to replay it
+                  chain.drop_unapplied_transaction(trx);
+               }
+            }
+         } FC_LOG_AND_DROP();
+      }
 
-      return true;
+      auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
+      auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
+      auto now = fc::time_point::now();
+      while(!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= now) {
+         blacklist_by_expiry.erase(blacklist_by_expiry.begin());
+      }
+
+      auto scheduled_trxs = chain.get_scheduled_transactions();
+      for (const auto& trx : scheduled_trxs) {
+         if (exhausted) {
+            break;
+         }
+
+         if (blacklist_by_id.find(trx) != blacklist_by_id.end()) {
+            continue;
+         }
+
+         try {
+            auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
+            auto trace = chain.push_scheduled_transaction(trx, deadline);
+            if (trace->except) {
+               if (failure_is_subjective(*trace->except, deadline == block_time)) {
+                  exhausted = true;
+               } else {
+                  auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
+                  // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
+                  _blacklisted_transactions.insert(blacklisted_transaction{trx, expiration});
+               }
+            }
+         } FC_LOG_AND_DROP();
+      }
+
+      return exhausted ? start_block_result::exhausted : start_block_result::succeeded;
    }
 
-   return false;
+   return start_block_result::failed;
 }
 
 void producer_plugin_impl::schedule_production_loop() {
    _timer.cancel();
 
-   if (start_block()) {
-      //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
-      _timer.async_wait([&](const boost::system::error_code& ec) {
-         if (ec != boost::asio::error::operation_aborted) {
-            block_production_loop();
-         }
-      });
-   } else {
+   auto result = start_block();
+   switch(result) {
+   case start_block_result::exhausted:
+      // immediately proceed to making the block
+      block_production_loop();
+      break;
+   case start_block_result::failed:
       elog("Failed to start a pending block, will try again later");
       // we failed to start a block, so try again later?
       _timer.async_wait([&](const boost::system::error_code& ec) {
@@ -413,6 +515,15 @@ void producer_plugin_impl::schedule_production_loop() {
             schedule_production_loop();
          }
       });
+      break;
+   case start_block_result::succeeded:
+      //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
+      _timer.async_wait([&](const boost::system::error_code& ec) {
+         if (ec != boost::asio::error::operation_aborted) {
+            block_production_loop();
+         }
+      });
+      break;
    }
 }
 

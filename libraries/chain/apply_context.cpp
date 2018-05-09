@@ -488,6 +488,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    }
 
    db.modify( obj, [&]( auto& o ) {
+     o.value.resize( 0 );
      o.value.resize( buffer_size );
      memcpy( o.value.data(), buffer, buffer_size );
      o.payer = payer;

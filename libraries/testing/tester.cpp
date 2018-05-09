@@ -119,10 +119,21 @@ namespace eosio { namespace testing {
       }
 
       if( !skip_pending_trxs ) {
-            //wlog( "pushing all input transactions in waiting queue" );
-            while( control->push_next_unapplied_transaction( fc::time_point::maximum() ) );
-            //wlog( "pushing all available deferred transactions" );
-            while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
+         auto unapplied_trxs = control->get_unapplied_transactions();
+         for (const auto& trx : unapplied_trxs ) {
+            auto trace = control->push_transaction(trx, fc::time_point::maximum());
+            if(trace->except) {
+               trace->except->dynamic_rethrow_exception();
+            }
+         }
+
+         auto scheduled_trxs = control->get_scheduled_transactions();
+         for (const auto& trx : scheduled_trxs ) {
+            auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
+            if(trace->except) {
+               trace->except->dynamic_rethrow_exception();
+            }
+         }
       }
 
 
@@ -212,7 +223,7 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -229,7 +240,7 @@ namespace eosio { namespace testing {
          c = packed_transaction::zlib;
       }
 
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx,c), deadline );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;

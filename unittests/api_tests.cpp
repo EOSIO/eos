@@ -776,11 +776,9 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
             return expect_assert_message(e, "test_action::assert_false");
          }
       );
-   control->push_next_scheduled_transaction();
 
    //   test send_transaction
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction", {});
-      control->push_next_scheduled_transaction();
 
    // test send_transaction_empty
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_empty", {}), tx_no_auths,
@@ -788,7 +786,6 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
             return expect_assert_message(e, "transaction must have at least one authorization");
          }
       );
-   control->push_next_scheduled_transaction();
 
 #warning TODO: FIX THE FOLLOWING TESTS
 #if 0
@@ -797,7 +794,6 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 
    // test error handling on deferred transaction failure
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
-   control->push_next_scheduled_transaction();
 
    BOOST_CHECK(trace);
    BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
@@ -805,7 +801,6 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 
    // test test_transaction_size
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(54) ); // TODO: Need a better way to test this.
-   control->push_next_scheduled_transaction();
 
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
@@ -840,13 +835,10 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       transaction_trace_ptr trace;
       control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
-      //check that it doesn't get executed immediately
-      control->push_next_scheduled_transaction();
       BOOST_CHECK(!trace);
       produce_block( fc::seconds(2) );
 
       //check that it gets executed afterwards
-      control->push_next_scheduled_transaction();
       BOOST_CHECK(trace);
 
       //confirm printed message
@@ -865,7 +857,6 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       produce_block( fc::seconds(2) );
 
       //check that only one deferred transaction executed
-      control->push_next_scheduled_transaction();
       BOOST_CHECK(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
    }
@@ -877,7 +868,6 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
       produce_block( fc::seconds(2) );
-      control->push_next_scheduled_transaction();
       BOOST_CHECK(!trace);
       //      BOOST_CHECK_EQUAL( 0, traces.size() );
    }
