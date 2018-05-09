@@ -16,7 +16,6 @@ static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_us
    } else {
       result = result * params.expand_rate;
    }
-
    return std::min(std::max(result, params.max), params.max * params.max_multiplier);
 }
 
@@ -30,7 +29,9 @@ void elastic_limit_parameters::validate()const {
 
 
 void resource_limits_state_object::update_virtual_cpu_limit( const resource_limits_config_object& cfg ) {
+   //idump((average_block_cpu_usage.average()));
    virtual_cpu_limit = update_elastic_limit(virtual_cpu_limit, average_block_cpu_usage.average(), cfg.cpu_limit_parameters);
+   //idump((virtual_cpu_limit));
 }
 
 void resource_limits_state_object::update_virtual_net_limit( const resource_limits_config_object& cfg ) {
@@ -328,6 +329,7 @@ int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name
 
    uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
 
+   //idump((virtual_capacity_ex)(total_cpu_weight)(limits.cpu_weight)(usable_capacity_ex)(consumed_ex)(config::rate_limiting_precision) );
    if (usable_capacity_ex < consumed_ex) {
       return 0;
    }
@@ -352,6 +354,7 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
 
    uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
 
+   wdump((cfg.cpu_limit_parameters.target));
    uint128_t real_capacity_ex = (uint128_t)cfg.cpu_limit_parameters.target * (uint128_t)config::rate_limiting_precision;
    uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
 

@@ -251,17 +251,6 @@ namespace eosio {
          symbol.print(false);
       }
 
-      void adjust_precision(const symbol_type& ref_sym) {
-         eosio_assert(this->symbol.name() == ref_sym.name(), "comparison of symbols with different names is not allowed");
-         if (this->symbol.precision() == ref_sym.precision())
-            return;
-         eosio_assert(ref_sym.precision() >= this->symbol.precision(), "asset symbol has higher precision than expected");
-         for (uint8_t i = 0; i < ref_sym.precision() - this->symbol.precision(); ++i) {
-            this->amount *= 10;
-         }
-         this->symbol.value = ref_sym.value;
-      }
-
       EOSLIB_SERIALIZE( asset, (amount)(symbol) )
    };
 

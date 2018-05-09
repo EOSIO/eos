@@ -53,7 +53,6 @@ void apply_eosio_newaccount(apply_context& context) {
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
-   EOS_ASSERT( validate(create.recovery), action_validate_exception, "Invalid recovery authority");
 
    auto& db = context.db;
 
@@ -74,7 +73,7 @@ void apply_eosio_newaccount(apply_context& context) {
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   for( const auto& auth : { create.owner, create.active, create.recovery } ){
+   for( const auto& auth : { create.owner, create.active } ){
       validate_authority_precondition( context, auth );
    }
 
@@ -133,8 +132,6 @@ void apply_eosio_setcode(apply_context& context) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate
       a.code_version = code_id;
-      // Added resize(0) here to avoid bug in boost vector container
-      a.code.resize( 0 );
       a.code.resize( code_size );
       a.last_code_update = context.control.pending_block_time();
       memcpy( a.code.data(), act.code.data(), code_size );
@@ -360,169 +357,6 @@ static const abi_serializer& get_abi_serializer() {
    return *_abi_serializer;
 }
 
-static optional<variant> get_pending_recovery(apply_context& context, account_name account ) {
-   const uint64_t id = account;
-   const auto table = N(recovery);
-   const auto iter = context.db_find_i64(config::system_account_name, account, table, id);
-   if (iter != -1) {
-      const auto buffer_size = context.db_get_i64(iter, nullptr, 0);
-      bytes value(buffer_size);
-
-      const auto written_size = context.db_get_i64(iter, value.data(), buffer_size);
-      assert(written_size == buffer_size);
-
-      return get_abi_serializer().binary_to_variant("pending_recovery", value);
-   }
-
-   return optional<variant_object>();
-}
-
-static auto get_account_creation(const apply_context& context, const account_name& account) {
-   auto const& accnt = context.db.get<account_object, by_name>(account);
-   return (time_point)accnt.creation_date;
-};
-
-static auto get_permission_last_used(const apply_context& context, const account_name& account, const permission_name& permission) {
-   auto const* perm = context.db.find<permission_usage_object, by_account_permission>(boost::make_tuple(account, permission));
-   if (perm) {
-      return optional<time_point>(perm->last_used);
-   }
-
-   return optional<time_point>();
-};
-
-void apply_eosio_postrecovery(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
-
-   FC_ASSERT(context.act.authorization.size() == 1, "Recovery Message must have exactly one authorization");
-
-   auto recover_act = context.act.data_as<postrecovery>();
-   const auto &auth = context.act.authorization.front();
-   const auto& account = recover_act.account;
-//   context.require_write_lock(account);
-
-   FC_ASSERT(!get_pending_recovery(context, account), "Account ${account} already has a pending recovery request!", ("account",account));
-
-   fc::microseconds delay_lock;
-   auto now = context.control.pending_block_time();
-   if (auth.actor == account && auth.permission == N(active)) {
-      // process owner recovery from active
-      delay_lock = fc::days(30);
-   } else {
-      // process lost password
-
-      auto owner_last_used = get_permission_last_used(context, account, N(owner));
-      auto active_last_used = get_permission_last_used(context, account, N(active));
-
-      if (!owner_last_used || !active_last_used) {
-         auto account_creation = get_account_creation(context, account);
-         if (!owner_last_used) {
-            owner_last_used.emplace(account_creation);
-         }
-
-         if (!active_last_used) {
-            active_last_used.emplace(account_creation);
-         }
-      }
-
-      FC_ASSERT(*owner_last_used <= now - fc::days(30), "Account ${account} has had owner key activity recently and cannot be recovered yet!", ("account",account));
-      FC_ASSERT(*active_last_used <= now - fc::days(30), "Account ${account} has had active key activity recently and cannot be recovered yet!", ("account",account));
-
-      delay_lock = fc::days(7);
-   }
-
-   variant update;
-   fc::to_variant( updateauth {
-      .account = account,
-      .permission = N(owner),
-      .parent = 0,
-      .auth = recover_act.auth
-   }, update);
-
-   const uint128_t request_id = transaction_id_to_sender_id(context.trx_context.id);
-   auto record_data = mutable_variant_object()
-      ("account", account)
-      ("request_id", request_id)
-      ("update", update)
-      ("memo", recover_act.memo);
-
-   transaction trx;
-   trx.expiration = context.control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second
-   trx.delay_sec  = (delay_lock + fc::microseconds(999'999)).to_seconds(); // Rounds up to nearest second
-   trx.set_reference_block(context.control.head_block_id());
-   trx.actions.emplace_back( vector<permission_level>{{account,config::active_name},{config::system_account_name,config::active_name}},
-                             passrecovery { account } );
-
-   // NOTE: we pre-reserve capacity for this during create account
-   context.schedule_deferred_transaction(request_id, config::system_account_name, std::move(trx));
-
-   auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
-   const uint64_t id = account;
-   const uint64_t table = N(recovery);
-   const auto payer = account;
-
-   const auto iter = context.db_find_i64(config::system_account_name, account, table, id);
-   if (iter == -1) {
-      context.db_store_i64(account, table, payer, id, (const char*)data.data(), data.size());
-   } else {
-      context.db_update_i64(iter, payer, (const char*)data.data(), data.size());
-   }
-
-   context.console_append_formatted("Recovery Started for account ${account} : ${memo}\n", mutable_variant_object()("account", account)("memo", recover_act.memo));
-
-   context.checktime( 3000 );
-}
-
-static void remove_pending_recovery(apply_context& context, const account_name& account) {
-   const auto iter = context.db_find_i64(config::system_account_name, account, N(recovery), account);
-   if (iter != -1) {
-      context.db_remove_i64(iter);
-   }
-}
-
-void apply_eosio_passrecovery(apply_context& context) {
-   auto pass_act = context.act.data_as<passrecovery>();
-   const auto& account = pass_act.account;
-
-   // ensure this is only processed if it is a deferred transaction from the system account
-   // TODO: verify this works with any PRIVILEGED account
-   // FC_ASSERT( context.sender == config::system_account_name );
-   context.require_authorization(account);
-   context.require_authorization(config::system_account_name);
-
-   auto maybe_recovery = get_pending_recovery(context, account);
-   FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
-   auto recovery = *maybe_recovery;
-
-   updateauth update;
-   fc::from_variant(recovery["update"], update);
-
-   action act(vector<permission_level>{{account,config::owner_name}}, update);
-   context.execute_inline(move(act));
-
-   remove_pending_recovery(context, account);
-   context.console_append_formatted("Account ${account} successfully recovered!\n", mutable_variant_object()("account", account));
-
-   context.checktime( 3000 );
-}
-
-void apply_eosio_vetorecovery(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
-   auto pass_act = context.act.data_as<vetorecovery>();
-   const auto& account = pass_act.account;
-   context.require_authorization(account);
-
-   auto maybe_recovery = get_pending_recovery(context, account);
-   FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
-   auto recovery = *maybe_recovery;
-
-   context.cancel_deferred_transaction(recovery["request_id"].as<uint128_t>());
-
-   remove_pending_recovery(context, account);
-   context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
-
-   context.checktime( 3000 );
-}
 
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
@@ -549,7 +383,8 @@ void apply_eosio_canceldelay(apply_context& context) {
       if( found ) break;
    }
 
-   FC_ASSERT (found, "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction");
+   EOS_ASSERT( found, action_validate_exception,
+               "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction" );
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 

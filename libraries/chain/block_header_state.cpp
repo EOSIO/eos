@@ -155,6 +155,7 @@ namespace eosio { namespace chain {
    */
   block_header_state block_header_state::next( const signed_block_header& h )const {
     FC_ASSERT( h.timestamp != block_timestamp_type(), "", ("h",h) );
+    FC_ASSERT( h.header_extensions.size() == 0, "no supported extensions" );
 
     FC_ASSERT( h.timestamp > header.timestamp, "block must be later in time" );
     FC_ASSERT( h.previous == id, "block must link to current state" );
@@ -168,7 +169,7 @@ namespace eosio { namespace chain {
        FC_ASSERT( itr->second <= result.block_num - h.confirmed, "producer double-confirming known range" );
     }
 
-    // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mistmatch block merkle root" );
+    // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mismatch block merkle root" );
 
      /// below this point is state changes that cannot be validated with headers alone, but never-the-less,
      /// must result in header state changes

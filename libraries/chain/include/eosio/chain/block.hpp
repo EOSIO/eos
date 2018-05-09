@@ -56,6 +56,7 @@ namespace eosio { namespace chain {
       signed_block( const signed_block_header& h ):signed_block_header(h){}
 
       vector<transaction_receipt>   transactions; /// new or generated transactions
+      extensions_type               block_extensions;
    };
    using signed_block_ptr = std::shared_ptr<signed_block>;
 
@@ -73,4 +74,4 @@ FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
 
 FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(kcpu_usage)(net_usage_words) )
 FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
-FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions))
+FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions)(block_extensions) )

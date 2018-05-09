@@ -88,7 +88,7 @@ public:
    /// The wallet remains unlocked until ::lock is called or program exit.
    /// @param name the name of the wallet to lock.
    /// @param password the plaintext password returned from ::create.
-   /// @throws fc::exception if wallet not found or invalid password.
+   /// @throws fc::exception if wallet not found or invalid password or already unlocked.
    void unlock(const std::string& name, const std::string& password);
 
    /// Import private key into specified wallet.

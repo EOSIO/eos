@@ -194,4 +194,70 @@ BOOST_AUTO_TEST_CASE( forking ) try {
       });
 } FC_LOG_AND_RETHROW()
 
+
+/**
+ *  This test verifies that the fork-choice rule favors the branch with
+ *  the highest last irreversible block over one that is longer.
+ */
+BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
+   tester c;
+   c.produce_blocks(10);
+   auto r = c.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
+   auto res = c.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
+   wlog("set producer schedule to [dan,sam,pam,scott]");
+   c.produce_blocks(50);
+
+   tester c2;
+   wlog( "push c1 blocks to c2" );
+   while( c2.control->head_block_num() < c.control->head_block_num() ) {
+      auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
+      c2.push_block( fb );
+   }
+
+   // fork happen after block 61
+   BOOST_REQUIRE_EQUAL(61, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(61, c2.control->head_block_num());
+
+   int fork_num = c.control->head_block_num();
+
+   auto nextproducer = [](tester &c, int skip_interval) ->account_name {
+      auto head_time = c.control->head_block_time();
+      auto next_time = head_time + fc::milliseconds(config::block_interval_ms * skip_interval);
+      return c.control->head_block_state()->get_scheduled_producer(next_time).producer_name;   
+   };
+
+   // fork c: 2 producers: dan, sam
+   // fork c2: 1 producer: scott
+   int skip1 = 1, skip2 = 1;
+   for (int i = 0; i < 50; ++i) {
+      account_name next1 = nextproducer(c, skip1);
+      if (next1 == N(dan) || next1 == N(sam)) {
+         c.produce_block(fc::milliseconds(config::block_interval_ms * skip1)); skip1 = 1;
+      } 
+      else ++skip1;
+      account_name next2 = nextproducer(c2, skip2);
+      if (next2 == N(scott)) {
+         c2.produce_block(fc::milliseconds(config::block_interval_ms * skip2)); skip2 = 1;
+      } 
+      else ++skip2;
+   }
+
+   BOOST_REQUIRE_EQUAL(87, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(73, c2.control->head_block_num());
+   
+   // push fork from c2 => c
+   int p = fork_num;
+   while ( p < c2.control->head_block_num()) {
+      auto fb = c2.control->fetch_block_by_number(++p);
+      c.push_block(fb);
+   }
+
+   BOOST_REQUIRE_EQUAL(73, c.control->head_block_num());
+
+} FC_LOG_AND_RETHROW() 
+
+BOOST_AUTO_TEST_CASE(confirmation) try {
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()

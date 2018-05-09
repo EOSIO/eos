@@ -6,9 +6,11 @@
 #include <eosiolib/system.h>
 #include <eosiolib/memory.h>
 #include <eosiolib/vector.hpp>
+#include <boost/container/flat_set.hpp>
 #include <boost/container/flat_map.hpp>
 #include <eosiolib/varint.hpp>
 #include <array>
+#include <set>
 #include <map>
 #include <string>
 
@@ -350,6 +352,28 @@ DataStream& operator >> ( DataStream& ds, vector<T>& v ) {
    return ds;
 }
 
+template<typename DataStream, typename T>
+DataStream& operator << ( DataStream& ds, const std::set<T>& s ) {
+   ds << unsigned_int( s.size() );
+   for( const auto& i : s ) {
+      ds << i;
+   }
+   return ds;
+}
+
+template<typename DataStream, typename T>
+DataStream& operator >> ( DataStream& ds, std::set<T>& s ) {
+   s.clear();
+   unsigned_int sz; ds >> sz;
+
+   for( uint32_t i = 0; i < sz.value; ++i ) {
+      T v;
+      ds >> v;
+      s.emplace( std::move(v) );
+   }
+   return ds;
+}
+
 template<typename DataStream, typename K, typename V>
 DataStream& operator << ( DataStream& ds, const std::map<K,V>& m ) {
    ds << unsigned_int( m.size() );
@@ -368,6 +392,28 @@ DataStream& operator >> ( DataStream& ds, std::map<K,V>& m ) {
       K k; V v;
       ds >> k >> v;
       m.emplace( std::move(k), std::move(v) );
+   }
+   return ds;
+}
+
+template<typename DataStream, typename T>
+DataStream& operator << ( DataStream& ds, const boost::container::flat_set<T>& s ) {
+   ds << unsigned_int( s.size() );
+   for( const auto& i : s ) {
+      ds << i;
+   }
+   return ds;
+}
+
+template<typename DataStream, typename T>
+DataStream& operator >> ( DataStream& ds, boost::container::flat_set<T>& s ) {
+   s.clear();
+   unsigned_int sz; ds >> sz;
+
+   for( uint32_t i = 0; i < sz.value; ++i ) {
+      T v;
+      ds >> v;
+      s.emplace( std::move(v) );
    }
    return ds;
 }

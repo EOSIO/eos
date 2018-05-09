@@ -32,6 +32,7 @@ namespace eosio { namespace chain {
        */
       uint32_t                          schedule_version = 0;
       optional<producer_schedule_type>  new_producers;
+      extensions_type                   header_extensions;
 
 
       digest_type       digest()const;
@@ -57,7 +58,7 @@ namespace eosio { namespace chain {
 FC_REFLECT(eosio::chain::block_header, 
            (timestamp)(producer)(confirmed)(previous)
            (transaction_mroot)(action_mroot)
-           (producer)(schedule_version)(new_producers))
+           (producer)(schedule_version)(new_producers)(header_extensions))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
 FC_REFLECT(eosio::chain::header_confirmation,  (block_id)(producer)(producer_signature) )

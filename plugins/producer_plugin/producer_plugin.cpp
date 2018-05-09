@@ -32,6 +32,7 @@ class producer_plugin_impl {
    public:
       producer_plugin_impl(boost::asio::io_service& io)
       :_timer(io)
+      ,_transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
       {}
 
       void schedule_production_loop();
@@ -60,14 +61,13 @@ class producer_plugin_impl {
 
       producer_plugin* _self = nullptr;
 
-      channels::incoming_block::channel_type::handle          _incoming_block_subscription;
-      channels::incoming_transaction::channel_type::handle    _incoming_transaction_subscription;
+      incoming::channels::block::channel_type::handle         _incoming_block_subscription;
+      incoming::channels::transaction::channel_type::handle   _incoming_transaction_subscription;
 
-      methods::incoming_block_sync::method_type::handle       _incoming_block_sync_provider;
-      methods::incoming_transaction_sync::method_type::handle _incoming_transaction_sync_provider;
-      methods::start_coordinator::method_type::handle         _start_coordinator_provider;
+      compat::channels::transaction_ack::channel_type&        _transaction_ack_channel;
 
-      void startup();
+      incoming::methods::block_sync::method_type::handle       _incoming_block_sync_provider;
+      incoming::methods::transaction_sync::method_type::handle _incoming_transaction_sync_provider;
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -105,6 +105,40 @@ class producer_plugin_impl {
          } ) );
       }
 
+      template<typename Type, typename Channel, typename F>
+      auto publish_results_of(const Type &data, Channel& channel, F f) {
+         auto publish_success = fc::make_scoped_exit([&, this](){
+            channel.publish(std::pair<fc::exception_ptr, Type>(nullptr, data));
+         });
+
+         try {
+            return f();
+         } catch (const fc::exception& e) {
+            publish_success.cancel();
+            channel.publish(std::pair<fc::exception_ptr, Type>(e.dynamic_copy_exception(), data));
+            throw e;
+         } catch( const std::exception& e ) {
+            publish_success.cancel();
+            auto fce = fc::exception(
+               FC_LOG_MESSAGE( info, "Caught std::exception: ${what}", ("what",e.what())),
+               fc::std_exception_code,
+               BOOST_CORE_TYPEID(e).name(),
+               e.what()
+            );
+            channel.publish(std::pair<fc::exception_ptr, Type>(fce.dynamic_copy_exception(),data));
+            throw fce;
+         } catch( ... ) {
+            publish_success.cancel();
+            auto fce = fc::unhandled_exception(
+               FC_LOG_MESSAGE( info, "Caught unknown exception"),
+               std::current_exception()
+            );
+
+            channel.publish(std::pair<fc::exception_ptr, Type>(fce.dynamic_copy_exception(), data));
+            throw fce;
+         }
+      };
+
       void on_incoming_block(const signed_block_ptr& block) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
          // abort the pending block
@@ -115,8 +149,12 @@ class producer_plugin_impl {
             // restart our production loop
             schedule_production_loop();
          });
+
          // push the new block
          chain.push_block(block);
+
+         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
+            _production_enabled = true;
 
          ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
               ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(0,16))
@@ -126,9 +164,13 @@ class producer_plugin_impl {
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
-         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-         return chain.sync_push(std::make_shared<transaction_metadata>(*trx), fc::time_point::now() + fc::milliseconds(_max_pending_transaction_time_ms));
+         return publish_results_of(trx, _transaction_ack_channel, [&]{
+            chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+            return chain.sync_push(std::make_shared<transaction_metadata>(*trx), fc::time_point::now() + fc::milliseconds(_max_pending_transaction_time_ms));
+         });
       }
+
+      bool start_block();
 };
 
 void new_chain_banner(const eosio::chain::controller& db)
@@ -241,39 +283,47 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
 
 
-   my->_incoming_block_subscription = app().get_channel<channels::incoming_block>().subscribe([this](const signed_block_ptr& block){
+   my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
          my->on_incoming_block(block);
       } FC_LOG_AND_DROP();
    });
 
-   my->_incoming_transaction_subscription = app().get_channel<channels::incoming_transaction>().subscribe([this](const packed_transaction_ptr& trx){
+   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const packed_transaction_ptr& trx){
       try {
          my->on_incoming_transaction(trx);
       } FC_LOG_AND_DROP();
    });
 
-   static const int my_priority = 1;
-
-   my->_incoming_block_sync_provider = app().get_method<methods::incoming_block_sync>().register_provider([this](const signed_block_ptr& block){
+   my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider([this](const signed_block_ptr& block){
       my->on_incoming_block(block);
-   }, my_priority);
+   });
 
-   my->_incoming_transaction_sync_provider = app().get_method<methods::incoming_transaction_sync>().register_provider([this](const packed_transaction_ptr& trx) -> transaction_trace_ptr {
+   my->_incoming_transaction_sync_provider = app().get_method<incoming::methods::transaction_sync>().register_provider([this](const packed_transaction_ptr& trx) -> transaction_trace_ptr {
       return my->on_incoming_transaction(trx);
-   }, my_priority);
-
-
-   my->_start_coordinator_provider = app().get_method<methods::start_coordinator>().register_provider([this]() {
-      my->startup();
-   }, my_priority);
-
+   });
 
 } FC_LOG_AND_RETHROW() }
 
 void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
+
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } );
+
+   if (!my->_producers.empty())
+   {
+      ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
+      if(my->_production_enabled)
+      {
+         if(chain.head_block_num() == 0)
+            new_chain_banner(chain);
+         //_production_skip_flags |= eosio::chain::skip_undo_history_check;
+      }
+      my->schedule_production_loop();
+   } else
+      elog("No producers configured! Please add producer IDs and private keys to configuration.");
 
    ilog("producer plugin:  plugin_startup() end");
 } FC_CAPTURE_AND_RETHROW() }
@@ -286,44 +336,27 @@ void producer_plugin::plugin_shutdown() {
    }
 }
 
-void producer_plugin_impl::startup() {
+bool producer_plugin_impl::start_block() {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   chain.accepted_block.connect( [this]( const auto& bsp ){ on_block( bsp ); } );
-
-   if (!_producers.empty())
-   {
-      ilog("Launching block production for ${n} producers.", ("n", _producers.size()));
-      if(_production_enabled)
-      {
-         if(chain.head_block_num() == 0)
-            new_chain_banner(chain);
-         //_production_skip_flags |= eosio::chain::skip_undo_history_check;
-      }
-      schedule_production_loop();
-   } else
-      elog("No producers configured! Please add producer IDs and private keys to configuration.");
-
-}
-
-void producer_plugin_impl::schedule_production_loop() {
-   _timer.cancel();
+   const auto& hbs = chain.head_block_state();
 
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
    fc::time_point now = fc::time_point::now();
-   int64_t time_to_next_block_time = (config::block_interval_us) - (now.time_since_epoch().count() % (config::block_interval_us) );
+   fc::time_point base = std::max<fc::time_point>(now, chain.head_block_time());
+   int64_t min_time_to_next_block = (config::block_interval_us) - (base.time_since_epoch().count() % (config::block_interval_us) );
+   fc::time_point block_time = base + fc::microseconds(min_time_to_next_block);
 
-   if(time_to_next_block_time < config::block_interval_us/10 ) {     // we must sleep for at least 50ms
-      ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}us",
-           ("t", config::block_interval_us/10)("bt", time_to_next_block_time));
-      time_to_next_block_time += config::block_interval_us;
+
+   if((block_time - now) < fc::microseconds(config::block_interval_us/10) ) {     // we must sleep for at least 50ms
+      ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}",
+           ("t", config::block_interval_us/10)("bt", block_time));
+      block_time += fc::microseconds(config::block_interval_us);
    }
 
-   fc::time_point block_time = now + fc::microseconds(time_to_next_block_time);
    static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
    _timer.expires_at( epoch + boost::posix_time::microseconds(block_time.time_since_epoch().count()));
 
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    try {
       // determine how many blocks this producer can confirm
       // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
@@ -356,7 +389,16 @@ void producer_plugin_impl::schedule_production_loop() {
          while (chain.push_next_scheduled_transaction(fc::time_point::maximum()));
       } FC_LOG_AND_DROP();
 
+      return true;
+   }
 
+   return false;
+}
+
+void producer_plugin_impl::schedule_production_loop() {
+   _timer.cancel();
+
+   if (start_block()) {
       //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
       _timer.async_wait([&](const boost::system::error_code& ec) {
          if (ec != boost::asio::error::operation_aborted) {
@@ -458,10 +500,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {
-      if( hbs->header.timestamp.next().to_time_point() >= now )
-         _production_enabled = true;
-      else
-         return block_production_condition::not_synced;
+      return block_production_condition::not_synced;
    }
 
    auto pending_block_timestamp = chain.pending_block_state()->header.timestamp;

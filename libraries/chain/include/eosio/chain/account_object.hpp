@@ -25,12 +25,10 @@ namespace eosio { namespace chain {
       digest_type          code_version;
       block_timestamp_type creation_date;
 
-      shared_vector<char>  code;
-      shared_vector<char>  abi;
+      shared_string  code;
+      shared_string  abi;
 
       void set_abi( const eosio::chain::abi_def& a ) {
-         // Added resize(0) here to avoid bug in boost vector container
-         abi.resize( 0 );
          abi.resize( fc::raw::pack_size( a ) );
          fc::datastream<char*> ds( abi.data(), abi.size() );
          fc::raw::pack( ds, a );
@@ -38,6 +36,8 @@ namespace eosio { namespace chain {
 
       eosio::chain::abi_def get_abi()const {
          eosio::chain::abi_def a;
+         FC_ASSERT( abi.size() != 0, "No ABI set on account ${n}", ("n",name) );
+
          fc::datastream<const char*> ds( abi.data(), abi.size() );
          fc::raw::unpack( ds, a );
          return a;

@@ -154,14 +154,8 @@ namespace eosio { namespace chain {
                                     3040006, "Transaction Expiration Too Far" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception, transaction_exception,
                                     3040007, "Invalid Reference Block" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,             transaction_exception,
-                                    3040008, "signatures do not satisfy declared authorizations" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,           transaction_exception,
-                                    3040009, "irrelevant signature included" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,            transaction_exception,
-                                    3040010, "duplicate signature included" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                transaction_exception,
-                                    3040011, "duplicate transaction" )
+                                    3040008, "duplicate transaction" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -171,10 +165,6 @@ namespace eosio { namespace chain {
                                     3050001, "account name already exists" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception, action_validate_exception,
                                     3050002, "Invalid Action Arguments" )
-      FC_DECLARE_DERIVED_EXCEPTION( missing_auth_exception,     action_validate_exception,
-                                    3050003, "missing required authority" )
-      FC_DECLARE_DERIVED_EXCEPTION( irrelevant_auth_exception,  action_validate_exception,
-                                    3050004, "irrelevant authority included" )
 
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "database exception" )
@@ -220,45 +210,62 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( action_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080007, "action took too long" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( authorization_exception, chain_exception,
+                                 3090000, "Authorization exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,              authorization_exception,
+                                    3090001, "signatures do not satisfy declared authorizations" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,             authorization_exception,
+                                    3090002, "duplicate signature included" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,            authorization_exception,
+                                    3090003, "irrelevant signature included" )
+      FC_DECLARE_DERIVED_EXCEPTION( missing_auth_exception,       authorization_exception,
+                                    3090004, "missing required authority" )
+      FC_DECLARE_DERIVED_EXCEPTION( irrelevant_auth_exception,    authorization_exception,
+                                    3090005, "irrelevant authority included" )
+      FC_DECLARE_DERIVED_EXCEPTION( insufficient_delay_exception, authorization_exception,
+                                    3090006, "insufficient delay" )
+
    FC_DECLARE_DERIVED_EXCEPTION( misc_exception, chain_exception,
-                                 3090000, "Miscellaneous exception" )
+                                 3100000, "Miscellaneous exception" )
 
       FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent, misc_exception,
-                                    3090001, "internal state is no longer consistent" )
-      FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,       misc_exception,
-                                    3090002, "unknown block" )
-      FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception, misc_exception,
-                                    3090003, "unknown transaction" )
+                                    3100001, "internal state is no longer consistent" )
+      FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,          misc_exception,
+                                    3100002, "unknown block" )
+      FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,    misc_exception,
+                                    3100003, "unknown transaction" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception, chain_exception,
-                                 3100000, "missing plugin exception" )
+                                 3110000, "missing plugin exception" )
 
       FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,           missing_plugin_exception,
-                                    3100001, "Missing Chain API Plugin" )
+                                    3110001, "Missing Chain API Plugin" )
       FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,          missing_plugin_exception,
-                                    3100002, "Missing Wallet API Plugin" )
+                                    3110002, "Missing Wallet API Plugin" )
       FC_DECLARE_DERIVED_EXCEPTION( missing_account_history_api_plugin_exception, missing_plugin_exception,
-                                    3100003, "Missing Account History API Plugin" )
+                                    3110003, "Missing Account History API Plugin" )
       FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,             missing_plugin_exception,
-                                    3100004, "Missing Net API Plugin" )
+                                    3110004, "Missing Net API Plugin" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( wallet_exception, chain_exception,
-                                 3110000, "wallet exception" )
+                                 3120000, "wallet exception" )
 
       FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            wallet_exception,
-                                    3110001, "Wallet already exists" )
+                                    3120001, "Wallet already exists" )
       FC_DECLARE_DERIVED_EXCEPTION( wallet_nonexistent_exception,      wallet_exception,
-                                    3110002, "Nonexistent wallet" )
+                                    3120002, "Nonexistent wallet" )
       FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           wallet_exception,
-                                    3110003, "Locked wallet" )
+                                    3120003, "Locked wallet" )
       FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  wallet_exception,
-                                    3110004, "Missing public key" )
+                                    3120004, "Missing public key" )
       FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, wallet_exception,
-                                    3110005, "Invalid wallet password" )
+                                    3120005, "Invalid wallet password" )
       FC_DECLARE_DERIVED_EXCEPTION( wallet_not_available_exception,    wallet_exception,
-                                    3110006, "No available wallet" )
+                                    3120006, "No available wallet" )
+      FC_DECLARE_DERIVED_EXCEPTION( wallet_unlocked_exception,         wallet_exception,
+                                    3120007, "Already unlocked" )
 
 
 } } // eosio::chain

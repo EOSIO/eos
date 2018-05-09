@@ -69,11 +69,10 @@ Options:
   -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
 ```
 */
+
 #include <string>
 #include <vector>
 #include <regex>
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
 #include <iostream>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
@@ -84,12 +83,22 @@ Options:
 #include <fc/variant_object.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
+#include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 
+#pragma push_macro("N")
+#undef N
+
+#include <boost/asio.hpp>
+#include <boost/format.hpp>
+#include <boost/dll/runtime_symbol_info.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/process.hpp>
+#include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -97,6 +106,8 @@ Options:
 #include <boost/algorithm/string/split.hpp>
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
+
+#pragma pop_macro("N")
 
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
@@ -319,21 +330,16 @@ void print_action_tree( const fc::variant& action ) {
 void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
-      const auto& receipt = processed["receipt"].get_object() ;
-      const auto& status = receipt["status"].as_string() ;
-      auto net = receipt["net_usage_words"].as_int64()*8;
-      auto cpu = receipt["kcpu_usage"].as_int64();
+      string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+      auto net = processed["net_usage"].as_int64()*8;
+      auto cpu = processed["cpu_usage"].as_int64() / 1024;
 
       cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
 
-      if( status == "hard_fail" ) {
-         auto soft_except = processed["soft_except"].as<optional<fc::exception>>();
+      if( status == "failed" ) {
+         auto soft_except = processed["except"].as<optional<fc::exception>>();
          if( soft_except ) {
             edump((soft_except->to_detail_string()));
-         }
-         auto hard_except = processed["hard_except"].as<optional<fc::exception>>();
-         if( hard_except ) {
-            edump((hard_except->to_detail_string()));
          }
       } else {
          const auto& actions = processed["action_traces"].get_array();
@@ -373,8 +379,7 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
          .creator      = creator,
          .name         = newaccount,
          .owner        = eosio::chain::authority{1, {{owner, 1}}, {}},
-         .active       = eosio::chain::authority{1, {{active, 1}}, {}},
-         .recovery     = eosio::chain::authority{1, {}, {{{creator, config::active_name}, 1}}}
+         .active       = eosio::chain::authority{1, {{active, 1}}, {}}
       }
    };
 }
@@ -547,6 +552,42 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
    }
 }
 
+asset to_asset( const string& code, const string& s ) {
+   static map<eosio::chain::symbol_code, eosio::chain::symbol> cache;
+   auto a = asset::from_string( s );
+   eosio::chain::symbol_code sym = a.sym.to_symbol_code();
+   auto it = cache.find( sym );
+   auto sym_str = a.symbol_name();
+   if ( it == cache.end() ) {
+      auto json = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
+                       ("code", code)
+                       ("symbol", sym_str)
+      );
+      auto obj = json.get_object();
+      auto obj_it = obj.find( sym_str );
+      if (obj_it != obj.end()) {
+         auto result = obj_it->value().as<eosio::chain_apis::read_only::get_currency_stats_result>();
+         auto p = cache.insert(make_pair( sym, result.max_supply.sym ));
+         it = p.first;
+      } else {
+         FC_THROW("Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
+      }
+   }
+   auto expected_symbol = it->second;
+   if ( a.decimals() < expected_symbol.decimals() ) {
+      auto factor = expected_symbol.precision() / a.precision();
+      auto a_old = a;
+      a = asset( a.amount * factor, expected_symbol );
+   } else if ( a.decimals() > expected_symbol.decimals() ) {
+      FC_THROW("Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
+   } // else precision matches
+   return a;
+}
+
+inline asset to_asset( const string& s ) {
+   return to_asset( "eosio.token", s );
+}
+
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
@@ -633,6 +674,44 @@ struct set_action_permission_subcommand {
    }
 };
 
+bool port_busy( uint16_t port ) {
+   using namespace boost::asio;
+   
+   io_service ios;
+   boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+   boost::asio::ip::tcp::socket socket(ios);
+   boost::system::error_code ec = error::would_block;
+   //connecting/failing to connect to localhost should be always fast - don't care about timeouts
+   socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
+   do {
+      ios.run_one();
+   } while (ec == error::would_block);
+   return !ec;
+}
+
+void start_keosd( uint16_t wallet_port ) {
+   auto binPath = boost::dll::program_location();
+   boost::filesystem::path keosPath = binPath.parent_path().append("keosd"); //cleos and keosd are in the same installation directory
+   if ( !boost::filesystem::exists(keosPath) ) {
+      keosPath = binPath.parent_path().parent_path().append("keosd").append("keosd"); //build directory
+   }
+   if ( boost::filesystem::exists( keosPath ) ) {
+      namespace bp = boost::process;
+      keosPath = boost::filesystem::canonical( keosPath );
+      ::boost::process::child keos( keosPath, "--http-server-address=127.0.0.1:"+std::to_string(wallet_port),
+                                    bp::std_in.close(),
+                                    bp::std_out > bp::null,
+                                    bp::std_err > bp::null);
+      if (keos.running()) {
+         std::cerr << keosPath << " launched" << std::endl;
+         keos.detach();
+      } else {
+         std::cerr << "No wallet service listening on 127.0.0.1:" << std::to_string(wallet_port) << ". Failed to launch " << keosPath << std::endl;
+      }
+   } else {
+      std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port) << ". Cannot automatically start keosd because keosd was not found." << std::endl;
+   }
+}
 
 CLI::callback_t old_host_port = [](CLI::results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
@@ -707,9 +786,9 @@ struct create_account_subcommand {
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
-               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, asset::from_string(buy_ram_eos))
+               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
-               action delegate = create_delegate( creator, account_name, asset::from_string(stake_net), asset::from_string(stake_cpu) );
+               action delegate = create_delegate( creator, account_name, to_asset(stake_net), to_asset(stake_cpu) );
                send_actions( { create, buyram, delegate } );
             } else {
                send_actions( { create } );
@@ -778,6 +857,59 @@ struct vote_producers_subcommand {
    }
 };
 
+struct list_producers_subcommand {
+   bool print_json = false;
+   bool sort_names = false;
+
+   list_producers_subcommand(CLI::App* actionRoot) {
+      auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
+      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
+      list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
+      list_producers->set_callback([this] {
+            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", name(config::system_account_name).to_string())
+                               ("table", "producers")
+            );
+
+            if ( !print_json ) {
+               auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+               std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
+               for ( auto& row : res.rows ) {
+                  auto& r = row.get_object();
+                  v.emplace_back( r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() );
+
+               }
+               if ( !v.empty() ) {
+                  if ( sort_names ) {
+                     std::sort( v.begin(), v.end(), [](auto a, auto b) { return std::get<0>(a) < std::get<0>(b); } );
+                  } else {
+                     std::sort( v.begin(), v.end(), [](auto a, auto b) {
+                           return std::get<1>(a) < std::get<1>(b) || (std::get<1>(a) == std::get<1>(b) && std::get<0>(a) < std::get<0>(b)); }
+                     );
+                  }
+
+                  std::cout << std::left << std::setw(14) << "Producer" << std::setw(55) << "Producer key"
+                            << std::setw(50) << "Url" << "Total votes" << std::endl;
+                  for ( auto& x : v ) {
+                     std::cout << std::left << std::setw(14) << std::get<0>(x) << std::setw(55) << std::get<2>(x)
+                               << std::setw(50) << std::get<3>(x) << std::get<1>(x) << std::endl;
+                  }
+               } else {
+                  std::cout << "No producers found" << std::endl;
+               }
+            } else {
+               if ( sort_names ) {
+                  FC_THROW("Sorting producers is not supported for JSON format");
+               }
+               std::cout << fc::json::to_pretty_string(result)
+                         << std::endl;
+            }
+         }
+      );
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
@@ -797,8 +929,8 @@ struct delegate_bandwidth_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
                   ("receiver", receiver_str)
-                  ("stake_net_quantity", stake_net_amount + " EOS")
-                  ("stake_cpu_quantity", stake_cpu_amount + " EOS");
+                  ("stake_net_quantity", to_asset(stake_net_amount))
+                  ("stake_cpu_quantity", to_asset(stake_cpu_amount));
                   wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
@@ -824,8 +956,8 @@ struct undelegate_bandwidth_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
                   ("receiver", receiver_str)
-                  ("unstake_net_quantity", unstake_net_amount + " EOS")
-                  ("unstake_cpu_quantity", unstake_cpu_amount + " EOS");
+                  ("unstake_net_quantity", to_asset(unstake_net_amount))
+                  ("unstake_cpu_quantity", to_asset(unstake_cpu_amount));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
       });
    }
@@ -846,7 +978,7 @@ struct buyram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("payer", from_str)
                ("receiver", receiver_str)
-               ("quant", asset::from_string(amount));
+               ("quant", to_asset(amount));
             send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
          });
    }
@@ -916,45 +1048,6 @@ struct unregproxy_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("proxy", proxy);
          send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(unregproxy), act_payload)});
-      });
-   }
-};
-
-struct postrecovery_subcommand {
-   string account;
-   string json_str_or_file;
-   string memo;
-
-   postrecovery_subcommand(CLI::App* actionRoot) {
-      auto post_recovery = actionRoot->add_subcommand("postrecovery", localized("Post recovery request"));
-      post_recovery->add_option("account", account, localized("The account to post the recovery for"))->required();
-      post_recovery->add_option("data", json_str_or_file, localized("The authority to post the recovery with as EOS public key, JSON string, or filename"))->required();
-      post_recovery->add_option("memo", memo, localized("A memo describing the post recovery request"))->required();
-      add_standard_transaction_options(post_recovery);
-
-      post_recovery->set_callback([this] {
-         authority data_auth = parse_json_authority_or_key(json_str_or_file);
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("account", account)
-                  ("data", data_auth)
-                  ("memo", memo);
-         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(postrecovery), act_payload)});
-      });
-   }
-};
-
-struct vetorecovery_subcommand {
-   string account;
-
-   vetorecovery_subcommand(CLI::App* actionRoot) {
-      auto veto_recovery = actionRoot->add_subcommand("vetorecovery", localized("Veto a posted recovery"));
-      veto_recovery->add_option("account", account, localized("The account to veto the recovery for"))->required();
-      add_standard_transaction_options(veto_recovery);
-
-      veto_recovery->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("account", account);
-         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(vetorecovery), act_payload)});
       });
    }
 };
@@ -1037,9 +1130,9 @@ void get_account( const string& accountName, bool json_format ) {
                 << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
 
       std::cout << "net bandwidth:" << std::endl;
-      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-         asset net_own( stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) );
-         auto net_others = asset::from_string(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+      if ( res.total_resources.is_object() ) {
+         asset net_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) : 0 );
+         auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
          std::cout << indent << "staked:" << std::setw(20) << net_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
                    << indent << "delegated:" << std::setw(17) << net_others
@@ -1055,9 +1148,9 @@ void get_account( const string& accountName, bool json_format ) {
 
 
       std::cout << "cpu bandwidth:" << std::endl;
-      if ( res.total_resources.is_object() && res.delegated_bandwidth.is_object() ) {
-         asset cpu_own( stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) );
-         auto cpu_others = asset::from_string(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+      if ( res.total_resources.is_object() ) {
+         asset cpu_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : 0 );
+         auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
          std::cout << indent << "staked:" << std::setw(20) << cpu_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
                    << indent << "delegated:" << std::setw(17) << cpu_others
@@ -1100,11 +1193,6 @@ void get_account( const string& accountName, bool json_format ) {
 }
 
 int main( int argc, char** argv ) {
-   fc::path binPath = argv[0];
-   if (binPath.is_relative()) {
-      binPath = relative(binPath, fc::current_path());
-   }
-
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
@@ -1118,6 +1206,15 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+
+   auto parsed_url = parse_url( wallet_url );
+   auto wallet_port_uint = std::stoi(parsed_url.port);
+   if ( wallet_port_uint < 0 || 65535 < wallet_port_uint ) {
+      FC_THROW("port is not in valid range");
+   }
+   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( uint16_t(wallet_port_uint) ) ) {
+      start_keosd( uint16_t(wallet_port_uint) );
+   }
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -1561,7 +1658,7 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(con,sender, recipient, asset::from_string(amount), memo)});
+      send_actions({create_transfer(con,sender, recipient, to_asset(amount), memo)});
    });
 
    // Net subcommand
@@ -1686,6 +1783,16 @@ int main( int argc, char** argv ) {
    listKeys->set_callback([] {
       const auto& v = call(wallet_url, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
+   stopKeosd->set_callback([] {
+      const auto& v = call(wallet_url, keosd_stop);
+      if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
+         std::cerr << fc::json::to_pretty_string(v) << std::endl;
+      } else {
+         std::cout << "OK" << std::endl;
+      }
    });
 
    // sign subcommand
@@ -2058,6 +2165,8 @@ int main( int argc, char** argv ) {
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
 
+   auto listProducers = list_producers_subcommand(system);
+
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
 
@@ -2068,9 +2177,6 @@ int main( int argc, char** argv ) {
 
    auto regProxy = regproxy_subcommand(system);
    auto unregProxy = unregproxy_subcommand(system);
-
-   auto postRecovery = postrecovery_subcommand(system);
-   auto vetoRecovery = vetorecovery_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
 

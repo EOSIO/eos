@@ -44,7 +44,16 @@ public:
       abi_ser.set_abi(abi);
    }
 
-   action_result push_action( const account_name& signer, const action_name &name, const variant_object &data, bool auth = true ) {
+   transaction_trace_ptr push_action( const account_name& signer, const action_name& name, const variant_object& data, bool auth = true ) {
+      vector<account_name> accounts;
+      if( auth )
+         accounts.push_back( signer );
+      auto trace = base_tester::push_action( N(eosio.msig), name, accounts, data );
+      produce_block();
+      BOOST_REQUIRE_EQUAL( true, chain_has_transaction(trace->id) );
+      return trace;
+
+      /*
          string action_type_name = abi_ser.get_action_type(name);
 
          action act;
@@ -54,6 +63,7 @@ public:
          //std::cout << "test:\n" << fc::to_hex(act.data.data(), act.data.size()) << " size = " << act.data.size() << std::endl;
 
          return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
+      */
    }
 
    transaction reqauth( account_name from, const vector<permission_level>& auths );
@@ -94,35 +104,37 @@ BOOST_AUTO_TEST_SUITE(eosio_msig_tests)
 BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
    auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
 
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(propose), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("trx",           trx)
-                                                ("requested", vector<permission_level>{{ N(alice), config::active_name }})
-                        ));
+   push_action( N(alice), N(propose), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("trx",           trx)
+                  ("requested", vector<permission_level>{{ N(alice), config::active_name }})
+   );
 
    //fail to execute before approval
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"alice\",\"permission\":\"active\"}', but does not have signatures for it."),
-                        push_action( N(alice), N(exec), mvo()
-                                     ("proposer",      "alice")
-                                     ("proposal_name", "first")
-                                     ("executer",      "alice")
-                        ));
+   BOOST_REQUIRE_EXCEPTION( push_action( N(alice), N(exec), mvo()
+                                          ("proposer",      "alice")
+                                          ("proposal_name", "first")
+                                          ("executer",      "alice")
+                            ),
+                            fc::assert_exception,
+                            eosio_assert_message_is("transaction authorization failed")
+   );
 
    //approve and execute
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(approve), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("level",         permission_level{ N(alice), config::active_name })
-                        ));
+   push_action( N(alice), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(alice), config::active_name })
+   );
 
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("executer",      "alice")
-                        ));
+   push_action( N(alice), N(exec), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("executer",      "alice")
+   );
 
    BOOST_REQUIRE( bool(trace) );
    BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
@@ -133,73 +145,78 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
 BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
    auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
 
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(propose), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("trx",           trx)
-                                                ("requested", vector<permission_level>{{ N(alice), config::active_name }})
-                        ));
+   push_action( N(alice), N(propose), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("trx",           trx)
+                  ("requested", vector<permission_level>{{ N(alice), config::active_name }})
+   );
 
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(approve), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("level",         permission_level{ N(alice), config::active_name })
-                        ));
+   push_action( N(alice), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(alice), config::active_name })
+   );
 
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(unapprove), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("level",         permission_level{ N(alice), config::active_name })
-                        ));
+   push_action( N(alice), N(unapprove), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(alice), config::active_name })
+   );
 
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"alice\",\"permission\":\"active\"}', but does not have signatures for it."),
-                        push_action( N(alice), N(exec), mvo()
-                                     ("proposer",      "alice")
-                                     ("proposal_name", "first")
-                                     ("executer",      "alice")
-                        ));
+   BOOST_REQUIRE_EXCEPTION( push_action( N(alice), N(exec), mvo()
+                                          ("proposer",      "alice")
+                                          ("proposal_name", "first")
+                                          ("executer",      "alice")
+                            ),
+                            fc::assert_exception,
+                            eosio_assert_message_is("transaction authorization failed")
+   );
+
 } FC_LOG_AND_RETHROW()
 
 
 BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name }, { N(bob), config::active_name } } );
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(propose), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("trx",           trx)
-                                                ("requested", vector<permission_level>{ { N(alice), config::active_name }, { N(bob), config::active_name } })
-                        ));
+   push_action( N(alice), N(propose), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("trx",           trx)
+                  ("requested", vector<permission_level>{ { N(alice), config::active_name }, { N(bob), config::active_name } })
+   );
 
    //approve by alice
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(approve), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("level",         permission_level{ N(alice), config::active_name })
-                        ));
+   push_action( N(alice), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(alice), config::active_name })
+   );
 
    //fail because approval by bob is missing
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"bob\",\"permission\":\"active\"}', but does not have signatures for it."),
-                        push_action( N(alice), N(exec), mvo()
-                                     ("proposer",      "alice")
-                                     ("proposal_name", "first")
-                                     ("executer",      "alice")
-                        ));
+   BOOST_REQUIRE_EXCEPTION( push_action( N(alice), N(exec), mvo()
+                                          ("proposer",      "alice")
+                                          ("proposal_name", "first")
+                                          ("executer",      "alice")
+                            ),
+                            fc::assert_exception,
+                            eosio_assert_message_is("transaction authorization failed")
+   );
 
    //approve by bob and execute
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(approve), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("level",         permission_level{ N(bob), config::active_name })
-                        ));
+   push_action( N(bob), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(bob), config::active_name })
+   );
 
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
 
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("executer",      "alice")
-                        ));
+   push_action( N(alice), N(exec), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("executer",      "alice")
+   );
 
    BOOST_REQUIRE( bool(trace) );
    BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
@@ -210,13 +227,16 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
 BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name },  { N(bob), config::active_name } } );
    //try with not enough requested auth
-   BOOST_REQUIRE_EQUAL( error("transaction declares authority '{\"actor\":\"bob\",\"permission\":\"active\"}', but does not have signatures for it."),
-                        push_action( N(alice), N(propose), mvo()
-                                     ("proposer",      "alice")
-                                     ("proposal_name", "third")
-                                     ("trx",           trx)
-                                     ("requested", vector<permission_level>{ { N(alice), config::active_name } } )
-                        ));
+   BOOST_REQUIRE_EXCEPTION( push_action( N(alice), N(propose), mvo()
+                                             ("proposer",      "alice")
+                                             ("proposal_name", "third")
+                                             ("trx",           trx)
+                                             ("requested", vector<permission_level>{ { N(alice), config::active_name } } )
+                            ),
+                            fc::assert_exception,
+                            eosio_assert_message_is("transaction authorization failed")
+   );
+
 } FC_LOG_AND_RETHROW()
 
 
@@ -248,34 +268,34 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
    transaction trx;
    abi_serializer::from_variant(pretty_trx, trx, get_resolver());
 
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(propose), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("trx",           trx)
-                                                ("requested", perm)
-                        ));
+   push_action( N(alice), N(propose), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("trx",           trx)
+                  ("requested", perm)
+   );
 
    //approve by alice
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(approve), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("level",         permission_level{ N(alice), config::active_name })
-                        ));
+   push_action( N(alice), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(alice), config::active_name })
+   );
    //approve by bob and execute
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(approve), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("level",         permission_level{ N(bob), config::active_name })
-                        ));
+   push_action( N(bob), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(bob), config::active_name })
+   );
 
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
 
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
-                                                ("proposer",      "alice")
-                                                ("proposal_name", "first")
-                                                ("executer",      "alice")
-                        ));
+   push_action( N(alice), N(exec), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("executer",      "alice")
+   );
 
    BOOST_REQUIRE( bool(trace) );
    BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );

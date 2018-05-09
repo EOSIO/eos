@@ -49,11 +49,32 @@ namespace eosiosystem {
       eosio_exit(0);
    }
 
+   void system_contract::setram( uint64_t max_ram_size ) {
+      require_auth( _self );
+
+      eosio_assert( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
+      eosio_assert( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
+
+      auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
+      auto itr = _rammarket.find(S(4,RAMEOS));
+
+      /**
+       *  Increase or decrease the amount of ram for sale based upon the change in max
+       *  ram size.
+       */
+      _rammarket.modify( itr, 0, [&]( auto& m ) {
+         m.base.balance.amount += delta;
+      });
+
+      _gstate.max_ram_size = max_ram_size;
+      _global.set( _gstate, _self );
+   }
+
 } /// eosio.system
  
 
 EOSIO_ABI( eosiosystem::system_contract,
-     (setparams)
+     (setram)
      // delegate_bandwith.cpp
      (delegatebw)(undelegatebw)(refund)
      (buyram)(buyrambytes)(sellram)
