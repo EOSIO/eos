@@ -4,7 +4,7 @@
 #include <fc/variant_object.hpp>
 
 using namespace eosio;
-using namespace eosio::chain::contracts;
+using namespace eosio::chain;
 
 using mvo = fc::mutable_variant_object;
 

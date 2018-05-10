@@ -151,6 +151,7 @@ extern "C" {
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
 
+<<<<<<< HEAD
    /**
     * Checks that prodived authorizations is enough to execute the transaction.
     * 
@@ -162,5 +163,7 @@ extern "C" {
     */
    void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
 
+=======
+>>>>>>> origin/slim
    ///@ } transactioncapi
 }

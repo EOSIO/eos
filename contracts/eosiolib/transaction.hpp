@@ -31,6 +31,7 @@ namespace eosio {
     */
    class transaction_header {
    public:
+<<<<<<< HEAD
 
       /**
        * Construct a new transaction header from expiration time and region
@@ -62,6 +63,13 @@ namespace eosio {
        * 
        * @brief Specifies a block num in the last 2^16 blocks.
        */
+=======
+      transaction_header( time exp = now() + 60 )
+         :expiration(exp)
+      { eosio::print("now=", now(), " exp=", expiration, "\n"); }
+
+      time            expiration;
+>>>>>>> origin/slim
       uint16_t        ref_block_num;
 
       /**
@@ -70,6 +78,7 @@ namespace eosio {
        * @brief Specifies the lower 32 bits of the blockid at get_ref_blocknum
        */
       uint32_t        ref_block_prefix;
+<<<<<<< HEAD
 
       /**
        * Upper limit on total network bandwidth (in 8 byte words) billed for this transaction
@@ -91,8 +100,13 @@ namespace eosio {
        * @brief Number of seconds to delay this transaction for during which it may be canceled.
        */
       unsigned_int    delay_sec = 0UL;
+=======
+      unsigned_int    net_usage_words = 0UL; /// number of 8 byte words this transaction can serialize into after compressions
+      uint8_t         max_cpu_usage_ms = 0UL; /// number of CPU usage units to bill transaction for
+      unsigned_int    delay_sec = 0UL; /// number of CPU usage units to bill transaction for
+>>>>>>> origin/slim
 
-      EOSLIB_SERIALIZE( transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(kcpu_usage)(delay_sec) )
+      EOSLIB_SERIALIZE( transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(net_usage_words)(max_cpu_usage_ms)(delay_sec) )
    };
 
    /**
@@ -103,8 +117,12 @@ namespace eosio {
 
    class transaction : public transaction_header {
    public:
+<<<<<<< HEAD
       
       transaction(time exp = now() + 60, region_id r = 0) : transaction_header( exp, r ) {}
+=======
+      transaction(time exp = now() + 60) : transaction_header( exp ) {}
+>>>>>>> origin/slim
 
       /**
        * Send this transaction. Since this transaction will need to be keep before its execution in the future, there is a need for storage, 
@@ -133,9 +151,11 @@ namespace eosio {
        * @brief List of actions
        */
       vector<action>  actions;
+      extensions_type transaction_extensions; 
 
-      EOSLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions) )
+      EOSLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions)(transaction_extensions) )
    };
+<<<<<<< HEAD
  
     /**
      * A transaction that will be executed in the future
@@ -181,8 +201,22 @@ namespace eosio {
          static deferred_transaction from_current_action() {
             return unpack_action_data<deferred_transaction>();
          }
+=======
 
-         EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(payer)(execute_after) )
+   struct onerror {
+      uint128_t sender_id;
+      bytes     sent_trx;
+
+      static onerror from_current_action() {
+         return unpack_action_data<onerror>();
+      }
+
+      transaction unpack_sent_trx() const {
+         return unpack<transaction>(sent_trx);
+      }
+>>>>>>> origin/slim
+
+      EOSLIB_SERIALIZE( onerror, (sender_id)(sent_trx) )
    };
 
    /**
@@ -202,6 +236,7 @@ namespace eosio {
       return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
    }
 
+<<<<<<< HEAD
    /**
     * Check if the given list of permissions satisfy the packed transaction 
     * 
@@ -240,6 +275,8 @@ namespace eosio {
       //return res > 0;
    }
 
+=======
+>>>>>>> origin/slim
    ///@} transactioncpp api
 
 } // namespace eos

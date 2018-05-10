@@ -8,8 +8,8 @@
 #include <fstream>
 #include <sstream>
 
-#include <eosio/chain/contracts/abi_serializer.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/contract_types.hpp>
 #include <fc/io/json.hpp>
 
 //clashes with something deep in the AST includes in clang 6 and possibly other versions of clang
@@ -40,10 +40,10 @@
 using namespace clang;
 using namespace std;
 using namespace clang::tooling;
-using namespace eosio::chain::contracts;
 namespace cl = llvm::cl;
 
 namespace eosio {
+   using namespace eosio::chain;
 
    FC_DECLARE_EXCEPTION( abi_generation_exception, 999999, "Unable to generate abi" );
 

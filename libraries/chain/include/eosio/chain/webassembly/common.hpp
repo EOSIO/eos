@@ -60,7 +60,7 @@ namespace eosio { namespace chain {
       }
 
       T *value;
-   };
+   }; 
 
    /**
     * class to represent an in-wasm-memory char array that must be null terminated

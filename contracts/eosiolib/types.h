@@ -48,6 +48,7 @@ typedef uint64_t table_name;
  * @details Time
  */
 typedef uint32_t time;
+typedef uint32_t block_timestamp;
 
 /**
  * @brief Name of a scope
@@ -87,8 +88,8 @@ typedef int64_t share_type;
 typedef uint16_t weight_type;
 
 /**
- * @brief Macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned 
- * @details Macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned 
+ * @brief Macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned
+ * @details Macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned
  */
 
 #define ALIGNED(X) __attribute__ ((aligned (16))) X
@@ -136,7 +137,7 @@ struct ALIGNED(checksum512) {
 /**
  * @brief Fixed Size String (16 bytes)
  * @details Fixed Size String (16 bytes)
- */ 
+ */
 struct fixed_string16 {
    uint8_t len;
    char str[16];
@@ -147,6 +148,7 @@ struct fixed_string16 {
  * @details Type of EOSIO Transaction Id. It is 256-bit hash
  */
 typedef struct checksum256 transaction_id_type;
+typedef struct checksum256 block_id_type;
 
 /**
  * @brief Type of EOSIO Field Name
@@ -157,7 +159,7 @@ typedef struct fixed_string16 field_name;
 /**
  * @brief Fixed Size String (32 bytes)
  * @details Fixed Size String (32 bytes)
- */ 
+ */
 struct fixed_string32 {
    uint8_t len;
    char str[32];

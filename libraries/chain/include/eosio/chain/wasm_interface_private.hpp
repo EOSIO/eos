@@ -47,7 +47,7 @@ namespace eosio { namespace chain {
          return mem_image;
       }
 
-      std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module(const digest_type& code_id, const shared_vector<char>& code) {
+      std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module(const digest_type& code_id, const shared_string& code) {
          auto it = instantiation_cache.find(code_id);
          if(it == instantiation_cache.end()) {
             IR::Module module;
@@ -57,6 +57,7 @@ namespace eosio { namespace chain {
             } catch(Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
+
             wasm_injections::wasm_binary_injection injector(module);
             injector.inject();
 
@@ -68,7 +69,6 @@ namespace eosio { namespace chain {
             } catch(Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
          }
          return it->second;

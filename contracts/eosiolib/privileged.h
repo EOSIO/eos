@@ -36,7 +36,6 @@ extern "C" {
     * @pre `producer_data` is a valid pointer to a range of memory at least `producer_data_size` bytes long that contains serialized produced schedule data
     */
    void set_active_producers( char *producer_data, uint32_t producer_data_size );
-
    /**
     * @brief Check if an account is privileged
     * Check if an account is privileged
@@ -47,16 +46,16 @@ extern "C" {
    bool is_privileged( account_name account );
 
    /**
-    * @brief Set the privileged status of an account 
-    * Set the privileged status of an account 
+    * @brief Set the privileged status of an account
+    * Set the privileged status of an account
     * @param account - name of the account whose privileged account to be set
     * @param is_priv - privileged status
     */
    void set_privileged( account_name account, bool is_priv );
-   
+
    /**
-    * @brief Set the blockchain parameters 
-    * Set the blockchain parameters 
+    * @brief Set the blockchain parameters
+    * Set the blockchain parameters
     * @param data - pointer to blockchain parameters packed as bytes
     * @param datalen - size of the packed blockchain parameters
     * @pre `data` is a valid pointer to a range of memory at least `datalen` bytes long that contains packed blockchain params data

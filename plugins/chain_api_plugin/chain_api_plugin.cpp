@@ -15,10 +15,10 @@ using namespace eosio;
 
 class chain_api_plugin_impl {
 public:
-   chain_api_plugin_impl(chain_controller& db)
+   chain_api_plugin_impl(controller& db)
       : db(db) {}
 
-   chain_controller& db;
+   controller& db;
 };
 
 
@@ -35,7 +35,7 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
              cb(http_response_code, fc::json::to_string(result)); \
-          } catch (chain::tx_missing_sigs& e) { \
+          } catch (chain::unsatisfied_authorization& e) { \
              error_results results{401, "UnAuthorized", e}; \
              cb(401, fc::json::to_string(results)); \
           } catch (chain::tx_duplicate& e) { \
@@ -51,7 +51,7 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
           } catch (fc::exception& e) { \
              error_results results{500, "Internal Service Error", e}; \
              cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e.to_detail_string())); \
           } \
        }}
 

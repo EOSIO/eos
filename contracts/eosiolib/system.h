@@ -49,6 +49,7 @@ extern "C" {
     */
    [[noreturn]] void  eosio_exit( int32_t code );
 
+
    /**
     *  Returns the time in seconds from 1970 of the last accepted block (not the block including this action)
     *  @brief Get time of the last accepted block
@@ -58,9 +59,17 @@ extern "C" {
     *  time current_time = now();
     *  @endcode
     */
-   time  now();
+   uint64_t  current_time();
+
+   /**
+    *  Returns the time in seconds from 1970 of the block including this action
+    *  @brief Get time (rounded down to the nearest second) of the current block (i.e. the block including this action)
+    *  @return time in seconds from 1970 of the current block
+    */
+   uint32_t  now() {
+      return (uint32_t)( current_time() / 1000000 );
+   }
    ///@ } systemcapi
 
 
 }
-
