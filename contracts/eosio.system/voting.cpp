@@ -173,7 +173,7 @@ namespace eosiosystem {
       }
 
       if( proxy ) {
-         auto new_proxy = _voters.find( voter->proxy );
+         auto new_proxy = _voters.find( proxy );
          eosio_assert( new_proxy != _voters.end() && new_proxy->is_proxy, "invalid proxy specified" );
          if ( new_vote_weight >= 0 ) {
             _voters.modify( new_proxy, 0, [&]( auto& vp ) {
@@ -229,16 +229,22 @@ namespace eosiosystem {
       require_auth( proxy );
 
       auto pitr = _voters.find(proxy);
-      eosio_assert( pitr != _voters.end(), "proxy must have some stake first" );
+      //eosio_assert( pitr != _voters.end(), "proxy must have some stake first" );
       //eosio_assert( !pitr->is_proxy, "account is already a proxy" );
       eosio_assert( pitr->is_proxy != isproxy, "action has no effect" );
 
-      _voters.modify( pitr, 0, [&]( auto& p ) {
-         p.is_proxy = isproxy;
-         print( "    vote weight: ", p.last_vote_weight, "\n" );
-      });
-
-      propagate_weight_change( *pitr );
+      if ( pitr != _voters.end() ) {
+         _voters.modify( pitr, 0, [&]( auto& p ) {
+               p.is_proxy = isproxy;
+               print( "    vote weight: ", p.last_vote_weight, "\n" );
+            });
+         propagate_weight_change( *pitr );
+      } else {
+         _voters.emplace( proxy, [&]( auto& p ) {
+               p.owner  = proxy;
+               p.is_proxy = isproxy;
+            });
+      }
    }
 
    void system_contract::propagate_weight_change( const voter_info& voter ) {
