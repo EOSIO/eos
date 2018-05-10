@@ -37,14 +37,14 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
       chain::controller *control = test.control.get();
       chain::database &chain1_db = control->db();
 
-      auto nobody = chain1_db.find<account_object, by_name>(config::nobody_account_name);
+      auto nobody = chain1_db.find<account_object, by_name>(config::null_account_name);
       BOOST_CHECK(nobody != nullptr);
-      const auto& nobody_active_authority = chain1_db.get<permission_object, by_owner>(boost::make_tuple(config::nobody_account_name, config::active_name));
+      const auto& nobody_active_authority = chain1_db.get<permission_object, by_owner>(boost::make_tuple(config::null_account_name, config::active_name));
       BOOST_CHECK_EQUAL(nobody_active_authority.auth.threshold, 1);
       BOOST_CHECK_EQUAL(nobody_active_authority.auth.accounts.size(), 0);
       BOOST_CHECK_EQUAL(nobody_active_authority.auth.keys.size(), 0);
 
-      const auto& nobody_owner_authority = chain1_db.get<permission_object, by_owner>(boost::make_tuple(config::nobody_account_name, config::owner_name));
+      const auto& nobody_owner_authority = chain1_db.get<permission_object, by_owner>(boost::make_tuple(config::null_account_name, config::owner_name));
       BOOST_CHECK_EQUAL(nobody_owner_authority.auth.threshold, 1);
       BOOST_CHECK_EQUAL(nobody_owner_authority.auth.accounts.size(), 0);
       BOOST_CHECK_EQUAL(nobody_owner_authority.auth.keys.size(), 0);
