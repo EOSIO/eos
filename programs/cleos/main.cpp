@@ -331,10 +331,30 @@ void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
       string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
-      auto net = processed["net_usage"].as_int64()*8;
-      auto cpu = processed["cpu_usage"].as_int64() / 1024;
+      int64_t net = -1;
+      int64_t cpu = -1;
+      if (processed.get_object().contains("receipt")) {
+         const auto& receipt = processed["receipt"];
+         if (receipt.is_object()) {
+            net = receipt["net_usage_words"].as_int64() * 8;
+            cpu = receipt["cpu_usage_us"].as_int64();
+         }
+      }
 
-      cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
+      cerr << status << " transaction: " << transaction_id << "  ";
+      if (net < 0) {
+         cerr << "<unknown>";
+      } else {
+         cerr << net;
+      }
+      cerr << " bytes  ";
+      if (cpu < 0) {
+         cerr << "<unknown>";
+      } else {
+         cerr << cpu;
+      }
+
+      cerr << " us\n";
 
       if( status == "failed" ) {
          auto soft_except = processed["except"].as<optional<fc::exception>>();
