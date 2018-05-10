@@ -1,5 +1,6 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -212,6 +213,15 @@ namespace eosio { namespace chain {
 
    void transaction_context::finalize() {
       FC_ASSERT( is_initialized, "must first initialize" );
+
+      if( is_input ) {
+         auto& am = control.get_mutable_authorization_manager();
+         for( const auto& act : trx.actions ) {
+            for( const auto& auth : act.authorization ) {
+               am.update_permission_usage( am.get_permission(auth) );
+            }
+         }
+      }
 
       add_cpu_usage( validate_ram_usage.size() * config::ram_usage_validation_overhead_per_account );
 

@@ -33,7 +33,7 @@ namespace eosiosystem {
 
       block_timestamp      last_producer_schedule_update = 0;
       uint64_t             last_pervote_bucket_fill = 0;
-      eosio::asset         eos_bucket;
+      eosio::asset         pervote_bucket;
       eosio::asset         savings;
       checksum160          last_producer_schedule_id;
 
@@ -43,7 +43,7 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)
                                 (last_pervote_bucket_fill)
-                                (eos_bucket)(savings)(last_producer_schedule_id)(total_activated_stake) )
+                                (pervote_bucket)(savings)(last_producer_schedule_id)(total_activated_stake) )
    };
 
    struct producer_info {
@@ -197,7 +197,7 @@ namespace eosiosystem {
       private:
          eosio::asset payment_per_block( double rate, const eosio::asset& token_supply,  uint32_t num_blocks );
 
-         eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket );
+         eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket );
          
          eosio::asset supply_growth( double rate, const eosio::asset& token_supply, time seconds );
 

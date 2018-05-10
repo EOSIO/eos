@@ -42,6 +42,14 @@ namespace eosio { namespace chain {
                                                      time_point initial_creation_time = time_point()
                                                    );
 
+         void modify_permission( const permission_object& permission, const authority& auth );
+
+         void remove_permission( const permission_object& permission );
+
+         void update_permission_usage( const permission_object& permission );
+
+         fc::time_point get_permission_last_used( const permission_object& permission )const;
+
          const permission_object*  find_permission( const permission_level& level )const;
          const permission_object&  get_permission( const permission_level& level )const;
 

@@ -49,3 +49,31 @@ void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint
       db_update_i64(itr, self, &res64, sizeof(int64_t));
    }
 }
+
+struct test_permission_last_used_msg {
+   account_name     account;
+   permission_name  permission;
+   int64_t          last_used_time;
+
+   EOSLIB_SERIALIZE( test_permission_last_used_msg, (account)(permission)(last_used_time) )
+};
+
+void test_permission::test_permission_last_used(uint64_t receiver, uint64_t code, uint64_t action) {
+   (void)code;
+   (void)action;
+   using namespace eosio;
+
+   auto params = unpack_action_data<test_permission_last_used_msg>();
+
+   eosio_assert( get_permission_last_used(params.account, params.permission) == params.last_used_time, "unexpected last used permission time" );
+}
+
+void test_permission::test_account_creation_time(uint64_t receiver, uint64_t code, uint64_t action) {
+   (void)code;
+   (void)action;
+   using namespace eosio;
+
+   auto params = unpack_action_data<test_permission_last_used_msg>();
+
+   eosio_assert( get_account_creation_time(params.account) == params.last_used_time, "unexpected account creation time" );
+}
