@@ -113,16 +113,18 @@ public:
     }
 
 
-
-    action_result stake(const account_name& from, const account_name& to, const string& net, const string& cpu, const string& storage ) {
+/*
+    action_result stake(const account_name& from, const account_name& to, const string& net, const string& cpu, const string& ) {
         return push_action( name(from), name(from), N(delegatebw), mvo()
                 ("from",     from)
                 ("receiver", to)
                 ("stake_net_quantity", net)
                 ("stake_cpu_quantity", cpu)
                 ("stake_storage_quantity", storage)
+                ("transfer", storage)
         );
     }
+    */
 #if _READY
     fc::variant get_total_stake( const account_name& act )
     {
@@ -131,9 +133,11 @@ public:
     }
 #endif
 
+    /*
     action_result stake( const account_name& acnt, const string& net, const string& cpu, const string& storage ) {
         return stake( acnt, acnt, net, cpu, storage );
     }
+    */
 
     asset get_balance( const account_name& act )
     {
@@ -233,11 +237,13 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         for( const auto& a : test_genesis ) {
            create_account( a.aname, N(eosio) );
+           /*
            base_tester::push_action(N(eosio.token), N(transfer), config::system_account_name, mutable_variant_object()
                     ("from", name(config::system_account_name))
                     ("to", name(a.aname))
                     ("quantity", asset(a.initial_balance))
                     ("memo", "" ) );
+                    */
         }
         set_code_abi(N(eosio), eosio_system_wast, eosio_system_abi); //, &eosio_active_pk);
 
@@ -247,17 +253,18 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto net = (ib - ram) / 2;
            auto cpu = ib - net - ram;
 
-           base_tester::push_action(N(eosio), N(buyram), a.aname, mutable_variant_object()
-                    ("payer", name(a.aname))
+           base_tester::push_action(N(eosio), N(buyram), N(eosio), mutable_variant_object()
+                    ("payer", "eosio")
                     ("receiver", name(a.aname))
                     ("quant", asset(ram)) 
                     );
 
-           base_tester::push_action(N(eosio), N(delegatebw), a.aname, mutable_variant_object()
-                    ("from", name(a.aname))
+           base_tester::push_action(N(eosio), N(delegatebw), N(eosio), mutable_variant_object()
+                    ("from", "eosio" )
                     ("receiver", name(a.aname))
                     ("stake_net_quantity", asset(net)) 
                     ("stake_cpu_quantity", asset(cpu)) 
+                    ("transfer", 1) 
                     );
         }
 
