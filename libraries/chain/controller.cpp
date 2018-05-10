@@ -122,7 +122,9 @@ struct controller_impl {
     *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
     *  cause a node to fork.
     *
-    *  TODO: define special exceptions that can be thrown to reject transactions or blocks
+    *  If it is ever desirable to let a signal handler bubble an exception out of this method
+    *  a full audit of its uses needs to be undertaken.
+    *
     */
    template<typename Signal, typename Arg>
    void emit( const Signal& s, Arg&& a ) {
@@ -131,10 +133,6 @@ struct controller_impl {
       } catch ( ... ) {
          elog( "signal handler threw exception" );
       }
-   }
-
-   void emit_transaction(const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace) {
-
    }
 
    void on_irreversible( const block_state_ptr& s ) {
@@ -410,8 +408,6 @@ struct controller_impl {
          trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail, trace->cpu_usage, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-         remove_scheduled_transaction( gto );
-
          emit( self.applied_transaction, trace );
 
          trx_context.squash();
@@ -424,11 +420,7 @@ struct controller_impl {
       return trace;
    }
 
-   void remove_scheduled_transaction( const generated_transaction_object& gto, bool expire = false ) {
-      if( expire ) {
-         push_receipt( gto.trx_id, transaction_receipt::expired, 0, 0 );
-      }
-
+   void remove_scheduled_transaction( const generated_transaction_object& gto ) {
       resource_limits.add_pending_ram_usage(
          gto.payer,
          -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size())
@@ -438,17 +430,30 @@ struct controller_impl {
       db.remove( gto );
    }
 
-   void push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline  )
+   bool failure_is_subjective( const fc::exception& e ) {
+      auto code = e.code();
+      return (code == tx_soft_cpu_usage_exceeded::code_value) ||
+             (code == tx_soft_net_usage_exceeded::code_value) ||
+             (code == tx_deadline_exceeded::code_value);
+   }
+
+   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline )
    { try {
       auto undo_session = db.start_undo_session(true);
-
       fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
+
+      auto remove_retained_state = fc::make_scoped_exit([&, this](){
+         remove_scheduled_transaction(gto);
+      });
 
       FC_ASSERT( gto.delay_until <= self.pending_block_time(), "this transaction isn't ready",
                  ("gto.delay_until",gto.delay_until)("pbt",self.pending_block_time())          );
       if( gto.expiration < self.pending_block_time() ) {
-         remove_scheduled_transaction( gto, true ); // expire the transaction
-         return;
+         auto trace = std::make_shared<transaction_trace>();
+         trace->id = gto.trx_id;
+         trace->scheduled = false;
+         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::expired, 0, 0 ); // expire the transaction
+         return trace;
       }
 
       auto start = fc::time_point::now();
@@ -459,7 +464,6 @@ struct controller_impl {
       transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
       uint64_t max_cpu = 0;
-      bool abort_on_error = false;
       try {
          trx_context.init_for_deferred_trx( deadline, gto.published );
          bill_to_accounts = trx_context.bill_to_accounts;
@@ -477,21 +481,13 @@ struct controller_impl {
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-         remove_scheduled_transaction( gto );
+         emit( self.applied_transaction, trace );
 
-         try {
-            emit( self.applied_transaction, trace );
-         } catch( ... ) {
-            abort_on_error = true;
-            throw;
-         }
          trx_context.squash();
          undo_session.squash();
          restore.cancel();
-         return;
+         return trace;
       } catch( const fc::exception& e ) {
-         if( abort_on_error ) // abort_on_error should  normally should not be set at this point, but if it is then that means
-            throw;            // something went wrong while emitting the applied_transaction signal and we should abort
          trace->except = e;
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - start;
@@ -500,7 +496,7 @@ struct controller_impl {
 
       // Only soft or hard failure logic below:
 
-      if( gto.sender != account_name() ) {
+      if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          edump((trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trace->cpu_usage, start );
@@ -508,11 +504,11 @@ struct controller_impl {
          trace = error_trace;
          if( !trace->except_ptr ) {
             undo_session.squash();
-            return;
+            return trace;
          }
       }
 
-      // Only hard failure logic below:
+      // Only hard failure OR subjective failure logic below:
 
       trace->cpu_usage = ((trace->cpu_usage + 1023)/1024)*1024; // Round up cpu_usage to nearest multiple of 1024
       trace->cpu_usage = std::min(trace->cpu_usage, max_cpu);
@@ -520,14 +516,17 @@ struct controller_impl {
                                              block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
       trace->elapsed = fc::time_point::now() - start;
 
-      trace->receipt = push_receipt( gto.trx_id, transaction_receipt::hard_fail, trace->cpu_usage, 0 );
+      if (failure_is_subjective(*trace->except)) {
+         // this is a subjective failure, don't remove the retained state so it can be
+         // retried at a later time and don't include any artifact of the transaction in the pending block
+         remove_retained_state.cancel();
+      } else {
+         trace->receipt = push_receipt(gto.trx_id, transaction_receipt::hard_fail, trace->cpu_usage, 0);
+         emit( self.applied_transaction, trace );
+         undo_session.squash();
+      }
 
-      remove_scheduled_transaction( gto );
-
-      emit( self.applied_transaction, trace );
-
-
-      undo_session.squash();
+      return trace;
    } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
 
 
@@ -549,16 +548,6 @@ struct controller_impl {
       return r;
    }
 
-   bool push_next_unapplied_transaction( fc::time_point deadline ) {
-      auto itr = unapplied_transactions.begin();
-      if( itr == unapplied_transactions.end() )
-         return false;
-
-      // Intentionally copy transaction_metadata_ptr because it will be removed from unapplied_transactions and make the const& dangling.
-      push_transaction( transaction_metadata_ptr(itr->second), deadline );
-      return true;
-   }
-
    void transaction_trace_notify( const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace ) {
       if( trx->on_result ) {
          (trx->on_result)(trace);
@@ -576,79 +565,80 @@ struct controller_impl {
     *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
     *  the pending block.
     */
-   void push_transaction( const transaction_metadata_ptr& trx,
-                          fc::time_point deadline = fc::time_point::maximum(),
-                          bool implicit = false )
+   transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
+                                           fc::time_point deadline,
+                                           bool implicit = false )
    {
+      FC_ASSERT(deadline != fc::time_point(), "deadline cannot be uninitialized");
+
       transaction_trace_ptr trace;
-   try {
-      if( deadline == fc::time_point() && !implicit ) {
-         unapplied_transactions[trx->signed_id] = trx;
-         return;
-      }
-
-      auto start = fc::time_point::now();
-      transaction_context trx_context( self, trx->trx, trx->id);
-      trace = trx_context.trace;
       try {
-         if( implicit ) {
-            trx_context.init_for_implicit_trx( deadline );
-         } else {
-            unapplied_transactions.erase( trx->signed_id );
-            trx_context.init_for_input_trx( deadline,
-                                            trx->packed_trx.get_unprunable_size(),
-                                            trx->packed_trx.get_prunable_size(),
-                                            trx->trx.signatures.size()             );
+         auto start = fc::time_point::now();
+         transaction_context trx_context(self, trx->trx, trx->id);
+         trace = trx_context.trace;
+         try {
+            if (implicit) {
+               trx_context.init_for_implicit_trx(deadline);
+            } else {
+               trx_context.init_for_input_trx(deadline,
+                                              trx->packed_trx.get_unprunable_size(),
+                                              trx->packed_trx.get_prunable_size(),
+                                              trx->trx.signatures.size());
+            }
+
+            trx_context.delay = fc::seconds(trx->trx.delay_sec);
+
+            if (!implicit) {
+               authorization.check_authorization(
+                       trx->trx.actions,
+                       trx->recover_keys(),
+                       {},
+                       trx_context.delay,
+                       std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context,
+                                 std::placeholders::_1),
+                       false
+               );
+            }
+
+            trx_context.exec();
+            trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+            trace->elapsed = fc::time_point::now() - start;
+
+            auto restore = make_block_restore_point();
+
+            if (!implicit) {
+               transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
+                                                    ? transaction_receipt::executed
+                                                    : transaction_receipt::delayed;
+               trace->receipt = push_receipt(trx->packed_trx, s, trace->cpu_usage, trace->net_usage);
+               pending->_pending_block_state->trxs.emplace_back(trx);
+               unapplied_transactions.erase( trx->signed_id );
+            } else {
+               transaction_receipt_header r;
+               r.status = transaction_receipt::executed;
+               r.kcpu_usage = trace->cpu_usage / 1024;
+               r.net_usage_words = trace->net_usage / 8;
+               trace->receipt = r;
+            }
+
+            fc::move_append(pending->_actions, move(trx_context.executed));
+
+            transaction_trace_notify(trx, trace);
+
+            emit(self.applied_transaction, trace);
+
+            trx_context.squash();
+            restore.cancel();
+            return trace;
+         } catch (const fc::exception& e) {
+            trace->except = e;
+            trace->except_ptr = std::current_exception();
          }
 
-         trx_context.delay = fc::seconds(trx->trx.delay_sec);
-
-         if( !implicit ) {
-            authorization.check_authorization(
-               trx->trx.actions,
-               trx->recover_keys(),
-               {},
-               trx_context.delay,
-               std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context, std::placeholders::_1),
-               false
-            );
-         }
-
-         trx_context.exec();
-         trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
-         trace->elapsed = fc::time_point::now() - start;
-
-         auto restore = make_block_restore_point();
-
-         if( !implicit ) {
-            transaction_receipt::status_enum s = ( trx_context.delay == fc::seconds(0) )
-                                                 ? transaction_receipt::executed
-                                                 : transaction_receipt::delayed;
-            trace->receipt = push_receipt( trx->packed_trx, s, trace->cpu_usage, trace->net_usage );
-            pending->_pending_block_state->trxs.emplace_back(trx);
-         } else {
-            transaction_receipt_header r;
-            r.status          = transaction_receipt::executed;
-            r.kcpu_usage      = trace->cpu_usage / 1024;
-            r.net_usage_words = trace->net_usage / 8;
-            trace->receipt = r;
-         }
-
-         fc::move_append( pending->_actions, move(trx_context.executed) );
-
-         transaction_trace_notify( trx, trace );
-
-         emit( self.applied_transaction, trace );
-
-         trx_context.squash();
-         restore.cancel();
-         return;
-      } catch( const fc::exception& e ) {
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
-      }
-      transaction_trace_notify( trx, trace );
-   } FC_CAPTURE_AND_RETHROW((trace)) } /// push_transaction
+         transaction_trace_notify(trx, trace);
+         return trace;
+      } FC_CAPTURE_AND_RETHROW((trace))
+   } /// push_transaction
 
 
    void start_block( block_timestamp_type when, uint16_t confirm_block_count ) {
@@ -716,10 +706,10 @@ struct controller_impl {
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
-               push_transaction( mtrx );
+               push_transaction( mtrx, fc::time_point::maximum() );
             }
             else if( receipt.trx.contains<transaction_id_type>() ) {
-               self.push_scheduled_transaction( receipt.trx.get<transaction_id_type>() );
+               self.push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum() );
             }
          }
 
@@ -1029,6 +1019,8 @@ void controller::startup() {
 
 chainbase::database& controller::db()const { return my->db; }
 
+fork_database& controller::fork_db()const { return my->fork_db; }
+
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count ) {
    my->start_block(when, confirm_block_count);
@@ -1059,40 +1051,15 @@ void controller::push_confirmation( const header_confirmation& c ) {
    my->push_confirmation( c );
 }
 
-void controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline ) {
-   my->push_transaction(trx, deadline);
+transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline ) {
+   return my->push_transaction(trx, deadline);
 }
 
-bool controller::push_next_unapplied_transaction( fc::time_point deadline ) {
-   return my->push_next_unapplied_transaction( deadline );
-}
-
-transaction_trace_ptr controller::sync_push( const transaction_metadata_ptr& trx, time_point deadline ) {
-   auto start = fc::time_point::now();
-   try {
-      FC_ASSERT( deadline != fc::time_point() );
-      transaction_trace_ptr trace;
-      trx->on_result = [&]( const transaction_trace_ptr& t ){ trace = t; };
-      my->push_transaction( trx, deadline );
-      return trace;
-   } FC_CAPTURE_AND_RETHROW( (fc::time_point::now()-start)(deadline) )
-}
-
-bool controller::push_next_scheduled_transaction( fc::time_point deadline ) {
-   const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-   auto itr = idx.begin();
-   if( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
-      my->push_scheduled_transaction( *itr, deadline );
-      return true;
-   }
-   return false;
-}
-
-void controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_trx_id>();
    auto itr = idx.find( trxid );
    FC_ASSERT( itr != idx.end(), "unknown transaction" );
-   my->push_scheduled_transaction( *itr, deadline );
+   return my->push_scheduled_transaction( *itr, deadline );
 }
 
 uint32_t controller::head_block_num()const {
@@ -1298,8 +1265,31 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-const map<digest_type, transaction_metadata_ptr>&  controller::unapplied_transactions()const {
-   return my->unapplied_transactions;
+vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
+   vector<transaction_metadata_ptr> result;
+   result.reserve(my->unapplied_transactions.size());
+   for ( const auto& entry: my->unapplied_transactions ) {
+      result.emplace_back(entry.second);
+   }
+   return result;
+}
+
+void controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
+   my->unapplied_transactions.erase(trx->signed_id);
+}
+
+vector<transaction_id_type> controller::get_scheduled_transactions() const {
+   const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
+
+   vector<transaction_id_type> result;
+   result.reserve(idx.size());
+
+   auto itr = idx.begin();
+   while( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
+      result.emplace_back(itr->trx_id);
+      ++itr;
+   }
+   return result;
 }
 
 void controller::validate_referenced_accounts( const transaction& trx )const {
