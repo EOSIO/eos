@@ -23,6 +23,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `res` is replaced with the result of multiplication
   * Example:
   * @code
   * __int128 res = 0;
@@ -42,6 +43,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `res` is replaced with the result of division
   * Example:
   * @code
   * __int128 res = 0;
@@ -80,6 +82,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `res` is replaced with the result of modulus
   * Example:
   * @code
   * __int128 res = 0;
@@ -99,6 +102,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `res` is replaced with the result of modulus
   * Example:
   * @code
   * unsigned __int128 res = 0;
@@ -117,6 +121,7 @@ extern "C" {
   * @param lo     Low 64 bits of the 128 bit factor.
   * @param hi     High 64 bits of the 128 bit factor.
   * @param shift  Number of bits to shift.
+  * @post `res` is replaced with the result of the operation
   * Example:
   * @code
   * __int128 res = 0;
@@ -134,6 +139,7 @@ extern "C" {
   * @param lo     Low 64 bits of the 128 bit factor.
   * @param hi     High 64 bits of the 128 bit factor.
   * @param shift  Number of bits to shift.
+  * @post `res` is replaced with the result of the operation
   * Example:
   * @code
   * __int128 res = 0;
@@ -151,6 +157,7 @@ extern "C" {
   * @param lo     Low 64 bits of the 128 bit factor.
   * @param hi     High 64 bits of the 128 bit factor.
   * @param shift  Number of bits to shift.
+  * @post `res` is replaced with the result of the operation
   * Example:
   * @code
   * __int128 res = 0;
@@ -168,6 +175,7 @@ extern "C" {
   * @param lo     Low 64 bits of the 128 bit factor.
   * @param hi     High 64 bits of the 128 bit factor.
   * @param shift  Number of bits to shift.
+  * @post `res` is replaced with the result of the operation
   * Example:
   * @code
   * __int128 res = 0;
@@ -186,6 +194,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `ret` is replaced with the result of the operation
   */
   void __addtf3( long double& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb );
 
@@ -197,6 +206,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `ret` is replaced with the result of the operation
   */
   void __subtf3( long double& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ); 
 
@@ -208,6 +218,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `ret` is replaced with the result of the operation
   */
   void __multf3( long double& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ); 
 
@@ -219,6 +230,7 @@ extern "C" {
   * @param ha   High 64 bits of the first 128 bit factor.
   * @param lb   Low 64 bits of the second 128 bit factor.
   * @param hb   High 64 bits of the second 128 bit factor.
+  * @post `ret` is replaced with the result of the operation
   */
   void __divtf3( long double& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ); 
 
@@ -346,6 +358,7 @@ extern "C" {
   * @brief Extend float to long double
   * @param ret  It will be replaced with the result product.
   * @param f    Input float to be extended
+  * @post `ret` is replaced with the extended float
   */
   void __extendsftf2( long double& ret, float f ); 
 
@@ -354,6 +367,7 @@ extern "C" {
   * @brief Extend float to long double
   * @param ret  It will be replaced with the result product.
   * @param f    Input float to be extended
+  * @post `ret` is replaced with the extended float
   */
   void __extenddftf2( long double& ret, double f ); 
 

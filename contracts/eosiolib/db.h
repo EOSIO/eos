@@ -56,10 +56,11 @@ extern "C" {
   *  @param data - Record to store
   *  @param len - Size of data
   *  @pre len >= sizeof(data)
-  *  @pre data is a valid pointer to a range of memory at least len bytes long
-  *  @pre ((uint64_t*)data) stores the primary key
+  *  @pre data is a valid pointer to a range of memory at least `len` bytes long
+  *  @pre `*((uint64_t*)data)` stores the primary key
   *  @pre this method is being called from an apply context (not validate or precondition)
   *  @return iterator to the newly created object
+  *  @post a new entry is created in the table
   */
 int32_t db_store_i64(account_name scope, table_name table, account_name payer, uint64_t id,  const void* data, uint32_t len);
 
@@ -73,9 +74,11 @@ int32_t db_store_i64(account_name scope, table_name table, account_name payer, u
   *  @param data - New updated record
   *  @param len - Size of data
   *  @pre len >= sizeof(data)
-  *  @pre data is a valid pointer to a range of memory at least len bytes long
-  *  @pre ((uint64_t*)data) stores the primary key
+  *  @pre `data` is a valid pointer to a range of memory at least `len` bytes long
+  *  @pre `*((uint64_t*)data)` stores the primary key
   *  @pre this method is being called from an apply context (not validate or precondition)
+  *  @pre `iterator` is pointing to the existing data inside the table
+  *  @post the data pointed by the iterator is replaced with the new data
   */
 void db_update_i64(int32_t iterator, account_name payer, const void* data, uint32_t len);
 
@@ -85,6 +88,8 @@ void db_update_i64(int32_t iterator, account_name payer, const void* data, uint3
   *
   *  @brief Remove a record inside a primary 64-bit integer index table
   *  @param iterator - The iterator pointing to the record to remove
+  *  @pre `iterator` is pointing to the existing data inside the table
+  *  @post the data is removed
   *
   * Example:
   *  @code
@@ -105,6 +110,10 @@ void db_remove_i64(int32_t iterator);
   *  @param data - The buffer which will be replaced with the retrieved record
   *  @param len - Size of the buffer
   *  @return size of the retrieved record
+  *  @pre `iterator` is pointing to the existing data inside the table
+  *  @pre `data` is a valid pointer to a range of memory at least `len` bytes long
+  *  @pre `len` needs to be larger than the size of the data that is going to be retrieved
+  *  @post `data` will be filled with the retrieved data
   *
   *  Example:
   *  @code
@@ -124,6 +133,8 @@ int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
   *  @param iterator - The iterator to the record
   *  @param primary - It will be replaced with the primary key of the next record 
   *  @return iterator to the next record
+  *  @pre `iterator` is pointing to the existing data inside the table
+  *  @post `primary` will be replaced with the primary key of the data proceeding the data pointed by the iterator
   *
   *  Example:
   *  @code
@@ -143,6 +154,8 @@ int32_t db_next_i64(int32_t iterator, uint64_t* primary);
   *  @param iterator - The iterator to the record
   *  @param primary - It will be replaced with the primary key of the previous record 
   *  @return iterator to the previous record
+  *  @pre `iterator` is pointing to the existing data inside the table
+  *  @post `primary` will be replaced with the primary key of the data preceeding the data pointed by the iterator
   *
   *  Example:
   *  @code
@@ -220,6 +233,7 @@ int32_t db_end_i64(account_name code, account_name scope, table_name table);
   *  @param id - The primary key of the record which secondary index to be stored
   *  @param secondary - The pointer to the key of the secondary index to store
   *  @return iterator to the newly created secondary index
+  *  @post new secondary index is created
   */
 int32_t db_idx64_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
 
@@ -231,6 +245,8 @@ int32_t db_idx64_store(account_name scope, table_name table, account_name payer,
   *  @param iterator - The iterator to the secondary index
   *  @param payer - The account that is paying for this storage
   *  @param secondary - The pointer to the **new** key of the secondary index
+  *  @pre `iterator` is pointing to existing secondary index
+  *  @post the seconday index pointed by the iterator is updated by the new value
   */
 void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secondary);
 
@@ -240,6 +256,8 @@ void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secon
   * 
   *  @brief Remove a record's secondary index from a secondary 64-bit integer index table
   *  @param iterator - The iterator to the secondary index to be removed
+  *  @pre `iterator` is pointing to existing secondary index
+  *  @post the secondary index pointed by the iterator is removed from the table
   */
 void db_idx64_remove(int32_t iterator);
 
@@ -251,6 +269,8 @@ void db_idx64_remove(int32_t iterator);
   *  @param iterator - The iterator to the secondary index
   *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
   *  @return iterator to the next secondary index
+  *  @pre `iterator` is pointing to the existing secondary index inside the table
+  *  @post `primary` will be replaced with the primary key of the secondary index proceeding the secondary index pointed by the iterator
   */
 int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
 
@@ -262,6 +282,8 @@ int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
   *  @param iterator - The iterator to the secondary index
   *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
   *  @return iterator to the previous secondary index
+  *  @pre `iterator` is pointing to the existing secondary index inside the table 
+  *  @post `primary` will be replaced with the primary key of the secondary index preceeding the secondary index pointed by the iterator
   */
 int32_t db_idx64_previous(int32_t iterator, uint64_t* primary);
 
@@ -360,6 +382,7 @@ int32_t db_idx64_end(account_name code, account_name scope, table_name table);
   *  @param id - The primary key of the record which secondary index to be stored
   *  @param secondary - The pointer to the key of the secondary index to store
   *  @return iterator to the newly created secondary index
+  *  @post new secondary index is created
   */
 int32_t db_idx128_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* secondary);
 
@@ -371,6 +394,8 @@ int32_t db_idx128_store(account_name scope, table_name table, account_name payer
   *  @param iterator - The iterator to the secondary index
   *  @param payer - The account that is paying for this storage
   *  @param secondary - The pointer to the **new** key of the secondary index
+  *  @pre `iterator` is pointing to existing secondary index
+  *  @post the seconday index pointed by the iterator is updated by the new value
   */
 void db_idx128_update(int32_t iterator, account_name payer, const uint128_t* secondary);
 
@@ -380,6 +405,8 @@ void db_idx128_update(int32_t iterator, account_name payer, const uint128_t* sec
   * 
   *  @brief Remove a record's secondary index from a secondary 128-bit integer index table
   *  @param iterator - The iterator to the secondary index to be removed
+  *  @pre `iterator` is pointing to existing secondary index
+  *  @post the secondary index pointed by the iterator is removed from the table
   */
 void db_idx128_remove(int32_t iterator);
 
@@ -391,6 +418,8 @@ void db_idx128_remove(int32_t iterator);
   *  @param iterator - The iterator to the secondary index
   *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
   *  @return iterator to the next secondary index
+  *  @pre `iterator` is pointing to the existing secondary index inside the table
+  *  @post `primary` will be replaced with the primary key of the secondary index proceeding the secondary index pointed by the iterator
   */
 int32_t db_idx128_next(int32_t iterator, uint64_t* primary);
 
@@ -402,6 +431,8 @@ int32_t db_idx128_next(int32_t iterator, uint64_t* primary);
   *  @param iterator - The iterator to the secondary index
   *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
   *  @return iterator to the previous secondary index
+  *  @pre `iterator` is pointing to the existing secondary index inside the table 
+  *  @post `primary` will be replaced with the primary key of the secondary index preceeding the secondary index pointed by the iterator
   */
 int32_t db_idx128_previous(int32_t iterator, uint64_t* primary);
 
@@ -499,6 +530,8 @@ int32_t db_idx128_end(account_name code, account_name scope, table_name table);
   *  @param data - The pointer to the key of the secondary index to store
   *  @param data_len - Size of the key of the secondary index to store
   *  @return iterator to the newly created secondary index
+  *  @pre `data` is pointing to range of memory at least `data_len` bytes long
+  *  @post new secondary index is created
   */
 int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const void* data, uint32_t data_len );
 
@@ -511,6 +544,8 @@ int32_t db_idx256_store(account_name scope, table_name table, account_name payer
   *  @param payer - The account that is paying for this storage
   *  @param data - The pointer to the **new** key of the secondary index
   *  @param data_len - Size of the **new** key of the secondary index to store
+  *  @pre `iterator` is pointing to existing secondary index
+  *  @post the seconday index pointed by the iterator is updated by the new value
   */
 void db_idx256_update(int32_t iterator, account_name payer, const void* data, uint32_t data_len);
 
@@ -520,6 +555,8 @@ void db_idx256_update(int32_t iterator, account_name payer, const void* data, ui
   * 
   *  @brief Remove a record's secondary index from a secondary 256-bit integer index table
   *  @param iterator - The iterator to the secondary index to be removed
+  *  @pre `iterator` is pointing to existing secondary index
+  *  @post the secondary index pointed by the iterator is removed from the table
   */
 void db_idx256_remove(int32_t iterator);
 
@@ -531,6 +568,8 @@ void db_idx256_remove(int32_t iterator);
   *  @param iterator - The iterator to the secondary index
   *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
   *  @return iterator to the next secondary index
+ *  @pre `iterator` is pointing to the existing secondary index inside the table
+  *  @post `primary` will be replaced with the primary key of the secondary index proceeding the secondary index pointed by the iterator
   */
 int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
 
@@ -542,6 +581,8 @@ int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
   *  @param iterator - The iterator to the secondary index
   *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
   *  @return iterator to the previous secondary index
+ *  @pre `iterator` is pointing to the existing secondary index inside the table 
+  *  @post `primary` will be replaced with the primary key of the secondary index preceeding the secondary index pointed by the iterator
   */
 int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
 

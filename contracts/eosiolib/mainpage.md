@@ -9,9 +9,9 @@ Welcome to the EOS.IO Documentation
 ## Smart Contract Developers
 - @ref eosiorpc
 - @ref contractdev
-	- @ref accountapi - Defines API for querying account data
 	- @ref actionapi - Defines API for querying action properties
 	- @ref chainapi - Defines API for querying internal chain state
+	- @ref cryptoapi - Defines API for calculating and checking hash
 	- @ref database - Defines APIs that store and retrieve data on the blockchain
     - @ref dispatcher - Defines functions to dispatch action to proper action handler inside a contract
 	- @ref mathapi - Defines common math function

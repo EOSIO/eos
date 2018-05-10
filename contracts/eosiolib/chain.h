@@ -28,7 +28,8 @@ extern "C" {
      *  @param datalen - Byte length of buffer
      * 
      *  @return uint32_t - Number of bytes actually populated
-     *  The passed in account_name pointer gets the array of active producers.
+     *  @pre `producers` is a pointer to a range of memory at least `datalen` bytes long
+     *  @post the passed in `producers` pointer gets the array of active producers.
      * 
      *  Example:
      *  @code
