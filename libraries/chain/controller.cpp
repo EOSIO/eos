@@ -612,7 +612,6 @@ struct controller_impl {
                                                     : transaction_receipt::delayed;
                trace->receipt = push_receipt(trx->packed_trx, s, trace->cpu_usage, trace->net_usage);
                pending->_pending_block_state->trxs.emplace_back(trx);
-               unapplied_transactions.erase( trx->signed_id );
             } else {
                transaction_receipt_header r;
                r.status = transaction_receipt::executed;
@@ -629,6 +628,10 @@ struct controller_impl {
 
             trx_context.squash();
             restore.cancel();
+
+            if (!implicit) {
+               unapplied_transactions.erase( trx->signed_id );
+            }
             return trace;
          } catch (const fc::exception& e) {
             trace->except = e;
@@ -1282,7 +1285,9 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
 
    vector<transaction_id_type> result;
-   result.reserve(idx.size());
+
+   static const size_t max_reserve = 64;
+   result.reserve(std::min(idx.size(), max_reserve));
 
    auto itr = idx.begin();
    while( itr != idx.end() && itr->delay_until <= pending_block_time() ) {

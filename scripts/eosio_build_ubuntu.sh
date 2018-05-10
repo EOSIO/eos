@@ -2,7 +2,7 @@
 	OS_MAJ=`echo "${OS_VER}" | cut -d'.' -f1`
 	OS_MIN=`echo "${OS_VER}" | cut -d'.' -f2`
 
-	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 || cut -d' ' -f2 )
+	MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 || cut -d' ' -f2 )
 	CPU_SPEED=$( lscpu | grep -m1 "MHz" | tr -s ' ' | cut -d\  -f3 || cut -d' ' -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 || cut -d' ' -f2 )
 
