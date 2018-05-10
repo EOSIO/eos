@@ -127,11 +127,13 @@ namespace eosio { namespace testing {
             }
          }
 
-         auto scheduled_trxs = control->get_scheduled_transactions();
-         for (const auto& trx : scheduled_trxs ) {
-            auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
-            if(trace->except) {
-               trace->except->dynamic_rethrow_exception();
+         vector<transaction_id_type> scheduled_trxs;
+         while( (scheduled_trxs = control->get_scheduled_transactions() ).size() > 0 ) {
+            for (const auto& trx : scheduled_trxs ) {
+               auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
+               if(trace->except) {
+                  trace->except->dynamic_rethrow_exception();
+               }
             }
          }
       }
