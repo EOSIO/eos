@@ -5,6 +5,18 @@
 #pragma once
 #include <eosiolib/types.h>
 extern "C" {
+
+/**
+ *  @defgroup chainapi Chain API
+ *  @brief Defines API for calculating and checking hash
+ *  @ingroup contractdev
+ */
+
+/**
+ *  @defgroup chaincapi Chain C API
+ *  @brief Defines %C API for calculating and checking hash
+ *  @ingroup chainapi
+ */
 /**
  *  Tests if the sha256 hash generated from data matches the provided checksum.
  *  This method is optimized to a NO-OP when in fast evaluation mode.

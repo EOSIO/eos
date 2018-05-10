@@ -33,6 +33,7 @@ extern "C" {
     * Set new active producers. Producers will only be activated once the block which starts the next round is irrreversible
     * @param producer_data - pointer to producer schedule packed as bytes
     * @param producer_data_size - size of the packed producer schedule 
+    * @pre `producer_data` is a valid pointer to a range of memory at least `producer_data_size` bytes long that contains serialized produced schedule data
     */
    void set_active_producers( char *producer_data, uint32_t producer_data_size );
 
@@ -58,6 +59,7 @@ extern "C" {
     * Set the blockchain parameters 
     * @param data - pointer to blockchain parameters packed as bytes
     * @param datalen - size of the packed blockchain parameters
+    * @pre `data` is a valid pointer to a range of memory at least `datalen` bytes long that contains packed blockchain params data
     */
    void     set_blockchain_parameters_packed(char* data, uint32_t datalen);
 
@@ -67,6 +69,8 @@ extern "C" {
     * @param data - output buffer of the blockchain parameters, only retrieved if sufficent size to hold packed data.
     * @param datalen - size of the data buffer, 0 to report required size.
     * @return size of the blockchain parameters
+    * @pre `data` is a valid pointer to a range of memory at least `datalen` bytes long
+    * @post `data` is filled with packed blockchain parameters
     */
    uint32_t get_blockchain_parameters_packed(char* data, uint32_t datalen);
 

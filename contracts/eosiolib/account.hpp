@@ -11,13 +11,6 @@
 
 
 namespace eosio { namespace account {
-  /**
-  *  @defgroup accountcppapi Account C++ API
-  *  @brief Defines C++ API for querying account data, e.g. account balance
-  *  @ingroup accountapi
-  *
-  * @{
-  */
 
 /**
 *  @brief The binary structure expected and populated by native balance function.
@@ -31,7 +24,8 @@ namespace eosio { namespace account {
 *     eosio::print("test1 balance=", test1_balance.eos_balance, "\n");
 *  }
 *  @endcode
-*  @{
+*
+*  @deprecated This is deprecated in Dawn 3.0
 */
 struct PACKED(account_balance) {
   /**
@@ -69,7 +63,6 @@ struct PACKED(account_balance) {
   */
   time last_unstaking_time;
 };
-/// @} account_balance
 
 /**
  *  Retrieve a populated balance structure
@@ -77,11 +70,12 @@ struct PACKED(account_balance) {
  *  @brief Retrieve a populated balance structure
  *  @param acnt - account
  *  @return true if account's balance is found
+ * 
+ *  @deprecated This is deprecated in Dawn 3.0
  */
 bool get(account_balance& acnt)
 {
    return account_balance_get(&acnt, sizeof(account_balance));
 }
 
-/// @}  eosio
 } }
