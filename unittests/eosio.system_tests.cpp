@@ -215,7 +215,7 @@ public:
       return push_action( payer, N(buyrambytes), mvo()( "payer",payer)("receiver",receiver)("bytes",numbytes) );
    }
 
-   action_result sellram( const account_name& account, uint32_t numbytes ) {
+   action_result sellram( const account_name& account, uint64_t numbytes ) {
       return push_action( account, N(sellram), mvo()( "account", account)("bytes",numbytes) );
    }
 
@@ -425,6 +425,54 @@ inline uint64_t M( const string& eos_str ) {
 }
 
 BOOST_AUTO_TEST_SUITE(eosio_system_tests)
+
+BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
+
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice" ) );
+
+   transfer( "eosio", "alice", "1000.0000 EOS", "eosio" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice", "200.0000 EOS", "100.0000 EOS" ) );
+
+   auto total = get_total_stake( "alice" );
+   auto init_bytes =  total["ram_bytes"].as_uint64();
+
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice", "alice", "200.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("800.0000 EOS"), get_balance( "alice" ) );
+
+   total = get_total_stake( "alice" );
+   auto bytes = total["ram_bytes"].as_uint64();
+   auto bought_bytes = bytes - init_bytes;
+   wdump((init_bytes)(bought_bytes)(bytes) );
+
+   BOOST_REQUIRE_EQUAL( true, 0 < bought_bytes );
+
+   BOOST_REQUIRE_EQUAL( success(), sellram( "alice", bought_bytes ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("999.9999 EOS"), get_balance( "alice" ) );
+   total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( true, total["ram_bytes"].as_uint64() == init_bytes );
+
+   transfer( "eosio", "alice", "100000000.0000 EOS", "eosio" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9999 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice", "alice", "10000000.0000 EOS" ) );
+
+   total = get_total_stake( "alice" );
+   bytes = total["ram_bytes"].as_uint64();
+   bought_bytes = bytes - init_bytes;
+   wdump((init_bytes)(bought_bytes)(bytes) );
+
+   BOOST_REQUIRE_EQUAL( success(), sellram( "alice", bought_bytes ) );
+   total = get_total_stake( "alice" );
+
+   bytes = total["ram_bytes"].as_uint64();
+   bought_bytes = bytes - init_bytes;
+   wdump((init_bytes)(bought_bytes)(bytes) );
+
+
+   BOOST_REQUIRE_EQUAL( true, total["ram_bytes"].as_uint64() == init_bytes );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9993 EOS"), get_balance( "alice" ) );
+
+} FC_LOG_AND_RETHROW() 
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    //issue( "eosio", "1000.0000 EOS", config::system_account_name );
