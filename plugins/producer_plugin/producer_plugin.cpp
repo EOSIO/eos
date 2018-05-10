@@ -42,15 +42,6 @@ static appbase::abstract_plugin& _producer_plugin = app().register_plugin<produc
 using namespace eosio::chain;
 using namespace eosio::chain::plugin_interface;
 
-namespace {
-   bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
-      auto code = e.code();
-      return (code == tx_soft_cpu_usage_exceeded::code_value) ||
-             (code == tx_soft_net_usage_exceeded::code_value) ||
-             (code == tx_deadline_exceeded::code_value && deadline_is_subjective);
-   }
-}
-
 struct blacklisted_transaction {
    transaction_id_type     trx_id;
    fc::time_point          expiry;
@@ -214,7 +205,7 @@ class producer_plugin_impl {
 
                // if we failed because the block was exhausted push the block out and try again
                if (trace->except) {
-                  if (failure_is_subjective(*trace->except, deadline == block_time)) {
+                  if (controller::failure_is_subjective(*trace->except, deadline == block_time)) {
                      block_production_loop();
                   } else {
                      trace->except->dynamic_rethrow_exception();
@@ -450,7 +441,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
             auto trace = chain.push_transaction(trx, deadline);
             if (trace->except) {
-               if (failure_is_subjective(*trace->except, deadline == block_time)) {
+               if (controller::failure_is_subjective(*trace->except, deadline == block_time)) {
                   exhausted = true;
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
@@ -481,7 +472,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
             auto trace = chain.push_scheduled_transaction(trx, deadline);
             if (trace->except) {
-               if (failure_is_subjective(*trace->except, deadline == block_time)) {
+               if (controller::failure_is_subjective(*trace->except, deadline == block_time)) {
                   exhausted = true;
                } else {
                   auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
