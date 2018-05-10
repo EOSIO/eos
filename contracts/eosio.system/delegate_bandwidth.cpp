@@ -216,7 +216,7 @@ namespace eosiosystem {
 
    void system_contract::delegatebw( account_name from, account_name receiver,
                                      asset stake_net_quantity, 
-                                     asset stake_cpu_quantity )
+                                     asset stake_cpu_quantity, bool transfer )
                                     
    {
       require_auth( from );
@@ -228,8 +228,11 @@ namespace eosiosystem {
       auto total_stake = stake_cpu_quantity.amount + stake_net_quantity.amount;
       eosio_assert( total_stake > 0, "must stake a positive amount" );
 
-      print( "deltable" );
-      del_bandwidth_table     del_tbl( _self, from );
+      account_name source_stake_from = from;
+
+      if( transfer ) from = receiver;
+
+      del_bandwidth_table     del_tbl( _self, from);
       auto itr = del_tbl.find( receiver );
       if( itr == del_tbl.end() ) {
          del_tbl.emplace( from, [&]( auto& dbo ){
@@ -240,7 +243,7 @@ namespace eosiosystem {
             });
       }
       else {
-         del_tbl.modify( itr, from, [&]( auto& dbo ){
+         del_tbl.modify( itr, 0, [&]( auto& dbo ){
                dbo.net_weight    += stake_net_quantity;
                dbo.cpu_weight    += stake_cpu_quantity;
             });
@@ -264,9 +267,9 @@ namespace eosiosystem {
 
       set_resource_limits( tot_itr->owner, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
-      if( N(eosio) != from) {
+      if( N(eosio) != source_stake_from ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
-                                                       { from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
+                                                       { source_stake_from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
       }
 
       print( "voters \n" );

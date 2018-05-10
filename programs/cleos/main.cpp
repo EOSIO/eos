@@ -157,7 +157,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 
-uint32_t tx_max_cpu_usage = 0;
+uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
 
 vector<string> tx_permission;
@@ -185,7 +185,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       msg += " (defaults to '" + default_permission + "')";
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 
-   cmd->add_option("--max-cpu-usage", tx_max_cpu_usage, localized("set an upper limit on the cpu usage budget, in instructions-retired, for the execution of the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 }
 
@@ -273,7 +273,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    auto required_keys = determine_required_keys(trx);
    size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
 
-   trx.max_kcpu_usage = (tx_max_cpu_usage + 1023)/1024;
+   trx.max_cpu_usage_ms = tx_max_net_usage;
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
@@ -413,12 +413,13 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
                         config::system_account_name, N(buyrambytes), act_payload);
 }
 
-chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu) {
+chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu, bool transfer) {
    fc::variant act_payload = fc::mutable_variant_object()
          ("from", from.to_string())
          ("receiver", receiver.to_string())
          ("stake_net_quantity", net.to_string())
-         ("stake_cpu_quantity", cpu.to_string());
+         ("stake_cpu_quantity", cpu.to_string())
+         ("transfer", transfer);
    return create_action(tx_permission.empty() ? vector<chain::permission_level>{{from,config::active_name}} : get_account_permissions(tx_permission),
                         config::system_account_name, N(delegatebw), act_payload);
 }
@@ -754,6 +755,7 @@ struct create_account_subcommand {
    string stake_cpu;
    uint32_t buy_ram_bytes_in_kbytes = 8;
    string buy_ram_eos;
+   bool transfer;
    bool simple;
 
    create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
@@ -772,6 +774,8 @@ struct create_account_subcommand {
                                    (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
          createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
                                    (localized("The amount of RAM bytes to purchase for the new account in EOS")));
+         createAccount->add_flag("--transfer", transfer,
+                                 (localized("Transfer?")));
       }
 
       add_standard_transaction_options(createAccount);
@@ -788,7 +792,7 @@ struct create_account_subcommand {
             if (!simple) {
                action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
-               action delegate = create_delegate( creator, account_name, to_asset(stake_net), to_asset(stake_cpu) );
+               action delegate = create_delegate( creator, account_name, to_asset(stake_net), to_asset(stake_cpu), transfer);
                send_actions( { create, buyram, delegate } );
             } else {
                send_actions( { create } );
@@ -1979,7 +1983,7 @@ int main( int argc, char** argv ) {
       trx.ref_block_num = 0;
       trx.ref_block_prefix = 0;
       trx.max_net_usage_words = 0;
-      trx.max_kcpu_usage = 0;
+      trx.max_cpu_usage_ms = 0;
       trx.delay_sec = 0;
       trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
 

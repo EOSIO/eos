@@ -50,7 +50,8 @@ namespace eosio { namespace chain {
       uint64_t trx_specified_net_usage_limit = static_cast<uint64_t>(trx.max_net_usage_words.value)*8;
       if( trx_specified_net_usage_limit > 0 )
          max_net = std::min( max_net, trx_specified_net_usage_limit );
-      uint64_t trx_specified_cpu_usage_limit = static_cast<uint64_t>(trx.max_kcpu_usage.value)*1024;
+
+      uint64_t trx_specified_cpu_usage_limit = 1000 * uint64_t( trx.max_cpu_usage_ms );
       if( trx_specified_cpu_usage_limit > 0 )
          max_cpu = std::min( max_cpu, trx_specified_cpu_usage_limit );
 
