@@ -230,7 +230,7 @@ string generate_nonce_string() {
 }
 
 chain::action generate_nonce_action() {
-   return chain::action( {}, config::nobody_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
+   return chain::action( {}, config::null_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
 fc::variant determine_required_keys(const signed_transaction& trx) {
