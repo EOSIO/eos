@@ -186,8 +186,12 @@ class producer_plugin_impl {
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
-            // restart our production loop
-            schedule_production_loop();
+            if (!_producers.empty()) {
+               // restart our production loop
+               schedule_production_loop();
+            } else {
+               start_block();
+            }
          });
 
          // push the new block
@@ -381,8 +385,10 @@ void producer_plugin::plugin_startup()
          //_production_skip_flags |= eosio::chain::skip_undo_history_check;
       }
       my->schedule_production_loop();
-   } else
-      elog("No producers configured! Please add producer IDs and private keys to configuration.");
+   } else {
+      ilog("No producers configured! Starting as a validator");
+      my->start_block();
+   }
 
    ilog("producer plugin:  plugin_startup() end");
 } FC_CAPTURE_AND_RETHROW() }
@@ -412,9 +418,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
            ("t", config::block_interval_us/10)("bt", block_time));
       block_time += fc::microseconds(config::block_interval_us);
    }
-
-   static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
-   _timer.expires_at( epoch + boost::posix_time::microseconds(block_time.time_since_epoch().count()));
 
    try {
       // determine how many blocks this producer can confirm
@@ -509,6 +512,8 @@ void producer_plugin_impl::schedule_production_loop() {
       break;
    case start_block_result::failed:
       elog("Failed to start a pending block, will try again later");
+      _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
+
       // we failed to start a block, so try again later?
       _timer.async_wait([&](const boost::system::error_code& ec) {
          if (ec != boost::asio::error::operation_aborted) {
@@ -517,6 +522,10 @@ void producer_plugin_impl::schedule_production_loop() {
       });
       break;
    case start_block_result::succeeded:
+      static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
+      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count()));
+
       //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
       _timer.async_wait([&](const boost::system::error_code& ec) {
          if (ec != boost::asio::error::operation_aborted) {
