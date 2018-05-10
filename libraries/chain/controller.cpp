@@ -103,12 +103,6 @@ struct controller_impl {
    SET_APP_HANDLER( eosio, eosio, deleteauth );
    SET_APP_HANDLER( eosio, eosio, linkauth );
    SET_APP_HANDLER( eosio, eosio, unlinkauth );
-/*
-   SET_APP_HANDLER( eosio, eosio, postrecovery );
-   SET_APP_HANDLER( eosio, eosio, passrecovery );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery );
-*/
-
    SET_APP_HANDLER( eosio, eosio, canceldelay );
 
    fork_db.irreversible.connect( [&]( auto b ) {
@@ -431,12 +425,6 @@ struct controller_impl {
       db.remove( gto );
    }
 
-   bool failure_is_subjective( const fc::exception& e ) {
-      auto code = e.code();
-      return (code == tx_soft_net_usage_exceeded::code_value) ||
-             (code == tx_deadline_exceeded::code_value);
-   }
-
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
       const auto& idx = db.get_index<generated_transaction_multi_index,by_trx_id>();
       auto itr = idx.find( trxid );
@@ -500,7 +488,7 @@ struct controller_impl {
 
       // Only soft or hard failure logic below:
 
-      if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gto.sender != account_name() && !controller::failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          edump((trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trx_context.start, trx_context.billed_cpu_time_us );
@@ -519,7 +507,7 @@ struct controller_impl {
       resource_limits.add_transaction_usage( bill_to_accounts, trx_context.billed_cpu_time_us, 0,
                                              block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
-      if (failure_is_subjective(*trace->except)) {
+      if (controller::failure_is_subjective(*trace->except)) {
          // this is a subjective failure, don't remove the retained state so it can be
          // retried at a later time and don't include any artifact of the transaction in the pending block
          remove_retained_state.cancel();
@@ -1068,6 +1056,12 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
    return my->push_scheduled_transaction( trxid, deadline, 0 );
+}
+
+bool controller::failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
+   auto code = e.code();
+   return (code == tx_soft_net_usage_exceeded::code_value) ||
+          (code == tx_deadline_exceeded::code_value && deadline_is_subjective);
 }
 
 uint32_t controller::head_block_num()const {

@@ -93,6 +93,14 @@ namespace eosio { namespace chain {
           */
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline );
 
+         /**
+          * Evaluate exception (i.e. trace->except) to determine if subjective failure for determination of retry.
+          * @param e the exception to evaluate
+          * @param deadline_is_subjective true if tx_deadline_exceeded exception should be considered subjective
+          * @return true if subjective exception, false otherwise
+          */
+         static bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective = true);
+
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void commit_block();
