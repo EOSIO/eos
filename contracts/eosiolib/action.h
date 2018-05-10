@@ -9,14 +9,14 @@ extern "C" {
    /**
     * @defgroup actionapi Action API
     * @ingroup contractdev
-    * @brief Define API for querying action properties
+    * @brief Defines API for  for querying action and sending action
     *
     */
 
    /**
     * @defgroup actioncapi Action C API
     * @ingroup actionapi
-    * @brief Define API for querying action properties
+    * @brief Defines API for querying action and sending action
     *
     *
     * A EOS.IO action has the following abstract structure:

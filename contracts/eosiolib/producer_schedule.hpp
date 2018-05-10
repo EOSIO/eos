@@ -7,7 +7,7 @@ namespace eosio {
    /**
    *  @defgroup producertype Producer Type
    *  @ingroup types
-   *  @brief Specifies Producer Type
+   *  @brief Defines producer type
    *
    *  @{
    */

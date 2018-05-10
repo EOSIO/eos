@@ -9,7 +9,7 @@ namespace eosio {
   /**
    *  @defgroup asset Asset Type
    *  @ingroup types
-   *  @brief Specifies Asset Type
+   *  @brief Defines asset type
    *
    *  @{
    */

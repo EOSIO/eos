@@ -200,7 +200,7 @@ namespace eosio {
  /**
     *  @defgroup consolecppapi Console C++ API
     *  @ingroup consoleapi
-    *  @brief C++ wrapper for Console C API
+    *  @brief Defines C++ wrapper to log/print text messages
     *
     *  This API uses C++ variadic templates and type detection to
     *  make it easy to print any native type. You can even overload

@@ -21,9 +21,9 @@
 namespace eosio {
 
 /**
- * @defgroup datastreamtype Data Stream
- * @brief A data stream for reading and writing data in the form of bytes
- * @ingroup contractdev
+ * @defgroup datastream Data Stream
+ * @brief Defines data stream for reading and writing data in the form of bytes
+ * @ingroup serialize
  * @{
  */
 
@@ -510,7 +510,6 @@ DataStream& operator >> ( DataStream& ds, T ) {
  *  @tparam DataStream - Type of datastream 
  *  @tparam T - Type of the pointer
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename T, std::size_t N,
          std::enable_if_t<!_datastream_detail::is_primitive<T>() &&
@@ -531,7 +530,6 @@ DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
  *  @tparam DataStream - Type of datastream 
  *  @tparam T - Type of the pointer
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename T, std::size_t N,
          std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
@@ -593,7 +591,6 @@ DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
  *  @param v - The value to serialize
  *  @tparam DataStream - Type of datastream 
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const vector<char>& v ) {
@@ -611,7 +608,6 @@ DataStream& operator << ( DataStream& ds, const vector<char>& v ) {
  *  @tparam DataStream - Type of datastream 
  *  @tparam T - Type of the object contained in the vector
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename T>
 DataStream& operator << ( DataStream& ds, const vector<T>& v ) {
@@ -669,7 +665,6 @@ DataStream& operator >> ( DataStream& ds, vector<T>& v ) {
  *  @tparam K - Type of the key contained in the map
  *  @tparam V - Type of the value contained in the map
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename K, typename V>
 DataStream& operator << ( DataStream& ds, const std::map<K,V>& m ) {
@@ -714,7 +709,6 @@ DataStream& operator >> ( DataStream& ds, std::map<K,V>& m ) {
  *  @tparam K - Type of the key contained in the flat map
  *  @tparam V - Type of the value contained in the flat map
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename K, typename V>
 DataStream& operator<<( DataStream& ds, const boost::container::flat_map<K,V>& m ) {
@@ -757,7 +751,6 @@ DataStream& operator>>( DataStream& ds, boost::container::flat_map<K,V>& m ) {
  *  @tparam DataStream - Type of datastream 
  *  @tparam Args - Type of the objects contained in the tuple
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename... Args>
 DataStream& operator<<( DataStream& ds, const std::tuple<Args...>& t ) {
@@ -794,7 +787,6 @@ DataStream& operator>>( DataStream& ds, std::tuple<Args...>& t ) {
  *  @tparam DataStream - Type of datastream 
  *  @tparam T - Type of class
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename T, std::enable_if_t<std::is_class<T>::value>* = nullptr>
 DataStream& operator<<( DataStream& ds, const T& v ) {
@@ -831,7 +823,6 @@ DataStream& operator>>( DataStream& ds, T& v ) {
  *  @tparam DataStream - Type of datastream 
  *  @tparam T - Type of the primitive type
  *  @return DataStream& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator<<( DataStream& ds, const T& v ) {
@@ -926,7 +917,6 @@ bytes pack( const T& value ) {
  *  @param cs - The value to serialize
  *  @tparam Stream - Type of datastream buffer
  *  @return datastream<Stream>& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum160& cs) {
@@ -957,7 +947,6 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum160& cs) {
  *  @param cs - The value to serialize
  *  @tparam Stream - Type of datastream buffer
  *  @return datastream<Stream>& - Reference to the datastream
- *  @post Throw an exception if it is a pointer
  */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum512& cs) {
@@ -979,5 +968,5 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum512& cs) {
    ds.read((char*)&cs, sizeof(cs));
    return ds;
 }
-/// @} datastreamtype
+/// @} datastream
 }

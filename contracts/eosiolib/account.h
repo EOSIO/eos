@@ -8,13 +8,13 @@
 
 /**
  *  @defgroup accountapi Account API
- *  @brief Define API for querying account data
+ *  @brief Defines API for querying account data
  *  @ingroup contractdev
  */
 
 /**
  *  @defgroup accountcapi Account C API
- *  @brief C API for querying account data
+ *  @brief Defines %C API for querying account data
  *  @ingroup accountapi
  *  @{
  */

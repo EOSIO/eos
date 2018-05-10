@@ -17,7 +17,7 @@ namespace eosio {
    /**
     * @defgroup actioncppapi Action C++ API
     * @ingroup actionapi
-    * @brief Type-safe C++ wrapers for Action C API
+    * @brief Defines type-safe C++ wrapers for querying action and sending action
     *
     * @note There are some methods from the @ref actioncapi that can be used directly from C++
     *

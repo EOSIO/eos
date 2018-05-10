@@ -5,7 +5,7 @@ namespace eosio {
 /**
  * @defgroup contracttype Contract Type
  * @ingroup types
- * @brief %Base class type for EOSIO contract
+ * @brief Defines contract type which is %base class for every EOSIO contract
  * 
  * @{
  * 

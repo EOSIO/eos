@@ -5,7 +5,7 @@
 namespace eosio {
   /**
    * @defgroup optionaltype Optional Type
-   * @brief Defines Optional Type - Similar to boost::optional 
+   * @brief Defines otional type which is similar to boost::optional 
    * @ingroup types
    * @{
    */
@@ -368,7 +368,6 @@ namespace eosio {
          * Assignment Operator with nullptr
          * 
          * @brief Assignment Operator with nullptr
-         * @param o - The other optional object to be assigned from
          * @return optional& - The reference to this object
          */
          optional& operator=(std::nullptr_t)

@@ -11,14 +11,14 @@ extern "C" {
 #endif
    /**
     *  @defgroup consoleapi Console API
-    *  @brief Enables applications to log/print text messages
+    *  @brief Defines APIs to log/print text messages
     *  @ingroup contractdev
     *
     */
 
    /**
     *  @defgroup consolecapi Console C API
-    *  @brief C API to log/print text messages
+    *  @brief Defnes %C API to log/print text messages
     *  @ingroup consoleapi
     *  @{
     */

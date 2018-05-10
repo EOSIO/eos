@@ -13,7 +13,7 @@
 namespace eosio { namespace account {
   /**
   *  @defgroup accountcppapi Account C++ API
-  *  @brief C++ API for querying account data, e.g. account balance
+  *  @brief Defines C++ API for querying account data, e.g. account balance
   *  @ingroup accountapi
   *
   * @{

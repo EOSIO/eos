@@ -7,7 +7,7 @@ namespace eosio {
    /**
    *  @defgroup publickeytype Public Key Type
    *  @ingroup types
-   *  @brief Specifies Public Key Type
+   *  @brief Specifies public key type
    *
    *  @{
    */
