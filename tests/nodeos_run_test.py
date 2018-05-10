@@ -80,9 +80,9 @@ ClientName="cleos"
 
 try:
     Print("BEGIN")
-    print("TEST_OUTPUT: %s" % (testOutputFile))
-    print("SERVER: %s" % (server))
-    print("PORT: %d" % (port))
+    Print("TEST_OUTPUT: %s" % (testOutputFile))
+    Print("SERVER: %s" % (server))
+    Print("PORT: %d" % (port))
 
     if enableMongo and not cluster.isMongodDbRunning():
         errorExit("MongoDb doesn't seem to be running.")
@@ -304,55 +304,57 @@ try:
     assert(actions)
     try:
         assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-    except AssertionError as e:
-        print("Last action validation failed. Actions: %s" % (actions))
+    except (AssertionError, KeyError) as e:
+        Print("Last action validation failed. Actions: %s" % (actions))
         raise
 
     # Pre-mature exit on slim branch. This will pushed futher out as code stablizes.
-    testSuccessful=True
-    exit(0)
+    # testSuccessful=True
+    # exit(0)
 
-    expectedAccounts=[testeraAccount.name, currencyAccount.name, exchangeAccount.name]
-    Print("Get accounts by key %s, Expected: %s" % (PUB_KEY3, expectedAccounts))
-    actualAccounts=node.getAccountsArrByKey(PUB_KEY3)
-    if actualAccounts is None:
-        cmdError("%s get accounts pub_key3" % (ClientName))
-        errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY3))
-    noMatch=list(set(expectedAccounts) - set(actualAccounts))
-    if len(noMatch) > 0:
-        errorExit("FAILURE - Accounts lookup by key %s. Expected: %s, Actual: %s" % (
-            PUB_KEY3, expectedAccounts, actualAccounts), raw=True)
-
-    expectedAccounts=[testeraAccount.name]
-    Print("Get accounts by key %s, Expected: %s" % (PUB_KEY1, expectedAccounts))
-    actualAccounts=node.getAccountsArrByKey(PUB_KEY1)
-    if actualAccounts is None:
-        cmdError("%s get accounts pub_key1" % (ClientName))
-        errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY1))
-    noMatch=list(set(expectedAccounts) - set(actualAccounts))
-    if len(noMatch) > 0:
-        errorExit("FAILURE - Accounts lookup by key %s. Expected: %s, Actual: %s" % (
-            PUB_KEY1, expectedAccounts, actualAccounts), raw=True)
-
-    expectedServants=[testeraAccount.name, currencyAccount.name]
-    Print("Get %s servants, Expected: %s" % (initaAccount.name, expectedServants))
-    actualServants=node.getServantsArr(initaAccount.name)
-    if actualServants is None:
-        cmdError("%s get servants testera" % (ClientName))
-        errorExit("Failed to retrieve %s servants" % (initaAccount.name))
-    noMatch=list(set(expectedAccounts) - set(actualAccounts))
-    if len(noMatch) > 0:
-        errorExit("FAILURE - %s servants. Expected: %s, Actual: %s" % (
-            initaAccount.name, expectedServants, actualServants), raw=True)
-
-    Print("Get %s servants, Expected: []" % (testeraAccount.name))
-    actualServants=node.getServantsArr(testeraAccount.name)
-    if actualServants is None:
-        cmdError("%s get servants testera" % (ClientName))
-        errorExit("Failed to retrieve %s servants" % (testeraAccount.name))
-    if len(actualServants) > 0:
-        errorExit("FAILURE - %s servants. Expected: [], Actual: %s" % (
-            testeraAccount.name, actualServants), raw=True)
+    # This API (get accounts) is no longer supported (Issue 2876)
+    # expectedAccounts=[testeraAccount.name, currencyAccount.name, exchangeAccount.name]
+    # Print("Get accounts by key %s, Expected: %s" % (PUB_KEY3, expectedAccounts))
+    # actualAccounts=node.getAccountsArrByKey(PUB_KEY3)
+    # if actualAccounts is None:
+    #     cmdError("%s get accounts pub_key3" % (ClientName))
+    #     errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY3))
+    # noMatch=list(set(expectedAccounts) - set(actualAccounts))
+    # if len(noMatch) > 0:
+    #     errorExit("FAILURE - Accounts lookup by key %s. Expected: %s, Actual: %s" % (
+    #         PUB_KEY3, expectedAccounts, actualAccounts), raw=True)
+    #
+    # expectedAccounts=[testeraAccount.name]
+    # Print("Get accounts by key %s, Expected: %s" % (PUB_KEY1, expectedAccounts))
+    # actualAccounts=node.getAccountsArrByKey(PUB_KEY1)
+    # if actualAccounts is None:
+    #     cmdError("%s get accounts pub_key1" % (ClientName))
+    #     errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY1))
+    # noMatch=list(set(expectedAccounts) - set(actualAccounts))
+    # if len(noMatch) > 0:
+    #     errorExit("FAILURE - Accounts lookup by key %s. Expected: %s, Actual: %s" % (
+    #         PUB_KEY1, expectedAccounts, actualAccounts), raw=True)
+    #
+    # This API (get servants) is no longer supported.
+    # expectedServants=[testeraAccount.name, currencyAccount.name]
+    # Print("Get %s servants, Expected: %s" % (initaAccount.name, expectedServants))
+    # actualServants=node.getServantsArr(initaAccount.name)
+    # if actualServants is None:
+    #     cmdError("%s get servants testera" % (ClientName))
+    #     errorExit("Failed to retrieve %s servants" % (initaAccount.name))
+    # noMatch=list(set(expectedAccounts) - set(actualAccounts))
+    # if len(noMatch) > 0:
+    #     errorExit("FAILURE - %s servants. Expected: %s, Actual: %s" % (
+    #         initaAccount.name, expectedServants, actualServants), raw=True)
+    #
+    # Print("Get %s servants, Expected: []" % (testeraAccount.name))
+    # actualServants=node.getServantsArr(testeraAccount.name)
+    # if actualServants is None:
+    #     cmdError("%s get servants testera" % (ClientName))
+    #     errorExit("Failed to retrieve %s servants" % (testeraAccount.name))
+    # if len(actualServants) > 0:
+    #     errorExit("FAILURE - %s servants. Expected: [], Actual: %s" % (
+    #         testeraAccount.name, actualServants), raw=True)
 
     node.waitForTransIdOnNode(transId)
 
@@ -367,25 +369,31 @@ try:
 
     typeVal=None
     amountVal=None
-    if not enableMongo:
-        typeVal=  transaction["transaction"]["transaction"]["actions"][0]["name"]
-        amountVal=transaction["transaction"]["transaction"]["actions"][0]["data"]["quantity"]
-        amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
-    else:
-        typeVal=  transaction["name"]
-        amountVal=transaction["data"]["quantity"]
-        amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+    assert(transaction)
+    try:
+        if not enableMongo:
+            typeVal=  transaction["traces"][0]["act"]["name"]
+            amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
+            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+        else:
+            typeVal=  transaction["name"]
+            amountVal=transaction["data"]["quantity"]
+            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+    except (AssertionError, KeyError) as e:
+        Print("Transaction validation parsing failed. Transaction: %s" % (transaction))
+        raise
 
     if typeVal != "transfer" or amountVal != 975311:
         errorExit("FAILURE - get transaction trans_id failed: %s %s %s" % (transId, typeVal, amountVal), raw=True)
 
-    Print("Get transactions for account %s" % (testeraAccount.name))
-    actualTransactions=node.getTransactionsArrByAccount(testeraAccount.name)
-    if actualTransactions is None:
-        cmdError("%s get transactions testera" % (ClientName))
-        errorExit("Failed to get transactions by account %s" % (testeraAccount.name))
-    if transId not in actualTransactions:
-        errorExit("FAILURE - get transactions testera failed", raw=True)
+    # This API (get transactions) is no longer supported.
+    # Print("Get transactions for account %s" % (testeraAccount.name))
+    # actualTransactions=node.getTransactionsArrByAccount(testeraAccount.name)
+    # if actualTransactions is None:
+    #     cmdError("%s get transactions testera" % (ClientName))
+    #     errorExit("Failed to get transactions by account %s" % (testeraAccount.name))
+    # if transId not in actualTransactions:
+    #     errorExit("FAILURE - get transactions testera failed", raw=True)
 
     Print("Currency Contract Tests")
     Print("verify no contract in place")
@@ -456,13 +464,10 @@ try:
         errorExit("FAILURE - Wrong currency balance", raw=True)
 
     Print("Verify currency contract has proper initial balance (via get currency balance)")
-    res=node.getCurrencyBalance(contract, currencyAccount.name, "CUR")
-    if res is None:
-        cmdError("%s get currency balance" % (ClientName))
-        errorExit("Failed to retrieve CUR balance from contract %s account %s" % (contract, currencyAccount.name))
+    amountStr=node.getNodeAccountBalance("currency", currencyAccount.name)
 
     expected="100000.0000 CUR"
-    actual=res.strip()
+    actual=amountStr
     if actual != expected:
         errorExit("FAILURE - get currency balance failed. Recieved response: <%s>" % (res), raw=True)
 
@@ -494,27 +499,17 @@ try:
         errorExit("Failed to verify push message transaction id.")
 
     Print("read current contract balance")
-    contract="currency"
-    table="accounts"
-    row0=node.getTableRow(contract, initaAccount.name, table, 0)
-    if row0 is None:
-        cmdError("%s get currency table inita account" % (ClientName))
-        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+    amountStr=node.getNodeAccountBalance("currency", initaAccount.name) 
 
-    balanceKey="balance"
-    keyKey="key"
     expected="0.0050 CUR"
-    actual=row0[balanceKey]
+    actual=amountStr
     if actual != expected:
         errorExit("FAILURE - Wrong currency balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
 
-    row0=node.getTableRow(contract, currencyAccount.name, table, 0)
-    if row0 is None:
-        cmdError("%s get currency table currency account" % (ClientName))
-        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+    amountStr=node.getNodeAccountBalance("currency", currencyAccount.name) 
 
     expected="99999.9950 CUR"
-    actual=row0[balanceKey]
+    actual=amountStr
     if actual != expected:
         errorExit("FAILURE - Wrong currency balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
 
@@ -608,7 +603,7 @@ try:
             #         errorExit("mongo get messages by transaction id %s" % (transId))
 
 
-    Print("Request invalid block numbered %d" % (currentBlockNum+1000))
+    Print("Request invalid block numbered %d. This will generate an extpected error message." % (currentBlockNum+1000))
     block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
