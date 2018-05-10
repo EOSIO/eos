@@ -34,10 +34,8 @@ static inline void print_debug(account_name receiver, const action_trace& ar) {
 action_trace apply_context::exec_one()
 {
    auto start = fc::time_point::now();
-   cpu_usage = 0;
-   cpu_usage_limit = trx_context.get_action_cpu_usage_limit( context_free );
+
    const auto& cfg = control.get_global_properties().configuration;
-   checktime( cfg.base_per_action_cpu_usage );
    try {
       const auto &a = control.get_account(receiver);
       privileged = a.privileged;
@@ -53,6 +51,7 @@ action_trace apply_context::exec_one()
          } catch ( const wasm_exit& ){}
       }
 
+
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
    action_receipt r;
@@ -65,13 +64,9 @@ action_trace apply_context::exec_one()
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
-   cpu_usage = trx_context.add_action_cpu_usage( cpu_usage, context_free );
-
    action_trace t(r);
    t.trx_id = trx_context.id;
    t.act = act;
-   t.cpu_usage = cpu_usage;
-   t.total_cpu_usage = cpu_usage;
    t.console = _pending_console_output.str();
 
    trx_context.executed.emplace_back( move(r) );
@@ -91,7 +86,6 @@ void apply_context::exec()
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       receiver = _notified[i];
       trace.inline_traces.emplace_back( exec_one() );
-      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
    if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
@@ -102,13 +96,11 @@ void apply_context::exec()
    for( const auto& inline_action : _cfa_inline_actions ) {
       trace.inline_traces.emplace_back();
       trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, true, recurse_depth + 1 );
-      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
    for( const auto& inline_action : _inline_actions ) {
       trace.inline_traces.emplace_back();
       trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, false, recurse_depth + 1 );
-      trace.total_cpu_usage += trace.inline_traces.back().total_cpu_usage;
    }
 
 } /// exec()
@@ -362,8 +354,6 @@ void apply_context::reset_console() {
 }
 
 void apply_context::checktime(uint32_t instruction_count) {
-   cpu_usage += instruction_count;
-   EOS_ASSERT( BOOST_LIKELY(cpu_usage <= cpu_usage_limit), action_cpu_usage_exceeded, "action cpu usage exceeded" );
    trx_context.check_time();
 }
 

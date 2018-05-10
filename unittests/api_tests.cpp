@@ -655,8 +655,11 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
    TESTER t;
    t.produce_blocks(2);
 
+   ilog( "create account" );
    t.create_account( N(testapi) );
+   ilog( "set code" );
    t.set_code( N(testapi), test_api_wast );
+   ilog( "produce block" );
    t.produce_blocks(1);
 
    auto call_test = [](TESTER& test, auto ac) {
@@ -664,6 +667,8 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
       action act(pl, ac);
+
+   ilog( "call test" );
 
       trx.actions.push_back(act);
       test.set_transaction_headers(trx);
@@ -674,7 +679,8 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       test.produce_block();
    };
 
-   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), tx_cpu_usage_exceeded, is_tx_cpu_usage_exceeded /*tx_deadline_exceeded, is_tx_deadline_exceeded*/);
+
+   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), tx_deadline_exceeded, is_tx_cpu_usage_exceeded /*tx_deadline_exceeded, is_tx_deadline_exceeded*/);
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }

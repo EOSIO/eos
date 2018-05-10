@@ -633,7 +633,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
          count++;
-      } catch (eosio::chain::tx_cpu_usage_exceeded &) {
+      } catch (eosio::chain::tx_deadline_exceeded &) {
          BOOST_REQUIRE_EQUAL(count, 3);
          break;
       }

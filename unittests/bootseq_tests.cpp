@@ -261,7 +261,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                     );
         }
 
-        produce_blocks(10);
+        produce_blocks(10000);
 
         for( auto pro : { N(p1), N(p2), N(p3), N(p4), N(p5) } ) {
            base_tester::push_action(N(eosio), N(regproducer), pro, mutable_variant_object()
@@ -270,7 +270,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                        ("url", "" )
                     );
         }
-        produce_blocks(100);
+        produce_blocks(10);
 
         auto votepro = [&]( account_name voter, vector<account_name> producers ) {
           std::sort( producers.begin(), producers.end() );
