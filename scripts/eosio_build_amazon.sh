@@ -1,6 +1,6 @@
 	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
 
-	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
+	MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
