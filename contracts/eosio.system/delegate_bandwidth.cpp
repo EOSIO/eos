@@ -182,7 +182,7 @@ namespace eosiosystem {
     *  refunds the purchase price to the account. In this way there is no profit to be made through buying
     *  and selling ram.
     */
-   void system_contract::sellram( account_name account, uint32_t bytes ) {
+   void system_contract::sellram( account_name account, uint64_t bytes ) {
       require_auth( account );
 
       user_resources_table  userres( _self, account );
