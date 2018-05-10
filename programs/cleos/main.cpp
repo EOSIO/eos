@@ -157,7 +157,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 
-uint32_t tx_max_cpu_usage = 0;
+uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
 
 vector<string> tx_permission;
@@ -185,7 +185,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       msg += " (defaults to '" + default_permission + "')";
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 
-   cmd->add_option("--max-cpu-usage", tx_max_cpu_usage, localized("set an upper limit on the cpu usage budget, in instructions-retired, for the execution of the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 }
 
@@ -277,7 +277,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    auto required_keys = determine_required_keys(trx);
    size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
 
-   trx.max_kcpu_usage = (tx_max_cpu_usage + 1023)/1024;
+   trx.max_cpu_usage_ms = tx_max_net_usage;
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
@@ -1983,7 +1983,7 @@ int main( int argc, char** argv ) {
       trx.ref_block_num = 0;
       trx.ref_block_prefix = 0;
       trx.max_net_usage_words = 0;
-      trx.max_kcpu_usage = 0;
+      trx.max_cpu_usage_ms = 0;
       trx.delay_sec = 0;
       trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
 

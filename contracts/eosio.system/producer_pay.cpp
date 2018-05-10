@@ -29,11 +29,11 @@ namespace eosiosystem {
       using namespace eosio;
 
       /** until activated stake crosses this threshold no new rewards are paid */
-      if( _gstate.total_activated_stake < 1500000000000 /* 150'000'000'0000 */ )
+      if( _gstate.total_activated_stake < 150'000'000'0000 )
          return;
 
       if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
-         _gstate.last_pervote_bucket_fill = timestamp;
+         _gstate.last_pervote_bucket_fill = current_time();
 
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
@@ -50,9 +50,10 @@ namespace eosiosystem {
 
    }
    
-   eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& eos_bucket ) {
+   eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket ) {
       eosio::asset payment(0, S(4,EOS));
-      if ( eos_bucket.amount < min_daily_tokens ) {
+      const int64_t min_daily_amount = 100 * 10000;
+      if ( pervote_bucket.amount < min_daily_tokens ) {
          return payment;
       }
       
@@ -74,8 +75,8 @@ namespace eosiosystem {
          }
          
          total_producer_votes += itr->total_votes;
-         running_payment_amount = (itr->total_votes) * double(eos_bucket.amount) / total_producer_votes;
-         if ( running_payment_amount < min_daily_tokens ) {
+         running_payment_amount = (itr->total_votes) * double(pervote_bucket.amount) / total_producer_votes;
+         if ( running_payment_amount < min_daily_amount ) {
             if ( itr->owner == owner ) {
                to_be_payed = false;
             }
@@ -85,7 +86,7 @@ namespace eosiosystem {
       }
       
       if ( to_be_payed ) {
-         payment.amount = static_cast<int64_t>( (double(eos_bucket.amount) * owners_votes) / total_producer_votes );
+         payment.amount = static_cast<int64_t>( (double(pervote_bucket.amount) * owners_votes) / total_producer_votes );
       }
       
       return payment;
@@ -102,24 +103,29 @@ namespace eosiosystem {
          eosio_assert(current_time() >= prod->last_claim_time + useconds_per_day, "already claimed rewards within a day");
       }
 
-      auto parameters = _global.get();
       const asset token_supply = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
-      const uint32_t secs_since_last_fill = static_cast<uint32_t>( (current_time() - parameters.last_pervote_bucket_fill) / 1000000 );
+      const uint32_t secs_since_last_fill = static_cast<uint32_t>( (current_time() - _gstate.last_pervote_bucket_fill) / 1000000 );
 
-      const asset to_eos_bucket = supply_growth( standby_rate, token_supply, secs_since_last_fill );
+      const asset to_pervote_bucket = supply_growth( standby_rate, token_supply, secs_since_last_fill );
       const asset to_savings    = supply_growth( continuous_rate - (perblock_rate + standby_rate), token_supply, secs_since_last_fill );
       const asset perblock_pay  = payment_per_block( perblock_rate, token_supply, prod->produced_blocks );
-      const asset issue_amount  = to_eos_bucket + to_savings + perblock_pay;
+      const asset issue_amount  = to_pervote_bucket + to_savings + perblock_pay;
+      
+      const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_pervote_bucket + _gstate.pervote_bucket );
+
+      if ( perblock_pay.amount + pervote_pay.amount == 0 ) {
+         _producers.modify( prod, 0, [&](auto& p) {
+               p.last_claim_time = current_time();
+            });
+         return;
+      }
       
       INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
                                                  {N(eosio), issue_amount, std::string("issue tokens for producer pay and savings")} );
 
-      const asset pervote_pay = payment_per_vote( owner, prod->total_votes, to_eos_bucket + parameters.eos_bucket );
-
-      parameters.eos_bucket += ( to_eos_bucket - pervote_pay );
-      parameters.last_pervote_bucket_fill = current_time();
-      parameters.savings += to_savings;
-      _global.set( parameters, _self );
+      _gstate.pervote_bucket          += ( to_pervote_bucket - pervote_pay );
+      _gstate.last_pervote_bucket_fill = current_time();
+      _gstate.savings                 += to_savings;
       
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
                                                     { N(eosio), owner, perblock_pay + pervote_pay, std::string("producer claiming rewards") } );

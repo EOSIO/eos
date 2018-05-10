@@ -32,7 +32,7 @@ namespace eosio { namespace chain {
       uint16_t               ref_block_num       = 0U; ///< specifies a block num in the last 2^16 blocks.
       uint32_t               ref_block_prefix    = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
       fc::unsigned_int       max_net_usage_words = 0UL; /// upper limit on total network bandwidth (in 8 byte words) billed for this transaction
-      fc::unsigned_int       max_kcpu_usage      = 0UL; /// upper limit on the total number of kilo CPU usage units billed for this transaction
+      uint8_t                max_cpu_usage_ms    = 0UL; /// upper limit on the total number of kilo CPU usage units billed for this transaction
       fc::unsigned_int       delay_sec           = 0UL; /// number of seconds to delay this transaction for during which it may be canceled.
 
       /**
@@ -187,7 +187,7 @@ namespace eosio { namespace chain {
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
-                                              (max_net_usage_words)(max_kcpu_usage)(delay_sec) )
+                                              (max_net_usage_words)(max_cpu_usage_ms)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))

@@ -128,6 +128,13 @@ struct shared_authority {
    }
 };
 
+namespace config {
+   template<>
+   struct billable_size<shared_authority> {
+      static const uint64_t value = (3 * config::fixed_overhead_shared_vector_ram_bytes) + 4;
+   };
+}
+
 /**
  * Makes sure all keys are unique and sorted and all account permissions are unique and sorted and that authority can
  * be satisfied

@@ -35,15 +35,22 @@ namespace eosio { namespace chain {
                                                                       time_point initial_creation_time
                                                                     )
    {
+      auto creation_time = initial_creation_time;
+      if( creation_time == time_point() ) {
+         creation_time = _control.pending_block_time();
+      }
+
+      const auto& perm_usage = _db.create<permission_usage_object>([&](auto& p) {
+         p.last_used = creation_time;
+      });
+
       const auto& perm = _db.create<permission_object>([&](auto& p) {
-         p.name   = name;
-         p.parent = parent;
-         p.owner  = account;
-         p.auth   = auth;
-         if( initial_creation_time == time_point())
-            p.last_updated = _control.pending_block_time();
-         else
-            p.last_updated = initial_creation_time;
+         p.usage_id     = perm_usage.id;
+         p.parent       = parent;
+         p.owner        = account;
+         p.name         = name;
+         p.last_updated = creation_time;
+         p.auth         = auth;
       });
       return perm;
    }
@@ -55,17 +62,52 @@ namespace eosio { namespace chain {
                                                                       time_point initial_creation_time
                                                                     )
    {
+      auto creation_time = initial_creation_time;
+      if( creation_time == time_point() ) {
+         creation_time = _control.pending_block_time();
+      }
+
+      const auto& perm_usage = _db.create<permission_usage_object>([&](auto& p) {
+         p.last_used = creation_time;
+      });
+
       const auto& perm = _db.create<permission_object>([&](auto& p) {
-         p.name   = name;
-         p.parent = parent;
-         p.owner  = account;
-         p.auth   = std::move(auth);
-         if( initial_creation_time == time_point())
-            p.last_updated = _control.pending_block_time();
-         else
-            p.last_updated = initial_creation_time;
+         p.usage_id     = perm_usage.id;
+         p.parent       = parent;
+         p.owner        = account;
+         p.name         = name;
+         p.last_updated = creation_time;
+         p.auth         = std::move(auth);
       });
       return perm;
+   }
+
+   void authorization_manager::modify_permission( const permission_object& permission, const authority& auth ) {
+      _db.modify( permission, [&](permission_object& po) {
+         po.auth = auth;
+         po.last_updated = _control.pending_block_time();
+      });
+   }
+
+   void authorization_manager::remove_permission( const permission_object& permission ) {
+      const auto& index = _db.template get_index<permission_index, by_parent>();
+      auto range = index.equal_range(permission.id);
+      EOS_ASSERT( range.first == range.second, action_validate_exception,
+                  "Cannot remove a permission which has children. Remove the children first.");
+
+      _db.get_mutable_index<permission_usage_index>().remove_object( permission.usage_id._id );
+      _db.remove( permission );
+   }
+
+   void authorization_manager::update_permission_usage( const permission_object& permission ) {
+      const auto& puo = _db.get<permission_usage_object, by_id>( permission.usage_id );
+      _db.modify( puo, [&](permission_usage_object& p) {
+         p.last_used = _control.pending_block_time();
+      });
+   }
+
+   fc::time_point authorization_manager::get_permission_last_used( const permission_object& permission )const {
+      return _db.get<permission_usage_object, by_id>( permission.usage_id ).last_used;
    }
 
    const permission_object*  authorization_manager::find_permission( const permission_level& level )const
