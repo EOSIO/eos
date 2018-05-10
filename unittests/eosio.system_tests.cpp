@@ -412,6 +412,10 @@ fc::mutable_variant_object voter( account_name acct, const string& vote_stake ) 
    return voter( acct )( "staked", asset::from_string( vote_stake ).amount );
 }
 
+fc::mutable_variant_object voter( account_name acct, int64_t vote_stake ) {
+   return voter( acct )( "staked", vote_stake );
+}
+
 fc::mutable_variant_object proxy( account_name acct ) {
    return voter( acct )( "is_proxy", 1 );
 }
@@ -1132,7 +1136,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_register_unregister_keeps_stake, eosio_system_tes
    issue( "carol", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "carol", "246.0002 EOS", "531.0001 EOS" ) );
    //check that both proxy flag and stake a correct
-   REQUIRE_MATCHING_OBJECT( proxy( "carol" )( "staked", "777.0003 EOS" ), get_voter_info( "carol" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "carol" )( "staked", 7770003 ), get_voter_info( "carol" ) );
 
    //unregister
    BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(regproxy), mvo()
@@ -1806,33 +1810,33 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
                                                 ("producers", vector<account_name>() )
                         )
    );
-   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_vote_weight", stake2votes( "150.0003 EOS" ))( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //double regestering should fail without affecting total votes and stake
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account is already a proxy" ),
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: action has no effect" ),
                         push_action( N(alice), N(regproxy), mvo()
                                      ("proxy",  "alice")
                                      ("isproxy",  1)
                         )
    );
-   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_vote_weight", stake2votes("150.0003 EOS") )( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //uregister
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(unregproxy), mvo()
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
                                                 ("proxy",  "alice")
                                                 ("isproxy",  0)
                         )
    );
-   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_vote_weight", stake2votes("150.0003 EOS") )( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //double unregistering should not affect proxied_votes and stake
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account is not a proxy" ),
-                        push_action( N(alice), N(unregproxy), mvo()
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: action has no effect" ),
+                        push_action( N(alice), N(regproxy), mvo()
                                      ("proxy",  "alice")
                                      ("isproxy",  0)
                         )
    );
-   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_vote_weight", stake2votes("150.0003 EOS"))( "staked", 100000 ), get_voter_info( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -1879,7 +1883,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
    );
 
    //proxy should not be able to use itself as a proxy
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account registered as a proxy is not allowed to use a proxy" ),
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: cannot proxy to self" ),
                         push_action( N(bob), N(voteproducer), mvo()
                                      ("voter",  "bob")
                                      ("proxy", "bob" )
