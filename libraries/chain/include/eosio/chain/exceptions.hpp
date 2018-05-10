@@ -191,6 +191,10 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( wasm_serialization_error, wasm_exception,
                                     3070003, "Serialization Error Processing WASM" )
 
+      FC_DECLARE_DERIVED_EXCEPTION( overlapping_memory_error, wasm_exception,
+                                    3070004, "memcpy with overlapping memory" )
+
+
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception,
                                  3080000, "resource exhausted exception" )
