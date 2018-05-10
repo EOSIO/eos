@@ -405,7 +405,7 @@ struct controller_impl {
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
-         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail, 
+         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -1062,12 +1062,12 @@ void controller::push_confirmation( const header_confirmation& c ) {
    my->push_confirmation( c );
 }
 
-transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline ) {
-   return my->push_transaction(trx, deadline, false, 0);
+transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+   return my->push_transaction(trx, deadline, false, billed_cpu_time_us);
 }
 
-transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
-   return my->push_scheduled_transaction( trxid, deadline, 0 );
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us );
 }
 
 uint32_t controller::head_block_num()const {
