@@ -3,6 +3,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
@@ -1973,8 +1974,10 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 3) );
 
-   issue( "alice", "1000.0000 EOS",  config::system_account_name );
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "100.0000 EOS", "50.0000 EOS" ) );
+   //stake more than 15% of total EOS supply to activate chain
+   transfer( "eosio", "alice", "600000000.0000 EOS", "eosio" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "alice", "300000000.0000 EOS", "300000000.0000 EOS" ) );
+   //                                                           1000000000.0000
    //vote for producers
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(voteproducer), mvo()
                                                ("voter",  "alice")
