@@ -78,7 +78,7 @@ namespace proxy {
       configs::store(code_config, self);
 
       eosio::print("Resending Transaction: ", error.sender_id, " as ", id, "\n");
-      transaction dtrx = error.sent_trx;
+      transaction dtrx = error.unpack_sent_trx();
       dtrx.delay_sec = code_config.delay;
       dtrx.send(id, self);
    }

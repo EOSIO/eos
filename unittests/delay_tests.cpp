@@ -72,7 +72,13 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
    auto trace = push_transaction( trx );
    edump((*trace));
 
-   produce_blocks(8);
+   produce_blocks(6);
+
+   auto scheduled_trxs = control->get_scheduled_transactions();
+   BOOST_REQUIRE_EQUAL(scheduled_trxs.size(), 1);
+   auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum());
+   BOOST_REQUIRE_EQUAL(dtrace->except.valid(), true);
+   BOOST_REQUIRE_EQUAL(dtrace->except->code(), missing_auth_exception::code_value);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1137,18 +1143,22 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    BOOST_REQUIRE_EXCEPTION(
-      chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
+      chain.push_action( config::system_account_name, linkauth::get_name(),
+                         vector<permission_level>{permission_level{tester_account, N(first)}},
+                         fc::mutable_variant_object()
       ("account", "tester")
       ("code", eosio_token)
       ("type", "transfer")
       ("requirement", "second"),
       30, 3),
-      insufficient_delay_exception,
-      fc_exception_message_starts_with("authorization imposes a delay")
+      unsatisfied_authorization,
+      fc_exception_message_starts_with("transaction declares authority")
    );
 
    // this transaction will be delayed 20 blocks
-   chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
+   chain.push_action( config::system_account_name, linkauth::get_name(),
+                      vector<permission_level>{{tester_account, N(first)}},
+                      fc::mutable_variant_object()
            ("account", "tester")
            ("code", eosio_token)
            ("type", "transfer")
@@ -1330,13 +1340,16 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    BOOST_REQUIRE_EXCEPTION(
-      chain.push_action(config::system_account_name, unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
-      ("account", "tester")
-      ("code", eosio_token)
-      ("type", "transfer"),
-      30, 7),
-      insufficient_delay_exception,
-      fc_exception_message_starts_with("authorization imposes a delay")
+      chain.push_action( config::system_account_name, unlinkauth::get_name(),
+                         vector<permission_level>{{tester_account, N(first)}},
+                         fc::mutable_variant_object()
+         ("account", "tester")
+         ("code", eosio_token)
+         ("type", "transfer"),
+         30, 7
+      ),
+      unsatisfied_authorization,
+      fc_exception_message_starts_with("transaction declares authority")
    );
 
    // this transaction will be delayed 20 blocks
@@ -1854,15 +1867,18 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    BOOST_REQUIRE_EXCEPTION(
-      chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
+      chain.push_action( config::system_account_name,
+                         updateauth::get_name(),
+                         vector<permission_level>{{tester_account, N(first)}},
+                         fc::mutable_variant_object()
             ("account", "tester")
             ("permission", "first")
             ("parent", "active")
             ("auth",  authority(chain.get_public_key(tester_account, "first"))),
             30, 7
       ),
-      insufficient_delay_exception,
-      fc_exception_message_starts_with("authorization imposes a delay")
+      unsatisfied_authorization,
+      fc_exception_message_starts_with("transaction declares authority")
    );
 
    // this transaction will be delayed 20 blocks

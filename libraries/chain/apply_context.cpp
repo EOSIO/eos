@@ -211,7 +211,7 @@ void apply_context::execute_inline( action&& a ) {
          control.get_authorization_manager()
                 .check_authorization( {a},
                                       {},
-                                      {{receiver, permission_name()}},
+                                      {{receiver, config::eosio_code_name}},
                                       control.pending_block_time() - trx_context.published,
                                       std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                       false
@@ -222,6 +222,7 @@ void apply_context::execute_inline( action&& a ) {
          //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
       }
    }
+   
    _inline_actions.emplace_back( move(a) );
 }
 
@@ -269,7 +270,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          control.get_authorization_manager()
                 .check_authorization( trx.actions,
                                       {},
-                                      {{receiver, permission_name()}},
+                                      {{receiver, config::eosio_code_name}},
                                       delay,
                                       std::bind(&apply_context::checktime, this, std::placeholders::_1),
                                       false
@@ -421,17 +422,6 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    return copy_size;
 }
 
-void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
-   control.get_authorization_manager()
-          .check_authorization( trx.actions,
-                                {},
-                                {perm.begin(), perm.end()},
-                                fc::microseconds(0),
-                                std::bind(&apply_context::checktime, this, std::placeholders::_1),
-                                false
-                              );
-}
-
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
 }
@@ -487,6 +477,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    }
 
    db.modify( obj, [&]( auto& o ) {
+     o.value.resize( 0 );
      o.value.resize( buffer_size );
      memcpy( o.value.data(), buffer, buffer_size );
      o.payer = payer;

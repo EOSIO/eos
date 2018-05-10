@@ -116,8 +116,7 @@
       "name": "eosio_parameters",
       "base": "blockchain_parameters",
       "fields": [
-         {"name":"max_ram_size", "type":"uint64"},
-         {"name":"percent_of_max_inflation_rate", "type":"uint32"}
+         {"name":"max_ram_size", "type":"uint64"}
       ]
     },{
       "name": "eosio_global_state",
@@ -126,8 +125,8 @@
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
          {"name":"total_ram_stake",               "type":"asset"},
          {"name":"last_producer_schedule_update", "type":"time"},
-         {"name":"last_pervote_bucket_fill",      "type":"time"},
-         {"name":"eos_bucket",                    "type":"asset"},
+         {"name":"last_pervote_bucket_fill",      "type":"uint64"},
+         {"name":"pervote_bucket",                "type":"asset"},
          {"name":"savings",                       "type":"asset"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
          {"name":"total_activatied_stake",        "type":"int64"}
@@ -141,10 +140,10 @@
          {"name":"producer_key",             "type":"public_key"},
          {"name":"url",                      "type":"string"},
          {"name":"produced_blocks",          "type":"uint32"},
-         {"name":"last_claim_time",          "type":"time"},
+         {"name":"last_claim_time",          "type":"uint64"},
          {"name":"location",                 "type":"uint16"},
-         {"name":"time_became_active",       "type":"time"},
-         {"name":"last_produced_block_time", "type":"time"}
+         {"name":"time_became_active",       "type":"uint32"},
+         {"name":"last_produced_block_time", "type":"uint32"}
       ]
     },{
       "name": "regproducer",

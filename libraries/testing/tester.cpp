@@ -119,10 +119,21 @@ namespace eosio { namespace testing {
       }
 
       if( !skip_pending_trxs ) {
-            //wlog( "pushing all input transactions in waiting queue" );
-            while( control->push_next_unapplied_transaction( fc::time_point::maximum() ) );
-            //wlog( "pushing all available deferred transactions" );
-            while( control->push_next_scheduled_transaction( fc::time_point::maximum() ) );
+         auto unapplied_trxs = control->get_unapplied_transactions();
+         for (const auto& trx : unapplied_trxs ) {
+            auto trace = control->push_transaction(trx, fc::time_point::maximum());
+            if(trace->except) {
+               trace->except->dynamic_rethrow_exception();
+            }
+         }
+
+         auto scheduled_trxs = control->get_scheduled_transactions();
+         for (const auto& trx : scheduled_trxs ) {
+            auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
+            if(trace->except) {
+               trace->except->dynamic_rethrow_exception();
+            }
+         }
       }
 
 
@@ -183,16 +194,37 @@ namespace eosio { namespace testing {
   }
 
 
-   transaction_trace_ptr base_tester::create_account( account_name a, account_name creator, bool multisig ) {
+   transaction_trace_ptr base_tester::create_account( account_name a, account_name creator, bool multisig, bool include_code ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
       authority owner_auth;
-      if (multisig) {
+      if( multisig ) {
          // multisig between account's owner key and creators active permission
          owner_auth = authority(2, {key_weight{get_public_key( a, "owner" ), 1}}, {permission_level_weight{{creator, config::active_name}, 1}});
       } else {
          owner_auth =  authority( get_public_key( a, "owner" ) );
+      }
+
+      authority active_auth( get_public_key( a, "active" ) );
+
+      auto sort_permissions = []( authority& auth ) {
+         std::sort( auth.accounts.begin(), auth.accounts.end(),
+                    []( const permission_level_weight& lhs, const permission_level_weight& rhs ) {
+                        return lhs.permission < rhs.permission;
+                    }
+                  );
+      };
+
+      if( include_code ) {
+         FC_ASSERT( owner_auth.threshold <= std::numeric_limits<weight_type>::max(), "threshold is too high" );
+         FC_ASSERT( active_auth.threshold <= std::numeric_limits<weight_type>::max(), "threshold is too high" );
+         owner_auth.accounts.push_back( permission_level_weight{ {a, config::eosio_code_name},
+                                                                 static_cast<weight_type>(owner_auth.threshold) } );
+         sort_permissions(owner_auth);
+         active_auth.accounts.push_back( permission_level_weight{ {a, config::eosio_code_name},
+                                                                  static_cast<weight_type>(active_auth.threshold) } );
+         sort_permissions(active_auth);
       }
 
       trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
@@ -200,7 +232,7 @@ namespace eosio { namespace testing {
                                    .creator  = creator,
                                    .name     = a,
                                    .owner    = owner_auth,
-                                   .active   = authority( get_public_key( a, "active" ) )
+                                   .active   = active_auth,
                                 });
 
       set_transaction_headers(trx);
@@ -211,7 +243,7 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx), deadline );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -228,7 +260,7 @@ namespace eosio { namespace testing {
          c = packed_transaction::zlib;
       }
 
-      auto r = control->sync_push( std::make_shared<transaction_metadata>(trx,c), deadline );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;

@@ -13,9 +13,28 @@ namespace eosio { namespace chain {
       permission_name permission;
    };
 
-   inline bool operator== (const permission_level& lhs, const permission_level& rhs)
-   {
-      return (lhs.actor == rhs.actor) && (lhs.permission == rhs.permission);
+   inline bool operator== (const permission_level& lhs, const permission_level& rhs) {
+      return std::tie(lhs.actor, lhs.permission) == std::tie(rhs.actor, rhs.permission);
+   }
+
+   inline bool operator!= (const permission_level& lhs, const permission_level& rhs) {
+      return std::tie(lhs.actor, lhs.permission) != std::tie(rhs.actor, rhs.permission);
+   }
+
+   inline bool operator< (const permission_level& lhs, const permission_level& rhs) {
+      return std::tie(lhs.actor, lhs.permission) < std::tie(rhs.actor, rhs.permission);
+   }
+
+   inline bool operator<= (const permission_level& lhs, const permission_level& rhs) {
+      return std::tie(lhs.actor, lhs.permission) <= std::tie(rhs.actor, rhs.permission);
+   }
+
+   inline bool operator> (const permission_level& lhs, const permission_level& rhs) {
+      return std::tie(lhs.actor, lhs.permission) > std::tie(rhs.actor, rhs.permission);
+   }
+
+   inline bool operator>= (const permission_level& lhs, const permission_level& rhs) {
+      return std::tie(lhs.actor, lhs.permission) >= std::tie(rhs.actor, rhs.permission);
    }
 
    /**

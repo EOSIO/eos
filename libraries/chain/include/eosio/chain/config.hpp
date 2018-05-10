@@ -23,7 +23,6 @@ const static uint64_t producers_account_name = N(producers);
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
 const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
-const static uint64_t any_producer_permission_name       = N(prod.any);   // any producer needed to authorize
 
 const static uint64_t eosio_auth_scope       = N(eosio.auth);
 const static uint64_t eosio_all_scope        = N(eosio.all);
@@ -31,6 +30,7 @@ const static uint64_t eosio_all_scope        = N(eosio.all);
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
 const static uint64_t eosio_any_name = N(eosio.any);
+const static uint64_t eosio_code_name = N(eosio.code);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;
@@ -91,6 +91,7 @@ const static uint32_t   ram_usage_validation_overhead_per_account           = 64
 
 const static uint32_t   fixed_net_overhead_of_packed_trx = 16; // TODO: is this reasonable?
 
+const static uint32_t   fixed_overhead_shared_vector_ram_bytes = 16; ///< overhead accounts for fixed portion of size of shared_vector field 
 const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
 const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multiplier on contract size to account for multiple copies and cached compilation

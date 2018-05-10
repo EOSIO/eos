@@ -116,10 +116,14 @@ namespace eosio { namespace testing {
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                       uint32_t delay_sec = 0)const;
 
-         vector<transaction_trace_ptr>  create_accounts( vector<account_name> names, bool multisig = false ) {
+         vector<transaction_trace_ptr>  create_accounts( vector<account_name> names,
+                                                         bool multisig = false,
+                                                         bool include_code = true
+                                                       )
+         {
             vector<transaction_trace_ptr> traces;
             traces.reserve(names.size());
-            for( auto n : names ) traces.emplace_back(create_account(n, config::system_account_name, multisig ));
+            for( auto n : names ) traces.emplace_back( create_account( n, config::system_account_name, multisig, include_code ) );
             return traces;
          }
 
@@ -136,7 +140,11 @@ namespace eosio { namespace testing {
          void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void delete_authority( account_name account, permission_name perm );
 
-         transaction_trace_ptr create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
+         transaction_trace_ptr create_account( account_name name,
+                                               account_name creator = config::system_account_name,
+                                               bool multisig = false,
+                                               bool include_code = true
+                                             );
 
          transaction_trace_ptr push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace_ptr push_reqauth(account_name from, string role, bool multi_sig = false);
@@ -173,7 +181,7 @@ namespace eosio { namespace testing {
 
          void              set_code( account_name name, const char* wast, const private_key_type* signer = nullptr );
          void              set_code( account_name name, const vector<uint8_t> wasm, const private_key_type* signer = nullptr  );
-         void              set_abi( account_name name, const char* abi_json, const private_key_type* signer = nullptr ); 
+         void              set_abi( account_name name, const char* abi_json, const private_key_type* signer = nullptr );
 
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
@@ -288,8 +296,9 @@ namespace eosio { namespace testing {
             wdump((e.to_detail_string()));
          }
       }
+      controller::config vcfg;
+
       validating_tester() {
-         controller::config vcfg;
          vcfg.block_log_dir      = tempdir.path() / "vblocklog";
          vcfg.shared_memory_dir  = tempdir.path() / "vshared";
          vcfg.shared_memory_size = 1024*1024*8;
@@ -304,19 +313,24 @@ namespace eosio { namespace testing {
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
          }
 
+
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->startup();
+
          init(true);
       }
 
+      /*
       validating_tester(controller::config config) {
          validating_node = std::make_unique<controller>(config);
          init(config);
       }
+      */
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          auto sb = _produce_block(skip_time, false, skip_flag | 2);
          validating_node->push_block( sb );
+
          return sb;
       }
 
@@ -324,18 +338,29 @@ namespace eosio { namespace testing {
          control->abort_block();
          auto sb = _produce_block(skip_time, true, skip_flag | 2);
          validating_node->push_block( sb );
+
+
+
          return sb;
       }
 
       bool validate() {
+
+
         auto hbh = control->head_block_state()->header;
         auto vn_hbh = validating_node->head_block_state()->header;
-        return control->head_block_id() == validating_node->head_block_id() &&
+        bool ok = control->head_block_id() == validating_node->head_block_id() &&
                hbh.previous == vn_hbh.previous &&
                hbh.timestamp == vn_hbh.timestamp &&
                hbh.transaction_mroot == vn_hbh.transaction_mroot &&
                hbh.action_mroot == vn_hbh.action_mroot &&
                hbh.producer == vn_hbh.producer;
+
+        validating_node.reset();
+        validating_node = std::make_unique<controller>(vcfg);
+        validating_node->startup();
+
+        return ok;
       }
 
       unique_ptr<controller>                  validating_node;

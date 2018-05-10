@@ -31,6 +31,8 @@ namespace eosio { namespace chain {
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
 
+   class fork_database;
+
    class controller {
       public:
          struct config {
@@ -55,39 +57,41 @@ namespace eosio { namespace chain {
           */
          void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0 );
 
-         void  abort_block();
+         void abort_block();
 
          /**
           *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
-          *  with the transaction_metadata_ptr will remove them from this map whether it fails or succeeds.
+          *  with the transaction_metadata_ptr will remove them from the source of this data IFF it succeeds.
           *
-          *  @return map of the hash of a signed transaction (with context free data) to a transaction metadata
+          *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
+          *  they never intend to retry
+          *
+          *  @return vector of transactions which have been unapplied
           */
-         const map<digest_type, transaction_metadata_ptr>&  unapplied_transactions()const;
+         vector<transaction_metadata_ptr> get_unapplied_transactions() const;
+         void drop_unapplied_transaction(const transaction_metadata_ptr& trx);
 
+         /**
+          * These transaction IDs represent transactions available in the head chain state as scheduled
+          * or otherwise generated transactions.
+          *
+          * calling push_scheduled_transaction with these IDs will remove the associated transaction from
+          * the chain state IFF it succeeds or objectively fails
+          *
+          * @return
+          */
+         vector<transaction_id_type> get_scheduled_transactions() const;
 
          /**
           *
           */
-         void push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline );
-
-         bool push_next_unapplied_transaction( fc::time_point deadline );
-
-         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx, fc::time_point deadline );
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
           *
           */
-         void push_scheduled_transaction( const transaction_id_type& scheduled,
-                                          fc::time_point deadline = fc::time_point::maximum() );
-
-         /**
-          * Attempt to execute the oldest unexecuted deferred transaction
-          *
-          * @return nullptr if there is nothing pending
-          */
-         bool push_next_scheduled_transaction( fc::time_point deadline = fc::time_point::maximum() );
+         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline );
 
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
@@ -104,6 +108,8 @@ namespace eosio { namespace chain {
          void push_confirmation( const header_confirmation& c );
 
          chainbase::database& db()const;
+
+         fork_database& fork_db()const;
 
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
