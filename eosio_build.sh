@@ -35,6 +35,10 @@
 		printf "\\n\\tPlease cd into directory %s to run this script.\\n \\tExiting now.\\n\\n" "${CWD}"
 		exit 1
 	fi
+	if [ -f "${PWD}/CMakeCache.txt" ]; then
+		printf "\\n\\tPlease remove file %s/CMakeCache.txt before building EOS.IO.\\n \\tExiting now.\\n\\n" "${PWD}"
+		exit 1
+	fi
 
    	function usage()
    	{ 
