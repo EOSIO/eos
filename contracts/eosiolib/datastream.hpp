@@ -21,9 +21,9 @@
 namespace eosio {
 
 /**
- * @defgroup datastreamtype Data Stream
- * @brief A data stream for reading and writing data in the form of bytes
- * @ingroup contractdev
+ * @defgroup datastream Data Stream
+ * @brief Defines data stream for reading and writing data in the form of bytes
+ * @ingroup serialize
  * @{
  */
 
@@ -968,5 +968,5 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum512& cs) {
    ds.read((char*)&cs, sizeof(cs));
    return ds;
 }
-/// @} datastreamtype
+/// @} datastream
 }

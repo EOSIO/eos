@@ -8,7 +8,7 @@ namespace eosio {
    /**
     * @defgroup privilegedcppapi Privileged C++ API
     * @ingroup privilegedapi
-    * @brief Define C++ Privileged API
+    * @brief Defines C++ Privileged API
     *
     * @{
     */

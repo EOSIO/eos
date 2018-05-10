@@ -8,13 +8,13 @@
 
 /**
  *  @defgroup chainapi Chain API
- *  @brief Define API for querying internal chain state
+ *  @brief Defines API for querying internal chain state
  *  @ingroup contractdev
  */
 
 /**
  *  @defgroup chaincapi Chain C API
- *  @brief C API for querying internal chain state
+ *  @brief Defines %C API for querying internal chain state
  *  @ingroup chainapi
  *  @{
  */

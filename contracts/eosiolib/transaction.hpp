@@ -15,7 +15,7 @@ namespace eosio {
    /**
     * @defgroup transactioncppapi Transaction C++ API
     * @ingroup transactionapi
-    * @brief Type-safe C++ wrappers for transaction C API
+    * @brief Defines type-safe C++ wrappers for sending transactions
     *
     * @note There are some methods from the @ref transactioncapi that can be used directly from C++
     *

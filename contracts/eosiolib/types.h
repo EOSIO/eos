@@ -14,7 +14,7 @@ extern "C" {
 /**
  *  @defgroup types Builtin Types
  *  @ingroup contractdev
- *  @brief Specifies Smart Contract Builtin Types, Typedefs and Aliases
+ *  @brief Specifies builtin types, typedefs and aliases
  *
  *  @{
  */

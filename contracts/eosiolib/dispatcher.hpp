@@ -39,9 +39,15 @@ namespace eosio {
    }
 
    /**
-    * @defgroup dispatcher Dispatcher
-    * @brief Dispatch action to proper action handler inside a contract
+    * @defgroup dispatcher Dispatcher API
+    * @brief Defines functions to dispatch action to proper action handler inside a contract
     * @ingroup contractdev
+    */
+   
+   /**
+    * @defgroup dispatchercpp Dispatcher C++ API
+    * @brief Defines C++ functions to dispatch action to proper action handler inside a contract
+    * @ingroup dispatcher
     * @{
     */
 

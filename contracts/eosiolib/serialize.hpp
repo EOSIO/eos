@@ -6,10 +6,17 @@
 
 #define EOSLIB_REFLECT_MEMBER_OP( r, OP, elem ) \
   OP t.elem 
+
 /**
- * @defgroup serialize Serialize C++ API
- * @brief Defines C++ API to serialize and deserialize object
+ * @defgroup serialize Serialize API
+ * @brief Defines functions to serialize and deserialize object
  * @ingroup contractdev
+ */
+
+/**
+ * @defgroup serializecpp Serialize C++ API
+ * @brief Defines C++ API to serialize and deserialize object
+ * @ingroup serialize
  * @{
  */
 
@@ -53,5 +60,4 @@
     ds >> static_cast<BASE&>(t); \
     return ds BOOST_PP_SEQ_FOR_EACH( EOSLIB_REFLECT_MEMBER_OP, >>, MEMBERS );\
  } 
-
-///@} serialize
+///@} serializecpp

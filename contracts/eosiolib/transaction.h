@@ -9,7 +9,7 @@ extern "C" {
    /**
     * @defgroup transactionapi Transaction API
     * @ingroup contractdev
-    * @brief Define API for sending transactions and inline actions
+    * @brief Defines API for sending transactions and inline actions
     *
     *
     * Deferred transactions will not be processed until a future block.  They
@@ -38,7 +38,7 @@ extern "C" {
    /**
     * @defgroup transactioncapi Transaction C API
     * @ingroup transactionapi
-    * @brief Define API for sending transactions
+    * @brief Defines API for sending transactions
     *
     * @{
     */

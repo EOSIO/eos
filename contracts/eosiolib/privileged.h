@@ -13,7 +13,7 @@ extern "C" {
    /**
     * @defgroup privilegedcapi Privileged C API
     * @ingroup privilegedapi
-    * @brief Define C Privileged API
+    * @brief Defines %C Privileged API
     *
     * @{
     */

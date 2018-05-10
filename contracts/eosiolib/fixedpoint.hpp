@@ -7,7 +7,7 @@ namespace eosio
     /**
     * @defgroup fixedpoint Fixed Point
     * @ingroup mathcppapi
-    * @brief 32,64,128,256 bits version of Fixed Point variables
+    * @brief 32,64,128,256 bits version of fixed point variables
     *
     * Floating point operations are indeterministic, hence is prevented in smart contract.
     * The smart contract developers should use the appropriate Fixed_Point template class

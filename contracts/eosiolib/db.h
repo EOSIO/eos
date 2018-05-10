@@ -9,7 +9,7 @@
 extern "C" {
 /**
  *  @defgroup database Database API
- *  @brief APIs that store and retreive data on the blockchain
+ *  @brief Defines APIs that store and retrieve data on the blockchain
  *  @ingroup contractdev
  * 
  *  @defgroup databasecpp Database C++ API
@@ -25,8 +25,8 @@ extern "C" {
  */
 
 /**
- *  @defgroup databaseC Database C API
- *  @brief C APIs for interfacing with the database.
+ *  @defgroup databasec Database C API
+ *  @brief Defines %C APIs for interfacing with the database.
  *  @ingroup database
  *  
  *  @details Database C API provides low level interface to EOSIO database.
@@ -907,5 +907,5 @@ int32_t db_idx_long_double_upperbound(account_name code, account_name scope, tab
   */
 int32_t db_idx_long_double_end(account_name code, account_name scope, table_name table);
 
-///@}
+///@} databasec
 }

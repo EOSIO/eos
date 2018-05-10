@@ -66,7 +66,7 @@ void eosio::reflector<TYPE>::visit( Visitor&& v ) { \
 
 
 /**
- * @addtogroup serialize
+ * @addtogroup serializecpp
  * @{
  */
 
@@ -132,7 +132,7 @@ namespace eosio { \
 
 
 /**
- * @addtogroup serialize
+ * @addtogroup serializecpp
  * @{
  */
 
