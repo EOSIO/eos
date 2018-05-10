@@ -602,9 +602,6 @@ class apply_context {
 
       action_trace                                trace;
 
-      uint64_t                                    cpu_usage = 0;
-      uint64_t                                    cpu_usage_limit = 0;
-
    private:
 
       iterator_cache<key_value_object>    keyval_cache;
