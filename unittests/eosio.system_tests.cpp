@@ -1919,7 +1919,7 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
       ( "max_generated_transaction_count", config.max_generated_transaction_count );
 }
 
-BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) try {
+BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_tester ) try {
    create_accounts_with_resources( {  N(producer1), N(producer2), N(producer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
@@ -1934,14 +1934,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer1) } )
                         )
    );
-   produce_blocks(50);
+   produce_blocks(250);
    auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
 
-   auto config = config_to_variant( control->get_global_properties().configuration );
-   auto prod1_config = testing::filter_fields( config, producer_parameters_example( 1 ) );
-   REQUIRE_EQUAL_OBJECTS(prod1_config, config);
+   //auto config = config_to_variant( control->get_global_properties().configuration );
+   //auto prod1_config = testing::filter_fields( config, producer_parameters_example( 1 ) );
+   //REQUIRE_EQUAL_OBJECTS(prod1_config, config);
 
    // elect 2 producers
    issue( "bob", "1000.0000 EOS",  config::system_account_name );
@@ -1952,14 +1952,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer2) } )
                         )
    );
-   produce_blocks(50);
+   produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[0].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
-   config = config_to_variant( control->get_global_properties().configuration );
-   auto prod2_config = testing::filter_fields( config, producer_parameters_example( 2 ) );
-   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
+   //config = config_to_variant( control->get_global_properties().configuration );
+   //auto prod2_config = testing::filter_fields( config, producer_parameters_example( 2 ) );
+   //REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
    // elect 3 producers
    BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
@@ -1968,14 +1968,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer2), N(producer3) } )
                         )
    );
-   produce_blocks(50);
+   produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[2].producer_name );
-   config = config_to_variant( control->get_global_properties().configuration );
-   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[2].producer_name );
+   //config = config_to_variant( control->get_global_properties().configuration );
+   //REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
    //back to 2 producers
    BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
@@ -1984,14 +1984,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer3) } )
                         )
    );
-   produce_blocks(100);
+   produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
-   config = config_to_variant( control->get_global_properties().configuration );
-   auto prod3_config = testing::filter_fields( config, producer_parameters_example( 3 ) );
-   REQUIRE_EQUAL_OBJECTS(prod3_config, config);
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[1].producer_name );
+   //config = config_to_variant( control->get_global_properties().configuration );
+   //auto prod3_config = testing::filter_fields( config, producer_parameters_example( 3 ) );
+   //REQUIRE_EQUAL_OBJECTS(prod3_config, config);
 
 } FC_LOG_AND_RETHROW()
 
