@@ -46,25 +46,25 @@ extern "C" {
 
     /**
      *  Sends a deferred transaction.
-     * 
+     *
      *  @brief Sends a deferred transaction.
      *  @param sender_id - ID of sender
      *  @param payer - Account paying for RAM
-     *  @param serialized_transaction - Pointer of serialized transaction to be deferred 
+     *  @param serialized_transaction - Pointer of serialized transaction to be deferred
      *  @param size - Size to reserve
      */
    void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size);
 
     /**
      *  Cancels a deferred transaction.
-     * 
+     *
      *  @brief Cancels a deferred transaction.
      *  @param sender_id - The id of the sender
      *
      *  @pre The deferred transaction ID exists.
      *  @pre The deferred transaction ID has not yet been published.
      *  @post Deferred transaction canceled.
-     * 
+     *
      *  Example:
      *  @code
      *  id = 0xffffffffffffffff
@@ -75,7 +75,7 @@ extern "C" {
 
    /**
     * Access a copy of the currently executing transaction.
-    * 
+    *
     * @brief Access a copy of the currently executing transaction.
     * @param buffer - a buffer to write the current transaction to
     * @param size - the size of the buffer, 0 to return required size
@@ -85,7 +85,7 @@ extern "C" {
 
    /**
     * Gets the size of the currently executing transaction.
-    * 
+    *
     * @brief Gets the size of the currently executing transaction.
     * @return size of the currently executing transaction
     */
@@ -93,7 +93,7 @@ extern "C" {
 
    /**
     * Gets the block number used for TAPOS on the currently executing transaction.
-    * 
+    *
     * @brief Gets the block number used for TAPOS on the currently executing transaction.
     * @return block number used for TAPOS on the currently executing transaction
     * Example:
@@ -105,7 +105,7 @@ extern "C" {
 
    /**
     * Gets the block prefix used for TAPOS on the currently executing transaction.
-    * 
+    *
     * @brief Gets the block prefix used for TAPOS on the currently executing transaction.
     * @return block prefix used for TAPOS on the currently executing transaction
     * Example:
@@ -117,7 +117,7 @@ extern "C" {
 
    /**
     * Gets the expiration of the currently executing transaction.
-    * 
+    *
     * @brief Gets the expiration of the currently executing transaction.
     * @return expiration of the currently executing transaction
     * Example:
@@ -130,7 +130,7 @@ extern "C" {
 
    /**
     * Retrieves the indicated action from the active transaction.
-    * 
+    *
     * @brief Retrieves the indicated action from the active transaction.
     * @param type - 0 for context free action, 1 for action
     * @param index - the index of the requested action
@@ -142,7 +142,7 @@ extern "C" {
 
    /**
     * Retrieve the signed_transaction.context_free_data[index].
-    * 
+    *
     * @brief Retrieve the signed_transaction.context_free_data[index].
     * @param index - the index of the context_free_data entry to retrieve
     * @param buff - output buff of the context_free_data entry
@@ -151,19 +151,5 @@ extern "C" {
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
 
-<<<<<<< HEAD
-   /**
-    * Checks that prodived authorizations is enough to execute the transaction.
-    * 
-    * @brief Checks that prodived authorizations is enough to execute the transaction.
-    * @param serialized_transaction - Pointer of serialized transaction to check authorization for
-    * @param size - Size of transaction
-    * @param permissions - Permissions to check for authorization
-    * @param psize - Size of permissions
-    */
-   void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
-
-=======
->>>>>>> origin/slim
    ///@ } transactioncapi
 }
