@@ -108,7 +108,7 @@ public:
                                             ("receiver", a)
                                             ("stake_net_quantity", "10.0000 EOS" )
                                             ("stake_cpu_quantity", "10.0000 EOS" )
-                                            ("transfer", 0 )
+                                            ("transfer", 0)
                                           )
                                 );
 
@@ -151,7 +151,9 @@ public:
                                             ("receiver", a)
                                             ("stake_net_quantity", net )
                                             ("stake_cpu_quantity", cpu )
-                                            ("transfer", 0 )
+
+                                            ("transfer", false)
+
                                           )
                                 );
 
@@ -198,7 +200,9 @@ public:
                                                ("receiver", a)
                                                ("stake_net_quantity", net)
                                                ("stake_cpu_quantity", cpu )
-                                            ("transfer", 0 )
+
+                                               ("transfer", true)
+
                                                )
                                    );
       }
@@ -231,12 +235,13 @@ public:
    }
 
    action_result stake( const account_name& from, const account_name& to, const string& net, const string& cpu ) {
-      return push_action( name(from), N(delegatebw), mvo()
+      return push_action( from, N(delegatebw), mvo()
                           ("from",     from)
                           ("receiver", to)
                           ("stake_net_quantity", net)
                           ("stake_cpu_quantity", cpu)
-                                            ("transfer", 0 )
+                          ("transfer", true)
+
       );
    }
 
@@ -503,6 +508,10 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), sellram( "bob", 100 ) );
    BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 10000 ) );
 
+#warning uncomment the following 2 lines to reproduce the pricing model issue
+   //BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "alice", 20000000 ) );
+   //BOOST_REQUIRE_EQUAL( success(), sellram( "alice", 20000000 ) );
+
    total = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS").amount, total["net_weight"].as<asset>().amount );
    BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS").amount, total["cpu_weight"].as<asset>().amount );
@@ -512,7 +521,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    auto bytes = total["ram_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("499.8531 EOS"), get_balance( "alice" ) );
 
    //unstake
    BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "200.0000 EOS", "100.0000 EOS" ) );
@@ -523,16 +532,16 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 
    REQUIRE_MATCHING_OBJECT( voter( "alice", "0.0000 EOS" ), get_voter_info( "alice" ) );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("499.8531 EOS"), get_balance( "alice" ) );
 
    //after 2 days balance should not be available yet
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("499.8531 EOS"), get_balance( "alice" ) );
    //after 3 days funds should be released
    produce_block( fc::hours(1) );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("799.8531 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -1140,16 +1149,17 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester, * boost::u
 BOOST_FIXTURE_TEST_CASE( proxy_register_unregister_keeps_stake, eosio_system_tester ) try {
    //register proxy by first action for this user ever
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproxy), mvo()
-                                               ("proxy",  "alice")
-                                               ("isproxy", true )
+
+                                               ("proxy",  "alice")("isproxy", true)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( proxy( "alice" ), get_voter_info( "alice" ) );
 
    //unregister proxy
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproxy), mvo()
-                                               ("proxy",  "alice")
-                                               ("isproxy", false)
+                                               ("proxy",  "alice")("isproxy", false)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( voter( "alice" ), get_voter_info( "alice" ) );
@@ -1158,23 +1168,25 @@ BOOST_FIXTURE_TEST_CASE( proxy_register_unregister_keeps_stake, eosio_system_tes
    issue( "bob", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob", "200.0002 EOS", "100.0001 EOS" ) );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(regproxy), mvo()
-                                               ("proxy",  "bob")
-                                               ("isproxy", true)
+
+                                               ("proxy",  "bob")("isproxy", true)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( proxy( "bob" )( "staked", 3000003 ), get_voter_info( "bob" ) );
    //unrgister and check that stake is still in place
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(regproxy), mvo()
-                                               ("proxy",  "bob")
-                                               ("isproxy", false)
+
+                                               ("proxy",  "bob")("isproxy", false)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( voter( "bob", "300.0003 EOS" ), get_voter_info( "bob" ) );
 
    //register as a proxy and then stake
    BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(regproxy), mvo()
-                                               ("proxy",  "carol")
-                                               ("isproxy", true)
+                                               ("proxy",  "carol")("isproxy", true)
+
                         )
    );
    issue( "carol", "1000.0000 EOS",  config::system_account_name );
@@ -1184,8 +1196,9 @@ BOOST_FIXTURE_TEST_CASE( proxy_register_unregister_keeps_stake, eosio_system_tes
 
    //unregister
    BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(regproxy), mvo()
-                                                ("proxy",  "carol")
-                                                ("isproxy", false)
+
+                                                ("proxy",  "carol")("isproxy", false)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( voter( "carol", "777.0003 EOS" ), get_voter_info( "carol" ) );
@@ -1195,8 +1208,9 @@ BOOST_FIXTURE_TEST_CASE( proxy_register_unregister_keeps_stake, eosio_system_tes
 
 BOOST_FIXTURE_TEST_CASE( proxy_stake_unstake_keeps_proxy_flag, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
-                                               ("proxy",  "alice")
-                                               ("isproxy", true)
+
+                                               ("proxy",  "alice")("isproxy", true)
+
                         )
    );
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
@@ -1271,8 +1285,10 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester, * 
 
    //unregister proxy
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+
                                                 ("proxy",  "alice")
                                                 ("isproxy", false)
+
                         )
    );
    //REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_vote_weight", stake2votes("150.0003 EOS") ), get_voter_info( "alice" ) );
@@ -1282,8 +1298,10 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester, * 
 
    //register proxy again
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+
                                                 ("proxy",  "alice")
                                                 ("isproxy", true)
+
                         )
    );
    BOOST_TEST_REQUIRE( stake2votes("150.0003 EOS") == get_producer_info( "producer1" )["total_votes"].as_double() );
@@ -1704,8 +1722,10 @@ BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system
    BOOST_REQUIRE_EQUAL( 0, get_producer_info( "producer3" )["total_votes"].as_double() );
 
    BOOST_REQUIRE_EQUAL( success(), push_action( N(donald), N(regproxy), mvo()
+
                                                 ("proxy",  "donald")
                                                 ("isproxy", true)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( proxy( "donald" ), get_voter_info( "donald" ) );
@@ -1784,8 +1804,10 @@ BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system
 BOOST_FIXTURE_TEST_CASE( vote_both_proxy_and_producers, eosio_system_tester ) try {
    //alice becomes a proxy
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+
                                                 ("proxy",  "alice")
                                                 ("isproxy", true)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( proxy( "alice" ), get_voter_info( "alice" ) );
@@ -1836,8 +1858,10 @@ BOOST_FIXTURE_TEST_CASE( select_invalid_proxy, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_system_tester ) try {
    //alice becomes a proxy
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+
                                                 ("proxy",  "alice")
                                                 ("isproxy",  1)
+
                         )
    );
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
@@ -1859,25 +1883,31 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
    //double regestering should fail without affecting total votes and stake
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account is already a proxy" ),
                         push_action( N(alice), N(regproxy), mvo()
+
                                      ("proxy",  "alice")
                                      ("isproxy",  1)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //uregister
+
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(unregproxy), mvo()
                                                 ("proxy",  "alice")
                                                 ("isproxy",  0)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //double unregistering should not affect proxied_votes and stake
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account is not a proxy" ),
+
                         push_action( N(alice), N(unregproxy), mvo()
                                      ("proxy",  "alice")
                                      ("isproxy",  0)
+
                         )
    );
    REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
@@ -1888,15 +1918,19 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
 BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) try {
    //alice becomes a proxy
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+
                                                 ("proxy",  "alice")
                                                 ("isproxy",  1)
+
                         )
    );
 
    //bob becomes a proxy
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(regproxy), mvo()
+
                                                 ("proxy",  "bob")
                                                 ("isproxy",  1)
+
                         )
    );
    //proxy should not be able to use a proxy
@@ -1921,8 +1955,10 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
    );
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account that uses a proxy is not allowed to become a proxy" ),
                         push_action( N(carol), N(regproxy), mvo()
+
                                      ("proxy",  "carol")
                                      ("isproxy",  1)
+
                         )
    );
 
