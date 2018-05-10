@@ -109,22 +109,6 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-bool apply_context::all_authorizations_used()const {
-   for ( bool has_auth : used_authorizations ) {
-      if ( !has_auth )
-         return false;
-   }
-   return true;
-}
-
-vector<permission_level> apply_context::unused_authorizations()const {
-   vector<permission_level> ret_auths;
-   for ( uint32_t i=0; i < act.authorization.size(); i++ )
-      if ( !used_authorizations[i] )
-         ret_auths.push_back( act.authorization[i] );
-   return ret_auths;
-}
-
 void apply_context::require_authorization( const account_name& account ) {
    for( uint32_t i=0; i < act.authorization.size(); i++ ) {
      if( act.authorization[i].actor == account ) {
