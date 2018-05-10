@@ -189,7 +189,7 @@ namespace eosio { namespace testing {
      trx.set_reference_block( control->head_block_id() );
 
      trx.max_net_usage_words = 0; // No limit
-     trx.max_kcpu_usage = 0; // No limit
+     trx.max_cpu_usage_ms = 0; // No limit
      trx.delay_sec = delay_sec;
   }
 
