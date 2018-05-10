@@ -61,7 +61,6 @@ namespace eosio { namespace chain {
       uint64_t block_cpu_limit = rl.get_block_cpu_limit();
 
       if( !billed_cpu_time_us ) {
-         wdump((block_cpu_limit));
          auto potential_deadline = fc::time_point::now() + fc::microseconds(block_cpu_limit);
          if( potential_deadline < deadline ) deadline = potential_deadline;
       }
