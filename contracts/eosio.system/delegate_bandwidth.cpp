@@ -268,7 +268,7 @@ namespace eosiosystem {
       set_resource_limits( tot_itr->owner, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
       if( N(eosio) != source_stake_from ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {source_stake_from,N(active)},
                                                        { source_stake_from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
       }
 
