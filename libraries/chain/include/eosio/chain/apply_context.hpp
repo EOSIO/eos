@@ -513,9 +513,6 @@ class apply_context {
        */
       bool has_recipient(account_name account)const;
 
-      bool                     all_authorizations_used()const;
-      vector<permission_level> unused_authorizations()const;
-
    /// Console methods:
    public:
 
