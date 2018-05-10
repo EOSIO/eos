@@ -32,7 +32,7 @@ private:
 template<typename T>
 consumer<T>::consumer(std::unique_ptr<consumer_core<T> > core):
     m_fifo(fifo<T>::behavior::blocking),
-    m_core(std::move(c)),
+    m_core(std::move(core)),
     m_exit(false),
     m_thread(std::make_unique<std::thread>([&]{this->run();}))
 {
