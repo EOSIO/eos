@@ -951,15 +951,22 @@ namespace eosio {
       if(write_queue.empty())
          return;
       write_depth++;
+      size_t num_buffs = write_queue.size();
+      std::vector<boost::asio::const_buffer> bufs;
+      for (auto m: write_queue) {
+         bufs.push_back(boost::asio::buffer(*m.buff));
+      }
       connection_wptr c(shared_from_this());
-      boost::asio::async_write(*socket, boost::asio::buffer(*write_queue.front().buff), [c](boost::system::error_code ec, std::size_t w) {
+      boost::asio::async_write(*socket, bufs, [c, num_buffs](boost::system::error_code ec, std::size_t w) {
             try {
                auto conn = c.lock();
                if(!conn)
                   return;
 
-               if (conn->write_queue.size() ) {
-                  conn->write_queue.front().cb(ec, w);
+               if (conn->write_queue.size() >= num_buffs ) {
+                  for (size_t i = 0; i < num_buffs; i++) {
+                     conn->write_queue[i].cb(ec, w);
+                  }
                }
                conn->write_depth--;
 
@@ -974,7 +981,9 @@ namespace eosio {
                   my_impl->close(conn);
                   return;
                }
-               conn->write_queue.pop_front();
+               for (size_t i = 0; i < num_buffs; i++) {
+                  conn->write_queue.pop_front();
+               }
                conn->enqueue_sync_block();
                conn->do_queue_write();
             }
