@@ -411,7 +411,7 @@ chain::action create_action(const vector<permission_level>& authorization, const
       ("args", args);
 
    auto result = call(json_to_bin_func, arg);
-   wlog("result=${r}",("r",result));
+   wdump((result)(arg));
    return chain::action{authorization, code, act, result.get_object()["binargs"].as<bytes>()};
 }
 
@@ -806,7 +806,7 @@ struct create_account_subcommand {
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
-      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
+      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,
@@ -824,6 +824,8 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount);
 
       createAccount->set_callback([this] {
+            if( !active_key_str.size() ) 
+               active_key_str = owner_key_str;
             public_key_type owner_key, active_key;
             try {
                owner_key = public_key_type(owner_key_str);
@@ -963,6 +965,7 @@ struct delegate_bandwidth_subcommand {
    string stake_net_amount;
    string stake_cpu_amount;
    string stake_storage_amount;
+   bool transfer = false;
 
    delegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
@@ -970,6 +973,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
+      delegate_bandwidth->add_flag("--transfer", transfer, localized("specify to stake in name of receiver rather than in name of from"))->required();
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
@@ -977,7 +981,9 @@ struct delegate_bandwidth_subcommand {
                   ("from", from_str)
                   ("receiver", receiver_str)
                   ("stake_net_quantity", to_asset(stake_net_amount))
-                  ("stake_cpu_quantity", to_asset(stake_cpu_amount));
+                  ("stake_cpu_quantity", to_asset(stake_cpu_amount))
+                  ("transfer", transfer)
+                  ;
                   wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
@@ -1046,7 +1052,7 @@ struct sellram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("account", receiver_str)
                ("bytes", amount);
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
+            send_actions({create_action({permission_level{receiver_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
          });
    }
 };
@@ -1185,16 +1191,50 @@ void get_account( const string& accountName, bool json_format ) {
                    << indent << "delegated:" << std::setw(17) << net_others
                    << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
       }
-      std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.net_limit.current_per_block)) << " bytes/block"
+
+      string unit = "bytes";
+      double net_usage = res.net_limit.available;
+
+      if( res.net_limit.available >= 1024*1024*1024 ){
+         unit = "Gb";
+         net_usage /= 1024*1024*1024;
+      } else if( res.net_limit.available >= 1024*1024 ){
+         unit = "Mb";
+         net_usage /= 1024*1024;
+      } else if( res.net_limit.available >= 1024 ) {
+         unit = "Kb";
+         net_usage /= 1024;
+      }
+
+      std::cout << std::fixed << setprecision(3);
+      std::cout << indent << "used:" << std::setw(15) << ("~"+std::to_string(res.net_limit.used)) << " bytes (past 3 days)"
                 << std::string(3, ' ') << "(assuming current congestion and current usage)" << std::endl
-                << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.net_limit.max_per_block)) << " bytes/block"
+                << indent << "available:" << std::setw(19) << ("~"+std::to_string(net_usage)) << " "<<unit
                 << std::string(3, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+                /*
                 << indent << "guaranteed: " << std::setw(11) << res.net_limit.guaranteed_per_day << " bytes/day"
                 << std::string(5, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+                */
                 << std::endl;
 
 
       std::cout << "cpu bandwidth:" << std::endl;
+
+      double cpu_avail = res.cpu_limit.available/1000000.;
+      string cunit = "sec";
+
+      if( cpu_avail > 60*60*24 ) {
+         cunit = "days";
+         cpu_avail /= 60*60*24;
+      } else  if( cpu_avail > 60*60 ) {
+         cunit = "hr";
+         cpu_avail /= 60*60;
+      } else if( cpu_avail > 60 ) {
+         cunit = "min";
+         cpu_avail /= 60;
+      }
+
+
       if ( res.total_resources.is_object() ) {
          asset cpu_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : 0 );
          auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
@@ -1204,12 +1244,12 @@ void get_account( const string& accountName, bool json_format ) {
                    << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
       }
 
-      std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.cpu_limit.current_per_block/1024)) << " kcycle/block"
-                << std::string(2, ' ') << "(assuming current congestion and current usage)" << std::endl
-                << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.cpu_limit.max_per_block/1024)) << " kcycle/block"
-                << std::string(2, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+      std::cout << indent << "used:" << std::setw(15) << ("~"+std::to_string(double(res.cpu_limit.used/1000000.))) << " sec (past 3 days)\n"
+                << indent << "available:" << std::setw(19) << ("~"+std::to_string(cpu_avail) )<< " " << cunit <<"\n"
+                /*
                 << indent << "guaranteed:" << std::setw(12) << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day"
                 << std::string(4, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+                */
                 << std::endl;
 
       if ( res.voter_info.is_object() ) {

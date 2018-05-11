@@ -243,7 +243,6 @@ namespace eosio { namespace testing {
    }
 
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
-                                                        uint32_t skip_flag,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )
@@ -257,7 +256,6 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
-                                                        uint32_t skip_flag,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )
@@ -276,7 +274,7 @@ namespace eosio { namespace testing {
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;
-   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
+   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx))(billed_cpu_time_us) ) }
 
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
@@ -291,6 +289,7 @@ namespace eosio { namespace testing {
       try {
          push_transaction(trx);
       } catch (const fc::exception& ex) {
+         edump((ex.to_detail_string()));
          return error(ex.top_message()); // top_message() is assumed by many tests; otherwise they fail
          //return error(ex.to_detail_string());
       }

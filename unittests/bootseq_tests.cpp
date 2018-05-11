@@ -253,19 +253,22 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto net = (ib - ram) / 2;
            auto cpu = ib - net - ram;
 
-           base_tester::push_action(N(eosio), N(buyram), N(eosio), mutable_variant_object()
+           auto r =  base_tester::push_action(N(eosio), N(buyram), N(eosio), mutable_variant_object()
                     ("payer", "eosio")
                     ("receiver", name(a.aname))
                     ("quant", asset(ram)) 
                     );
+           BOOST_REQUIRE( !r->except_ptr );
 
-           base_tester::push_action(N(eosio), N(delegatebw), N(eosio), mutable_variant_object()
+           r = base_tester::push_action(N(eosio), N(delegatebw), N(eosio), mutable_variant_object()
                     ("from", "eosio" )
                     ("receiver", name(a.aname))
                     ("stake_net_quantity", asset(net)) 
                     ("stake_cpu_quantity", asset(cpu)) 
                     ("transfer", 1) 
                     );
+
+           BOOST_REQUIRE( !r->except_ptr );
         }
 
         produce_blocks(10000);
