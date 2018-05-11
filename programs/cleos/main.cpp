@@ -695,46 +695,69 @@ struct set_action_permission_subcommand {
    }
 };
 
-bool port_busy( uint16_t port ) {
-   using namespace boost::asio;
-   
-   io_service ios;
-   boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
-   boost::asio::ip::tcp::socket socket(ios);
-   boost::system::error_code ec = error::would_block;
-   //connecting/failing to connect to localhost should be always fast - don't care about timeouts
-   socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
-   do {
-      ios.run_one();
-   } while (ec == error::would_block);
-   return !ec;
+
+bool port_used(uint16_t port) {
+    using namespace boost::asio;
+
+    io_service ios;
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+    boost::asio::ip::tcp::socket socket(ios);
+    boost::system::error_code ec = error::would_block;
+    //connecting/failing to connect to localhost should be always fast - don't care about timeouts
+    socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
+    do {
+        ios.run_one();
+    } while (ec == error::would_block);
+    return !ec;
 }
 
-void start_keosd( uint16_t wallet_port ) {
-   auto binPath = boost::dll::program_location();
-   boost::filesystem::path keosPath = binPath.parent_path().append("keosd"); //cleos and keosd are in the same installation directory
-   if ( !boost::filesystem::exists(keosPath) ) {
-      keosPath = binPath.parent_path().parent_path().append("keosd").append("keosd"); //build directory
-   }
-   if ( boost::filesystem::exists( keosPath ) ) {
-      namespace bp = boost::process;
-      keosPath = boost::filesystem::canonical( keosPath );
-      ::boost::process::child keos( keosPath, "--http-server-address=127.0.0.1:"+std::to_string(wallet_port),
-                                    bp::std_in.close(),
-                                    bp::std_out > bp::null,
-                                    bp::std_err > bp::null);
-      if (keos.running()) {
-         std::cerr << keosPath << " launched" << std::endl;
-         keos.detach();
-      } else {
-         std::cerr << "No wallet service listening on 127.0.0.1:" << std::to_string(wallet_port) << ". Failed to launch " << keosPath << std::endl;
-      }
-   } else {
-      std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port) << ". Cannot automatically start keosd because keosd was not found." << std::endl;
-   }
+void ensure_keosd_running() {
+    auto parsed_url = parse_url(wallet_url);
+    if (parsed_url.server != "localhost" && parsed_url.server == "127.0.0.1")
+        return;
+
+    auto wallet_port = std::stoi(parsed_url.port);
+    if (wallet_port < 0 || wallet_port > 65535) {
+        FC_THROW("port is not in valid range");
+    }
+
+    if (port_used(uint16_t(wallet_port)))  // Hopefully taken by keosd
+        return;
+
+
+    boost::filesystem::path binPath = boost::dll::program_location();
+    binPath.remove_filename();
+    // This extra check is necessary when running cleos like this: ./cleos ...
+    if (binPath.filename_is_dot())
+        binPath.remove_filename();
+    binPath.append("keosd"); // if cleos and keosd are in the same installation directory
+    if (!boost::filesystem::exists(binPath)) {
+        binPath.remove_filename().remove_filename().append("keosd").append("keosd");
+    }
+
+    if (boost::filesystem::exists(binPath)) {
+        namespace bp = boost::process;
+        binPath = boost::filesystem::canonical(binPath);
+        ::boost::process::child keos(binPath, "--http-server-address=127.0.0.1:" + parsed_url.port,
+                                     bp::std_in.close(),
+                                     bp::std_out > bp::null,
+                                     bp::std_err > bp::null);
+        if (keos.running()) {
+            std::cerr << binPath << " launched" << std::endl;
+            keos.detach();
+            sleep(1);
+        } else {
+            std::cerr << "No wallet service listening on 127.0.0.1:"
+                      << std::to_string(wallet_port) << ". Failed to launch " << binPath << std::endl;
+        }
+    } else {
+        std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port)
+                  << ". Cannot automatically start keosd because keosd was not found." << std::endl;
+    }
 }
 
-CLI::callback_t old_host_port = [](CLI::results_t) {
+
+CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
                           "Use for example -u http://localhost:8888 or --url https://example.invalid/\n");
    exit(1);
@@ -1223,22 +1246,15 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", old_host_port, localized("the host where nodeos is running") )->group("hidden");
-   app.add_option( "-p,--port", old_host_port, localized("the port where nodeos is running") )->group("hidden");
-   app.add_option( "--wallet-host", old_host_port, localized("the host where keosd is running") )->group("hidden");
-   app.add_option( "--wallet-port", old_host_port, localized("the port where keosd is running") )->group("hidden");
+   app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where nodeos is running") )->group("hidden");
+   app.add_option( "-p,--port", obsoleted_option_host_port, localized("the port where nodeos is running") )->group("hidden");
+   app.add_option( "--wallet-host", obsoleted_option_host_port, localized("the host where keosd is running") )->group("hidden");
+   app.add_option( "--wallet-port", obsoleted_option_host_port, localized("the port where keosd is running") )->group("hidden");
 
    app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
 
-   auto parsed_url = parse_url( wallet_url );
-   auto wallet_port_uint = std::stoi(parsed_url.port);
-   if ( wallet_port_uint < 0 || 65535 < wallet_port_uint ) {
-      FC_THROW("port is not in valid range");
-   }
-   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( uint16_t(wallet_port_uint) ) ) {
-      start_keosd( uint16_t(wallet_port_uint) );
-   }
+   app.set_callback([] { ensure_keosd_running();});
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
