@@ -37,6 +37,11 @@ namespace eosiosystem {
       if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
          _gstate.last_pervote_bucket_fill = current_time();
 
+      /// only update block producers once every minute, block_timestamp is in half seconds
+      if( timestamp - _gstate.last_producer_schedule_update > 120 ) {
+         update_elected_producers( timestamp );
+      }
+
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
          _producers.modify( prod, 0, [&](auto& p ) {
@@ -44,12 +49,6 @@ namespace eosiosystem {
                p.last_produced_block_time = timestamp;
          });
       }
-
-      /// only update block producers once every minute, block_timestamp is in half seconds
-      if( timestamp - _gstate.last_producer_schedule_update > 120 ) {
-         update_elected_producers( timestamp );
-      }
-
    }
    
    eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket ) {
@@ -101,6 +100,7 @@ namespace eosiosystem {
 
       auto prod = _producers.find( owner );
       eosio_assert( prod != _producers.end(), "account name is not in producer list" );
+      eosio_assert( prod->active(), "producer does not have an active key" );
       if( prod->last_claim_time > 0 ) {
          eosio_assert(current_time() >= prod->last_claim_time + useconds_per_day, "already claimed rewards within a day");
       }

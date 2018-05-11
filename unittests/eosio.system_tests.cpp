@@ -1705,11 +1705,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
    produce_block(fc::seconds(2 * 3600));
 
-   produce_blocks(300);
-
-   for (const auto&prod: producer_names) {
-      std::cout << prod.to_string() << " " << get_producer_info(prod)["producer_key"] << " " << get_producer_info(prod)["last_produced_block_time"] << " " << get_producer_info(prod)["time_became_active"] << std::endl;
-   }
+   produce_blocks(8 * 21 * 12 );
 
 } FC_LOG_AND_RETHROW()
 
