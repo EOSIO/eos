@@ -88,7 +88,6 @@ namespace eosiosystem {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.producer_key = public_key();
                   p.time_became_active = 0;
-                  p.last_produced_block_time = 0;
                });
 
             continue;
