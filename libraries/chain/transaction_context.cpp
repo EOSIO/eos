@@ -52,6 +52,7 @@ namespace eosio { namespace chain {
          max_net = std::min( max_net, trx_specified_net_usage_limit );
 
       eager_net_limit = max_net;
+      //      wdump((eager_net_limit));
 
       // Update usage values of accounts to reflect new time
       auto& rl = control.get_mutable_resource_limits_manager();
@@ -61,13 +62,14 @@ namespace eosio { namespace chain {
       uint64_t block_cpu_limit = rl.get_block_cpu_limit();
 
       if( !billed_cpu_time_us ) {
-         idump((block_cpu_limit));
+       //  idump((block_cpu_limit));
          auto potential_deadline = start + fc::microseconds(block_cpu_limit);
          if( potential_deadline < deadline ) deadline = potential_deadline;
       }
 
       if( block_net_limit < eager_net_limit ) {
          eager_net_limit = block_net_limit;
+       //     wdump((eager_net_limit));
          net_limit_due_to_block = true;
       }
 
@@ -76,24 +78,28 @@ namespace eosio { namespace chain {
          add_net_usage( initial_net_usage );
 
       eager_net_limit = max_net;
+       //     wdump((eager_net_limit));
       net_limit_due_to_block = false;
 
       // Lower limits to what the billed accounts can afford to pay
 
-      if( !billed_cpu_time_us ) {
          for( const auto& a : bill_to_accounts ) {
             auto net_limit = rl.get_account_net_limit(a);
+       //     wdump((net_limit)(a));
             if( net_limit >= 0 )
                eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
-            auto cpu_limit = rl.get_account_cpu_limit(a);
-            if( cpu_limit > 0 ) {
-               auto potential_deadline = start + fc::microseconds(cpu_limit);
-               if( potential_deadline < deadline ) {
-                  wdump((potential_deadline)(cpu_limit));
-                  deadline = potential_deadline;
+     //       wdump((eager_net_limit));
+
+            if( !billed_cpu_time_us ) {
+               auto cpu_limit = rl.get_account_cpu_limit(a);
+               if( cpu_limit > 0 ) {
+                  auto potential_deadline = start + fc::microseconds(cpu_limit);
+                  if( potential_deadline < deadline ) {
+             //        wdump((potential_deadline)(cpu_limit));
+                     deadline = potential_deadline;
+                  }
                }
             }
-         }
       }
 
       eager_net_limit += cfg.net_usage_leeway;
@@ -101,11 +107,13 @@ namespace eosio { namespace chain {
 
       if( block_net_limit < eager_net_limit ) {
          eager_net_limit = block_net_limit;
+       //  wdump((eager_net_limit));
          net_limit_due_to_block = true;
       }
 
       // Round down network and CPU usage limits so that comparison to actual usage is more efficient
       eager_net_limit = (eager_net_limit/8)*8;       // Round down to nearest multiple of word size (8 bytes)
+      //wdump((eager_net_limit));
 
       if( initial_net_usage > 0 )
          check_net_usage();  // Fail early if current net usage is already greater than the calculated limit
@@ -237,12 +245,12 @@ namespace eosio { namespace chain {
       if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
          if( BOOST_UNLIKELY( net_limit_due_to_block ) ) {
             EOS_THROW( tx_soft_net_usage_exceeded,
-                       "not enough space left in block: ${actual_net_usage} > ${net_usage_limit}",
-                       ("actual_net_usage", net_usage)("net_usage_limit", max_net) );
+                       "not enough space left in block: ${actual_net_usage} > ${eager_net_limit}",
+                       ("actual_net_usage", net_usage)("net_usage_limit", max_net)("eager_net_limit",eager_net_limit) );
          } else {
             EOS_THROW( tx_net_usage_exceeded,
-                       "net usage of transaction is too high: ${actual_net_usage} > ${net_usage_limit}",
-                       ("actual_net_usage", net_usage)("net_usage_limit", max_net) );
+                       "net usage of transaction is too high: ${actual_net_usage} > ${eager_net_limit}",
+                       ("actual_net_usage", net_usage)("net_usage_limit", max_net)("eager_net_limit",eager_net_limit) );
          }
       }
    }

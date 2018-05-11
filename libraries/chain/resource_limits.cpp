@@ -102,8 +102,9 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
                      "authorizing account '${n}' has insufficient cpu resources for this transaction",
                      ("n",                    name(a))
                      ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
+                     ("account_cpu_limit",  double(limits.cpu_weight) / state.total_cpu_weight * double(state.virtual_cpu_limit) )
                      ("cpu_weight",           limits.cpu_weight)
-                     ("virtual_cpu_capacity", (double)state.virtual_cpu_limit )
+                     ("virtual_cpu_limit", (double)state.virtual_cpu_limit )
                      ("total_cpu_weight",     state.total_cpu_weight)
          );
       }
@@ -354,7 +355,7 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
 
    uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
 
-   wdump((cfg.cpu_limit_parameters.target));
+  // wdump((cfg.cpu_limit_parameters.target));
    uint128_t real_capacity_ex = (uint128_t)cfg.cpu_limit_parameters.target * (uint128_t)config::rate_limiting_precision;
    uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
 
@@ -385,6 +386,7 @@ int64_t resource_limits_manager::get_account_net_limit( const account_name& name
 
    uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight; // max
 
+  // wdump((usable_capacity_ex)(consumed_ex)(virtual_capacity_ex)(total_net_weight)(limits.net_weight)(name));
    if (usable_capacity_ex < consumed_ex) {
       return 0;
    }

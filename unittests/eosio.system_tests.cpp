@@ -172,8 +172,8 @@ public:
       account_name creator(N(eosio));
       signed_transaction trx;
       set_transaction_headers(trx);
-      asset cpu = asset::from_string("1000000.0000 EOS");
-      asset net = asset::from_string("1000000.0000 EOS");
+      asset cpu = asset::from_string("20000.0000 EOS");
+      asset net = asset::from_string("20000.0000 EOS");
       asset ram = asset::from_string("1.0000 EOS"); 
 
       for (const auto& a: accounts) {
@@ -290,6 +290,7 @@ public:
    }
 
    action_result regproducer( const account_name& acnt, int params_fixture = 1 ) {
+      wdump((acnt));
       return push_action( acnt, N(regproducer), mvo()
                           ("producer",  acnt )
                           ("producer_key", get_public_key( acnt, "active" ) )
@@ -1461,6 +1462,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester) try {
    create_account_with_resources( N(vota), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
    create_account_with_resources( N(votb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
    create_account_with_resources( N(votc), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   produce_blocks(10000);
 
    // create accounts {inita, initb, ..., initz} and register as producers
    setup_producer_accounts();
@@ -1470,11 +1472,24 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester) try {
       const std::string root( "init" );
       for ( char c = 'a'; c <= 'z' ; ++c ) {
          producer_names.emplace_back(root + std::string(1, c));
-         regproducer( producer_names.back() );
+         BOOST_REQUIRE_EQUAL( success(), regproducer( producer_names.back() ) );
+         produce_blocks(10);
+
+         ilog( "------ get pro----------" );
+         auto initz_info = get_producer_info( producer_names.back() );
+         wdump((producer_names.back()));
+         BOOST_REQUIRE_EQUAL(0, initz_info["total_votes"].as<double>());
       }
       
-      BOOST_REQUIRE_EQUAL(0, get_producer_info( N(inita) )["total_votes"].as<double>());
-      BOOST_REQUIRE_EQUAL(0, get_producer_info( N(initz) )["total_votes"].as<double>());
+      auto inita_info = get_producer_info( N(inita) );
+      wdump((inita_info));
+      BOOST_REQUIRE_EQUAL(0, inita_info["total_votes"].as<double>());
+
+
+      ilog( "------ get initz ----------" );
+      auto initz_info = get_producer_info( N(initz) );
+      wdump((initz_info));
+      BOOST_REQUIRE_EQUAL(0, initz_info["total_votes"].as<double>());
    }
 
    {
@@ -1978,7 +1993,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
                                                ("producers", vector<account_name>{ N(producer1) } )
                         )
    );
-   produce_blocks(250);
+   produce_blocks(10000);
    auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
@@ -1988,14 +2003,17 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
    //REQUIRE_EQUAL_OBJECTS(prod1_config, config);
 
    // elect 2 producers
-   issue( "bob", "1000.0000 EOS",  config::system_account_name );
-   BOOST_REQUIRE_EQUAL( success(), stake( "bob", "200.0000 EOS", "100.0000 EOS" ) );
+   issue( "bob", "80000.0000 EOS",  config::system_account_name );
+   ilog("stake");
+   BOOST_REQUIRE_EQUAL( success(), stake( "bob", "40000.0000 EOS", "40000.0000 EOS" ) );
+   ilog("start vote");
    BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
                                                ("voter",  "bob")
                                                ("proxy", name(0).to_string() )
                                                ("producers", vector<account_name>{ N(producer2) } )
                         )
    );
+   ilog(".");
    produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
