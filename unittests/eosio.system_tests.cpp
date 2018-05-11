@@ -332,7 +332,7 @@ public:
    }
 
    fc::variant get_producer_info( const account_name& act ) {
-      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, config::producers_account_name, act );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
       return abi_ser.binary_to_variant( "producer_info", data );
    }
 
@@ -501,12 +501,12 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    produce_block( fc::hours(1) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
-   BOOST_REQUIRE_EQUAL( success(), buyram( "alice", "bob", "200.0000 EOS" ) );
-   BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 100 ) );
-   BOOST_REQUIRE_EQUAL( success(), sellram( "bob", 100 ) );
-   BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 10000 ) );
+   total = get_total_stake("bob");
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
 
    total = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS").amount, total["net_weight"].as<asset>().amount );
@@ -517,28 +517,21 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    auto bytes = total["ram_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
-
-   //unstake
-   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "200.0000 EOS", "100.0000 EOS" ) );
-   total = get_total_stake( "alice" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as<asset>().amount);
-   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["cpu_weight"].as<asset>().amount);
-
-
-   REQUIRE_MATCHING_OBJECT( voter( "alice", "0.0000 EOS" ), get_voter_info( "alice" ) );
-   produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
-
-   //after 2 days balance should not be available yet
+   //unstake from bob
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
+   total = get_total_stake("bob");
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS"), total["cpu_weight"].as<asset>());
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
    //after 3 days funds should be released
    produce_block( fc::hours(1) );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
+   REQUIRE_MATCHING_OBJECT( voter( "alice", "0.0000 EOS" ), get_voter_info( "alice" ) );
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
