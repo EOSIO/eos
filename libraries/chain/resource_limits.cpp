@@ -316,8 +316,12 @@ uint64_t resource_limits_manager::get_block_net_limit() const {
 int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name ) const {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
-   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
-   if (limits.cpu_weight < 0) {
+
+   int64_t x;
+   int64_t cpu_weight;
+   get_account_limits( name, x, x, cpu_weight );
+
+   if( cpu_weight < 0 ) {
       return -1;
    }
 
@@ -327,10 +331,9 @@ int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name
    uint128_t consumed_ex = (uint128_t)usage.cpu_usage.consumed * (uint128_t)config::rate_limiting_precision;
    uint128_t virtual_capacity_ex = (uint128_t)state.virtual_cpu_limit * (uint128_t)config::rate_limiting_precision;
 
-   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * cpu_weight) / (uint128_t)total_cpu_weight;
 
-   //idump((virtual_capacity_ex)(total_cpu_weight)(limits.cpu_weight)(usable_capacity_ex)(consumed_ex)(config::rate_limiting_precision) );
-   if (usable_capacity_ex < consumed_ex) {
+   if( usable_capacity_ex < consumed_ex ) {
       return 0;
    }
 
@@ -341,8 +344,12 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    const auto& cfg = _db.get<resource_limits_config_object>();
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
-   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
-   if (limits.cpu_weight < 0) {
+
+   int64_t x;
+   int64_t cpu_weight;
+   get_account_limits( name, x, x, cpu_weight );
+
+   if( cpu_weight < 0 ) {
       return { -1, -1, -1 };
    }
 
@@ -352,15 +359,14 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    uint128_t consumed_ex = (uint128_t)usage.cpu_usage.consumed * (uint128_t)config::rate_limiting_precision;
    uint128_t virtual_capacity_ex = (uint128_t)state.virtual_cpu_limit * (uint128_t)config::rate_limiting_precision;
 
-   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * cpu_weight) / (uint128_t)total_cpu_weight;
 
-   wdump((cfg.cpu_limit_parameters.target));
    uint128_t real_capacity_ex = (uint128_t)cfg.cpu_limit_parameters.target * (uint128_t)config::rate_limiting_precision;
-   uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * limits.cpu_weight) / (uint128_t)total_cpu_weight;
+   uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * cpu_weight) / (uint128_t)total_cpu_weight;
 
    uint128_t blocks_per_day = 86400 * 1000 / config::block_interval_ms;
 
-   if (usable_capacity_ex < consumed_ex) {
+   if( usable_capacity_ex < consumed_ex ) {
       consumed_ex = usable_capacity_ex;
    }
    return { (int64_t)(std::min(usable_capacity_ex - consumed_ex, real_capacity_ex) / (uint128_t)config::rate_limiting_precision),
@@ -372,8 +378,12 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
 int64_t resource_limits_manager::get_account_net_limit( const account_name& name ) const {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
-   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
-   if (limits.net_weight < 0) {
+
+   int64_t x;
+   int64_t net_weight;
+   get_account_limits( name, x, net_weight, x );
+
+   if( net_weight < 0 ) {
       return -1;
    }
 
@@ -383,9 +393,9 @@ int64_t resource_limits_manager::get_account_net_limit( const account_name& name
    auto total_net_weight = state.total_net_weight;
    if( total_net_weight == 0 ) total_net_weight = 1;
 
-   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight; // max
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * net_weight) / (uint128_t)total_net_weight; // max
 
-   if (usable_capacity_ex < consumed_ex) {
+   if( usable_capacity_ex < consumed_ex ) {
       return 0;
    }
 
@@ -397,8 +407,12 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    const auto& cfg = _db.get<resource_limits_config_object>();
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
-   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
-   if (limits.net_weight < 0) {
+
+   int64_t x;
+   int64_t net_weight;
+   get_account_limits( name, x, net_weight, x );
+
+   if( net_weight < 0 ) {
       return { -1, -1, -1 };
    }
 
@@ -408,14 +422,14 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    uint128_t consumed_ex = (uint128_t)usage.net_usage.consumed * (uint128_t)config::rate_limiting_precision;
    uint128_t virtual_capacity_ex = (uint128_t)state.virtual_net_limit * (uint128_t)config::rate_limiting_precision;
 
-   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight; // max
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * net_weight) / (uint128_t)total_net_weight; // max
 
    uint128_t real_capacity_ex = (uint128_t)cfg.net_limit_parameters.target * (uint128_t)config::rate_limiting_precision;
-   uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * limits.net_weight) / (uint128_t)total_net_weight;
+   uint128_t guaranteed_capacity_ex = (uint128_t)(real_capacity_ex * net_weight) / (uint128_t)total_net_weight;
 
    uint128_t blocks_per_day = 86400 * 1000 / config::block_interval_ms;
 
-   if (usable_capacity_ex < consumed_ex) {
+   if( usable_capacity_ex < consumed_ex ) {
       consumed_ex = usable_capacity_ex;
    }
    return { (int64_t)(std::min(usable_capacity_ex - consumed_ex, real_capacity_ex) / (uint128_t)config::rate_limiting_precision),

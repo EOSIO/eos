@@ -225,9 +225,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
-     ilog(".");
         issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
-     ilog(".");
 
 
         auto actual = get_balance(config::system_account_name);
@@ -247,9 +245,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                     ("memo", "" ) );
                     */
         }
-     ilog("set code....");
         set_code_abi(N(eosio), eosio_system_wast, eosio_system_abi); //, &eosio_active_pk);
-        produce_blocks(1);
 
         for( const auto& a : test_genesis ) {
            auto ib = a.initial_balance;
@@ -264,7 +260,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                     );
            BOOST_REQUIRE( !r->except_ptr );
 
-           wdump((a.aname)(net)(cpu));
            r = base_tester::push_action(N(eosio), N(delegatebw), N(eosio), mutable_variant_object()
                     ("from", "eosio" )
                     ("receiver", name(a.aname))
@@ -273,7 +268,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                     ("transfer", 1) 
                     );
 
-           produce_blocks(1);
            BOOST_REQUIRE( !r->except_ptr );
         }
 

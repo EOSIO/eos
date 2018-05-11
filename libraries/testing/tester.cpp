@@ -243,12 +243,10 @@ namespace eosio { namespace testing {
    }
 
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
-                                                        uint32_t skip_flag,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )
    { try {
-      wlog((deadline));
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline, billed_cpu_time_us );
@@ -258,12 +256,10 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
-                                                        uint32_t skip_flag,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )
    { try {
-      wlog((deadline));
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto c = packed_transaction::none;

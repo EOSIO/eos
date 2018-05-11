@@ -616,7 +616,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
    while (count < 4) {
       signed_transaction trx;
 
-      for (int i = 0; i < 1000; ++i) {
+      for (int i = 0; i < 10; ++i) {
          action act;
          act.account = N(f_tests);
          act.name = N() + (i * 16);
@@ -628,12 +628,12 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
       trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
 
       try {
-         push_transaction(trx);
+         push_transaction(trx, fc::time_point::maximum(), 0);
          produce_blocks(1);
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
          count++;
-      } catch (eosio::chain::tx_deadline_exceeded &) {
+      } catch( eosio::chain::leeway_deadline_exception& ) {
          BOOST_REQUIRE_EQUAL(count, 3);
          break;
       }
