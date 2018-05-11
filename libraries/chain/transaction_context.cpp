@@ -31,6 +31,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( !is_initialized, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
+      auto original_deadline = deadline;
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
@@ -38,13 +39,12 @@ namespace eosio { namespace chain {
       net_limit = rl.get_block_net_limit();
 
       objective_duration_limit = fc::microseconds( rl.get_block_cpu_limit() );
-      auto block_deadline = start + objective_duration_limit;
+      deadline = start + objective_duration_limit;
 
       // Check if deadline is limited by block deadline or caller-set deadline
-      if( deadline <= block_deadline ) {
+      if( original_deadline <= deadline ) {
+         deadline = original_deadline;
          deadline_exception_code = deadline_exception::code_value;
-      } else {
-         deadline = block_deadline;
       }
 
       // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
@@ -117,12 +117,13 @@ namespace eosio { namespace chain {
             deadline_exception_code = deadline_exception::code_value;
       }
 
-
-
       eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
 
       if( initial_net_usage > 0 )
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
+
+      if( billed_cpu_time_us > 0 )
+         deadline = original_deadline; // Only change deadline if billed_cpu_time_us is not set
 
       check_time(); // Fail early if deadline has already been exceeded
 
