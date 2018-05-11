@@ -156,6 +156,8 @@ namespace eosio { namespace chain {
                                     3040007, "Invalid Reference Block" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                transaction_exception,
                                     3040008, "duplicate transaction" )
+      FC_DECLARE_DERIVED_EXCEPTION( deferred_tx_duplicate,       transaction_exception,
+                                    3040009, "duplicate deferred transaction" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,

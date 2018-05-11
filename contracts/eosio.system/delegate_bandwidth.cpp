@@ -366,7 +366,7 @@ namespace eosiosystem {
       eosio::transaction out;
       out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
       out.delay_sec = refund_delay;
-      out.send( from, receiver );
+      out.send( from, receiver, true );
 
       const auto& fromv = _voters.get( from );
 
