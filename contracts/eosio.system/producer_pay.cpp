@@ -28,8 +28,10 @@ namespace eosiosystem {
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace eosio;
 
+      require_auth(N(eosio));
+
       /** until activated stake crosses this threshold no new rewards are paid */
-      if( _gstate.total_activated_stake < 150'000'000'0000 )
+      if( _gstate.total_activated_stake < 1500000000000 /* 150'000'000'0000 */ )
          return;
 
       if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
@@ -53,7 +55,7 @@ namespace eosiosystem {
    eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket ) {
       eosio::asset payment(0, S(4,EOS));
       const int64_t min_daily_amount = 100 * 10000;
-      if ( pervote_bucket.amount < min_daily_tokens ) {
+      if ( pervote_bucket.amount < min_daily_amount ) {
          return payment;
       }
       
@@ -66,7 +68,7 @@ namespace eosiosystem {
          if ( !(itr->total_votes > 0) ) {
             break;
          }
-         if ( !(itr->active()) && !(itr->owner != owner) ) {
+         if ( !itr->active() ) {
             continue;
          }
          
