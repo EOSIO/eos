@@ -243,7 +243,6 @@ namespace eosio { namespace testing {
    }
 
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
-                                                        uint32_t skip_flag,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )
@@ -257,7 +256,6 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
-                                                        uint32_t skip_flag,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us
                                                       )

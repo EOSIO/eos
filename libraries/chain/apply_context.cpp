@@ -348,12 +348,12 @@ bytes apply_context::get_packed_transaction() {
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
-   if( (delta > 0) ) {
+   if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)) ) {
          require_authorization( payer );
       }
-      trx_context.add_ram_usage(payer, delta);
    }
+   trx_context.add_ram_usage(payer, delta);
 }
 
 
