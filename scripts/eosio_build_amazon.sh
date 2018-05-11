@@ -355,7 +355,7 @@ fi
 	fi
 
 	printf "\\n\\tChecking MongoDB C++ driver installation.\\n"
-	if [  -e "/usr/local/lib/libmongocxx-static.a" ]; then
+	if [ ! -e "/usr/local/lib/libmongocxx-static.a" ]; then
 		if ! cd "${TEMP_DIR}"
 		then
 			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
@@ -390,7 +390,7 @@ fi
 		fi
 		if ! ./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 		then
-			printf "\\tConfiguring MongoDB C driver has encountered the errors above.\\n"
+			printf "\\tConfiguring MongoDB C driver has encountered the above errors.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
