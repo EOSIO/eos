@@ -3,6 +3,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
@@ -331,7 +332,7 @@ public:
    }
 
    fc::variant get_producer_info( const account_name& act ) {
-      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, config::producers_account_name, act );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
       return abi_ser.binary_to_variant( "producer_info", data );
    }
 
@@ -410,6 +411,10 @@ fc::mutable_variant_object voter( account_name acct ) {
 
 fc::mutable_variant_object voter( account_name acct, const string& vote_stake ) {
    return voter( acct )( "staked", asset::from_string( vote_stake ).amount );
+}
+
+fc::mutable_variant_object voter( account_name acct, int64_t vote_stake ) {
+   return voter( acct )( "staked", vote_stake );
 }
 
 fc::mutable_variant_object proxy( account_name acct ) {
@@ -496,12 +501,12 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    produce_block( fc::hours(1) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
-   BOOST_REQUIRE_EQUAL( success(), buyram( "alice", "bob", "200.0000 EOS" ) );
-   BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 100 ) );
-   BOOST_REQUIRE_EQUAL( success(), sellram( "bob", 100 ) );
-   BOOST_REQUIRE_EQUAL( success(), buyrambytes( "alice", "bob", 10000 ) );
+   total = get_total_stake("bob");
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
 
    total = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS").amount, total["net_weight"].as<asset>().amount );
@@ -512,28 +517,21 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    auto bytes = total["ram_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
-
-   //unstake
-   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "200.0000 EOS", "100.0000 EOS" ) );
-   total = get_total_stake( "alice" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as<asset>().amount);
-   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["cpu_weight"].as<asset>().amount);
-
-
-   REQUIRE_MATCHING_OBJECT( voter( "alice", "0.0000 EOS" ), get_voter_info( "alice" ) );
-   produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
-
-   //after 2 days balance should not be available yet
+   //unstake from bob
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "bob", "200.0000 EOS", "100.0000 EOS" ) );
+   total = get_total_stake("bob");
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS"), total["cpu_weight"].as<asset>());
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice" ) );
    //after 3 days funds should be released
    produce_block( fc::hours(1) );
    produce_blocks(1);
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
+   REQUIRE_MATCHING_OBJECT( voter( "alice", "0.0000 EOS" ), get_voter_info( "alice" ) );
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
@@ -1180,7 +1178,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_register_unregister_keeps_stake, eosio_system_tes
    issue( "carol", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "carol", "246.0002 EOS", "531.0001 EOS" ) );
    //check that both proxy flag and stake a correct
-   REQUIRE_MATCHING_OBJECT( proxy( "carol" )( "staked", "777.0003 EOS" ), get_voter_info( "carol" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "carol" )( "staked", 7770003 ), get_voter_info( "carol" ) );
 
    //unregister
    BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(regproxy), mvo()
@@ -1854,33 +1852,33 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
                                                 ("producers", vector<account_name>() )
                         )
    );
-   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_vote_weight", stake2votes( "150.0003 EOS" ))( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //double regestering should fail without affecting total votes and stake
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account is already a proxy" ),
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: action has no effect" ),
                         push_action( N(alice), N(regproxy), mvo()
                                      ("proxy",  "alice")
                                      ("isproxy",  1)
                         )
    );
-   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_vote_weight", stake2votes("150.0003 EOS") )( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //uregister
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(unregproxy), mvo()
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
                                                 ("proxy",  "alice")
                                                 ("isproxy",  0)
                         )
    );
-   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_vote_weight", stake2votes("150.0003 EOS") )( "staked", 100000 ), get_voter_info( "alice" ) );
 
    //double unregistering should not affect proxied_votes and stake
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account is not a proxy" ),
-                        push_action( N(alice), N(unregproxy), mvo()
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: action has no effect" ),
+                        push_action( N(alice), N(regproxy), mvo()
                                      ("proxy",  "alice")
                                      ("isproxy",  0)
                         )
    );
-   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_votes", 1500003 )( "staked", 100000 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( voter( "alice" )( "proxied_vote_weight", stake2votes("150.0003 EOS"))( "staked", 100000 ), get_voter_info( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -1927,7 +1925,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
    );
 
    //proxy should not be able to use itself as a proxy
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account registered as a proxy is not allowed to use a proxy" ),
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: cannot proxy to self" ),
                         push_action( N(bob), N(voteproducer), mvo()
                                      ("voter",  "bob")
                                      ("proxy", "bob" )
@@ -1963,14 +1961,16 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
       ( "max_generated_transaction_count", config.max_generated_transaction_count );
 }
 
-BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) try {
+BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_tester ) try {
    create_accounts_with_resources( {  N(producer1), N(producer2), N(producer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 3) );
 
-   issue( "alice", "1000.0000 EOS",  config::system_account_name );
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "100.0000 EOS", "50.0000 EOS" ) );
+   //stake more than 15% of total EOS supply to activate chain
+   transfer( "eosio", "alice", "600000000.0000 EOS", "eosio" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "alice", "300000000.0000 EOS", "300000000.0000 EOS" ) );
+   //                                                           1000000000.0000
    //vote for producers
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(voteproducer), mvo()
                                                ("voter",  "alice")
@@ -1978,14 +1978,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer1) } )
                         )
    );
-   produce_blocks(50);
+   produce_blocks(250);
    auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
 
-   auto config = config_to_variant( control->get_global_properties().configuration );
-   auto prod1_config = testing::filter_fields( config, producer_parameters_example( 1 ) );
-   REQUIRE_EQUAL_OBJECTS(prod1_config, config);
+   //auto config = config_to_variant( control->get_global_properties().configuration );
+   //auto prod1_config = testing::filter_fields( config, producer_parameters_example( 1 ) );
+   //REQUIRE_EQUAL_OBJECTS(prod1_config, config);
 
    // elect 2 producers
    issue( "bob", "1000.0000 EOS",  config::system_account_name );
@@ -1996,14 +1996,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer2) } )
                         )
    );
-   produce_blocks(50);
+   produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[0].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
-   config = config_to_variant( control->get_global_properties().configuration );
-   auto prod2_config = testing::filter_fields( config, producer_parameters_example( 2 ) );
-   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
+   //config = config_to_variant( control->get_global_properties().configuration );
+   //auto prod2_config = testing::filter_fields( config, producer_parameters_example( 2 ) );
+   //REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
    // elect 3 producers
    BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
@@ -2012,14 +2012,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer2), N(producer3) } )
                         )
    );
-   produce_blocks(50);
+   produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[2].producer_name );
-   config = config_to_variant( control->get_global_properties().configuration );
-   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[2].producer_name );
+   //config = config_to_variant( control->get_global_properties().configuration );
+   //REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
    //back to 2 producers
    BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
@@ -2028,14 +2028,14 @@ BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) t
                                                ("producers", vector<account_name>{ N(producer3) } )
                         )
    );
-   produce_blocks(100);
+   produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
-   config = config_to_variant( control->get_global_properties().configuration );
-   auto prod3_config = testing::filter_fields( config, producer_parameters_example( 3 ) );
-   REQUIRE_EQUAL_OBJECTS(prod3_config, config);
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[1].producer_name );
+   //config = config_to_variant( control->get_global_properties().configuration );
+   //auto prod3_config = testing::filter_fields( config, producer_parameters_example( 3 ) );
+   //REQUIRE_EQUAL_OBJECTS(prod3_config, config);
 
 } FC_LOG_AND_RETHROW()
 

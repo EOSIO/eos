@@ -139,6 +139,7 @@ namespace eosiosystem {
 
       auto voter = _voters.find(voter_name);
       eosio_assert( voter != _voters.end(), "user must stake before they can vote" ); /// staking creates voter object
+      eosio_assert( !proxy || !voter->is_proxy, "account registered as a proxy is not allowed to use a proxy" );
 
       /**
        * The first time someone votes we calculate and set last_vote_weight, since they cannot unstake until
@@ -229,11 +230,9 @@ namespace eosiosystem {
       require_auth( proxy );
 
       auto pitr = _voters.find(proxy);
-      //eosio_assert( pitr != _voters.end(), "proxy must have some stake first" );
-      //eosio_assert( !pitr->is_proxy, "account is already a proxy" );
-      eosio_assert( pitr->is_proxy != isproxy, "action has no effect" );
-
       if ( pitr != _voters.end() ) {
+         eosio_assert( isproxy != pitr->is_proxy, "action has no effect" );
+         eosio_assert( !isproxy || !pitr->proxy, "account that uses a proxy is not allowed to become a proxy" );
          _voters.modify( pitr, 0, [&]( auto& p ) {
                p.is_proxy = isproxy;
                print( "    vote weight: ", p.last_vote_weight, "\n" );
