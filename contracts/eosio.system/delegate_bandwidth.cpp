@@ -120,7 +120,7 @@ namespace eosiosystem {
       auto itr = _rammarket.find(S(4,RAMEOS));
       auto tmp = *itr;
       auto eosout = tmp.convert( asset(bytes,S(0,RAM)), S(4,EOS) );
-      print( "eosout: ", eosout, "\n" );
+      print( "eosout: ", eosout, " ", tmp.base.balance, " ", tmp.quote.balance, "\n" );
 
       buyram( payer, receiver, eosout );
    }

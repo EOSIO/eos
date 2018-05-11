@@ -332,7 +332,7 @@ int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name
    int64_t cpu_weight;
    get_account_limits( name, unused, unused, cpu_weight );
 
-   if( cpu_weight < 0 ) {
+   if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
       return -1;
    }
 
