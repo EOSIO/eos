@@ -457,7 +457,7 @@ fi
 		fi
 		if ! sudo rm -rf "${TEMP_DIR}/mongo-cxx-driver"
 		then
-			printf "\\n\\tUnable to remove directory %s/mongo-cxx-driver.\\n" "${TEMP_DIR}" "${TEMP_DIR}"
+			printf "\\n\\tUnable to remove directory %s/mongo-cxx-driver.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
