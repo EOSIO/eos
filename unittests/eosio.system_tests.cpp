@@ -1565,7 +1565,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       bool all_21_produced = true;
       for (uint32_t i = 0; i < 21; ++i) {
          if (0 == get_producer_info(producer_names[i])["produced_blocks"].as<uint32_t>()) {
-            all_21_produced= false;
+            all_21_produced = false;
          }
       }
       bool rest_didnt_produce = true;
@@ -1705,7 +1705,39 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
    produce_block(fc::seconds(2 * 3600));
 
-   produce_blocks(8 * 21 * 12 );
+   produce_blocks(8 * 21 * 12);
+   
+   {
+      bool all_newly_elected_produced = true;
+      for (uint32_t i = 21; i < producer_names.size(); ++i) {
+         if (0 == get_producer_info(producer_names[i])["produced_blocks"].as<uint32_t>()) {
+            all_newly_elected_produced = false;
+         }
+      }
+      BOOST_REQUIRE(all_newly_elected_produced);
+   }
+
+   {
+      uint32_t survived_active_producers = 0;
+      uint32_t one_inactive_index = 0;
+      for (uint32_t i = 0; i < 21; ++i) {
+         if (fc::crypto::public_key() != fc::crypto::public_key(get_producer_info(producer_names[i])["producer_key"].as_string())) {
+            ++survived_active_producers;
+         } else {
+            one_inactive_index = i;
+         }
+      }
+
+      BOOST_REQUIRE(3 >= survived_active_producers);
+
+      auto inactive_prod_info = get_producer_info(producer_names[one_inactive_index]);
+      BOOST_REQUIRE_EQUAL(0, inactive_prod_info["time_became_active"].as<uint32_t>());
+      // The following condition is not necessarily true
+      //      BOOST_REQUIRE_EQUAL(0, inactive_prod_info["last_produced_block_time"].as<uint32_t>());
+      
+      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: producer does not have an active key"),
+                          push_action(producer_names[one_inactive_index], N(claimrewards), mvo()("owner", producer_names[one_inactive_index])));
+   }
 
 } FC_LOG_AND_RETHROW()
 
