@@ -79,16 +79,19 @@ namespace eosio { namespace chain {
       net_limit_due_to_block = false;
 
       // Lower limits to what the billed accounts can afford to pay
-      for( const auto& a : bill_to_accounts ) {
-         auto net_limit = rl.get_account_net_limit(a);
-         if( net_limit >= 0 )
-            eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
-         auto cpu_limit = rl.get_account_cpu_limit(a);
-         if( cpu_limit > 0 ) {
-            auto potential_deadline = start + fc::microseconds(cpu_limit);
-            if( potential_deadline < deadline ) {
-               wdump((potential_deadline)(cpu_limit));
-               deadline = potential_deadline;
+
+      if( !billed_cpu_time_us ) {
+         for( const auto& a : bill_to_accounts ) {
+            auto net_limit = rl.get_account_net_limit(a);
+            if( net_limit >= 0 )
+               eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
+            auto cpu_limit = rl.get_account_cpu_limit(a);
+            if( cpu_limit > 0 ) {
+               auto potential_deadline = start + fc::microseconds(cpu_limit);
+               if( potential_deadline < deadline ) {
+                  wdump((potential_deadline)(cpu_limit));
+                  deadline = potential_deadline;
+               }
             }
          }
       }
