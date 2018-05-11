@@ -20,6 +20,12 @@ cd eos/Docker
 docker build . -t eosio/eos
 ```
 
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the dawn-v4.0.0 tag, you could do the following:
+
+```bash
+docker build -t eosio/eos:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
+```
+
 ## Start nodeos docker container only
 
 ```bash
