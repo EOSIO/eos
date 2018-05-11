@@ -54,14 +54,14 @@ docker volume create --name=keosd-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when runing cleos is running inside the keosd container as described in "Execute cleos commands" section.
+After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when running cleos is running inside the keosd container as described in "Execute cleos commands" section.
 
 ### Execute cleos commands
 
 You can run the `cleos` commands via a bash alias.
 
 ```bash
-alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -H nodeosd'
+alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888' # For DAWN3.0, use '-H nodeosd' instead of '-u http://nodeosd:8888'
 cleos get info
 cleos get account inita
 ```
@@ -77,6 +77,31 @@ If you don't need keosd afterwards, you can stop the keosd service using
 ```bash
 docker-compose stop keosd
 ```
+
+### Develop/Build custom contracts
+
+Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize eosio/builder. However, eosio/builder does not contain eosiocpp. As such, you will need to run eosio/builder interactively, and clone, build and install EOS. Once this is complete, you can then utilize eosiocpp to compile your contracts.
+
+You can also create a Dockerfile that will do this for you.
+
+```
+FROM eosio/builder
+
+RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
+    && cd eos \
+    && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
+       -DCMAKE_C_COMPILER=clang -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true \
+    && cmake --build /tmp/build --target install && rm -rf /tmp/build /eos
+```
+
+Then, from the same directory as the Dockerfile, simply run:
+
+```bash
+docker build -t eosio/contracts .
+docker run -it -v /path/to/custom/contracts:/contracts eosio/contracts /bin/bash
+```
+
+At this time you should be at a bash shell. You can navigate into the /contracts directory and use eosiocpp to compile your custom contracts.
 
 ### Change default configuration
 
@@ -144,7 +169,7 @@ volumes:
 
 ```
 
-*NOTE:* the defalut version is the latest, you can change it to what you want
+*NOTE:* the default version is the latest, you can change it to what you want
 
 run `docker pull eosio/eos:latest` 
 
