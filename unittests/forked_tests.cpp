@@ -283,7 +283,6 @@ BOOST_AUTO_TEST_CASE(confirmation) try {
 
    BOOST_REQUIRE_EQUAL(0, blk->bft_irreversible_blocknum);
    BOOST_REQUIRE_EQUAL(0, blk->confirmations.size());
-   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
 
    // invalid signature
    BOOST_REQUIRE_EXCEPTION(c.control->push_confirmation(header_confirmation{blk->id, N(sam), priv_invalid.sign(blk->sig_digest())}),
@@ -304,7 +303,6 @@ BOOST_AUTO_TEST_CASE(confirmation) try {
 
    BOOST_REQUIRE_EQUAL(0, blk->bft_irreversible_blocknum);
    BOOST_REQUIRE_EQUAL(1, blk->confirmations.size());
-   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
 
    // double confirm not allowed
    BOOST_REQUIRE_EXCEPTION(c.control->push_confirmation(header_confirmation{blk->id, N(sam), priv_sam.sign(blk->sig_digest())}),
@@ -318,7 +316,6 @@ BOOST_AUTO_TEST_CASE(confirmation) try {
 
    BOOST_REQUIRE_EQUAL(0, blk->bft_irreversible_blocknum);
    BOOST_REQUIRE_EQUAL(2, blk->confirmations.size());
-   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
 
    // signed by pam
    c.control->push_confirmation(header_confirmation{blk->id, N(pam), priv_pam.sign(blk->sig_digest())});
@@ -328,14 +325,12 @@ BOOST_AUTO_TEST_CASE(confirmation) try {
    BOOST_REQUIRE_EQUAL(55, blk61->bft_irreversible_blocknum); // bft irreversible number will propagate to higher block
    BOOST_REQUIRE_EQUAL(0, blk50->bft_irreversible_blocknum); // bft irreversible number will not propagate to lower block
    BOOST_REQUIRE_EQUAL(3, blk->confirmations.size());
-   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
 
    // signed by scott
    c.control->push_confirmation(header_confirmation{blk->id, N(scott), priv_scott.sign(blk->sig_digest())});
 
    BOOST_REQUIRE_EQUAL(55, blk->bft_irreversible_blocknum);
    BOOST_REQUIRE_EQUAL(4, blk->confirmations.size());
-   printf("bft number is %d #confirms %d\n", blk->bft_irreversible_blocknum, (int)blk->confirmations.size());
 
    // let's confirm block 50 as well
    c.control->push_confirmation(header_confirmation{blk50->id, N(sam), priv_sam.sign(blk50->sig_digest())});

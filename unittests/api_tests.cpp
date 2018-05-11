@@ -247,7 +247,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 	create_account( N(acc2) );
 	create_account( N(acc3) );
 	create_account( N(acc4) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
@@ -403,7 +403,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       produce_blocks(2);
       create_account( N(testapi) );
       create_account( N(dummy) );
-      produce_blocks(1000);
+      produce_blocks(10);
       set_code( N(testapi), test_api_wast );
       produce_blocks(1);
       cf_action cfa;
@@ -640,7 +640,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
@@ -709,7 +709,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
@@ -1046,7 +1046,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    produce_blocks(2);
    create_account( N(testapi) );
    create_account( N(testapi2) );
-   produce_blocks(1000);
+   produce_blocks(10);
    set_code( N(testapi), test_api_db_wast );
    set_code( N(testapi2), test_api_db_wast );
    produce_blocks(1);
@@ -1189,9 +1189,9 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
 BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
-	produce_blocks(1000);
+	produce_blocks(10);
 
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "create_instances", {});
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_addition", {});
