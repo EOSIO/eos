@@ -203,16 +203,16 @@ namespace eosio { namespace chain {
                                     3080001, "account using more than allotted RAM usage" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_net_usage_exceeded, resource_exhausted_exception,
                                     3080002, "transaction exceeded the current network usage limit imposed on the transaction" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_soft_net_usage_exceeded, resource_exhausted_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( block_net_usage_exceeded, resource_exhausted_exception,
                                     3080003, "transaction network usage is too much for the remaining allowable usage of the current block" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080004, "transaction exceeded the current CPU usage limit imposed on the transaction" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_soft_cpu_usage_exceeded, resource_exhausted_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( block_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080005, "transaction CPU usage is too much for the remaining allowable usage of the current block" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_deadline_exceeded, resource_exhausted_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( deadline_exception, resource_exhausted_exception,
                                     3080006, "transaction took too long" )
-      FC_DECLARE_DERIVED_EXCEPTION( action_cpu_usage_exceeded, resource_exhausted_exception,
-                                    3080007, "action took too long" )
+      FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
+                                    3081001, "transaction reached the deadline set due to leeway on account CPU limits" )
 
    FC_DECLARE_DERIVED_EXCEPTION( authorization_exception, chain_exception,
                                  3090000, "Authorization exception" )

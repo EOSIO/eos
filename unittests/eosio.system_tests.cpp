@@ -172,8 +172,8 @@ public:
       account_name creator(N(eosio));
       signed_transaction trx;
       set_transaction_headers(trx);
-      asset cpu = asset::from_string("20000.0000 EOS");
-      asset net = asset::from_string("20000.0000 EOS");
+      asset cpu = asset::from_string("80.0000 EOS");
+      asset net = asset::from_string("80.0000 EOS");
       asset ram = asset::from_string("1.0000 EOS"); 
 
       for (const auto& a: accounts) {
@@ -1462,7 +1462,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester) try {
    create_account_with_resources( N(vota), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
    create_account_with_resources( N(votb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
    create_account_with_resources( N(votc), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   produce_blocks(10000);
+   produce_blocks(1);
 
    // create accounts {inita, initb, ..., initz} and register as producers
    setup_producer_accounts();
@@ -1993,7 +1993,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
                                                ("producers", vector<account_name>{ N(producer1) } )
                         )
    );
-   produce_blocks(10000);
+   produce_blocks(1);
    auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
