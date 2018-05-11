@@ -208,7 +208,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       const uint64_t increment = 1000;
       const uint64_t expected_iterations = (config::default_max_block_cpu_usage + increment - 1 ) / increment;
 
-      for (int idx = 0; idx < expected_iterations - 1; idx++) {
+      for (int idx = 0; idx < expected_iterations; idx++) {
          add_transaction_usage({account}, increment, 0, 0);
       }
 

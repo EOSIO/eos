@@ -61,7 +61,8 @@ namespace eosio { namespace chain {
       uint64_t block_cpu_limit = rl.get_block_cpu_limit();
 
       if( !billed_cpu_time_us ) {
-         auto potential_deadline = fc::time_point::now() + fc::microseconds(block_cpu_limit);
+         idump((block_cpu_limit));
+         auto potential_deadline = start + fc::microseconds(block_cpu_limit);
          if( potential_deadline < deadline ) deadline = potential_deadline;
       }
 
@@ -83,9 +84,13 @@ namespace eosio { namespace chain {
          if( net_limit >= 0 )
             eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(net_limit) ); // reduce max_net to the amount the account is able to pay
          auto cpu_limit = rl.get_account_cpu_limit(a);
-
-         auto potential_deadline = fc::time_point::now() + fc::microseconds(block_cpu_limit);
-         if( potential_deadline < deadline ) deadline = potential_deadline;
+         if( cpu_limit > 0 ) {
+            auto potential_deadline = start + fc::microseconds(cpu_limit);
+            if( potential_deadline < deadline ) {
+               wdump((potential_deadline)(cpu_limit));
+               deadline = potential_deadline;
+            }
+         }
       }
 
       eager_net_limit += cfg.net_usage_leeway;

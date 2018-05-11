@@ -248,6 +248,7 @@ namespace eosio { namespace testing {
                                                         uint32_t billed_cpu_time_us
                                                       )
    { try {
+      wlog((deadline));
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline, billed_cpu_time_us );
@@ -262,6 +263,7 @@ namespace eosio { namespace testing {
                                                         uint32_t billed_cpu_time_us
                                                       )
    { try {
+      wlog((deadline));
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto c = packed_transaction::none;

@@ -72,7 +72,7 @@ namespace eosio { namespace testing {
 
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
-         static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 5000;
+         static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
 
          void              init(bool push_genesis = true);
          void              init(controller::config config);

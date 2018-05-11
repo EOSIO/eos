@@ -647,6 +647,8 @@ BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+
+#if 0
 BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 	// TODO: This is an extremely fragile test. It needs improvements:
 	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
@@ -684,6 +686,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }
+#endif
 
 /*************************************************************************************
  * compiler_builtins_tests test case
@@ -1014,6 +1017,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
    vector<account_name> prods( control->active_producers().producers.size() );
    for ( uint32_t i = 0; i < prods.size(); i++ ) {
       prods[i] = control->active_producers().producers[i].producer_name;
+      produce_block();
    }
 
    CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods) );
