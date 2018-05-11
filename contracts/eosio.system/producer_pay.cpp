@@ -28,6 +28,8 @@ namespace eosiosystem {
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace eosio;
 
+      require_auth(N(eosio));
+
       /** until activated stake crosses this threshold no new rewards are paid */
       if( _gstate.total_activated_stake < 150'000'000'0000 )
          return;
@@ -42,7 +44,7 @@ namespace eosiosystem {
                p.last_produced_block_time = timestamp;
          });
       }
-
+      
       /// only update block producers once every minute, block_timestamp is in half seconds
       if( timestamp - _gstate.last_producer_schedule_update > 120 ) {
          update_elected_producers( timestamp );
@@ -53,7 +55,7 @@ namespace eosiosystem {
    eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket ) {
       eosio::asset payment(0, S(4,EOS));
       const int64_t min_daily_amount = 100 * 10000;
-      if ( pervote_bucket.amount < min_daily_tokens ) {
+      if ( pervote_bucket.amount < min_daily_amount ) {
          return payment;
       }
       
@@ -66,7 +68,7 @@ namespace eosiosystem {
          if ( !(itr->total_votes > 0) ) {
             break;
          }
-         if ( !(itr->active()) && !(itr->owner != owner) ) {
+         if ( !itr->active() ) {
             continue;
          }
          
@@ -99,6 +101,7 @@ namespace eosiosystem {
 
       auto prod = _producers.find( owner );
       eosio_assert( prod != _producers.end(), "account name is not in producer list" );
+      eosio_assert( prod->active(), "producer does not have an active key" );
       if( prod->last_claim_time > 0 ) {
          eosio_assert(current_time() >= prod->last_claim_time + useconds_per_day, "already claimed rewards within a day");
       }
