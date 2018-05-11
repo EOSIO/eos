@@ -53,14 +53,14 @@ docker volume create --name=keosd-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when runing cleos is running inside the keosd container as described in "Execute cleos commands" section.
+After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when running cleos is running inside the keosd container as described in "Execute cleos commands" section.
 
 ### Execute cleos commands
 
 You can run the `cleos` commands via a bash alias.
 
 ```bash
-alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -H nodeosd'
+alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888' # For DAWN3.0, use '-H nodeosd' instead of '-u http://nodeosd:8888'
 cleos get info
 cleos get account inita
 ```
@@ -143,7 +143,7 @@ volumes:
 
 ```
 
-*NOTE:* the defalut version is the latest, you can change it to what you want
+*NOTE:* the default version is the latest, you can change it to what you want
 
 run `docker pull eosio/eos:latest` 
 
