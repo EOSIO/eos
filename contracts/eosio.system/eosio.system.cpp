@@ -23,14 +23,16 @@ namespace eosiosystem {
 
       if( itr == _rammarket.end() ) {
          auto system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
-         itr = _rammarket.emplace( _self, [&]( auto& m ) {
-            m.supply.amount = 100000000000000ll;
-            m.supply.symbol = S(4,RAMEOS);
-            m.base.balance.amount = int64_t(_gstate.free_ram());
-            m.base.balance.symbol = S(0,RAM);
-            m.quote.balance.amount = system_token_supply / 1000;
-            m.quote.balance.symbol = S(4,EOS);
-         });
+         if( system_token_supply > 0 ) {
+            itr = _rammarket.emplace( _self, [&]( auto& m ) {
+               m.supply.amount = 100000000000000ll;
+               m.supply.symbol = S(4,RAMEOS);
+               m.base.balance.amount = int64_t(_gstate.free_ram());
+               m.base.balance.symbol = S(0,RAM);
+               m.quote.balance.amount = system_token_supply / 1000;
+               m.quote.balance.symbol = S(4,EOS);
+            });
+         }
       } else {
          //print( "ram market already created" );
       }
