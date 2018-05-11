@@ -1189,7 +1189,12 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
       return blk_state->id;
    }
 
-   return my->blog.read_block_by_num(block_num)->id();
+   auto signed_blk = my->blog.read_block_by_num(block_num);
+
+   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+               "Could not find block: ${block}", ("block", block_num) );
+
+   return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 void controller::pop_block() {
