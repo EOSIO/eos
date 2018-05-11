@@ -22,6 +22,7 @@ EOSIO currently supports the following operating systems:
 3. [EOSIO Blog](https://medium.com/eosio)
 8. [EOSIO Documentation Wiki](https://github.com/EOSIO/eos/wiki)
 2. [EOSIO API Documentation](https://eosio.github.io/eos/)
+1. [EOSIO StackExchange for Q&A](https://eosio.stackexchange.com/)
 4. [Community Telegram Group](https://t.me/EOSProject)
 5. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
 6. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
