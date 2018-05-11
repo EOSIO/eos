@@ -119,32 +119,32 @@ allowed-connection = any
 p2p-peer-address = localhost:9876
 required-participation = true
 private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]
-producer-name = initb
+producer-name = defproducerb
 plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
 plugin = eosio::account_history_plugin
 plugin = eosio::account_history_api_plugin"""
 
 
-producers="""producer-name = initd
-producer-name = initf
-producer-name = inith
-producer-name = initj
-producer-name = initl
-producer-name = initn
-producer-name = initp
-producer-name = initr
-producer-name = initt
-producer-name = inita
-producer-name = initc
-producer-name = inite
-producer-name = initg
-producer-name = initi
-producer-name = initk
-producer-name = initm
-producer-name = inito
-producer-name = initq
-producer-name = inits"""
+producers="""producer-name = defproducerd
+producer-name = defproducerf
+producer-name = defproducerh
+producer-name = defproducerj
+producer-name = defproducerl
+producer-name = defproducern
+producer-name = defproducerp
+producer-name = defproducerr
+producer-name = defproducert
+producer-name = defproducera
+producer-name = defproducerc
+producer-name = defproducere
+producer-name = defproducerg
+producer-name = defproduceri
+producer-name = defproducerk
+producer-name = defproducerm
+producer-name = defproducero
+producer-name = defproducerq
+producer-name = defproducers"""
 
 zeroExecTime="trans-execution-time = 0"
 
@@ -259,7 +259,7 @@ def myTest(transWillEnterBlock):
             error("FAILURE - create keys")
             return False
         currencyAccount=accounts[0]
-        currencyAccount.name="currency"
+        currencyAccount.name="currency0000"
 
         Print("Stand up walletd")
         if walletMgr.launch() is False:
@@ -285,15 +285,15 @@ def myTest(transWillEnterBlock):
             error("Cluster in bad state, received None node")
             return False
 
-        initaAccount=testUtils.Cluster.initaAccount
+        defproduceraAccount=testUtils.Cluster.defproduceraAccount
 
-        Print("Importing keys for account %s into wallet %s." % (initaAccount.name, testWallet.name))
-        if not walletMgr.importKey(initaAccount, testWallet):
-            error("Failed to import key for account %s" % (initaAccount.name))
+        Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, testWallet.name))
+        if not walletMgr.importKey(defproduceraAccount, testWallet):
+            error("Failed to import key for account %s" % (defproduceraAccount.name))
             return False
 
-        Print("Create new account %s via %s" % (currencyAccount.name, initaAccount.name))
-        transId=node.createAccount(currencyAccount, initaAccount, stakedDeposit=5000, waitForTransBlock=True)
+        Print("Create new account %s via %s" % (currencyAccount.name, defproduceraAccount.name))
+        transId=node.createAccount(currencyAccount, defproduceraAccount, stakedDeposit=5000, waitForTransBlock=True)
         if transId is None:
             error("Failed to create account %s" % (currencyAccount.name))
             return False
@@ -306,17 +306,17 @@ def myTest(transWillEnterBlock):
             error("Failed to publish contract.")
             return False
 
-        Print("push transfer action to currency contract")
-        contract="currency"
+        Print("push transfer action to currency0000 contract")
+        contract="currency0000"
         action="transfer"
-        data="{\"from\":\"currency\",\"to\":\"inita\",\"quantity\":"
+        data="{\"from\":\"currency0000\",\"to\":\"defproducera\",\"quantity\":"
         if amINoon:
             data +="\"00.0050 CUR\",\"memo\":\"test\"}"
         else:
             data +="50}"
-        opts="--permission currency@active"
+        opts="--permission currency0000@active"
         if not amINoon:
-            opts += " --scope currency,inita"
+            opts += " --scope currency0000,defproducera"
 
         trans=node.pushMessage(contract, action, data, opts, silentErrors=True)
         transInBlock=False
