@@ -206,7 +206,7 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return eosio::client::http::call( url, path, fc::variant(v) );
+      return eosio::client::http::do_http_call( url, path, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -219,10 +219,14 @@ fc::variant call( const std::string& url,
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return ::call( url, path, fc::variant(v) ); }
+                  const T& v ) { return call( url, path, fc::variant(v) ); }
+
+template<>
+fc::variant call( const std::string& url,
+                  const std::string& path) { return call( url, path, fc::variant() ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-   return ::call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
+   return call(url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_string() {
@@ -1587,7 +1591,7 @@ int main( int argc, char** argv ) {
       }
       auto result = call(get_transactions_func, arg);
       if( printjson ) {
-         std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
+         std::cout << fc::json::to_pretty_string(result) << std::endl;
       }
       else {
          const auto& trxs = result.get_object()["transactions"].get_array();
@@ -1595,7 +1599,7 @@ int main( int argc, char** argv ) {
 
             const auto& tobj = t.get_object();
             const auto& trx  = tobj["transaction"].get_object();
-            const auto& data = trx["data"].get_object();
+            const auto& data = trx["transaction"].get_object();
             const auto& msgs = data["actions"].get_array();
 
             for( const auto& msg : msgs ) {
