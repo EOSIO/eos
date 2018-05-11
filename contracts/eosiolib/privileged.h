@@ -18,9 +18,9 @@ extern "C" {
     * @{
     */
 
-   void set_resource_limits( account_name account, uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight );
+   void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight );
 
-   void set_active_producers( char *producer_data, uint32_t producer_data_size );
+   bool set_active_producers( char *producer_data, uint32_t producer_data_size );
 
    bool is_privileged( account_name account );
 

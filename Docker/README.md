@@ -61,7 +61,7 @@ After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be s
 You can run the `cleos` commands via a bash alias.
 
 ```bash
-alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888' # For DAWN3.0, use '-H nodeosd' instead of '-u http://nodeosd:8888'
+alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888'
 cleos get info
 cleos get account inita
 ```
@@ -171,13 +171,13 @@ volumes:
 
 *NOTE:* the default version is the latest, you can change it to what you want
 
-run `docker pull eosio/eos:latest` 
+run `docker pull eosio/eos:latest`
 
 run `docker-compose up`
 
-### Dawn3.0 Testnet
+### Dawn 4.0 Testnet
 
-We can easliy set up a dawn3.0 local testnet using docker images. Just run the following commands:
+We can easily set up a Dawn 4.0 local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 
@@ -190,13 +190,13 @@ docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
 docker volume create --name=mongo-data-volume
 # start containers
-docker-compose -f docker-compose-dawn3.0.yaml up -d
+docker-compose -f docker-compose-dawn4.0.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs nodeosd
 # stop containers
-docker-compose -f docker-compose-dawn3.0.yaml down
+docker-compose -f docker-compose-dawn4.0.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.

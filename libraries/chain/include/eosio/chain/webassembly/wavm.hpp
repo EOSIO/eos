@@ -53,6 +53,8 @@ inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size
    size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
    if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
       Runtime::causeException(Exception::Cause::accessViolation);
+   
+   T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
 
    return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
 }
@@ -373,10 +375,36 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
    using then_type = Ret(*)(running_instance_context&, array_ptr<T>, size_t, Inputs..., Translated...);
 
-   template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
+   template<then_type Then, typename U=T>
+   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
+      static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
       const auto length = size_t(size);
-      return Then(ctx, array_ptr_impl<T>(ctx, ptr, length), length, rest..., translated...);
+      T* base = array_ptr_impl<T>(ctx, ptr, length);
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned array of const values" );
+         std::remove_const_t<T> copy[length];
+         T* copy_ptr = &copy[0];
+         memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
+         return Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
+      }
+      return Then(ctx, static_cast<array_ptr<T>>(base), length, rest..., translated...);
+   };
+
+   template<then_type Then, typename U=T>
+   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
+      const auto length = size_t(size);
+      T* base = array_ptr_impl<T>(ctx, ptr, length);
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned array of values" );
+         std::remove_const_t<T> copy[length];
+         T* copy_ptr = &copy[0];
+         memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
+         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);  
+         memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
+         return ret;
+      }
+      return Then(ctx, static_cast<array_ptr<T>>(base), length, rest..., translated...);
    };
 
    template<then_type Then>
@@ -426,8 +454,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
+      static_assert(std::is_same<std::remove_const_t<T>, char>::value && std::is_same<std::remove_const_t<U>, char>::value, "Currently only support array of (const)chars");
       const auto length = size_t(size);
-      assert(sizeof(T)==sizeof(U));
       return Then(ctx, array_ptr_impl<T>(ctx, ptr_t, length), array_ptr_impl<U>(ctx, ptr_u, length), length, rest..., translated...);
    };
 
@@ -526,32 +554,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tupl
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, native_to_wasm_t<const name&> wasm_value) {
       auto value = name(wasm_value);
-      return Then(ctx, value, rest..., translated...);
-   }
-
-   template<then_type Then>
-   static const auto fn() {
-      return next_step::template fn<translate_one<Then>>();
-   }
-};
-
-/**
- * Specialization for transcribing a reference to a fc::time_point_sec which can be passed as a native value
- *    This type transcribes into a native type which is loaded by value into a
- *    variable on the stack and then passed by reference to the intrinsic.
- *
- * @tparam Ret - the return type of the native method
- * @tparam Inputs - the remaining native parameters to transcribe
- * @tparam Translated - the list of transcribed wasm parameters
- */
-template<typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const fc::time_point_sec&> >>;
-   using then_type = Ret (*)(running_instance_context&, const fc::time_point_sec&, Inputs..., Translated...);
-
-   template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, native_to_wasm_t<const fc::time_point_sec&> wasm_value) {
-      auto value = fc::time_point_sec(wasm_value);
       return Then(ctx, value, rest..., translated...);
    }
 

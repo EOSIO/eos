@@ -28,12 +28,12 @@ function copy_skeleton {
 function build_contract {
     set -e
     workdir=`mktemp -d`
-#    echo mkdir $workdir/built
-    mkdir $workdir/built
 
     if [[ ${VERBOSE} == "1" ]]; then
        PRINT_CMDS="set -x"
     fi
+
+    ($PRINT_CMDS; mkdir $workdir/built)
 
     for file in $@; do
         name=`basename $file`
@@ -52,15 +52,17 @@ function build_contract {
     done
 
     ($PRINT_CMDS; @WASM_LLVM_LINK@ -only-needed -o $workdir/linked.bc $workdir/built/* \
-                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc \
+                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/eosiolib.bc \
                                    ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc \
-                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/eosiolib.bc 
+                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc
+
+
     )
     ($PRINT_CMDS; @WASM_LLC@ -thread-model=single --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc)
     ($PRINT_CMDS; ${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm -o $outname -s 16384 $workdir/assembly.s)
+    ($PRINT_CMDS; ${EOSIO_INSTALL_DIR}/bin/eosio-wast2wasm $outname ${outname%.*}.wasm -n)
 
-#    echo rm -rf $workdir
-    rm -rf $workdir
+    ($PRINT_CMDS; rm -rf $workdir)
     set +e
 }
 
@@ -102,6 +104,7 @@ function print_help {
     echo "   OR"
     echo "   -o | --outname [output.wast] [input.cpp ...]"
     echo "      Generate the wast output file based on input cpp files"
+    echo "      The wasm output will also be created as output.wasm"
     echo "   OR"
     echo "   -g | --genabi contract.abi types.hpp"
     echo "      Generate the ABI specification file [EXPERIMENTAL]"

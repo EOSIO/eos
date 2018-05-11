@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
-#include <eosio/chain/contracts/chain_initializer.hpp>
+#include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -249,7 +249,7 @@ namespace {
         }
         abi_serializer abis;
         if (msg.account == chain::config::system_account_name) {
-           abi = chain::contracts::chain_initializer::eos_contract_abi(abi);
+           abi = chain::eosio_contract_abi(abi);
         }
         abis.set_abi(abi);
         auto v = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
@@ -472,7 +472,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                                         (trx_trace.status == chain::transaction_receipt::hard_fail) ? "hard_fail" :
                                         "unknown";
                trx_status_map[trx_trace.id] = trx_status;
-               
+
                for (const auto& req : trx_trace.deferred_transaction_requests) {
                   if ( req.contains<chain::deferred_transaction>() ) {
                      auto trx = req.get<chain::deferred_transaction>();
@@ -666,7 +666,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    } else if (msg.name == newaccount) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto newaccount = msg.data_as<chain::contracts::newaccount>();
+      auto newaccount = msg.data_as<chain::newaccount>();
 
       // create new account
       bsoncxx::builder::stream::document doc{};
@@ -683,7 +683,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    } else if (msg.name == setabi) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto setabi = msg.data_as<chain::contracts::setabi>();
+      auto setabi = msg.data_as<chain::setabi>();
       auto from_account = find_account(accounts, setabi.account);
 
       document update_from{};
