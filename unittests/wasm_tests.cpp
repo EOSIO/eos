@@ -633,8 +633,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
          count++;
-      } catch( eosio::chain::deadline_exception& ) {
-#warning It does not seem right to catch deadline_exception and yet the test passes. Need to investigate this.
+      } catch( eosio::chain::leeway_deadline_exception& ) {
          BOOST_REQUIRE_EQUAL(count, 3);
          break;
       }

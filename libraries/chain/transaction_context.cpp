@@ -113,8 +113,7 @@ namespace eosio { namespace chain {
       // Possibly limit deadline if the duration accounts can be billed for (+ a subjective leeway) does not exceed current delta
       if( ( fc::microseconds(account_cpu_limit) + leeway ) <= (deadline - start) ) {
          deadline = start + fc::microseconds(account_cpu_limit) + leeway;
-         if( deadline_exception_code != tx_cpu_usage_exceeded::code_value )
-            deadline_exception_code = deadline_exception::code_value;
+         deadline_exception_code = leeway_deadline_exception::code_value;
       }
 
       eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
@@ -289,6 +288,11 @@ namespace eosio { namespace chain {
             EOS_THROW( tx_cpu_usage_exceeded,
                        "transaction was executing for too long",
                        ("now", now)("deadline", deadline)("start", start) );
+         } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
+            EOS_THROW( leeway_deadline_exception,
+                       "the transaction was unable to complete by deadline, "
+                       "but it is possible it could have succeeded if it were allow to run to completion",
+                       ("now", now)("deadline", deadline)("start", start) );
          }
          FC_ASSERT( false, "unexpected deadline exception code" );
       }
@@ -330,9 +334,6 @@ namespace eosio { namespace chain {
 
       try {
          acontext.exec();
-      } catch( const action_cpu_usage_exceeded& e ) {
-         trace = move(acontext.trace);
-         FC_ASSERT(false, "should not have reached here" );
       } catch( ... ) {
          trace = move(acontext.trace);
          throw;

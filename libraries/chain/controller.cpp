@@ -436,7 +436,8 @@ struct controller_impl {
       auto code = e.code();
       return (code == block_net_usage_exceeded::code_value) ||
              (code == block_cpu_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value);
+             (code == deadline_exception::code_value)       ||
+             (code == leeway_deadline_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
