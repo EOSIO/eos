@@ -113,7 +113,6 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
                      ("n", name(a))
                      ("cpu_used_in_window",cpu_used_in_window)
                      ("max_user_use_in_window",max_user_use_in_window) );
-
       }
 
       if( net_weight >= 0 && state.total_net_weight > 0) {
