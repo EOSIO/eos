@@ -4,7 +4,7 @@
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 	MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
-	export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
+	JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
 
 	DISK_TOTAL=$( df -h . | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//' )
 	DISK_AVAIL=$( df -h . | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//' )
@@ -12,24 +12,24 @@
 	printf "\\n\\tOS name: %s\\n" "${OS_NAME}"
 	printf "\\tOS Version: %s\\n" "${OS_VER}"
 	printf "\\tCPU speed: %sMhz\\n" "${CPU_SPEED}"
-	printf "\\tCPU cores: %s\\n" "$CPU_CORE"
-	printf "\\tPhysical Memory: %s Mgb\\n" "${MEM_MEG}"
+	printf "\\tCPU cores: %s\\n" "${CPU_CORE}"
+	printf "\\tPhysical Memory: %sMgb\\n" "${MEM_MEG}"
 	printf "\\tDisk space total: %sGb\\n" "${DISK_TOTAL}"
 	printf "\\tDisk space available: %sG\\n" "${DISK_AVAIL}"
 
-	if [ "$MEM_MEG" -lt 7000 ]; then
+	if [ "${MEM_MEG}" -lt 7000 ]; then
 		printf "\\tYour system must have 7 or more Gigabytes of physical memory installed.\\n"
 		printf "\\texiting now.\\n"
 		exit 1
 	fi
 
-	if [ "$OS_VER" -lt 2017 ]; then
+	if [ "${OS_VER}" -lt 2017 ]; then
 		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
 		printf "\\texiting now.\\n"
 		exit 1
 	fi
 
-	if [ "$DISK_AVAIL" -lt "$DISK_MIN" ]; then
+	if [ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]; then
 		printf "\\tYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
 		printf "\\texiting now.\\n"
 		exit 1
@@ -79,13 +79,13 @@
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
-		printf "\\n\\t%s\\n\\n" "$DISPLAY"
+		printf "\\n\\t%s\\n\\n" "${DISPLAY}"
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* ) 
 					printf "\\n\\n\\tInstalling dependencies.\\n\\n"
-					if ! sudo "${YUM}" -y install ${DEP}
+					if ! sudo "${YUM}" -y install "${DEP}"
 					then
 						printf "\\n\\tYUM dependency installation failed.\\n"
 						printf "\\n\\tExiting now.\\n"
@@ -102,19 +102,19 @@
 		printf "\\n\\tNo required YUM dependencies to install.\\n"
 	fi
 
-	if [[ "$ENABLE_CODE_COVERAGE" == true ]]; then
+	if [ "${ENABLE_COVERAGE_TESTING}" = true ]; then
 		printf "\\n\\tChecking perl installation.\\n"
-		if ! perl_bin=$( command -v perl 2>/dev/null )
-		then
+		perl_bin=$( command -v perl 2>/dev/null )
+		if [ -z "${perl_bin}" ]; then
 			printf "\\n\\tInstalling perl.\\n"
 			if ! sudo "${YUM}" -y install perl
 			then
 				printf "\\n\\tUnable to install perl at this time.\\n"
-				printf "\\n\\tExiting now.\\n"
-				exit 1
+				printf "\\n\\tExiting now.\\n\\n"
+				exit 1;
 			fi
 		else
-			printf "\\n\\tPerl installation found at %s.\\n" "${perl_bin}"
+			printf "\\tPerl installation found at %s.\\n" "${perl_bin}"
 		fi
 		printf "\\n\\tChecking LCOV installation.\\n"
 		if [ ! -e "/usr/local/bin/lcov" ]; then
@@ -133,7 +133,7 @@
 			fi
 			if ! cd "${TEMP_DIR}/lcov"
 			then
-				printf "\\n\\tUnable to enter %s. Exiting now.\\n" "${TEMP_DIR}/lcov"; 
+				printf "\\n\\tUnable to enter %s/lcov. Exiting now.\\n" "${TEMP_DIR}"; 
 				exit 1;
 			fi
 			if ! sudo make install
@@ -145,7 +145,7 @@
 			rm -rf "${TEMP_DIR}/lcov"
 			printf "\\n\\tSuccessfully installed LCOV.\\n\\n"
 		else
-			printf "\\n\\tLCOV installation found @ /usr/local/bin/lcov.\\n"
+			printf "\\n\\tLCOV installation found @ /usr/local/bin.\\n"
 		fi
 	fi
 
@@ -154,58 +154,59 @@
 		printf "\\tInstalling CMAKE.\\n"
 		if ! mkdir -p "${HOME}/opt/" 2>/dev/null
 		then
-			printf "\\n\\tUnable to create directory %s at this time.\\n" "${HOME}/opt/"
+			printf "\\n\\tUnable to create directory %s/opt.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! cd "${HOME}/opt"
 		then
-			printf "\\n\\tUnable to change directory into %s at this time.\\n" "${HOME}/opt/"
+			printf "\\n\\tUnable to enter directory %s/opt.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 "https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz" )
 		if [ "${STATUS}" -ne 200 ]; then
-			printf "\\tUnable to download CMAKE at this time.\\n"
+			printf "\\tUnable to clone CMAKE repo.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf "cmake-3.10.2.tar.gz"
+		if ! tar xf "${HOME}/opt/cmake-3.10.2.tar.gz"
 		then
-			printf "\\tUnable to decompress file cmake-3.10.2.tar.gz at this time.\\n"
+			printf "\\tUnable to unarchive file %s/opt/cmake-3.10.2.tar.gz at this time.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f cmake-3.10.2.tar.gz
+		if ! rm -f "${HOME}/opt/cmake-3.10.2.tar.gz"
 		then
-			printf "\\tUnable to remove file cmake-3.10.2.tar.gz at this time.\\n"
+			printf "\\tUnable to remove file %s/opt/cmake-3.10.2.tar.gz.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! ln -s "${HOME}/opt/cmake-3.10.2/" "${HOME}/opt/cmake"
 		then
-			printf "\\tUnable to symlink directory %s to %s at this time.\\n" "${HOME}/opt/cmake-3.10.2/" "${HOME}/opt/cmake"
+			printf "\\tUnable to symlink directory %s/opt/cmake-3.10.2/ to %s/opt/cmake at this time.\\n" "${HOME}" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! cd "${HOME}/opt/cmake/"
 		then
-			printf "\\n\\tUnable to change directory into %s at this time.\\n" "${HOME}/opt/cmake"
+			printf "\\n\\tUnable to change directory into %s/opt/cmake.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! ./bootstrap
 		then
-			printf "\\tError running bootstrap for CMAKE.\\n"
+			printf "\\tRunning bootstrap for CMAKE exited with the above error.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! make -j${JOBS}
+		if ! make -j"${JOBS}"
 		then
 			printf "\\tError compiling CMAKE.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
+		printf "\\tCMAKE successfully installed @ %s.\\n" "${CMAKE}"
 	else
 		printf "\\tCMAKE found @ %s.\\n" "${CMAKE}"
 	fi
@@ -214,7 +215,7 @@
 	BVERSION=$( grep "BOOST_LIB_VERSION" "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI' )
 	if [ "${BVERSION}" != "1_66" ]; then
-		printf "\\tRemoving existing boost libraries in %s.\\n" "${HOME}/opt/boost*"
+		printf "\\tRemoving existing boost libraries in %s/opt/boost*.\\n" "${HOME}"
 		if ! rm -rf "${HOME}/opt/boost*"
 		then
 			printf "\\n\\tUnable to remove deprecated boost libraries at this time.\\n"
@@ -237,19 +238,19 @@
 		fi
 		if ! tar xf "${TEMP_DIR}/boost_1_66_0.tar.bz2"
 		then
-			printf "\\tUnable to decompress Boost libraries @ %s at this time.\\n" "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+			printf "\\tUnable to decompress Boost libraries @ %s/boost_1_66_0.tar.bz2 at this time.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! rm -f  "${TEMP_DIR}/boost_1_66_0.tar.bz2"
 		then
-			printf "\\tUnable to remove Boost libraries @ %s at this time.\\n" "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+			printf "\\tUnable to remove Boost libraries @ %s/boost_1_66_0.tar.bz2 at this time.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! cd "${TEMP_DIR}/boost_1_66_0/"
 		then
-			printf "\\tUnable to change directory into %s at this time.\\n" "${TEMP_DIR}/boost_1_66_0/"
+			printf "\\tUnable to change directory into %s/boost_1_66_0/ at this time.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -267,12 +268,12 @@
 		fi
 		if ! rm -rf "${TEMP_DIR}/boost_1_66_0/"
 		then
-			printf "\\n\\tUnable to remove boost libraries directory @ %s.\\n" "${TEMP_DIR}/boost_1_66_0/"
+			printf "\\n\\tUnable to remove boost libraries directory @ %s/boost_1_66_0/.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1
 		fi
 	else
-		printf "\\tBoost 1.66.0 found at %s.\\n" "${HOME}/opt/boost_1_66_0"
+		printf "\\tBoost 1.66.0 found at %s/opt/boost_1_66_0.\\n" "${HOME}"
 	fi
 
 	printf "\\n\\tChecking MongoDB installation.\\n"
@@ -280,7 +281,7 @@
 		printf "\\tInstalling MongoDB 3.6.3.\\n"
 		if ! cd "${HOME}/opt"
 		then
-			printf "\\n\\tUnable to cd into directory %s.\\n" "${HOME}/opt"
+			printf "\\n\\tUnable to cd into directory %s/opt.\\n" "${HOME}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -300,32 +301,32 @@
 		fi
 		if ! rm -f "${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3.tgz"
 		then
-			printf "\\tUnable to remove file %s at this time.\\n" "${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3.tgz"
+			printf "\\tUnable to remove file %s/opt/mongodb-linux-x86_64-amazon-3.6.3.tgz at this time.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! ln -s "${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/" "${HOME}/opt/mongodb"
 		then
-			printf "\\tUnable to symlink directory %s to directory at this time.\\n" \
-			"${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/" "${HOME}/opt/mongodb"
+			printf "\\tUnable to symlink directory %s/opt/mongodb-linux-x86_64-amazon-3.6.3/ to directory %s/opt/mongodb at this time.\\n" \
+			"${HOME}" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! mkdir "${HOME}/opt/mongodb/data"
 		then
-			printf "\\tUnable to make directory %s at this time.\\n" "${HOME}/opt/mongodb/data"
+			printf "\\tUnable to create directory %s/opt/mongodb/data at this time.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! mkdir "${HOME}/opt/mongodb/log"
 		then
-			printf "\\tUnable to make directory %s at this time.\\n" "${HOME}/opt/mongodb/log"
+			printf "\\tUnable to make directory %s/opt/mongodb/log at this time.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! touch "${HOME}/opt/mongodb/log/mongodb.log"
 		then
-			printf "\\tUnable to create log file @ %s at this time.\\n" "${HOME}/opt/mongodb/log/mongodb.log"
+			printf "\\tUnable to create log file @ %s/opt/mongodb/log/mongodb.log at this time.\\n" "${HOME}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -343,7 +344,7 @@ storage:
  dbPath: ${HOME}/opt/mongodb/data
 mongodconf
 then
-	printf "\\tUnable to create mongodb config file @ %s at this time.\\n" "${HOME}/opt/mongodb/log/mongodb.log"
+	printf "\\tUnable to create mongodb config file @ %s/opt/mongodb/log/mongodb.log at this time.\\n" "${HOME}"
 	printf "\\tExiting now.\\n\\n"
 	exit 1;
 fi
@@ -354,7 +355,7 @@ fi
 	fi
 
 	printf "\\n\\tChecking MongoDB C++ driver installation.\\n"
-	if [ ! -e "/usr/local/lib/libmongocxx-static.a" ]; then
+	if [  -e "/usr/local/lib/libmongocxx-static.a" ]; then
 		if ! cd "${TEMP_DIR}"
 		then
 			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
@@ -371,19 +372,19 @@ fi
 		fi
 		if ! tar xf "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
 		then
-			printf "\\n\\tUnable to decompress file  %s.\\n" "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
+			printf "\\n\\tUnable to decompress file  %s/mongo-c-driver-1.9.3.tar.gz.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
 		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
 		then
-			printf "\\n\\tUnable to remove file  %s.\\n" "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
+			printf "\\n\\tUnable to remove file  %s/mongo-c-driver-1.9.3.tar.gz.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
 		if ! cd "${TEMP_DIR}/mongo-c-driver-1.9.3"
 		then
-			printf "\\n\\tUnable to change directory info  %s.\\n" "${TEMP_DIR}/mongo-c-driver-1.9.3"
+			printf "\\n\\tUnable to change directory info  %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -393,7 +394,7 @@ fi
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! make -j${JOBS}
+		if ! make -j"${JOBS}"
 		then
 			printf "\\tError compiling MongoDB C driver.\\n"
 			printf "\\tExiting now.\\n\\n"
@@ -413,7 +414,7 @@ fi
 		fi
 		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.9.3"
 		then
-			printf "\\n\\tUnable to remove  directory %s.\\n" "${TEMP_DIR}/mongo-c-driver-1.9.3"
+			printf "\\n\\tUnable to remove  directory %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -425,7 +426,7 @@ fi
 		fi
 		if ! cd "${TEMP_DIR}/mongo-cxx-driver/build"
 		then
-			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}/mongo-cxx-driver/build"
+			printf "\\n\\tUnable to enter directory %s/mongo-cxx-driver/build.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -456,13 +457,13 @@ fi
 		fi
 		if ! sudo rm -rf "${TEMP_DIR}/mongo-cxx-driver"
 		then
-			printf "\\n\\tUnable to remove directory %s.\\n" "${TEMP_DIR}" "${TEMP_DIR}/mongo-cxx-driver"
+			printf "\\n\\tUnable to remove directory %s/mongo-cxx-driver.\\n" "${TEMP_DIR}" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
-		printf "\\tSuccessfully installed Mongo C/C++ drivers found at /usr/local/lib/libmongocxx-static.a.\\n"
+		printf "\\tSuccessfully installed Mongo C/C++ drivers found at /usr/local/lib.\\n"
 	else
-		printf "\\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\\n"
+		printf "\\tMongo C++ driver found at /usr/local/lib.\\n"
 	fi
 
 	printf "\\n\\tChecking secp256k1-zkp installation.\\n"
@@ -471,7 +472,7 @@ fi
 		printf "\\tInstalling secp256k1-zkp (Cryptonomex branch).\\n"
 		if ! cd "${TEMP_DIR}"
 		then
-			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -483,7 +484,7 @@ fi
 		fi
 		if ! cd "${TEMP_DIR}/secp256k1-zkp"
 		then
-			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}/secp256k1-zkp"
+			printf "\\n\\tUnable to cd into directory %s/secp256k1-zkp.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -513,7 +514,7 @@ fi
 		fi
 		if ! rm -rf "${TEMP_DIR}/secp256k1-zkp"
 		then
-			printf "\\tError removing directory %s.\\n" "${TEMP_DIR}/secp256k1-zkp"
+			printf "\\tError removing directory %s/secp256k1-zkp.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -533,13 +534,13 @@ fi
 		fi
 		if ! mkdir "${TEMP_DIR}/llvm-compiler"  2>/dev/null
 		then
-			printf "\\n\\tUnable to make directory %s.\\n" "${TEMP_DIR}/llvm-compiler"
+			printf "\\n\\tUnable to make directory %s/llvm-compiler.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
 		if ! cd "${TEMP_DIR}/llvm-compiler"
 		then
-			printf "\\n\\tUnable to change directory into %s.\\n" "${TEMP_DIR}/llvm-compiler"
+			printf "\\n\\tUnable to change directory into %s/llvm-compiler.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -551,7 +552,7 @@ fi
 		fi
 		if ! cd "${TEMP_DIR}/llvm-compiler/llvm/tools"
 		then
-			printf "\\n\\tUnable to change directory into %s.\\n" "${TEMP_DIR}/llvm-compiler/llvm/tools"
+			printf "\\n\\tUnable to change directory into %s/llvm-compiler/llvm/tools.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -563,19 +564,19 @@ fi
 		fi
 		if ! cd "${TEMP_DIR}/llvm-compiler/llvm"
 		then
-			printf "\\n\\tUnable to change directory into %s.\\n" "${TEMP_DIR}/llvm-compiler/llvm"
+			printf "\\n\\tUnable to change directory into %s/llvm-compiler/llvm.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
 		if ! mkdir "${TEMP_DIR}/llvm-compiler/llvm/build" 2>/dev/null
 		then
-			printf "\\n\\tUnable to create directory %s.\\n" "${TEMP_DIR}/llvm-compiler/llvm/build"
+			printf "\\n\\tUnable to create directory %s/llvm-compiler/llvm/build.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
 		if ! cd "${TEMP_DIR}/llvm-compiler/llvm/build"
 		then
-			printf "\\n\\tUnable to change directory into %s.\\n" "${TEMP_DIR}/llvm-compiler/llvm/build"
+			printf "\\n\\tUnable to change directory into %s/llvm-compiler/llvm/build.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
@@ -601,13 +602,13 @@ fi
 		fi
 		if ! rm -rf "${TEMP_DIR}/llvm-compiler" 2>/dev/null
 		then
-			printf "\\tError removing directory %s.\\n" "${TEMP_DIR}/llvm-compiler"
+			printf "\\tError removing directory %s/llvm-compiler.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		printf "\\tWASM successfully installed at %s.\\n" "${HOME}/opt/wasm"
+		printf "\\tWASM successfully installed at %s/opt/wasm.\\n" "${HOME}"
 	else
-		printf "\\tWASM found at %s.\\n" "${HOME}/opt/wasm"
+		printf "\\tWASM found at %s/opt/wasm.\\n" "${HOME}"
 	fi
 
 	function print_instructions()
