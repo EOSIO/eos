@@ -100,9 +100,9 @@ namespace eosio { namespace client { namespace http {
       return res;
    }
 
-   fc::variant call( const std::string& server_url,
-                     const std::string& path,
-                     const fc::variant& postdata ) {
+   fc::variant do_http_call( const std::string& server_url,
+                             const std::string& path,
+                             const fc::variant& postdata ) {
    std::string postjson;
    if( !postdata.is_null() )
       postjson = fc::json::to_string( postdata );
@@ -110,7 +110,7 @@ namespace eosio { namespace client { namespace http {
    boost::asio::io_service io_service;
 
    auto url = parse_url( server_url );
-       
+
    boost::asio::streambuf request;
    std::ostream request_stream(&request);
    request_stream << "POST " << url.path_prefix + path << " HTTP/1.0\r\n";
@@ -148,7 +148,7 @@ namespace eosio { namespace client { namespace http {
       //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
       try {socket.shutdown();} catch(...) {}
    }
-   
+
    const auto response_result = fc::json::from_string(re);
    if( status_code == 200 || status_code == 201 || status_code == 202 ) {
       return response_result;
