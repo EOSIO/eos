@@ -6,7 +6,6 @@
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <fc/reflect/variant.hpp>
-#include <eosio/chain/exceptions.hpp>
 
 namespace eosio { namespace chain {
 typedef boost::multiprecision::int128_t  int128_t;
@@ -36,8 +35,6 @@ string asset::to_string()const {
 asset asset::from_string(const string& from)
 {
    try {
-      asset result;
-
       string s = fc::trim(from);
 
       // Find space in order to split amount and symbol
@@ -59,11 +56,12 @@ asset asset::from_string(const string& from)
       } else {
          precision_digit_str = "0";
       }
+
       string symbol_part = precision_digit_str + ',' + symbol_str;
-      result.sym = symbol::from_string(symbol_part);
+      symbol sym = symbol::from_string(symbol_part);
 
       // Parse amount
-      int64_t int_part, fract_part = 0;
+      safe<int64_t> int_part, fract_part;
       if (dot_pos != string::npos) {
          int_part = fc::to_int64(amount_str.substr(0, dot_pos));
          fract_part = fc::to_int64(amount_str.substr(dot_pos + 1));
@@ -71,11 +69,12 @@ asset asset::from_string(const string& from)
       } else {
          int_part = fc::to_int64(amount_str);
       }
-      result.amount = int_part;
-      result.amount *= int64_t(result.precision());
-      result.amount += fract_part;
 
-      return result;
+      safe<int64_t> amount = int_part;
+      amount *= safe<int64_t>(sym.precision());
+      amount += fract_part;
+
+      return asset(amount.value, sym);
    }
    FC_CAPTURE_LOG_AND_RETHROW( (from) )
 }

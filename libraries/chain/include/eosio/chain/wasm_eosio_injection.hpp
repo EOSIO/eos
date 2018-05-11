@@ -5,10 +5,12 @@
 #include <eosio/chain/webassembly/common.hpp>
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <iostream>
 #include <functional>
 #include <vector>
-#include <iostream>
 #include <map>
+#include <stack>
+#include <queue>
 #include <unordered_set>
 #include "IR/Module.h"
 #include "IR/Operators.h"
@@ -74,17 +76,17 @@ namespace eosio { namespace chain { namespace wasm_injections {
             // prepend to the head of the imports
             module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
             injected_index_mapping.emplace( index, actual_index ); 
+
             // shift all exported functions by 1
-            bool have_updated_start = false;
             for ( int i=0; i < module.exports.size(); i++ ) {
                if ( module.exports[i].kind == IR::ObjectKind::function ) {
-                  // update the start function
-                  if ( !have_updated_start && module.exports[i].index == module.startFunctionIndex ) {
-                     module.startFunctionIndex++;
-                     have_updated_start = true;
-                  }
                   module.exports[i].index++;
                }
+            }
+
+            // update the start function
+            if ( module.startFunctionIndex != UINTPTR_MAX ) {
+               module.startFunctionIndex++;
             }
 
             // shift all table entries for call indirect
@@ -157,38 +159,105 @@ namespace eosio { namespace chain { namespace wasm_injections {
    struct instruction_counter {
       static constexpr bool kills = false;
       static constexpr bool post = false;
-      static void init() { icnt = 0; }
-      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         // maybe change this later to variable weighting for different instruction types
-         icnt++;
+      static void init() { 
+         icnt=0; 
+         tcnt=0; 
+         bcnt=0; 
+         while ( !fcnts.empty() )
+            fcnts.pop();
       }
-      static uint32_t icnt;
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         icnt++;
+         tcnt++;
+      }
+      static uint32_t icnt; /* instructions so far */
+      static uint32_t tcnt; /* total instructions */
+      static uint32_t bcnt; /* total instructions from block types */
+      static std::queue<uint32_t> fcnts; 
    };
 
-   struct checktime_injector {
+   struct checktime_block_type {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+#define CLEAR(x) \
+      while( !x.empty() ) \
+         x.pop()
+
+      static void init() { 
+         CLEAR(block_stack);
+         CLEAR(type_stack);
+         CLEAR(orderings);
+         CLEAR(bcnt_tables);
+      }
+#undef CLEAR
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         instruction_counter::icnt = 0;
+         block_stack.push(arg.start_index);
+         orderings.back().push_back(arg.start_index);
+         bcnt_tables.back().emplace(arg.start_index, 0);
+         type_stack.push(inst->get_code() == wasm_ops::loop_code);
+      }
+
+      static std::stack<size_t>                   block_stack;
+      static std::stack<size_t>                   type_stack; /* this might capture more than if a block is a loop in the future */
+      static std::queue<std::vector<size_t>>      orderings;  /* record the order in which we found the blocks */
+      static std::queue<std::map<size_t, size_t>> bcnt_tables; /* table for each blocks instruction count */
+   };
+
+   struct checktime_end {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         if ( checktime_block_type::type_stack.empty() ) 
+            return;
+         if ( !checktime_block_type::type_stack.top() ) { // empty or is not a loop
+            checktime_block_type::block_stack.pop();
+            checktime_block_type::type_stack.pop();
+            return;
+         }
+         size_t inst_idx = checktime_block_type::block_stack.top();
+         checktime_block_type::bcnt_tables.back()[inst_idx] = instruction_counter::icnt;
+         instruction_counter::bcnt += instruction_counter::icnt;
+         instruction_counter::icnt = 0;
+         checktime_block_type::block_stack.pop();
+         checktime_block_type::type_stack.pop();
+      }
+   };
+
+   struct checktime_function_end {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static void init() { fcnt = 0; }
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         size_t inst_idx = checktime_block_type::block_stack.top();
+         fcnt = instruction_counter::tcnt - instruction_counter::bcnt;
+      }
+      static size_t fcnt;
+   };
+
+   struct checktime_injection {
       static constexpr bool kills = false;
       static constexpr bool post = true;
-      static void init() { checktime_idx = -1; }
+      static void init() {
+         idx = 0;
+         chktm_idx = 0;
+      }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         // first add the import for checktime
-         injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"checktime", checktime_idx );
+         auto mapped_index = injector_utils::injected_index_mapping.find(chktm_idx);
 
          wasm_ops::op_types<>::i32_const_t cnt; 
-         cnt.field = instruction_counter::icnt;
-
+         cnt.field = checktime_block_type::bcnt_tables.front()[checktime_block_type::orderings.front()[idx++]];
          wasm_ops::op_types<>::call_t chktm; 
-         chktm.field = checktime_idx;
-         instruction_counter::icnt = 0;
-   
-         // pack the ops for insertion
-         std::vector<U8> injected = cnt.pack();
-         std::vector<U8> tmp      = chktm.pack();
-         injected.insert( injected.end(), tmp.begin(), tmp.end() );
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         chktm.field = mapped_index->second;
+         cnt.pack(arg.new_code);
+         chktm.pack(arg.new_code);
       }
-      static int32_t checktime_idx;
+
+      static int32_t idx;
+      static int32_t chktm_idx;
    };
-   
+
    struct fix_call_index {
       static constexpr bool kills = false;
       static constexpr bool post = false;
@@ -240,11 +309,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
          set_global_inst.field = global_idx;
          const_inst.field = -1;
 
-#define INSERT_INJECTED(X) \
-         tmp = X.pack();   \
-         injected.insert( injected.end(), tmp.begin(), tmp.end() )
-         std::vector<U8> injected;
-         std::vector<U8> tmp;
+#define INSERT_INJECTED(X)       \
+         X.pack(arg.new_code);   \
 
          INSERT_INJECTED(get_global_inst);
          INSERT_INJECTED(eqz_inst);
@@ -260,13 +326,12 @@ namespace eosio { namespace chain { namespace wasm_injections {
          /* print the correct call type */
          if ( inst->get_code() == wasm_ops::call_code ) {
             wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
-            tmp = call_inst->pack();
+            call_inst->pack(arg.new_code);
          }
          else {
             wasm_ops::op_types<>::call_indirect_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_indirect_t*>(inst);
-            tmp = call_inst->pack();
+            call_inst->pack(arg.new_code);
          }
-         injected.insert( injected.end(), tmp.begin(), tmp.end() );
 
          const_inst.field = 1;
          INSERT_INJECTED(get_global_inst); 
@@ -275,7 +340,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          INSERT_INJECTED(set_global_inst);
 
 #undef INSERT_INJECTED
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
    }; 
 
@@ -414,8 +478,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
 
@@ -429,8 +492,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
 
@@ -444,8 +506,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::i32, ValueType::f32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
    template <uint16_t Opcode>
@@ -458,8 +519,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f64, ValueType::f64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
-         std::vector<U8> injected = f64op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f64op.pack(arg.new_code);
       }
    };
 
@@ -473,8 +533,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
-         std::vector<U8> injected = f64op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f64op.pack(arg.new_code);
       }
    };
 
@@ -488,8 +547,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::i32, ValueType::f64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
-         std::vector<U8> injected = f64op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f64op.pack(arg.new_code);
       }
    };
 
@@ -503,8 +561,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::i32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
    template <uint16_t Opcode>
@@ -517,8 +574,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::i64, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
    template <uint16_t Opcode>
@@ -531,8 +587,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::i32, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
    template <uint16_t Opcode>
@@ -545,8 +600,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::i64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
    template <uint64_t Opcode>
@@ -559,8 +613,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f32, ValueType::i32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
    template <uint64_t Opcode>
@@ -573,8 +626,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f32, ValueType::i64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
-         std::vector<U8> injected = f32op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32op.pack(arg.new_code);
       }
    };
    template <uint64_t Opcode>
@@ -587,8 +639,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f64, ValueType::i32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
-         std::vector<U8> injected = f64op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f64op.pack(arg.new_code);
       }
    };
    template <uint64_t Opcode>
@@ -601,8 +652,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f64, ValueType::i64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
-         std::vector<U8> injected = f64op.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f64op.pack(arg.new_code);
       }
    };
 
@@ -615,8 +665,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f64, ValueType::f32>( *(arg.module), u8"_eosio_f32_promote", idx );
          wasm_ops::op_types<>::call_t f32promote;
          f32promote.field = idx;
-         std::vector<U8> injected = f32promote.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32promote.pack(arg.new_code);
       }
    };
    
@@ -629,18 +678,17 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::f32, ValueType::f64>( *(arg.module), u8"_eosio_f64_demote", idx );
          wasm_ops::op_types<>::call_t f32promote;
          f32promote.field = idx;
-         std::vector<U8> injected = f32promote.pack();
-         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+         f32promote.pack(arg.new_code);
       }
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
-      using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector>;
-      using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector>;
+      using block_t           = wasm_ops::block                   <instruction_counter>;
+      using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_block_type>;
       using if__t             = wasm_ops::if_                     <instruction_counter>;
       using else__t           = wasm_ops::else_                   <instruction_counter>;
       
-      using end_t             = wasm_ops::end                     <instruction_counter>;
+      using end_t             = wasm_ops::end                     <instruction_counter, checktime_end>;
       using unreachable_t     = wasm_ops::unreachable             <instruction_counter>;
       using br_t              = wasm_ops::br                      <instruction_counter>;
       using br_if_t           = wasm_ops::br_if                   <instruction_counter>;
@@ -750,7 +798,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_shr_u_t       = wasm_ops::i64_shr_u               <instruction_counter>; 
       using i64_rotl_t        = wasm_ops::i64_rotl                <instruction_counter>; 
       using i64_rotr_t        = wasm_ops::i64_rotr                <instruction_counter>; 
-      
+
       // float binops 
       using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_binop_injector<wasm_ops::f32_add_code>>;
       using f32_sub_t         = wasm_ops::f32_sub                 <instruction_counter, f32_binop_injector<wasm_ops::f32_sub_code>>;
@@ -835,6 +883,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
 
    struct post_op_injectors : wasm_ops::op_types<pass_injector> {
+      using loop_t   = wasm_ops::loop        <checktime_injection>;
       using call_t   = wasm_ops::call        <fix_call_index>;
    };
 
@@ -863,33 +912,70 @@ namespace eosio { namespace chain { namespace wasm_injections {
             // initialize static fields of injectors
             injector_utils::init( mod );
             instruction_counter::init();
-            checktime_injector::init();
+            checktime_injection::init();
+            checktime_block_type::init();
+            checktime_function_end::init();
             call_depth_check::init();
          }
 
          void inject() {
             _module_injectors.inject( *_module );
+            // inject checktime first
+            injector_utils::add_import<ResultType::none, ValueType::i32>( *_module, u8"checktime", checktime_injection::chktm_idx );
+
             for ( auto& fd : _module->functions.defs ) {
                wasm_ops::EOSIO_OperatorDecoderStream<pre_op_injectors> pre_decoder(fd.code);
-               std::vector<U8> new_code;
+               wasm_ops::instruction_stream pre_code(fd.code.size()*2);
+               checktime_block_type::orderings.emplace();
+               checktime_block_type::bcnt_tables.emplace();
+               instruction_counter::icnt = 0;
+               instruction_counter::tcnt = 0;
+               instruction_counter::bcnt = 0;
                while ( pre_decoder ) {
-                  std::vector<U8> new_inst;
                   auto op = pre_decoder.decodeOp();
-                  op->visit( { _module, &new_inst, &fd, pre_decoder.index() } );
-                  new_code.insert( new_code.end(), new_inst.begin(), new_inst.end() );
+                  if (op->is_post()) {
+                     op->pack(&pre_code);
+                     op->visit( { _module, &pre_code, &fd, pre_decoder.index() } );
+                  }
+                  else {
+                     op->visit( { _module, &pre_code, &fd, pre_decoder.index() } );
+                     if (!(op->is_kill()))
+                        op->pack(&pre_code);
+                  }
                }
-               fd.code = new_code;
+               instruction_counter::fcnts.push(instruction_counter::tcnt - instruction_counter::bcnt);
+               fd.code = pre_code.get();
             }
             for ( auto& fd : _module->functions.defs ) {
                wasm_ops::EOSIO_OperatorDecoderStream<post_op_injectors> post_decoder(fd.code);
-               std::vector<U8> post_code;
+               wasm_ops::instruction_stream post_code(fd.code.size()*2);
+               bool is_start = true;
                while ( post_decoder ) {
-                  std::vector<U8> new_inst;
                   auto op = post_decoder.decodeOp();
-                  op->visit( { _module, &new_inst, &fd, post_decoder.index() } );
-                  post_code.insert( post_code.end(), new_inst.begin(), new_inst.end() );
+                  if ( is_start ) {
+                     is_start = false;
+                     wasm_ops::op_types<>::i32_const_t cnt; 
+                     cnt.field = instruction_counter::fcnts.front();
+                     wasm_ops::op_types<>::call_t chktm; 
+                     chktm.field = injector_utils::injected_index_mapping.find(checktime_injection::chktm_idx)->second;
+                     cnt.pack(&post_code);
+                     chktm.pack(&post_code);
+                  }
+                  if (op->is_post()) {
+                     op->pack(&post_code);
+                     op->visit( { _module, &post_code, &fd, post_decoder.index() } );
+                  }
+                  else {
+                     op->visit( { _module, &post_code, &fd, post_decoder.index() } );
+                     if (!(op->is_kill()))
+                        op->pack(&post_code);
+                  }
                }
-               fd.code = post_code;
+               fd.code = post_code.get();
+               instruction_counter::fcnts.pop();
+               checktime_block_type::orderings.pop();
+               checktime_block_type::bcnt_tables.pop();
+               checktime_injection::idx = 0;
             }
          }
       private:

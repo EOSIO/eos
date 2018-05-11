@@ -28,6 +28,8 @@ namespace fc { namespace crypto {
 
          public_key( const signature& c, const sha256& digest, bool check_canonical = true );
 
+         bool valid()const;
+
          // serialize to/from string
          explicit public_key(const string& base58str);
          explicit operator string() const;

@@ -58,6 +58,25 @@ struct cf_action {
 
    EOSLIB_SERIALIZE( cf_action, (payload)(cfd_idx) )
 };
+
+// Deferred Transaction Trigger Action
+struct dtt_action {
+   static uint64_t get_name() {
+      return WASM_TEST_ACTION("test_transaction", "send_deferred_tx_with_dtt_action");
+   }
+   static uint64_t get_account() {
+      return N(testapi);
+   }
+
+   uint64_t       payer = N(testapi);
+   uint64_t       deferred_account = N(testapi);
+   uint64_t       deferred_action = WASM_TEST_ACTION("test_transaction", "deferred_print");
+   uint64_t       permission_name = N(active);
+   uint32_t       delay_sec = 2;
+
+   EOSLIB_SERIALIZE( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
+};
+
 #pragma pack(pop)
 
 static_assert( sizeof(dummy_action) == 13 , "unexpected packing" );
