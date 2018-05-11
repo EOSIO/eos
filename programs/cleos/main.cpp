@@ -411,7 +411,7 @@ chain::action create_action(const vector<permission_level>& authorization, const
       ("args", args);
 
    auto result = call(json_to_bin_func, arg);
-   wlog("result=${r}",("r",result));
+   wdump((result)(arg));
    return chain::action{authorization, code, act, result.get_object()["binargs"].as<bytes>()};
 }
 
@@ -783,7 +783,7 @@ struct create_account_subcommand {
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
-      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
+      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,
@@ -801,6 +801,8 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount);
 
       createAccount->set_callback([this] {
+            if( !active_key_str.size() ) 
+               active_key_str = owner_key_str;
             public_key_type owner_key, active_key;
             try {
                owner_key = public_key_type(owner_key_str);
@@ -1023,7 +1025,7 @@ struct sellram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("account", receiver_str)
                ("bytes", amount);
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
+            send_actions({create_action({permission_level{receiver_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
          });
    }
 };
