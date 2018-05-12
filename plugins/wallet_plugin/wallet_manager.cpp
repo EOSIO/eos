@@ -4,6 +4,7 @@
  */
 #include <eosio/wallet_plugin/wallet_manager.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <boost/algorithm/string.hpp>
 namespace eosio {
 namespace wallet {
 
@@ -171,6 +172,20 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
       EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
    w->import_key(wif_key);
+}
+
+string wallet_manager::create_key(const std::string& name, const std::string& key_type) {
+   check_timeout();
+   if (wallets.count(name) == 0) {
+      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+   }
+   auto& w = wallets.at(name);
+   if (w->is_locked()) {
+      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+   }
+
+   string upper_key_type = boost::to_upper_copy<std::string>(key_type);
+   return w->create_key(upper_key_type);
 }
 
 chain::signed_transaction
