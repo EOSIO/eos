@@ -99,6 +99,14 @@ public:
    /// @throws fc::exception if wallet not found or locked.
    void import_key(const std::string& name, const std::string& wif_key);
 
+   /// Creates a key within the specified wallet.
+   /// Wallet must be opened and unlocked
+   /// @param name of the wallet to create key in
+   /// @param type of key to create
+   /// @throws fc::exception if wallet not found or locked, or if the wallet cannot create said type of key
+   /// @return The public key of the created key
+   string create_key(const std::string& name, const std::string& key_type);
+
 private:
    /// Verify timeout has not occurred and reset timeout if not.
    /// Calls lock_all() if timeout has passed.
