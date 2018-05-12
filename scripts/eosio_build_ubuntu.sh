@@ -91,7 +91,7 @@
 				[Yy]* ) 
 					printf "\\n\\n\\tInstalling dependencies\\n\\n"
 					sudo apt-get update
-					if ! sudo apt-get -y install "${DEP}"
+					if ! sudo apt-get -y install ${DEP}
 					then
 						printf "\\n\\tDPKG dependency failed.\\n"
 						printf "\\n\\tExiting now.\\n"
