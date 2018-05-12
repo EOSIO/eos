@@ -111,13 +111,6 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    ds >> trx_header;
    eosio_assert( trx_header.expiration >= now(), "transaction expired" );
 
-   // Updating expiration is not necessary because the expiration field of a deferred transaction is modified to be valid anyway
-   /*
-   trx_header.expiration = now() + 60;
-   ds.seekp(0);
-   ds << trx_header;
-   */
-
    bytes packed_provided_approvals = pack(prop_it->provided_approvals);
    auto res = ::check_transaction_authorization( prop_it->packed_transaction.data(), prop_it->packed_transaction.size(),
                                                  (const char*)0, 0,

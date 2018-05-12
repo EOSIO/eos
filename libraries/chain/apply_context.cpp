@@ -214,7 +214,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 }
 
 
-void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
+void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
    FC_ASSERT( trx.context_free_actions.size() == 0, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
@@ -257,6 +257,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    uint32_t trx_size = 0;
    auto& d = control.db();
    if ( auto ptr = d.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+      EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
       d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;

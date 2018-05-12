@@ -879,13 +879,36 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
-   //schedule twice (second deferred transaction should replace first one)
+   //schedule twice without replace_existing flag (second deferred transaction should replace first one)
    {
       transaction_trace_ptr trace;
       uint32_t count = 0;
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
-      CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), deferred_tx_duplicate);
+      produce_blocks( 3 );
+
+      //check that only one deferred transaction executed
+      auto dtrxs = control->get_scheduled_transactions();
+      BOOST_CHECK_EQUAL(dtrxs.size(), 1);
+      for (const auto& trx: dtrxs) {
+         control->push_scheduled_transaction(trx, fc::time_point::maximum());
+      }
+      BOOST_CHECK_EQUAL(1, count);
+      BOOST_CHECK(trace);
+      BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
+      c.disconnect();
+   }
+
+   produce_blocks(10);
+
+   //schedule twice with replace_existing flag (second deferred transaction should replace first one)
+   {
+      transaction_trace_ptr trace;
+      uint32_t count = 0;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
+      CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction_replace", {});
+      CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction_replace", {});
       produce_blocks( 3 );
 
       //check that only one deferred transaction executed
@@ -966,7 +989,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
          ("code", name(dtt_act3.deferred_account))
          ("type", name(dtt_act3.deferred_action))
          ("requirement", name(dtt_act3.permission_name)));
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act3));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act3)); //will replace existing transaction
 
    // If we make testapi account to be priviledged account:
    // - the deferred transaction will work no matter who is the payer
