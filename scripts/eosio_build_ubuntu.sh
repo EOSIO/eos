@@ -82,14 +82,16 @@
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
-		printf "\\n\\t%s\\n\\n" "${DISPLAY}"
+		printf "\\n\\t"
+		printf "${DISPLAY}"
+		printf "\\n\\n"
 		printf "\\tDo you wish to install these packages?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* ) 
 					printf "\\n\\n\\tInstalling dependencies\\n\\n"
 					sudo apt-get update
-					if ! sudo apt-get -y install "${DEP}"
+					if ! sudo apt-get -y install ${DEP}
 					then
 						printf "\\n\\tDPKG dependency failed.\\n"
 						printf "\\n\\tExiting now.\\n"
