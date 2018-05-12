@@ -73,6 +73,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    if (fc::exists("test.wallet")) fc::remove("test.wallet");
    if (fc::exists("test2.wallet")) fc::remove("test2.wallet");
+   if (fc::exists("testgen.wallet")) fc::remove("testgen.wallet");
 
    constexpr auto key1 = "5JktVNHnRX48BUdtewU7N1CyL4Z886c42x7wYW7XhNWkDQRhdcS";
    constexpr auto key2 = "5Ju5RTcVDo35ndtzHioPMgebvBM6LkJ6tvuU6LTNQv8yaz3ggZr";
@@ -159,6 +160,31 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    wm.set_timeout(chrono::seconds(0));
    BOOST_CHECK_EQUAL(0, wm.list_keys().size());
 
+   wm.set_timeout(chrono::seconds(15));
+
+   wm.set_eosio_key("");
+
+   const string test_key_create_types[] = {"K1", "R1", "k1", ""};
+   for(const string& key_type_to_create : test_key_create_types) {
+      wm.create("testgen");
+
+      //check that the public key returned looks legit through a string conversion
+      // (would throw otherwise)
+      public_key_type create_key_pub(wm.create_key("testgen", key_type_to_create));
+
+      //now pluck out the private key from the wallet and see if the public key of said
+      // private key matches what was returned earlier from the create_key() call
+      private_key_type create_key_priv(wm.list_keys().cbegin()->second);
+      BOOST_CHECK_EQUAL((string)create_key_pub, (string)create_key_priv.get_public_key());
+
+      wm.lock("testgen");
+      BOOST_CHECK(fc::exists("testgen.wallet"));
+      fc::remove("testgen.wallet");
+   }
+
+   wm.create("testgen");
+   BOOST_CHECK_THROW(wm.create_key("testgen", "xxx"), chain::wallet_exception);
+   wm.lock("testgen");
 
    BOOST_CHECK(fc::exists("test.wallet"));
    BOOST_CHECK(fc::exists("test2.wallet"));
