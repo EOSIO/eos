@@ -1879,6 +1879,18 @@ int main( int argc, char** argv ) {
       std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
    });
 
+   // create a key within wallet
+   string wallet_create_key_type;
+   auto createKeyInWallet = wallet->add_subcommand("create_key", localized("Create private key within wallet"), false);
+   createKeyInWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to create key into"), true);
+   createKeyInWallet->add_option("key_type", wallet_create_key_type, localized("Key type to create (K1/R1)"), true)->set_type_name("K1/R1");
+   createKeyInWallet->set_callback([&wallet_name, &wallet_create_key_type] {
+      //an empty key type is allowed -- it will let the underlying wallet pick which type it prefers
+      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_create_key_type)};
+      const auto& v = call(wallet_url, wallet_create_key, vs);
+      std::cout << localized("Created new private key with a public key of: ") << fc::json::to_pretty_string(v) << std::endl;
+   });
+
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {

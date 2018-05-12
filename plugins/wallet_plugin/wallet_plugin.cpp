@@ -54,7 +54,6 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
    }
    if (options.count("eosio-key")) {
       std::string eosio_wif_key = options.at("eosio-key").as<std::string>();
-      eosio_wif_key = fc::json::from_string(eosio_wif_key).as<std::string>();
       wallet_manager_ptr->set_eosio_key(eosio_wif_key);
    }
 }
