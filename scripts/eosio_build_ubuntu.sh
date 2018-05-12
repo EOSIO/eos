@@ -82,7 +82,9 @@
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
-		printf "\\n\\t%s\\n\\n" "${DISPLAY}"
+		printf "\\n\\t"
+		printf "${DISPLAY}"
+		printf "\\n\\n"
 		printf "\\tDo you wish to install these packages?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
