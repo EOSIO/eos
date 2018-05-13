@@ -55,7 +55,7 @@
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
          {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"}
       ]
     },{
       "name": "user_resources",
