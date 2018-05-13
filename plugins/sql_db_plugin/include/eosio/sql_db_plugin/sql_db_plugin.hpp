@@ -2,6 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+
 #pragma once
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -13,6 +14,8 @@
 namespace eosio {
 
 /**
+ * @author Alessandro Siniscalchi <asiniscalchi@gmail.com>
+ *
  * Provides persistence to SQL DB for:
  *   Blocks
  *   Transactions

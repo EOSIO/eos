@@ -1,5 +1,9 @@
-#ifndef IRREVERSIBLE_BLOCK_STORAGE_H
-#define IRREVERSIBLE_BLOCK_STORAGE_H
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
+#pragma once
 
 #include "consumer_core.h"
 
@@ -15,4 +19,3 @@ public:
 
 } // namespace
 
-#endif // IRREVERSIBLE_BLOCK_STORAGE_H
