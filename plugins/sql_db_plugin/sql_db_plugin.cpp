@@ -65,11 +65,10 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
 
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
     FC_ASSERT(chain_plug);
-    auto& chain_config = chain_plug->chain_config();
-    chain_config.applied_block_callbacks.emplace_back(
-                [=](const chain::block_trace& t) { m_block_consumer.push(t); });
-    chain_config.applied_irreversible_block_callbacks.emplace_back(
-                [=](const chain::signed_block& b) {m_irreversible_block_consumer.push(b);});
+    auto& chain = chain_plug->chain();
+
+    //chain.accepted_block.connect([=](const chain::block_state_ptr& b) {m_block_consumer.push(b);});
+    chain.irreversible_block.connect([=](const chain::block_state_ptr& b) {m_irreversible_block_consumer.push(b);});
 }
 
 void sql_db_plugin::plugin_startup()

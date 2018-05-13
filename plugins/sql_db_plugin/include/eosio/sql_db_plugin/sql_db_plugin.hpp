@@ -42,8 +42,8 @@ public:
     void plugin_shutdown();
 
 private:
-    consumer<chain::signed_block> m_irreversible_block_consumer;
-    consumer<chain::block_trace> m_block_consumer;
+    consumer<chain::block_state_ptr> m_irreversible_block_consumer;
+    consumer<chain::block_state_ptr> m_block_consumer;
 };
 
 }

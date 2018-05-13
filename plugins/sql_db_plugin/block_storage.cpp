@@ -2,10 +2,11 @@
 
 namespace eosio {
 
-void block_storage::consume(const std::vector<chain::block_trace> &blocks)
+void block_storage::consume(const std::vector<chain::block_state_ptr> &blocks)
 {
-    for (auto block : blocks)
-        ilog(block.block.id().str());
+//     TODO reative me
+//    for (auto block : blocks)
+//        ilog(block.block.id().str());
 }
 
 }

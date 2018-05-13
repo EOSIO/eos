@@ -1,18 +1,15 @@
-#ifndef BLOCK_STORAGE_H
-#define BLOCK_STORAGE_H
+#pragma once
 
 #include "consumer_core.h"
 
-#include <eosio/chain/block_trace.hpp>
+#include <eosio/chain/block_state.hpp>
 
 namespace eosio {
 
-class block_storage : public consumer_core<chain::block_trace>
+class block_storage : public consumer_core<chain::block_state_ptr>
 {
 public:
-    void consume(const std::vector<chain::block_trace>& blocks) override;
+    void consume(const std::vector<chain::block_state_ptr>& blocks) override;
 };
 
-}
-
-#endif // BLOCK_STORAGE_H
+} // namespace
