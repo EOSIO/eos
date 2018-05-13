@@ -81,8 +81,8 @@ EOSIO_ABI( eosiosystem::system_contract,
      (delegatebw)(undelegatebw)(refund)
      (buyram)(buyrambytes)(sellram)
      // voting.cpp
-     (regproxy)(regproducer)(unregprod)(voteproducer)
      // producer_pay.cpp
+     (regproxy)(regproducer)(unregprod)(voteproducer)
      (claimrewards)
      // native.hpp
      //XXX

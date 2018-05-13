@@ -54,9 +54,8 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
-         {"name":"net_weight", "type":"uint64"},
-         {"name":"cpu_weight", "type":"uint64"},
-         {"name":"ram_bytes", "type":"uint64"}
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"},
       ]
     },{
       "name": "user_resources",

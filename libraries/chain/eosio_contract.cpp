@@ -121,7 +121,6 @@ void apply_eosio_newaccount(apply_context& context) {
 
 void apply_eosio_setcode(apply_context& context) {
    const auto& cfg = context.control.get_global_properties().configuration;
-   context.checktime( cfg.base_setcode_cpu_usage );
 
    auto& db = context.db;
    auto  act = context.act.data_as<setcode>();
@@ -131,7 +130,6 @@ void apply_eosio_setcode(apply_context& context) {
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
 
-   context.checktime( act.code.size() * 20 );
 
    auto code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
 
@@ -180,7 +178,6 @@ void apply_eosio_setabi(apply_context& context) {
    int64_t old_size = (int64_t)account.abi.size();
    int64_t new_size = (int64_t)fc::raw::pack_size(act.abi);
 
-   context.checktime( new_size * 2 );
 
    db.modify( account, [&]( auto& a ) {
       a.set_abi( act.abi );
@@ -223,7 +220,6 @@ void apply_eosio_updateauth(apply_context& context) {
    validate_authority_precondition(context, update.auth);
 
 
-   context.checktime( 5000 );
 
    auto permission = authorization.find_permission({update.account, update.permission});
 
@@ -284,7 +280,6 @@ void apply_eosio_deleteauth(apply_context& context) {
 
    context.trx_context.add_ram_usage( remove.account, -old_size );
 
-   context.checktime( 3000 );
 }
 
 void apply_eosio_linkauth(apply_context& context) {
@@ -332,7 +327,6 @@ void apply_eosio_linkauth(apply_context& context) {
          );
       }
 
-      context.checktime( 3000 );
   } FC_CAPTURE_AND_RETHROW((requirement))
 }
 
@@ -353,7 +347,6 @@ void apply_eosio_unlinkauth(apply_context& context) {
    );
 
    db.remove(*link);
-   context.checktime( 3000 );
 }
 
 static const abi_serializer& get_abi_serializer() {
@@ -373,8 +366,6 @@ void apply_eosio_canceldelay(apply_context& context) {
    const auto& trx_id = cancel.trx_id;
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
-
-   context.checktime( 1000 );
 }
 
 } } // namespace eosio::chain

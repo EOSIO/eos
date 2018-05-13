@@ -260,14 +260,14 @@ struct controller_impl {
 
          auto start = fc::time_point::now();
          while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-            self.push_block( next );
-            if( next->block_num() % 10 == 0 ) {
+            self.push_block( next, true );
+            if( next->block_num() % 100 == 0 ) {
                std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
             }
          }
          std::cerr<< "\n";
          auto end = fc::time_point::now();
-         ilog( "replayed blocks in ${n} seconds", ("n", (end-start).count()/1000000.0) );
+         ilog( "replayed blocks in ${n} seconds, ${spb} spb", ("n", (end-start).count()/1000000.0)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
          replaying = false;
 
       } else if( !end ) {
@@ -700,18 +700,20 @@ struct controller_impl {
 
 
 
-   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
+   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback, bool trust  ) {
       auto p = pending->_pending_block_state;
+
       try {
-      p->sign( signer_callback );
+         p->sign( signer_callback, false); //trust );
       } catch ( ... ) {
-         edump(( fc::json::to_pretty_string( *p->block ) ) );
+         edump(( fc::json::to_pretty_string( p->header ) ) );
          throw;
       }
+
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
 
-   void apply_block( const signed_block_ptr& b ) { try {
+   void apply_block( const signed_block_ptr& b, bool trust ) { try {
       try {
          FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
          start_block( b->timestamp, b->confirmed );
@@ -728,7 +730,7 @@ struct controller_impl {
          }
 
          finalize_block();
-         sign_block( [&]( const auto& ){ return b->producer_signature; } );
+         sign_block( [&]( const auto& ){ return b->producer_signature; }, trust );
 
          // this is implied by the signature passing
          //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
@@ -744,14 +746,14 @@ struct controller_impl {
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
 
-   void push_block( const signed_block_ptr& b ) {
+   void push_block( const signed_block_ptr& b, bool trust ) {
     //  idump((fc::json::to_pretty_string(*b)));
       FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
       try {
          FC_ASSERT( b );
-         auto new_header_state = fork_db.add( b );
+         auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
-         maybe_switch_forks();
+         maybe_switch_forks( trust );
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -762,12 +764,12 @@ struct controller_impl {
       maybe_switch_forks();
    }
 
-   void maybe_switch_forks() {
+   void maybe_switch_forks( bool trust = false ) {
       auto new_head = fork_db.head();
 
       if( new_head->header.previous == head->id ) {
          try {
-            apply_block( new_head->block );
+            apply_block( new_head->block, trust );
             fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
             head = new_head;
@@ -790,7 +792,7 @@ struct controller_impl {
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
             optional<fc::exception> except;
             try {
-               apply_block( (*ritr)->block );
+               apply_block( (*ritr)->block, false /*don't trust*/  );
                head = *ritr;
                fork_db.mark_in_current_chain( *ritr, true );
             }
@@ -813,7 +815,7 @@ struct controller_impl {
 
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( (*ritr)->block );
+                  apply_block( (*ritr)->block, true /* we previously validated these blocks*/ );
                   head = *ritr;
                   fork_db.mark_in_current_chain( *ritr, true );
                }
@@ -1046,7 +1048,7 @@ void controller::finalize_block() {
 }
 
 void controller::sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
-   my->sign_block( signer_callback );
+   my->sign_block( signer_callback, false /* don't trust */);
 }
 
 void controller::commit_block() {
@@ -1057,8 +1059,8 @@ void controller::abort_block() {
    my->abort_block();
 }
 
-void controller::push_block( const signed_block_ptr& b ) {
-   my->push_block( b );
+void controller::push_block( const signed_block_ptr& b, bool trust ) {
+   my->push_block( b, trust );
    log_irreversible_blocks();
 }
 
