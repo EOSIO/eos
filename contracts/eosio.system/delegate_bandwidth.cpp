@@ -12,7 +12,7 @@
 #include <enumivolib/privileged.h>
 #include <enumivolib/transaction.hpp>
 
-#include <eosio.token/eosio.token.hpp>
+#include <enumivo.token/enumivo.token.hpp>
 
 
 #include <cmath>
@@ -141,7 +141,7 @@ namespace eosiosystem {
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
       if( payer != N(eosio) ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.token), {payer,N(active)},
                                                        { payer, N(eosio), quant, std::string("buy ram") } );
       }
 
@@ -209,7 +209,7 @@ namespace eosiosystem {
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
       if( N(eosio) != account ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.token), {N(eosio),N(active)},
                                                        { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
       }
    }
@@ -268,7 +268,7 @@ namespace eosiosystem {
       set_resource_limits( tot_itr->owner, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
       if( N(eosio) != source_stake_from ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.token), {from,N(active)},
                                                        { source_stake_from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
       }
 
@@ -387,7 +387,7 @@ namespace eosiosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.token), {N(eosio),N(active)},
                                                     { N(eosio), req->owner, req->amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );

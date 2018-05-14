@@ -1,6 +1,6 @@
 #include "eosio.system.hpp"
 
-#include <eosio.token/eosio.token.hpp>
+#include <enumivo.token/enumivo.token.hpp>
 
 namespace eosiosystem {
 
@@ -106,7 +106,7 @@ namespace eosiosystem {
          eosio_assert(current_time() >= prod->last_claim_time + useconds_per_day, "already claimed rewards within a day");
       }
 
-      const asset token_supply = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
+      const asset token_supply = token( N(enumivo.token)).get_supply(symbol_type(system_token_symbol).name() );
       const uint32_t secs_since_last_fill = static_cast<uint32_t>( (current_time() - _gstate.last_pervote_bucket_fill) / 1000000 );
 
       const asset to_pervote_bucket = supply_growth( standby_rate, token_supply, secs_since_last_fill );
@@ -123,14 +123,14 @@ namespace eosiosystem {
          return;
       }
       
-      INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
+      INLINE_ACTION_SENDER(eosio::token, issue)( N(enumivo.token), {{N(eosio),N(active)}},
                                                  {N(eosio), issue_amount, std::string("issue tokens for producer pay and savings")} );
 
       _gstate.pervote_bucket          += ( to_pervote_bucket - pervote_pay );
       _gstate.last_pervote_bucket_fill = current_time();
       _gstate.savings                 += to_savings;
       
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.token), {N(eosio),N(active)},
                                                     { N(eosio), owner, perblock_pay + pervote_pay, std::string("producer claiming rewards") } );
 
       _producers.modify( prod, 0, [&](auto& p) {

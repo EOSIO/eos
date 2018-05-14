@@ -4,7 +4,7 @@
  */
 #include <proxy/proxy.hpp>
 #include <enumivolib/transaction.hpp>
-#include <eosio.token/eosio.token.hpp>
+#include <enumivo.token/enumivo.token.hpp>
 
 namespace proxy {
    using namespace eosio;
@@ -50,7 +50,7 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(permission_level{self, N(active)}, N(eosio.token), N(transfer), new_transfer);
+         out.actions.emplace_back(permission_level{self, N(active)}, N(enumivo.token), N(transfer), new_transfer);
          out.delay_sec = code_config.delay;
          out.send(id, self);
       }
@@ -93,7 +93,7 @@ extern "C" {
     void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       if( code == N(eosio) && action == N(onerror) ) {
          apply_onerror( receiver, onerror::from_current_action() );
-      } else if( code == N(eosio.token) ) {
+      } else if( code == N(enumivo.token) ) {
          if( action == N(transfer) ) {
             apply_transfer(receiver, code, unpack_action_data<eosio::token::transfer_args>());
          }

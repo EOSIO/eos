@@ -21,7 +21,7 @@ add_executable( plugin_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} main.cpp)
 target_link_libraries( plugin_test eosio_testing eosio_chain chainbase eos_utilities chain_plugin wallet_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 
 target_include_directories( plugin_test PUBLIC ${CMAKE_SOURCE_DIR}/plugins/net_plugin/include )
-add_dependencies(plugin_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange proxy identity identity_test stltest infinite eosio.system eosio.token enumivo.bios test.inline multi_index_test noop dice enumivo.msig)
+add_dependencies(plugin_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange proxy identity identity_test stltest infinite eosio.system enumivo.token enumivo.bios test.inline multi_index_test noop dice enumivo.msig)
 
 #
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)

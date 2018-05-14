@@ -13,7 +13,7 @@
 #include <enumivolib/privileged.hpp>
 #include <enumivolib/singleton.hpp>
 #include <enumivolib/transaction.hpp>
-#include <eosio.token/eosio.token.hpp>
+#include <enumivo.token/enumivo.token.hpp>
 
 #include <algorithm>
 #include <cmath>
