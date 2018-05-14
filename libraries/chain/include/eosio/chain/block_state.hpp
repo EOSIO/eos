@@ -31,4 +31,4 @@ namespace eosio { namespace chain {
 
 } } /// namespace eosio::chain
 
-FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated) )
+FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated)(in_current_chain) )
