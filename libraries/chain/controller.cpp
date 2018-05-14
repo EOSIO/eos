@@ -661,11 +661,15 @@ struct controller_impl {
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
+      pending->_pending_block_state->set_confirmed(confirm_block_count);
+
+      auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
+
       const auto& gpo = db.get<global_property_object>();
       if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
           ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
           pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
-          head->pending_schedule.producers.size() == 0 // ... and not just because it was promoted to active at the start of this block, then:
+          !was_pending_promoted // ... and not just because it was promoted to active at the start of this block, then:
         )
       {
          // Promote proposed schedule to pending schedule.
@@ -679,8 +683,6 @@ struct controller_impl {
             gp.proposed_schedule.clear();
          });
       }
-
-      pending->_pending_block_state->set_confirmed(confirm_block_count);
 
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
