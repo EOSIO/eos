@@ -62,6 +62,8 @@ try:
     else:
         cluster.killall()
         cluster.cleanup()
+        walletMgr.killall()
+        walletMgr.cleanup()
 
         Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
                (pnodes, total_nodes-pnodes, topo, delay))
@@ -70,10 +72,13 @@ try:
         if cluster.launch(pnodes, total_nodes, topo=topo, delay=delay) is False:
             errorExit("Failed to stand up eos cluster.")
 
+        #exit(0)
         Print ("Wait for Cluster stabilization")
         # wait for cluster to start producing blocks
         if not cluster.waitOnClusterBlockNumSync(3):
             errorExit("Cluster never stabilized")
+
+    #exit(0)
 
     Print("Stand up EOS wallet keosd")
     if walletMgr.launch() is False:
@@ -90,16 +95,14 @@ try:
     if not cluster.populateWallet(accountsCount, wallet):
         errorExit("Wallet initialization failed.")
 
-    initaAccount=cluster.initaAccount
-    initbAccount=cluster.initbAccount
+    defproduceraAccount=cluster.defproduceraAccount
+    defproducerbAccount=cluster.defproducerbAccount
+    eosioAccount=cluster.eosioAccount
 
-    Print("Importing keys for account %s into wallet %s." % (initaAccount.name, wallet.name))
-    if not walletMgr.importKey(initaAccount, wallet):
-        errorExit("Failed to import key for account %s" % (initaAccount.name))
-
-    Print("Create accounts.")
-    if not cluster.createAccounts(initaAccount):
-        errorExit("Accounts creation failed.")
+    # TBD: get account is currently failing. Enable when ready
+    # Print("Create accounts.")
+    # if not cluster.createAccounts(eosioAccount):
+    #     errorExit("Accounts creation failed.")
 
     # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
     #  Uncomment when functional

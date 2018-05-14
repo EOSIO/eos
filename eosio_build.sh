@@ -35,6 +35,10 @@
 		printf "\\n\\tPlease cd into directory %s to run this script.\\n \\tExiting now.\\n\\n" "${CWD}"
 		exit 1
 	fi
+	if [ -f "${PWD}/CMakeCache.txt" ]; then
+		printf "\\n\\tPlease remove file %s/CMakeCache.txt before building EOSIO.\\n \\tExiting now.\\n\\n" "${PWD}"
+		exit 1
+	fi
 
    	function usage()
    	{ 
@@ -111,7 +115,7 @@
 	printf "\\t%s\\n" "$( date -u )"
 	printf "\\tUser: %s\\n" "$( whoami )"
 	printf "\\tgit head id: %s\\n" "$( cat .git/refs/heads/master )"
-	printf "\\tCurrent branch: %s\\n" "$( git branch | grep \* )"
+	printf "\\tCurrent branch: %s\\n" "$( git rev-parse --abbrev-ref HEAD )"
 	printf "\\n\\tARCHITECTURE: %s\\n" "${ARCH}"
 
 	if [ "$ARCH" == "Linux" ]; then
@@ -198,7 +202,7 @@
 
 	. "$FILE"
 
-	printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\\n\\n"
+	printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOSIO\\n\\n"
 	printf ">>>>>>>> CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
 	printf ">>>>>>>> ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 	printf ">>>>>>>> DOXYGEN=%s\\n\\n" "${DOXYGEN}"
@@ -247,16 +251,16 @@
 	printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
 	printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
 
-	printf "\\n\\tEOS.IO has been successfully built. %d:%d:%d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
+	printf "\\n\\tEOSIO has been successfully built. %02d:%02d:%02d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 	printf "\\tTo verify your installation run the following commands:\\n"
 	
 	print_instructions
 
 	printf "\\tFor more information:\\n"
-	printf "\\tEOS.IO website: https://eos.io\\n"
-	printf "\\tEOS.IO Telegram channel @ https://t.me/EOSProject\\n"
-	printf "\\tEOS.IO resources: https://eos.io/resources/\\n"
-	printf "\\tEOS.IO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
+	printf "\\tEOSIO website: https://eos.io\\n"
+	printf "\\tEOSIO Telegram channel @ https://t.me/EOSProject\\n"
+	printf "\\tEOSIO resources: https://eos.io/resources/\\n"
+	printf "\\tEOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
 				
 	if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
 	  # Build eos.io package

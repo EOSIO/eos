@@ -149,7 +149,6 @@ namespace fc {
            static fc::sha256 get_secret( const EC_KEY * const k );
            fc::fwd<detail::private_key_impl,32> my;
     };
-    ;
 
      struct range_proof_info
      {
@@ -189,6 +188,10 @@ namespace fc {
        */
       struct public_key_shim : public crypto::shim<public_key_data> {
          using crypto::shim<public_key_data>::shim;
+
+         bool valid()const {
+            return public_key(_data).valid();
+         }
       };
 
       struct signature_shim : public crypto::shim<compact_signature> {

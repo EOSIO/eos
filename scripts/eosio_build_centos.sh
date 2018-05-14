@@ -1,89 +1,89 @@
-	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' \
+	OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' \
 	| cut -d'.' -f1 )
 
-	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
+	MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
-	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
-	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
+	MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
+	JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
 
-	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
-	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
-	DISK_AVAIL_KB=`df . | tail -1 | awk '{print $4}'`
-	DISK_TOTAL=$(( $DISK_TOTAL_KB / 1048576 ))
-	DISK_AVAIL=$(( $DISK_AVAIL_KB / 1048576 ))
+	DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 )
+	DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
+	DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
+	DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
+	DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-	printf "\n\tOS name: $OS_NAME\n"
-	printf "\tOS Version: ${OS_VER}\n"
-	printf "\tCPU speed: ${CPU_SPEED}Mhz\n"
-	printf "\tCPU cores: $CPU_CORE\n"
-	printf "\tPhysical Memory: $MEM_MEG Mgb\n"
-	printf "\tDisk install: ${DISK_INSTALL}\n"
-	printf "\tDisk space total: ${DISK_TOTAL%.*}G\n"
-	printf "\tDisk space available: ${DISK_AVAIL%.*}G\n"
+	printf "\\n\\tOS name: %s\\n" "${OS_NAME}"
+	printf "\\tOS Version: %s\\n" "${OS_VER}"
+	printf "\\tCPU speed: %sMhz\\n" "${CPU_SPEED}"
+	printf "\\tCPU cores: %s\\n" "${CPU_CORE}"
+	printf "\\tPhysical Memory: %s Mgb\\n" "${MEM_MEG}"
+	printf "\\tDisk install: %s\\n" "${DISK_INSTALL}"
+	printf "\\tDisk space total: %sG\\n" "${DISK_TOTAL%.*}"
+	printf "\\tDisk space available: %sG\\n" "${DISK_AVAIL%.*}"
 
-	if [ $MEM_MEG -lt 7000 ]; then
-		echo "Your system must have 7 or more Gigabytes of physical memory installed."
-		echo "exiting now."
-		exit 1
+	if [ "${MEM_MEG}" -lt 7000 ]; then
+		printf "\\n\\tYour system must have 7 or more Gigabytes of physical memory installed.\\n"
+		printf "\\tExiting now.\\n\\n"
+		exit 1;
 	fi
 
-	if [ $OS_VER -lt 7 ]; then
-		echo "You must be running Centos 7 or higher to install EOSIO."
-		echo "exiting now."
-		exit 1
+	if [ "${OS_VER}" -lt 7 ]; then
+		printf "\\n\\tYou must be running Centos 7 or higher to install EOSIO.\\n"
+		printf "\\tExiting now.\\n\\n"
+		exit 1;
 	fi
 
-	if [ ${DISK_AVAIL%.*} -lt $DISK_MIN ]; then
-		echo "You must have at least ${DISK_MIN}GB of available storage to install EOSIO."
-		echo "exiting now."
-		exit 1
+	if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
+		printf "\\n\\tYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
+		printf "\\tExiting now.\\n\\n"
+		exit 1;
 	fi
-	printf "\n\tChecking Yum installation\n"
+
+	printf "\\n\\tChecking Yum installation\\n"
+	if ! YUM=$( command -v yum 2>/dev/null )
+	then
+		printf "\\n\\tYum must be installed to compile EOS.IO.\\n"
+		printf "\\tExiting now.\\n\\n"
+		exit 1;
+	fi
 	
-	YUM=$( which yum 2>/dev/null )
-	if [ $? -ne 0 ]; then
-		printf "\n\tYum must be installed to compile EOS.IO.\n"
-		printf "\n\tExiting now.\n"
-		exit 0
-	fi
+	printf "\\tYum installation found at %s.\\n" "${YUM}"
+	printf "\\n\\tChecking installation of Centos Software Collections Repository.\\n"
 	
-	printf "\tYum installation found at ${YUM}.\n"
-	printf "\n\tChecking installation of Centos Software Collections Repository.\n"
-	
-	SCL=$( which scl 2>/dev/null )
-	if [ -z $SCL ]; then
-		printf "\n\tThe Centos Software Collections Repository, devtoolset-7 and Python3 are required to install EOSIO.\n"
-		printf "\tDo you wish to install and enable this repository, devtoolset-7 and Python3 packages?\n"
+	SCL=$( command -v scl 2>/dev/null )
+	if [ -z "${SCL}" ]; then
+		printf "\\n\\tThe Centos Software Collections Repository, devtoolset-7 and Python3 are required to install EOSIO.\\n"
+		printf "\\tDo you wish to install and enable this repository, devtoolset-7 and Python3 packages?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* ) 
-					printf "\n\n\tInstalling SCL.\n\n"
-					sudo yum -y --enablerepo=extras install centos-release-scl 2>/dev/null
-					if [ $? -ne 0 ]; then
-						printf "\n\tCentos Software Collections Repository installation failed.\n"
-						printf "\n\tExiting now.\n"
-						exit 1
+					printf "\\n\\n\\tInstalling SCL.\\n\\n"
+					if ! sudo "${YUM}" -y --enablerepo=extras install centos-release-scl 2>/dev/null
+					then
+						printf "\\n\\tCentos Software Collections Repository installation failed.\\n"
+						printf "\\n\\tExiting now.\\n\\n"
+						exit 1;
 					else
-						printf "\n\tCentos Software Collections Repository installed successfully.\n"
+						printf "\\n\\tCentos Software Collections Repository installed successfully.\\n"
 					fi
-					printf "\n\n\tInstalling devtoolset-7.\n\n"
-					sudo yum install -y devtoolset-7 2>/dev/null
-					if [ $? -ne 0 ]; then
-						printf "\n\tCentos devtoolset-7 installation failed.\n"
-						printf "\n\tExiting now.\n"
-						exit 1
+					printf "\\n\\n\\tInstalling devtoolset-7.\\n\\n"
+					if ! sudo "${YUM}" install -y devtoolset-7 2>/dev/null
+					then
+						printf "\\n\\tCentos devtoolset-7 installation failed.\\n"
+						printf "\\n\\tExiting now.\\n\\n"
+						exit 1;
 					else
-						printf "\n\tCentos devtoolset installed successfully.\n"
+						printf "\\n\\tCentos devtoolset installed successfully.\\n"
 					fi
-					printf "\n\n\tInstalling Python3.\n\n"
-					sudo yum install -y python33.x86_64 2>/dev/null
-					if [ $? -ne 0 ]; then
-						printf "\n\tCentos Python3 installation failed.\n"
-						printf "\n\tExiting now.\n"
-						exit 1
+					printf "\\n\\n\\tInstalling Python3.\\n\\n"
+					if ! sudo "${YUM}" install -y python33.x86_64 2>/dev/null
+					then
+						printf "\\n\\tCentos Python3 installation failed.\\n"
+						printf "\\n\\tExiting now.\\n\\n"
+						exit 1;
 					else
-						printf "\n\tCentos Python3 installed successfully.\n"
+						printf "\\n\\tCentos Python3 installed successfully.\\n"
 					fi
 				break;;
 				[Nn]* ) echo "User aborting installation of required Centos Software Collections Repository, Exiting now."; exit;;
@@ -91,38 +91,39 @@
 			esac
 		done
 	else 
-		printf "\n\tCentos Software Collections Repository found.\n"
+		printf "\\tCentos Software Collections Repository found.\\n\\n"
 	fi
 
-	printf "\n\tEnabling Centos devtoolset-7.\n"
-	source /opt/rh/devtoolset-7/enable
-	if [ $? -ne 0 ]; then
-		printf "\n\tUnable to enable Centos devtoolset-7 at this time.\n"
-		printf "\n\tExiting now.\n"
-		exit 1
+	printf "\\n\\tEnabling Centos devtoolset-7.\\n"
+# shellcheck disable=SC1091
+	if ! source "/opt/rh/devtoolset-7/enable" 2>/dev/null
+	then
+		printf "\\n\\tUnable to enable Centos devtoolset-7 at this time.\\n"
+		printf "\\n\\tExiting now.\\n\\n"
+		exit 1;
 	fi
-	printf "\tCentos devtoolset-7 successfully enabled.\n"
+	printf "\\tCentos devtoolset-7 successfully enabled.\\n\\n"
 
-# 	printf "\n\tEnabling Centos python3 installation.\n"
-# 	source /opt/rh/python33/enable
-# 	if [ $? -ne 0 ]; then
-# 		printf "\n\tUnable to enable Centos python3 at this time.\n"
-# 		printf "\n\tExiting now.\n"
-# 		exit 1
+# 	printf "\\n\\tEnabling Centos python3 installation.\\n"
+# shellcheck disable=SC1091
+# 	if ! source /opt/rh/python33/enable
+# 	then
+# 		printf "\\n\\tUnable to enable Centos python3 at this time.\\n"
+# 		printf "\\n\\tExiting now.\\n\\n"
+# 		exit 1;
 # 	fi
-# 	printf "\tCentos python3 successfully enabled.\n"
+# 	printf "\\tCentos python3 successfully enabled.\\n"
 	
-	printf "\n\tUpdating YUM repository.\n"
+	printf "\\n\\tUpdating YUM repository.\\n\\n"
 
-	sudo yum -y update 2>/dev/null
-	
-	if [ $? -ne 0 ]; then
-		printf "\n\tYUM update failed.\n"
-		printf "\n\tExiting now.\n"
-		exit 1
+	if ! sudo "${YUM}" -y update 2>/dev/null
+	then
+		printf "\\n\\tYUM update failed.\\n"
+		printf "\\n\\tExiting now.\\n\\n"
+		exit 1;
 	fi
 
-	printf "\n\tYUM repository successfully updated.\n"
+	printf "\\n\\tYUM repository successfully updated.\\n\\n"
 
 	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen graphviz-devel.x86_64 libicu-devel.x86_64 \
 	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64)
@@ -130,38 +131,37 @@
 	DISPLAY=""
 	DEP=""
 
-	printf "\n\tChecking YUM for installed dependencies.\n\n"
+	printf "\\n\\tChecking YUM for installed dependencies.\\n\\n"
 
 	for (( i=0; i<${#DEP_ARRAY[@]}; i++ ));
 	do
-		pkg=$( sudo $YUM info ${DEP_ARRAY[$i]} 2>/dev/null | grep Repo | tr -s ' ' | cut -d: -f2 | sed 's/ //g' )
-
+		pkg=$( sudo "${YUM}" info "${DEP_ARRAY[$i]}" 2>/dev/null | grep Repo | tr -s ' ' | cut -d: -f2 | sed 's/ //g' )
 		if [ "$pkg" != "installed" ]; then
 			DEP=$DEP" ${DEP_ARRAY[$i]} "
-			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\n\t"
-			printf "\tPackage ${DEP_ARRAY[$i]} ${bldred} NOT ${txtrst} found.\n"
-			let COUNT++
+			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\\n\\t"
+			printf "\\tPackage %s ${bldred} NOT ${txtrst} found.\\n" "${DEP_ARRAY[$i]}"
+			(( COUNT++ ))
 		else
-			printf "\tPackage ${DEP_ARRAY[$i]} found.\n"
+			printf "\\tPackage %s found.\\n" "${DEP_ARRAY[$i]}"
 			continue
 		fi
 	done		
 
-	if [ ${COUNT} -gt 1 ]; then
-		printf "\n\tThe following dependencies are required to install EOSIO.\n"
-		printf "\n\t$DISPLAY\n\n"
-		printf "\tDo you wish to install these dependencies?\n"
+	if [ "${COUNT}" -gt 1 ]; then
+		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
+		printf "\\n\\t${DISPLAY}\\n\\n"
+		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* ) 
-					printf "\n\n\tInstalling dependencies\n\n"
-					sudo yum -y install ${DEP}
-					if [ $? -ne 0 ]; then
-						printf "\n\tYUM dependency installation failed.\n"
-						printf "\n\tExiting now.\n"
-						exit 1
+					printf "\\n\\n\\tInstalling dependencies\\n\\n"
+					if ! sudo "${YUM}" -y install ${DEP}
+					then
+						printf "\\n\\tYUM dependency installation failed.\\n"
+						printf "\\n\\tExiting now.\\n\\n"
+						exit 1;
 					else
-						printf "\n\tYUM dependencies installed successfully.\n"
+						printf "\\n\\tYUM dependencies installed successfully.\\n"
 					fi
 				break;;
 				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
@@ -169,138 +169,263 @@
 			esac
 		done
 	else 
-		printf "\n\tNo required YUM dependencies to install.\n"
+		printf "\\n\\tNo required YUM dependencies to install.\\n"
 	fi
 
-	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
-		printf "\n\tChecking perl installation."
-		perl_bin=$( which perl 2>/dev/null )
-		if [ $? -ne 0 ]; then
-			printf "\n\tInstalling perl."
-			yum -y install perl
-			if [ $? -ne 0 ]; then
-				printf "\n\tUnable to install perl at this time.\n"
-				printf "\n\tExiting now.\n"
+	if [ "${ENABLE_COVERAGE_TESTING}" = true ]; then
+		printf "\\n\\tChecking perl installation.\\n"
+		perl_bin=$( command -v perl 2>/dev/null )
+		if [ -z "${perl_bin}" ]; then
+			printf "\\n\\tInstalling perl.\\n"
+			if ! sudo "${YUM}" -y install perl
+			then
+				printf "\\n\\tUnable to install perl at this time.\\n"
+				printf "\\n\\tExiting now.\\n\\n"
+				exit 1;
 			fi
 		else
-			printf "\n\tPerl installation found at ${perl_bin}."
+			printf "\\tPerl installation found at %s.\\n" "${perl_bin}"
 		fi
-		printf "\n\tChecking LCOV installation."
-		if [ ! -e /usr/local/bin/lcov ]; then
-			printf "\n\tLCOV installation not found.\n"
-			printf "\tInstalling LCOV.\n"
-			cd ${TEMP_DIR}
-			git clone https://github.com/linux-test-project/lcov.git
-			if [ $? -ne 0 ]; then
-				printf "\tUnable to clone LCOV at this time.\n"
-				printf "\tExiting now.\n\n"
-				exit;
+		printf "\\n\\tChecking LCOV installation.\\n"
+		lcov=$( command -v lcov 2>/dev/null )
+		if [ -z  "${lcov}" ]; then
+			printf "\\n\\tLCOV installation not found.\\n"
+			printf "\\tInstalling LCOV.\\n"
+			if ! cd "${TEMP_DIR}"
+			then
+				printf "\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
 			fi
-			cd lcov
-			sudo make install
-			if [ $? -ne 0 ]; then
-				printf "\tUnable to install LCOV at this time.\n"
-				printf "\tExiting now.\n\n"
-				exit;
+			if ! git clone https://github.com/linux-test-project/lcov.git
+			then
+				printf "\\tUnable to clone LCOV at this time.\\n"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
 			fi
-			rm -rf ${TEMP_DIR}/lcov
-			printf "\tSuccessfully installed LCOV.\n"
+			if ! cd "${TEMP_DIR}/lcov"
+			then
+				printf "\\tUnable to enter directory %s/lcov.\\n" "${TEMP_DIR}"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
+			fi
+			if ! sudo make install
+			then
+				printf "\\tUnable to install LCOV at this time.\\n"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
+			fi
+			if ! cd "${CWD}"
+			then
+				printf "\\tUnable to enter directory %s.\\n" "${CWD}"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
+			fi
+			if ! rm -rf "${TEMP_DIR}/lcov"
+			then
+				printf "\\tUnable to remove directory %s/lcov.\\n" "${TEMP_DIR}"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
+			fi
+			printf "\\n\\tSuccessfully installed LCOV.\\n"
 		else
-			printf "\n\tLCOV installation found @ /usr/local/bin/lcov.\n"
+			printf "\\tLCOV installation found @ %s.\\n" "${lcov}"
 		fi
 	fi
 
-	printf "\n\tChecking CMAKE installation.\n"
-    if [ ! -e ${CMAKE} ]; then
-		printf "\tInstalling CMAKE\n"
-		mkdir -p ${HOME}/opt/ 2>/dev/null
-		cd ${HOME}/opt
+	printf "\\n\\tChecking CMAKE installation.\\n"
+    if [ ! -e "${CMAKE}" ]; then
+		printf "\\tInstalling CMAKE\\n"
+		if [ ! -d "${HOME}/opt" ]; then
+			if ! mkdir "${HOME}/opt"
+			then
+				printf "\\tUnable to create directory %s/opt.\\n" "${HOME}"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
+			fi
+		fi
+		if ! cd "${HOME}/opt"
+		then
+			printf "\\tUnable to enter directory %s/opt.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
 		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz)
 		if [ "${STATUS}" -ne 200 ]; then
-			printf "\tUnable to download CMAKE at this time.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+			printf "\\tUnable to download CMAKE at this time.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		tar xf cmake-3.10.2.tar.gz
-		rm -f cmake-3.10.2.tar.gz
-		ln -s ${HOME}/opt/cmake-3.10.2/ cmake
-		cd cmake
-		./bootstrap
-		if [ $? -ne 0 ]; then
-			printf "\tError running bootstrap for CMAKE.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! tar xf "${HOME}/opt/cmake-3.10.2.tar.gz"
+		then
+			printf "\\tUnable to unarchive %s/opt/cmake-3.10.2.tar.gz.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		make -j${JOBS}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling CMAKE.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! rm -f "${HOME}/opt/cmake-3.10.2.tar.gz"
+		then
+			printf "\\tUnable to remove %s/opt/cmake-3.10.2.tar.gz.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 		fi
+		if ! ln -s "${HOME}/opt/cmake-3.10.2/" "${HOME}/opt/cmake"
+		then
+			printf "\\tUnable to symlink %s/opt/cmake-3.10.2 to %s/opt/cmake-3.10.2/cmake.\\n" "${HOME}" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! cd "${HOME}/opt/cmake"
+		then
+			printf "\\tUnable to enter directory %s/opt/cmake.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! ./bootstrap
+		then
+			printf "\\tError running bootstrap for CMAKE.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! make -j"${JOBS}"
+		then
+			printf "\\tCompiling CMAKE has exited with the above error.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		printf "\\tCMAKE successfully installed @ %s.\\n\\n" "${CMAKE}"
 	else
-		printf "\tCMAKE found\n"
+		printf "\\tCMAKE found @ %s.\\n" "${CMAKE}"
 	fi
 
-	printf "\n\tChecking boost library installation.\n"
-	BVERSION=`cat "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null | grep BOOST_LIB_VERSION \
-	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI'`
-	if [ "${BVERSION}" != "1_66" ]; then
-		printf "\tRemoving existing boost libraries in ${HOME}/opt/boost* .\n"
-		rm -rf ${HOME}/opt/boost*
-		if [ $? -ne 0 ]; then
-			printf "\n\tUnable to remove deprecated boost libraries at this time.\n"
-			printf "\n\tExiting now.\n"
-			exit 1
+	printf "\\n\\tChecking boost library installation.\\n"
+	BVERSION=$( grep "#define BOOST_VERSION" "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
+	| tail -1 | tr -s ' ' | cut -d\  -f3)
+	if [ "${BVERSION}" != "106600" ]; then
+		printf "\\tRemoving existing boost libraries in %s/opt/boost* .\\n" "${HOME}"
+		if ! rm -rf "${HOME}/opt/boost*"
+		then
+			printf "\\n\\tUnable to remove deprecated boost libraries at %s/opt/boost*.\\n" "${HOME}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		printf "\tInstalling boost libraries.\n"
-		cd ${TEMP_DIR}
+		printf "\\tInstalling boost libraries.\\n"
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
 		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2)
 		if [ "${STATUS}" -ne 200 ]; then
-			printf "\tUnable to download Boost libraries at this time.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+			printf "\\tUnable to download Boost libraries at this time.\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		tar xf ${TEMP_DIR}/boost_1_66_0.tar.bz2
-		rm -f  ${TEMP_DIR}/boost_1_66_0.tar.bz2
-		cd ${TEMP_DIR}/boost_1_66_0/
-		./bootstrap.sh "--prefix=$BOOST_ROOT"
-		if [ $? -ne 0 ]; then
-			printf "\n\tInstallation of boost libraries failed. 0\n"
-			printf "\n\tExiting now.\n"
-			exit 1
+		if ! tar xf "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		then
+			printf "\\n\\tUnable to unarchive file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		./b2 install
-		if [ $? -ne 0 ]; then
-			printf "\n\tInstallation of boost libraries failed. 1\n"
-			printf "\n\tExiting now.\n"
-			exit 1
+		if ! rm -f  "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		then
+			printf "\\n\\tUnable to remove file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		rm -rf ${TEMP_DIR}/boost_1_66_0/
+		if ! cd "${TEMP_DIR}/boost_1_66_0/"
+		then
+			printf "\\n\\tUnable to enter directory %s/boost_1_66_0.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! ./bootstrap.sh "--prefix=$BOOST_ROOT"
+		then
+			printf "\\n\\tInstallation of boost libraries failed with the above error. 0\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! ./b2 install
+		then
+			printf "\\n\\tInstallation of boost libraries failed with the above error. 1\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! rm -rf "${TEMP_DIR}/boost_1_66_0/"
+		then
+			printf "\\n\\tUnable to remove directory %s/boost_1_66_0.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		printf "\\tBoost 1.66.0 successfully installed @ %s/opt/boost_1_66_0.\\n\\n" "${HOME}"
 	else
-		printf "\tBoost 1.66.0 found at ${HOME}/opt/boost_1_66_0.\n"
+		printf "\\tBoost 1.66.0 found at %s/opt/boost_1_66_0.\\n\\n" "${HOME}"
 	fi
 
-	printf "\n\tChecking MongoDB installation.\n"
-    if [ ! -e ${MONGOD_CONF} ]; then
-		printf "\n\tInstalling MongoDB 3.6.3.\n"
-		cd ${HOME}/opt
+	printf "\\n\\tChecking MongoDB installation.\\n"
+    if [ ! -e "${MONGOD_CONF}" ]; then
+		printf "\\n\\tInstalling MongoDB 3.6.3.\\n\\n"
+		if [ ! -d "${HOME}/opt" ]; then
+			if ! mkdir "${HOME}/opt"
+			then
+				printf "\\tUnable to create directory %s/opt.\\n" "${HOME}"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
+			fi
+		fi
+		if ! cd "${HOME}/opt"
+		then
+			printf "\\tUnable to enter directory %s/opt.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
 		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.3.tgz)
 		if [ "${STATUS}" -ne 200 ]; then
-			printf "\tUnable to download MongoDB at this time.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+			printf "\\tUnable to download MongoDB at this time.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		tar xf mongodb-linux-x86_64-3.6.3.tgz
-		rm -f mongodb-linux-x86_64-3.6.3.tgz
-		ln -s ${HOME}/opt/mongodb-linux-x86_64-3.6.3/ mongodb
-		mkdir ${HOME}/opt/mongodb/data
-		mkdir ${HOME}/opt/mongodb/log
-		touch ${HOME}/opt/mongodb/log/mongodb.log
+		if ! tar xf "${HOME}/opt/mongodb-linux-x86_64-3.6.3.tgz"
+		then
+			printf "\\tUnable to unarchive file %s/opt/mongodb-linux-x86_64-3.6.3.tgz.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! rm -f "${HOME}/opt/mongodb-linux-x86_64-3.6.3.tgz"
+		then
+			printf "\\tUnable to remove file %s/opt/mongodb-linux-x86_64-3.6.3.tgz.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! ln -s "${HOME}/opt/mongodb-linux-x86_64-3.6.3/" "${HOME}/opt/mongodb"
+		then
+			printf "\\tUnable to symlink file %s/opt/mongodb-linux-x86_64-3.6.3 to %s/opt/mongodb.\\n" "${HOME}" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! mkdir "${HOME}/opt/mongodb/data"
+		then
+			printf "\\tUnable to create directory %s/opt/mongodb/data.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! mkdir "${HOME}/opt/mongodb/log"
+		then
+			printf "\\tUnable to create directory %s/opt/mongodb/log.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! touch "${HOME}/opt/mongodb/log/mongodb.log"
+		then
+			printf "\\tUnable to create file %s/opt/mongodb/log/mongodb.log.\\n" "${HOME}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
 		
-tee > /dev/null ${MONGOD_CONF} <<mongodconf
+if ! tee > /dev/null "${MONGOD_CONF}" <<mongodconf
 systemLog:
  destination: file
- path: ${HOME}/opt/mongodb/log/mongod.log
+ path: ${HOME}/opt/mongodb/log/mongodb.log
  logAppend: true
  logRotate: reopen
 net:
@@ -309,160 +434,278 @@ net:
 storage:
  dbPath: ${HOME}/opt/mongodb/data
 mongodconf
-
+		then
+			printf "\\tUnable to write to file %s.\\n" "${MONGOD_CONF}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		printf "\\n\\tMongoDB successfully installed @ %s/opt/mongodb.\\n\\n" "${HOME}"
 	else
-		printf "\tMongoDB config found at ${MONGOD_CONF}.\n"
+		printf "\\tMongoDB config found at %s.\\n\\n" "${MONGOD_CONF}"
 	fi
 
-	printf "\n\tChecking MongoDB C++ driver installation.\n"
-    if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
-		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
-		cd ${TEMP_DIR}
-		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz)
+	printf "\\n\\tChecking MongoDB C++ driver installation.\\n"
+	if [ ! -e "/usr/local/lib/libmongocxx-static.a" ]; then
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 \
+		"https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz" )
 		if [ "${STATUS}" -ne 200 ]; then
-			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz 2>/dev/null
-			printf "\tUnable to download MongoDB C driver at this time.\n"
-			printf "\tExiting now.\n\n"
+			rm -f "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
+			printf "\\tUnable to download MongoDB C driver at this time.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! tar xf "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
+		then
+			printf "\\n\\tUnable to unarchive file  %s/mongo-c-driver-1.9.3.tar.gz.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
+		then
+			printf "\\n\\tUnable to remove file  %s/mongo-c-driver-1.9.3.tar.gz.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/mongo-c-driver-1.9.3"
+		then
+			printf "\\n\\tUnable to enter directory %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! ./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+		then
+			printf "\\tConfiguring MongoDB C driver has encountered the errors above.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! make -j"${JOBS}"
+		then
+			printf "\\tError compiling MongoDB C driver.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! sudo make install
+		then
+			printf "\\tError installing MongoDB C driver.\\nMake sure you have sudo privileges.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.9.3"
+		then
+			printf "\\n\\tUnable to remove  directory %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+		then
+			printf "\\tUnable to clone MongoDB C++ driver at this time.\\n"
+			printf "\\tExiting now.\\n\\n"
 			exit;
 		fi
-		tar xf mongo-c-driver-1.9.3.tar.gz
-		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
-		cd mongo-c-driver-1.9.3
-		./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
-		if [ $? -ne 0 ]; then
-			printf "\tConfiguring MongoDB C driver has encountered the errors above.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! cd "${TEMP_DIR}/mongo-cxx-driver/build"
+		then
+			printf "\\n\\tUnable to enter directory %s/mongo-cxx-driver/build.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
 		fi
-		make -j${JOBS}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling MongoDB C driver.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		
+		if ! "${CMAKE}" -DBUILD_SHARED_LIBS="OFF" -DCMAKE_BUILD_TYPE="Release" -DCMAKE_INSTALL_PREFIX="/usr/local" "${TEMP_DIR}/mongo-cxx-driver"
+		then
+			printf "\\tCmake has encountered the above errors building the MongoDB C++ driver.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		sudo make install
-		if [ $? -ne 0 ]; then
-			printf "\tError installing MongoDB C driver.\nMake sure you have sudo privileges.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! sudo make -j"${JOBS}"
+		then
+			printf "\\tError compiling MongoDB C++ driver.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		cd ..
-		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
-		cd ${TEMP_DIR}
-		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
-		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone MongoDB C++ driver at this time.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! sudo make install
+		then
+			printf "\\tError installing MongoDB C++ driver.\\nMake sure you have sudo privileges.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		cd mongo-cxx-driver/build
-		${CMAKE} -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
-		if [ $? -ne 0 ]; then
-			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
 		fi
-		sudo make -j${JOBS}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling MongoDB C++ driver.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! sudo rm -rf "${TEMP_DIR}/mongo-cxx-driver"
+		then
+			printf "\\n\\tUnable to remove directory %s/mongo-cxx-driver.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
 		fi
-		sudo make install
-		if [ $? -ne 0 ]; then
-			printf "\tError installing MongoDB C++ driver.\nMake sure you have sudo privileges.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		cd
-		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
+		printf "\\tSuccessfully installed Mongo C/C++ drivers @ /usr/local/lib.\\n"
 	else
-		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\n"
+		printf "\\tMongo C++ driver found at /usr/local/lib.\\n"
+	fi
+
+	printf "\\n\\tChecking secp256k1-zkp installation.\\n"
+    # install secp256k1-zkp (Cryptonomex branch)
+    if [ ! -e "/usr/local/lib/libsecp256k1.a" ]; then
+		printf "\\tInstalling secp256k1-zkp (Cryptonomex branch).\\n"
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! git clone https://github.com/cryptonomex/secp256k1-zkp.git
+		then
+			printf "\\tUnable to clone repo secp256k1-zkp @ https://github.com/cryptonomex/secp256k1-zkp.git.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/secp256k1-zkp"
+		then
+			printf "\\n\\tUnable to cd into directory %s/secp256k1-zkp.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! ./autogen.sh
+		then
+			printf "\\tError running autogen for secp256k1-zkp.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! ./configure
+		then
+			printf "\\tError running configure for secp256k1-zkp.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! make -j"${JOBS}"
+		then
+			printf "\\tError compiling secp256k1-zkp.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! sudo make install
+		then
+			printf "\\tError installing secp256k1-zkp.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! rm -rf "${TEMP_DIR}/secp256k1-zkp"
+		then
+			printf "\\tError removing directory %s/secp256k1-zkp.\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		printf "\\n\\tsecp256k1 successfully installed @ /usr/local/lib.\\n\\n"
+	else
+		printf "\\tsecp256k1 found @ /usr/local/lib.\\n"
 	fi	
 
-	printf "\n\tChecking secp256k1-zkp installation.\n"
-    if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
-		printf "\tInstalling secp256k1-zkp (Cryptonomex branch)\n"
-		cd ${TEMP_DIR}
-		git clone https://github.com/cryptonomex/secp256k1-zkp.git
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone repo secp256k1-zkp @ https://github.com/cryptonomex/secp256k1-zkp.git.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+	printf "\\n\\tChecking LLVM with WASM support installation.\\n"
+	if [ ! -d "${HOME}/opt/wasm/bin" ]; then
+		printf "\\n\\tInstalling LLVM with WASM\\n"
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		cd secp256k1-zkp
-		./autogen.sh
-		if [ $? -ne 0 ]; then
-			printf "\tError running autogen for secp256k1-zkp.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! mkdir "${TEMP_DIR}/llvm-compiler"  2>/dev/null
+		then
+			printf "\\n\\tUnable to create directory %s/llvm-compiler.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		./configure
-		make -j${JOBS}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling secp256k1-zkp.\n"
-			printf "\tExiting now.\n\n"
-			exit;
+		if ! cd "${TEMP_DIR}/llvm-compiler"
+		then
+			printf "\\n\\tUnable to enter directory %s/llvm-compiler.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
 		fi
-		sudo make install
-		rm -rf cd ${TEMP_DIR}/secp256k1-zkp
+		if ! git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+		then
+			printf "\\tUnable to clone llvm repo @ https://github.com/llvm-mirror/llvm.git.\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/llvm-compiler/llvm/tools"
+		then
+			printf "\\n\\tUnable to enter directory %s/llvm-compiler/llvm/tools.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+		then
+			printf "\\tUnable to clone clang repo @ https://github.com/llvm-mirror/clang.git.\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/llvm-compiler/llvm"
+		then
+			printf "\\n\\tUnable to enter directory %s/llvm-compiler/llvm.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! mkdir "${TEMP_DIR}/llvm-compiler/llvm/build" 2>/dev/null
+		then
+			printf "\\n\\tUnable to create directory %s/llvm-compiler/llvm/build.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/llvm-compiler/llvm/build"
+		then
+			printf "\\n\\tUnable to enter directory %s/llvm-compiler/llvm/build.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! "${CMAKE}" -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${HOME}/opt/wasm" \
+		-DLLVM_TARGETS_TO_BUILD="host" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="WebAssembly" \
+		-DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE="Release" ..
+		then
+			printf "\\tCMake has exited with the above error.\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! make -j"${JOBS}"
+		then
+			printf "\\n\\tCompiling LLVM with EXPERIMENTAL WASM support has exited with the above errors.\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! make install
+		then
+			printf "\\n\\tInstalling LLVM with EXPERIMENTAL WASM support has exited with the above errors.\\n"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if ! rm -rf "${TEMP_DIR}/llvm-compiler" 2>/dev/null
+		then
+			printf "\\n\\tUnable to remove directory %s/llvm-compiler.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		printf "\\n\\tWASM compiler successfully installed at %s/opt/wasm\\n" "${HOME}"
 	else
-		printf "\tsecp256k1 found\n"
-	fi
-	
-	printf "\n\tChecking LLVM with WASM support installation.\n"
-	if [ ! -d ${HOME}/opt/wasm/bin ]; then
-		printf "\tInstalling LLVM & WASM\n"
-		cd ${TEMP_DIR}
-		mkdir llvm-compiler  2>/dev/null
-		cd llvm-compiler
-		git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone llvm repo @ https://github.com/llvm-mirror/llvm.git.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		cd llvm/tools
-		git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone clang repo @ https://github.com/llvm-mirror/clang.git.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		cd ..
-		mkdir build 2>/dev/null
-		cd build
-		$CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm \
-		-DLLVM_TARGETS_TO_BUILD="host" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly \
-		-DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release ../
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		make -j${JOBS}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support. 0\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		make install
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support. 1\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		rm -rf ${TEMP_DIR}/llvm-compiler 2>/dev/null
-	else
-		printf "\tWASM found at ${HOME}/opt/wasm\n"
+		printf "\\n\\tWASM found at %s/opt/wasm\\n" "${HOME}"
 	fi
 
 	function print_instructions()
 	{
-		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
-		printf "\tsource /opt/rh/python33/enable\n"
+		printf "\\n\\t%s -f %s &\\n" "$( command -v mongod )" "${MONGOD_CONF}"
+		printf "\\tsource /opt/rh/python33/enable\\n"
 		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
-		printf "\tcd ${BUILD_DIR}; make test\n\n"
+		printf "\\tcd %s; make test\\n\\n" "${BUILD_DIR}"
 	return 0
 	}

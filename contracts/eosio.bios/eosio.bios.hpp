@@ -1,7 +1,6 @@
 #pragma once
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/privileged.h>
-#include <eosiolib/producer_schedule.hpp>
+#include <eosiolib/privileged.hpp>
 
 namespace eosio {
 
@@ -20,13 +19,15 @@ namespace eosio {
          }
 
          void setglimits( uint64_t ram, uint64_t net, uint64_t cpu ) {
+            (void)ram; (void)net; (void)cpu;
             require_auth( _self );
          }
 
-         void setprods( producer_schedule sch ) {
+         void setprods( std::vector<eosio::producer_key> schedule ) {
+            (void)schedule; // schedule argument just forces the deserialization of the action data into vector<producer_key> (necessary check)
             require_auth( _self );
             char buffer[action_data_size()];
-            read_action_data( buffer, sizeof(buffer) );
+            read_action_data( buffer, sizeof(buffer) ); // should be the same data as eosio::pack(schedule)
             set_active_producers(buffer, sizeof(buffer));
          }
 
