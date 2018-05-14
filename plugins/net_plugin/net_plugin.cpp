@@ -452,6 +452,7 @@ namespace eosio {
          std::function<void(boost::system::error_code, std::size_t)> callback;
       };
       deque<queued_write>     write_queue;
+      deque<queued_write>     out_queue;
 
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
@@ -460,7 +461,6 @@ namespace eosio {
       bool                    connecting;
       bool                    syncing;
       uint16_t                protocol_version;
-      int                     write_depth;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
       optional<request_message> pending_fetch;
@@ -666,7 +666,6 @@ namespace eosio {
         connecting(false),
         syncing(false),
         protocol_version(0),
-        write_depth(0),
         peer_addr(endpoint),
         response_expected(),
         pending_fetch(),
@@ -691,7 +690,6 @@ namespace eosio {
         connecting(true),
         syncing(false),
         protocol_version(0),
-        write_depth(0),
         peer_addr(),
         response_expected(),
         pending_fetch(),
@@ -732,13 +730,7 @@ namespace eosio {
    }
 
    void connection::flush_queues() {
-      if (write_depth > 0) {
-         while (write_queue.size() > write_depth) {
-            write_queue.pop_back();
-         }
-      } else {
-         write_queue.clear();
-      }
+      write_queue.clear();
    }
 
    void connection::close() {
@@ -956,23 +948,21 @@ namespace eosio {
          my_impl->close(c.lock());
          return;
       }
-      size_t num_buffs = write_queue.size();
       std::vector<boost::asio::const_buffer> bufs;
-      for (auto& m: write_queue) {
+      while (write_queue.size() > 0) {
+         auto& m = write_queue.front();
          bufs.push_back(boost::asio::buffer(*m.buff));
-         write_depth++;
+         out_queue.push_back(m);
+         write_queue.pop_front();
       }
-      boost::asio::async_write(*socket, bufs, [c, num_buffs](boost::system::error_code ec, std::size_t w) {
+      boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
             try {
                auto conn = c.lock();
                if(!conn)
                   return;
 
-               if (conn->write_queue.size() >= num_buffs ) {
-                  for (size_t i = 0; i < num_buffs; i++) {
-                     conn->write_queue[i].callback(ec, w);
-                     conn->write_depth--;
-                  }
+               for (auto& m: conn->out_queue) {
+                  m.callback(ec, w);
                }
 
                if(ec) {
@@ -986,8 +976,8 @@ namespace eosio {
                   my_impl->close(conn);
                   return;
                }
-               for (size_t i = 0; i < num_buffs; i++) {
-                  conn->write_queue.pop_front();
+               while (conn->out_queue.size() > 0) {
+                  conn->out_queue.pop_front();
                }
                conn->enqueue_sync_block();
                conn->do_queue_write();
