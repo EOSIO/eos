@@ -463,6 +463,7 @@ struct controller_impl {
          trace->id = gto.trx_id;
          trace->scheduled = false;
          trace->receipt = push_receipt( gto.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         undo_session.squash();
          return trace;
       }
 
@@ -588,7 +589,7 @@ struct controller_impl {
                        trx->recover_keys(),
                        {},
                        trx_context.delay,
-                       [](uint32_t){}
+                       [](){}
                        /*std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context,
                                  std::placeholders::_1)*/,
                        false
