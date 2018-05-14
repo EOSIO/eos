@@ -40,7 +40,7 @@ namespace eosio { namespace chain {
           * block_state and will return a pointer to the new block state or
           * throw on error.
           */
-         block_state_ptr add( signed_block_ptr b );
+         block_state_ptr add( signed_block_ptr b, bool trust = false );
          block_state_ptr add( block_state_ptr next_block );
          void            remove( const block_id_type& id );
 

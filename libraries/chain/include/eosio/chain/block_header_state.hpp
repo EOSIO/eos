@@ -24,7 +24,7 @@ struct block_header_state {
     vector<uint8_t>                   confirm_count;
     vector<header_confirmation>       confirmations;
 
-    block_header_state   next( const signed_block_header& h )const;
+    block_header_state   next( const signed_block_header& h, bool trust = false )const;
     block_header_state   generate_next( block_timestamp_type when )const;
 
     void set_new_producers( producer_schedule_type next_pending );
@@ -46,7 +46,7 @@ struct block_header_state {
     producer_key         get_scheduled_producer( block_timestamp_type t )const;
     const block_id_type& prev()const { return header.previous; }
     digest_type          sig_digest()const;
-    void                 sign( const std::function<signature_type(const digest_type&)>& signer );
+    void                 sign( const std::function<signature_type(const digest_type&)>& signer, bool trust = false );
     public_key_type      signee()const;
 };
 

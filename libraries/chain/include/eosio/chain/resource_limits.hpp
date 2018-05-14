@@ -29,7 +29,7 @@ namespace eosio { namespace chain { namespace resource_limits {
    struct account_resource_limit {
       int64_t used = 0; ///< quantity used in current window
       int64_t available = 0; ///< quantity available in current window (based upon fractional reserve)
-      int64_t max_gauranteed = 0; ///< max per window under 100% congestion
+      int64_t max = 0; ///< max per window under current congestion
    };
 
    class resource_limits_manager {
@@ -76,4 +76,4 @@ namespace eosio { namespace chain { namespace resource_limits {
    };
 } } } /// eosio::chain
 
-FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max_gauranteed) )
+FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
