@@ -147,7 +147,7 @@ class exchange_tester : public TESTER {
 
       void deploy_currency( account_name ac ) {
          create_account( ac );
-         set_code( ac, eosio_token_wast /*currency_wast*/ );
+         set_code( ac, enumivo_token_wast /*currency_wast*/ );
       }
 
       void deploy_exchange( account_name ac ) {
