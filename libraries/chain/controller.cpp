@@ -589,7 +589,7 @@ struct controller_impl {
                        trx->recover_keys(),
                        {},
                        trx_context.delay,
-                       [](uint32_t){}
+                       [](){}
                        /*std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context,
                                  std::placeholders::_1)*/,
                        false
