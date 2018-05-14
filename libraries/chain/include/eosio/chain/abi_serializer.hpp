@@ -268,12 +268,14 @@ namespace impl {
       template<typename Resolver>
       static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver) {
          mutable_variant_object mvo;
+         auto trx = ptrx.get_transaction();
+         mvo("id", trx.id());
          mvo("signatures", ptrx.signatures);
          mvo("compression", ptrx.compression);
          mvo("packed_context_free_data", ptrx.packed_context_free_data);
          mvo("context_free_data", ptrx.get_context_free_data());
          mvo("packed_trx", ptrx.packed_trx);
-         add(mvo, "transaction", ptrx.get_transaction(), resolver);
+         add(mvo, "transaction", trx, resolver);
 
          out(name, std::move(mvo));
       }
