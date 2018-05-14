@@ -124,7 +124,7 @@ namespace eosio { namespace chain {
       if( billed_cpu_time_us > 0 )
          deadline = original_deadline; // Only change deadline if billed_cpu_time_us is not set
 
-      check_time(); // Fail early if deadline has already been exceeded
+      checktime(); // Fail early if deadline has already been exceeded
 
       is_initialized = true;
    }
@@ -275,7 +275,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::check_time()const {
+   void transaction_context::checktime()const {
       auto now = fc::time_point::now();
       if( BOOST_UNLIKELY( now > deadline ) ) {
          if( billed_cpu_time_us > 0 || deadline_exception_code == deadline_exception::code_value ) {
