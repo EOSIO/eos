@@ -769,7 +769,7 @@ launcher_def::bind_nodes () {
                  --extra;
               }
               char ext = 'a' + i;
-              string pname = "init";
+              string pname = "defproducer";
               while (count--) {
                  string prodname = pname+ext;
                  node.producers.push_back(prodname);

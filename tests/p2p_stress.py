@@ -47,7 +47,7 @@ class StressNetwork:
             return ([], "", 0.0, "failed to create account")
         print("transaction id %s" % (trid))
 
-        print("issue currency into %s" % (acc1.name))
+        print("issue currency0000 into %s" % (acc1.name))
         contract="eosio"
         action="issue"
         data="{\"to\":\"" + acc1.name + "\",\"quantity\":\"1000000.0000 EOS\"}"
@@ -55,7 +55,7 @@ class StressNetwork:
         tr=node.pushMessage(contract, action, data, opts)
         trid = node.getTransId(tr[1])
         if trid is None:
-            return ([], "", 0.0, "failed to issue currency")
+            return ([], "", 0.0, "failed to issue currency0000")
         print("transaction id %s" % (trid))
         node.waitForTransIdOnNode(trid)
 
@@ -68,7 +68,7 @@ class StressNetwork:
         total = cycle * nthreads # rounding
         delay = 1.0 / self.speeds[cmdInd] * nthreads
 
-        print("start currency trasfer from %s to %s for %d times with %d threads" % (acc1.name, acc2.name, total, nthreads))
+        print("start currency0000 trasfer from %s to %s for %d times with %d threads" % (acc1.name, acc2.name, total, nthreads))
 
         t00 = time.time()
         for k in range(cycle):
