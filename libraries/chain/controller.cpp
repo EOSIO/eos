@@ -463,6 +463,7 @@ struct controller_impl {
          trace->id = gto.trx_id;
          trace->scheduled = false;
          trace->receipt = push_receipt( gto.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         undo_session.squash();
          return trace;
       }
 
