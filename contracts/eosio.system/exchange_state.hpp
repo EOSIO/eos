@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eosiolib/asset.hpp>
+#include <enumivolib/asset.hpp>
 
 namespace eosiosystem {
    using eosio::asset;

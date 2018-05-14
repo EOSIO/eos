@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <proxy/proxy.hpp>
-#include <eosiolib/transaction.hpp>
+#include <enumivolib/transaction.hpp>
 #include <eosio.token/eosio.token.hpp>
 
 namespace proxy {

@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/action.h>
-#include <eosiolib/chain.h>
-#include <eosiolib/eosio.hpp>
+#include <enumivolib/action.h>
+#include <enumivolib/chain.h>
+#include <enumivolib/eosio.hpp>
 #include "test_api.hpp"
 
 #pragma pack(push, 1)

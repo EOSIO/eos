@@ -52,7 +52,7 @@ function build_contract {
     done
 
     ($PRINT_CMDS; @WASM_LLVM_LINK@ -only-needed -o $workdir/linked.bc $workdir/built/* \
-                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/eosiolib.bc \
+                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/enumivolib.bc \
                                    ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc \
                                    ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc
 

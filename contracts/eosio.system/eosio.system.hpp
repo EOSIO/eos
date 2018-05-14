@@ -5,9 +5,9 @@
 #pragma once
 
 #include <eosio.system/native.hpp>
-#include <eosiolib/asset.hpp>
-#include <eosiolib/privileged.hpp>
-#include <eosiolib/singleton.hpp>
+#include <enumivolib/asset.hpp>
+#include <enumivolib/privileged.hpp>
+#include <enumivolib/singleton.hpp>
 #include <eosio.system/exchange_state.hpp>
 
 #include <string>
