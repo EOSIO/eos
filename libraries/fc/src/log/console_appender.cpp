@@ -20,6 +20,7 @@ namespace fc {
    class console_appender::impl {
    public:
      config                      cfg;
+     boost::mutex                log_mutex;
      color::type                 lc[log_level::off+1];
 #ifdef WIN32
      HANDLE                      console_handle;
@@ -82,10 +83,6 @@ namespace fc {
       }
    }
 
-   boost::mutex& log_mutex() {
-    static boost::mutex m; return m;
-   }
-
    void console_appender::log( const log_message& m ) {
       //fc::string message = fc::format_string( m.get_format(), m.get_data() );
       //fc::variant lmsg(m);
@@ -118,7 +115,7 @@ namespace fc {
       fc::string message = fc::format_string( m.get_format(), m.get_data() );
       line << message;//.c_str();
 
-      std::unique_lock<boost::mutex> lock(log_mutex());
+      std::unique_lock<boost::mutex> lock(my->log_mutex);
 
       print( line.str(), my->lc[m.get_context().get_log_level()] );
 

@@ -30,10 +30,10 @@ errorExit=testUtils.Utils.errorExit
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
 parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
-parser.add_argument("--inita_prvt_key", type=str, help="Inita private key.",
-                    default=testUtils.Cluster.initaAccount.ownerPrivateKey)
-parser.add_argument("--initb_prvt_key", type=str, help="Initb private key.",
-                    default=testUtils.Cluster.initbAccount.ownerPrivateKey)
+parser.add_argument("--defproducera_prvt_key", type=str, help="defproducera private key.",
+                    default=testUtils.Cluster.defproduceraAccount.ownerPrivateKey)
+parser.add_argument("--defproducerb_prvt_key", type=str, help="defproducerb private key.",
+                    default=testUtils.Cluster.defproducerbAccount.ownerPrivateKey)
 parser.add_argument("--wallet_host", type=str, help="wallet host", default="localhost")
 parser.add_argument("--wallet_port", type=int, help="wallet port", default=8899)
 parser.add_argument("--impaired_network", help="test impaired network", action='store_true')
@@ -44,8 +44,8 @@ parser.add_argument("--not_kill_wallet", help="not killing walletd", action='sto
 args = parser.parse_args()
 testOutputFile=args.output
 enableMongo=False
-initaPrvtKey=args.inita_prvt_key
-initbPrvtKey=args.initb_prvt_key
+defproduceraPrvtKey=args.defproducera_prvt_key
+defproducerbPrvtKey=args.defproducerb_prvt_key
 
 walletMgr=testUtils.WalletMgr(True, port=args.wallet_port, host=args.wallet_host)
 
@@ -58,7 +58,7 @@ elif args.stress_network:
 else:
     errorExit("one of impaired_network, lossy_network or stress_network must be set. Please also check peer configs in p2p_test_peers.py.")
 
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
 
 print("BEGIN")
 print("TEST_OUTPUT: %s" % (testOutputFile))
@@ -88,11 +88,11 @@ accounts=testUtils.Cluster.createAccountKeys(3)
 if accounts is None:
     errorExit("FAILURE - create keys")
 testeraAccount=accounts[0]
-testeraAccount.name="testera"
+testeraAccount.name="testera11111"
 currencyAccount=accounts[1]
-currencyAccount.name="currency"
+currencyAccount.name="currency1111"
 exchangeAccount=accounts[2]
-exchangeAccount.name="exchange"
+exchangeAccount.name="exchange1111"
 
 PRV_KEY1=testeraAccount.ownerPrivateKey
 PUB_KEY1=testeraAccount.ownerPublicKey
@@ -125,27 +125,27 @@ for account in accounts:
         cmdError("%s wallet import" % (ClientName))
         errorExit("Failed to import key for account %s" % (account.name))
 
-initaWalletName="inita"
-Print("Creating wallet \"%s\"." % (initaWalletName))
-initaWallet=walletMgr.create(initaWalletName)
-if initaWallet is None:
+defproduceraWalletName="defproducera"
+Print("Creating wallet \"%s\"." % (defproduceraWalletName))
+defproduceraWallet=walletMgr.create(defproduceraWalletName)
+if defproduceraWallet is None:
     cmdError("eos wallet create")
-    errorExit("Failed to create wallet %s." % (initaWalletName))
+    errorExit("Failed to create wallet %s." % (defproduceraWalletName))
 
-initaAccount=testUtils.Cluster.initaAccount
-# initbAccount=testUtils.Cluster.initbAccount
+defproduceraAccount=testUtils.Cluster.defproduceraAccount
+# defproducerbAccount=testUtils.Cluster.defproducerbAccount
 
-Print("Importing keys for account %s into wallet %s." % (initaAccount.name, initaWallet.name))
-if not walletMgr.importKey(initaAccount, initaWallet):
+Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, defproduceraWallet.name))
+if not walletMgr.importKey(defproduceraAccount, defproduceraWallet):
      cmdError("%s wallet import" % (ClientName))
-     errorExit("Failed to import key for account %s" % (initaAccount.name))
+     errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
 node0=cluster.getNode(0)
 if node0 is None:
     errorExit("cluster in bad state, received None node")
 
-# eosio should have the same key as inita
-eosio = copy.copy(initaAccount)
+# eosio should have the same key as defproducera
+eosio = copy.copy(defproduceraAccount)
 eosio.name = "eosio"
 
 Print("Info of each node:")

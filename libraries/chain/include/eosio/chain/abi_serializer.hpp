@@ -97,8 +97,10 @@ namespace impl {
       return std::is_base_of<transaction, T>::value ||
              std::is_same<T, packed_transaction>::value ||
              std::is_same<T, transaction_trace>::value ||
+             std::is_same<T, transaction_receipt>::value ||
              std::is_same<T, action_trace>::value ||
              std::is_same<T, signed_transaction>::value ||
+             std::is_same<T, signed_block>::value ||
              std::is_same<T, action>::value;
    }
 
@@ -187,10 +189,28 @@ namespace impl {
          mvo(name, std::move(obj_mvo["_"]));
       }
 
+      template<typename Resolver>
+      struct add_static_variant
+      {
+         mutable_variant_object& obj_mvo;
+         Resolver& resolver;
+         add_static_variant( mutable_variant_object& o, Resolver& r)
+               :obj_mvo(o), resolver(r){}
+
+         typedef void result_type;
+         template<typename T> void operator()( T& v )const
+         {
+            add(obj_mvo, "_", v, resolver);
+         }
+      };
+
       template<typename Resolver, typename... Args>
       static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver )
       {
-         //TODO: implement deserialization for static_variant
+         mutable_variant_object obj_mvo;
+         add_static_variant<Resolver> adder(obj_mvo, resolver);
+         v.visit(adder);
+         mvo(name, std::move(obj_mvo["_"]));
       }
 
       /**
@@ -248,12 +268,14 @@ namespace impl {
       template<typename Resolver>
       static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver) {
          mutable_variant_object mvo;
+         auto trx = ptrx.get_transaction();
+         mvo("id", trx.id());
          mvo("signatures", ptrx.signatures);
          mvo("compression", ptrx.compression);
          mvo("packed_context_free_data", ptrx.packed_context_free_data);
          mvo("context_free_data", ptrx.get_context_free_data());
          mvo("packed_trx", ptrx.packed_trx);
-         add(mvo, "transaction", ptrx.get_transaction(), resolver);
+         add(mvo, "transaction", trx, resolver);
 
          out(name, std::move(mvo));
       }

@@ -87,7 +87,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
          {"name", "account_name"},
          {"owner", "authority"},
          {"active", "authority"},
-         {"recovery", "authority"},
       }
    });
 
