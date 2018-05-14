@@ -1,4 +1,4 @@
-#include <eosio.msig/eosio.msig.hpp>
+#include <enumivo.msig/enumivo.msig.hpp>
 #include <enumivolib/action.hpp>
 #include <enumivolib/permission.hpp>
 

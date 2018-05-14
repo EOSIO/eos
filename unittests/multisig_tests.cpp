@@ -3,8 +3,8 @@
 #include <enumivo/chain/abi_serializer.hpp>
 #include <enumivo/chain/wast_to_wasm.hpp>
 
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+#include <enumivo.msig/enumivo.msig.wast.hpp>
+#include <enumivo.msig/enumivo.msig.abi.hpp>
 
 #include <exchange/exchange.wast.hpp>
 #include <exchange/exchange.abi.hpp>
@@ -21,24 +21,24 @@ using namespace fc;
 
 using mvo = fc::mutable_variant_object;
 
-class eosio_msig_tester : public tester {
+class enumivo_msig_tester : public tester {
 public:
 
-   eosio_msig_tester() {
-      create_accounts( { N(eosio.msig), N(alice), N(bob), N(carol) } );
+   enumivo_msig_tester() {
+      create_accounts( { N(enumivo.msig), N(alice), N(bob), N(carol) } );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                             config::system_account_name,  mutable_variant_object()
-                                            ("account", "eosio.msig")
+                                            ("account", "enumivo.msig")
                                             ("is_priv", 1)
       );
 
-      set_code( N(eosio.msig), eosio_msig_wast );
-      set_abi( N(eosio.msig), eosio_msig_abi );
+      set_code( N(enumivo.msig), enumivo_msig_wast );
+      set_abi( N(enumivo.msig), enumivo_msig_abi );
 
       produce_blocks();
-      const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.msig) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -48,7 +48,7 @@ public:
       vector<account_name> accounts;
       if( auth )
          accounts.push_back( signer );
-      auto trace = base_tester::push_action( N(eosio.msig), name, accounts, data );
+      auto trace = base_tester::push_action( N(enumivo.msig), name, accounts, data );
       produce_block();
       BOOST_REQUIRE_EQUAL( true, chain_has_transaction(trace->id) );
       return trace;
@@ -57,7 +57,7 @@ public:
          string action_type_name = abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(eosio.msig);
+         act.account = N(enumivo.msig);
          act.name = name;
          act.data = abi_ser.variant_to_binary( action_type_name, data );
          //std::cout << "test:\n" << fc::to_hex(act.data.data(), act.data.size()) << " size = " << act.data.size() << std::endl;
@@ -71,7 +71,7 @@ public:
    abi_serializer abi_ser;
 };
 
-transaction eosio_msig_tester::reqauth( account_name from, const vector<permission_level>& auths ) {
+transaction enumivo_msig_tester::reqauth( account_name from, const vector<permission_level>& auths ) {
    fc::variants v;
    for ( auto& level : auths ) {
       v.push_back(fc::mutable_variant_object()
@@ -99,9 +99,9 @@ transaction eosio_msig_tester::reqauth( account_name from, const vector<permissi
    return trx;
 }
 
-BOOST_AUTO_TEST_SUITE(eosio_msig_tests)
+BOOST_AUTO_TEST_SUITE(enumivo_msig_tests)
 
-BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_approve_execute, enumivo_msig_tester ) try {
    auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
 
    push_action( N(alice), N(propose), mvo()
@@ -142,7 +142,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, enumivo_msig_tester ) try {
    auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
 
    push_action( N(alice), N(propose), mvo()
@@ -176,7 +176,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, enumivo_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name }, { N(bob), config::active_name } } );
    push_action( N(alice), N(propose), mvo()
                   ("proposer",      "alice")
@@ -224,7 +224,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, enumivo_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name },  { N(bob), config::active_name } } );
    //try with not enough requested auth
    BOOST_REQUIRE_EXCEPTION( push_action( N(alice), N(propose), mvo()
@@ -240,7 +240,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( big_transaction, enumivo_msig_tester ) try {
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
    auto wasm = wast_to_wasm( exchange_wast );
 

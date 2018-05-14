@@ -9,8 +9,8 @@
 #include <enumivo.bios/enumivo.bios.abi.hpp>
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+#include <enumivo.msig/enumivo.msig.wast.hpp>
+#include <enumivo.msig/enumivo.msig.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -171,9 +171,9 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //set_code_abi(config::system_account_name, enumivo_bios_wast, enumivo_bios_abi);
 
         // Create the following accounts:
-        //  eosio.msig
+        //  enumivo.msig
         //  eosio.token
-        create_accounts({N(eosio.msig), N(eosio.token)});
+        create_accounts({N(enumivo.msig), N(eosio.token)});
         /*
         auto eosio_active = authority( 1, {}, {{{N(eosio),N(active)},1}} );
         auto eosio_active_pk = get_private_key( N(eosio), "active" );
@@ -181,7 +181,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         base_tester::push_action(  N(eosio), N(newaccount), vector<permission_level>{{N(eosio),config::active_name}},
                                    fc::variant(newaccount{
                                       .creator  = N(eosio),
-                                      .name     = N(eosio.msig),
+                                      .name     = N(enumivo.msig),
                                       .owner    = eosio_active,
                                       .active   = eosio_active,
                                       .recovery = eosio_active 
@@ -199,16 +199,16 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Set code for the following accounts:
         //  eosio.system  (code: enumivo.bios)
-        //  eosio.msig (code: eosio.msig)
+        //  enumivo.msig (code: enumivo.msig)
         //  eosio.token    (code: eosio.token)
-        set_code_abi(N(eosio.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
+        set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &eosio_active_pk);
         set_code_abi(N(eosio.token), eosio_token_wast, eosio_token_abi); //, &eosio_active_pk);
 
         ilog(".");
-        // Set privileges for eosio.msig
+        // Set privileges for enumivo.msig
         auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                               config::system_account_name,  mutable_variant_object()
-                ("account", "eosio.msig")
+                ("account", "enumivo.msig")
                 ("is_priv", 1)
         );
 
