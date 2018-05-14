@@ -770,8 +770,14 @@ namespace eosio {
                my_impl->local_txns.modify(tx,incr_in_flight);
                queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
                            true,
-                           [this, tx](boost::system::error_code ec, std::size_t ) {
-                              my_impl->local_txns.modify(tx, decr_in_flight);
+                           [tx_id=tx->id](boost::system::error_code ec, std::size_t ) {
+                              auto& local_txns = my_impl->local_txns;
+                              auto tx = local_txns.get<by_id>().find(tx_id);
+                              if (tx != local_txns.end()) {
+                                 local_txns.modify(tx, decr_in_flight);
+                              } else {
+                                 fc_wlog(logger, "Local pending TX erased before queued_write called callback");
+                              }
                            });
             }
          }
@@ -785,8 +791,14 @@ namespace eosio {
             my_impl->local_txns.modify( tx,incr_in_flight);
             queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
                         true,
-                        [this, tx](boost::system::error_code ec, std::size_t ) {
-                           my_impl->local_txns.modify(tx, decr_in_flight);
+                        [t](boost::system::error_code ec, std::size_t ) {
+                           auto& local_txns = my_impl->local_txns;
+                           auto tx = local_txns.get<by_id>().find(t);
+                           if (tx != local_txns.end()) {
+                              local_txns.modify(tx, decr_in_flight);
+                           } else {
+                              fc_wlog(logger, "Local TX erased before queued_write called callback");
+                           }
                         });
          }
       }
@@ -1055,12 +1067,18 @@ namespace eosio {
       fc::datastream<char*> ds( send_buffer->data(), buffer_size);
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
+      connection_wptr weak_this = shared_from_this();
       queue_write(send_buffer,trigger_send,
-                  [this, close_after_send](boost::system::error_code ec, std::size_t ) {
-                     if(close_after_send != no_reason) {
-                        elog ("sent a go away message: ${r}, closing connection to ${p}",("r",reason_str(close_after_send))("p",peer_name()));
-                        my_impl->close(shared_from_this());
-                        return;
+                  [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
+                     connection_ptr conn = weak_this.lock();
+                     if (conn) {
+                        if (close_after_send != no_reason) {
+                           elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", conn->peer_name()));
+                           my_impl->close(conn);
+                           return;
+                        }
+                     } else {
+                        fc_wlog(logger, "connection expired before enqueued net_message called callback!");
                      }
                   });
    }
@@ -1559,8 +1577,9 @@ namespace eosio {
       // skip will be empty if our producer emitted this block so just send it
       if (msgsiz > just_send_it_max && skip) {
          fc_ilog(logger, "block size is ${ms}, sending notify",("ms", msgsiz));
-         my_impl->send_all(pending_notify, [skip, bid, bnum](connection_ptr c) -> bool {
-               if (c == skip || !c->current())
+         connection_wptr weak_skip = skip;
+         my_impl->send_all(pending_notify, [weak_skip, bid, bnum](connection_ptr c) -> bool {
+               if (c == weak_skip.lock() || !c->current())
                   return false;
                const auto& bs = c->blk_state.find(bid);
                bool unknown = bs == c->blk_state.end();
@@ -1653,8 +1672,9 @@ namespace eosio {
       my_impl->local_txns.insert(std::move(nts));
 
       if(bufsiz <= just_send_it_max) {
-         my_impl->send_all( trx, [skip, id](connection_ptr c) -> bool {
-               if(c == skip || c->syncing ) {
+         connection_wptr weak_skip = skip;
+         my_impl->send_all( trx, [weak_skip, id](connection_ptr c) -> bool {
+               if(c == weak_skip.lock() || c->syncing ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -1671,8 +1691,9 @@ namespace eosio {
          pending_notify.known_trx.mode = normal;
          pending_notify.known_trx.ids.push_back( id );
          pending_notify.known_blocks.mode = none;
-         my_impl->send_all(pending_notify, [skip, id](connection_ptr c) -> bool {
-               if (c == skip || c->syncing) {
+         connection_wptr weak_skip = skip;
+         my_impl->send_all(pending_notify, [weak_skip, id](connection_ptr c) -> bool {
+               if (c == weak_skip.lock() || c->syncing) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -2492,7 +2513,7 @@ namespace eosio {
 
    void net_plugin_impl::start_conn_timer( ) {
       connector_check->expires_from_now( connector_period);
-      connector_check->async_wait( [&](boost::system::error_code ec) {
+      connector_check->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
                connection_monitor( );
             }
@@ -2505,7 +2526,7 @@ namespace eosio {
 
    void net_plugin_impl::start_txn_timer() {
       transaction_check->expires_from_now( txn_exp_period);
-      transaction_check->async_wait( [&](boost::system::error_code ec) {
+      transaction_check->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
                expire_txns( );
             }
@@ -2518,7 +2539,7 @@ namespace eosio {
 
    void net_plugin_impl::ticker() {
       keepalive_timer->expires_from_now (keepalive_interval);
-      keepalive_timer->async_wait ([&](boost::system::error_code ec) {
+      keepalive_timer->async_wait ([this](boost::system::error_code ec) {
             ticker ();
             if (ec) {
                wlog ("Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()));
