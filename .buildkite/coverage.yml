@@ -26,4 +26,4 @@ steps:
           - WASM_ROOT=/root/opt/wasm
           - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
           - CI=true
-    timeout: 30
+    timeout: 60
