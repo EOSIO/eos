@@ -224,10 +224,10 @@ BOOST_AUTO_TEST_SUITE(dice_tests)
 
 BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
-   create_accounts( {N(enumivo.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
+   create_accounts( {N(enumivo.coin), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
    
-   set_code(N(enumivo.token), enumivo_token_wast);
-   set_abi(N(enumivo.token), enumivo_token_abi);
+   set_code(N(enumivo.coin), enumivo_token_wast);
+   set_abi(N(enumivo.coin), enumivo_token_abi);
 
    produce_block();
    
@@ -235,7 +235,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    add_dice_authority(N(bob));
    add_dice_authority(N(carol));
 
-   push_action(N(enumivo.token), N(create), N(enumivo.token), mvo()
+   push_action(N(enumivo.coin), N(create), N(enumivo.coin), mvo()
      ("issuer", "enumivo.token")
      ("maximum_supply", "1000000000.0000 EOS")
      ("can_freeze", "0")
@@ -243,15 +243,15 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
      ("can_whitelist", "0")
    );
 
-   push_action(N(enumivo.token), N(issue), N(enumivo.token), mvo()
+   push_action(N(enumivo.coin), N(issue), N(enumivo.coin), mvo()
      ("to", "eosio")
      ("quantity", "1000000000.0000 EOS")
      ("memo", "")
    );
 
-   transfer( N(eosio), N(alice), "10000.0000 EOS", "", N(enumivo.token) );
-   transfer( N(eosio), N(bob),   "10000.0000 EOS", "", N(enumivo.token) );
-   transfer( N(eosio), N(carol), "10000.0000 EOS", "", N(enumivo.token) );
+   transfer( N(eosio), N(alice), "10000.0000 EOS", "", N(enumivo.coin) );
+   transfer( N(eosio), N(bob),   "10000.0000 EOS", "", N(enumivo.coin) );
+   transfer( N(eosio), N(carol), "10000.0000 EOS", "", N(enumivo.coin) );
 
    produce_block();
 
@@ -390,7 +390,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), asset::from_string("1.0000 EOS"));
 
    BOOST_REQUIRE_EQUAL( 
-      get_currency_balance(N(enumivo.token), EOS_SYMBOL, N(alice)),
+      get_currency_balance(N(enumivo.coin), EOS_SYMBOL, N(alice)),
       asset::from_string("10009.0000 EOS")
    );
 
@@ -402,7 +402,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    withdraw( N(alice), asset::from_string("1.0000 EOS"));
 
    BOOST_REQUIRE_EQUAL( 
-      get_currency_balance(N(enumivo.token), EOS_SYMBOL, N(alice)),
+      get_currency_balance(N(enumivo.coin), EOS_SYMBOL, N(alice)),
       asset::from_string("10010.0000 EOS")
    );
 

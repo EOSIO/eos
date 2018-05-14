@@ -141,7 +141,7 @@ public:
 
     asset get_balance( const account_name& act )
     {
-         return get_currency_balance(N(enumivo.token), symbol(SY(4,EOS)), act);
+         return get_currency_balance(N(enumivo.coin), symbol(SY(4,EOS)), act);
     }
 
     action_result regproducer( const account_name& acnt, int params_fixture = 1 ) {
@@ -173,7 +173,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Create the following accounts:
         //  enumivo.msig
         //  enumivo.token
-        create_accounts({N(enumivo.msig), N(enumivo.token)});
+        create_accounts({N(enumivo.msig), N(enumivo.coin)});
         /*
         auto eosio_active = authority( 1, {}, {{{N(eosio),N(active)},1}} );
         auto eosio_active_pk = get_private_key( N(eosio), "active" );
@@ -190,7 +190,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         base_tester::push_action(  N(eosio), N(newaccount), vector<permission_level>{{N(eosio),config::active_name}},
                                    fc::variant(newaccount{
                                       .creator  = N(eosio),
-                                      .name     = N(enumivo.token),
+                                      .name     = N(enumivo.coin),
                                       .owner    = eosio_active,
                                       .active   = eosio_active,
                                       .recovery = eosio_active 
@@ -202,7 +202,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //  enumivo.msig (code: enumivo.msig)
         //  enumivo.token    (code: enumivo.token)
         set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &eosio_active_pk);
-        set_code_abi(N(enumivo.token), enumivo_token_wast, enumivo_token_abi); //, &eosio_active_pk);
+        set_code_abi(N(enumivo.coin), enumivo_token_wast, enumivo_token_abi); //, &eosio_active_pk);
 
         ilog(".");
         // Set privileges for enumivo.msig
@@ -220,12 +220,12 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto initial_supply = asset::from_string("1000000000.0000 EOS"); /// 1x larger than 1B initial tokens
 
         // Create EOS tokens in enumivo.token, set its manager as eosio.system
-        create_currency(N(enumivo.token), config::system_account_name, max_supply );
+        create_currency(N(enumivo.coin), config::system_account_name, max_supply );
 
 
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
-        issue(N(enumivo.token), config::system_account_name, config::system_account_name, initial_supply);
+        issue(N(enumivo.coin), config::system_account_name, config::system_account_name, initial_supply);
 
 
         auto actual = get_balance(config::system_account_name);
@@ -238,7 +238,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         for( const auto& a : test_genesis ) {
            create_account( a.aname, N(eosio) );
            /*
-           base_tester::push_action(N(enumivo.token), N(transfer), config::system_account_name, mutable_variant_object()
+           base_tester::push_action(N(enumivo.coin), N(transfer), config::system_account_name, mutable_variant_object()
                     ("from", name(config::system_account_name))
                     ("to", name(a.aname))
                     ("quantity", asset(a.initial_balance))
@@ -313,7 +313,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
             auto stake_quantity = "5000.0000 EOS";
 
             ilog(".");
-            auto trace = base_tester::push_action(N(enumivo.token), N(transfer), config::system_account_name, mutable_variant_object()
+            auto trace = base_tester::push_action(N(enumivo.coin), N(transfer), config::system_account_name, mutable_variant_object()
                     ("from", name(config::system_account_name))
                     ("to", gen_acc)
                     ("quantity", quantity)

@@ -24,15 +24,15 @@ public:
    enumivo_token_tester() {
       produce_blocks( 2 );
 
-      create_accounts( { N(alice), N(bob), N(carol), N(enumivo.token) } );
+      create_accounts( { N(alice), N(bob), N(carol), N(enumivo.coin) } );
       produce_blocks( 2 );
 
-      set_code( N(enumivo.token), enumivo_token_wast );
-      set_abi( N(enumivo.token), enumivo_token_abi );
+      set_code( N(enumivo.coin), enumivo_token_wast );
+      set_abi( N(enumivo.coin), enumivo_token_abi );
 
       produce_blocks();
 
-      const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.token) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.coin) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -42,7 +42,7 @@ public:
       string action_type_name = abi_ser.get_action_type(name);
 
       action act;
-      act.account = N(enumivo.token);
+      act.account = N(enumivo.coin);
       act.name    = name;
       act.data    = abi_ser.variant_to_binary( action_type_name, data );
 
@@ -53,7 +53,7 @@ public:
    {
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.token), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(enumivo.coin), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data );
    }
 
@@ -61,7 +61,7 @@ public:
    {
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.token), acc, N(accounts), symbol_code );
+      vector<char> data = get_row_by_account( N(enumivo.coin), acc, N(accounts), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data );
    }
 
@@ -71,7 +71,7 @@ public:
                 uint8_t      issuer_can_recall,
                 uint8_t      issuer_can_whitelist ) {
 
-      return push_action( N(enumivo.token), N(create), mvo()
+      return push_action( N(enumivo.coin), N(create), mvo()
            ( "issuer", issuer)
            ( "maximum_supply", maximum_supply)
            ( "can_freeze", issuer_can_freeze)

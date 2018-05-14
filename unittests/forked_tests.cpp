@@ -53,14 +53,14 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(30);
 
-   auto r2 = c.create_accounts( {N(enumivo.token)} );
+   auto r2 = c.create_accounts( {N(enumivo.coin)} );
    wdump((fc::json::to_pretty_string(r2)));
-   c.set_code( N(enumivo.token), enumivo_token_wast );
-   c.set_abi( N(enumivo.token), enumivo_token_abi );
+   c.set_code( N(enumivo.coin), enumivo_token_wast );
+   c.set_abi( N(enumivo.coin), enumivo_token_abi );
    c.produce_blocks(10);
 
 
-   auto cr = c.push_action( N(enumivo.token), N(create), N(enumivo.token), mutable_variant_object()
+   auto cr = c.push_action( N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
               ("issuer",       "eosio" )
               ("maximum_supply", "10000000.0000 EOS")
               ("can_freeze", 0)
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    wdump((fc::json::to_pretty_string(cr)));
 
-   cr = c.push_action( N(enumivo.token), N(issue), N(eosio), mutable_variant_object()
+   cr = c.push_action( N(enumivo.coin), N(issue), N(eosio), mutable_variant_object()
               ("to",       "dan" )
               ("quantity", "100.0000 EOS")
               ("memo", "")

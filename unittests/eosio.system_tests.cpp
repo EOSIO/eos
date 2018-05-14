@@ -35,14 +35,14 @@ public:
    eosio_system_tester() {
       produce_blocks( 2 );
 
-      create_accounts( { N(enumivo.token) } );
+      create_accounts( { N(enumivo.coin) } );
 
       produce_blocks( 100 );
 
-      set_code( N(enumivo.token), enumivo_token_wast );
-      set_abi( N(enumivo.token), enumivo_token_abi );
+      set_code( N(enumivo.coin), enumivo_token_wast );
+      set_abi( N(enumivo.coin), enumivo_token_abi );
 
-      create_currency( N(enumivo.token), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
+      create_currency( N(enumivo.coin), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
       issue(config::system_account_name,      "1000000000.0000 EOS");
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
@@ -69,7 +69,7 @@ public:
          abi_ser.set_abi(abi);
       }
       {
-         const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.token) );
+         const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.coin) );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          token_abi_ser.set_abi(abi);
@@ -301,7 +301,7 @@ public:
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
       const auto& db  = control->db();
-      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(enumivo.token), act, N(accounts)));
+      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(enumivo.coin), act, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
@@ -343,14 +343,14 @@ public:
    }
 
    void issue( name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.token), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.coin), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.token), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.coin), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
@@ -370,7 +370,7 @@ public:
    fc::variant get_stats( const string& symbolname ) {
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.token), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(enumivo.coin), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data );
    }
 
