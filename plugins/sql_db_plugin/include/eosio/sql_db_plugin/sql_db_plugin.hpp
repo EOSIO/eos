@@ -45,7 +45,7 @@ public:
     void plugin_shutdown();
 
 private:
-    consumer<chain::block_state_ptr> m_irreversible_block_consumer;
+    std::unique_ptr<consumer<chain::block_state_ptr>> m_irreversible_block_consumer;
     consumer<chain::block_state_ptr> m_block_consumer;
 };
 

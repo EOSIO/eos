@@ -16,6 +16,8 @@ class database
 public:
     database(const std::string& uri);
 
+    void wipe();
+
 private:
     std::shared_ptr<soci::session> m_session;
     std::unique_ptr<accounts_table> m_accounts_table;
