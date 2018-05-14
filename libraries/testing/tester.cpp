@@ -4,8 +4,8 @@
 #include <enumivo/chain/wast_to_wasm.hpp>
 #include <enumivo/chain/eosio_contract.hpp>
 
-#include <eosio.bios/eosio.bios.wast.hpp>
-#include <eosio.bios/eosio.bios.abi.hpp>
+#include <enumivo.bios/enumivo.bios.wast.hpp>
+#include <enumivo.bios/enumivo.bios.abi.hpp>
 
 namespace eosio { namespace testing {
 
@@ -729,9 +729,9 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_genesis_block() {
-      set_code(config::system_account_name, eosio_bios_wast);
+      set_code(config::system_account_name, enumivo_bios_wast);
 
-      set_abi(config::system_account_name, eosio_bios_abi);
+      set_abi(config::system_account_name, enumivo_bios_abi);
       //produce_block();
    }
 

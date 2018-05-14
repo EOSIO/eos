@@ -5,8 +5,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 // These contracts are still under dev
-#include <eosio.bios/eosio.bios.wast.hpp>
-#include <eosio.bios/eosio.bios.abi.hpp>
+#include <enumivo.bios/enumivo.bios.wast.hpp>
+#include <enumivo.bios/enumivo.bios.abi.hpp>
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 #include <eosio.msig/eosio.msig.wast.hpp>
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
-        //set_code_abi(config::system_account_name, eosio_bios_wast, eosio_bios_abi);
+        //set_code_abi(config::system_account_name, enumivo_bios_wast, enumivo_bios_abi);
 
         // Create the following accounts:
         //  eosio.msig
@@ -198,7 +198,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                                    */
 
         // Set code for the following accounts:
-        //  eosio.system  (code: eosio.bios)
+        //  eosio.system  (code: enumivo.bios)
         //  eosio.msig (code: eosio.msig)
         //  eosio.token    (code: eosio.token)
         set_code_abi(N(eosio.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
@@ -337,7 +337,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
 #warning Complete this test
 /*
-        // Set code eosio.system from eosio.bios to eosio.system
+        // Set code eosio.system from enumivo.bios to eosio.system
         set_code_abi(config::system_account_name, eosio_system_wast, eosio_system_abi);
 
 

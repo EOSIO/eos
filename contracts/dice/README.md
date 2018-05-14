@@ -53,7 +53,7 @@ Example game session using cleos
 
 ##### Upload bios contract
 ````bash
-cleos set contract eosio build/contracts/eosio.bios -p eosio
+cleos set contract eosio build/contracts/enumivo.bios -p eosio
 ````
 
 ##### Ceate eosio.token account

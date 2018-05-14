@@ -85,7 +85,7 @@ wcmd create -n ignition
 ###INSERT cacmd
 
 
-ecmd set contract eosio contracts/eosio.bios contracts/eosio.bios/eosio.bios.wast contracts/eosio.bios/eosio.bios.abi
+ecmd set contract eosio contracts/enumivo.bios contracts/enumivo.bios/enumivo.bios.wast contracts/enumivo.bios/enumivo.bios.abi
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
 echo ===== Start: $step ============ >> $logfile
