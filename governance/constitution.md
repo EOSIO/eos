@@ -17,7 +17,10 @@ No Member shall serve as a Block Producer who has not agreed in advance to the B
 # Article IX
 No Arbitrator shall serve except within an Arbitration Forum.
 # Article X
-Sets minimum standards for an Arbitrator and an Arbitration Forum.
+No Member shall serve as an Arbitrator who has not
+* Agreed in advance to the Arbitrator Agreement provided by the Members,
+* Been nominated by at least two other Members, and
+* Completed the course of study of, been certified by, and be in good standing with their Forum.
 # Article XI
 Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via a license, and each smart contract shall be documented with a Ricardian Contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
 # Article XII
