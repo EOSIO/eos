@@ -23,8 +23,8 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 namespace eosio { namespace detail {
   struct txn_test_gen_empty {};
@@ -79,10 +79,10 @@ struct txn_test_gen_plugin_impl {
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
       name newaccountA("txn.test.a");
       name newaccountB("txn.test.b");
-      name newaccountC("eosio.token");
+      name newaccountC("enumivo.coin");
       name creator(init_name);
 
-      abi_def currency_abi_def = fc::json::from_string(eosio_token_abi).as<abi_def>();
+      abi_def currency_abi_def = fc::json::from_string(enumivo_coin_abi).as<abi_def>();
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
       chain::chain_id_type chainid;
@@ -115,7 +115,7 @@ struct txn_test_gen_plugin_impl {
 
          trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
          }
-         //create "eosio.token" account
+         //create "enumivo.coin" account
          {
          auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
          auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
@@ -129,11 +129,11 @@ struct txn_test_gen_plugin_impl {
          push_transaction(trx);
       }
 
-      //set eosio.token contract & initialize it
+      //set enumivo.coin contract & initialize it
       {
          signed_transaction trx;
 
-         vector<uint8_t> wasm = wast_to_wasm(std::string(eosio_token_wast));
+         vector<uint8_t> wasm = wast_to_wasm(std::string(enumivo_coin_wast));
 
          setcode handler;
          handler.account = newaccountC;
@@ -144,40 +144,40 @@ struct txn_test_gen_plugin_impl {
          {
             setabi handler;
             handler.account = newaccountC;
-            handler.abi = json::from_string(eosio_token_abi).as<abi_def>();
+            handler.abi = json::from_string(enumivo_coin_abi).as<abi_def>();
             trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
          }
 
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(enumivo.coin);
             act.name = N(create);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"eosio.token\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
+            act.data = enumivo_coin_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"enumivo.coin\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
             trx.actions.push_back(act);
          }
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(enumivo.coin);
             act.name = N(issue);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"eosio.token\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
+            act.data = enumivo_coin_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"enumivo.coin\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(enumivo.coin);
             act.name = N(transfer);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"eosio.token\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            act.data = enumivo_coin_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"enumivo.coin\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(enumivo.coin);
             act.name = N(transfer);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"eosio.token\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            act.data = enumivo_coin_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"enumivo.coin\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
 
@@ -202,15 +202,15 @@ struct txn_test_gen_plugin_impl {
       running = true;
 
       //create the actions here
-      act_a_to_b.account = N(eosio.token);
+      act_a_to_b.account = N(enumivo.coin);
       act_a_to_b.name = N(transfer);
       act_a_to_b.authorization = vector<permission_level>{{name("txn.test.a"),config::active_name}};
-      act_a_to_b.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
+      act_a_to_b.data = enumivo_coin_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
 
-      act_b_to_a.account = N(eosio.token);
+      act_b_to_a.account = N(enumivo.coin);
       act_b_to_a.name = N(transfer);
       act_b_to_a.authorization = vector<permission_level>{{name("txn.test.b"),config::active_name}};
-      act_b_to_a.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
+      act_b_to_a.data = enumivo_coin_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
 
       timer_timeout = period;
       batch = batch_size/2;
@@ -306,7 +306,7 @@ struct txn_test_gen_plugin_impl {
 
    int32_t txn_reference_block_lag;
 
-   abi_serializer eosio_token_serializer = fc::json::from_string(eosio_token_abi).as<abi_def>();
+   abi_serializer enumivo_coin_serializer = fc::json::from_string(enumivo_coin_abi).as<abi_def>();
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}

@@ -226,7 +226,7 @@ class dice : public eosio::contract {
 
          action(
             permission_level{ from, N(active) },
-            N(eosio.token), N(transfer),
+            N(enumivo.coin), N(transfer),
             std::make_tuple(from, _self, quantity, std::string(""))
          ).send();
 
@@ -252,7 +252,7 @@ class dice : public eosio::contract {
 
          action(
             permission_level{ _self, N(active) },
-            N(eosio.token), N(transfer),
+            N(enumivo.coin), N(transfer),
             std::make_tuple(_self, to, quantity, std::string(""))
          ).send();
 

@@ -4,8 +4,8 @@
 #include <enumivo/chain/abi_serializer.hpp>
 #include <enumivo/chain/symbol.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 #include <exchange/exchange.wast.hpp>
 #include <exchange/exchange.abi.hpp>
@@ -78,7 +78,7 @@ class exchange_tester : public TESTER {
       }
 
       asset get_balance(const account_name& account) const {
-         return get_currency_balance(N(eosio.token), symbol(SY(4,CUR)), account);
+         return get_currency_balance(N(enumivo.coin), symbol(SY(4,CUR)), account);
       }
 
       exchange_state get_market_state( account_name exchange, symbol sym ) {
@@ -147,7 +147,7 @@ class exchange_tester : public TESTER {
 
       void deploy_currency( account_name ac ) {
          create_account( ac );
-         set_code( ac, eosio_token_wast /*currency_wast*/ );
+         set_code( ac, enumivo_coin_wast /*currency_wast*/ );
       }
 
       void deploy_exchange( account_name ac ) {
@@ -236,20 +236,20 @@ class exchange_tester : public TESTER {
          create_account( N(trader) );
 
          deploy_exchange( N(exchange) );
-         deploy_currency( N(eosio.token) );
+         deploy_currency( N(enumivo.coin) );
 
-         create_currency( N(eosio.token), N(eosio.token), A(1000000.00 USD) );
-         create_currency( N(eosio.token), N(eosio.token), A(1000000.00 BTC) );
+         create_currency( N(enumivo.coin), N(enumivo.coin), A(1000000.00 USD) );
+         create_currency( N(enumivo.coin), N(enumivo.coin), A(1000000.00 BTC) );
 
-         issue( N(eosio.token), N(eosio.token), N(dan), A(1000.00 USD) );
-         issue( N(eosio.token), N(eosio.token), N(dan), A(1000.00 BTC) );
+         issue( N(enumivo.coin), N(enumivo.coin), N(dan), A(1000.00 USD) );
+         issue( N(enumivo.coin), N(enumivo.coin), N(dan), A(1000.00 BTC) );
 
-         deposit( N(exchange), N(dan), extended_asset( A(500.00 USD), N(eosio.token) ) );
-         deposit( N(exchange), N(dan), extended_asset( A(500.00 BTC), N(eosio.token) ) );
+         deposit( N(exchange), N(dan), extended_asset( A(500.00 USD), N(enumivo.coin) ) );
+         deposit( N(exchange), N(dan), extended_asset( A(500.00 BTC), N(enumivo.coin) ) );
 
          create_exchange( N(exchange), N(dan),
-                            extended_asset( A(400.00 USD), N(eosio.token) ),
-                            extended_asset( A(400.00 BTC), N(eosio.token) ),
+                            extended_asset( A(400.00 USD), N(enumivo.coin) ),
+                            extended_asset( A(400.00 BTC), N(enumivo.coin) ),
                             A(10000000.00 EXC) );
 
          produce_block();
@@ -263,9 +263,9 @@ BOOST_AUTO_TEST_SUITE(exchange_tests)
 BOOST_AUTO_TEST_CASE( bootstrap ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
    exchange_tester t;
-   t.create_currency( N(eosio.token), N(eosio.token), expected );
-   t.issue( N(eosio.token), N(eosio.token), N(eosio.token), expected );
-   auto actual = t.get_currency_balance(N(eosio.token), expected.get_symbol(), N(eosio.token));
+   t.create_currency( N(enumivo.coin), N(enumivo.coin), expected );
+   t.issue( N(enumivo.coin), N(enumivo.coin), N(enumivo.coin), expected );
+   auto actual = t.get_currency_balance(N(enumivo.coin), expected.get_symbol(), N(enumivo.coin));
    BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
@@ -274,38 +274,38 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
    exchange_tester t;
 
-   t.issue( N(eosio.token), N(eosio.token), N(trader), A(2000.00 BTC) );
-   t.issue( N(eosio.token), N(eosio.token), N(trader), A(2000.00 USD) );
+   t.issue( N(enumivo.coin), N(enumivo.coin), N(trader), A(2000.00 BTC) );
+   t.issue( N(enumivo.coin), N(enumivo.coin), N(trader), A(2000.00 USD) );
 
-   t.deposit( N(exchange), N(trader), extended_asset( A(1500.00 USD), N(eosio.token) ) );
-   t.deposit( N(exchange), N(trader), extended_asset( A(1500.00 BTC), N(eosio.token) ) );
+   t.deposit( N(exchange), N(trader), extended_asset( A(1500.00 USD), N(enumivo.coin) ) );
+   t.deposit( N(exchange), N(trader), extended_asset( A(1500.00 BTC), N(enumivo.coin) ) );
 
-   auto trader_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(trader) );
-   auto trader_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(trader) );
-   auto dan_ex_usd    = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(dan) );
-   auto dan_ex_btc    = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(dan) );
+   auto trader_ex_usd = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"USD"), N(trader) );
+   auto trader_ex_btc = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"BTC"), N(trader) );
+   auto dan_ex_usd    = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"USD"), N(dan) );
+   auto dan_ex_btc    = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"BTC"), N(dan) );
 
    auto dan_ex_exc = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"EXC"), N(dan) );
    wdump((dan_ex_exc));
 
    auto result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
-                          extended_asset( A(10.00 BTC), N(eosio.token) ),
-                          extended_asset( A(0.01 USD), N(eosio.token) ) );
+                          extended_asset( A(10.00 BTC), N(enumivo.coin) ),
+                          extended_asset( A(0.01 USD), N(enumivo.coin) ) );
 
    for( const auto& at : result->action_traces )
       ilog( "${s}", ("s",at.console) );
 
-   trader_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(trader) );
-   trader_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(trader) );
+   trader_ex_usd = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"USD"), N(trader) );
+   trader_ex_btc = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"BTC"), N(trader) );
    wdump((trader_ex_btc.quantity));
    wdump((trader_ex_usd.quantity));
 
    result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
-                          extended_asset( A(9.75 USD), N(eosio.token) ),
-                          extended_asset( A(0.01 BTC), N(eosio.token) ) );
+                          extended_asset( A(9.75 USD), N(enumivo.coin) ),
+                          extended_asset( A(0.01 BTC), N(enumivo.coin) ) );
 
-   trader_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(trader) );
-   trader_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(trader) );
+   trader_ex_usd = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"USD"), N(trader) );
+   trader_ex_btc = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"BTC"), N(trader) );
 
    for( const auto& at : result->action_traces )
       ilog( "${s}", ("s",at.console) );
@@ -326,19 +326,19 @@ BOOST_AUTO_TEST_CASE( exchange_lend ) try {
    exchange_tester t;
 
    t.create_account( N(lender) );
-   t.issue( N(eosio.token), N(eosio.token), N(lender), A(2000.00 BTC) );
-   t.issue( N(eosio.token), N(eosio.token), N(lender), A(2000.00 USD) );
+   t.issue( N(enumivo.coin), N(enumivo.coin), N(lender), A(2000.00 BTC) );
+   t.issue( N(enumivo.coin), N(enumivo.coin), N(lender), A(2000.00 USD) );
 
-   t.deposit( N(exchange), N(lender), extended_asset( A(1500.00 USD), N(eosio.token) ) );
-   t.deposit( N(exchange), N(lender), extended_asset( A(1500.00 BTC), N(eosio.token) ) );
+   t.deposit( N(exchange), N(lender), extended_asset( A(1500.00 USD), N(enumivo.coin) ) );
+   t.deposit( N(exchange), N(lender), extended_asset( A(1500.00 BTC), N(enumivo.coin) ) );
 
-   auto lender_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(lender) );
-   auto lender_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(lender) );
+   auto lender_ex_usd = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"USD"), N(lender) );
+   auto lender_ex_btc = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"BTC"), N(lender) );
 
-   t.lend( N(exchange), N(lender), extended_asset( A(1000.00 USD), N(eosio.token) ), symbol(2,"EXC") );
+   t.lend( N(exchange), N(lender), extended_asset( A(1000.00 USD), N(enumivo.coin) ), symbol(2,"EXC") );
 
-   lender_ex_usd = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"USD"), N(lender) );
-   lender_ex_btc = t.get_exchange_balance( N(exchange), N(eosio.token), symbol(2,"BTC"), N(lender) );
+   lender_ex_usd = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"USD"), N(lender) );
+   lender_ex_btc = t.get_exchange_balance( N(exchange), N(enumivo.coin), symbol(2,"BTC"), N(lender) );
 
    wdump((lender_ex_btc.quantity));
    wdump((lender_ex_usd.quantity));
@@ -351,7 +351,7 @@ BOOST_AUTO_TEST_CASE( exchange_lend ) try {
 
    wdump((t.get_market_state( N(exchange), symbol(2,"EXC") ) ));
 
-   t.unlend( N(exchange), N(lender), lentshares, extended_symbol{ symbol(2,"USD"), N(eosio.token)}, symbol(2,"EXC") );
+   t.unlend( N(exchange), N(lender), lentshares, extended_symbol{ symbol(2,"USD"), N(enumivo.coin)}, symbol(2,"EXC") );
 
    lentshares = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender), true );
    wdump((lentshares));

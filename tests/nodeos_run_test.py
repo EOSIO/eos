@@ -406,9 +406,9 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency failed", raw=True)
 
-    contractDir="contracts/eosio.token"
-    wastFile="contracts/eosio.token/eosio.token.wast"
-    abiFile="contracts/eosio.token/eosio.token.abi"
+    contractDir="contracts/enumivo.coin"
+    wastFile="contracts/enumivo.coin/enumivo.coin.wast"
+    abiFile="contracts/enumivo.coin/enumivo.coin.abi"
     Print("Publish contract")
     trans=node.publishContract(currencyAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
     if trans is None:
