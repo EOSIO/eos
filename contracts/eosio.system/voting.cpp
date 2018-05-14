@@ -50,10 +50,10 @@ namespace eosiosystem {
          }
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
-               info.owner       = producer;
-               info.total_votes = 0;
+               info.owner        = producer;
+               info.total_votes  = 0;
                info.producer_key =  producer_key;
-               info.url         = url;
+               info.url          = url;
          });
       }
    }
@@ -172,7 +172,7 @@ namespace eosiosystem {
       }
 
       boost::container::flat_map<account_name, pair<double, bool /*new*/> > producer_deltas;
-      if ( voter->last_vote_weight != 0 ) {
+      if( voter->last_vote_weight > 0 ) {
          if( voter->proxy ) {
             auto old_proxy = _voters.find( voter->proxy );
             eosio_assert( old_proxy != _voters.end(), "old proxy not found" ); //data corruption
@@ -213,9 +213,8 @@ namespace eosiosystem {
          if( pitr != _producers.end() ) {
             eosio_assert( pitr->active() || !pd.second.second /* not from new set */, "producer is not currently registered" );
             _producers.modify( pitr, 0, [&]( auto& p ) {
-               print( "orig total_votes: ", p.total_votes, " delta: ", pd.second.first, "\n" );
                p.total_votes += pd.second.first;
-               print( "new total_votes: ", p.total_votes, "\n" );
+               _gstate.total_producer_vote_weight += pd.second.first;
                //eosio_assert( p.total_votes >= 0, "something bad happened" );
             });
          } else {
@@ -269,7 +268,8 @@ namespace eosiosystem {
          new_weight += voter.proxied_vote_weight;
       }
 
-      if ( new_weight != voter.last_vote_weight ) {
+#warning come up with a better way to detect change, such as delta voter.staked and/or delta time
+      if( new_weight != voter.last_vote_weight ) {
          if ( voter.proxy ) {
             auto& proxy = _voters.get( voter.proxy, "proxy not found" ); //data corruption
             _voters.modify( proxy, 0, [&]( auto& p ) {
@@ -278,12 +278,13 @@ namespace eosiosystem {
             );
             propagate_weight_change( proxy );
          } else {
+            auto delta = new_weight - voter.last_vote_weight;
             for ( auto acnt : voter.producers ) {
                auto& pitr = _producers.get( acnt, "producer not found" ); //data corruption
                _producers.modify( pitr, 0, [&]( auto& p ) {
-                     p.total_votes += new_weight - voter.last_vote_weight;
-                  }
-               );
+                     p.total_votes += delta;
+                     _gstate.total_producer_vote_weight += delta;
+               });
             }
          }
       }

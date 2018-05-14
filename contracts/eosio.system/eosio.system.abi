@@ -123,13 +123,16 @@
       "base": "eosio_parameters",
       "fields": [
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
-         {"name":"total_ram_stake",               "type":"asset"},
+         {"name":"total_ram_stake",               "type":"uint64"},
          {"name":"last_producer_schedule_update", "type":"time"},
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
-         {"name":"pervote_bucket",                "type":"asset"},
-         {"name":"savings",                       "type":"asset"},
+         {"name":"pervote_bucket",                "type":"int64"},
+         {"name":"perblock_bucket",               "type":"int64"},
+         {"name":"savings",                       "type":"int64"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
-         {"name":"total_activatied_stake",        "type":"int64"}
+         {"name":"total_activatied_stake",        "type":"int64"},
+         {"name":"total_producer_vote_weight",    "type":"float64"},
+         {"name":"total_unpaid_blocks",           "type":"uint32"}
       ]
     },{
       "name": "producer_info",

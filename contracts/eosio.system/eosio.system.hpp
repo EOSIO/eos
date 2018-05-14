@@ -29,21 +29,24 @@ namespace eosiosystem {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             total_ram_bytes_reserved = 0;
-      eosio::asset         total_ram_stake;
+      int64_t              total_ram_stake;
 
       block_timestamp      last_producer_schedule_update = 0;
       uint64_t             last_pervote_bucket_fill = 0;
-      eosio::asset         pervote_bucket;
-      eosio::asset         savings;
+      int64_t              pervote_bucket;
+      int64_t              perblock_bucket;
+      int64_t              savings;
       checksum160          last_producer_schedule_id;
 
       int64_t              total_activated_stake = 0;
+      double               total_producer_vote_weight = 0; /// the sum of all producer votes
+      int32_t              total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)
                                 (last_pervote_bucket_fill)
-                                (pervote_bucket)(savings)(last_producer_schedule_id)(total_activated_stake) )
+                                (pervote_bucket)(perblock_bucket)(savings)(last_producer_schedule_id)(total_activated_stake)(total_producer_vote_weight)(total_unpaid_blocks) )
    };
 
    struct producer_info {
@@ -171,7 +174,7 @@ namespace eosiosystem {
           *  Reduces quota my bytes and then performs an inline transfer of tokens
           *  to receiver based upon the average purchase price of the original quota.
           */
-         void sellram( account_name receiver, uint64_t bytes );
+         void sellram( account_name receiver, int64_t bytes );
 
          /**
           *  This action is called after the delegation-period to claim all pending
@@ -195,12 +198,6 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
       private:
-         eosio::asset payment_per_block( double rate, const eosio::asset& token_supply,  uint32_t num_blocks );
-
-         eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket );
-         
-         eosio::asset supply_growth( double rate, const eosio::asset& token_supply, time seconds );
-
          void update_elected_producers( block_timestamp timestamp );
 
          // Implementation details:

@@ -159,7 +159,7 @@ namespace eosiosystem {
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
-      _gstate.total_ram_stake.amount   += quant.amount;
+      _gstate.total_ram_stake          += quant.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
@@ -182,8 +182,9 @@ namespace eosiosystem {
     *  refunds the purchase price to the account. In this way there is no profit to be made through buying
     *  and selling ram.
     */
-   void system_contract::sellram( account_name account, uint64_t bytes ) {
+   void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
+      eosio_assert( bytes > 0, "cannot sell negative byte" );
 
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
@@ -198,10 +199,10 @@ namespace eosiosystem {
       });
 
       _gstate.total_ram_bytes_reserved -= bytes;
-      _gstate.total_ram_stake.amount   -= tokens_out.amount;
+      _gstate.total_ram_stake          -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
-      eosio_assert( _gstate.total_ram_stake.amount >= 0, "error, attempt to unstake more tokens than previously staked" );
+      eosio_assert( _gstate.total_ram_stake >= 0, "error, attempt to unstake more tokens than previously staked" );
 
       userres.modify( res_itr, account, [&]( auto& res ) {
           res.ram_bytes -= bytes;
@@ -284,7 +285,6 @@ namespace eosiosystem {
       } else {
          _voters.modify( from_voter, 0, [&]( auto& v ) {
             v.staked += total_stake;
-            print( "    vote weight: ", v.last_vote_weight, "\n" );
          });
       }
 
