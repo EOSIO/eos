@@ -5,9 +5,9 @@
 #pragma once
 #include <eosiolib/print.h>
 #include <eosiolib/types.hpp>
-#include <eosiolib/math.hpp>
 #include <eosiolib/fixed_key.hpp>
 #include <utility>
+#include <string>
 
 namespace eosio {
 
@@ -20,6 +20,10 @@ namespace eosio {
     */
    inline void print( const char* ptr ) {
       prints(ptr);
+   }
+
+   inline void print( const std::string& s) {
+      prints(s.c_str());
    }
 
    /**

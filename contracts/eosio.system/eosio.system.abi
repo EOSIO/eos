@@ -1,40 +1,27 @@
 {
   "types": [],
   "structs": [{
-      "name": "nonce",
-       "base": "",
-       "fields": [
-          {"name":"value", "type":"string"}
-      ]
-    },{
-      "name": "transfer",
+      "name": "buyrambytes",
       "base": "",
       "fields": [
-         {"name":"from", "type":"account_name"},
-         {"name":"to", "type":"account_name"},
-         {"name":"quantity", "type":"asset"},
-         {"name":"memo", "type":"string"}
+         {"name":"payer", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"bytes", "type":"uint32"}
       ]
     },{
-     "name": "issue",
-     "base": "",
-     "fields": [
-        {"name":"to", "type":"account_name"},
-        {"name":"quantity", "type":"asset"}
-     ]
-    },{
-      "name": "account",
+      "name": "sellram",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"balance", "type":"uint64"}
+         {"name":"account", "type":"account_name"},
+         {"name":"bytes", "type":"uint64"}
       ]
     },{
-      "name": "currency_stats",
+      "name": "buyram",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"supply", "type":"uint64"}
+         {"name":"payer", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"quant", "type":"asset"}
       ]
     },{
       "name": "delegatebw",
@@ -44,7 +31,7 @@
          {"name":"receiver", "type":"account_name"},
          {"name":"stake_net_quantity", "type":"asset"},
          {"name":"stake_cpu_quantity", "type":"asset"},
-         {"name":"stake_storage_quantity", "type":"asset"}
+         {"name":"transfer", "type":"bool"}
       ]
     },{
       "name": "undelegatebw",
@@ -53,8 +40,7 @@
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
          {"name":"unstake_net_quantity", "type":"asset"},
-         {"name":"unstake_cpu_quantity", "type":"asset"},
-         {"name":"unstake_storage_bytes", "type":"uint64"}
+         {"name":"unstake_cpu_quantity", "type":"asset"}
       ]
     },{
       "name": "refund",
@@ -68,10 +54,17 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
-         {"name":"net_weight", "type":"uint64"},
-         {"name":"cpu_weight", "type":"uint64"},
-         {"name":"storage_stake", "type":"uint64"},
-         {"name":"storage_bytes", "type":"uint64"}
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"}
+      ]
+    },{
+      "name": "user_resources",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"ram_bytes", "type":"uint64"}
       ]
     },{
       "name": "total_resources",
@@ -80,8 +73,7 @@
          {"name":"owner", "type":"account_name"},
          {"name":"net_weight", "type":"asset"},
          {"name":"cpu_weight", "type":"asset"},
-         {"name":"storage_stake", "type":"asset"},
-         {"name":"storage_bytes", "type":"uint64"}
+         {"name":"ram_bytes", "type":"uint64"}
       ]
     },{
       "name": "refund_request",
@@ -95,62 +87,71 @@
       "name": "blockchain_parameters",
       "base": "",
       "fields": [
+         {"name":"max_block_net_usage", "type": "uint32"},
+         {"name":"target_block_net_usage_pct", "type": "uint32"},
+         {"name":"max_transaction_net_usage", "type":"uint32"},
          {"name":"base_per_transaction_net_usage", "type":"uint32"},
+         {"name":"net_usage_leeway", "type":"uint32"},
+         {"name":"context_free_discount_net_usage_num", "type":"uint32"},
+         {"name":"context_free_discount_net_usage_den", "type":"uint32"},
+         {"name":"max_block_cpu_usage", "type": "uint64"},
+         {"name":"target_block_cpu_usage_pct", "type": "uint32"},
+         {"name":"max_transaction_cpu_usage", "type":"uint32"},
          {"name":"base_per_transaction_cpu_usage", "type":"uint32"},
          {"name":"base_per_action_cpu_usage", "type":"uint32"},
          {"name":"base_setcode_cpu_usage", "type":"uint32"},
          {"name":"per_signature_cpu_usage", "type":"uint32"},
-         {"name":"per_lock_net_usage", "type":"uint32"},
-         {"name":"context_free_discount_cpu_usage_num", "type":"uint64"},
-         {"name":"context_free_discount_cpu_usage_den", "type":"uint64"},
-         {"name":"max_transaction_cpu_usage", "type":"uint32"},
-         {"name":"max_transaction_net_usage", "type":"uint32"},
-         {"name":"max_block_cpu_usage", "type": "uint64"},
-         {"name":"target_block_cpu_usage_pct", "type": "uint32"},
-         {"name":"max_block_net_usage", "type": "uint64"},
-         {"name":"target_block_net_usage_pct", "type": "uint32"},
+         {"name":"cpu_usage_leeway", "type":"uint32"},
+         {"name":"context_free_discount_cpu_usage_num", "type":"uint32"},
+         {"name":"context_free_discount_cpu_usage_den", "type":"uint32"},
          {"name":"max_transaction_lifetime", "type":"uint32"},
-         {"name":"max_transaction_exec_time", "type":"uint32"},
-         {"name":"max_authority_depth", "type":"uint16"},
-         {"name":"max_inline_depth", "type":"uint16"},
+         {"name":"deferred_trx_expiration_window", "type":"uint32"},
+         {"name":"max_transaction_delay", "type":"uint32"},
          {"name":"max_inline_action_size", "type":"uint32"},
-         {"name":"max_generated_transaction_count", "type":"uint32"},
-         {"name":"max_transaction_delay", "type":"uint32"}
+         {"name":"max_inline_action_depth", "type":"uint16"},
+         {"name":"max_authority_depth", "type":"uint16"},
+         {"name":"max_generated_transaction_count", "type":"uint32"}
       ]
     },{
       "name": "eosio_parameters",
       "base": "blockchain_parameters",
       "fields": [
-         {"name":"max_storage_size", "type":"uint64"},
-         {"name":"percent_of_max_inflation_rate", "type":"uint32"},
-         {"name":"storage_reserve_ratio", "type":"uint32"}
+         {"name":"max_ram_size", "type":"uint64"}
       ]
     },{
       "name": "eosio_global_state",
       "base": "eosio_parameters",
       "fields": [
-         {"name":"total_storage_bytes_reserved", "type":"uint64"},
-         {"name":"total_storage_stake", "type":"uint64"},
-         {"name":"payment_per_block", "type":"uint64"}
+         {"name":"total_ram_bytes_reserved",      "type":"uint64"},
+         {"name":"total_ram_stake",               "type":"asset"},
+         {"name":"last_producer_schedule_update", "type":"time"},
+         {"name":"last_pervote_bucket_fill",      "type":"uint64"},
+         {"name":"pervote_bucket",                "type":"asset"},
+         {"name":"savings",                       "type":"asset"},
+         {"name":"last_producer_schedule_id",     "type":"checksum160"},
+         {"name":"total_activatied_stake",        "type":"int64"}
       ]
     },{
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",              "type":"account_name"},
-         {"name":"total_votes",        "type":"uint128"},
-         {"name":"prefs",              "type":"eosio_parameters"},
-         {"name":"packed_key",         "type":"uint8[]"},
-         {"name":"per_block_payments", "type":"uint64"},
-         {"name":"last_claim_time",    "type":"uint32"}
+         {"name":"owner",                    "type":"account_name"},
+         {"name":"total_votes",              "type":"float64"},
+         {"name":"producer_key",             "type":"public_key"},
+         {"name":"url",                      "type":"string"},
+         {"name":"produced_blocks",          "type":"uint32"},
+         {"name":"last_claim_time",          "type":"uint64"},
+         {"name":"location",                 "type":"uint16"},
+         {"name":"time_became_active",       "type":"uint32"},
+         {"name":"last_produced_block_time", "type":"uint32"}
       ]
     },{
       "name": "regproducer",
       "base": "",
       "fields": [
         {"name":"producer",     "type":"account_name"},
-        {"name":"producer_key", "type":"bytes"},
-        {"name":"prefs",        "type":"eosio_parameters"}
+        {"name":"producer_key", "type":"public_key"},
+        {"name":"url",          "type":"string"}
       ]
     },{
       "name": "unregprod",
@@ -159,16 +160,17 @@
         {"name":"producer",     "type":"account_name"}
       ]
     },{
+      "name": "setram",
+      "base": "",
+      "fields": [
+        {"name":"max_ram_size",     "type":"uint64"}
+      ]
+    },{
       "name": "regproxy",
       "base": "",
       "fields": [
-        {"name":"proxy",     "type":"account_name"}
-      ]
-    },{
-      "name": "unregproxy",
-      "base": "",
-      "fields": [
-        {"name":"proxy",     "type":"account_name"}
+        {"name":"proxy",     "type":"account_name"},
+        {"name":"isproxy",   "type":"bool"}
       ]
     },{
       "name": "voteproducer",
@@ -182,17 +184,16 @@
       "name": "voter_info",
       "base": "",
       "fields": [
-        {"name":"owner",             "type":"account_name"},
-        {"name":"proxy",             "type":"account_name"},
-        {"name":"last_update",       "type":"uint32"},
-        {"name":"is_proxy",          "type":"uint32"},
-        {"name":"staked",            "type":"asset"},
-        {"name":"unstaking",         "type":"asset"},
-        {"name":"unstake_per_week",  "type":"asset"},
-        {"name":"proxied_votes",     "type":"uint128"},
-        {"name":"producers",         "type":"account_name[]"},
-        {"name":"deferred_trx_id",   "type":"uint32"},
-        {"name":"last_unstake",      "type":"uint32"}
+        {"name":"owner",                "type":"account_name"},
+        {"name":"proxy",                "type":"account_name"},
+        {"name":"producers",            "type":"account_name[]"},
+        {"name":"staked",               "type":"int64"},
+        {"name":"last_vote_weight",     "type":"float64"},
+        {"name":"proxied_vote_weight",  "type":"float64"},
+        {"name":"is_proxy",             "type":"bool"},
+        {"name":"deferred_trx_id",      "type":"uint32"},
+        {"name":"last_unstake_time",    "type":"time"},
+        {"name":"unstaking",            "type":"asset"}
       ]
     },{
       "name": "claimrewards",
@@ -202,13 +203,18 @@
       ]
     }
   ],
-  "actions": [{
-      "name": "transfer",
-      "type": "transfer",
+  "actions": [
+    {
+      "name": "buyrambytes",
+      "type": "buyrambytes",
       "ricardian_contract": ""
     },{
-      "name": "issue",
-      "type": "issue",
+      "name": "buyram",
+      "type": "buyram",
+      "ricardian_contract": ""
+    },{
+      "name": "sellram",
+      "type": "sellram",
       "ricardian_contract": ""
     },{
       "name": "delegatebw",
@@ -227,16 +233,16 @@
       "type": "regproducer",
       "ricardian_contract": ""
     },{
+      "name": "setram",
+      "type": "setram",
+      "ricardian_contract": ""
+    },{
       "name": "unregprod",
       "type": "unregprod",
       "ricardian_contract": ""
     },{
       "name": "regproxy",
       "type": "regproxy",
-      "ricardian_contract": ""
-    },{
-      "name": "unregproxy",
-      "type": "unregproxy",
       "ricardian_contract": ""
     },{
       "name": "voteproducer",
@@ -246,15 +252,29 @@
       "name": "claimrewards",
       "type": "claimrewards",
       "ricardian_contract": ""
-    },{
-      "name": "nonce",
-      "type": "nonce",
-      "ricardian_contract": ""
     }
   ],
   "tables": [{
-      "name": "producerinfo",
+      "name": "producers",
       "type": "producer_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "global",
+      "type": "eosio_global_state",
+      "index_type": "i64",
+      "key_names" : [],
+      "key_types" : []
+    },{
+      "name": "voters",
+      "type": "voter_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["account_name"]
+    },{
+      "name": "userres",
+      "type": "user_resources",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]

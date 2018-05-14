@@ -56,6 +56,18 @@ namespace fc { namespace crypto {
    :_storage(parse_base58(base58str))
    {}
 
+   struct is_valid_visitor : public fc::visitor<bool> {
+      template< typename KeyType >
+      bool operator()( const KeyType& key )const {
+         return key.valid();
+      }
+   };
+
+   bool public_key::valid()const
+   {
+      return _storage.visit(is_valid_visitor());
+   }
+
    public_key::operator std::string() const
    {
       auto data_str = _storage.visit(base58str_visitor<storage_type, config::public_key_prefix, 0>());

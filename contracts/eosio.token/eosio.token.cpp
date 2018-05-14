@@ -38,14 +38,21 @@ void token::create( account_name issuer,
 void token::issue( account_name to, asset quantity, string memo )
 {
     print( "issue" );
-    auto sym = quantity.symbol.name();
-    stats statstable( _self, sym );
-    const auto& st = statstable.get( sym );
+    auto sym = quantity.symbol;
+    eosio_assert( sym.is_valid(), "invalid symbol name" );
+
+    auto sym_name = sym.name();
+    stats statstable( _self, sym_name );
+    auto existing = statstable.find( sym_name );
+    eosio_assert( existing != statstable.end(), "token with symbol does not exist, create token before issue" );
+    const auto& st = *existing;
 
     require_auth( st.issuer );
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must issue positive quantity" );
-    eosio_assert( quantity <= st.max_supply - st.supply, "quantity exceeds available supply");
+
+    eosio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
+    eosio_assert( quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
 
     statstable.modify( st, 0, [&]( auto& s ) {
        s.supply += quantity;
@@ -53,8 +60,7 @@ void token::issue( account_name to, asset quantity, string memo )
 
     add_balance( st.issuer, quantity, st, st.issuer );
 
-    if( to != st.issuer )
-    {
+    if( to != st.issuer ) {
        SEND_INLINE_ACTION( *this, transfer, {st.issuer,N(active)}, {st.issuer, to, quantity, memo} );
     }
 }
@@ -64,8 +70,10 @@ void token::transfer( account_name from,
                       asset        quantity,
                       string       /*memo*/ )
 {
-    print( "transfer" );
+    print( "transfer from ", eosio::name{from}, " to ", eosio::name{to}, " ", quantity, "\n" );
+    eosio_assert( from != to, "cannot transfer to self" );
     require_auth( from );
+    eosio_assert( is_account( to ), "to account does not exist");
     auto sym = quantity.symbol.name();
     stats statstable( _self, sym );
     const auto& st = statstable.get( sym );
@@ -75,6 +83,8 @@ void token::transfer( account_name from,
 
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must transfer positive quantity" );
+    eosio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
+
 
     sub_balance( from, quantity, st );
     add_balance( to, quantity, st, from );
@@ -98,6 +108,7 @@ void token::sub_balance( account_name owner, asset value, const currency_stats& 
 
    from_acnts.modify( from, owner, [&]( auto& a ) {
        a.balance -= value;
+       print( eosio::name{owner}, " balance: ", a.balance, "\n" );
    });
 }
 
@@ -109,11 +120,13 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
       eosio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
       to_acnts.emplace( ram_payer, [&]( auto& a ){
         a.balance = value;
+        print( eosio::name{owner}, " balance: ", a.balance, "\n" );
       });
    } else {
       eosio_assert( !st.enforce_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
       to_acnts.modify( to, 0, [&]( auto& a ) {
         a.balance += value;
+        print( eosio::name{owner}, " balance: ", a.balance, "\n" );
       });
    }
 }

@@ -25,6 +25,22 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
+    timeout: 30
+    
+  - command: |
+        echo "+++ :hammer: Building" && \
+        echo 1 | ./eosio_build.sh && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz build/
+    label: ":ubuntu: 18.04 Build"
+    agents:
+      - "role=linux-builder"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:ubuntu18"
+        workdir: /data/job
+    timeout: 30
 
   - command: |
         echo "+++ :hammer: Building" && \
@@ -39,6 +55,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:fedora"
         workdir: /data/job
+    timeout: 30
  
   - command: |
         echo "+++ :hammer: Building" && \
@@ -53,6 +70,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:centos"
         workdir: /data/job
+    timeout: 30
 
   - command: |
         echo "+++ :hammer: Building" && \
@@ -67,6 +85,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
+    timeout: 30
 
   - wait
 
@@ -112,6 +131,31 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
+    timeout: 30
+  
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" &&
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && ctest --output-on-failure
+    retry:
+      automatic:
+        limit: 1
+    label: ":ubuntu: 18.04 Tests"
+    agents:
+      - "role=linux-tester"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:ubuntu18"
+        workdir: /data/job
+    timeout: 30
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -135,6 +179,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:fedora"
         workdir: /data/job
+    timeout: 30
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -158,6 +203,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:centos"
         workdir: /data/job
+    timeout: 30
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -181,3 +227,4 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
+    timeout: 30
