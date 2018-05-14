@@ -78,6 +78,8 @@
 				then
 					echo "Unable to install homebrew at this time. Exiting now."
 					exit 1;
+				else
+					BREW=$( command -v brew )
 				fi
 				break;;
 				[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
@@ -151,13 +153,13 @@
 						exit 1;
 					fi
 					printf "\\tInstalling Dependencies.\\n"
-					if ! "${BREW}" install --force "${DEP}"
+					if ! "${BREW}" install --force ${DEP}
 					then
 						printf "\\tHomebrew exited with the above errors.\\n"
 						printf "\\tExiting now.\\n\\n"
 						exit 1;
 					fi
-					if ! "${BREW}" unlink "{DEP}" && "${BREW}" link --force "${DEP}"
+					if ! "${BREW}" unlink {DEP} && "${BREW}" link --force ${DEP}
 					then
 						printf "\\tHomebrew exited with the above errors.\\n"
 						printf "\\tExiting now.\\n\\n"
