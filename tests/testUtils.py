@@ -554,13 +554,18 @@ class Node(object):
             Utils.Print("ERROR: Exception during table retrieval. %s" % (msg))
             return None
 
-    def getNodeAccountEosBalance(self, scope):
-        contract="eosio.token"
+    #def getNodeAccountEosBalance(self, scope):
+    def getNodeAccountBalance(self, contract, scope):
+        assert(isinstance(contract, str))
+        assert(isinstance(scope, str))
         table="accounts"
         trans = self.getTable(contract, scope, table)
-        if trans is None:
-            return None
-        return trans["rows"][0]["balance"]
+        assert(trans)
+        try:
+            return trans["rows"][0]["balance"]
+        except (AssertionError, KeyError) as e:
+            print("Transaction parsing failed. Transaction: %s" % (trans))
+            raise
 
     def getCurrencyStats(self, contract, symbol=""):
         cmd="%s %s get currency stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
@@ -673,7 +678,8 @@ class Node(object):
 
     # Get actions mapped to an account (cleos get actions)
     def getActions(self, account, pos=-1, offset=-1):
-        assert(isinstance(account, Account), isinstance(pos, int), isinstance(offset, int))
+        assert(isinstance(account, Account))
+        assert(isinstance(pos, int), isinstance(offset, int))
 
         cmd="%s %s get actions -j %s %d %d" % (Utils.EosClientPath, self.endpointArgs, account.name, pos, offset)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -684,12 +690,12 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during actions by account retrieval. %s" % (msg))
             return None
-
+        
     # Gets accounts mapped to key. Returns array
     def getAccountsArrByKey(self, key):
-        trans=self.getAccountsByKey(key)
         assert(trans)
         assert("account_names" in trans)
+        trans=self.getAccountsByKey(key)
         accounts=trans["account_names"]
         return accounts
 
@@ -713,7 +719,7 @@ class Node(object):
         """Returns EOS currency account balance from cleos get table command. Returned balance is string following syntax "98.0311 EOS". """
         assert isinstance(scope, str)
         if not self.enableMongo:
-            amount=self.getNodeAccountEosBalance(scope)
+            amount=self.getNodeAccountBalance("eosio.token", scope)
             if Utils.Debug: Utils.Print("getNodeAccountEosBalance %s %s" % (scope, amount))
             assert isinstance(amount, str)
             return amount
@@ -1209,7 +1215,6 @@ class Cluster(object):
         self.initaAccount=Account("inita")
         self.initbAccount=Account("initb")
         self.eosioAccount=Account("eosio")
-        print ("Type of initaAccount", type(self.initaAccount))
         self.initaAccount.ownerPrivateKey=initaPrvtKey
         self.initaAccount.activePrivateKey=initaPrvtKey
         self.initbAccount.ownerPrivateKey=initbPrvtKey
@@ -1296,6 +1301,8 @@ class Cluster(object):
         if not Cluster.bootstrap(totalNodes, prodCount, Cluster.__BiosHost, Cluster.__BiosPort, dontKill, onlyBios):
             Utils.Print("ERROR: Bootstrap failed.")
             return False
+
+        # validate iniX accounts can be retrieved
 
         producerKeys=Cluster.parseClusterKeys(totalNodes)
         if producerKeys is None:
@@ -1448,6 +1455,7 @@ class Cluster(object):
         return accounts
 
     # create account keys and import into wallet. Wallet initialization will be user responsibility
+    # also imports inita and initb accounts
     def populateWallet(self, accountsCount, wallet):
         if self.walletMgr is None:
             Utils.Print("ERROR: WalletMgr hasn't been initialized.")
@@ -1588,16 +1596,31 @@ class Cluster(object):
 
     # create account, verify account and return transaction id
     def createAccountAndVerify(self, account, creator, stakedDeposit=1000):
-        if len(self.nodes) == 0:
-            Utils.Print("ERROR: No nodes initialized.")
-            return None
+        assert(len(self.nodes) > 0)
         node=self.nodes[0]
+        trans=node.createInitializeAccount(account, creator, stakedDeposit)
+        assert(trans)
+        assert(node.verifyAccount(account))
+        return trans
 
-        transId=node.createAccount(account, creator, stakedDeposit)
+    # # create account, verify account and return transaction id
+    # def createAccountAndVerify(self, account, creator, stakedDeposit=1000):
+    #     if len(self.nodes) == 0:
+    #         Utils.Print("ERROR: No nodes initialized.")
+    #         return None
+    #     node=self.nodes[0]
 
-        if transId is not None and node.verifyAccount(account) is not None:
-            return transId
-        return None
+    #     transId=node.createAccount(account, creator, stakedDeposit)
+
+    #     if transId is not None and node.verifyAccount(account) is not None:
+    #         return transId
+    #     return None
+
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
+        assert(len(self.nodes) > 0)
+        node=self.nodes[0]
+        trans=node.createInitializeAccount(account, creatorAccount, stakedDeposit, waitForTransBlock)
+        return trans
 
     @staticmethod
     def nodeNameToId(name):

@@ -463,6 +463,6 @@ mongodconf
 		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
 		printf "\tsource /opt/rh/python33/enable\n"
 		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
-		printf "\tcd ${HOME}/eos/build; make test\n\n"
+		printf "\tcd ${BUILD_DIR}; make test\n\n"
 	return 0
 	}

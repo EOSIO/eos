@@ -476,7 +476,7 @@ class apply_context {
       void exec();
       void execute_inline( action&& a );
       void execute_context_free_inline( action&& a );
-      void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx );
+      void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing );
       void cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
       void cancel_deferred_transaction( const uint128_t& sender_id ) { cancel_deferred_transaction(sender_id, receiver); }
 
@@ -601,9 +601,6 @@ class apply_context {
       generic_index<index_long_double_object>                        idx_long_double;
 
       action_trace                                trace;
-
-      uint64_t                                    cpu_usage = 0;
-      uint64_t                                    cpu_usage_limit = 0;
 
    private:
 

@@ -198,7 +198,7 @@ void apply_context::execute_inline( action&& a ) {
          //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
       }
    }
-   
+
    _inline_actions.emplace_back( move(a) );
 }
 
@@ -214,7 +214,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 }
 
 
-void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx ) {
+void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
    FC_ASSERT( trx.context_free_actions.size() == 0, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
@@ -257,6 +257,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    uint32_t trx_size = 0;
    auto& d = control.db();
    if ( auto ptr = d.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+      EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
       d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
@@ -269,7 +270,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          });
    } else {
       d.create<generated_transaction_object>( [&]( auto& gtx ) {
-            gtx.trx_id      = trx_context.id;
+            gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
             gtx.payer       = payer;
@@ -348,12 +349,12 @@ bytes apply_context::get_packed_transaction() {
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
-   if( (delta > 0) ) {
+   if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)) ) {
          require_authorization( payer );
       }
-      trx_context.add_ram_usage(payer, delta);
    }
+   trx_context.add_ram_usage(payer, delta);
 }
 
 

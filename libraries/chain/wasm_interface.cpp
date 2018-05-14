@@ -1208,7 +1208,7 @@ class memory_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
-         EOS_ASSERT((abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
+         EOS_ASSERT((std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
                overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
          return (char *)::memcpy(dest, src, length);
       }
@@ -1250,11 +1250,11 @@ class transaction_api : public context_aware_api {
          context.execute_context_free_inline(std::move(act));
       }
 
-      void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len ) {
+      void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
          try {
             transaction trx;
             fc::raw::unpack<transaction>(data, data_len, trx);
-            context.schedule_deferred_transaction(sender_id, payer, std::move(trx));
+            context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
@@ -1754,7 +1754,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 REGISTER_INTRINSICS(transaction_api,
    (send_inline,               void(int, int)               )
    (send_context_free_inline,  void(int, int)               )
-   (send_deferred,             void(int, int64_t, int, int) )
+   (send_deferred,             void(int, int64_t, int, int, int32_t) )
    (cancel_deferred,           void(int)                    )
 );
 

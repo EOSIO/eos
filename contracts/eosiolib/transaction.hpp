@@ -42,9 +42,9 @@ namespace eosio {
    public:
       transaction(time exp = now() + 60) : transaction_header( exp ) {}
 
-      void send(uint64_t sender_id, account_name payer) const {
+      void send(uint64_t sender_id, account_name payer, bool replace_existing = false) const {
          auto serialize = pack(*this);
-         send_deferred(sender_id, payer, serialize.data(), serialize.size());
+         send_deferred(sender_id, payer, serialize.data(), serialize.size(), replace_existing);
       }
 
       vector<action>  context_free_actions;

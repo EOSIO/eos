@@ -13,7 +13,7 @@ namespace eosio { namespace chain {
 
    struct block_state : public block_header_state {
       block_state( const block_header_state& cur ):block_header_state(cur){}
-      block_state( const block_header_state& prev, signed_block_ptr b );
+      block_state( const block_header_state& prev, signed_block_ptr b, bool trust = false );
       block_state( const block_header_state& prev, block_timestamp_type when );
       block_state() = default;
 

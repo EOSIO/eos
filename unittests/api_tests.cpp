@@ -25,6 +25,7 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -207,8 +208,10 @@ bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_unsatisfied_authorization(unsatisfied_authorization const & e) { return true;}
 bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
 bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
+bool is_block_net_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
 bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
-bool is_tx_deadline_exceeded(const tx_deadline_exceeded& e) { return true; }
+bool is_block_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
+bool is_deadline_exception(const deadline_exception& e) { return true; }
 
 /*
  * register test suite `api_tests`
@@ -244,7 +247,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 	create_account( N(acc2) );
 	create_account( N(acc3) );
 	create_account( N(acc4) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
@@ -400,7 +403,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       produce_blocks(2);
       create_account( N(testapi) );
       create_account( N(dummy) );
-      produce_blocks(1000);
+      produce_blocks(10);
       set_code( N(testapi), test_api_wast );
       produce_blocks(1);
       cf_action cfa;
@@ -637,7 +640,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
@@ -662,7 +665,11 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
    ilog( "produce block" );
    t.produce_blocks(1);
 
-   auto call_test = [](TESTER& test, auto ac) {
+   int64_t x; int64_t net; int64_t cpu;
+   t.control->get_resource_limits_manager().get_account_limits( N(testapi), x, net, cpu );
+   wdump((net)(cpu));
+
+   auto call_test = [](TESTER& test, auto ac, uint32_t billed_cpu_time_us, uint8_t max_cpu_usage_ms ) {
       signed_transaction trx;
 
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
@@ -672,15 +679,26 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
       trx.actions.push_back(act);
       test.set_transaction_headers(trx);
+      trx.max_cpu_usage_ms = max_cpu_usage_ms;
       auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
-      auto res = test.push_transaction(trx);
+      auto res = test.push_transaction( trx, fc::time_point::now() + fc::milliseconds(200), billed_cpu_time_us );
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       test.produce_block();
    };
 
 
-   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), tx_deadline_exceeded, is_tx_cpu_usage_exceeded /*tx_deadline_exceeded, is_tx_deadline_exceeded*/);
+   BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
+                                     5000, 0 ),
+                          deadline_exception, is_deadline_exception );
+
+   BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
+                                     0, 50 ),
+                          tx_cpu_usage_exceeded, is_tx_cpu_usage_exceeded );
+
+   BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
+                                    0, 0 ),
+                          block_cpu_usage_exceeded, is_block_cpu_usage_exceeded ); // Because the onblock uses up some of the CPU
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -691,7 +709,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
 
@@ -861,13 +879,36 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
-   //schedule twice (second deferred transaction should replace first one)
+   //schedule twice without replace_existing flag (second deferred transaction should replace first one)
    {
       transaction_trace_ptr trace;
       uint32_t count = 0;
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
-      CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), deferred_tx_duplicate);
+      produce_blocks( 3 );
+
+      //check that only one deferred transaction executed
+      auto dtrxs = control->get_scheduled_transactions();
+      BOOST_CHECK_EQUAL(dtrxs.size(), 1);
+      for (const auto& trx: dtrxs) {
+         control->push_scheduled_transaction(trx, fc::time_point::maximum());
+      }
+      BOOST_CHECK_EQUAL(1, count);
+      BOOST_CHECK(trace);
+      BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
+      c.disconnect();
+   }
+
+   produce_blocks(10);
+
+   //schedule twice with replace_existing flag (second deferred transaction should replace first one)
+   {
+      transaction_trace_ptr trace;
+      uint32_t count = 0;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; ++count; } } );
+      CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction_replace", {});
+      CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction_replace", {});
       produce_blocks( 3 );
 
       //check that only one deferred transaction executed
@@ -948,7 +989,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
          ("code", name(dtt_act3.deferred_account))
          ("type", name(dtt_act3.deferred_action))
          ("requirement", name(dtt_act3.permission_name)));
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act3));
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act3)); //will replace existing transaction
 
    // If we make testapi account to be priviledged account:
    // - the deferred transaction will work no matter who is the payer
@@ -1028,7 +1069,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    produce_blocks(2);
    create_account( N(testapi) );
    create_account( N(testapi2) );
-   produce_blocks(1000);
+   produce_blocks(10);
    set_code( N(testapi), test_api_db_wast );
    set_code( N(testapi2), test_api_db_wast );
    produce_blocks(1);
@@ -1171,9 +1212,9 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
 BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
-	produce_blocks(1000);
+	produce_blocks(10);
 	set_code( N(testapi), test_api_wast );
-	produce_blocks(1000);
+	produce_blocks(10);
 
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "create_instances", {});
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_addition", {});

@@ -15,9 +15,9 @@ namespace eosio { namespace client { namespace http {
 
    parsed_url parse_url( const string& server_url );
 
-   fc::variant call( const std::string& server_url,
-                     const std::string& path,
-                     const fc::variant& postdata = fc::variant() );
+   fc::variant do_http_call( const std::string& server_url,
+                             const std::string& path,
+                             const fc::variant& postdata = fc::variant() );
 
    const string chain_func_base = "/v1/chain";
    const string get_info_func = chain_func_base + "/get_info";
@@ -59,6 +59,7 @@ namespace eosio { namespace client { namespace http {
    const string wallet_lock_all = wallet_func_base + "/lock_all";
    const string wallet_unlock = wallet_func_base + "/unlock";
    const string wallet_import_key = wallet_func_base + "/import_key";
+   const string wallet_create_key = wallet_func_base + "/create_key";
    const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
    const string keosd_stop = "/v1/keosd/stop";
 

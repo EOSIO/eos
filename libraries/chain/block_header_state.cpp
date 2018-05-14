@@ -4,59 +4,16 @@
 
 namespace eosio { namespace chain {
 
-   /*
-  uint32_t block_header_state::calc_dpos_last_irreversible()const {
-    if( producer_to_last_produced.size() == 0 )
-       return 0;
-
-    vector<uint32_t> irb;
-    irb.reserve( producer_to_last_produced.size() );
-    for( const auto& item : producer_to_last_produced )
-       irb.push_back(item.second);
-
-    size_t offset = EOS_PERCENT(irb.size(), config::percent_100- config::irreversible_threshold_percent);
-    std::nth_element( irb.begin(), irb.begin() + offset, irb.end() );
-
-    return irb[offset];
-  }
-  */
 
    bool block_header_state::is_active_producer( account_name n )const {
       return producer_to_last_produced.find(n) != producer_to_last_produced.end();
    }
-
-   /*
-   block_timestamp_type block_header_state::get_slot_time( uint32_t slot_num )const {
-      auto t = header.timestamp;
-      FC_ASSERT( std::numeric_limits<decltype(t.slot)>::max() - t.slot >= slot_num, "block timestamp overflow" );
-      t.slot += slot_num;
-      return t;
-   }
-
-   uint32_t block_header_state::get_slot_at_time( block_timestamp_type t )const {
-      auto first_slot_time = get_slot_time(1);
-      if( t < first_slot_time )
-         return 0;
-      return (t.slot - first_slot_time.slot + 1);
-   }
-
-   producer_key block_header_state::get_scheduled_producer( uint32_t slot_num )const {
-      return get_scheduled_producer( get_slot_time(slot_num) );
-   }
-   */
 
    producer_key block_header_state::get_scheduled_producer( block_timestamp_type t )const {
       auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
       index /= config::producer_repetitions;
       return active_schedule.producers[index];
    }
-
-   /*
-   uint32_t block_header_state::producer_participation_rate()const
-   {
-      return static_cast<uint32_t>(config::percent_100); // Ignore participation rate for now until we construct a better metric.
-   }
-   */
 
 
   /**
@@ -153,7 +110,7 @@ namespace eosio { namespace chain {
    *
    *  If the header specifies new_producers then apply them accordingly.
    */
-  block_header_state block_header_state::next( const signed_block_header& h )const {
+  block_header_state block_header_state::next( const signed_block_header& h, bool trust )const {
     FC_ASSERT( h.timestamp != block_timestamp_type(), "", ("h",h) );
     FC_ASSERT( h.header_extensions.size() == 0, "no supported extensions" );
 
@@ -178,16 +135,16 @@ namespace eosio { namespace chain {
 
     result.set_confirmed( h.confirmed );
 
-   // idump( (result.confirm_count.size()) );
 
     result.header.action_mroot       = h.action_mroot;
     result.header.transaction_mroot  = h.transaction_mroot;
     result.header.producer_signature = h.producer_signature;
-    //idump((result.header));
     result.id                        = result.header.id();
 
-    FC_ASSERT( result.block_signing_key == result.signee(), "block not signed by expected key",
-               ("result.block_signing_key", result.block_signing_key)("signee", result.signee() ) );
+    if( !trust ) {
+       FC_ASSERT( result.block_signing_key == result.signee(), "block not signed by expected key",
+                  ("result.block_signing_key", result.block_signing_key)("signee", result.signee() ) );
+    }
 
     return result;
   } /// next
@@ -232,10 +189,12 @@ namespace eosio { namespace chain {
      return digest_type::hash( std::make_pair(header_bmroot, pending_schedule_hash) );
   }
 
-  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
+  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer, bool trust ) {
      auto d = sig_digest();
      header.producer_signature = signer( d );
-     FC_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ) );
+     if( !trust ) {
+        FC_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ) );
+     }
   }
 
   public_key_type block_header_state::signee()const {

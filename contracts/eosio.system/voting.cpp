@@ -78,8 +78,24 @@ namespace eosiosystem {
 
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes; ++it ) {
          if( !it->active() ) continue;
+
+         if ( it->time_became_active == 0 ) {
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.time_became_active = block_time;
+               });
+         } else if ( block_time > 2 * 21 * 12 + it->time_became_active &&
+                     block_time > it->last_produced_block_time + blocks_per_day ) {
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.producer_key = public_key();
+                  p.time_became_active = 0;
+               });
+
+            continue;
+         }
+
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
       }
+      
 
 
       /// sort by producer name
@@ -139,6 +155,7 @@ namespace eosiosystem {
 
       auto voter = _voters.find(voter_name);
       eosio_assert( voter != _voters.end(), "user must stake before they can vote" ); /// staking creates voter object
+      eosio_assert( !proxy || !voter->is_proxy, "account registered as a proxy is not allowed to use a proxy" );
 
       /**
        * The first time someone votes we calculate and set last_vote_weight, since they cannot unstake until
@@ -229,11 +246,9 @@ namespace eosiosystem {
       require_auth( proxy );
 
       auto pitr = _voters.find(proxy);
-      //eosio_assert( pitr != _voters.end(), "proxy must have some stake first" );
-      //eosio_assert( !pitr->is_proxy, "account is already a proxy" );
-      eosio_assert( pitr->is_proxy != isproxy, "action has no effect" );
-
       if ( pitr != _voters.end() ) {
+         eosio_assert( isproxy != pitr->is_proxy, "action has no effect" );
+         eosio_assert( !isproxy || !pitr->proxy, "account that uses a proxy is not allowed to become a proxy" );
          _voters.modify( pitr, 0, [&]( auto& p ) {
                p.is_proxy = isproxy;
                print( "    vote weight: ", p.last_vote_weight, "\n" );

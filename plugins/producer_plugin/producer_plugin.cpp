@@ -45,9 +45,10 @@ using namespace eosio::chain::plugin_interface;
 namespace {
    bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
       auto code = e.code();
-      return (code == tx_soft_cpu_usage_exceeded::code_value) ||
-             (code == tx_soft_net_usage_exceeded::code_value) ||
-             (code == tx_deadline_exceeded::code_value && deadline_is_subjective);
+      return (code == block_cpu_usage_exceeded::code_value) ||
+             (code == block_net_usage_exceeded::code_value) ||
+             (code == deadline_exception::code_value && deadline_is_subjective) ||
+             (code == leeway_deadline_exception::code_value && deadline_is_subjective);
    }
 }
 
@@ -180,6 +181,12 @@ class producer_plugin_impl {
       };
 
       void on_incoming_block(const signed_block_ptr& block) {
+
+         if( block->timestamp > fc::time_point::now() ) {
+            FC_ASSERT( block->timestamp < fc::time_point::now(), "received a block from the future, ignoring it" );
+         }
+
+
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
          // abort the pending block
          chain.abort_block();
@@ -200,10 +207,13 @@ class producer_plugin_impl {
          if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
             _production_enabled = true;
 
-         ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-              ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(0,16))
-              ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
-              ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed) );
+
+         if( fc::time_point::now() - block->timestamp < fc::seconds(5) || (block->block_num() % 1000 == 0) ) {
+            ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+                 ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(0,16))
+                 ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
+                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed) );
+         }
 
       }
 
@@ -414,8 +424,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
 
    if((block_time - now) < fc::microseconds(config::block_interval_us/10) ) {     // we must sleep for at least 50ms
-      ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}",
-           ("t", config::block_interval_us/10)("bt", block_time));
+//      ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}",
+//           ("t", config::block_interval_us/10)("bt", block_time));
       block_time += fc::microseconds(config::block_interval_us);
    }
 

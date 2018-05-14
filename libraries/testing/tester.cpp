@@ -127,11 +127,13 @@ namespace eosio { namespace testing {
             }
          }
 
-         auto scheduled_trxs = control->get_scheduled_transactions();
-         for (const auto& trx : scheduled_trxs ) {
-            auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
-            if(trace->except) {
-               trace->except->dynamic_rethrow_exception();
+         vector<transaction_id_type> scheduled_trxs;
+         while( (scheduled_trxs = control->get_scheduled_transactions() ).size() > 0 ) {
+            for (const auto& trx : scheduled_trxs ) {
+               auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
+               if(trace->except) {
+                  trace->except->dynamic_rethrow_exception();
+               }
             }
          }
       }
@@ -240,16 +242,24 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
+   transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
+                                                        fc::time_point deadline,
+                                                        uint32_t billed_cpu_time_us
+                                                      )
+   { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
-   transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag, fc::time_point deadline ) { try {
+   transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
+                                                        fc::time_point deadline,
+                                                        uint32_t billed_cpu_time_us
+                                                      )
+   { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto c = packed_transaction::none;
@@ -260,11 +270,11 @@ namespace eosio { namespace testing {
          c = packed_transaction::zlib;
       }
 
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;
-   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
+   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx))(billed_cpu_time_us) ) }
 
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
@@ -279,6 +289,7 @@ namespace eosio { namespace testing {
       try {
          push_transaction(trx);
       } catch (const fc::exception& ex) {
+         edump((ex.to_detail_string()));
          return error(ex.top_message()); // top_message() is assumed by many tests; otherwise they fail
          //return error(ex.to_detail_string());
       }
@@ -408,7 +419,7 @@ namespace eosio { namespace testing {
         // lets also push a context free action, the multi chain test will then also include a context free action
         ("context_free_actions", fc::variants({
             fc::mutable_variant_object()
-               ("account", name(config::nobody_account_name))
+               ("account", name(config::null_account_name))
                ("name", "nonce")
                ("data", fc::raw::pack(v))
             })

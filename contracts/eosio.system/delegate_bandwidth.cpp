@@ -120,7 +120,7 @@ namespace eosiosystem {
       auto itr = _rammarket.find(S(4,RAMEOS));
       auto tmp = *itr;
       auto eosout = tmp.convert( asset(bytes,S(0,RAM)), S(4,EOS) );
-      print( "eosout: ", eosout, "\n" );
+      print( "eosout: ", eosout, " ", tmp.base.balance, " ", tmp.quote.balance, "\n" );
 
       buyram( payer, receiver, eosout );
    }
@@ -182,7 +182,7 @@ namespace eosiosystem {
     *  refunds the purchase price to the account. In this way there is no profit to be made through buying
     *  and selling ram.
     */
-   void system_contract::sellram( account_name account, uint32_t bytes ) {
+   void system_contract::sellram( account_name account, uint64_t bytes ) {
       require_auth( account );
 
       user_resources_table  userres( _self, account );
@@ -366,7 +366,7 @@ namespace eosiosystem {
       eosio::transaction out;
       out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
       out.delay_sec = refund_delay;
-      out.send( from, receiver );
+      out.send( from, receiver, true );
 
       const auto& fromv = _voters.get( from );
 

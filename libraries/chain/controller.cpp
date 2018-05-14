@@ -260,14 +260,14 @@ struct controller_impl {
 
          auto start = fc::time_point::now();
          while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-            self.push_block( next );
-            if( next->block_num() % 10 == 0 ) {
+            self.push_block( next, true );
+            if( next->block_num() % 100 == 0 ) {
                std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
             }
          }
          std::cerr<< "\n";
          auto end = fc::time_point::now();
-         ilog( "replayed blocks in ${n} seconds", ("n", (end-start).count()/1000000.0) );
+         ilog( "replayed blocks in ${n} seconds, ${spb} spb", ("n", (end-start).count()/1000000.0)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
          replaying = false;
 
       } else if( !end ) {
@@ -330,7 +330,7 @@ struct controller_impl {
       auto active_producers_authority = authority(1, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
-      create_native_account( config::nobody_account_name, empty_authority, empty_authority );
+      create_native_account( config::null_account_name, empty_authority, empty_authority );
       create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
       const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
       const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
@@ -395,17 +395,18 @@ struct controller_impl {
       etrx.set_reference_block( self.head_block_id() );
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
+      trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
       try {
-         trx_context.init_for_implicit_trx( deadline, 0 );
+         trx_context.init_for_implicit_trx();
          trx_context.published = gto.published;
          trx_context.trace->action_traces.emplace_back();
          trx_context.dispatch_action( trx_context.trace->action_traces.back(), etrx.actions.back(), gto.sender );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
-         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail, 
+         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -433,8 +434,10 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return (code == tx_soft_net_usage_exceeded::code_value) ||
-             (code == tx_deadline_exceeded::code_value);
+      return (code == block_net_usage_exceeded::code_value) ||
+             (code == block_cpu_usage_exceeded::code_value) ||
+             (code == deadline_exception::code_value)       ||
+             (code == leeway_deadline_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -467,11 +470,12 @@ struct controller_impl {
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
 
       transaction_context trx_context( self, dtrx, gto.trx_id );
+      trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
       try {
-         trx_context.init_for_deferred_trx( deadline, gto.published );
+         trx_context.init_for_deferred_trx( gto.published );
          bill_to_accounts = trx_context.bill_to_accounts;
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
@@ -576,16 +580,16 @@ struct controller_impl {
       transaction_trace_ptr trace;
       try {
          transaction_context trx_context(self, trx->trx, trx->id);
+         trx_context.deadline = deadline;
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
             if (implicit) {
-               trx_context.init_for_implicit_trx(deadline);
+               trx_context.init_for_implicit_trx();
             } else {
-               trx_context.init_for_input_trx(deadline,
-                                              trx->packed_trx.get_unprunable_size(),
-                                              trx->packed_trx.get_prunable_size(),
-                                              trx->trx.signatures.size());
+               trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
+                                               trx->packed_trx.get_prunable_size(),
+                                               trx->trx.signatures.size() );
             }
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
@@ -696,18 +700,20 @@ struct controller_impl {
 
 
 
-   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
+   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback, bool trust  ) {
       auto p = pending->_pending_block_state;
+
       try {
-      p->sign( signer_callback );
+         p->sign( signer_callback, false); //trust );
       } catch ( ... ) {
-         edump(( fc::json::to_pretty_string( *p->block ) ) );
+         edump(( fc::json::to_pretty_string( p->header ) ) );
          throw;
       }
+
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
 
-   void apply_block( const signed_block_ptr& b ) { try {
+   void apply_block( const signed_block_ptr& b, bool trust ) { try {
       try {
          FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
          start_block( b->timestamp, b->confirmed );
@@ -724,7 +730,7 @@ struct controller_impl {
          }
 
          finalize_block();
-         sign_block( [&]( const auto& ){ return b->producer_signature; } );
+         sign_block( [&]( const auto& ){ return b->producer_signature; }, trust );
 
          // this is implied by the signature passing
          //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
@@ -740,14 +746,14 @@ struct controller_impl {
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
 
-   void push_block( const signed_block_ptr& b ) {
+   void push_block( const signed_block_ptr& b, bool trust ) {
     //  idump((fc::json::to_pretty_string(*b)));
       FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
       try {
          FC_ASSERT( b );
-         auto new_header_state = fork_db.add( b );
+         auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
-         maybe_switch_forks();
+         maybe_switch_forks( trust );
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -758,12 +764,12 @@ struct controller_impl {
       maybe_switch_forks();
    }
 
-   void maybe_switch_forks() {
+   void maybe_switch_forks( bool trust = false ) {
       auto new_head = fork_db.head();
 
       if( new_head->header.previous == head->id ) {
          try {
-            apply_block( new_head->block );
+            apply_block( new_head->block, trust );
             fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
             head = new_head;
@@ -786,7 +792,7 @@ struct controller_impl {
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
             optional<fc::exception> except;
             try {
-               apply_block( (*ritr)->block );
+               apply_block( (*ritr)->block, false /*don't trust*/  );
                head = *ritr;
                fork_db.mark_in_current_chain( *ritr, true );
             }
@@ -809,7 +815,7 @@ struct controller_impl {
 
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( (*ritr)->block );
+                  apply_block( (*ritr)->block, true /* we previously validated these blocks*/ );
                   head = *ritr;
                   fork_db.mark_in_current_chain( *ritr, true );
                }
@@ -876,7 +882,7 @@ struct controller_impl {
       // Update resource limits:
       resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
-      uint32_t max_virtual_mult = 10000;
+      uint32_t max_virtual_mult = 1000;
       uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
       resource_limits.set_block_parameters(
          { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
@@ -1042,7 +1048,7 @@ void controller::finalize_block() {
 }
 
 void controller::sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
-   my->sign_block( signer_callback );
+   my->sign_block( signer_callback, false /* don't trust */);
 }
 
 void controller::commit_block() {
@@ -1053,8 +1059,8 @@ void controller::abort_block() {
    my->abort_block();
 }
 
-void controller::push_block( const signed_block_ptr& b ) {
-   my->push_block( b );
+void controller::push_block( const signed_block_ptr& b, bool trust ) {
+   my->push_block( b, trust );
    log_irreversible_blocks();
 }
 
@@ -1062,12 +1068,13 @@ void controller::push_confirmation( const header_confirmation& c ) {
    my->push_confirmation( c );
 }
 
-transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline ) {
-   return my->push_transaction(trx, deadline, false, 0);
+transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+   return my->push_transaction(trx, deadline, false, billed_cpu_time_us);
 }
 
-transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
-   return my->push_scheduled_transaction( trxid, deadline, 0 );
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
+{
+   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us );
 }
 
 uint32_t controller::head_block_num()const {
@@ -1184,7 +1191,12 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
       return blk_state->id;
    }
 
-   return my->blog.read_block_by_num(block_num)->id();
+   auto signed_blk = my->blog.read_block_by_num(block_num);
+
+   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+               "Could not find block: ${block}", ("block", block_num) );
+
+   return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 void controller::pop_block() {

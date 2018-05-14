@@ -475,33 +475,34 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    const auto& index = control->db().get_index<generated_transaction_multi_index,by_trx_id>();
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
-   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
    auto trace = push_action(N(eosio.token), N(transfer), mutable_variant_object()
       ("from", eosio_token)
       ("to",   "proxy")
       ("quantity", "5.0000 CUR")
       ("memo", "fund Proxy")
    );
+   fc::time_point expected_delivery = control->pending_block_time() + fc::seconds(10);
 
    BOOST_REQUIRE_EQUAL(1, index.size());
    auto deferred_id = index.begin()->trx_id;
    BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred_id));
 
-   while(control->head_block_time() < expected_delivery) {
+   while( control->pending_block_time() < expected_delivery ) {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(1, index.size());
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(deferred_id));
-      BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::executed);
+      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred_id));
    }
 
-   fc::time_point expected_redelivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
+   fc::time_point expected_redelivery = control->pending_block_time() + fc::seconds(10);
+   // First deferred transaction should be retired in this block.
+   // It will fail, and its onerror handler will reschedule the transaction for 10 seconds later.
    produce_block();
-   BOOST_REQUIRE_EQUAL(0, index.size());
+   BOOST_REQUIRE_EQUAL(1, index.size()); // Still one because the first deferred transaction retires but the second is created at the same time.
    BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::soft_fail);
+   auto deferred2_id = index.begin()->trx_id;
 
    // set up alice owner
    {
@@ -523,19 +524,25 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
 
-   while(control->head_block_time() < expected_redelivery) {
+   while( control->pending_block_time() < expected_redelivery ) {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(1, index.size());
+      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred2_id));
    }
 
-   produce_block();
-   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
-   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("0.0000 CUR"));
-   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 CUR"));
+   BOOST_REQUIRE_EQUAL(1, index.size());
 
+   // Second deferred transaction should be retired in this block and should succeed,
+   // which should move tokens from the proxy contract to the bob contract, thereby trigger the bob contract to
+   // schedule a third deferred transaction with no delay.
+   // That third deferred transaction (which moves tokens from the bob contract to account alice) should be executed immediately
+   // after in the same block (note that this is the current deferred transaction scheduling policy in tester and it may change).
    produce_block();
+   BOOST_REQUIRE_EQUAL(0, index.size());
+   BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred2_id).status, transaction_receipt::executed);
 
    BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 CUR"));
@@ -567,7 +574,7 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
    // issue to alice using right precision
    {
       auto trace = issue(N(alice), "25.0256 CUR");
-      
+
       BOOST_CHECK_EQUAL(true, chain_has_transaction(trace->id));
       BOOST_CHECK_EQUAL(asset::from_string("125.0256 CUR"), get_balance(N(alice)));
    }

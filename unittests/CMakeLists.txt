@@ -27,17 +27,15 @@ target_link_libraries( unit_test eosio_chain chainbase eosio_testing eos_utiliti
 target_include_directories( unit_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
 target_include_directories( unit_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
 target_include_directories( unit_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include )
-add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange eosio.token proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline multi_index_test noop dice eosio.msig)
+add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange eosio.token proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline multi_index_test noop dice eosio.msig payloadless tic_tac_toe)
 
 #Manually run unit_test for all supported runtimes
 #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
 add_test(NAME unit_test_binaryen COMMAND unit_test
- -t \!eosio_system_tests/*
- -t \!currency_tests/test_deferred_failure
+ -t \!wasm_tests/weighted_cpu_limit_tests
  --report_level=detailed --color_output -- --binaryen)
 add_test(NAME unit_test_wavm COMMAND unit_test
- -t \!eosio_system_tests/*
- -t \!currency_tests/test_deferred_failure
+ -t \!wasm_tests/weighted_cpu_limit_tests
  --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 
 if(ENABLE_COVERAGE_TESTING)
@@ -76,7 +74,7 @@ if(ENABLE_COVERAGE_TESTING)
     COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info
 
     COMMAND if [ "$CI" != "true" ]\; then ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.base ${Coverage_NAME}.info ${Coverage_NAME}_filtered.info ${Coverage_NAME}.total ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned ${PROJECT_BINARY_DIR}/${Coverage_NAME}_filtered.info.cleaned\; fi
-    
+
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
     COMMENT "Resetting code coverage counters to zero. Processing code coverage counters and generating report. Report published in ./${Coverage_NAME}"
     )
