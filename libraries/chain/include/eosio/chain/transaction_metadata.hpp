@@ -22,9 +22,6 @@ class transaction_metadata {
       optional<flat_set<public_key_type>>   signing_keys;
       bool                                  accepted = false;
 
-      std::function<void(const transaction_trace_ptr&)>       on_result;
-
-
       transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
       :trx(t),packed_trx(t, c) {
          id = trx.id();
