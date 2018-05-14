@@ -1,9 +1,9 @@
 #pragma once
 
-#include <eosio/chain/webassembly/common.hpp>
-#include <eosio/chain/webassembly/runtime_interface.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/apply_context.hpp>
+#include <enumivo/chain/webassembly/common.hpp>
+#include <enumivo/chain/webassembly/runtime_interface.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/apply_context.hpp>
 #include <wasm-interpreter.h>
 #include <softfloat_types.h>
 

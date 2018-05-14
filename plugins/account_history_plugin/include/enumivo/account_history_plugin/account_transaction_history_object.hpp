@@ -5,7 +5,7 @@
 #pragma once
 
 #include <chainbase/chainbase.hpp>
-#include <eosio/chain/types.hpp>
+#include <enumivo/chain/types.hpp>
 
 namespace std {
 

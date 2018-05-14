@@ -3,8 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/types.hpp>
+#include <enumivo/chain/block.hpp>
+#include <enumivo/chain/types.hpp>
 #include <chrono>
 
 namespace eosio {

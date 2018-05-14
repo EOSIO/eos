@@ -4,7 +4,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <eosio/chain/block_timestamp.hpp>
+#include <enumivo/chain/block_timestamp.hpp>
 #include <fc/time.hpp>
 #include <fc/exception/exception.hpp>
 

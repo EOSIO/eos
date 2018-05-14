@@ -3,9 +3,9 @@
 #include <boost/test/unit_test.hpp>
 #pragma GCC diagnostic pop
 #include <boost/algorithm/string/predicate.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
+#include <enumivo/chain/generated_transaction_object.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>

@@ -5,7 +5,7 @@
 #pragma once
 #include <fc/io/raw.hpp>
 
-#include <eosio/chain/transaction.hpp>
+#include <enumivo/chain/transaction.hpp>
 #include <fc/uint128.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>

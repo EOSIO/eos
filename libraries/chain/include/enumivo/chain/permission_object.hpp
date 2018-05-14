@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/authority.hpp>
+#include <enumivo/chain/authority.hpp>
 
 #include "multi_index_includes.hpp"
 

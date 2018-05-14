@@ -14,10 +14,10 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
 
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/eosio_contract.hpp>
-#include <eosio/abi_generator/abi_generator.hpp>
+#include <enumivo/chain/contract_types.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
+#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/abi_generator/abi_generator.hpp>
 
 #include <boost/test/framework.hpp>
 

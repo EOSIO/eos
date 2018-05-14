@@ -1,7 +1,7 @@
-#include <eosio/history_plugin.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/trace.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <enumivo/history_plugin.hpp>
+#include <enumivo/chain/controller.hpp>
+#include <enumivo/chain/trace.hpp>
+#include <enumivo/chain_plugin/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 

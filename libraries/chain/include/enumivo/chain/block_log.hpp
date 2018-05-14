@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <fc/filesystem.hpp>
-#include <eosio/chain/block.hpp>
+#include <enumivo/chain/block.hpp>
 
 namespace eosio { namespace chain {
 

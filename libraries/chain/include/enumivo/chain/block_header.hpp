@@ -1,6 +1,6 @@
 #pragma once
-#include <eosio/chain/block_timestamp.hpp>
-#include <eosio/chain/producer_schedule.hpp>
+#include <enumivo/chain/block_timestamp.hpp>
+#include <enumivo/chain/producer_schedule.hpp>
 
 namespace eosio { namespace chain {
 

@@ -1,9 +1,9 @@
 #pragma once
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/asset.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/abi_serializer.hpp>
+#include <enumivo/chain/controller.hpp>
+#include <enumivo/chain/asset.hpp>
+#include <enumivo/chain/contract_table_objects.hpp>
+#include <enumivo/chain/account_object.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
 #include <fc/io/json.hpp>
 #include <boost/test/unit_test.hpp>
 

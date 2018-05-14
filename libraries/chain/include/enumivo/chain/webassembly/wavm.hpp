@@ -1,7 +1,7 @@
 #pragma once
 
-#include <eosio/chain/webassembly/common.hpp>
-#include <eosio/chain/webassembly/runtime_interface.hpp>
+#include <enumivo/chain/webassembly/common.hpp>
+#include <enumivo/chain/webassembly/runtime_interface.hpp>
 #include <softfloat.hpp>
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"

@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <fc/exception/exception.hpp>
-#include <eosio/chain/types.hpp>
+#include <enumivo/chain/types.hpp>
 #include <string>
 #include <functional>
 

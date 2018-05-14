@@ -3,15 +3,15 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/permission_link_object.hpp>
-#include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
+#include <enumivo/chain/authorization_manager.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/permission_object.hpp>
+#include <enumivo/chain/permission_link_object.hpp>
+#include <enumivo/chain/authority_checker.hpp>
+#include <enumivo/chain/controller.hpp>
+#include <enumivo/chain/global_property_object.hpp>
+#include <enumivo/chain/contract_types.hpp>
+#include <enumivo/chain/generated_transaction_object.hpp>
 
 namespace eosio { namespace chain {
 

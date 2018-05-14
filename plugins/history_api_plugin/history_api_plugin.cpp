@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/history_api_plugin/history_api_plugin.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/history_api_plugin/history_api_plugin.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 

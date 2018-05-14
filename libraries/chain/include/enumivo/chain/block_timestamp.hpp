@@ -1,5 +1,5 @@
 #pragma once
-#include <eosio/chain/config.hpp>
+#include <enumivo/chain/config.hpp>
 
 #include <stdint.h>
 #include <fc/time.hpp>

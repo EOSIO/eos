@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/account_history_api_plugin/account_history_api_plugin.hpp>
-#include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/account_history_api_plugin/account_history_api_plugin.hpp>
+#include <enumivo/chain/chain_controller.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 

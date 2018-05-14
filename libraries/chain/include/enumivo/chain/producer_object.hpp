@@ -3,8 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/chain_config.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/chain_config.hpp>
 
 #include "multi_index_includes.hpp"
 

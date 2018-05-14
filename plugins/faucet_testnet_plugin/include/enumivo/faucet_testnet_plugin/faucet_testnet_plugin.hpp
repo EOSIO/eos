@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
+#include <enumivo/http_plugin/http_plugin.hpp>
 
 namespace eosio {
 

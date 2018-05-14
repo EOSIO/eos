@@ -1,11 +1,11 @@
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/transaction_context.hpp>
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
+#include <enumivo/chain/apply_context.hpp>
+#include <enumivo/chain/transaction_context.hpp>
+#include <enumivo/chain/authorization_manager.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/resource_limits.hpp>
+#include <enumivo/chain/generated_transaction_object.hpp>
+#include <enumivo/chain/transaction_object.hpp>
+#include <enumivo/chain/global_property_object.hpp>
 
 namespace eosio { namespace chain {
 

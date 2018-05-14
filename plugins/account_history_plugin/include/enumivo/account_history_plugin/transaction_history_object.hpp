@@ -5,7 +5,7 @@
 #pragma once
 
 #include <chainbase/chainbase.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <enumivo/chain/transaction.hpp>
 
 namespace eosio {
 using chain::block_id_type;

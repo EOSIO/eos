@@ -1,11 +1,11 @@
 #pragma once
-#include <eosio/chain/block_state.hpp>
-#include <eosio/chain/trace.hpp>
-#include <eosio/chain/genesis_state.hpp>
+#include <enumivo/chain/block_state.hpp>
+#include <enumivo/chain/trace.hpp>
+#include <enumivo/chain/genesis_state.hpp>
 #include <boost/signals2/signal.hpp>
 
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/account_object.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
+#include <enumivo/chain/account_object.hpp>
 
 namespace chainbase {
    class database;

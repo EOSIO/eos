@@ -4,11 +4,11 @@
  */
 #pragma once
 
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/authority.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
-#include <eosio/utilities/parallel_markers.hpp>
+#include <enumivo/utilities/parallel_markers.hpp>
 
 #include <fc/scoped_exit.hpp>
 

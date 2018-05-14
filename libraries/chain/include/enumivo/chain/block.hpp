@@ -1,6 +1,6 @@
 #pragma once
-#include <eosio/chain/block_header.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <enumivo/chain/block_header.hpp>
+#include <enumivo/chain/transaction.hpp>
 
 namespace eosio { namespace chain {
 

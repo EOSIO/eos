@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/merkle.hpp>
+#include <enumivo/chain/block.hpp>
+#include <enumivo/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <algorithm>

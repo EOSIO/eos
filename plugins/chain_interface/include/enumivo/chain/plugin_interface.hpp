@@ -7,10 +7,10 @@
 #include <appbase/channel.hpp>
 #include <appbase/method.hpp>
 
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/block_state.hpp>
-#include <eosio/chain/transaction_metadata.hpp>
-#include <eosio/chain/trace.hpp>
+#include <enumivo/chain/block.hpp>
+#include <enumivo/chain/block_state.hpp>
+#include <enumivo/chain/transaction_metadata.hpp>
+#include <enumivo/chain/trace.hpp>
 
 namespace eosio { namespace chain { namespace plugin_interface {
    using namespace eosio::chain;

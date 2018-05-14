@@ -5,7 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <enumivo/chain_plugin/chain_plugin.hpp>
 
 namespace fc { class variant; }
 

@@ -6,7 +6,7 @@
 #include <iostream>
 #include <boost/test/included/unit_test.hpp>
 #include <fc/log/logger.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 //extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
 

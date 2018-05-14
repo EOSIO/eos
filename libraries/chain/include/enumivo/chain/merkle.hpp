@@ -1,5 +1,5 @@
 #pragma once
-#include <eosio/chain/types.hpp>
+#include <enumivo/chain/types.hpp>
 
 namespace eosio { namespace chain {
 

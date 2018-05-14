@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eosio/chain/types.hpp>
+#include <enumivo/chain/types.hpp>
 
 #include <fc/real128.hpp>
 #include <fc/crypto/base58.hpp>

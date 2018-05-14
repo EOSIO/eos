@@ -1,6 +1,6 @@
 #pragma once
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/merkle.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 
 namespace eosio { namespace chain {

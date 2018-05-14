@@ -1,8 +1,8 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/symbol.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
+#include <enumivo/chain/symbol.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>

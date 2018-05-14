@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/global_property_object.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/global_property_object.hpp>
 #include <boost/range/algorithm.hpp>
 
 #ifdef NON_VALIDATING_TEST

@@ -2,17 +2,17 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/account_history_plugin/account_history_plugin.hpp>
-#include <eosio/account_history_plugin/account_control_history_object.hpp>
-#include <eosio/account_history_plugin/account_transaction_history_object.hpp>
-#include <eosio/account_history_plugin/public_key_history_object.hpp>
-#include <eosio/account_history_plugin/transaction_history_object.hpp>
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/types.hpp>
+#include <enumivo/account_history_plugin/account_history_plugin.hpp>
+#include <enumivo/account_history_plugin/account_control_history_object.hpp>
+#include <enumivo/account_history_plugin/account_transaction_history_object.hpp>
+#include <enumivo/account_history_plugin/public_key_history_object.hpp>
+#include <enumivo/account_history_plugin/transaction_history_object.hpp>
+#include <enumivo/chain/account_object.hpp>
+#include <enumivo/chain/controller.hpp>
+#include <enumivo/chain/config.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/transaction.hpp>
+#include <enumivo/chain/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
 #include <fc/io/json.hpp>
@@ -20,7 +20,7 @@
 
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
-#include <eosio/chain/multi_index_includes.hpp>
+#include <enumivo/chain/multi_index_includes.hpp>
 #include <boost/range/adaptors.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/range/algorithm_ext.hpp>

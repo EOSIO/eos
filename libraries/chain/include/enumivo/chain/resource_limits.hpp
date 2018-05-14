@@ -1,6 +1,6 @@
 #pragma once
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/types.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/types.hpp>
 #include <chainbase/chainbase.hpp>
 
 namespace eosio { namespace chain { namespace resource_limits {

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/types.hpp>
+#include <enumivo/chain/authority.hpp>
+#include <enumivo/chain/chain_config.hpp>
+#include <enumivo/chain/config.hpp>
+#include <enumivo/chain/types.hpp>
 
 #include <boost/multiprecision/cpp_int.hpp>
 

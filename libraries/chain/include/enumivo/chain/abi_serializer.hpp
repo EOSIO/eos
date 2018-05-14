@@ -3,9 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/trace.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/contract_types.hpp>
+#include <enumivo/chain/trace.hpp>
+#include <enumivo/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 
 namespace eosio { namespace chain {

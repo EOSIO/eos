@@ -8,8 +8,8 @@
 #include <fstream>
 #include <sstream>
 
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
+#include <enumivo/chain/contract_types.hpp>
 #include <fc/io/json.hpp>
 
 //clashes with something deep in the AST includes in clang 6 and possibly other versions of clang

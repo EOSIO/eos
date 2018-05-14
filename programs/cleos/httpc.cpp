@@ -17,9 +17,9 @@
 #include <boost/asio/ssl.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/http_plugin/http_plugin.hpp>
+#include <enumivo/chain_plugin/chain_plugin.hpp>
 #include "httpc.hpp"
 
 using boost::asio::ip::tcp;

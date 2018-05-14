@@ -1,5 +1,5 @@
 #pragma once
-#include <eosio/chain/webassembly/common.hpp>
+#include <enumivo/chain/webassembly/common.hpp>
 
 // These are handcrafted or otherwise tricky to generate with our tool chain
 /*

@@ -4,12 +4,12 @@
  */
 #include <appbase/application.hpp>
 
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/history_plugin.hpp>
-#include <eosio/net_plugin/net_plugin.hpp>
-#include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/utilities/common.hpp>
+#include <enumivo/chain_plugin/chain_plugin.hpp>
+#include <enumivo/http_plugin/http_plugin.hpp>
+#include <enumivo/history_plugin.hpp>
+#include <enumivo/net_plugin/net_plugin.hpp>
+#include <enumivo/producer_plugin/producer_plugin.hpp>
+#include <enumivo/utilities/common.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>

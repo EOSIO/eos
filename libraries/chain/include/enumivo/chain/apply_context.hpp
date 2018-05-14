@@ -3,9 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
+#include <enumivo/chain/controller.hpp>
+#include <enumivo/chain/transaction.hpp>
+#include <enumivo/chain/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>

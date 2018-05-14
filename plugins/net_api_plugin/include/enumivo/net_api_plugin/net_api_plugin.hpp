@@ -4,8 +4,8 @@
  */
 #pragma once
 
-#include <eosio/net_plugin/net_plugin.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
+#include <enumivo/net_plugin/net_plugin.hpp>
+#include <enumivo/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
 

@@ -3,10 +3,10 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/block_timestamp.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/authority.hpp>
+#include <enumivo/chain/block_timestamp.hpp>
+#include <enumivo/chain/contract_types.hpp>
 
 #include "multi_index_includes.hpp"
 

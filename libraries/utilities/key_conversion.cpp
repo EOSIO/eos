@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/utilities/key_conversion.hpp>
+#include <enumivo/utilities/key_conversion.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/variant.hpp>
 

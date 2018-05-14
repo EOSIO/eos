@@ -5,7 +5,7 @@
 #pragma once
 
 #include <fc/exception/exception.hpp>
-#include <eosio/chain/protocol.hpp>
+#include <enumivo/chain/protocol.hpp>
 #include <boost/core/typeinfo.hpp>
 
 

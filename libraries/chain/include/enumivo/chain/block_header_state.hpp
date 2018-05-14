@@ -1,6 +1,6 @@
 #pragma once
-#include <eosio/chain/block_header.hpp>
-#include <eosio/chain/incremental_merkle.hpp>
+#include <enumivo/chain/block_header.hpp>
+#include <enumivo/chain/incremental_merkle.hpp>
 
 namespace eosio { namespace chain {
 

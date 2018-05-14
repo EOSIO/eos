@@ -4,8 +4,8 @@
  */
 #pragma once
 
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/permission_object.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/permission_object.hpp>
 
 #include <utility>
 #include <functional>

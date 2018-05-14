@@ -4,8 +4,8 @@
  */
 #pragma once
 #include <chainbase/chainbase.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/config.hpp>
+#include <enumivo/chain/transaction.hpp>
+#include <enumivo/chain/config.hpp>
 
 #include <type_traits>
 

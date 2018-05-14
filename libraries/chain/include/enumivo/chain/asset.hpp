@@ -3,9 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/symbol.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/symbol.hpp>
 
 /// eos with 8 digits of precision
 #define EOS_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))

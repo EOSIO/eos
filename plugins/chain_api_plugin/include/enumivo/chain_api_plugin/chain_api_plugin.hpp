@@ -3,11 +3,11 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
+#include <enumivo/chain_plugin/chain_plugin.hpp>
+#include <enumivo/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <eosio/chain/controller.hpp>
+#include <enumivo/chain/controller.hpp>
 
 namespace eosio {
    using eosio::chain::controller;

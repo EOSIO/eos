@@ -1,10 +1,10 @@
 #pragma once
 
-#include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/webassembly/wavm.hpp>
-#include <eosio/chain/webassembly/binaryen.hpp>
-#include <eosio/chain/webassembly/runtime_interface.hpp>
-#include <eosio/chain/wasm_eosio_injection.hpp>
+#include <enumivo/chain/wasm_interface.hpp>
+#include <enumivo/chain/webassembly/wavm.hpp>
+#include <enumivo/chain/webassembly/binaryen.hpp>
+#include <enumivo/chain/webassembly/runtime_interface.hpp>
+#include <enumivo/chain/wasm_eosio_injection.hpp>
 
 #include "IR/Module.h"
 #include "Runtime/Intrinsics.h"

@@ -1,6 +1,6 @@
 #pragma once
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/trace.hpp>
+#include <enumivo/chain/controller.hpp>
+#include <enumivo/chain/trace.hpp>
 
 namespace eosio { namespace chain {
 

@@ -4,8 +4,8 @@
  */
 #pragma once
 
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/contract_types.hpp>
 
 namespace eosio { namespace chain { 
 

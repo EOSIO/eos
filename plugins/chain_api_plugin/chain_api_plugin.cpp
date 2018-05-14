@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chain_api_plugin/chain_api_plugin.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain_api_plugin/chain_api_plugin.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 

@@ -1,14 +1,14 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/authorization_manager.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
+#include <enumivo/chain/permission_object.hpp>
+#include <enumivo/chain/authorization_manager.hpp>
 
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/resource_limits_private.hpp>
+#include <enumivo/chain/resource_limits.hpp>
+#include <enumivo/chain/resource_limits_private.hpp>
 
-#include <eosio/testing/tester_network.hpp>
-#include <eosio/chain/producer_object.hpp>
+#include <enumivo/testing/tester_network.hpp>
+#include <enumivo/chain/producer_object.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester

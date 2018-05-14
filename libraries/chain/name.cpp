@@ -1,8 +1,8 @@
-#include <eosio/chain/name.hpp>
+#include <enumivo/chain/name.hpp>
 #include <fc/variant.hpp>
 #include <boost/algorithm/string.hpp>
 #include <fc/exception/exception.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 namespace eosio { namespace chain { 
 

@@ -4,9 +4,9 @@
  */
 #pragma once
 
-#include <eosio/chain/action.hpp>
-#include <eosio/chain/action_receipt.hpp>
-#include <eosio/chain/block.hpp>
+#include <enumivo/chain/action.hpp>
+#include <enumivo/chain/action_receipt.hpp>
+#include <enumivo/chain/block.hpp>
 
 namespace eosio { namespace chain {
 

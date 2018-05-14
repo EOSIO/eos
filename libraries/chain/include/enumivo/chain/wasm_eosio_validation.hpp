@@ -1,8 +1,8 @@
 #pragma once
 
 #include <fc/exception/exception.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/wasm_eosio_binary_ops.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/wasm_eosio_binary_ops.hpp>
 #include <functional>
 #include <vector>
 #include <iostream>

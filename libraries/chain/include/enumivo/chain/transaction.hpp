@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eosio/chain/action.hpp>
+#include <enumivo/chain/action.hpp>
 #include <numeric>
 
 namespace eosio { namespace chain {

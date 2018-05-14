@@ -6,11 +6,11 @@
 #include <fc/uint128.hpp>
 #include <fc/array.hpp>
 
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/block_timestamp.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/producer_schedule.hpp>
-#include <eosio/chain/incremental_merkle.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/block_timestamp.hpp>
+#include <enumivo/chain/chain_config.hpp>
+#include <enumivo/chain/producer_schedule.hpp>
+#include <enumivo/chain/incremental_merkle.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
