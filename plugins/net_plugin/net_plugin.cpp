@@ -733,7 +733,7 @@ namespace eosio {
 
    void connection::flush_queues() {
       if (write_depth > 0) {
-         while (write_queue.size() > 1) {
+         while (write_queue.size() > write_depth) {
             write_queue.pop_back();
          }
       } else {
@@ -956,11 +956,11 @@ namespace eosio {
          my_impl->close(c.lock());
          return;
       }
-      write_depth++;
       size_t num_buffs = write_queue.size();
       std::vector<boost::asio::const_buffer> bufs;
-      for (auto m: write_queue) {
+      for (auto& m: write_queue) {
          bufs.push_back(boost::asio::buffer(*m.buff));
+         write_depth++;
       }
       boost::asio::async_write(*socket, bufs, [c, num_buffs](boost::system::error_code ec, std::size_t w) {
             try {
@@ -971,9 +971,9 @@ namespace eosio {
                if (conn->write_queue.size() >= num_buffs ) {
                   for (size_t i = 0; i < num_buffs; i++) {
                      conn->write_queue[i].callback(ec, w);
+                     conn->write_depth--;
                   }
                }
-               conn->write_depth--;
 
                if(ec) {
                   string pname = conn ? conn->peer_name() : "no connection name";
@@ -1065,10 +1065,8 @@ namespace eosio {
       fc::datastream<char*> ds( send_buffer->data(), buffer_size);
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
-      write_depth++;
       queue_write(send_buffer,trigger_send,
                   [this, close_after_send](boost::system::error_code ec, std::size_t ) {
-                     write_depth--;
                      if(close_after_send != no_reason) {
                         elog ("sent a go away message: ${r}, closing connection to ${p}",("r",reason_str(close_after_send))("p",peer_name()));
                         my_impl->close(shared_from_this());
