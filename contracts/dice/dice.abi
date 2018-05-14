@@ -43,7 +43,7 @@
           "type": "asset"
         },{
           "name": "deadline",
-          "type": "time"
+          "type": "time_point_sec"
         },{
           "name": "player1",
           "type": "player"

@@ -34,7 +34,7 @@ void multisig::propose() {
    ds >> trx_header;
 
    require_auth( proposer );
-   eosio_assert( trx_header.expiration >= now(), "transaction expired" );
+   eosio_assert( trx_header.expiration >= eosio::time_point_sec(now()), "transaction expired" );
    //eosio_assert( trx_header.actions.size() > 0, "transaction must have at least one action" );
 
    proposals proptable( _self, proposer );
@@ -93,7 +93,7 @@ void multisig::cancel( account_name proposer, name proposal_name, account_name c
    eosio_assert( prop_it != proptable.end(), "proposal not found" );
 
    if( canceler != proposer ) {
-      eosio_assert( unpack<transaction_header>( prop_it->packed_transaction ).expiration < now(), "cannot cancel until expiration" );
+      eosio_assert( unpack<transaction_header>( prop_it->packed_transaction ).expiration < eosio::time_point_sec(now()), "cannot cancel until expiration" );
    }
 
    proptable.erase(prop_it);
@@ -109,7 +109,7 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    transaction_header trx_header;
    datastream<const char*> ds( prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
    ds >> trx_header;
-   eosio_assert( trx_header.expiration >= now(), "transaction expired" );
+   eosio_assert( trx_header.expiration >= eosio::time_point_sec(now()), "transaction expired" );
 
    bytes packed_provided_approvals = pack(prop_it->provided_approvals);
    auto res = ::check_transaction_authorization( prop_it->packed_transaction.data(), prop_it->packed_transaction.size(),
