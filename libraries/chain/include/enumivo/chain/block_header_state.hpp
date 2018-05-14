@@ -30,6 +30,7 @@ struct block_header_state {
     void set_new_producers( producer_schedule_type next_pending );
     void set_confirmed( uint16_t num_prev_blocks );
     void add_confirmation( const header_confirmation& c );
+    bool maybe_promote_pending();
 
 
     bool                 has_pending_producers()const { return pending_schedule.producers.size(); }

@@ -95,8 +95,8 @@ try:
     if not cluster.populateWallet(accountsCount, wallet):
         errorExit("Wallet initialization failed.")
 
-    initaAccount=cluster.initaAccount
-    initbAccount=cluster.initbAccount
+    defproduceraAccount=cluster.defproduceraAccount
+    defproducerbAccount=cluster.defproducerbAccount
     eosioAccount=cluster.eosioAccount
 
     # TBD: get account is currently failing. Enable when ready

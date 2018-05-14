@@ -288,7 +288,6 @@ BOOST_AUTO_TEST_CASE(trx_variant ) {
                                         .name     = new_account_name,
                                         .owner    = owner_auth,
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                        .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
       trx.expiration = time_point_sec(chain.control->head_block_time()) + 100;
       trx.ref_block_num = (uint16_t)chain.control->head_block_num();
@@ -322,8 +321,7 @@ BOOST_AUTO_TEST_CASE(trx_uniqueness) {
                                .creator  = config::system_account_name,
                                .name     = new_account_name,
                                .owner    = owner_auth,
-                               .active   = authority(chain.get_public_key(new_account_name, "active")),
-                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                               .active   = authority(chain.get_public_key(new_account_name, "active"))
                             });
    chain.set_transaction_headers(trx, 90);
    trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
@@ -344,8 +342,7 @@ BOOST_AUTO_TEST_CASE(invalid_expiration) {
                                .creator  = config::system_account_name,
                                .name     = new_account_name,
                                .owner    = owner_auth,
-                               .active   = authority(chain.get_public_key(new_account_name, "active")),
-                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                               .active   = authority(chain.get_public_key(new_account_name, "active"))
                             });
    trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
    trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
@@ -372,8 +369,7 @@ BOOST_AUTO_TEST_CASE(transaction_expiration) {
                                  .creator  = config::system_account_name,
                                  .name     = new_account_name,
                                  .owner    = owner_auth,
-                                 .active   = authority(chain.get_public_key(new_account_name, "active")),
-                                 .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                                 .active   = authority(chain.get_public_key(new_account_name, "active"))
                               });
       trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
       trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
@@ -400,8 +396,7 @@ BOOST_AUTO_TEST_CASE(invalid_tapos) {
                               .creator  = config::system_account_name,
                               .name     = new_account_name,
                               .owner    = owner_auth,
-                              .active   = authority(chain.get_public_key(new_account_name, "active")),
-                              .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                              .active   = authority(chain.get_public_key(new_account_name, "active"))
                            });
    trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num() + 1);
    trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
@@ -429,8 +424,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
                                         .creator  = config::system_account_name,
                                         .name     = new_account_name,
                                         .owner    = owner_auth,
-                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                        .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                 });
       chain.set_transaction_headers(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
@@ -463,8 +457,7 @@ BOOST_AUTO_TEST_CASE(no_auth) {
                                       .creator  = config::system_account_name,
                                       .name     = new_account_name,
                                       .owner    = owner_auth,
-                                      .active   = authority(),
-                                      .recovery = authority(),
+                                      .active   = authority()
                                 });
       chain.set_transaction_headers(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
@@ -958,8 +951,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
                                         .creator  = config::system_account_name,
                                         .name     = new_account_name,
                                         .owner    = owner_auth,
-                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                        .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                 });
       chain.set_transaction_headers(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
@@ -1008,8 +1000,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
                                            .creator  = config::system_account_name,
                                            .name     = new_account_name,
                                            .owner    = owner_auth,
-                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                    });
          chain.set_transaction_headers(trx);
          trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
@@ -1041,8 +1032,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
                                            .creator  = config::system_account_name,
                                            .name     = new_account_name,
                                            .owner    = owner_auth,
-                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                    });
          chain.set_transaction_headers(trx);
          trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
@@ -1123,8 +1113,7 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
                                       .creator  = creator,
                                       .name     = a,
                                       .owner    = owner_auth,
-                                      .active   = authority( chain.get_public_key( a, "active" ) ),
-                                      .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                      .active   = authority( chain.get_public_key( a, "active" ) )
                                 });
 
       chain.set_transaction_headers(trx);

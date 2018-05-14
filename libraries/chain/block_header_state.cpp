@@ -52,23 +52,6 @@ namespace eosio { namespace chain {
     result.dpos_irreversible_blocknum        = dpos_irreversible_blocknum;
     result.bft_irreversible_blocknum         = bft_irreversible_blocknum;
 
-    if( result.pending_schedule.producers.size() &&
-        result.dpos_irreversible_blocknum >= pending_schedule_lib_num ) {
-      result.active_schedule = move( result.pending_schedule );
-
-      flat_map<account_name,uint32_t> new_producer_to_last_produced;
-      for( const auto& pro : result.active_schedule.producers ) {
-        auto existing = producer_to_last_produced.find( pro.producer_name );
-        if( existing != producer_to_last_produced.end() ) {
-          new_producer_to_last_produced[pro.producer_name] = existing->second;
-        } else {
-          new_producer_to_last_produced[pro.producer_name] = result.dpos_irreversible_blocknum;
-        }
-      }
-      result.producer_to_last_produced = move( new_producer_to_last_produced );
-      result.producer_to_last_produced[prokey.producer_name] = result.block_num;
-    }
-
     /// grow the confirmed count
     static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
 
@@ -90,6 +73,28 @@ namespace eosio { namespace chain {
     return result;
   } /// generate_next
 
+   bool block_header_state::maybe_promote_pending() {
+      if( pending_schedule.producers.size() &&
+          dpos_irreversible_blocknum >= pending_schedule_lib_num )
+      {
+         active_schedule = move( pending_schedule );
+
+         flat_map<account_name,uint32_t> new_producer_to_last_produced;
+         for( const auto& pro : active_schedule.producers ) {
+            auto existing = producer_to_last_produced.find( pro.producer_name );
+            if( existing != producer_to_last_produced.end() ) {
+               new_producer_to_last_produced[pro.producer_name] = existing->second;
+            } else {
+               new_producer_to_last_produced[pro.producer_name] = dpos_irreversible_blocknum;
+            }
+         }
+         producer_to_last_produced = move( new_producer_to_last_produced );
+         producer_to_last_produced[header.producer] = block_num;
+
+         return true;
+      }
+      return false;
+   }
 
   void block_header_state::set_new_producers( producer_schedule_type pending ) {
       FC_ASSERT( pending.version == active_schedule.version + 1, "wrong producer schedule version specified" );
@@ -129,12 +134,15 @@ namespace eosio { namespace chain {
 
      /// below this point is state changes that cannot be validated with headers alone, but never-the-less,
      /// must result in header state changes
-    if( h.new_producers ) {
-       result.set_new_producers( *h.new_producers );
-    }
 
     result.set_confirmed( h.confirmed );
 
+    auto was_pending_promoted = result.maybe_promote_pending();
+
+    if( h.new_producers ) {
+      FC_ASSERT( !was_pending_promoted, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
+      result.set_new_producers( *h.new_producers );
+    }
 
     result.header.action_mroot       = h.action_mroot;
     result.header.transaction_mroot  = h.transaction_mroot;

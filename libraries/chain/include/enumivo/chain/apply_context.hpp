@@ -568,8 +568,6 @@ class apply_context {
       vector<account_name> get_active_producers() const;
       bytes  get_packed_transaction();
 
-      void checktime(uint32_t instruction_count);
-
       uint64_t next_global_sequence();
       uint64_t next_recv_sequence( account_name receiver );
       uint64_t next_auth_sequence( account_name actor );
