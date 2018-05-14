@@ -1,5 +1,5 @@
-#include <eosiolib/fixedpoint.hpp>
-#include <eosiolib/eosio.hpp>
+#include <enumivolib/fixedpoint.hpp>
+#include <enumivolib/eosio.hpp>
 
 #include "test_api.hpp"
 

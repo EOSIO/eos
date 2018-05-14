@@ -1,6 +1,6 @@
-#include <eosiolib/action.h>
-#include <eosiolib/contract.hpp>
-#include <eosiolib/dispatcher.hpp>
+#include <enumivolib/action.h>
+#include <enumivolib/contract.hpp>
+#include <enumivolib/dispatcher.hpp>
 #include <identity/interface.hpp>
 
 namespace identity_test {

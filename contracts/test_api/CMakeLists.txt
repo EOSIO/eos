@@ -2,7 +2,7 @@
 
 add_wast_executable(TARGET test_api
   INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-  LIBRARIES libc++ libc eosiolib
+  LIBRARIES libc++ libc enumivolib
   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
   MAX_MEMORY 1048576
 )

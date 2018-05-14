@@ -2,14 +2,14 @@
  * @file action_test.cpp
  * @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/permission.h>
-#include <eosiolib/db.h>
+#include <enumivolib/permission.h>
+#include <enumivolib/db.h>
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/compiler_builtins.h>
-#include <eosiolib/serialize.hpp>
-#include <eosiolib/action.hpp>
+#include <enumivolib/eosio.hpp>
+#include <enumivolib/print.hpp>
+#include <enumivolib/compiler_builtins.h>
+#include <enumivolib/serialize.hpp>
+#include <enumivolib/action.hpp>
 
 #include "test_api.hpp"
 

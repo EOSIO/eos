@@ -5,7 +5,7 @@
 #include "exchange_accounts.cpp"
 #include "market_state.cpp"
 
-#include <eosiolib/dispatcher.hpp>
+#include <enumivolib/dispatcher.hpp>
 
 namespace eosio {
 

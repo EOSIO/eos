@@ -5,10 +5,10 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/asset.hpp>
-#include <eosiolib/contract.hpp>
-#include <eosiolib/crypto.h>
+#include <enumivolib/eosio.hpp>
+#include <enumivolib/asset.hpp>
+#include <enumivolib/contract.hpp>
+#include <enumivolib/crypto.h>
 
 using eosio::key256;
 using eosio::indexed_by;

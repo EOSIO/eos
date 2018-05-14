@@ -3,7 +3,7 @@
  * @copyright defined in eos/LICENSE.txt
  */
 
-#include <eosiolib/eosio.hpp>
+#include <enumivolib/eosio.hpp>
 #include "test_api.hpp"
 
 void test_checktime::checktime_pass() {

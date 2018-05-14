@@ -1,5 +1,5 @@
 #include "eosio.system.hpp"
-#include <eosiolib/dispatcher.hpp>
+#include <enumivolib/dispatcher.hpp>
 
 #include "delegate_bandwidth.cpp"
 #include "producer_pay.cpp"

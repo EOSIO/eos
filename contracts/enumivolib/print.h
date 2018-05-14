@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eosiolib/types.h>
+#include <enumivolib/types.h>
 
 #ifdef __cplusplus
 extern "C" {

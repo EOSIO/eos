@@ -5,4 +5,4 @@
 #pragma once
 
 #include <string.h>
-#include <eosiolib/types.h>
+#include <enumivolib/types.h>

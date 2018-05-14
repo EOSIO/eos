@@ -1,7 +1,7 @@
 #pragma once
-#include <eosiolib/serialize.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/system.h>
+#include <enumivolib/serialize.hpp>
+#include <enumivolib/print.hpp>
+#include <enumivolib/system.h>
 #include <tuple>
 #include <limits>
 

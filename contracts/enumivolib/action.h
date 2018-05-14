@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosiolib/system.h>
+#include <enumivolib/system.h>
 
 extern "C" {
    /**

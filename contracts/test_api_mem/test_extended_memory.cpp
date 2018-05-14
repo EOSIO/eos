@@ -1,5 +1,5 @@
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/memory.hpp>
+#include <enumivolib/eosio.hpp>
+#include <enumivolib/memory.hpp>
 #include "../test_api/test_api.hpp"
 
 //using namespace eosio;

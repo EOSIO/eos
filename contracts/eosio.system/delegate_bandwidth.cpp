@@ -4,13 +4,13 @@
  */
 #include "eosio.system.hpp"
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/serialize.hpp>
-#include <eosiolib/multi_index.hpp>
-#include <eosiolib/privileged.h>
-#include <eosiolib/transaction.hpp>
+#include <enumivolib/eosio.hpp>
+#include <enumivolib/print.hpp>
+#include <enumivolib/datastream.hpp>
+#include <enumivolib/serialize.hpp>
+#include <enumivolib/multi_index.hpp>
+#include <enumivolib/privileged.h>
+#include <enumivolib/transaction.hpp>
 
 #include <eosio.token/eosio.token.hpp>
 

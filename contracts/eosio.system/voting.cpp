@@ -4,15 +4,15 @@
  */
 #include "eosio.system.hpp"
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/crypto.h>
-#include <eosiolib/print.hpp>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/serialize.hpp>
-#include <eosiolib/multi_index.hpp>
-#include <eosiolib/privileged.hpp>
-#include <eosiolib/singleton.hpp>
-#include <eosiolib/transaction.hpp>
+#include <enumivolib/eosio.hpp>
+#include <enumivolib/crypto.h>
+#include <enumivolib/print.hpp>
+#include <enumivolib/datastream.hpp>
+#include <enumivolib/serialize.hpp>
+#include <enumivolib/multi_index.hpp>
+#include <enumivolib/privileged.hpp>
+#include <enumivolib/singleton.hpp>
+#include <enumivolib/transaction.hpp>
 #include <eosio.token/eosio.token.hpp>
 
 #include <algorithm>
