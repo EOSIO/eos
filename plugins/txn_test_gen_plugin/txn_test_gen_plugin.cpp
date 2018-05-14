@@ -2,10 +2,10 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/utilities/key_conversion.hpp>
+#include <enumivo/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
+#include <enumivo/chain_plugin/chain_plugin.hpp>
+#include <enumivo/chain/wast_to_wasm.hpp>
+#include <enumivo/utilities/key_conversion.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>

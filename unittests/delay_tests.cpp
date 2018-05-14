@@ -1,8 +1,8 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester_network.hpp>
-#include <eosio/chain/producer_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
+#include <enumivo/testing/tester_network.hpp>
+#include <enumivo/chain/producer_object.hpp>
+#include <enumivo/chain/global_property_object.hpp>
+#include <enumivo/chain/generated_transaction_object.hpp>
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 #include <eosio.token/eosio.token.wast.hpp>

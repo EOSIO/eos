@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/fork_database.hpp>
+#include <enumivo/chain/exceptions.hpp>
 #include <fc/smart_ref_impl.hpp>
 
 namespace eosio { namespace chain {

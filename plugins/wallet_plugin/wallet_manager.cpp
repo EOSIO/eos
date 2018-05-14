@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/wallet_plugin/wallet_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/wallet_plugin/wallet_manager.hpp>
+#include <enumivo/chain/exceptions.hpp>
 #include <boost/algorithm/string.hpp>
 namespace eosio {
 namespace wallet {

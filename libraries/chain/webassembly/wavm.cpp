@@ -1,8 +1,8 @@
-#include <eosio/chain/webassembly/wavm.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/wasm_eosio_injection.hpp>
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/webassembly/wavm.hpp>
+#include <enumivo/chain/wasm_eosio_constraints.hpp>
+#include <enumivo/chain/wasm_eosio_injection.hpp>
+#include <enumivo/chain/apply_context.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 #include "IR/Module.h"
 #include "Platform/Platform.h"

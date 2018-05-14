@@ -2,10 +2,10 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/wallet_api_plugin/wallet_api_plugin.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <enumivo/wallet_api_plugin/wallet_api_plugin.hpp>
+#include <enumivo/wallet_plugin/wallet_manager.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>

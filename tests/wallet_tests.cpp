@@ -2,14 +2,14 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/rand.hpp>
-#include <eosio/wallet_plugin/wallet.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
+#include <enumivo/utilities/key_conversion.hpp>
+#include <enumivo/utilities/rand.hpp>
+#include <enumivo/wallet_plugin/wallet.hpp>
+#include <enumivo/wallet_plugin/wallet_manager.hpp>
 
 #include <boost/test/unit_test.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/authority.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 namespace eosio {
 

@@ -1,8 +1,8 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain/eosio_contract.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/wast_to_wasm.hpp>
+#include <enumivo/chain/eosio_contract.hpp>
 
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>

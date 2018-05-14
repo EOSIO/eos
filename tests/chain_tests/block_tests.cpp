@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester_network.hpp>
-#include <eosio/chain/producer_object.hpp>
+#include <enumivo/testing/tester_network.hpp>
+#include <enumivo/chain/producer_object.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;

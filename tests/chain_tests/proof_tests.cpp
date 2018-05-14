@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/merkle.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/merkle.hpp>
 #include <fc/io/json.hpp>
 
 #ifdef NON_VALIDATING_TEST

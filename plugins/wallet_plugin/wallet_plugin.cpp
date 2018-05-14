@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/wallet_plugin/wallet_plugin.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
+#include <enumivo/wallet_plugin/wallet_plugin.hpp>
+#include <enumivo/wallet_plugin/wallet_manager.hpp>
 
 #include <boost/filesystem/path.hpp>
 #include <chrono>

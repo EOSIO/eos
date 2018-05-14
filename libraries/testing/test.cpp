@@ -1,4 +1,4 @@
-#include <eosio/testing/tester.hpp>
+#include <enumivo/testing/tester.hpp>
 #include <fc/io/json.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>

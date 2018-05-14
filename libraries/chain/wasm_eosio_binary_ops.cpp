@@ -1,6 +1,6 @@
-#include <eosio/chain/wasm_eosio_binary_ops.hpp>
+#include <enumivo/chain/wasm_eosio_binary_ops.hpp>
 #include <fc/exception/exception.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/exceptions.hpp>
 #include "IR/Module.h"
 #include "IR/Operators.h"
 
