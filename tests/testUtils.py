@@ -719,7 +719,7 @@ class Node(object):
         """Returns EOS currency account balance from cleos get table command. Returned balance is string following syntax "98.0311 EOS". """
         assert isinstance(scope, str)
         if not self.enableMongo:
-            amount=self.getNodeAccountBalance("eosio.token", scope)
+            amount=self.getNodeAccountBalance("enumivo.coin", scope)
             if Utils.Debug: Utils.Print("getNodeAccountEosBalance %s %s" % (scope, amount))
             assert isinstance(amount, str)
             return amount
@@ -1809,7 +1809,7 @@ class Cluster(object):
                     return False
 
             eosioTokenAccount=copy.deepcopy(eosioAccount)
-            eosioTokenAccount.name="eosio.token"
+            eosioTokenAccount.name="enumivo.coin"
             trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
@@ -1819,7 +1819,7 @@ class Cluster(object):
             transId=Node.getTransId(trans)
             biosNode.waitForTransIdOnNode(transId)
 
-            contract="eosio.token"
+            contract="enumivo.coin"
             contractDir="contracts/%s" % (contract)
             wastFile="contracts/%s/%s.wast" % (contract, contract)
             abiFile="contracts/%s/%s.abi" % (contract, contract)

@@ -56,14 +56,14 @@ Example game session using cleos
 cleos set contract eosio build/contracts/enumivo.bios -p eosio
 ````
 
-##### Ceate eosio.token account
+##### Ceate enumivo.coin account
 ````bash
-cleos create account eosio eosio.token EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+cleos create account eosio enumivo.coin EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
-##### Set eosio.token contract to eosio.token account
+##### Set enumivo.coin contract to enumivo.coin account
 ````bash
-cleos set contract eosio.token build/contracts/eosio.token -p eosio.token
+cleos set contract enumivo.coin build/contracts/enumivo.coin -p enumivo.coin
 ````
 
 ##### Create dice account
@@ -78,7 +78,7 @@ cleos set contract dice build/contracts/dice -p dice
 
 ##### Create native EOS token
 ````bash
-cleos push action eosio.token create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p eosio.token
+cleos push action enumivo.coin create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p enumivo.coin
 ````
 
 ##### Create alice account
@@ -93,12 +93,12 @@ cleos create account eosio bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C
 
 ##### Issue 1000 EOS to alice
 ````bash
-cleos push action eosio.token issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
+cleos push action enumivo.coin issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
 ````
 
 ##### Issue 1000 EOS to bob
 ````bash
-cleos push action eosio.token issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
+cleos push action enumivo.coin issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)
@@ -263,7 +263,7 @@ cleos push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
 
 ##### Balance of alice after withdraw
 ````bash
-cleos get currency balance eosio.token alice eos
+cleos get currency balance enumivo.coin alice eos
 1003.0000 EOS
 ````
 

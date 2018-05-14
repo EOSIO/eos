@@ -610,7 +610,7 @@ asset to_asset( const string& code, const string& s ) {
 }
 
 inline asset to_asset( const string& s ) {
-   return to_asset( "eosio.token", s );
+   return to_asset( "enumivo.coin", s );
 }
 
 struct set_account_permission_subcommand {
@@ -1750,7 +1750,7 @@ int main( int argc, char** argv ) {
    auto setActionPermission = set_action_permission_subcommand(setAction);
 
    // Transfer subcommand
-   string con = "eosio.token";
+   string con = "enumivo.coin";
    string sender;
    string recipient;
    string amount;
