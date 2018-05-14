@@ -39,8 +39,8 @@ public:
 
       produce_blocks( 100 );
 
-      set_code( N(enumivo.coin), enumivo_token_wast );
-      set_abi( N(enumivo.coin), enumivo_token_abi );
+      set_code( N(enumivo.coin), enumivo_coin_wast );
+      set_abi( N(enumivo.coin), enumivo_coin_abi );
 
       create_currency( N(enumivo.coin), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
       issue(config::system_account_name,      "1000000000.0000 EOS");
