@@ -783,6 +783,8 @@ namespace eosio {
                               auto tx = local_txns.get<by_id>().find(tx_id);
                               if (tx != local_txns.end()) {
                                  local_txns.modify(tx, decr_in_flight);
+                              } else {
+                                 fc_wlog(logger, "Local pending TX erased before queued_write called callback");
                               }
                            });
             }
@@ -802,6 +804,8 @@ namespace eosio {
                            auto tx = local_txns.get<by_id>().find(t);
                            if (tx != local_txns.end()) {
                               local_txns.modify(tx, decr_in_flight);
+                           } else {
+                              fc_wlog(logger, "Local TX erased before queued_write called callback");
                            }
                         });
          }
@@ -1085,6 +1089,8 @@ namespace eosio {
                            my_impl->close(conn);
                            return;
                         }
+                     } else {
+                        fc_wlog(logger, "connection expired before enqueued net_message called callback!");
                      }
                   });
    }
