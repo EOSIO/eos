@@ -36,17 +36,17 @@ namespace eosiosystem {
       int64_t              pervote_bucket;
       int64_t              perblock_bucket;
       int64_t              savings;
-      checksum160          last_producer_schedule_id;
-
+      uint32_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
+         checksum160          last_producer_schedule_id;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
-      int32_t              total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
+         //      checksum160          last_producer_schedule_id;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)
                                 (last_pervote_bucket_fill)
-                                (pervote_bucket)(perblock_bucket)(savings)(last_producer_schedule_id)(total_activated_stake)(total_producer_vote_weight)(total_unpaid_blocks) )
+                                (pervote_bucket)(perblock_bucket)(savings)(total_unpaid_blocks)(total_activated_stake)(last_producer_schedule_id)(total_producer_vote_weight) )
    };
 
    struct producer_info {

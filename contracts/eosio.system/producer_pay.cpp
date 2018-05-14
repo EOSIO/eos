@@ -85,7 +85,7 @@ namespace eosiosystem {
       int64_t producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
       int64_t total_pay              = producer_per_block_pay + producer_per_vote_pay;
 
-      eosio_assert( total_pay > 100'0000, "insufficient pay to claim, require at least 100.0000 EOS" );
+      eosio_assert( total_pay > 1000000 /* 100'0000 */, "insufficient pay to claim, require at least 100.0000 EOS" );
 
       _gstate.pervote_bucket      -= producer_per_vote_pay;
       _gstate.perblock_bucket     -= producer_per_block_pay;
