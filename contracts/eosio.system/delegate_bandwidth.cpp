@@ -93,12 +93,15 @@ namespace eosiosystem {
     *     an amount equal to the current new account creation fee. 
     */
    void native::newaccount( account_name     creator,
-                    account_name     newact
-                           /*  no need to parse authorites 
-                           const authority& owner,
-                           const authority& active,
-                           const authority& recovery*/ ) {
+                            account_name     newact
+                            /*  no need to parse authorites
+                            const authority& owner,
+                            const authority& active*/ ) {
+      auto name_str = eosio::name{newact}.to_string();
       eosio::print( eosio::name{creator}, " created ", eosio::name{newact}, "\n");
+
+      eosio_assert( name_str.size() == 12, "account names must be 12 chars long" );
+      eosio_assert( name_str.find_first_of('.') == std::string::npos, "account names cannot contain '.' character");
 
       user_resources_table  userres( _self, newact);
 

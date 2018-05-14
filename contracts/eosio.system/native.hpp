@@ -83,10 +83,9 @@ namespace eosiosystem {
           */
          void newaccount( account_name     creator,
                           account_name     newact
-                                 /*  no need to parse authorites 
-                                 const authority& owner,
-                                 const authority& active,
-                                 const authority& recovery*/ );
+                          /*  no need to parse authorites
+                          const authority& owner,
+                          const authority& active*/ );
 
 
          void updateauth( /*account_name     account,

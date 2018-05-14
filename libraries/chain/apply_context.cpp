@@ -189,7 +189,7 @@ void apply_context::execute_inline( action&& a ) {
                                       {},
                                       {{receiver, config::eosio_code_name}},
                                       control.pending_block_time() - trx_context.published,
-                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                      std::bind(&transaction_context::checktime, &this->trx_context),
                                       false
                                     );
 
@@ -248,7 +248,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                                       {},
                                       {{receiver, config::eosio_code_name}},
                                       delay,
-                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                      std::bind(&transaction_context::checktime, &this->trx_context),
                                       false
                                     );
       }
@@ -283,7 +283,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    trx_context.add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
-   checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
+   trx_context.checktime();
 }
 
 void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
@@ -295,7 +295,7 @@ void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
 
    trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
    generated_transaction_idx.remove(*gto);
-   checktime( 100 );
+   trx_context.checktime();
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {
@@ -338,13 +338,9 @@ void apply_context::reset_console() {
    _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
 }
 
-void apply_context::checktime(uint32_t instruction_count) {
-   trx_context.check_time();
-}
-
 bytes apply_context::get_packed_transaction() {
    auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
-   checktime( r.size() );
+   trx_context.checktime();
    return r;
 }
 

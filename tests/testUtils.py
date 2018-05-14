@@ -568,14 +568,14 @@ class Node(object):
             raise
 
     def getCurrencyStats(self, contract, symbol=""):
-        cmd="%s %s get currency stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
+        cmd="%s %s get currency0000 stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get currency stats. %s" % (msg))
+            Utils.Print("ERROR: Exception during get currency0000 stats. %s" % (msg))
             return None
 
     # Verifies account. Returns "get account" json return object
@@ -716,7 +716,7 @@ class Node(object):
         return servants
 
     def getAccountEosBalanceStr(self, scope):
-        """Returns EOS currency account balance from cleos get table command. Returned balance is string following syntax "98.0311 EOS". """
+        """Returns EOS currency0000 account balance from cleos get table command. Returned balance is string following syntax "98.0311 EOS". """
         assert isinstance(scope, str)
         if not self.enableMongo:
             amount=self.getNodeAccountBalance("enumivo.coin", scope)
@@ -736,7 +736,7 @@ class Node(object):
         return None
 
     def getAccountEosBalance(self, scope):
-        """Returns EOS currency account balance from cleos get table command. Returned balance is an integer e.g. 980311. """
+        """Returns EOS currency0000 account balance from cleos get table command. Returned balance is an integer e.g. 980311. """
         balanceStr=self.getAccountEosBalanceStr(scope)
         balanceStr=balanceStr.split()[0]
         balance=int(decimal.Decimal(balanceStr[1:])*10000)
@@ -1174,7 +1174,7 @@ class Cluster(object):
     
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=None, initbPrvtKey=None, staging=False):
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -1185,8 +1185,8 @@ class Cluster(object):
         enableMongo: Include mongoDb support, configures eos mongo plugin
         mongoHost: MongoDB host
         mongoPort: MongoDB port
-        initaPrvtKey: Inita account private key
-        initbPrvtKey: Initb account private key
+        defproduceraPrvtKey: Defproducera account private key
+        defproducerbPrvtKey: Defproducerb account private key
         """
         self.accounts={}
         self.nodes={}
@@ -1212,13 +1212,13 @@ class Cluster(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
         self.staging=staging
         # init accounts
-        self.initaAccount=Account("inita")
-        self.initbAccount=Account("initb")
+        self.defproduceraAccount=Account("defproducera")
+        self.defproducerbAccount=Account("defproducerb")
         self.eosioAccount=Account("eosio")
-        self.initaAccount.ownerPrivateKey=initaPrvtKey
-        self.initaAccount.activePrivateKey=initaPrvtKey
-        self.initbAccount.ownerPrivateKey=initbPrvtKey
-        self.initbAccount.activePrivateKey=initbPrvtKey
+        self.defproduceraAccount.ownerPrivateKey=defproduceraPrvtKey
+        self.defproduceraAccount.activePrivateKey=defproduceraPrvtKey
+        self.defproducerbAccount.ownerPrivateKey=defproducerbPrvtKey
+        self.defproducerbAccount.activePrivateKey=defproducerbPrvtKey
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -1309,24 +1309,24 @@ class Cluster(object):
             Utils.Print("ERROR: Unable to parse cluster info")
             return False
 
-        init1Keys=producerKeys["inita"]
-        init2Keys=producerKeys["initb"]
+        init1Keys=producerKeys["defproducera"]
+        init2Keys=producerKeys["defproducerb"]
         if init1Keys is None or init2Keys is None:
-            Utils.Print("ERROR: Failed to parse inita or intb private keys from cluster config files.")
-        self.initaAccount.ownerPrivateKey=init1Keys["private"]
-        self.initaAccount.ownerPublicKey=init1Keys["public"]
-        self.initaAccount.activePrivateKey=init1Keys["private"]
-        self.initaAccount.activePublicKey=init1Keys["public"]
-        self.initbAccount.ownerPrivateKey=init2Keys["private"]
-        self.initbAccount.ownerPublicKey=init2Keys["public"]
-        self.initbAccount.activePrivateKey=init2Keys["private"]
-        self.initbAccount.activePublicKey=init2Keys["public"]
+            Utils.Print("ERROR: Failed to parse defproducera or intb private keys from cluster config files.")
+        self.defproduceraAccount.ownerPrivateKey=init1Keys["private"]
+        self.defproduceraAccount.ownerPublicKey=init1Keys["public"]
+        self.defproduceraAccount.activePrivateKey=init1Keys["private"]
+        self.defproduceraAccount.activePublicKey=init1Keys["public"]
+        self.defproducerbAccount.ownerPrivateKey=init2Keys["private"]
+        self.defproducerbAccount.ownerPublicKey=init2Keys["public"]
+        self.defproducerbAccount.activePrivateKey=init2Keys["private"]
+        self.defproducerbAccount.activePublicKey=init2Keys["public"]
         producerKeys.pop("eosio")
 
         return True
 
     # Initialize the default nodes (at present just the root node)
-    def initializeNodes(self, initaPrvtKey=None, initbPrvtKey=None, onlyBios=False):
+    def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
         port=Cluster.__BiosPort if onlyBios else self.port
         host=Cluster.__BiosHost if onlyBios else self.host
         node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
@@ -1336,13 +1336,13 @@ class Cluster(object):
         node.checkPulse()
         self.nodes=[node]
 
-        if initaPrvtKey is not None:
-            self.initaAccount.ownerPrivateKey=initaPrvtKey
-            self.initaAccount.activePrivateKey=initaPrvtKey
+        if defproduceraPrvtKey is not None:
+            self.defproduceraAccount.ownerPrivateKey=defproduceraPrvtKey
+            self.defproduceraAccount.activePrivateKey=defproduceraPrvtKey
 
-        if initbPrvtKey is not None:
-            self.initbAccount.ownerPrivateKey=initbPrvtKey
-            self.initbAccount.activePrivateKey=initbPrvtKey
+        if defproducerbPrvtKey is not None:
+            self.defproducerbAccount.ownerPrivateKey=defproducerbPrvtKey
+            self.defproducerbAccount.activePrivateKey=defproducerbPrvtKey
 
         return True
 
@@ -1356,13 +1356,13 @@ class Cluster(object):
         if "keys" in nodesObj:
             keysMap=nodesObj["keys"]
 
-            if "initaPrivateKey" in keysMap:
-                initaPrivateKey=keysMap["initaPrivateKey"]
-                self.initaAccount.ownerPrivateKey=initaPrivateKey
+            if "defproduceraPrivateKey" in keysMap:
+                defproduceraPrivateKey=keysMap["defproduceraPrivateKey"]
+                self.defproduceraAccount.ownerPrivateKey=defproduceraPrivateKey
 
-            if "initbPrivateKey" in keysMap:
-                initbPrivateKey=keysMap["initbPrivateKey"]
-                self.initbAccount.ownerPrivateKey=initbPrivateKey
+            if "defproducerbPrivateKey" in keysMap:
+                defproducerbPrivateKey=keysMap["defproducerbPrivateKey"]
+                self.defproducerbAccount.ownerPrivateKey=defproducerbPrivateKey
 
         nArr=nodesObj["nodes"]
         nodes=[]
@@ -1434,7 +1434,7 @@ class Cluster(object):
                 activePrivate=m.group(1)
                 activePublic=m.group(2)
 
-                name=''.join(random.choice(string.ascii_lowercase) for _ in range(5))
+                name=''.join(random.choice(string.ascii_lowercase) for _ in range(12))
                 account=Account(name)
                 account.ownerPrivateKey=ownerPrivate
                 account.ownerPublicKey=ownerPublic
@@ -1455,7 +1455,7 @@ class Cluster(object):
         return accounts
 
     # create account keys and import into wallet. Wallet initialization will be user responsibility
-    # also imports inita and initb accounts
+    # also imports defproducera and defproducerb accounts
     def populateWallet(self, accountsCount, wallet):
         if self.walletMgr is None:
             Utils.Print("ERROR: WalletMgr hasn't been initialized.")
@@ -1469,14 +1469,14 @@ class Cluster(object):
                 Utils.Print("Account keys creation failed.")
                 return False
 
-        Utils.Print("Importing keys for account %s into wallet %s." % (self.initaAccount.name, wallet.name))
-        if not self.walletMgr.importKey(self.initaAccount, wallet):
-            Utils.Print("ERROR: Failed to import key for account %s" % (self.initaAccount.name))
+        Utils.Print("Importing keys for account %s into wallet %s." % (self.defproduceraAccount.name, wallet.name))
+        if not self.walletMgr.importKey(self.defproduceraAccount, wallet):
+            Utils.Print("ERROR: Failed to import key for account %s" % (self.defproduceraAccount.name))
             return False
 
-        Utils.Print("Importing keys for account %s into wallet %s." % (self.initbAccount.name, wallet.name))
-        if not self.walletMgr.importKey(self.initbAccount, wallet):
-            Utils.Print("ERROR: Failed to import key for account %s" % (self.initbAccount.name))
+        Utils.Print("Importing keys for account %s into wallet %s." % (self.defproducerbAccount.name, wallet.name))
+        if not self.walletMgr.importKey(self.defproducerbAccount, wallet):
+            Utils.Print("ERROR: Failed to import key for account %s" % (self.defproducerbAccount.name))
             return False
 
         for account in accounts:
@@ -1504,7 +1504,7 @@ class Cluster(object):
         count=len(self.accounts)
         transferAmount=(count*amount)+amount
         node=self.nodes[0]
-        fromm=self.initaAccount
+        fromm=self.defproduceraAccount
         to=self.accounts[0]
         Utils.Print("Transfer %d units from account %s to %s on eos server port %d" % (
             transferAmount, fromm.name, to.name, node.port))
@@ -1541,7 +1541,7 @@ class Cluster(object):
 
             transferAmount -= amount
             fromm=account
-            to=self.accounts[i+1] if i < (count-1) else self.initaAccount
+            to=self.accounts[i+1] if i < (count-1) else self.defproduceraAccount
             Utils.Print("Transfer %d units from account %s to %s on eos server port %d." %
                     (transferAmount, fromm.name, to.name, node.port))
 
@@ -1570,7 +1570,7 @@ class Cluster(object):
             if not node.killed:
                 if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
                                             (Utils.EosServerName, node.port))
-                if node.validateSpreadFundsOnNode(self.initaAccount, self.accounts, expectedTotal) is False:
+                if node.validateSpreadFundsOnNode(self.defproduceraAccount, self.accounts, expectedTotal) is False:
                     Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
                     return False
 
@@ -1578,7 +1578,7 @@ class Cluster(object):
 
     def spreadFundsAndValidate(self, amount=1):
         if Utils.Debug: Utils.Print("Get system balance.")
-        initialFunds=self.nodes[0].getSystemBalance(self.initaAccount, self.accounts)
+        initialFunds=self.nodes[0].getSystemBalance(self.defproduceraAccount, self.accounts)
         if Utils.Debug: Utils.Print("Initial system balance: %d" % (initialFunds))
 
         if False == self.spreadFunds(amount):
@@ -1829,7 +1829,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return False
             
-            # Create currency, followed by issue currency
+            # Create currency0000, followed by issue currency0000
             contract=eosioTokenAccount.name
             Utils.Print("push create action to %s contract" % (contract))
             action="create"

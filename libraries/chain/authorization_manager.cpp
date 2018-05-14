@@ -314,16 +314,16 @@ namespace eosio { namespace chain {
       return (itr->delay_until - itr->published);
    }
 
-   void noop_checktime( uint32_t ) {}
+   void noop_checktime() {}
 
-   std::function<void(uint32_t)> authorization_manager::_noop_checktime{std::bind(&noop_checktime, std::placeholders::_1)};
+   std::function<void()> authorization_manager::_noop_checktime{&noop_checktime};
 
    void
    authorization_manager::check_authorization( const vector<action>&                actions,
                                                const flat_set<public_key_type>&     provided_keys,
                                                const flat_set<permission_level>&    provided_permissions,
                                                fc::microseconds                     provided_delay,
-                                               const std::function<void(uint32_t)>& _checktime,
+                                               const std::function<void()>&         _checktime,
                                                bool                                 allow_unused_keys
                                              )const
    {
@@ -367,7 +367,7 @@ namespace eosio { namespace chain {
 
          for( const auto& declared_auth : act.authorization ) {
 
-            checktime( config::base_check_authorization_cpu_per_authorization );
+            checktime();
 
             if( !special_case ) {
                auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
@@ -396,7 +396,7 @@ namespace eosio { namespace chain {
       // The permission_levels are traversed in ascending order, which is:
       // ascending order of the actor name with ties broken by ascending order of the permission name.
       for( const auto& p : permissions_to_satisfy ) {
-         checktime( config::base_authority_checker_cpu_per_permission ); // TODO: this should eventually move into authority_checker instead
+         checktime(); // TODO: this should eventually move into authority_checker instead
          EOS_ASSERT( checker.satisfied( p.first, p.second ), unsatisfied_authorization,
                      "transaction declares authority '${auth}', "
                      "but does not have signatures for it under a provided delay of ${provided_delay} ms",
@@ -419,7 +419,7 @@ namespace eosio { namespace chain {
                                                const flat_set<public_key_type>&     provided_keys,
                                                const flat_set<permission_level>&    provided_permissions,
                                                fc::microseconds                     provided_delay,
-                                               const std::function<void(uint32_t)>& _checktime,
+                                               const std::function<void()>&         _checktime,
                                                bool                                 allow_unused_keys
                                              )const
    {

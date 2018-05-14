@@ -782,7 +782,7 @@ class permission_api : public context_aware_api {
                                          provided_keys,
                                          provided_permissions,
                                          fc::seconds(trx.delay_sec),
-                                         std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                         std::bind(&transaction_context::checktime, &context.trx_context),
                                          false
                                        );
             return true;
@@ -814,7 +814,7 @@ class permission_api : public context_aware_api {
                                          provided_keys,
                                          provided_permissions,
                                          fc::microseconds(delay_us),
-                                         std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                         std::bind(&transaction_context::checktime, &context.trx_context),
                                          false
                                        );
             return true;
@@ -1630,8 +1630,8 @@ REGISTER_INTRINSICS(privileged_api,
    (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INJECTED_INTRINSICS(apply_context,
-   (checktime,      void(int))
+REGISTER_INJECTED_INTRINSICS(transaction_context,
+   (checktime,      void())
 );
 
 REGISTER_INTRINSICS(producer_api,

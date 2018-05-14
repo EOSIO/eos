@@ -62,7 +62,7 @@ namespace detail {
    class authority_checker {
       private:
          PermissionToAuthorityFunc            permission_to_authority;
-         const std::function<void(uint32_t)>& checktime;
+         const std::function<void()>&         checktime;
          vector<public_key_type>              provided_keys; // Making this a flat_set<public_key_type> causes runtime problems with utilities::filter_data_by_marker for some reason. TODO: Figure out why.
          flat_set<permission_level>           provided_permissions;
          vector<bool>                         _used_keys;
@@ -75,7 +75,7 @@ namespace detail {
                             const flat_set<public_key_type>&     provided_keys,
                             const flat_set<permission_level>&    provided_permissions,
                             fc::microseconds                     provided_delay,
-                            const std::function<void(uint32_t)>& checktime
+                            const std::function<void()>&         checktime
                          )
          :permission_to_authority(permission_to_authority)
          ,checktime( checktime )
@@ -277,10 +277,10 @@ namespace detail {
                            const flat_set<public_key_type>&     provided_keys,
                            const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
                            fc::microseconds                     provided_delay = fc::microseconds(0),
-                           const std::function<void(uint32_t)>& _checktime = std::function<void(uint32_t)>()
+                           const std::function<void()>&         _checktime = std::function<void()>()
                          )
    {
-      auto noop_checktime = []( uint32_t ) {};
+      auto noop_checktime = []() {};
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : noop_checktime );
       return authority_checker< PermissionToAuthorityFunc>( std::forward<PermissionToAuthorityFunc>(pta),
                                                             recursion_depth_limit,

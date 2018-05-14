@@ -79,13 +79,13 @@
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
-		printf "\\n\\t%s\\n\\n" "${DISPLAY}"
+		printf "\\n\\t${DISPLAY}\\n\\n"
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* ) 
 					printf "\\n\\n\\tInstalling dependencies.\\n\\n"
-					if ! sudo "${YUM}" -y install "${DEP}"
+					if ! sudo "${YUM}" -y install ${DEP}
 					then
 						printf "\\n\\tYUM dependency installation failed.\\n"
 						printf "\\n\\tExiting now.\\n"
