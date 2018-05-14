@@ -195,4 +195,67 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
 
    } FC_LOG_AND_RETHROW()
 #endif
+
+
+BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
+   create_accounts( {N(alice),N(bob),N(carol)} );
+   produce_block();
+
+   auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
+      return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
+   };
+
+   auto res = set_producers( {N(alice),N(bob)} );
+   vector<producer_key> sch1 = {
+                                 {N(alice), get_public_key(N(alice), "active")},
+                                 {N(bob),   get_public_key(N(bob),   "active")}
+                               };
+   //wdump((fc::json::to_pretty_string(res)));
+   wlog("set producer schedule to [alice,bob]");
+   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 0 );
+   produce_block(); // Starts new block which promotes the proposed schedule to pending
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->pending_producers() ) );
+   BOOST_CHECK_EQUAL( control->active_producers().version, 0 );
+   produce_block(); // Starts new block which promotes the pending schedule to active
+   BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
+   produce_blocks(7);
+
+   res = set_producers( {N(alice),N(bob),N(carol)} );
+   vector<producer_key> sch2 = {
+                                 {N(alice), get_public_key(N(alice), "active")},
+                                 {N(bob),   get_public_key(N(bob),   "active")},
+                                 {N(carol), get_public_key(N(carol), "active")}
+                               };
+   wlog("set producer schedule to [alice,bob,carol]");
+   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, *control->proposed_producers() ) );
+
+   produce_block(); // Alice produces the last block of her first round.
+                    // Bob's first block (which advances LIB to Alice's last block) is started but not finalized.
+   BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(alice) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(bob) );
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
+
+   produce_blocks(11); // Bob produces his first 11 blocks
+   BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+   produce_block(); // Bob produces his 12th block.
+                    // Alice's first block of the second round is started but not finalized (which advances LIB to Bob's last block).
+   BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(bob) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(alice) );
+   BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
+
+   produce_block(); // Alice produces the first block of her second round which has changed the active schedule.
+
+   // The next block will be produced according to the new schedule
+   produce_block();
+   BOOST_CHECK_EQUAL( control->head_block_producer(), N(carol) ); // And that next block happens to be produced by Carol.
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
