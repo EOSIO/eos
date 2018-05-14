@@ -1194,10 +1194,34 @@ void get_account( const string& accountName, bool json_format ) {
          dfs_print( r, 0 );
       }
 
-      std::cout << "memory: " << std::endl
-                << indent << "quota: " << std::setw(15) << res.ram_quota << " bytes    used: " << std::setw(15) << res.ram_usage << " bytes" << std::endl << std::endl;
+      auto to_pretty_net = []( double bytes ) {
+         string unit = "bytes";
 
-      std::cout << "net bandwidth:" << std::endl;
+         if( bytes >= 1024*1024*1024*1024ll ){
+            unit = "Tb";
+            bytes /= 1024*1024*1024*1024ll;
+         }else if( bytes >= 1024*1024*1024 ){
+            unit = "Gb";
+            bytes /= 1024*1024*1024;
+         } else if( bytes >= 1024*1024 ){
+            unit = "Mb";
+            bytes /= 1024*1024;
+         } else if( bytes >= 1024 ) {
+            unit = "Kb";
+            bytes /= 1024;
+         }
+         std::stringstream ss;
+         ss << setprecision(4);
+         ss << bytes << " " << std::left << setw(5) << unit;
+         return ss.str();
+      };
+
+
+
+      std::cout << "memory: " << std::endl
+                << indent << "quota: " << std::setw(15) << to_pretty_net(res.ram_quota) << "  used: " << std::setw(15) << to_pretty_net(res.ram_usage) << std::endl << std::endl;
+
+      std::cout << "net bandwidth: (averaged over 3 days)" << std::endl;
       if ( res.total_resources.is_object() ) {
          asset net_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) : 0 );
          auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
@@ -1207,47 +1231,41 @@ void get_account( const string& accountName, bool json_format ) {
                    << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
       }
 
-      string unit = "bytes";
-      double net_usage = res.net_limit.available;
 
-      if( res.net_limit.available >= 1024*1024*1024 ){
-         unit = "Gb";
-         net_usage /= 1024*1024*1024;
-      } else if( res.net_limit.available >= 1024*1024 ){
-         unit = "Mb";
-         net_usage /= 1024*1024;
-      } else if( res.net_limit.available >= 1024 ) {
-         unit = "Kb";
-         net_usage /= 1024;
-      }
+      auto to_pretty_time = []( double micro ) {
+         string unit = "us";
+
+         if( micro > 1000000*60 ) {
+            micro /= 1000000*60*60ll;
+            unit = "hr";
+         }
+         else if( micro > 1000000*60 ) {
+            micro /= 1000000*60;
+            unit = "min";
+         }
+         else if( micro > 1000000 ) {
+            micro /= 1000000;
+            unit = "sec";
+         }
+         else if( micro > 1000 ) {
+            micro /= 1000;
+            unit = "ms";
+         }
+         std::stringstream ss;
+         ss << setprecision(4);
+         ss << micro<< " " << std::left << setw(5) << unit;
+         return ss.str();
+      };
+
 
       std::cout << std::fixed << setprecision(3);
-      std::cout << indent << "used:" << std::setw(15) << ("~"+std::to_string(res.net_limit.used)) << " bytes (past 3 days)"
-                << std::string(3, ' ') << "(assuming current congestion and current usage)" << std::endl
-                << indent << "available:" << std::setw(19) << ("~"+std::to_string(net_usage)) << " "<<unit
-                << std::string(3, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
-                /*
-                << indent << "guaranteed: " << std::setw(11) << res.net_limit.guaranteed_per_day << " bytes/day"
-                << std::string(5, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
-                */
-                << std::endl;
+      std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_net( res.net_limit.used ) << "\n";
+      std::cout << indent << std::left << std::setw(11) << "available:" << std::right << std::setw(18) << to_pretty_net( res.net_limit.available ) << "\n";
+      std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_net( res.net_limit.max ) << "\n";
+      std::cout << std::endl;
 
 
-      std::cout << "cpu bandwidth:" << std::endl;
-
-      double cpu_avail = res.cpu_limit.available/1000000.;
-      string cunit = "sec";
-
-      if( cpu_avail > 60*60*24 ) {
-         cunit = "days";
-         cpu_avail /= 60*60*24;
-      } else  if( cpu_avail > 60*60 ) {
-         cunit = "hr";
-         cpu_avail /= 60*60;
-      } else if( cpu_avail > 60 ) {
-         cunit = "min";
-         cpu_avail /= 60;
-      }
+      std::cout << "cpu bandwidth: (averaged over 3 days)" << std::endl;
 
 
       if ( res.total_resources.is_object() ) {
@@ -1259,13 +1277,13 @@ void get_account( const string& accountName, bool json_format ) {
                    << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
       }
 
-      std::cout << indent << "used:" << std::setw(15) << ("~"+std::to_string(double(res.cpu_limit.used/1000000.))) << " sec (past 3 days)\n"
-                << indent << "available:" << std::setw(19) << ("~"+std::to_string(cpu_avail) )<< " " << cunit <<"\n"
-                /*
-                << indent << "guaranteed:" << std::setw(12) << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day"
-                << std::string(4, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
-                */
-                << std::endl;
+
+      std::cout << std::fixed << setprecision(3);
+      std::cout << indent << std::left << std::setw(11) << "used:"      << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.used ) << "\n";
+      std::cout << indent << std::left << std::setw(11) << "available:" << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.available ) << "\n";
+      std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
+      std::cout << std::endl;
+
 
       if ( res.voter_info.is_object() ) {
          auto& obj = res.voter_info.get_object();

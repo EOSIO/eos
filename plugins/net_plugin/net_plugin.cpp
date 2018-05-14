@@ -449,7 +449,7 @@ namespace eosio {
 
       struct queued_write {
          std::shared_ptr<vector<char>> buff;
-         std::function<void(boost::system::error_code, std::size_t)> cb;
+         std::function<void(boost::system::error_code, std::size_t)> callback;
       };
       deque<queued_write>     write_queue;
 
@@ -551,7 +551,7 @@ namespace eosio {
 
       void queue_write(std::shared_ptr<vector<char>> buff,
                        bool trigger_send,
-                       std::function<void(boost::system::error_code, std::size_t)> cb);
+                       std::function<void(boost::system::error_code, std::size_t)> callback);
       void do_queue_write();
 
       /** \brief Process the next message from the pending message buffer
@@ -941,8 +941,8 @@ namespace eosio {
 
    void connection::queue_write(std::shared_ptr<vector<char>> buff,
                                 bool trigger_send,
-                                std::function<void(boost::system::error_code, std::size_t)> cb) {
-      write_queue.push_back({buff, cb});
+                                std::function<void(boost::system::error_code, std::size_t)> callback) {
+      write_queue.push_back({buff, callback});
       if(write_queue.size() == 1 && trigger_send)
          do_queue_write();
    }
@@ -950,13 +950,18 @@ namespace eosio {
    void connection::do_queue_write() {
       if(write_queue.empty())
          return;
+      connection_wptr c(shared_from_this());
+      if(!socket->is_open()) {
+         fc_elog(logger,"socket not open to ${p}",("p",peer_name()));
+         my_impl->close(c.lock());
+         return;
+      }
       write_depth++;
       size_t num_buffs = write_queue.size();
       std::vector<boost::asio::const_buffer> bufs;
       for (auto m: write_queue) {
          bufs.push_back(boost::asio::buffer(*m.buff));
       }
-      connection_wptr c(shared_from_this());
       boost::asio::async_write(*socket, bufs, [c, num_buffs](boost::system::error_code ec, std::size_t w) {
             try {
                auto conn = c.lock();
@@ -965,7 +970,7 @@ namespace eosio {
 
                if (conn->write_queue.size() >= num_buffs ) {
                   for (size_t i = 0; i < num_buffs; i++) {
-                     conn->write_queue[i].cb(ec, w);
+                     conn->write_queue[i].callback(ec, w);
                   }
                }
                conn->write_depth--;
@@ -2603,29 +2608,29 @@ namespace eosio {
    }
 
    void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
-      fc_ilog(logger,"signaled, id = ${id}",("id", block->id));
+      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
    }
 
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
-      fc_ilog(logger,"signaled, id = ${id}",("id", block->id));
+      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
       dispatcher->bcast_block(*block->block);
    }
 
    void net_plugin_impl::irreversible_block(const block_state_ptr&block) {
-      fc_ilog(logger,"signaled, id = ${id}",("id", block->id));
+      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
    }
 
    void net_plugin_impl::accepted_transaction(const transaction_metadata_ptr& md) {
-      fc_ilog(logger,"signaled, id = ${id}",("id", md->id));
+      fc_dlog(logger,"signaled, id = ${id}",("id", md->id));
 //      dispatcher->bcast_transaction(md->packed_trx);
    }
 
    void net_plugin_impl::applied_transaction(const transaction_trace_ptr& txn) {
-      fc_ilog(logger,"signaled, id = ${id}",("id", txn->id));
+      fc_dlog(logger,"signaled, id = ${id}",("id", txn->id));
    }
 
    void net_plugin_impl::accepted_confirmation(const header_confirmation& head) {
-      fc_ilog(logger,"signaled, id = ${id}",("id", head.block_id));
+      fc_dlog(logger,"signaled, id = ${id}",("id", head.block_id));
    }
 
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>& results) {

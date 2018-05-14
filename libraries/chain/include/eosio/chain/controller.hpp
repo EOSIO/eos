@@ -99,7 +99,7 @@ namespace eosio { namespace chain {
          void log_irreversible_blocks();
          void pop_block();
 
-         void push_block( const signed_block_ptr& b );
+         void push_block( const signed_block_ptr& b, bool trust = false /* does the caller trust the block*/ );
 
          /**
           * Call this method when a producer confirmation is received, this might update
