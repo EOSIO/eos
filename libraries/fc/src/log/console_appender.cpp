@@ -83,7 +83,11 @@ namespace fc {
    }
 
    boost::mutex& log_mutex() {
-    static boost::mutex m; return m;
+      //this mutex should live longer than any other static variables
+      //which may want to write logs from destructor (for example, nodeos`appbase::application)
+      //so, make it live forever (it's a memory leak, but memory usage doesn't grow over time)
+      static boost::mutex* m_ptr = new boost::mutex;
+      return *m_ptr;
    }
 
    void console_appender::log( const log_message& m ) {
