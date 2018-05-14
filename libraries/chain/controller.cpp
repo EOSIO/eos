@@ -554,18 +554,6 @@ struct controller_impl {
       return r;
    }
 
-   void transaction_trace_notify( const transaction_metadata_ptr& trx, const transaction_trace_ptr& trace ) {
-      if( trx->on_result ) {
-         (trx->on_result)(trace);
-         trx->on_result = decltype(trx->on_result)(); //assign empty std::function
-      }
-
-      if (!trx->accepted) {
-         emit( self.accepted_transaction, trx);
-         trx->accepted = true;
-      }
-   }
-
    /**
     *  This is the entry point for new transactions to the block state. It will check authorization and
     *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
@@ -629,7 +617,11 @@ struct controller_impl {
 
             fc::move_append(pending->_actions, move(trx_context.executed));
 
-            transaction_trace_notify(trx, trace);
+            // call the accept signal but only once for this transaction
+            if (!trx->accepted) {
+               emit( self.accepted_transaction, trx);
+               trx->accepted = true;
+            }
 
             emit(self.applied_transaction, trace);
 
@@ -645,7 +637,10 @@ struct controller_impl {
             trace->except_ptr = std::current_exception();
          }
 
-         transaction_trace_notify(trx, trace);
+         if (!failure_is_subjective(*trace->except)) {
+            unapplied_transactions.erase( trx->signed_id );
+         }
+
          return trace;
       } FC_CAPTURE_AND_RETHROW((trace))
    } /// push_transaction

@@ -42,8 +42,8 @@ testSuccessful=False
 
 clusterMapJsonTemplate="""{
     "keys": {
-        "initaPrivateKey": "%s",
-        "initbPrivateKey": "%s"
+        "defproduceraPrivateKey": "%s",
+        "defproducerbPrivateKey": "%s"
     },
     "nodes": [
         {"port": 8888, "host": "localhost"},
@@ -73,10 +73,10 @@ try:
         errorExit("Cluster never stabilized")
 
     producerKeys=testUtils.Cluster.parseClusterKeys(total_nodes)
-    initaPrvtKey=producerKeys["inita"]["private"]
-    initbPrvtKey=producerKeys["initb"]["private"]
+    defproduceraPrvtKey=producerKeys["defproducera"]["private"]
+    defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
 
-    clusterMapJson = clusterMapJsonTemplate % (initaPrvtKey, initbPrvtKey)
+    clusterMapJson = clusterMapJsonTemplate % (defproduceraPrvtKey, defproducerbPrvtKey)
 
     tfile = os.fdopen(fd, "w")
     tfile.write(clusterMapJson)
