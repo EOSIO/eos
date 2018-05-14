@@ -238,6 +238,20 @@ public:
       return stake( acnt, acnt, net, cpu );
    }
 
+   action_result stake_with_transfer( const account_name& from, const account_name& to, const string& net, const string& cpu ) {
+      return push_action( name(from), N(delegatebw), mvo()
+                          ("from",     from)
+                          ("receiver", to)
+                          ("stake_net_quantity", net)
+                          ("stake_cpu_quantity", cpu)
+                          ("transfer", true )
+      );
+   }
+
+   action_result stake_with_transfer( const account_name& acnt, const string& net, const string& cpu ) {
+      return stake_with_transfer( acnt, acnt, net, cpu );
+   }
+
    action_result unstake( const account_name& from, const account_name& to, const string& net, const string& cpu ) {
       return push_action( name(from), N(undelegatebw), mvo()
                           ("from",     from)
@@ -527,6 +541,52 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    REQUIRE_MATCHING_OBJECT( voter( "alice1111111", "0.0000 EOS" ), get_voter_info( "alice1111111" ) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice1111111" ) );
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try {
+   //issue( "eosio", "1000.0000 EOS", config::system_account_name );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice1111111" ) );
+
+   //eosio stakes for alice with transfer flag
+   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "eosio", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
+
+   //check that alice has both bandwidth and voting power
+   auto total = get_total_stake("alice1111111");
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
+   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", "300.0000 EOS"), get_voter_info( "alice1111111" ) );
+
+   //BOOST_REQUIRE_EQUAL( asset::from_string("999999700.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice1111111" ) );
+
+   //alice stakes for herself
+   transfer( "eosio", "alice1111111", "1000.0000 EOS", "eosio" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
+   //now alice's stake should be equal to transfered from eosio + own stake
+   total = get_total_stake("alice1111111");
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice1111111" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("410.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["cpu_weight"].as<asset>());
+   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", "600.0000 EOS"), get_voter_info( "alice1111111" ) );
+
+   //alice can unstake everything (including what was transfered)
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "alice1111111", "400.0000 EOS", "200.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice1111111" ) );
+
+   produce_block( fc::hours(3*24-1) );
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice1111111" ) );
+   //after 3 days funds should be released
+   produce_block( fc::hours(1) );
+   produce_blocks(1);
+   BOOST_REQUIRE_EQUAL( asset::from_string("1300.0000 EOS"), get_balance( "alice1111111" ) );
+
+   //stake should be equal to what was staked in constructor, votring power should be 0
+   total = get_total_stake("alice1111111");
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS"), total["cpu_weight"].as<asset>());
+   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", "0.0000 EOS"), get_voter_info( "alice1111111" ) );
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
