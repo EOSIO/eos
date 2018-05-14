@@ -13,6 +13,8 @@ database::database(const std::string &uri)
 
 void database::wipe()
 {
+    std::unique_lock<std::mutex> lock(m_mux);
+
     m_accounts_table->drop();
 
     m_accounts_table->create();
