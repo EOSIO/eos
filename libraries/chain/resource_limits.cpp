@@ -401,7 +401,9 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    uint128_t user_weight     = cpu_weight;
    uint128_t all_user_weight = state.total_cpu_weight;
 
-   auto max_user_use_in_window = (virtual_cpu_capacity_in_window * user_weight) / all_user_weight;
+   wdump((cpu_weight));
+
+   auto max_user_use_in_window = (uint128_t(virtual_cpu_capacity_in_window) * user_weight) / all_user_weight;
    auto cpu_used_in_window  = (usage.cpu_usage.value_ex * window_size) / config::rate_limiting_precision;
 
    if( max_user_use_in_window <= cpu_used_in_window ) 
@@ -410,6 +412,7 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
       arl.available = max_user_use_in_window - cpu_used_in_window;
 
    arl.used = cpu_used_in_window;
+   arl.max = max_user_use_in_window;
 
    return arl;
 }
@@ -471,6 +474,7 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
       arl.available = max_user_use_in_window - net_used_in_window;
 
    arl.used = net_used_in_window;
+   arl.max = max_user_use_in_window;
    return arl;
 }
 
