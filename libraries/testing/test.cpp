@@ -1,8 +1,8 @@
 #include <enumivo/testing/tester.hpp>
 #include <fc/io/json.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 using namespace eosio::chain;
 using namespace eosio::testing;

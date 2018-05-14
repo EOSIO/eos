@@ -4,7 +4,7 @@
  */
 #include <proxy/proxy.hpp>
 #include <enumivolib/transaction.hpp>
-#include <enumivo.token/enumivo.token.hpp>
+#include <enumivo.coin/enumivo.coin.hpp>
 
 namespace proxy {
    using namespace eosio;

@@ -8,8 +8,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 #include <Runtime/Runtime.h>
 

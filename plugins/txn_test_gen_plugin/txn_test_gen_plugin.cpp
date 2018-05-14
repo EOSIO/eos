@@ -23,8 +23,8 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 namespace eosio { namespace detail {
   struct txn_test_gen_empty {};
@@ -79,7 +79,7 @@ struct txn_test_gen_plugin_impl {
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
       name newaccountA("txn.test.a");
       name newaccountB("txn.test.b");
-      name newaccountC("enumivo.token");
+      name newaccountC("enumivo.coin");
       name creator(init_name);
 
       abi_def currency_abi_def = fc::json::from_string(enumivo_token_abi).as<abi_def>();
@@ -115,7 +115,7 @@ struct txn_test_gen_plugin_impl {
 
          trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
          }
-         //create "enumivo.token" account
+         //create "enumivo.coin" account
          {
          auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
          auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
@@ -129,7 +129,7 @@ struct txn_test_gen_plugin_impl {
          push_transaction(trx);
       }
 
-      //set enumivo.token contract & initialize it
+      //set enumivo.coin contract & initialize it
       {
          signed_transaction trx;
 
@@ -153,7 +153,7 @@ struct txn_test_gen_plugin_impl {
             act.account = N(enumivo.coin);
             act.name = N(create);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = enumivo_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"enumivo.token\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
+            act.data = enumivo_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"enumivo.coin\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
             trx.actions.push_back(act);
          }
          {
@@ -161,7 +161,7 @@ struct txn_test_gen_plugin_impl {
             act.account = N(enumivo.coin);
             act.name = N(issue);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = enumivo_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"enumivo.token\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
+            act.data = enumivo_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"enumivo.coin\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
          {
@@ -169,7 +169,7 @@ struct txn_test_gen_plugin_impl {
             act.account = N(enumivo.coin);
             act.name = N(transfer);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = enumivo_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"enumivo.token\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            act.data = enumivo_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"enumivo.coin\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
          {
@@ -177,7 +177,7 @@ struct txn_test_gen_plugin_impl {
             act.account = N(enumivo.coin);
             act.name = N(transfer);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = enumivo_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"enumivo.token\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            act.data = enumivo_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"enumivo.coin\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
 

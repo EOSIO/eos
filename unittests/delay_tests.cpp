@@ -5,8 +5,8 @@
 #include <enumivo/chain/generated_transaction_object.hpp>
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -272,30 +272,30 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    // link auth
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", "enumivo.token")
+           ("code", "enumivo.coin")
            ("type", "transfer")
            ("requirement", "first"));
 
    // create CUR token
    chain.produce_blocks();
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
-           ("issuer", "enumivo.token" )
+           ("issuer", "enumivo.coin" )
            ("maximum_supply", "9000000.0000 CUR" )
            ("can_freeze", 0)
            ("can_recall", 0)
            ("can_whitelist", 0)
    );
 
-   // issue to account "enumivo.token"
+   // issue to account "enumivo.coin"
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
-           ("to",       "enumivo.token")
+           ("to",       "enumivo.coin")
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
-   // transfer from enumivo.token to tester
+   // transfer from enumivo.coin to tester
    trace = chain.push_action(N(enumivo.coin), name("transfer"), N(enumivo.coin), fc::mutable_variant_object()
-       ("from", "enumivo.token")
+       ("from", "enumivo.coin")
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    // unlink auth
    trace = chain.push_action(config::system_account_name, unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", "enumivo.token")
+           ("code", "enumivo.coin")
            ("type", "transfer"));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
@@ -2324,7 +2324,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 
    chain.produce_blocks();
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
-           ("issuer", "enumivo.token" )
+           ("issuer", "enumivo.coin" )
            ("maximum_supply", "9000000.0000 CUR" )
            ("can_freeze", 0)
            ("can_recall", 0)
@@ -2347,7 +2347,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 
    trace = chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
                      ("account", "tester")
-                     ("code", "enumivo.token")
+                     ("code", "enumivo.coin")
                      ("type", "transfer")
                      ("requirement", "first"));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
@@ -2370,7 +2370,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    //should be able to create transaction with delay 60 sec, despite permission delay being 30 days, because max_transaction_delay is 60 sec
    trace = chain.push_action(N(enumivo.coin), name("transfer"), N(tester), fc::mutable_variant_object()
                            ("from", "tester")
-                           ("to", "enumivo.token")
+                           ("to", "enumivo.coin")
                            ("quantity", "9.0000 CUR")
                            ("memo", "" ), 120, 60);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);

@@ -1,6 +1,6 @@
 #include "eosio.system.hpp"
 
-#include <enumivo.token/enumivo.token.hpp>
+#include <enumivo.coin/enumivo.coin.hpp>
 
 namespace eosiosystem {
 

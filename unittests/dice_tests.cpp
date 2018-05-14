@@ -6,8 +6,8 @@
 #include <dice/dice.wast.hpp>
 #include <dice/dice.abi.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -236,7 +236,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    add_dice_authority(N(carol));
 
    push_action(N(enumivo.coin), N(create), N(enumivo.coin), mvo()
-     ("issuer", "enumivo.token")
+     ("issuer", "enumivo.coin")
      ("maximum_supply", "1000000000.0000 EOS")
      ("can_freeze", "0")
      ("can_recall", "0")

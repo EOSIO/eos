@@ -45,14 +45,14 @@ Execute a proposal
 Cleos usage example.
 
 Prerequisites:
-   - enumivo.token contract installed to enumivo.token accountm, enumivo.msig contract installed on enumivo.msig account which is a priviliged account.
+   - enumivo.coin contract installed to enumivo.coin accountm, enumivo.msig contract installed on enumivo.msig account which is a priviliged account.
    - account 'treasury' is the issuer of EOS token.
    - account 'tester' exists.
    - keys to accounts 'treasury' and 'tester' imported into local wallet, the wallet is unlocked.
 
 One user creates a proposal:
 ````
-$ cleos multisig propose test '[{"actor": "treasury", "permission": "active"}]' '[{"actor": "treasury", "permission": "active"}]' enumivo.token issue '{"to": "tester", "quantity": "1000.0000 EOS", "memo": ""}' -p tester
+$ cleos multisig propose test '[{"actor": "treasury", "permission": "active"}]' '[{"actor": "treasury", "permission": "active"}]' enumivo.coin issue '{"to": "tester", "quantity": "1000.0000 EOS", "memo": ""}' -p tester
 executed transaction: e26f3a3a7cba524a7b15a0b6c77c7daa73d3ba9bf84e83f9c2cdf27fcb183d61  336 bytes  107520 cycles
 #    enumivo.msig <= enumivo.msig::propose          {"proposer":"tester","proposal_name":"test","requested":[{"actor":"treasury","permission":"active"}]...
 ````
@@ -79,7 +79,7 @@ $ cleos multisig review tester test -p treasury
     "delay_sec": 0,
     "context_free_actions": [],
     "actions": [{
-        "account": "enumivo.token",
+        "account": "enumivo.coin",
         "name": "issue",
         "authorization": [{
             "actor": "treasury",

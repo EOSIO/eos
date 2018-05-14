@@ -4,8 +4,8 @@
 #include <enumivo/chain/abi_serializer.hpp>
 #include <enumivo/chain/symbol.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 #include <exchange/exchange.wast.hpp>
 #include <exchange/exchange.abi.hpp>

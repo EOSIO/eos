@@ -7,8 +7,8 @@
 // These contracts are still under dev
 #include <enumivo.bios/enumivo.bios.wast.hpp>
 #include <enumivo.bios/enumivo.bios.abi.hpp>
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 #include <enumivo.msig/enumivo.msig.wast.hpp>
 #include <enumivo.msig/enumivo.msig.abi.hpp>
 
@@ -172,7 +172,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Create the following accounts:
         //  enumivo.msig
-        //  enumivo.token
+        //  enumivo.coin
         create_accounts({N(enumivo.msig), N(enumivo.coin)});
         /*
         auto eosio_active = authority( 1, {}, {{{N(eosio),N(active)},1}} );
@@ -200,7 +200,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Set code for the following accounts:
         //  eosio.system  (code: enumivo.bios)
         //  enumivo.msig (code: enumivo.msig)
-        //  enumivo.token    (code: enumivo.token)
+        //  enumivo.coin    (code: enumivo.coin)
         set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &eosio_active_pk);
         set_code_abi(N(enumivo.coin), enumivo_token_wast, enumivo_token_abi); //, &eosio_active_pk);
 
@@ -219,7 +219,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto max_supply = asset::from_string("10000000000.0000 EOS"); /// 1x larger than 1B initial tokens
         auto initial_supply = asset::from_string("1000000000.0000 EOS"); /// 1x larger than 1B initial tokens
 
-        // Create EOS tokens in enumivo.token, set its manager as eosio.system
+        // Create EOS tokens in enumivo.coin, set its manager as eosio.system
         create_currency(N(enumivo.coin), config::system_account_name, max_supply );
 
 
