@@ -1729,6 +1729,8 @@ int main( int argc, char** argv ) {
 
    auto set_abi_callback = [&]() {
       fc::path cpath(contractPath);
+      if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
+
       if( abiPath.empty() )
       {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
@@ -1736,7 +1738,6 @@ int main( int argc, char** argv ) {
 
       FC_ASSERT( fc::exists( abiPath ), "no abi file found ${f}", ("f", abiPath)  );
 
-      std::vector<chain::action> actions;
       try {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
