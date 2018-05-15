@@ -2,10 +2,7 @@
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
-    },{
-      "new_type_name": "time_point_sec",
-      "type": "time"
-    }
+    }  
   ],
   "structs": [{
       "name": "permission_level",
