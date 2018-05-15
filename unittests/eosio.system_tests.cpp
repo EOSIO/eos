@@ -502,6 +502,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), sellram( "alice1111111", bought_bytes ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9991 EOS"), get_balance( "alice1111111" ) );
 
+
    newtotal = get_total_stake( "alice1111111" );
    auto startbytes = newtotal["ram_bytes"].as_uint64();
 
