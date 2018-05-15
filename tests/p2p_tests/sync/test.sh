@@ -54,7 +54,7 @@ fi
 
 total_nodes="${total_nodes:-`echo $pnodes`}"
 launcherPath="programs/enu-launcher/enu-launcher"
-clientPath="programs/cleos/cleos"
+clientPath="programs/enu-cli/enu-cli"
 
 rm -rf etc/eosio/node_* var/lib/* stage
 ls -l etc/eosio var/lib

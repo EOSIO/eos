@@ -42,7 +42,7 @@ Execute a proposal
    - **executer** account executing the transaction
 
 
-Cleos usage example.
+enu-cli usage example.
 
 Prerequisites:
    - enumivo.coin contract installed to enumivo.coin accountm, enumivo.msig contract installed on enumivo.msig account which is a priviliged account.
@@ -52,14 +52,14 @@ Prerequisites:
 
 One user creates a proposal:
 ````
-$ cleos multisig propose test '[{"actor": "treasury", "permission": "active"}]' '[{"actor": "treasury", "permission": "active"}]' enumivo.coin issue '{"to": "tester", "quantity": "1000.0000 EOS", "memo": ""}' -p tester
+$ enu-cli multisig propose test '[{"actor": "treasury", "permission": "active"}]' '[{"actor": "treasury", "permission": "active"}]' enumivo.coin issue '{"to": "tester", "quantity": "1000.0000 EOS", "memo": ""}' -p tester
 executed transaction: e26f3a3a7cba524a7b15a0b6c77c7daa73d3ba9bf84e83f9c2cdf27fcb183d61  336 bytes  107520 cycles
 #    enumivo.msig <= enumivo.msig::propose          {"proposer":"tester","proposal_name":"test","requested":[{"actor":"treasury","permission":"active"}]...
 ````
 
 Another user reviews the transaction:
 ````
-$ cleos multisig review tester test -p treasury
+$ enu-cli multisig review tester test -p treasury
 {
   "proposal_name": "test",
   "requested_approvals": [{
@@ -100,14 +100,14 @@ $ cleos multisig review tester test -p treasury
 
 And then approves it:
 ````
-$ cleos multisig approve tester test '{"actor": "treasury", "permission": "active"}' -p treasury
+$ enu-cli multisig approve tester test '{"actor": "treasury", "permission": "active"}' -p treasury
 executed transaction: 475970a4b0016368d0503d1ce01577376f91f5a5ba63dd4353683bd95101b88d  256 bytes  108544 cycles
 #    enumivo.msig <= enumivo.msig::approve          {"proposer":"tester","proposal_name":"test","level":{"actor":"treasury","permission":"active"}}
 ````
 
 First user initiates execution:
 ````
-$ cleos multisig exec tester test -p tester
+$ enu-cli multisig exec tester test -p tester
 executed transaction: 64e5eaceb77362694055f572ae35876111e87b637a55250de315b1b55e56d6c2  248 bytes  109568 cycles
 #    enumivo.msig <= enumivo.msig::exec             {"proposer":"tester","proposal_name":"test","executer":"tester"}
 ````

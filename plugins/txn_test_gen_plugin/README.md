@@ -59,8 +59,8 @@ $ ./nodeos -d ~/eos.data/generator_node --config-dir ~/eos.data/generator_node -
 
 ### Create a wallet on the non-producer and set bios contract
 ```bash
-$ ./cleos wallet create
-$ ./cleos set contract eosio ~/eos/build.release/contracts/enumivo.bios/ 
+$ ./enu-cli wallet create
+$ ./enu-cli set contract eosio ~/eos/build.release/contracts/enumivo.bios/ 
 ```
 
 ### Initialize the accounts txn_test_gen_plugin uses
