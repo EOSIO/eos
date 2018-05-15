@@ -453,20 +453,19 @@ namespace eosio {
       };
       deque<queued_write>     write_queue;
       deque<queued_write>     out_queue;
-
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
-      int16_t                 sent_handshake_count;
-      bool                    connecting;
-      bool                    syncing;
-      uint16_t                protocol_version;
+      int16_t                 sent_handshake_count = 0;
+      bool                    connecting = false;
+      bool                    syncing = false;
+      uint16_t                protocol_version  = 0;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
       optional<request_message> pending_fetch;
-      go_away_reason         no_retry;
+      go_away_reason         no_retry = no_reason;
       block_id_type          fork_head;
-      uint32_t               fork_head_num;
+      uint32_t               fork_head_num = 0;
       optional<request_message> last_req;
 
       connection_status get_status()const {
@@ -947,12 +946,12 @@ namespace eosio {
                                 bool trigger_send,
                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
       write_queue.push_back({buff, callback});
-      if(write_queue.size() == 1 && trigger_send)
+      if(out_queue.empty() && trigger_send)
          do_queue_write();
    }
 
    void connection::do_queue_write() {
-      if(write_queue.empty())
+      if(write_queue.empty() || !out_queue.empty())
          return;
       connection_wptr c(shared_from_this());
       if(!socket->is_open()) {
