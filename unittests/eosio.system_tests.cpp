@@ -301,6 +301,7 @@ public:
                           ("producer",  acnt )
                           ("producer_key", get_public_key( acnt, "active" ) )
                           ("url", "" )
+                          ("location", 0 )
       );
       BOOST_REQUIRE_EQUAL( success(), r);
       return r;
@@ -876,6 +877,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
                                                ("producer",  "alice1111111")
                                                ("producer_key", key )
                                                ("url", "http://block.one")
+                                               ("location", "0")
                         )
    );
 
@@ -923,6 +925,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester, * boost::unit_t
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "http://block.one")
+                                               ("location", 0 ) 
                         )
    );
    auto prod = get_producer_info( "alice1111111" );
@@ -1028,6 +1031,7 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester, * bo
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
    //and then unregisters
@@ -1080,6 +1084,7 @@ BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, eosio_system_tester ) try 
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key(N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
 
@@ -1106,6 +1111,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester, * boost::unit
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
 
@@ -1144,6 +1150,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester, * boost::unit
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
    prod = get_producer_info( "alice1111111" );
@@ -1156,6 +1163,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester, * boost::unit
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url","")
+                                               ("location", 0)
                         )
    );
    prod = get_producer_info( "alice1111111" );
@@ -1175,6 +1183,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester, * boost::u
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url","")
+                                               ("location", 0)
                         )
    );
    //bob111111111 becomes a producer
@@ -1184,6 +1193,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester, * boost::u
                                                ("producer",  "bob111111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url","")
+                                               ("location", 0)
                         )
    );
 
