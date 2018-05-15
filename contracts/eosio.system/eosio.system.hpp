@@ -33,14 +33,13 @@ namespace eosiosystem {
 
       block_timestamp      last_producer_schedule_update = 0;
       uint64_t             last_pervote_bucket_fill = 0;
-      int64_t              pervote_bucket;
-      int64_t              perblock_bucket;
-      int64_t              savings;
+      int64_t              pervote_bucket = 0;
+      int64_t              perblock_bucket = 0;
+      int64_t              savings = 0;
       uint32_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
-         checksum160          last_producer_schedule_id;
+      checksum160          last_producer_schedule_id;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
-         //      checksum160          last_producer_schedule_id;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)

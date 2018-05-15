@@ -86,7 +86,7 @@ namespace eosiosystem {
       if( producer_per_vote_pay < 100'0000 ) {
          producer_per_vote_pay = 0;
       }
-      int64_t total_pay              = producer_per_block_pay + producer_per_vote_pay;
+      int64_t total_pay            = producer_per_block_pay + producer_per_vote_pay;
 
       _gstate.pervote_bucket      -= producer_per_vote_pay;
       _gstate.perblock_bucket     -= producer_per_block_pay;
