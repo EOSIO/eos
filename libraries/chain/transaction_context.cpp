@@ -249,8 +249,10 @@ namespace eosio { namespace chain {
 
       trace->elapsed = fc::time_point::now() - start;
 
-      if( billed_cpu_time_us == 0 )
-         billed_cpu_time_us = std::max( trace->elapsed.count(), static_cast<int64_t>(config::default_min_transaction_cpu_usage_us) );
+      if( billed_cpu_time_us == 0 ) {
+         const auto& cfg = control.get_global_properties().configuration;
+         billed_cpu_time_us = std::max( trace->elapsed.count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
+      }
 
       validate_cpu_usage_to_bill( billed_cpu_time_us );
 
@@ -324,11 +326,13 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
-#warning make min_transaction_cpu_us into a configuration parameter
-      EOS_ASSERT( !check_minimum || billed_us >= config::default_min_transaction_cpu_usage_us, transaction_exception,
-                  "cannot bill CPU time less than the minimum of ${min_billable} us",
-                  ("min_billable", config::default_min_transaction_cpu_usage_us)("billed_cpu_time_us", billed_us)
-                );
+      if( check_minimum ) {
+         const auto& cfg = control.get_global_properties().configuration;
+         EOS_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,
+                     "cannot bill CPU time less than the minimum of ${min_billable} us",
+                     ("min_billable", cfg.min_transaction_cpu_usage)("billed_cpu_time_us", billed_us)
+                   );
+      }
 
       if( billing_timer_exception_code == block_cpu_usage_exceeded::code_value ) {
          EOS_ASSERT( billed_us <= objective_duration_limit.count(),

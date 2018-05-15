@@ -17,6 +17,7 @@ namespace eosio {
       uint32_t max_block_cpu_usage;
       uint32_t target_block_cpu_usage_pct;
       uint32_t max_transaction_cpu_usage;
+      uint32_t min_transaction_cpu_usage;
 
       uint32_t max_transaction_lifetime;
       uint32_t deferred_trx_expiration_window;
@@ -32,7 +33,7 @@ namespace eosio {
                         (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
 
                         (max_block_cpu_usage)(target_block_cpu_usage_pct)
-                        (max_transaction_cpu_usage)
+                        (max_transaction_cpu_usage)(min_transaction_cpu_usage)
 
                         (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
                         (max_inline_action_size)(max_inline_action_depth)
