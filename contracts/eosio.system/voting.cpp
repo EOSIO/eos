@@ -81,15 +81,15 @@ namespace eosiosystem {
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes; ++it ) {
          if( !it->active() ) continue;
 
-         if ( it->time_became_active == 0 ) {
+         if ( it->time_became_active.slot == 0 ) {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.time_became_active = block_time;
                });
-         } else if ( block_time > 2 * 21 * 12 + it->time_became_active &&
-                     block_time > it->last_produced_block_time + blocks_per_day ) {
+         } else if ( block_time.slot > 2 * 21 * 12 + it->time_became_active.slot &&
+                     block_time.slot > it->last_produced_block_time.slot + blocks_per_day ) {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.producer_key = public_key();
-                  p.time_became_active = 0;
+                  p.time_became_active.slot = 0;
                });
 
             continue;

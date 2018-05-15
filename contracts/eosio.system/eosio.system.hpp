@@ -6,6 +6,7 @@
 
 #include <eosio.system/native.hpp>
 #include <eosiolib/asset.hpp>
+#include <eosiolib/time.hpp>
 #include <eosiolib/privileged.hpp>
 #include <eosiolib/singleton.hpp>
 #include <eosio.system/exchange_state.hpp>
@@ -17,6 +18,7 @@ namespace eosiosystem {
    using eosio::asset;
    using eosio::indexed_by;
    using eosio::const_mem_fun;
+   using eosio::block_timestamp;
 
    struct eosio_parameters : eosio::blockchain_parameters {
       uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
@@ -31,7 +33,7 @@ namespace eosiosystem {
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake;
 
-      block_timestamp      last_producer_schedule_update = 0;
+      block_timestamp      last_producer_schedule_update;
       uint64_t             last_pervote_bucket_fill = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
@@ -56,8 +58,8 @@ namespace eosiosystem {
       uint32_t              produced_blocks;
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
-      block_timestamp       time_became_active = 0;
-      block_timestamp       last_produced_block_time = 0;
+      block_timestamp       time_became_active;
+      block_timestamp       last_produced_block_time;
 
       uint64_t    primary_key()const { return owner;                        }
       double      by_votes()const    { return -total_votes;                 }
@@ -127,7 +129,7 @@ namespace eosiosystem {
          ~system_contract();
 
          // Actions:
-         void onblock( uint32_t timestamp_slot, account_name producer );
+         void onblock( block_timestamp timestamp, account_name producer );
                       // const block_header& header ); /// only parse first 3 fields of block header
 
          // functions defined in delegate_bandwidth.cpp

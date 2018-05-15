@@ -1462,7 +1462,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
 
       const asset initial_supply  = get_token_supply();
       const asset initial_balance = get_balance(N(defproducera));
-      
+
       BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
       
       const auto global_state          = get_global_state();
@@ -1504,7 +1504,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
          BOOST_REQUIRE_EQUAL(from_pervote_bucket, pervote_bucket);
       }
    }
-   
+
    {
       BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within past day"),
                           push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
