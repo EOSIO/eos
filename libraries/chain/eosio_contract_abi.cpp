@@ -2,9 +2,9 @@
 
 namespace eosio { namespace chain {
 
-abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
+abi_def eosio_contract_abi(const abi_def& enumivo_system_abi)
 {
-   abi_def eos_abi(eosio_system_abi);
+   abi_def eos_abi(enumivo_system_abi);
    eos_abi.types.push_back( type_def{"account_name","name"} );
    eos_abi.types.push_back( type_def{"table_name","name"} );
    eos_abi.types.push_back( type_def{"share_type","int64"} );

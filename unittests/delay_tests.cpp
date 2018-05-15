@@ -3,8 +3,8 @@
 #include <enumivo/chain/producer_object.hpp>
 #include <enumivo/chain/global_property_object.hpp>
 #include <enumivo/chain/generated_transaction_object.hpp>
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+#include <enumivo.system/enumivo.system.wast.hpp>
+#include <enumivo.system/enumivo.system.abi.hpp>
 #include <enumivo.coin/enumivo.coin.wast.hpp>
 #include <enumivo.coin/enumivo.coin.abi.hpp>
 
