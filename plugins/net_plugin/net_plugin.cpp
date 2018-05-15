@@ -453,20 +453,21 @@ namespace eosio {
       };
       deque<queued_write>     write_queue;
       deque<queued_write>     out_queue;
+      bool                    queued_write = false;
 
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
-      int16_t                 sent_handshake_count;
-      bool                    connecting;
-      bool                    syncing;
-      uint16_t                protocol_version;
+      int16_t                 sent_handshake_count = 0;
+      bool                    connecting = false;
+      bool                    syncing = false;
+      uint16_t                protocol_version  = 0;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
       optional<request_message> pending_fetch;
-      go_away_reason         no_retry;
+      go_away_reason         no_retry = no_reason;
       block_id_type          fork_head;
-      uint32_t               fork_head_num;
+      uint32_t               fork_head_num = 0;
       optional<request_message> last_req;
 
       connection_status get_status()const {
@@ -947,12 +948,12 @@ namespace eosio {
                                 bool trigger_send,
                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
       write_queue.push_back({buff, callback});
-      if(write_queue.size() == 1 && trigger_send)
+      if(!queued_write && trigger_send)
          do_queue_write();
    }
 
    void connection::do_queue_write() {
-      if(write_queue.empty())
+      if(write_queue.empty() || queued_write)
          return;
       connection_wptr c(shared_from_this());
       if(!socket->is_open()) {
@@ -967,6 +968,7 @@ namespace eosio {
          out_queue.push_back(m);
          write_queue.pop_front();
       }
+      queued_write = true;
       boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
             try {
                auto conn = c.lock();
@@ -986,12 +988,14 @@ namespace eosio {
                      ilog("connection closure detected on write to ${p}",("p",pname));
                   }
                   my_impl->close(conn);
+                  conn->queued_write = false;
                   return;
                }
                while (conn->out_queue.size() > 0) {
                   conn->out_queue.pop_front();
                }
                conn->enqueue_sync_block();
+               conn->queued_write = false;
                conn->do_queue_write();
             }
             catch(const std::exception &ex) {
