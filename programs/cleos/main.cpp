@@ -924,25 +924,30 @@ struct vote_producers_subcommand {
 struct list_producers_subcommand {
    bool print_json = false;
    bool sort_names = false;
+   std::string lower;
 
    list_producers_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
       list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
+      list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
       list_producers->set_callback([this] {
             auto result = call(get_table_func, fc::mutable_variant_object("json", true)
                                ("code", name(config::system_account_name).to_string())
                                ("scope", name(config::system_account_name).to_string())
                                ("table", "producers")
+                               ("lower_bound", name{lower}.value)
+                               ("limit", 50)
             );
 
             if ( !print_json ) {
                auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
                std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
+               uint64_t max_owner = 0;
                for ( auto& row : res.rows ) {
                   auto& r = row.get_object();
                   v.emplace_back( r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() );
-
+                  max_owner = std::max( max_owner, name{r["owner"].as_string()}.value );
                }
                if ( !v.empty() ) {
                   if ( sort_names ) {
@@ -959,6 +964,8 @@ struct list_producers_subcommand {
                      std::cout << std::left << std::setw(14) << std::get<0>(x) << std::setw(55) << std::get<2>(x)
                                << std::setw(50) << std::get<3>(x) << std::get<1>(x) << std::endl;
                   }
+                  if ( res.more )
+                     std::cout << "-L " << name{max_owner + 1} << " for more" << std::endl;
                } else {
                   std::cout << "No producers found" << std::endl;
                }
