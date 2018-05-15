@@ -100,55 +100,11 @@ auto smatch_to_variant(const std::smatch& smatch) {
 const char* error_advice_3010001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
 const char* error_advice_3010002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
 const char* error_advice_3010003 = R"=====(Private key should be encoded in base58 WIF)=====";
-const char* error_advice_3010004 = R"=====(Ensure that your authority JSON follows the following format!
-{
-  "threshold":"uint32_t",
-  "keys":[{ "key":"public_key", "weight":"uint16_t" }],
-  "accounts":[{
-    "permission":{ "actor":"account_name", "permission":"permission_name" },
-    "weight":"uint16_t"
-  }]
-}
-e.g.
-{
-  "threshold":"1",
-  "keys":[{ "key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"1" }],
-  "accounts":[{
-    "permission":{ "actor":"initb", "permission":"social" },
-    "weight":"1
-  }]
-})=====";
+const char* error_advice_3010004 = R"=====(Ensure that your authority JSON follows the right authority structure!
+You can refer to contracts/eosiolib/native.hpp for reference)=====";
 const char* error_advice_3010005 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
-const char* error_advice_3010006 = R"=====(Ensure that your transaction JSON follows the following format!\n"
-{
-  "ref_block_num":"uint16_t",
-  "ref_block_prefix":"uint32_t",
-  "expiration":"YYYY-MM-DDThh:mm",
-  "region": "uint16_t",
-  "read_scope":[ "account_name" ],
-  "write_scope":[ "account_name" ],
-  "actions":[{
-    "account":"account_name",
-    "name":"action_name",
-    "authorization":[{ "actor":"account_name","permission":"permission_name" }],
-    "data":"bytes"
-  }]
-}"
-e.g.
-{
-  "ref_block_num":"1000",
-  "ref_block_prefix":"3463702842",
-  "expiration":"2018-01-23T01:51:05",
-  "region": "0",
-  "read_scope":[ "initb", "initc" ],
-  "write_scope":[ "initb", "initc" ],
-  "actions":[{
-    "account":"eosio",
-    "name":"transfer",
-    "authorization":[{ "actor":"initb","permission":"active" }],
-    "data":"000000008093dd74000000000094dd74e80300000000000000"
-  }]
-})=====";
+const char* error_advice_3010006 = R"=====(Ensure that your transaction JSON follows the right transaction format!
+You can refer to contracts/eosiolib/transaction.hpp for reference)=====";
 const char* error_advice_3010007 =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
@@ -160,13 +116,14 @@ const char* error_advice_3010007 =  R"=====(Ensure that your abi JSON follows th
     "key_names":[ "field_name" ],
     "key_types":[ "type_name" ],
     "type":"type_name" "
-  }]
+  }],
+  "ricardian_clauses": [{ "id": "string", "body": "string" }]
 }
 e.g.
 {
   "types" : [{ "new_type_name":"account_name", "type":"name" }],
   "structs" : [
-    { "name":"foo", "base":"", "fields": [{ "name":"by", "type": "account_name" }] },\n "
+    { "name":"foo", "base":"", "fields": [{ "name":"by", "type": "account_name" }] },
     { "name":"foobar", "base":"", "fields": [{ "name":"by", "type": "account_name" }] }
   ],
   "actions" : [{ "name":"foo","type":"foo"}],
@@ -175,8 +132,9 @@ e.g.
     "index_type":"i64",
     "key_names":[ "by" ],
     "key_types":[ "account_name" ],
-    "type":"foobar" "
-  }]
+    "type":"foobar"
+  }],
+  "ricardian_clauses": [{ "id": "foo", "body": "bar" }]
 })=====";
 const char* error_advice_3010008 =  "Ensure that the block ID is a SHA-256 hexadecimal string!";
 const char* error_advice_3010009 =  "Ensure that the transaction ID is a SHA-256 hexadecimal string!";
@@ -184,15 +142,16 @@ const char* error_advice_3010010 =  R"=====(Ensure that your packed transaction 
 {
   "signatures" : [ "signature" ],
   "compression" : enum("none", "zlib"),
-  "hex_transaction" : "bytes"
+  "packed_context_free_data" : "bytes",
+  "packed_trx" : "bytes";
 }
 e.g.
 {
   "signatures" : [ "SIG_K1_Jze4m1ZHQ4UjuHpBcX6uHPN4Xyggv52raQMTBZJghzDLepaPcSGCNYTxaP2NiaF4yRF5RaYwqsQYAwBwFtfuTJr34Z5GJX" ],
   "compression" : "none",
-  "hex_transaction" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
+  "packed_context_free_data" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000",
+  "packed_trx" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
 })=====";
-
 
 const char* error_advice_3040000 =  "Ensure that your transaction satisfy the contract's constraint!";
 const char* error_advice_3040005 =  "Please increase the expiration time of your transaction!";
