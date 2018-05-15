@@ -66,7 +66,7 @@ verifyErrorCode()
 
 killAll()
 {
-  programs/eosio-launcher/eosio-launcher -k 15
+  programs/enu-launcher/enu-launcher -k 15
 }
 
 cleanup()
@@ -114,7 +114,7 @@ cleanup
 # stand up nodeos cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
 echo Launcher options: --nodeos \"--plugin eosio::wallet_api_plugin\" $launcherOpts
-programs/eosio-launcher/eosio-launcher --nodeos "--plugin eosio::wallet_api_plugin" $launcherOpts
+programs/enu-launcher/enu-launcher --nodeos "--plugin eosio::wallet_api_plugin" $launcherOpts
 sleep 7
 
 startPort=8888

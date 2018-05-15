@@ -49,8 +49,8 @@ programs/data-dir
 programs/enu-abigen/enu-abigen
 programs/cleos/config.hpp
 programs/enu-applesedemo/enu-applesedemo
-programs/eosio-launcher/config.hpp
-programs/eosio-launcher/eosio-launcher
+programs/enu-launcher/config.hpp
+programs/enu-launcher/enu-launcher
 programs/keosd/keosd
 programs/nodeos/config.hpp
 programs/nodeos/nodeos

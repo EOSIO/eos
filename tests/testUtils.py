@@ -30,7 +30,7 @@ class Utils:
     EosServerName="nodeos"
     EosServerPath="programs/nodeos/"+ EosServerName
 
-    EosLauncherPath="programs/eosio-launcher/eosio-launcher"
+    EosLauncherPath="programs/enu-launcher/enu-launcher"
     MongoPath="mongo"
 
     @staticmethod
