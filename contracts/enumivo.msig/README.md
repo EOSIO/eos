@@ -42,7 +42,7 @@ Execute a proposal
    - **executer** account executing the transaction
 
 
-Cleos usage example.
+enu-cli usage example.
 
 Prerequisites:
    - enumivo.coin contract installed to enumivo.coin accountm, enumivo.msig contract installed on enumivo.msig account which is a priviliged account.
