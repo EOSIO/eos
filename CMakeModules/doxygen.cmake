@@ -1,4 +1,4 @@
-configure_file("eos.doxygen.in" "${CMAKE_BINARY_DIR}/eos.doxygen")
+configure_file("enu.doxygen.in" "${CMAKE_BINARY_DIR}/enu.doxygen")
 
 include(FindDoxygen)
 
@@ -20,7 +20,7 @@ else()
     # Doxygen has issues making destination directories more than one level deep, so do it for it.
     add_custom_target(make_doc_dir ALL COMMAND ${CMAKE_COMMAND} -E make_directory "${DOXY_DOC_DEST_DIR}")
     add_custom_target(contract_documentation ALL
-      COMMAND "${DOXYGEN_EXECUTABLE}" "${CMAKE_BINARY_DIR}/eos.doxygen"
+      COMMAND "${DOXYGEN_EXECUTABLE}" "${CMAKE_BINARY_DIR}/enu.doxygen"
       DEPENDS make_doc_dir
       WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
       COMMENT "Building doxygen documentation into ${DOXY_DOC_DEST_DIR}..."
