@@ -98,7 +98,6 @@ namespace fc { namespace crypto {
          constexpr auto prefix = config::private_key_base_prefix;
 
          const auto pivot = base58str.find('_');
-         FC_ASSERT(pivot != std::string::npos, "No delimiter in string, cannot determine type: ${str}", ("str", base58str));
 
          const auto prefix_str = base58str.substr(0, pivot);
          FC_ASSERT(prefix == prefix_str, "Private Key has invalid prefix: ${str}", ("str", base58str)("prefix_str", prefix_str));
