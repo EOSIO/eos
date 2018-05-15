@@ -53,6 +53,12 @@ namespace eosio { namespace chain {
          net_limit_due_to_block = false;
       }
 
+      // Possibly lower objective_duration_limit to the maximum cpu usage a transaction is allowed to be billed
+      if( cfg.max_transaction_cpu_usage <= objective_duration_limit.count() ) {
+         objective_duration_limit = fc::microseconds(cfg.max_transaction_cpu_usage);
+         objective_duration_limit_due_to_block = false;
+      }
+
       // Possibly lower net_limit to optional limit set in the transaction header
       uint64_t trx_specified_net_usage_limit = static_cast<uint64_t>(trx.max_net_usage_words.value) * 8;
       if( trx_specified_net_usage_limit > 0 && trx_specified_net_usage_limit <= net_limit ) {
