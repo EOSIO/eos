@@ -10,7 +10,7 @@ if [ "$PWD" != "$ENUMIVO_HOME" ]; then
     exit -1
 fi
 
-prog=nodeos
+prog=enunode
 
 DD=var/lib/node_$ENUMIVO_NODE
 runtest=`cat $DD/$prog.pid`

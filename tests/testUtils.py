@@ -27,8 +27,8 @@ class Utils:
     EosWalletName="keosd"
     EosWalletPath="programs/keosd/"+ EosWalletName
 
-    EosServerName="nodeos"
-    EosServerPath="programs/nodeos/"+ EosServerName
+    EosServerName="enunode"
+    EosServerPath="programs/enunode/"+ EosServerName
 
     EosLauncherPath="programs/enu-launcher/enu-launcher"
     MongoPath="mongo"
@@ -51,7 +51,7 @@ class Utils:
 
     systemWaitTimeout=90
 
-    # mongoSyncTime: nodeos mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
+    # mongoSyncTime: enunode mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
     #  a wait period before the 2nd DB check (if first check fails)
     mongoSyncTime=25
 
@@ -1264,7 +1264,7 @@ class Cluster(object):
             nodeosArgs += " --plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
 
         if nodeosArgs:
-            cmdArr.append("--nodeos")
+            cmdArr.append("--enunode")
             cmdArr.append(nodeosArgs)
 
         s=" ".join(cmdArr)

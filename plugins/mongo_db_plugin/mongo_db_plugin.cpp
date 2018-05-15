@@ -790,7 +790,7 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
 {
    cfg.add_options()
          ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256),
-         "The queue size between nodeos and MongoDB plugin thread.")
+         "The queue size between enunode and MongoDB plugin thread.")
          ("mongodb-uri,m", bpo::value<std::string>(),
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.")

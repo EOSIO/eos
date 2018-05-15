@@ -58,7 +58,7 @@ try:
     defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
 
     cmd="%s --dont-launch --defproducera_prvt_key %s --defproducerb_prvt_key %s %s %s %s" % (actualTest, defproduceraPrvtKey, defproducerbPrvtKey, "-v" if debug else "", "--dont-kill" if dontKill else "", "--only-bios" if onlyBios else "")
-    Print("Starting up %s test: %s" % ("nodeos", actualTest))
+    Print("Starting up %s test: %s" % ("enunode", actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
         errorExit("failed to run cmd.")
