@@ -1,7 +1,7 @@
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
- *  @defgroup eosclienttool EOSIO Command Line Client Reference
+ *  @defgroup eosclienttool Enumivo Command Line Client Reference
  *  @brief Tool for sending transactions and querying state from @ref nodeos
  *  @ingroup eosclienttool
  */
@@ -17,7 +17,7 @@
    cleos contains documentation for all of its commands. For a list of all commands known to cleos, simply run it with no arguments:
 ```
 $ ./cleos
-Command Line Interface to EOSIO Client
+Command Line Interface to Enumivo Client
 Usage: programs/cleos/cleos [OPTIONS] SUBCOMMAND
 
 Options:
@@ -1317,7 +1317,7 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   CLI::App app{"Command Line Interface to EOSIO Client"};
+   CLI::App app{"Command Line Interface to Enumivo Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where nodeos is running") )->group("hidden");
    app.add_option( "-p,--port", obsoleted_option_host_port, localized("the port where nodeos is running") )->group("hidden");

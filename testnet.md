@@ -32,11 +32,11 @@ Network topology or "shape" describes how the nodes are connected in order to sh
 The Launcher has definitions of two basic different network "shapes" based on inter-nodal connections, which can be selected by a command line option. If you wish to create your own custom network topology, you can do so by supplying a json formatted file. This file is typically the edited version of the template created by the launcher in "output" mode.
 
 #### Star network
-![](https://github.com/EOSIO/eos/raw/master/star.png)
+![](https://github.com/enumivo/enumivo/raw/master/star.png)
 A "star" is intended to support a larger number of nodes in the testnet. In this case the number of peers connected to a node and the distribution of those nodes varies based on the number of nodes in the network.
 
 #### Mesh network
-![](https://github.com/EOSIO/eos/raw/master/mesh.png)
+![](https://github.com/enumivo/enumivo/raw/master/mesh.png)
 In a "mesh" network, each node is connected to as many peer nodes as possible.
 
 #### Custom network shape

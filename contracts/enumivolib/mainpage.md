@@ -1,17 +1,17 @@
-Welcome to the EOS.IO Documentation
+Welcome to the Enumivo Documentation
 -----------------------------------
 
-@note This documentation is in progress and subject to change due to rapid development. Please report inaccuracies identified to the [EOS.IO Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
+@note This documentation is in progress and subject to change due to rapid development.
 
-## EOS.IO
- - [Additional resources - Github Readme](https://github.com/EOSIO/eos#readme)
+## Enumivo
+ - [Additional resources - Github Readme](https://github.com/enumivo/enumivo#readme)
 
 ## Smart Contract Developers
 - @ref eosiorpc
 - @ref contractdev
 	- @ref accountapi - Define API for querying account data
 	- @ref chainapi - Define API for querying internal chain state
-	- @ref database - APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following broad structure
+	- @ref database - APIs that store and retreive data on the blockchain Enumivo organizes data according to the following broad structure
 	- @ref mathapi - Defines common math function
 	- @ref actionapi - Defines API for querying action properties
 	- @ref memoryapi - Defines common memory functions

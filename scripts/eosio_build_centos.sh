@@ -29,13 +29,13 @@
 	fi
 
 	if [ "${OS_VER}" -lt 7 ]; then
-		printf "\\n\\tYou must be running Centos 7 or higher to install EOSIO.\\n"
+		printf "\\n\\tYou must be running Centos 7 or higher to install Enumivo.\\n"
 		printf "\\tExiting now.\\n\\n"
 		exit 1;
 	fi
 
 	if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
-		printf "\\n\\tYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
+		printf "\\n\\tYou must have at least %sGB of available storage to install Enumivo.\\n" "${DISK_MIN}"
 		printf "\\tExiting now.\\n\\n"
 		exit 1;
 	fi
@@ -43,7 +43,7 @@
 	printf "\\n\\tChecking Yum installation\\n"
 	if ! YUM=$( command -v yum 2>/dev/null )
 	then
-		printf "\\n\\tYum must be installed to compile EOS.IO.\\n"
+		printf "\\n\\tYum must be installed to compile Enumivo.\\n"
 		printf "\\tExiting now.\\n\\n"
 		exit 1;
 	fi
@@ -53,7 +53,7 @@
 	
 	SCL=$( command -v scl 2>/dev/null )
 	if [ -z "${SCL}" ]; then
-		printf "\\n\\tThe Centos Software Collections Repository, devtoolset-7 and Python3 are required to install EOSIO.\\n"
+		printf "\\n\\tThe Centos Software Collections Repository, devtoolset-7 and Python3 are required to install Enumivo.\\n"
 		printf "\\tDo you wish to install and enable this repository, devtoolset-7 and Python3 packages?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
@@ -148,7 +148,7 @@
 	done		
 
 	if [ "${COUNT}" -gt 1 ]; then
-		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
+		printf "\\n\\tThe following dependencies are required to install Enumivo.\\n"
 		printf "\\n\\t${DISPLAY}\\n\\n"
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do

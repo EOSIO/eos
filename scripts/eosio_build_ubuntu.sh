@@ -33,14 +33,14 @@
 	case "${OS_NAME}" in
 		"Linux Mint")
 		   if [ "${OS_MAJ}" -lt 18 ]; then
-			   printf "\\tYou must be running Linux Mint 18.x or higher to install EOSIO.\\n"
+			   printf "\\tYou must be running Linux Mint 18.x or higher to install Enumivo.\\n"
 			   printf "\\tExiting now.\\n"
 			   exit 1
 		   fi
 		;;
 		"Ubuntu")
 			if [ "${OS_MIN}" -lt 4 ]; then
-				printf "\\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\\n"
+				printf "\\tYou must be running Ubuntu 16.04.x or higher to install Enumivo.\\n"
 				printf "\\tExiting now.\\n"
 				exit 1
 			fi
@@ -48,7 +48,7 @@
 	esac
 
 	if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
-		printf "\\tYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
+		printf "\\tYou must have at least %sGB of available storage to install Enumivo.\\n" "${DISK_MIN}"
 		printf "\\tExiting now.\\n"
 		exit 1
 	fi
@@ -81,7 +81,7 @@
 	done		
 
 	if [ "${COUNT}" -gt 1 ]; then
-		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
+		printf "\\n\\tThe following dependencies are required to install Enumivo.\\n"
 		printf "\\n\\t${DISPLAY}\\n\\n" 
 		printf "\\tDo you wish to install these packages?\\n"
 		select yn in "Yes" "No"; do
