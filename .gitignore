@@ -48,7 +48,7 @@ programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
 programs/enu-abigen/enu-abigen
 programs/cleos/config.hpp
-programs/eosio-applesedemo/eosio-applesedemo
+programs/enu-applesedemo/enu-applesedemo
 programs/eosio-launcher/config.hpp
 programs/eosio-launcher/eosio-launcher
 programs/keosd/keosd
