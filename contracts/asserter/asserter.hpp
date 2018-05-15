@@ -10,6 +10,6 @@ namespace asserter {
       int8_t      condition;
       std::string message;
 
-      EOSLIB_SERIALIZE( assertdef, (condition)(message) )
+      ENULIB_SERIALIZE( assertdef, (condition)(message) )
    };
 }

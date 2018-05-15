@@ -24,7 +24,7 @@ namespace eosio {
         int64_t to_seconds()const { return _count/1000000; }
 
         int64_t _count;
-        EOSLIB_SERIALIZE( microseconds, (_count) )
+        ENULIB_SERIALIZE( microseconds, (_count) )
     private:
         friend class time_point;
   };
@@ -55,7 +55,7 @@ namespace eosio {
         time_point   operator - (const microseconds& m) const { return time_point(elapsed-m); }
         microseconds operator - (const time_point& m) const { return microseconds(elapsed.count() - m.elapsed.count()); }
         microseconds elapsed;
-        EOSLIB_SERIALIZE( time_point, (elapsed) )
+        ENULIB_SERIALIZE( time_point, (elapsed) )
   };
 
   /**
@@ -105,7 +105,7 @@ namespace eosio {
         friend microseconds operator - ( const time_point& t, const time_point_sec& m ) { return time_point(t) - time_point(m); }
         uint32_t utc_seconds;
 
-        EOSLIB_SERIALIZE( time_point_sec, (utc_seconds) )
+        ENULIB_SERIALIZE( time_point_sec, (utc_seconds) )
   };
 
    /**
@@ -157,7 +157,7 @@ namespace eosio {
          bool   operator !=( const block_timestamp& t )const   { return slot != t.slot; }
          uint32_t slot;
 
-         EOSLIB_SERIALIZE( block_timestamp, (slot) )
+         ENULIB_SERIALIZE( block_timestamp, (slot) )
       private:
       static constexpr uint32_t block_interval_ms = 500;
       static constexpr uint64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000

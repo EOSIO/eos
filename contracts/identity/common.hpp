@@ -17,7 +17,7 @@ namespace identity {
       uint8_t           confidence = 1; ///< used to define liability for lies,
       /// 0 to delete
 
-      EOSLIB_SERIALIZE( certvalue, (property)(type)(data)(memo)(confidence) )
+      ENULIB_SERIALIZE( certvalue, (property)(type)(data)(memo)(confidence) )
    };
 
    struct certrow {
@@ -41,7 +41,7 @@ namespace identity {
       }
       eosio::key256 get_key() const { return key(property, trusted, certifier); }
 
-      EOSLIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data)(id) )
+      ENULIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data)(id) )
    };
 
    struct identrow {
@@ -50,7 +50,7 @@ namespace identity {
 
       uint64_t primary_key() const { return identity; }
 
-      EOSLIB_SERIALIZE( identrow , (identity)(creator) )
+      ENULIB_SERIALIZE( identrow , (identity)(creator) )
    };
 
    struct trustrow {
@@ -58,7 +58,7 @@ namespace identity {
 
       uint64_t primary_key() const { return account; }
 
-      EOSLIB_SERIALIZE( trustrow, (account) )
+      ENULIB_SERIALIZE( trustrow, (account) )
    };
 
    typedef eosio::multi_index<N(certs), certrow,

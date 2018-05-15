@@ -19,7 +19,7 @@ namespace  eosio {
 
          uint64_t primary_key() const { return pk_value; }
 
-         EOSLIB_SERIALIZE( row, (value) )
+         ENULIB_SERIALIZE( row, (value) )
       };
 
       typedef eosio::multi_index<SingletonName, row> table;
