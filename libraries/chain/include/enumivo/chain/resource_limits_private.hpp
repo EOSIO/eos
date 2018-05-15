@@ -56,11 +56,11 @@ namespace eosio { namespace chain { namespace resource_limits {
          void add( uint64_t units, uint32_t ordinal, uint32_t window_size /* must be positive */ )
          {
             // check for some numerical limits before doing any state mutations
-            EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
-            EOS_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
+            ENU_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+            ENU_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
 
             auto value_ex_contrib = integer_divide_ceil(units * Precision, (uint64_t)window_size);
-            EOS_ASSERT(std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib, rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
+            ENU_ASSERT(std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib, rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
 
             if( last_ordinal != ordinal ) {
                FC_ASSERT( ordinal > last_ordinal, "new ordinal cannot be less than the previous ordinal" );

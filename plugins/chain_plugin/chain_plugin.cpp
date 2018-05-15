@@ -320,7 +320,7 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
-   EOS_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
+   ENU_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
    abi_def abi;
    abi_serializer::to_abi(code_accnt->abi, abi);
    return abi;
@@ -332,7 +332,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
          return t.index_type;
       }
    }
-   EOS_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
+   ENU_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
@@ -343,7 +343,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       return get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
    }
 
-   EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
+   ENU_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
@@ -353,13 +353,13 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
    vector<asset> results;
    walk_table<key_value_index, by_scope_primary>(p.code, p.account, N(accounts), [&](const key_value_object& obj){
-      EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
+      ENU_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
 
       asset cursor;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, cursor);
 
-      EOS_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
+      ENU_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
 
       if( !p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
         results.emplace_back(cursor);
@@ -381,7 +381,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
    walk_table<key_value_index, by_scope_primary>(p.code, scope, N(stat), [&](const key_value_object& obj){
-      EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
+      ENU_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       read_only::get_currency_stats_result result;
@@ -429,7 +429,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
-   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
+   ENU_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
    fc::variant pretty_output;
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this));
@@ -580,7 +580,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
    const auto code_account = db.db().find<account_object,by_name>( params.code );
-   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
+   ENU_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
 
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {

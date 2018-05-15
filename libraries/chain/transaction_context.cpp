@@ -299,19 +299,19 @@ namespace eosio { namespace chain {
    }
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
 #warning make min_transaction_cpu_us into a configuration parameter
-      EOS_ASSERT( !check_minimum || billed_us >= config::default_min_transaction_cpu_usage_us, transaction_exception,
+      ENU_ASSERT( !check_minimum || billed_us >= config::default_min_transaction_cpu_usage_us, transaction_exception,
                   "cannot bill CPU time less than the minimum of ${min_billable} us",
                   ("min_billable", config::default_min_transaction_cpu_usage_us)("billed_cpu_time_us", billed_us)
                 );
 
       if( objective_duration_limit_due_to_block ) {
-         EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+         ENU_ASSERT( billed_us <= objective_duration_limit.count(),
                      block_cpu_usage_exceeded,
                      "billed CPU time (${billed} us) is greater than the billable CPU time left in the block (${billable} us)",
                      ("billed", billed_us)("billable", objective_duration_limit.count())
                    );
       } else {
-         EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+         ENU_ASSERT( billed_us <= objective_duration_limit.count(),
                      tx_cpu_usage_exceeded,
                      "billed CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
                      ("billed", billed_us)("billable", objective_duration_limit.count())
@@ -375,7 +375,7 @@ namespace eosio { namespace chain {
               transaction.expiration = expire;
           });
       } catch ( ... ) {
-          EOS_ASSERT( false, tx_duplicate,
+          ENU_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );
       }
    } /// record_transaction

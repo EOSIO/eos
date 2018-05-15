@@ -374,8 +374,8 @@ namespace impl {
       static void extract( const variant& v, action& act, Resolver resolver )
       {
          const variant_object& vo = v.get_object();
-         EOS_ASSERT(vo.contains("account"), packed_transaction_type_exception, "Missing account");
-         EOS_ASSERT(vo.contains("name"), packed_transaction_type_exception, "Missing name");
+         ENU_ASSERT(vo.contains("account"), packed_transaction_type_exception, "Missing account");
+         ENU_ASSERT(vo.contains("name"), packed_transaction_type_exception, "Missing name");
          from_variant(vo["account"], act.account);
          from_variant(vo["name"], act.name);
 
@@ -405,15 +405,15 @@ namespace impl {
             }
          }
 
-         EOS_ASSERT(!act.data.empty(), packed_transaction_type_exception,
+         ENU_ASSERT(!act.data.empty(), packed_transaction_type_exception,
                     "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
       }
 
       template<typename Resolver>
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver ) {
          const variant_object& vo = v.get_object();
-         EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
-         EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
+         ENU_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
+         ENU_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
          from_variant(vo["signatures"], ptrx.signatures);
          from_variant(vo["compression"], ptrx.compression);
 
@@ -429,7 +429,7 @@ namespace impl {
                ptrx.set_transaction(trx, context_free_data, ptrx.compression);
             }
          } else {
-            EOS_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
+            ENU_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
             transaction trx;
             vector<bytes> context_free_data;
             extract(vo["transaction"], trx, resolver);

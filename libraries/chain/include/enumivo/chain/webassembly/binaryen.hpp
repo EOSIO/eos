@@ -54,21 +54,21 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    Literal callImport(Import *import, LiteralList &args) override
    {
       auto fn_iter = import_lut.find((uintptr_t)import);
-      EOS_ASSERT(fn_iter != import_lut.end(), wasm_execution_error, "unknown import ${m}:${n}", ("m", import->module.c_str())("n", import->module.c_str()));
+      ENU_ASSERT(fn_iter != import_lut.end(), wasm_execution_error, "unknown import ${m}:${n}", ("m", import->module.c_str())("n", import->module.c_str()));
       return fn_iter->second(this, args);
    }
 
    Literal callTable(Index index, LiteralList& arguments, WasmType result, ModuleInstance& instance) override
    {
-      EOS_ASSERT(index < table.size(), wasm_execution_error, "callIndirect: bad pointer");
+      ENU_ASSERT(index < table.size(), wasm_execution_error, "callIndirect: bad pointer");
       auto* func = instance.wasm.getFunctionOrNull(table[index]);
-      EOS_ASSERT(func, wasm_execution_error, "callIndirect: uninitialized element");
-      EOS_ASSERT(func->params.size() == arguments.size(), wasm_execution_error, "callIndirect: bad # of arguments");
+      ENU_ASSERT(func, wasm_execution_error, "callIndirect: uninitialized element");
+      ENU_ASSERT(func->params.size() == arguments.size(), wasm_execution_error, "callIndirect: bad # of arguments");
 
       for (size_t i = 0; i < func->params.size(); i++) {
-         EOS_ASSERT(func->params[i] == arguments[i].type, wasm_execution_error, "callIndirect: bad argument type");
+         ENU_ASSERT(func->params[i] == arguments[i].type, wasm_execution_error, "callIndirect: bad argument type");
       }
-      EOS_ASSERT(func->result == result, wasm_execution_error, "callIndirect: bad result type");
+      ENU_ASSERT(func->result == result, wasm_execution_error, "callIndirect: bad result type");
       return instance.callFunctionInternal(func->name, arguments);
    }
 
@@ -77,7 +77,7 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    }
 
    void assert_memory_is_accessible(uint32_t offset, uint32_t size) {
-      EOS_ASSERT(offset + size <= current_memory_size && offset + size >= offset,
+      ENU_ASSERT(offset + size <= current_memory_size && offset + size >= offset,
          wasm_execution_error, "access violation");
    }
 
@@ -254,7 +254,7 @@ inline auto convert_native_to_literal(const interpreter_interface*, const fc::ti
 inline auto convert_native_to_literal(const interpreter_interface* interface, char* ptr) {
    const char* base = interface->memory.data;
    const char* top_of_memory = base + interface->current_memory_size;
-   EOS_ASSERT(ptr >= base && ptr < top_of_memory, wasm_execution_error, "returning pointer not in linear memory");
+   ENU_ASSERT(ptr >= base && ptr < top_of_memory, wasm_execution_error, "returning pointer not in linear memory");
    return Literal((int)(ptr - base));
 }
 

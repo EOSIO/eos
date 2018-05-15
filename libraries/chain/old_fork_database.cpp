@@ -52,10 +52,10 @@ shared_ptr<header_state> fork_database::push_block_header( const signed_block_he
    if( previous == by_id_idx.end() ) {
       wlog( "Pushing block to fork database that failed to link: ${id}, ${num}", ("id",b.id())("num",b.block_num()) );
       wlog( "Head: ${num}, ${id}", ("num",_head->num)("id",_head->id) );
-      EOS_ASSERT( previous != by_id_idx.end(), unlinkable_block_exception, "block does not link to known chain");
+      ENU_ASSERT( previous != by_id_idx.end(), unlinkable_block_exception, "block does not link to known chain");
    }
 
-   EOS_ASSERT( !(*previous)->invalid, unlinkable_block_exception, "unable to link to a known invalid block" );
+   ENU_ASSERT( !(*previous)->invalid, unlinkable_block_exception, "unable to link to a known invalid block" );
 
    auto next = std::make_shared<header_state>( **previous );
    next->confirmations.clear();
@@ -125,7 +125,7 @@ void  fork_database::_push_block(const item_ptr& item )
    {
       auto& index = _index.get<by_block_id>();
       auto itr = index.find(item->previous_id());
-      EOS_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
+      ENU_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
       FC_ASSERT(!(*itr)->invalid);
 
       item->prev = *itr;
