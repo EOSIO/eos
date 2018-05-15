@@ -90,7 +90,7 @@ shared_ptr<header_state> fork_database::push_block_header( const signed_block_he
    flat_map<account_name, uint32_t>    new_block_per_producer;
    ibb.reserve( num_producers );
 
-   size_t offset = EOS_PERCENT(ibb.size(), config::percent_100- config::irreversible_threshold_percent);
+   size_t offset = ENU_PERCENT(ibb.size(), config::percent_100- config::irreversible_threshold_percent);
 
    for( const auto& item : next->active_schedule->producers ) {
       ibb.push_back( next->last_block_per_producer[item.producer_name] );

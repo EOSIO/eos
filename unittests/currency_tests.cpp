@@ -276,7 +276,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 
    {
       symbol eos(4, "EOS");
-      BOOST_REQUIRE_EQUAL(EOS_SYMBOL_VALUE, eos.value());
+      BOOST_REQUIRE_EQUAL(ENU_SYMBOL_VALUE, eos.value());
       BOOST_REQUIRE_EQUAL("4,EOS", eos.to_string());
       BOOST_REQUIRE_EQUAL("EOS", eos.name());
       BOOST_REQUIRE_EQUAL(4, eos.decimals());

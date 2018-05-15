@@ -1,11 +1,11 @@
 #list( APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libraries/fc/GitVersionGen" )
 #include( GetGitRevisionDescription )
-#get_git_head_revision(GIT_REFSPEC EOS_GIT_REVISION_SHA)
-#get_git_unix_timestamp(EOS_GIT_REVISION_UNIX_TIMESTAMP)
-#git_describe(EOS_GIT_REVISION_DESCRIPTION --tags)
-if(NOT EOS_GIT_REVISION_DESCRIPTION)
-    set(EOS_GIT_REVISION_DESCRIPTION "unknown")
-endif(NOT EOS_GIT_REVISION_DESCRIPTION)
+#get_git_head_revision(GIT_REFSPEC ENU_GIT_REVISION_SHA)
+#get_git_unix_timestamp(ENU_GIT_REVISION_UNIX_TIMESTAMP)
+#git_describe(ENU_GIT_REVISION_DESCRIPTION --tags)
+if(NOT ENU_GIT_REVISION_DESCRIPTION)
+    set(ENU_GIT_REVISION_DESCRIPTION "unknown")
+endif(NOT ENU_GIT_REVISION_DESCRIPTION)
 
 file(GLOB HEADERS "include/eosio/utilities/*.hpp")
 

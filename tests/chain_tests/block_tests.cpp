@@ -264,7 +264,7 @@ BOOST_AUTO_TEST_CASE( push_unexpected_signature_block ) { try {
 // Utility function to check expected irreversible block
 uint32_t calc_exp_last_irr_block_num(const base_tester& chain, const uint32_t& head_block_num) {
    const auto producers_size = chain.control->get_global_properties().active_producers.producers.size();
-   const auto max_reversible_rounds = EOS_PERCENT(producers_size, config::percent_100 - config::irreversible_threshold_percent);
+   const auto max_reversible_rounds = ENU_PERCENT(producers_size, config::percent_100 - config::irreversible_threshold_percent);
    if( max_reversible_rounds == 0) {
       return head_block_num - 1;
    } else {
