@@ -5,8 +5,8 @@
 #pragma once
 #include <enumivolib/transaction.h>
 #include <enumivolib/action.hpp>
-#include <enumivolib/print.hpp>
 #include <enumivolib/types.hpp>
+#include <enumivolib/time.hpp>
 #include <enumivolib/serialize.hpp>
 #include <vector>
 
@@ -24,11 +24,11 @@ namespace eosio {
 
    class transaction_header {
    public:
-      transaction_header( time exp = now() + 60 )
+      transaction_header( time_point_sec exp = time_point_sec(now() + 60) )
          :expiration(exp)
-      { eosio::print("now=", now(), " exp=", expiration, "\n"); }
+      {}
 
-      time            expiration;
+      time_point_sec  expiration;
       uint16_t        ref_block_num;
       uint32_t        ref_block_prefix;
       unsigned_int    net_usage_words = 0UL; /// number of 8 byte words this transaction can serialize into after compressions
@@ -40,7 +40,7 @@ namespace eosio {
 
    class transaction : public transaction_header {
    public:
-      transaction(time exp = now() + 60) : transaction_header( exp ) {}
+      transaction(time_point_sec exp = time_point_sec(now() + 60)) : transaction_header( exp ) {}
 
       void send(uint64_t sender_id, account_name payer, bool replace_existing = false) const {
          auto serialize = pack(*this);
