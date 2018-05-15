@@ -453,8 +453,6 @@ namespace eosio {
       };
       deque<queued_write>     write_queue;
       deque<queued_write>     out_queue;
-      bool                    queued_write = false;
-
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
@@ -948,12 +946,12 @@ namespace eosio {
                                 bool trigger_send,
                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
       write_queue.push_back({buff, callback});
-      if(!queued_write && trigger_send)
+      if(out_queue.empty() && trigger_send)
          do_queue_write();
    }
 
    void connection::do_queue_write() {
-      if(write_queue.empty() || queued_write)
+      if(write_queue.empty() || !out_queue.empty())
          return;
       connection_wptr c(shared_from_this());
       if(!socket->is_open()) {
@@ -968,7 +966,6 @@ namespace eosio {
          out_queue.push_back(m);
          write_queue.pop_front();
       }
-      queued_write = true;
       boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
             try {
                auto conn = c.lock();
@@ -988,14 +985,12 @@ namespace eosio {
                      ilog("connection closure detected on write to ${p}",("p",pname));
                   }
                   my_impl->close(conn);
-                  conn->queued_write = false;
                   return;
                }
                while (conn->out_queue.size() > 0) {
                   conn->out_queue.pop_front();
                }
                conn->enqueue_sync_block();
-               conn->queued_write = false;
                conn->do_queue_write();
             }
             catch(const std::exception &ex) {
