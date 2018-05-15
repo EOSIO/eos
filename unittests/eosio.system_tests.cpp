@@ -1328,7 +1328,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
    // inita is the only active producer
    // produce enough blocks so new schedule kicks in and inita produces some blocks
    {
-      produce_blocks(1000);
+      produce_blocks(50);
 
       const auto     initial_global_state      = get_global_state();
       const uint64_t initial_claim_time        = initial_global_state["last_pervote_bucket_fill"].as_uint64();
@@ -1368,23 +1368,21 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       BOOST_REQUIRE_EQUAL(0, initial_pervote_bucket);
       BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(usecs_between_fills) * continuous_rate ) / usecs_per_year ),
                           supply.amount - initial_supply.amount);
-      BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(usecs_between_fills) * (4. * continuous_rate/ 5.) / usecs_per_year ) ),
+      BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(usecs_between_fills) * (4.   * continuous_rate/ 5.) / usecs_per_year ) ),
                           savings - initial_savings);
+      BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(usecs_between_fills) * (0.25 * continuous_rate/ 5.) / usecs_per_year ) ),
+                          balance.amount - initial_balance.amount);
+
+      int64_t from_perblock_bucket = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.25 * continuous_rate/ 5.) / usecs_per_year ) ;
+      int64_t from_pervote_bucket  = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.75 * continuous_rate/ 5.) / usecs_per_year ) ;
       
-      int64_t block_payments      = int64_t( initial_supply.amount * unpaid_blocks * (0.25/100.0) / (52*7*24*3600*2) );
-      int64_t from_pervote_bucket = int64_t( initial_supply.amount * usecs_between_fills * (0.75/100.0) / (52*7*24*3600) );
-      return;
-      /*
       if (from_pervote_bucket >= 100 * 10000) {
-         BOOST_REQUIRE_EQUAL(block_payments + from_pervote_bucket, balance.amount - initial_balance.amount);
+         BOOST_REQUIRE_EQUAL(from_perblock_bucket + from_pervote_bucket, balance.amount - initial_balance.amount);
          BOOST_REQUIRE_EQUAL(0, pervote_bucket);
       } else {
-         BOOST_REQUIRE_EQUAL(block_payments, balance.amount - initial_balance.amount);
+         BOOST_REQUIRE_EQUAL(from_perblock_bucket, balance.amount - initial_balance.amount);
          BOOST_REQUIRE_EQUAL(from_pervote_bucket, pervote_bucket);
       }
-      */
-      //      const int64_t max_supply_growth = int64_t( (initial_supply.amount * usecs_between_fills * (4.879/100.0)) / (52*7*24*3600) );
-      //      BOOST_REQUIRE(max_supply_growth >= supply.amount - initial_supply.amount);
    }
    
    {
@@ -1399,62 +1397,78 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
                           push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
    }
 
+   return;
    // wait 5 more minutes, inita can now claim rewards again
    {
       produce_block(fc::seconds(5 * 60));
-      const auto     initial_global_state   = get_global_state();
-      const uint64_t initial_claim_time     = initial_global_state["last_pervote_bucket_fill"].as_uint64();
-      const int64_t initial_pervote_bucket = initial_global_state["pervote_bucket"].as<int64_t>();
-      const int64_t initial_savings        = initial_global_state["savings"].as<int64_t>();
+
+      const auto     initial_global_state      = get_global_state();
+      const uint64_t initial_claim_time        = initial_global_state["last_pervote_bucket_fill"].as_uint64();
+      const int64_t  initial_pervote_bucket    = initial_global_state["pervote_bucket"].as<int64_t>();
+      const int64_t  initial_perblock_bucket   = initial_global_state["perblock_bucket"].as<int64_t>();
+      const int64_t  initial_savings           = initial_global_state["savings"].as<int64_t>();
+      const uint32_t initial_tot_unpaid_blocks = initial_global_state["total_unpaid_blocks"].as<uint32_t>();
 
       prod = get_producer_info("inita");
-      const uint32_t produced_blocks = prod["produced_blocks"].as<uint32_t>();
-      BOOST_REQUIRE(1 < produced_blocks);
-      BOOST_REQUIRE(0 < prod["last_claim_time"].as<uint64_t>());
+      const uint32_t unpaid_blocks = prod["produced_blocks"].as<uint32_t>();
+      BOOST_REQUIRE(1 < unpaid_blocks);
+      BOOST_REQUIRE_EQUAL(0, prod["last_claim_time"].as<uint64_t>());
+
+      BOOST_REQUIRE_EQUAL(initial_tot_unpaid_blocks, unpaid_blocks);
+
       const asset initial_supply  = get_token_supply();
       const asset initial_balance = get_balance(N(inita));
 
-      BOOST_REQUIRE_EQUAL(success(),
-                          push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
-      
-      const auto     global_state   = get_global_state();
-      const uint64_t claim_time     = global_state["last_pervote_bucket_fill"].as_uint64();
-      const int64_t pervote_bucket = global_state["pervote_bucket"].as<int64_t>();
-      const int64_t savings        = global_state["savings"].as<int64_t>();
+      BOOST_REQUIRE_EQUAL(success(), push_action(N(inita), N(claimrewards), mvo()("owner", "inita")));
+
+      const auto global_state          = get_global_state();
+      const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
+      const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
+      const int64_t  perblock_bucket   = global_state["perblock_bucket"].as<int64_t>();
+      const int64_t  savings           = global_state["savings"].as<int64_t>();
+      const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
 
       prod = get_producer_info("inita");
       BOOST_REQUIRE_EQUAL(1, prod["produced_blocks"].as<uint32_t>());
+      BOOST_REQUIRE_EQUAL(1, tot_unpaid_blocks);
       const asset supply  = get_token_supply();
       const asset balance = get_balance(N(inita));
 
       BOOST_REQUIRE_EQUAL(claim_time, prod["last_claim_time"].as<uint64_t>());
-      const int64_t usecs_between_fills = (claim_time - initial_claim_time);
+      auto usecs_between_fills = claim_time - initial_claim_time;
 
-      /*
-      BOOST_REQUIRE_EQUAL(int64_t( (initial_supply.amount * secs_between_fills * ((4.879-1.0)/100.0)) / (52*7*24*3600) ),
-                          savings- initial_savings );
+      BOOST_REQUIRE_EQUAL(0, initial_pervote_bucket);
+      BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(usecs_between_fills) * continuous_rate ) / usecs_per_year ),
+                          supply.amount - initial_supply.amount);
+      BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(usecs_between_fills) * (4.   * continuous_rate/ 5.) / usecs_per_year ) ),
+                          savings - initial_savings);
+      BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(usecs_between_fills) * (0.25 * continuous_rate/ 5.) / usecs_per_year ) ),
+                          balance.amount - initial_balance.amount);
 
-      int64_t block_payments      = int64_t( initial_supply.amount * produced_blocks * (0.25/100.0) / (52*7*24*3600*2) );
-      int64_t from_pervote_bucket = int64_t( initial_pervote_bucket + initial_supply.amount * secs_between_fills * (0.75/100.0) / (52*7*24*3600) );
+      int64_t from_perblock_bucket = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.25 * continuous_rate/ 5.) / usecs_per_year ) ;
+      int64_t from_pervote_bucket  = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.75 * continuous_rate/ 5.) / usecs_per_year ) ;
 
       if (from_pervote_bucket >= 100 * 10000) {
-         BOOST_REQUIRE_EQUAL(block_payments + from_pervote_bucket, balance.amount - initial_balance.amount);
+         BOOST_REQUIRE_EQUAL(from_perblock_bucket + from_pervote_bucket, balance.amount - initial_balance.amount);
          BOOST_REQUIRE_EQUAL(0, pervote_bucket);
       } else {
-         BOOST_REQUIRE_EQUAL(block_payments, balance.amount - initial_balance.amount);
+         BOOST_REQUIRE_EQUAL(from_perblock_bucket, balance.amount - initial_balance.amount);
          BOOST_REQUIRE_EQUAL(from_pervote_bucket, pervote_bucket);
       }
-      */
 
       /// NOTE: this is fragile and merely replicating equation in contract, changing the order of math and/or types will change result
-      const int64_t max_supply_growth = int64_t( (double(initial_supply.amount) * double(usecs_between_fills) * double(.04879)) / double(52*7*24*3600*1000000ll) );
-      wdump((max_supply_growth)(supply.amount)(initial_supply.amount)(supply.amount-initial_supply.amount));
-      BOOST_REQUIRE(max_supply_growth >= supply.amount - initial_supply.amount);
+      /// Using microseconds can lead to overflow issues if order or types is not chosen carefully
+      /// using seconds gives accurate results
+      {
+         uint32_t secs_between_fills = ((claim_time - initial_claim_time)/1000000);
+         const int64_t max_supply_growth = int64_t( initial_supply.amount * secs_between_fills * continuous_rate / (52*7*24*3600) );
+         wdump((max_supply_growth)(supply.amount)(initial_supply.amount)(supply.amount-initial_supply.amount));
+         BOOST_REQUIRE(max_supply_growth == supply.amount - initial_supply.amount);
+      }
    }
    
    // initb tries to claim rewards but he's not on the list
    {
-      //BOOST_REQUIRE_EQUAL(error("condition: assertion failed: account name is not in producer list"),
       BOOST_REQUIRE_EQUAL(error("condition: assertion failed: unable to find key"),
                           push_action(N(initb), N(claimrewards), mvo()("owner", "initb")));
    }
