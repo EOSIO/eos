@@ -464,9 +464,29 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
    bought_bytes = bytes - init_bytes;
    wdump((init_bytes)(bought_bytes)(bytes) );
 
-
    BOOST_REQUIRE_EQUAL( true, total["ram_bytes"].as_uint64() == init_bytes );
    BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9993 EOS"), get_balance( "alice1111111" ) );
+
+
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "30.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100000439.9993 EOS"), get_balance( "alice1111111" ) );
+
+   auto newtotal = get_total_stake( "alice1111111" );
+
+   auto newbytes = newtotal["ram_bytes"].as_uint64();
+   bought_bytes = newbytes - bytes;
+   wdump((newbytes)(bytes)(bought_bytes) );
+
+   BOOST_REQUIRE_EQUAL( success(), sellram( "alice1111111", bought_bytes ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9991 EOS"), get_balance( "alice1111111" ) );
 
 } FC_LOG_AND_RETHROW() 
 
