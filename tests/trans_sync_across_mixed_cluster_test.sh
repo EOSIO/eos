@@ -79,8 +79,8 @@ cleanup()
 # result stored in HEAD_BLOCK_NUM
 getHeadBlockNum()
 {
-  INFO="$(programs/enu-cli/enu-cli get info)"
-  verifyErrorCode "enu-cli get info"
+  INFO="$(programs/enucli/enucli get info)"
+  verifyErrorCode "enucli get info"
   HEAD_BLOCK_NUM="$(echo "$INFO" | awk '/head_block_num/ {print $2}')"
   # remove trailing coma
   HEAD_BLOCK_NUM=${HEAD_BLOCK_NUM%,}
@@ -126,22 +126,22 @@ echo endPort: $endPort
 port2=$startPort
 while [ $port2  -ne $endport ]; do
     echo Request block 1 from node on port $port2
-    TRANS_INFO="$(programs/enu-cli/enu-cli --port $port2 get block 1)"
-    verifyErrorCode "enu-cli get block"
+    TRANS_INFO="$(programs/enucli/enucli --port $port2 get block 1)"
+    verifyErrorCode "enucli get block"
     port2=`expr $port2 + 1`
 done
 
 # create 3 keys
-KEYS="$(programs/enu-cli/enu-cli create key)"
-verifyErrorCode "enu-cli create key"
+KEYS="$(programs/enucli/enucli create key)"
+verifyErrorCode "enucli create key"
 PRV_KEY1="$(echo "$KEYS" | awk '/Private/ {print $3}')"
 PUB_KEY1="$(echo "$KEYS" | awk '/Public/ {print $3}')"
-KEYS="$(programs/enu-cli/enu-cli create key)"
-verifyErrorCode "enu-cli create key"
+KEYS="$(programs/enucli/enucli create key)"
+verifyErrorCode "enucli create key"
 PRV_KEY2="$(echo "$KEYS" | awk '/Private/ {print $3}')"
 PUB_KEY2="$(echo "$KEYS" | awk '/Public/ {print $3}')"
-KEYS="$(programs/enu-cli/enu-cli create key)"
-verifyErrorCode "enu-cli create key"
+KEYS="$(programs/enucli/enucli create key)"
+verifyErrorCode "enucli create key"
 PRV_KEY3="$(echo "$KEYS" | awk '/Private/ {print $3}')"
 PUB_KEY3="$(echo "$KEYS" | awk '/Public/ {print $3}')"
 if [ -z "$PRV_KEY1" ] || [ -z "$PRV_KEY2" ] || [ -z "$PRV_KEY3" ] || [ -z "$PUB_KEY1" ] || [ -z "$PUB_KEY2" ] || [ -z "$PUB_KEY3" ]; then
@@ -150,21 +150,21 @@ fi
 
 
 # create wallet for inita
-PASSWORD_INITA="$(programs/enu-cli/enu-cli wallet create --name inita)"
-verifyErrorCode "enu-cli wallet create"
+PASSWORD_INITA="$(programs/enucli/enucli wallet create --name inita)"
+verifyErrorCode "enucli wallet create"
 # strip out password from output
 PASSWORD_INITA="$(echo "$PASSWORD_INITA" | awk '/PW/ {print $1}')"
 # remove leading/trailing quotes
 PASSWORD_INITA=${PASSWORD_INITA#\"}
 PASSWORD_INITA=${PASSWORD_INITA%\"}
-programs/enu-cli/enu-cli wallet import --name inita $INITA_PRV_KEY
-verifyErrorCode "enu-cli wallet import"
-programs/enu-cli/enu-cli wallet import --name inita $PRV_KEY1
-verifyErrorCode "enu-cli wallet import"
-programs/enu-cli/enu-cli wallet import --name inita $PRV_KEY2
-verifyErrorCode "enu-cli wallet import"
-programs/enu-cli/enu-cli wallet import --name inita $PRV_KEY3
-verifyErrorCode "enu-cli wallet import"
+programs/enucli/enucli wallet import --name inita $INITA_PRV_KEY
+verifyErrorCode "enucli wallet import"
+programs/enucli/enucli wallet import --name inita $PRV_KEY1
+verifyErrorCode "enucli wallet import"
+programs/enucli/enucli wallet import --name inita $PRV_KEY2
+verifyErrorCode "enucli wallet import"
+programs/enucli/enucli wallet import --name inita $PRV_KEY3
+verifyErrorCode "enucli wallet import"
 
 #
 # Account and Transfer Tests
@@ -172,12 +172,12 @@ verifyErrorCode "enu-cli wallet import"
 
 # create new account
 echo Creating account testera
-ACCOUNT_INFO="$(programs/enu-cli/enu-cli create account inita testera $PUB_KEY1 $PUB_KEY3)"
-verifyErrorCode "enu-cli create account"
+ACCOUNT_INFO="$(programs/enucli/enucli create account inita testera $PUB_KEY1 $PUB_KEY3)"
+verifyErrorCode "enucli create account"
 waitForNextBlock
 # verify account created
-ACCOUNT_INFO="$(programs/enu-cli/enu-cli get account testera)"
-verifyErrorCode "enu-cli get account"
+ACCOUNT_INFO="$(programs/enucli/enucli get account testera)"
+verifyErrorCode "enucli get account"
 count=`echo $ACCOUNT_INFO | grep -c "staked_balance"`
 if [ $count == 0 ]; then
   error "FAILURE - account creation failed: $ACCOUNT_INFO"
@@ -189,8 +189,8 @@ echo Producing node port: $pPort
 while [ $port  -ne $endport ]; do
 
     echo Sending transfer request to node on port $port.
-    TRANSFER_INFO="$(programs/enu-cli/enu-cli transfer inita testera 975321 "test transfer")"
-    verifyErrorCode "enu-cli transfer"
+    TRANSFER_INFO="$(programs/enucli/enucli transfer inita testera 975321 "test transfer")"
+    verifyErrorCode "enucli transfer"
     getTransactionId "$TRANSFER_INFO"
     echo Transaction id: $TRANS_ID
 
@@ -200,8 +200,8 @@ while [ $port  -ne $endport ]; do
     port2=$startPort
     while [ $port2  -ne $endport ]; do
 	echo Verifying transaction exists on node on port $port2
-   TRANS_INFO="$(programs/enu-cli/enu-cli --port $port2 get transaction $TRANS_ID)"
-   verifyErrorCode "enu-cli get transaction trans_id of <$TRANS_INFO> from node on port $port2"
+   TRANS_INFO="$(programs/enucli/enucli --port $port2 get transaction $TRANS_ID)"
+   verifyErrorCode "enucli get transaction trans_id of <$TRANS_INFO> from node on port $port2"
 	port2=`expr $port2 + 1`
     done
 

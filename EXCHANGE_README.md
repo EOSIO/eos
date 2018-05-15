@@ -8,7 +8,7 @@ native token conforms to the standard.
 
 Configuring Nodeos
 ------------------
-This tutorial uses the `enu-cli` commandline tool to query a local `enunode` server
+This tutorial uses the `enucli` commandline tool to query a local `enunode` server
 which should be connected to an eosio blockchain. `enunode` will need to be configured
 with the following plugins:
 
@@ -51,14 +51,14 @@ a couple of minutes, but either way enunode will keep you posted on the status.
 
 ## Initial Condition
 ```
-./enu-cli get currency balance enumivo.coin scott EOS
+./enucli get currency balance enumivo.coin scott EOS
 900.0000 EOS
 ```
 
 We will now deposit some funds to exchange:
 
 ```
-./enu-cli transfer scott exchange "1.0000 EOS"
+./enucli transfer scott exchange "1.0000 EOS"
 executed transaction: 5ec797175dd24612acd8fc5a8685fa44caa8646cec0a87b12568db22a3df02fb  256 bytes  8k cycles
 #   enumivo.coin <= enumivo.coin::transfer        {"from":"scott","to":"exchange","quantity":"1.0000 EOS","memo":""}
 >> transfer
@@ -80,7 +80,7 @@ irreversible transactions are printed in "green" while unconfirmed transactions 
 can tell whether a transaction is confirmed or not by the first character, '#' for irreversible and '?' for potentially reversable.
 
 ```
-./enu-cli get actions exchange
+./enucli get actions exchange
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
 #    0   2018-04-29T01:09:45.000     enumivo.coin::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 EOS","mem...
@@ -89,7 +89,7 @@ can tell whether a transaction is confirmed or not by the first character, '#' f
 Do a few more transfers:
 
 ```
-./enu-cli get actions exchange
+./enucli get actions exchange
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
 #    0   2018-04-29T01:09:45.000     enumivo.coin::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 EOS","mem...
@@ -102,11 +102,11 @@ The last transfer is still pending, waiting on irreversibility.
 
 The "seq" column represents the index of actions for your specific account, it will always increment as new relevant actions are added.
 
-The `enu-cli get actions` command allows you some control over which actions are fetched, you can view the help for this command with `-h` 
+The `enucli get actions` command allows you some control over which actions are fetched, you can view the help for this command with `-h` 
 
 ```
-./enu-cli get actions -h
-Usage: ./enu-cli get actions [OPTIONS] account_name [pos] [offset]
+./enucli get actions -h
+Usage: ./enucli get actions [OPTIONS] account_name [pos] [offset]
 
 Positionals:
   account_name TEXT           name of account to query on
@@ -123,7 +123,7 @@ Positionals:
 To get only the last action you would do the following...
 
 ```
-./enu-cli get actions exchange -1 -1
+./enucli get actions exchange -1 -1
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
 #    2   2018-04-29T01:19:54.000     enumivo.coin::transfer => exchange      213f3797... {"from":"scott","to":"exchange","quantity":"1.0000 EOS","mem...
@@ -141,7 +141,7 @@ microservice will need to track the seq number of the "last processed seq".  For
 
 We pass pos=1 and offset=0 to get the range [1,1+0] or [1,1].
 ```
-./enu-cli get actions exchange 1 0
+./enucli get actions exchange 1 0
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
 #    1   2018-04-29T01:16:25.000     enumivo.coin::transfer => exchange      2269828c... {"from":"scott","to":"exchange","quantity":"1.0000 EOS","mem...
@@ -151,20 +151,20 @@ We can call this in a loop procesing each confirmed action (those starting with 
 we find an unconfirmed action (starting with ?).
 
 ```
-./enu-cli get actions exchange 3 0
+./enucli get actions exchange 3 0
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
 ```
 
 ### Machine Readable Account History (JSON)
 
-So far this tutorial has focused on using `enu-cli` to fetch and display the history, but enu-cli is merely a light-weight
-wrapper around a json-rpc interface.  `enu-cli` can dump the raw json returned from the json-rpc request or you can make
+So far this tutorial has focused on using `enucli` to fetch and display the history, but enucli is merely a light-weight
+wrapper around a json-rpc interface.  `enucli` can dump the raw json returned from the json-rpc request or you can make
 your own json-rpc request.
 
 Here is the JSON returned when querying sequence 2.
 ```
-./enu-cli get actions exchange 2 0 -j
+./enucli get actions exchange 2 0 -j
 {
   "actions": [{
       "global_action_seq": 32856,
@@ -245,7 +245,7 @@ then you may process "false deposits".
 Now that we have received 3 deposits we should see that the exchange has a balance of 3.0000 EOS.
 
 ```
-./enu-cli get currency balance enumivo.coin exchange EOS
+./enucli get currency balance enumivo.coin exchange EOS
 3.0000 EOS
 ```
 
@@ -254,13 +254,13 @@ Now that we have received 3 deposits we should see that the exchange has a balan
 (note, while generating this tutorial scott deposited another 1.0000 EOS (seq 3) for total exchange balance of 4.0000 EOS.)
 
 When a user requests a withdraw from your exchange they will need to provide you with their eosio account name and
-the amount to be withdrawn.  You can then run the enu-cli command which will interact with the "unlocked" wallet 
+the amount to be withdrawn.  You can then run the enucli command which will interact with the "unlocked" wallet 
 running on `enunode` which should only enable localhost connections. More advanced usage would have a separate
 key-server (`keos`), but that will be covered later.
 
 Lets assume scott wants to withdraw `1.0000 EOS`:
 ```
-./enu-cli transfer exchange scott  "1.0000 EOS"
+./enucli transfer exchange scott  "1.0000 EOS"
 executed transaction: 93e785202e7502bb1383ad10e786cc20f7dd738d3fd3da38712b3fb38fb9af26  256 bytes  8k cycles
 #   enumivo.coin <= enumivo.coin::transfer        {"from":"exchange","to":"scott","quantity":"1.0000 EOS","memo":""}
 >> transfer
@@ -278,7 +278,7 @@ sender ('exchange') processed it and so did the receiver ('scott') and all 3 con
 state transitions based upon the action.
 
 ```
-./enu-cli get actions exchange -1 -8
+./enucli get actions exchange -1 -8
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
 #    0   2018-04-29T01:09:45.000     enumivo.coin::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 EOS","mem...
@@ -302,10 +302,10 @@ the transaction to expire. Every transaction has an "expiration" after which the
 moved past the expiration time you can safely mark your attempted withdaw as failed and not worry about it "floating around the ether" to be applied
 when you least expect.
 
-By default enu-cli sets an expiration window of just 2 minutes.  This is long enough to allow all 21 producers an opportunity to include the transaction.
+By default enucli sets an expiration window of just 2 minutes.  This is long enough to allow all 21 producers an opportunity to include the transaction.
 
 ```
- ./enu-cli transfer exchange scott  "1.0000 EOS" -j -d
+ ./enucli transfer exchange scott  "1.0000 EOS" -j -d
 {
   "expiration": "2018-04-29T01:58:12",
   "ref_block_num": 37282,
@@ -318,9 +318,9 @@ By default enu-cli sets an expiration window of just 2 minutes.  This is long en
 
 ```
 
-Your microservice can query the last irreversible block number and the head block time using enu-cli. 
+Your microservice can query the last irreversible block number and the head block time using enucli. 
 ```
-./enu-cli get info
+./enucli get info
 {
   "server_version": "0812f84d",
   "head_block_num": 39313,

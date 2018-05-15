@@ -75,7 +75,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName="keosd"
-ClientName="enu-cli"
+ClientName="enucli"
 # testUtils.Utils.setMongoSyncTime(50)
 
 try:

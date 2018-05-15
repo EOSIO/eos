@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Usage:
-# Go into cmd loop: sudo ./enu-cli.sh
-# Run single cmd:  sudo ./enu-cli.sh <enu-cli paramers>
+# Go into cmd loop: sudo ./enucli.sh
+# Run single cmd:  sudo ./enucli.sh <enucli paramers>
 
-PREFIX="docker exec docker_nodeos_1 enu-cli"
+PREFIX="docker exec docker_nodeos_1 enucli"
 if [ -z $1 ] ; then
   while :
   do
-    read -e -p "enu-cli " cmd
+    read -e -p "enucli " cmd
     history -s "$cmd"
     $PREFIX $cmd
   done

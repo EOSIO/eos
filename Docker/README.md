@@ -60,22 +60,22 @@ docker volume create --name=keosd-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. enunode service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to enu-cli when running enu-cli is running inside the keosd container as described in "Execute enu-cli commands" section.
+After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. enunode service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to enucli when running enucli is running inside the keosd container as described in "Execute enucli commands" section.
 
-### Execute enu-cli commands
+### Execute enucli commands
 
-You can run the `enu-cli` commands via a bash alias.
+You can run the `enucli` commands via a bash alias.
 
 ```bash
-alias enu-cli='docker-compose exec keosd /opt/eosio/bin/enu-cli -u http://nodeosd:8888'
-enu-cli get info
-enu-cli get account inita
+alias enucli='docker-compose exec keosd /opt/eosio/bin/enucli -u http://nodeosd:8888'
+enucli get info
+enucli get account inita
 ```
 
 Upload sample exchange contract
 
 ```bash
-enu-cli set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
+enucli set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
 ```
 
 If you don't need keosd afterwards, you can stop the keosd service using
