@@ -679,7 +679,8 @@ class Node(object):
     # Get actions mapped to an account (cleos get actions)
     def getActions(self, account, pos=-1, offset=-1):
         assert(isinstance(account, Account))
-        assert(isinstance(pos, int), isinstance(offset, int))
+        assert(isinstance(pos, int))
+        assert(isinstance(offset, int))
 
         cmd="%s %s get actions -j %s %d %d" % (Utils.EosClientPath, self.endpointArgs, account.name, pos, offset)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -1415,7 +1416,7 @@ class Cluster(object):
                 cmd="%s create key" % (Utils.EosClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
-                m=p.match(keyStr)
+                m=p.search(keyStr)
                 if m is None:
                     Utils.Print("ERROR: Owner key creation regex mismatch")
                     break
@@ -1428,7 +1429,7 @@ class Cluster(object):
                 keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
                 m=p.match(keyStr)
                 if m is None:
-                    Utils.Print("ERROR: Owner key creation regex mismatch")
+                    Utils.Print("ERROR: Active key creation regex mismatch")
                     break
 
                 activePrivate=m.group(1)
@@ -1441,7 +1442,7 @@ class Cluster(object):
                 account.activePrivateKey=activePrivate
                 account.activePublicKey=activePublic
                 accounts.append(account)
-                if Utils.Debug: Utils.Print("name: %s, key: ['%s', '%s]-owner; ['%s', '%s']-active" % (name, ownerPublic, ownerPrivate, activePublic, activePrivate))
+                if Utils.Debug: Utils.Print("name: %s, key(owner): ['%s', '%s], key(active): ['%s', '%s']" % (name, ownerPublic, ownerPrivate, activePublic, activePrivate))
 
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
@@ -1705,6 +1706,9 @@ class Cluster(object):
             return False
 
         walletMgr=WalletMgr(True)
+        walletMgr.killall()
+        walletMgr.cleanup()
+
         if not walletMgr.launch():
             Utils.Print("ERROR: Failed to launch bootstrap wallet.")
             return False
