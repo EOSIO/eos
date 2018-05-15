@@ -50,7 +50,7 @@ void validate_authority_precondition( const apply_context& context, const author
       try {
          context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
       } catch( const permission_query_exception& ) {
-         EOS_THROW( action_validate_exception,
+         ENU_THROW( action_validate_exception,
                     "permission '${perm}' does not exist",
                     ("perm", a.permission)
                   );

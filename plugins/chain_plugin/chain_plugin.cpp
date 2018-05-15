@@ -427,7 +427,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
          block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
       }
 
-   } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+   } ENU_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
    ENU_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
@@ -452,7 +452,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
    auto resolver = make_resolver(this);
    try {
       abi_serializer::from_variant(params, *pretty_input, resolver);
-   } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+   } ENU_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
    auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input);
 
@@ -587,7 +587,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       abi_serializer abis( abi );
       try {
          result.binargs = abis.variant_to_binary(abis.get_action_type(params.action), params.args);
-      } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
+      } ENU_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'",
                                 ("args", params.args)("action", params.action)("code", params.code))
    }

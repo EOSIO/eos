@@ -324,7 +324,7 @@ void wallet_api::unlock(string password)
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
    my->_checksum = pk.checksum;
-} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+} ENU_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
 void wallet_api::set_password( string password )

@@ -264,11 +264,11 @@ namespace eosio { namespace chain {
    void transaction_context::check_net_usage()const {
       if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
          if( net_limit_due_to_block ) {
-            EOS_THROW( block_net_usage_exceeded,
+            ENU_THROW( block_net_usage_exceeded,
                        "not enough space left in block: ${net_usage} > ${net_limit}",
                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
          } else {
-            EOS_THROW( tx_net_usage_exceeded,
+            ENU_THROW( tx_net_usage_exceeded,
                        "net usage of transaction is too high: ${net_usage} > ${net_limit}",
                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
          }
@@ -279,17 +279,17 @@ namespace eosio { namespace chain {
       auto now = fc::time_point::now();
       if( BOOST_UNLIKELY( now > deadline ) ) {
          if( billed_cpu_time_us > 0 || deadline_exception_code == deadline_exception::code_value ) {
-            EOS_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", deadline)("start", start) );
+            ENU_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", deadline)("start", start) );
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
-            EOS_THROW( block_cpu_usage_exceeded,
+            ENU_THROW( block_cpu_usage_exceeded,
                        "not enough time left in block to complete executing transaction",
                        ("now", now)("deadline", deadline)("start", start) );
          } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
-            EOS_THROW( tx_cpu_usage_exceeded,
+            ENU_THROW( tx_cpu_usage_exceeded,
                        "transaction was executing for too long",
                        ("now", now)("deadline", deadline)("start", start) );
          } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
-            EOS_THROW( leeway_deadline_exception,
+            ENU_THROW( leeway_deadline_exception,
                        "the transaction was unable to complete by deadline, "
                        "but it is possible it could have succeeded if it were allow to run to completion",
                        ("now", now)("deadline", deadline)("start", start) );
