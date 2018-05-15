@@ -223,10 +223,6 @@ try:
     if node is None:
         errorExit("Cluster in bad state, received None node")
 
-    # Exit early untill test is fully functional
-    testSuccessful=True
-    exit(0)
-
     Print("Create new account %s via %s" % (testeraAccount.name, defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, defproduceraAccount, stakedDeposit=0, waitForTransBlock=False)
     if transId is None:
