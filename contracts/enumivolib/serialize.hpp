@@ -4,7 +4,7 @@
 #include <boost/preprocessor/seq/seq.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
-#define EOSLIB_REFLECT_MEMBER_OP( r, OP, elem ) \
+#define ENULIB_REFLECT_MEMBER_OP( r, OP, elem ) \
   OP t.elem 
 
 /**
@@ -19,11 +19,11 @@
 #define ENULIB_SERIALIZE( TYPE,  MEMBERS ) \
  template<typename DataStream> \
  friend DataStream& operator << ( DataStream& ds, const TYPE& t ){ \
-    return ds BOOST_PP_SEQ_FOR_EACH( EOSLIB_REFLECT_MEMBER_OP, <<, MEMBERS );\
+    return ds BOOST_PP_SEQ_FOR_EACH( ENULIB_REFLECT_MEMBER_OP, <<, MEMBERS );\
  }\
  template<typename DataStream> \
  friend DataStream& operator >> ( DataStream& ds, TYPE& t ){ \
-    return ds BOOST_PP_SEQ_FOR_EACH( EOSLIB_REFLECT_MEMBER_OP, >>, MEMBERS );\
+    return ds BOOST_PP_SEQ_FOR_EACH( ENULIB_REFLECT_MEMBER_OP, >>, MEMBERS );\
  } 
 
 
@@ -31,10 +31,10 @@
  template<typename DataStream> \
  friend DataStream& operator << ( DataStream& ds, const TYPE& t ){ \
     ds << static_cast<const BASE&>(t); \
-    return ds BOOST_PP_SEQ_FOR_EACH( EOSLIB_REFLECT_MEMBER_OP, <<, MEMBERS );\
+    return ds BOOST_PP_SEQ_FOR_EACH( ENULIB_REFLECT_MEMBER_OP, <<, MEMBERS );\
  }\
  template<typename DataStream> \
  friend DataStream& operator >> ( DataStream& ds, TYPE& t ){ \
     ds >> static_cast<BASE&>(t); \
-    return ds BOOST_PP_SEQ_FOR_EACH( EOSLIB_REFLECT_MEMBER_OP, >>, MEMBERS );\
+    return ds BOOST_PP_SEQ_FOR_EACH( ENULIB_REFLECT_MEMBER_OP, >>, MEMBERS );\
  } 
