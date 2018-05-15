@@ -176,7 +176,7 @@ const char* error_advice_3090005 =  "Please remove the unnecessary authority fro
 const char* error_advice_3110001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
 const char* error_advice_3110002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
                                     "Otherwise specify your wallet location with \033[2m--wallet-url\033[0m\033[32m argument!";
-const char* error_advice_3110003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_3110003 =  "Ensure that you have \033[2meosio::history_api_plugin\033[0m\033[32m added to your node's configuration!";
 const char* error_advice_3110004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
 const char* error_advice_3120001 =  "Try to use different wallet name.";
