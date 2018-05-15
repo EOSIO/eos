@@ -185,4 +185,4 @@ namespace identity {
 
 } /// namespace identity
 
-EOSIO_ABI( identity::contract, (create)(certprop)(settrust) );
+ENUMIVO_ABI( identity::contract, (create)(certprop)(settrust) );

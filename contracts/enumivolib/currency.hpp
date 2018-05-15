@@ -26,7 +26,7 @@ namespace eosio {
             uint8_t                issuer_can_whitelist  = true;
 
             /*(issuer_agreement_hash)*/
-            EOSLIB_SERIALIZE( create, (issuer)(maximum_supply)(issuer_can_freeze)(issuer_can_recall)(issuer_can_whitelist) )
+            ENULIB_SERIALIZE( create, (issuer)(maximum_supply)(issuer_can_freeze)(issuer_can_recall)(issuer_can_whitelist) )
          };
 
          struct transfer
@@ -36,7 +36,7 @@ namespace eosio {
             asset        quantity;
             string       memo;
 
-            EOSLIB_SERIALIZE( transfer, (from)(to)(quantity)(memo) )
+            ENULIB_SERIALIZE( transfer, (from)(to)(quantity)(memo) )
          };
 
          struct issue {
@@ -44,14 +44,14 @@ namespace eosio {
             asset        quantity;
             string       memo;
 
-            EOSLIB_SERIALIZE( issue, (to)(quantity)(memo) )
+            ENULIB_SERIALIZE( issue, (to)(quantity)(memo) )
          };
 
          struct fee_schedule {
             uint64_t primary_key()const { return 0; }
 
             array<extended_asset,7> fee_per_length;
-            EOSLIB_SERIALIZE( fee_schedule, (fee_per_length) )
+            ENULIB_SERIALIZE( fee_schedule, (fee_per_length) )
          };
 
          struct account {
@@ -61,7 +61,7 @@ namespace eosio {
 
             uint64_t primary_key()const { return balance.symbol.name(); }
 
-            EOSLIB_SERIALIZE( account, (balance)(frozen)(whitelist) )
+            ENULIB_SERIALIZE( account, (balance)(frozen)(whitelist) )
          };
 
          struct currency_stats {
@@ -76,7 +76,7 @@ namespace eosio {
 
             uint64_t primary_key()const { return supply.symbol.name(); }
 
-            EOSLIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(enforce_whitelist) )
+            ENULIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(enforce_whitelist) )
          };
 
          typedef eosio::multi_index<N(accounts), account> accounts;

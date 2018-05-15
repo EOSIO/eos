@@ -79,7 +79,7 @@ namespace tic_tac_toe {
 
       auto primary_key() const { return challenger; }
 
-      EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board) )
+      ENULIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board) )
    };
 
    /**
@@ -89,7 +89,7 @@ namespace tic_tac_toe {
       account_name   challenger;
       account_name   host;
 
-      EOSLIB_SERIALIZE( create, (challenger)(host) )
+      ENULIB_SERIALIZE( create, (challenger)(host) )
    };
 
    /**
@@ -100,7 +100,7 @@ namespace tic_tac_toe {
       account_name   host;
       account_name   by; // the account who wants to restart the game
 
-      EOSLIB_SERIALIZE( restart, (challenger)(host)(by) )
+      ENULIB_SERIALIZE( restart, (challenger)(host)(by) )
    };
 
    /**
@@ -110,7 +110,7 @@ namespace tic_tac_toe {
       account_name   challenger;
       account_name   host;
 
-      EOSLIB_SERIALIZE( close, (challenger)(host) )
+      ENULIB_SERIALIZE( close, (challenger)(host) )
    };
 
    /**
@@ -120,7 +120,7 @@ namespace tic_tac_toe {
       uint32_t    row;
       uint32_t    column;
 
-      EOSLIB_SERIALIZE( movement, (row)(column) )
+      ENULIB_SERIALIZE( movement, (row)(column) )
    };
 
    /**
@@ -132,7 +132,7 @@ namespace tic_tac_toe {
       account_name   by; // the account who wants to make the move
       movement       mvt;
 
-      EOSLIB_SERIALIZE( move, (challenger)(host)(by)(mvt) )
+      ENULIB_SERIALIZE( move, (challenger)(host)(by)(mvt) )
    };
 
    /**

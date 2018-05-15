@@ -125,4 +125,4 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
 
 } /// namespace eosio
 
-EOSIO_ABI( eosio::multisig, (propose)(approve)(unapprove)(cancel)(exec) )
+ENUMIVO_ABI( eosio::multisig, (propose)(approve)(unapprove)(cancel)(exec) )

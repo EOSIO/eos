@@ -58,7 +58,7 @@ bool transaction_header::verify_reference_block( const block_id_type& reference_
 }
 
 void transaction_header::validate()const {
-   EOS_ASSERT( max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception,
+   ENU_ASSERT( max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception,
                "declared max_net_usage_words overflows when expanded to max net usage" );
 }
 
@@ -101,7 +101,7 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
       }
       bool successful_insertion = false;
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
-      EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
+      ENU_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                   "transaction includes more than one signature signed using the same key associated with public key: ${key}",
                   ("key", recov)
                );
@@ -165,7 +165,7 @@ struct read_limiter {
    template<typename Sink>
    size_t write(Sink &sink, const char* s, size_t count)
    {
-      EOS_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
+      ENU_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
       _total += count;
       return bio::write(sink, s, count);
    }

@@ -22,7 +22,7 @@ namespace eosiosystem {
       uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
+      ENULIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
    };
 
    struct eosio_global_state : eosio_parameters {
@@ -40,7 +40,7 @@ namespace eosiosystem {
       int64_t              total_activated_stake = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
+      ENULIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)
                                 (last_pervote_bucket_fill)
                                 (pervote_bucket)(savings)(last_producer_schedule_id)(total_activated_stake) )
@@ -62,7 +62,7 @@ namespace eosiosystem {
       bool        active() const     { return producer_key != public_key(); }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(url)
+      ENULIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(url)
                         (produced_blocks)(last_claim_time)(location)
                         (time_became_active)(last_produced_block_time) )
    };
@@ -95,7 +95,7 @@ namespace eosiosystem {
       uint64_t primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(deferred_trx_id)(last_unstake_time)(unstaking) )
+      ENULIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(deferred_trx_id)(last_unstake_time)(unstaking) )
    };
 
    typedef eosio::multi_index< N(voters), voter_info>  voters_table;

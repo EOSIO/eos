@@ -18,6 +18,6 @@ namespace eosio {
          }
    };
 
-   EOSIO_ABI( noop, ( anyaction ) )
+   ENUMIVO_ABI( noop, ( anyaction ) )
 
 } /// eosio     

@@ -44,7 +44,7 @@
 #include <test_api_db/test_api_db.wast.hpp>
 #include <test_api_multi_index/test_api_multi_index.wast.hpp>
 
-#define DISABLE_EOSLIB_SERIALIZE
+#define DISABLE_ENULIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
 
 FC_REFLECT( dummy_action, (a)(b)(c) )

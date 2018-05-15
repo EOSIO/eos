@@ -267,7 +267,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
          ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
          ref_block_id = ref_block["id"].as<block_id_type>();
       }
-   } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+   } ENU_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
    trx.set_reference_block(ref_block_id);
 
    if (tx_force_unique) {
@@ -564,14 +564,14 @@ fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_
 authority parse_json_authority(const std::string& authorityJsonOrFile) {
    try {
       return json_from_file_or_string(authorityJsonOrFile).as<authority>();
-   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
+   } ENU_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
    if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
       try {
          return authority(public_key_type(authorityJsonOrFile));
-      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
+      } ENU_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
    } else {
       return parse_json_authority(authorityJsonOrFile);
    }
@@ -796,7 +796,7 @@ struct register_producer_subcommand {
          public_key_type producer_key;
          try {
             producer_key = public_key_type(producer_key_str);
-         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
+         } ENU_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
          auto regprod_var = regproducer_variant(producer_str, producer_key, url );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
@@ -844,10 +844,10 @@ struct create_account_subcommand {
             public_key_type owner_key, active_key;
             try {
                owner_key = public_key_type(owner_key_str);
-            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str));
+            } ENU_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str));
             try {
                active_key = public_key_type(active_key_str);
-            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
+            } ENU_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
                action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
@@ -1485,7 +1485,7 @@ int main( int argc, char** argv ) {
       public_key_type public_key;
       try {
          public_key = public_key_type(public_key_str);
-      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_str))
+      } ENU_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_str))
       auto arg = fc::mutable_variant_object( "public_key", public_key);
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
@@ -1509,7 +1509,7 @@ int main( int argc, char** argv ) {
       try {
          while( transaction_id_str.size() < 64 ) transaction_id_str += "0";
          transaction_id = transaction_id_type(transaction_id_str);
-      } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
+      } ENU_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
       auto arg= fc::mutable_variant_object( "id", transaction_id);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
@@ -1623,14 +1623,14 @@ int main( int argc, char** argv ) {
          uint64_t skip_seq;
          try {
             skip_seq = boost::lexical_cast<uint64_t>(skip_seq_str);
-         } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Skip Seq: ${skip_seq}", ("skip_seq", skip_seq_str))
+         } ENU_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Skip Seq: ${skip_seq}", ("skip_seq", skip_seq_str))
          if (num_seq_str.empty()) {
             arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq);
          } else {
             uint64_t num_seq;
             try {
                num_seq = boost::lexical_cast<uint64_t>(num_seq_str);
-            } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Num Seq: ${num_seq}", ("num_seq", num_seq_str))
+            } ENU_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Num Seq: ${num_seq}", ("num_seq", num_seq_str))
             arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq_str)("num_seq", num_seq);
          }
       }
@@ -1724,7 +1724,7 @@ int main( int argc, char** argv ) {
 
       try {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
-      } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
+      } ENU_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
 
       std::cout << localized("Publishing contract...") << std::endl;
       send_actions(std::move(actions), 10000, packed_transaction::zlib);
@@ -1888,7 +1888,7 @@ int main( int argc, char** argv ) {
       try {
          wallet_key = private_key_type( wallet_key_str );
       } catch (...) {
-          EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+          ENU_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
       }
       public_key_type pubkey = wallet_key.get_public_key();
 
@@ -1997,7 +1997,7 @@ int main( int argc, char** argv ) {
       fc::variant action_args_var;
       try {
          action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
-      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data",data))
+      } ENU_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data",data))
 
       auto arg= fc::mutable_variant_object
                 ("code", contract)
@@ -2019,7 +2019,7 @@ int main( int argc, char** argv ) {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(trx_to_push);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
       signed_transaction trx = trx_var.as<signed_transaction>();
       auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -2033,7 +2033,7 @@ int main( int argc, char** argv ) {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(trxsJson);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trxsJson))
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trxsJson))
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
@@ -2078,15 +2078,15 @@ int main( int argc, char** argv ) {
       fc::variant requested_perm_var;
       try {
          requested_perm_var = json_from_file_or_string(requested_perm);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
       fc::variant transaction_perm_var;
       try {
          transaction_perm_var = json_from_file_or_string(transaction_perm);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",transaction_perm))
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",transaction_perm))
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(proposed_transaction);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
       transaction proposed_trx = trx_var.as<transaction>();
 
       auto arg= fc::mutable_variant_object()
@@ -2102,19 +2102,19 @@ int main( int argc, char** argv ) {
       vector<permission_level> reqperm;
       try {
          reqperm = requested_perm_var.as<vector<permission_level>>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
 
       vector<permission_level> trxperm;
       try {
          trxperm = transaction_perm_var.as<vector<permission_level>>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '${data}'", ("data",transaction_perm_var));
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '${data}'", ("data",transaction_perm_var));
 
       auto accountPermissions = get_account_permissions(tx_permission);
       if (accountPermissions.empty()) {
          if (!proposer.empty()) {
             accountPermissions = vector<permission_level>{{proposer, config::active_name}};
          } else {
-            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
+            ENU_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
          }
       }
       if (proposer.empty()) {
@@ -2204,7 +2204,7 @@ int main( int argc, char** argv ) {
       fc::variant perm_var;
       try {
          perm_var = json_from_file_or_string(perm);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",perm))
+      } ENU_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",perm))
       auto arg = fc::mutable_variant_object()
          ("code", "enumivo.msig")
          ("action", action)
@@ -2247,7 +2247,7 @@ int main( int argc, char** argv ) {
          if (!canceler.empty()) {
             accountPermissions = vector<permission_level>{{canceler, config::active_name}};
          } else {
-            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <canceler> or -p)");
+            ENU_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <canceler> or -p)");
          }
       }
       if (canceler.empty()) {
@@ -2279,7 +2279,7 @@ int main( int argc, char** argv ) {
          if (!executer.empty()) {
             accountPermissions = vector<permission_level>{{executer, config::active_name}};
          } else {
-            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <executer> or -p)");
+            ENU_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <executer> or -p)");
          }
       }
       if (executer.empty()) {

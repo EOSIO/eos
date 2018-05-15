@@ -13,23 +13,23 @@
 # In most cases, simply running ./eosio-tn_roll.sh is sufficient.
 #
 
-if [ -z "$EOSIO_HOME" ]; then
-    echo EOSIO_HOME not set - $0 unable to proceed.
+if [ -z "$ENUMIVO_HOME" ]; then
+    echo ENUMIVO_HOME not set - $0 unable to proceed.
     exit -1
 fi
 
-cd $EOSIO_HOME
+cd $ENUMIVO_HOME
 
-if [ -z "$EOSIO_NODE" ]; then
+if [ -z "$ENUMIVO_NODE" ]; then
     DD=`ls -d var/lib/node_[012]?`
     ddcount=`echo $DD | wc -w`
     if [ $ddcount -gt 1 ]; then
         DD="all"
     fi
     OFS=$((${#DD}-2))
-    export EOSIO_NODE=${DD:$OFS}
+    export ENUMIVO_NODE=${DD:$OFS}
 else
-    DD=var/lib/node_$EOSIO_NODE
+    DD=var/lib/node_$ENUMIVO_NODE
     if [ ! \( -d $DD \) ]; then
         echo no directory named $PWD/$DD
         cd -
@@ -76,17 +76,17 @@ fi
 
 echo DD = $DD
 
-bash $EOSIO_HOME/scripts/eosio-tn_down.sh
+bash $ENUMIVO_HOME/scripts/eosio-tn_down.sh
 
 cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
-    for EOSIO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
-        bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
+    for ENUMIVO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
+        bash $ENUMIVO_HOME/scripts/eosio-tn_up.sh $*
     done
 else
-    bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
+    bash $ENUMIVO_HOME/scripts/eosio-tn_up.sh $*
 fi
-unset EOSIO_RESTART_DATA_DIR
+unset ENUMIVO_RESTART_DATA_DIR
 
 cd -

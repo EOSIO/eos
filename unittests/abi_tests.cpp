@@ -1636,7 +1636,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
             }
       };
 
-      EOSIO_ABI(hello,(hi))
+      ENUMIVO_ABI(hello,(hi))
 
       #pragma GCC diagnostic pop
 
@@ -1699,7 +1699,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
             }
       };
 
-      EOSIO_ABI(new_hello,(hi)(bye))
+      ENUMIVO_ABI(new_hello,(hi)(bye))
 
       #pragma GCC diagnostic pop
    )=====";

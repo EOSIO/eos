@@ -12,4 +12,4 @@ class hello : public eosio::contract {
       }
 };
 
-EOSIO_ABI( hello, (hi) )
+ENUMIVO_ABI( hello, (hi) )

@@ -84,7 +84,7 @@ namespace eosio {
          }
       }
 
-      EOSLIB_SERIALIZE( symbol_type, (value) )
+      ENULIB_SERIALIZE( symbol_type, (value) )
    };
 
    struct extended_symbol : public symbol_type
@@ -105,7 +105,7 @@ namespace eosio {
       friend bool operator != ( const extended_symbol& a, const extended_symbol& b ) {
         return std::tie( a.value, a.contract ) != std::tie( b.value, b.contract );
       }
-      EOSLIB_SERIALIZE( extended_symbol, (value)(contract) )
+      ENULIB_SERIALIZE( extended_symbol, (value)(contract) )
    };
 
    struct asset {
@@ -251,7 +251,7 @@ namespace eosio {
          symbol.print(false);
       }
 
-      EOSLIB_SERIALIZE( asset, (amount)(symbol) )
+      ENULIB_SERIALIZE( asset, (amount)(symbol) )
    };
 
    struct extended_asset : public asset {
@@ -284,7 +284,7 @@ namespace eosio {
          return {r, a.contract};
       }
 
-      EOSLIB_SERIALIZE( extended_asset, (amount)(symbol)(contract) )
+      ENULIB_SERIALIZE( extended_asset, (amount)(symbol)(contract) )
    };
 
 
