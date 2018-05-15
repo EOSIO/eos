@@ -1,5 +1,5 @@
 add_subdirectory( enunode )
-add_subdirectory( enu-cli )
+add_subdirectory( enucli )
 add_subdirectory( keosd )
 add_subdirectory( enu-launcher )
 add_subdirectory( enu-applesedemo )

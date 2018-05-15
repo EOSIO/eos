@@ -22,7 +22,7 @@ class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
 
-    EosClientPath="programs/enu-cli/enu-cli"
+    EosClientPath="programs/enucli/enucli"
 
     EosWalletName="keosd"
     EosWalletPath="programs/keosd/"+ EosWalletName
@@ -676,7 +676,7 @@ class Node(object):
             Utils.Print("ERROR: Exception during accounts by key retrieval. %s" % (msg))
             return None
 
-    # Get actions mapped to an account (enu-cli get actions)
+    # Get actions mapped to an account (enucli get actions)
     def getActions(self, account, pos=-1, offset=-1):
         assert(isinstance(account, Account))
         assert(isinstance(pos, int))
@@ -717,7 +717,7 @@ class Node(object):
         return servants
 
     def getAccountEosBalanceStr(self, scope):
-        """Returns EOS currency0000 account balance from enu-cli get table command. Returned balance is string following syntax "98.0311 EOS". """
+        """Returns EOS currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 EOS". """
         assert isinstance(scope, str)
         if not self.enableMongo:
             amount=self.getNodeAccountBalance("enumivo.coin", scope)
@@ -737,7 +737,7 @@ class Node(object):
         return None
 
     def getAccountEosBalance(self, scope):
-        """Returns EOS currency0000 account balance from enu-cli get table command. Returned balance is an integer e.g. 980311. """
+        """Returns EOS currency0000 account balance from enucli get table command. Returned balance is an integer e.g. 980311. """
         balanceStr=self.getAccountEosBalanceStr(scope)
         balanceStr=balanceStr.split()[0]
         balance=int(decimal.Decimal(balanceStr[1:])*10000)

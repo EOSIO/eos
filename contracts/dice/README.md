@@ -43,7 +43,7 @@ Potential Vulnerabilities
     - under normal operation of DPOS chains there are few if any chain reorganizations
 
 
-Example game session using enu-cli
+Example game session using enucli
 -------
 #### Prerequisites
 * Wallet must be unlock and have at least the following private keys
@@ -53,72 +53,72 @@ Example game session using enu-cli
 
 ##### Upload bios contract
 ````bash
-enu-cli set contract eosio build/contracts/enumivo.bios -p eosio
+enucli set contract eosio build/contracts/enumivo.bios -p eosio
 ````
 
 ##### Ceate enumivo.coin account
 ````bash
-enu-cli create account eosio enumivo.coin EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account eosio enumivo.coin EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set enumivo.coin contract to enumivo.coin account
 ````bash
-enu-cli set contract enumivo.coin build/contracts/enumivo.coin -p enumivo.coin
+enucli set contract enumivo.coin build/contracts/enumivo.coin -p enumivo.coin
 ````
 
 ##### Create dice account
 ````bash
-enu-cli create account eosio dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account eosio dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set dice contract to dice account
 ````bash
-enu-cli set contract dice build/contracts/dice -p dice
+enucli set contract dice build/contracts/dice -p dice
 ````
 
 ##### Create native EOS token
 ````bash
-enu-cli push action enumivo.coin create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p enumivo.coin
+enucli push action enumivo.coin create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p enumivo.coin
 ````
 
 ##### Create alice account
 ````bash
-enu-cli create account eosio alice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account eosio alice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Create bob account
 ````bash
-enu-cli create account eosio bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account eosio bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Issue 1000 EOS to alice
 ````bash
-enu-cli push action enumivo.coin issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
+enucli push action enumivo.coin issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
 ````
 
 ##### Issue 1000 EOS to bob
 ````bash
-enu-cli push action enumivo.coin issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
+enucli push action enumivo.coin issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)
 ````bash
-enu-cli set account permission alice active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p alice
+enucli set account permission alice active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p alice
 ````
 
 ##### Allow dice contract to make transfers on bob behalf (deposit)
 ````bash
-enu-cli set account permission bob active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p bob
+enucli set account permission bob active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p bob
 ````
 
 ##### Alice deposits 100 EOS into the dice contract
 ````bash
-enu-cli push action dice deposit '[ "alice", "100.0000 EOS" ]' -p alice
+enucli push action dice deposit '[ "alice", "100.0000 EOS" ]' -p alice
 ````
 
 ##### Bob deposits 100 EOS into the dice contract
 ````bash
-enu-cli push action dice deposit '[ "bob", "100.0000 EOS" ]' -p bob
+enucli push action dice deposit '[ "bob", "100.0000 EOS" ]' -p bob
 ````
 
 ##### Alice generates a secret
@@ -135,7 +135,7 @@ d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883
 
 ##### Alice bets 3 EOS
 ````bash
-enu-cli push action dice offerbet '[ "3.0000 EOS", "alice", "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883" ]' -p alice
+enucli push action dice offerbet '[ "3.0000 EOS", "alice", "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883" ]' -p alice
 ````
 
 ##### Bob generates a secret
@@ -152,12 +152,12 @@ echo -n '15fe76d25e124b08feb835f12e00a879bd15666a33786e64b655891fba7d6c12' | xxd
 
 ##### Bob also bets 3 EOS (a game is started)
 ````bash
-enu-cli push action dice offerbet '[ "3.0000 EOS", "bob", "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129" ]' -p bob
+enucli push action dice offerbet '[ "3.0000 EOS", "bob", "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129" ]' -p bob
 ````
 
 ##### Dice contract tables right after the game started
 ````bash
-enu-cli get table dice dice account
+enucli get table dice dice account
 ````
 ````json
 {
@@ -178,7 +178,7 @@ enu-cli get table dice dice account
 ````
 
 ````bash
-enu-cli get table dice dice game
+enucli get table dice dice game
 ````
 ````json
 {
@@ -202,12 +202,12 @@ enu-cli get table dice dice game
 
 ##### Bob reveals his secret
 ````bash
-enu-cli push action dice reveal '[ "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129", "15fe76d25e124b08feb835f12e00a879bd15666a33786e64b655891fba7d6c12" ]' -p bob
+enucli push action dice reveal '[ "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129", "15fe76d25e124b08feb835f12e00a879bd15666a33786e64b655891fba7d6c12" ]' -p bob
 ````
 
 ##### Game table after bob revealed (now the game has a deadline for alice to reveal)
 ````bash
-enu-cli get table dice dice game
+enucli get table dice dice game
 ````
 ````json
 {
@@ -231,12 +231,12 @@ enu-cli get table dice dice game
 
 ##### Alice reveals her secret (the winner is determined, the game is removed)
 ````bash
-enu-cli push action dice reveal '[ "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883", "28349b1d4bcdc9905e4ef9719019e55743c84efa0c5e9a0b077f0b54fcd84905" ]' -p alice
+enucli push action dice reveal '[ "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883", "28349b1d4bcdc9905e4ef9719019e55743c84efa0c5e9a0b077f0b54fcd84905" ]' -p alice
 ````
 
 ##### Balance of the accounts after game ends
 ````bash
-enu-cli get table dice dice account
+enucli get table dice dice account
 ````
 ````json
 {
@@ -258,12 +258,12 @@ enu-cli get table dice dice account
 
 ##### Alice withdraw from her dice account 103 EOS
 ````bash
-enu-cli push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
+enucli push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
 ````
 
 ##### Balance of alice after withdraw
 ````bash
-enu-cli get currency balance enumivo.coin alice eos
+enucli get currency balance enumivo.coin alice eos
 1003.0000 EOS
 ````
 
