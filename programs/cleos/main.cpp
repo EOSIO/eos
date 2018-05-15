@@ -1673,6 +1673,7 @@ int main( int argc, char** argv ) {
    string contractPath;
    string wastPath;
    string abiPath;
+   bool shouldSend = true;
    auto codeSubcommand = setSubcommand->add_subcommand("code", localized("Create or update the code on an account"));
    codeSubcommand->add_option("account", account, localized("The account to set code for"))->required();
    codeSubcommand->add_option("code-file", wastPath, localized("The fullpath containing the contract WAST or WASM"))->required();
@@ -1690,7 +1691,8 @@ int main( int argc, char** argv ) {
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
-
+   
+   std::vector<chain::action> actions;
    auto set_code_callback = [&]() {
       std::string wast;
       fc::path cpath(contractPath);
@@ -1718,10 +1720,11 @@ int main( int argc, char** argv ) {
          wasm = wast_to_wasm(wast);
       }
 
-      std::vector<chain::action> actions;
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
-      std::cout << localized("Setting Code...") << std::endl;
-      send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      if ( shouldSend ) {
+         std::cout << localized("Setting Code...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
    };
 
    auto set_abi_callback = [&]() {
@@ -1737,17 +1740,21 @@ int main( int argc, char** argv ) {
       try {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
-
-      std::cout << localized("Setting ABI...") << std::endl;
-      send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      if ( shouldSend ) {
+         std::cout << localized("Setting ABI...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
    };
 
    add_standard_transaction_options(contractSubcommand, "account@active");
    add_standard_transaction_options(codeSubcommand, "account@active");
    add_standard_transaction_options(abiSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
+      shouldSend = false;
       set_code_callback();
       set_abi_callback();
+      std::cout << localized("Publishing contract...") << std::endl;
+      send_actions(std::move(actions), 10000, packed_transaction::zlib);
    });
    codeSubcommand->set_callback(set_code_callback);
    abiSubcommand->set_callback(set_abi_callback);
