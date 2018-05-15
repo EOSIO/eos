@@ -43,7 +43,7 @@
 	
 	YUM=$( which yum 2>/dev/null )
 	if [ $? -ne 0 ]; then
-		printf "\n\tYum must be installed to compile EOS.IO.\n"
+		printf "\n\tYum must be installed to compile Enumivo.\n"
 		printf "\n\tExiting now.\n"
 		exit 0
 	fi

@@ -12,7 +12,7 @@ extern "C" {
  *  @brief APIs that store and retreive data on the blockchain
  *  @ingroup contractdev
  *
- *  EOS.IO organizes data according to the following broad structure:
+ *  Enumivo organizes data according to the following broad structure:
  *
  *  - **code** - the account name which has write permission
  *     - **scope** - an account where the data is stored

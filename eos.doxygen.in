@@ -4,7 +4,7 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "EOS.IO"
+PROJECT_NAME           = "Enumivo"
 PROJECT_NUMBER         = "DAWN ${DOXY_ENU_VERSION}"
 PROJECT_BRIEF          =
 PROJECT_LOGO           = eos-logo.png

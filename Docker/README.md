@@ -1,6 +1,6 @@
 # Run in docker
 
-Simple and fast setup of EOS.IO on Docker is also available.
+Simple and fast setup of Enumivo on Docker is also available.
 
 ## Install Dependencies
 
