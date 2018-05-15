@@ -80,7 +80,7 @@
       "base": "",
       "fields": [
          {"name":"owner", "type":"account_name"},
-         {"name":"request_time", "type":"time"},
+         {"name":"request_time", "type":"time_point_sec"},
          {"name":"amount", "type":"uint64"}
       ]
     },{
@@ -123,8 +123,8 @@
       "base": "eosio_parameters",
       "fields": [
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
-         {"name":"total_ram_stake",               "type":"int64"},
-         {"name":"last_producer_schedule_update", "type":"time"},
+         {"name":"total_ram_stake",               "type":"asset"},
+         {"name":"last_producer_schedule_update", "type":"time_point_sec"},
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
@@ -154,7 +154,8 @@
       "fields": [
         {"name":"producer",     "type":"account_name"},
         {"name":"producer_key", "type":"public_key"},
-        {"name":"url",          "type":"string"}
+        {"name":"url",          "type":"string"},
+        {"name":"location",     "type":"uint16"}
       ]
     },{
       "name": "unregprod",
@@ -195,7 +196,7 @@
         {"name":"proxied_vote_weight",  "type":"float64"},
         {"name":"is_proxy",             "type":"bool"},
         {"name":"deferred_trx_id",      "type":"uint32"},
-        {"name":"last_unstake_time",    "type":"time"},
+        {"name":"last_unstake_time",    "type":"time_point_sec"},
         {"name":"unstaking",            "type":"asset"}
       ]
     },{

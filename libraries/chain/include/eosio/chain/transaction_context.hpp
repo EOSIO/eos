@@ -30,7 +30,7 @@ namespace eosio { namespace chain {
          inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
 
          void check_net_usage()const;
-         void check_time()const;
+         void checktime()const;
 
          void add_ram_usage( account_name account, int64_t ram_delta );
 

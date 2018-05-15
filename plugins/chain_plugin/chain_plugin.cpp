@@ -503,6 +503,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
    const auto& d = db.db();
    const auto& rm = db.get_resource_limits_manager();
+
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
 
    const auto& a = db.get_account(result.account_name);
@@ -543,7 +544,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -554,7 +555,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -565,7 +566,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.lower_bound(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -576,6 +577,14 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    return result;
 }
 
+static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
+   variant v;
+   auto it = std::find_if(abi.structs.begin(), abi.structs.end(), [&](auto& x){return x.name == action_type;});
+   if( it != abi.structs.end() )
+      to_variant( it->fields,  v );
+   return v;
+};
+
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
    const auto code_account = db.db().find<account_object,by_name>( params.code );
@@ -584,11 +593,13 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {
       abi_serializer abis( abi );
+      auto action_type = abis.get_action_type(params.action);
+      EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
-         result.binargs = abis.variant_to_binary(abis.get_action_type(params.action), params.args);
+         result.binargs = abis.variant_to_binary(action_type, params.args);
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
-                                "'${args}' is invalid args for action '${action}' code '${code}'",
-                                ("args", params.args)("action", params.action)("code", params.code))
+                                "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
+                                ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
    }
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
