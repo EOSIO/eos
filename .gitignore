@@ -43,11 +43,11 @@ libraries/wasm-jit/Source/Programs/Disassemble
 libraries/wasm-jit/Source/Programs/Test
 libraries/wasm-jit/Source/Programs/wavm
 
-programs/cleos/cleos
+programs/enu-cli/enu-cli
 programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
 programs/enu-abigen/enu-abigen
-programs/cleos/config.hpp
+programs/enu-cli/config.hpp
 programs/enu-applesedemo/enu-applesedemo
 programs/enu-launcher/config.hpp
 programs/enu-launcher/enu-launcher

@@ -44,9 +44,9 @@ sleep 1
 
 ecmd () {
     echo ===== Start: $step ============ >> $logfile
-    echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
+    echo executing: enu-cli --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
     echo ----------------------- >> $logfile
-    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport $* >> $logfile 2>&1
+    programs/enu-cli/enu-cli  --wallet-url $wdurl --url http://$bioshost:$biosport $* >> $logfile 2>&1
     echo ==== End: $step ============== >> $logfile
     step=$(($step + 1))
 }
@@ -89,18 +89,18 @@ ecmd set contract eosio contracts/enumivo.bios contracts/enumivo.bios/enumivo.bi
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active | tee -a $logfile
+echo executing: enu-cli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active >> $logfile 2>&1
+programs/enu-cli/enu-cli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
 ecmd set contract eosio contracts/enumivo.system contracts/enumivo.system/enumivo.system.wast contracts/enumivo.system/enumivo.system.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
+echo executing: enu-cli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active >> $logfile 2>&1
+programs/enu-cli/enu-cli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
