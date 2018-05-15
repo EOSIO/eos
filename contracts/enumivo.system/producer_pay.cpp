@@ -1,4 +1,4 @@
-#include "eosio.system.hpp"
+#include "enumivo.system.hpp"
 
 #include <enumivo.coin/enumivo.coin.hpp>
 

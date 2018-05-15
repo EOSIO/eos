@@ -33,6 +33,6 @@ namespace eosio { namespace chain {
    void apply_eosio_canceldelay(apply_context&);
    ///@}  end action handlers
    
-   abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
+   abi_def eosio_contract_abi(const abi_def& enumivo_system_abi);
 
 } } /// namespace eosio::chain

@@ -1,4 +1,4 @@
-#include "eosio.system.hpp"
+#include "enumivo.system.hpp"
 #include <enumivolib/dispatcher.hpp>
 
 #include "delegate_bandwidth.cpp"
@@ -72,7 +72,7 @@ namespace eosiosystem {
       _global.set( _gstate, _self );
    }
 
-} /// eosio.system
+} /// enumivo.system
  
 
 EOSIO_ABI( eosiosystem::system_contract,

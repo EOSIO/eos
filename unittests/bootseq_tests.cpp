@@ -2,8 +2,8 @@
 #include <enumivo/testing/tester.hpp>
 #include <enumivo/chain/abi_serializer.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+#include <enumivo.system/enumivo.system.wast.hpp>
+#include <enumivo.system/enumivo.system.abi.hpp>
 // These contracts are still under dev
 #include <enumivo.bios/enumivo.bios.wast.hpp>
 #include <enumivo.bios/enumivo.bios.abi.hpp>
@@ -198,7 +198,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                                    */
 
         // Set code for the following accounts:
-        //  eosio.system  (code: enumivo.bios)
+        //  enumivo.system  (code: enumivo.bios)
         //  enumivo.msig (code: enumivo.msig)
         //  enumivo.coin    (code: enumivo.coin)
         set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &eosio_active_pk);
@@ -219,12 +219,12 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto max_supply = asset::from_string("10000000000.0000 EOS"); /// 1x larger than 1B initial tokens
         auto initial_supply = asset::from_string("1000000000.0000 EOS"); /// 1x larger than 1B initial tokens
 
-        // Create EOS tokens in enumivo.coin, set its manager as eosio.system
+        // Create EOS tokens in enumivo.coin, set its manager as enumivo.system
         create_currency(N(enumivo.coin), config::system_account_name, max_supply );
 
 
-        // Issue the genesis supply of 1 billion EOS tokens to eosio.system
-        // Issue the genesis supply of 1 billion EOS tokens to eosio.system
+        // Issue the genesis supply of 1 billion EOS tokens to enumivo.system
+        // Issue the genesis supply of 1 billion EOS tokens to enumivo.system
         issue(N(enumivo.coin), config::system_account_name, config::system_account_name, initial_supply);
 
 
@@ -245,7 +245,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                     ("memo", "" ) );
                     */
         }
-        set_code_abi(N(eosio), eosio_system_wast, eosio_system_abi); //, &eosio_active_pk);
+        set_code_abi(N(eosio), enumivo_system_wast, enumivo_system_abi); //, &eosio_active_pk);
 
         for( const auto& a : test_genesis ) {
            auto ib = a.initial_balance;
@@ -337,8 +337,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
 #warning Complete this test
 /*
-        // Set code eosio.system from enumivo.bios to eosio.system
-        set_code_abi(config::system_account_name, eosio_system_wast, eosio_system_abi);
+        // Set code enumivo.system from enumivo.bios to enumivo.system
+        set_code_abi(config::system_account_name, enumivo_system_wast, enumivo_system_abi);
 
 
         ilog(".");
