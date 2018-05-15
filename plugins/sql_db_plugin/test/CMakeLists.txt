@@ -9,4 +9,4 @@ target_link_libraries(sql_db_plugin_test
     ${Boost_LIBRARIES}
     )
 
-add_test(sql_db_plugin_test sql_db_plugin_test)
+#add_test(sql_db_plugin_test sql_db_plugin_test)
