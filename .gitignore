@@ -46,7 +46,7 @@ libraries/wasm-jit/Source/Programs/wavm
 programs/cleos/cleos
 programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
-programs/eosio-abigen/eosio-abigen
+programs/enu-abigen/enu-abigen
 programs/cleos/config.hpp
 programs/eosio-applesedemo/eosio-applesedemo
 programs/eosio-launcher/config.hpp

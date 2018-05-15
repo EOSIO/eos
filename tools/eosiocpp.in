@@ -5,7 +5,7 @@ if [ "${ENUMIVO_BIN_INSTALL_DIR}" == "." ]; then
   ENUMIVO_BIN_INSTALL_DIR=`pwd`
 fi
 ENUMIVO_INSTALL_DIR=`dirname ${ENUMIVO_BIN_INSTALL_DIR}`
-ABIGEN=${ENUMIVO_INSTALL_DIR}/bin/eosio-abigen
+ABIGEN=${ENUMIVO_INSTALL_DIR}/bin/enu-abigen
 BOOST_INCLUDE_DIR=@Boost_INCLUDE_DIR@
 function copy_skeleton {
     set -e
