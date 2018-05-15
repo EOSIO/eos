@@ -118,7 +118,7 @@ Options:
 
 #include <fc/io/fstream.hpp>
 
-#include "CLI11.hpp"
+#include "CmdPart.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
 #include "config.hpp"
@@ -148,7 +148,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
   )
 
 string url = "http://localhost:8888/";
-string wallet_url = "http://localhost:8888/";
+string wallet_url = "http://localhost:8900/";
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -162,10 +162,11 @@ uint32_t tx_max_net_usage = 0;
 
 vector<string> tx_permission;
 
-void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
-   CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
+void add_standard_transaction_options(CmdPart* cmd, string default_permission = "")
+{
+   callback_t parse_expiration = [](results_t res) -> bool {
       double value_s;
-      if (res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
+      if (res.size() == 0 || !aux::lexical_cast(res[0], value_s)) {
          return false;
       }
 
@@ -173,20 +174,27 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       return true;
    };
 
-   cmd->add_option("-x,--expiration", parse_expiration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
-   cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
-   cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
+   cmd->add_option("-x,--expiration", parse_expiration,
+                   localized("set the time in seconds before a transaction expires, defaults to 30s"));
+   cmd->add_flag("-f,--force-unique", tx_force_unique,
+                 localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
+   cmd->add_flag("-s,--skip-sign", tx_skip_sign,
+                 localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
-   cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
-   cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
+   cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast,
+                 localized("don't broadcast transaction to the network (just print to stdout)"));
+   cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id,
+                   (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
       msg += " (defaults to '" + default_permission + "')";
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 
-   cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
-   cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage,
+                   localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-net-usage", tx_max_net_usage,
+                   localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -206,7 +214,7 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return eosio::client::http::call( url, path, fc::variant(v) );
+      return eosio::client::http::do_http_call( url, path, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -219,10 +227,14 @@ fc::variant call( const std::string& url,
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return ::call( url, path, fc::variant(v) ); }
+                  const T& v ) { return call( url, path, fc::variant(v) ); }
+
+ template <>
+ fc::variant call( const std::string& url,
+                  const std::string& path) { return call( url, path, fc::variant() ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-   return ::call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
+   return call(url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_string() {
@@ -615,12 +627,18 @@ struct set_account_permission_subcommand {
    string authorityJsonOrFile;
    string parentStr;
 
-   set_account_permission_subcommand(CLI::App* accountCmd) {
-      auto permissions = accountCmd->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
-      permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
-      permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
-      permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] public key, JSON string, or filename defining the authority"))->required();
-      permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
+   set_account_permission_subcommand(CmdPart* accountCmd)
+   {
+      auto permissions = accountCmd->add_subcommand("permission",
+         localized("set parmaters dealing with account permissions"));
+      permissions->add_option("account", accountStr,
+         localized("The account to set/delete a permission authority for"))->required();
+      permissions->add_option("permission", permissionStr,
+         localized("The permission name to set/delete an authority for"))->required();
+      permissions->add_option("authority", authorityJsonOrFile,
+         localized("[delete] NULL, [create/update] public key, JSON string, or filename defining the authority"))->required();
+      permissions->add_option("parent", parentStr,
+         localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
 
       add_standard_transaction_options(permissions, "account@active");
 
@@ -670,7 +688,7 @@ struct set_action_permission_subcommand {
    string typeStr;
    string requirementStr;
 
-   set_action_permission_subcommand(CLI::App* actionRoot) {
+   set_action_permission_subcommand(CmdPart* actionRoot) {
       auto permissions = actionRoot->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
       permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
       permissions->add_option("code", codeStr, localized("The account that owns the code for the action"))->required();
@@ -734,7 +752,7 @@ void start_keosd( uint16_t wallet_port ) {
    }
 }
 
-CLI::callback_t old_host_port = [](CLI::results_t) {
+callback_t old_host_port = [](results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
                           "Use for example -u http://localhost:8888 or --url https://example.invalid/\n");
    exit(1);
@@ -746,7 +764,8 @@ struct register_producer_subcommand {
    string producer_key_str;
    string url;
 
-   register_producer_subcommand(CLI::App* actionRoot) {
+   register_producer_subcommand(CmdPart* actionRoot)
+   {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
@@ -778,7 +797,8 @@ struct create_account_subcommand {
    bool transfer;
    bool simple;
 
-   create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
+   create_account_subcommand(CmdPart* actionRoot, bool s) : simple(s)
+   {
       auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "newaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
@@ -826,7 +846,7 @@ struct create_account_subcommand {
 struct unregister_producer_subcommand {
    string producer_str;
 
-   unregister_producer_subcommand(CLI::App* actionRoot) {
+   unregister_producer_subcommand(CmdPart* actionRoot) {
       auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
       unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
       add_standard_transaction_options(unregister_producer);
@@ -844,7 +864,7 @@ struct vote_producer_proxy_subcommand {
    string voter_str;
    string proxy_str;
 
-   vote_producer_proxy_subcommand(CLI::App* actionRoot) {
+   vote_producer_proxy_subcommand(CmdPart* actionRoot) {
       auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote your stake through a proxy"));
       vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
@@ -864,7 +884,7 @@ struct vote_producers_subcommand {
    string voter_str;
    vector<eosio::name> producer_names;
 
-   vote_producers_subcommand(CLI::App* actionRoot) {
+   vote_producers_subcommand(CmdPart* actionRoot) {
       auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
       vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
@@ -887,7 +907,7 @@ struct list_producers_subcommand {
    bool print_json = false;
    bool sort_names = false;
 
-   list_producers_subcommand(CLI::App* actionRoot) {
+   list_producers_subcommand(CmdPart* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
       list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
@@ -944,7 +964,7 @@ struct delegate_bandwidth_subcommand {
    string stake_storage_amount;
    bool transfer = false;
 
-   delegate_bandwidth_subcommand(CLI::App* actionRoot) {
+   delegate_bandwidth_subcommand(CmdPart* actionRoot) {
       auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
       delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
@@ -974,7 +994,7 @@ struct undelegate_bandwidth_subcommand {
    string unstake_cpu_amount;
    uint64_t unstake_storage_bytes;
 
-   undelegate_bandwidth_subcommand(CLI::App* actionRoot) {
+   undelegate_bandwidth_subcommand(CmdPart* actionRoot) {
       auto undelegate_bandwidth = actionRoot->add_subcommand("undelegatebw", localized("Undelegate bandwidth"));
       undelegate_bandwidth->add_option("from", from_str, localized("The account undelegating bandwidth"))->required();
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
@@ -998,7 +1018,7 @@ struct buyram_subcommand {
    string receiver_str;
    string amount;
 
-   buyram_subcommand(CLI::App* actionRoot) {
+   buyram_subcommand(CmdPart* actionRoot) {
       auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
       buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
       buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
@@ -1019,7 +1039,7 @@ struct sellram_subcommand {
    string receiver_str;
    uint64_t amount;
 
-   sellram_subcommand(CLI::App* actionRoot) {
+   sellram_subcommand(CmdPart* actionRoot) {
       auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
       sellram->add_option("account", receiver_str, localized("The account to receive EOS for sold RAM"))->required();
       sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
@@ -1037,7 +1057,7 @@ struct sellram_subcommand {
 struct claimrewards_subcommand {
    string owner;
 
-   claimrewards_subcommand(CLI::App* actionRoot) {
+   claimrewards_subcommand(CmdPart* actionRoot) {
       auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Claim producer rewards"));
       claim_rewards->add_option("owner", owner, localized("The account to claim rewards for"))->required();
       add_standard_transaction_options(claim_rewards);
@@ -1053,7 +1073,7 @@ struct claimrewards_subcommand {
 struct regproxy_subcommand {
    string proxy;
 
-   regproxy_subcommand(CLI::App* actionRoot) {
+   regproxy_subcommand(CmdPart* actionRoot) {
       auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
       register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
       add_standard_transaction_options(register_proxy);
@@ -1069,7 +1089,7 @@ struct regproxy_subcommand {
 struct unregproxy_subcommand {
    string proxy;
 
-   unregproxy_subcommand(CLI::App* actionRoot) {
+   unregproxy_subcommand(CmdPart* actionRoot) {
       auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
       unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
       add_standard_transaction_options(unregister_proxy);
@@ -1087,7 +1107,7 @@ struct canceldelay_subcommand {
    string cancelling_permission;
    string trx_id;
 
-   canceldelay_subcommand(CLI::App* actionRoot) {
+   canceldelay_subcommand(CmdPart* actionRoot) {
       auto cancel_delay = actionRoot->add_subcommand("canceldelay", localized("Cancel a delayed transaction"));
       cancel_delay->add_option("cancelling_account", cancelling_account, localized("Account from authorization on the original delayed transaction"))->required();
       cancel_delay->add_option("cancelling_permission", cancelling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
@@ -1261,7 +1281,7 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   CLI::App app{"Command Line Interface to EOSIO Client"};
+   CmdPart app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", old_host_port, localized("the host where nodeos is running") )->group("hidden");
    app.add_option( "-p,--port", old_host_port, localized("the port where nodeos is running") )->group("hidden");
@@ -1834,6 +1854,18 @@ int main( int argc, char** argv ) {
       std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
    });
 
+   // create a key within wallet
+   string wallet_create_key_type;
+   auto createKeyInWallet = wallet->add_subcommand("create_key", localized("Create private key within wallet"), false);
+   createKeyInWallet->add_option("n,--name", wallet_name, localized("The name of the wallet to create key into"), true);
+   createKeyInWallet->add_option("key_type", wallet_create_key_type, localized("Key type to create (K1/R1)"), true)->set_type_name("K1/R1");
+   createKeyInWallet->set_callback([&wallet_name, &wallet_create_key_type] {
+      //an empty key type is allowed -- it will let the underlying wallet pick which type it prefers
+      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_create_key_type)};
+      const auto& v = call(wallet_url, wallet_create_key, vs);
+      std::cout << localized("Created new private key with a public key of: ") << fc::json::to_pretty_string(v) << std::endl;
+   });
+
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {
@@ -1968,9 +2000,9 @@ int main( int argc, char** argv ) {
    string proposed_action;
    string proposer;
    unsigned int proposal_expiration_hours = 24;
-   CLI::callback_t parse_expiration_hours = [&](CLI::results_t res) -> bool {
+   callback_t parse_expiration_hours = [&](results_t res) -> bool {
       unsigned int value_s;
-      if (res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
+      if (res.size() == 0 || !aux::lexical_cast(res[0], value_s)) {
          return false;
       }
 
@@ -2244,21 +2276,33 @@ int main( int argc, char** argv ) {
 
    auto cancelDelay = canceldelay_subcommand(system);
 
-   try {
+   try
+   {
        app.parse(argc, argv);
-   } catch (const CLI::ParseError &e) {
+   }
+   catch (const ParseError &e)
+   {
        return app.exit(e);
-   } catch (const explained_exception& e) {
+   }
+   catch (const explained_exception& e)
+   {
       return 1;
-   } catch (connection_exception& e) {
-      if (verbose_errors) {
+   }
+   catch (connection_exception& e)
+   {
+      if (verbose_errors)
+      {
          elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
-   } catch (const fc::exception& e) {
+   }
+   catch (const fc::exception& e)
+   {
       // attempt to extract the error code if one is present
-      if (!print_recognized_errors(e, verbose_errors)) {
+      if (!print_recognized_errors(e, verbose_errors))
+      {
          // Error is not recognized
-         if (!print_help_text(e) || verbose_errors) {
+         if (!print_help_text(e) || verbose_errors)
+         {
             elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
          }
       }
