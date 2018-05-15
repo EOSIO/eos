@@ -1137,7 +1137,6 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
    } FC_LOG_AND_RETHROW() }
 
 
-// Test transaction_mroot matches with the specification in Github #1972 https://github.com/EOSIO/eos/issues/1972
 // Which is a root of a Merkle tree over commitments for each region processed in the block ordered in ascending region id order.
 // Commitment for each region is a merkle tree over commitments for each shard inside the cycle of that region.
 // Commitment for the shard itself is a merkle tree over the transactions commitments inside that shard.

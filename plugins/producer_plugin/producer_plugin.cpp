@@ -252,13 +252,13 @@ class producer_plugin_impl {
 void new_chain_banner(const eosio::chain::controller& db)
 {
    std::cerr << "\n"
-      "*******************************\n"
-      "*                             *\n"
-      "*   ------ NEW CHAIN ------   *\n"
-      "*   -  Welcome to EOSIO!  -   *\n"
-      "*   -----------------------   *\n"
-      "*                             *\n"
-      "*******************************\n"
+      "*********************************\n"
+      "*                               *\n"
+      "*   ------- NEW CHAIN -------   *\n"
+      "*   -  Welcome to Enumivo!  -   *\n"
+      "*   -------------------------   *\n"
+      "*                               *\n"
+      "*********************************\n"
       "\n";
 
    if( db.head_block_state()->header.timestamp.to_time_point() < (fc::time_point::now() - fc::milliseconds(200 * config::block_interval_ms)))

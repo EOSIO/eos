@@ -24,13 +24,13 @@
 	fi
 
 	if [ "${OS_VER}" -lt 2017 ]; then
-		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
+		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install Enumivo.\\n"
 		printf "\\texiting now.\\n"
 		exit 1
 	fi
 
 	if [ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]; then
-		printf "\\tYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
+		printf "\\tYou must have at least %sGB of available storage to install Enumivo.\\n" "${DISK_MIN}"
 		printf "\\texiting now.\\n"
 		exit 1
 	fi
@@ -38,7 +38,7 @@
 	printf "\\n\\tChecking Yum installation.\\n"
 	if ! YUM=$( command -v yum 2>/dev/null )
 	then
-		printf "\\n\\tYum must be installed to compile EOS.IO.\\n"
+		printf "\\n\\tYum must be installed to compile Enumivo.\\n"
 		printf "\\n\\tExiting now.\\n"
 		exit 1
 	fi
@@ -78,7 +78,7 @@
 	done		
 
 	if [ "${COUNT}" -gt 1 ]; then
-		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
+		printf "\\n\\tThe following dependencies are required to install Enumivo.\\n"
 		printf "\\n\\t${DISPLAY}\\n\\n"
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do

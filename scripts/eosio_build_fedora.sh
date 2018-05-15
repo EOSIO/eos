@@ -28,13 +28,13 @@
 	fi
 
 	if [ $OS_VER -lt 25 ]; then
-		printf "\tYou must be running Fedora 25 or higher to install EOSIO.\n"
+		printf "\tYou must be running Fedora 25 or higher to install Enumivo.\n"
 		printf "\tExiting now.\n"
 		exit 1
 	fi
 
 	if [ ${DISK_AVAIL%.*} -lt $DISK_MIN ]; then
-		printf "\tYou must have at least ${DISK_MIN}GB of available storage to install EOSIO.\n"
+		printf "\tYou must have at least ${DISK_MIN}GB of available storage to install Enumivo.\n"
 		printf "\tExiting now.\n"
 		exit 1
 	fi
@@ -85,7 +85,7 @@
 	done		
 
 	if [ ${COUNT} -gt 1 ]; then
-		printf "\n\tThe following dependencies are required to install EOSIO.\n"
+		printf "\n\tThe following dependencies are required to install Enumivo.\n"
 		printf "\n\t$DISPLAY\n\n"
 		printf "\tDo you wish to install these dependencies?\n"
 		select yn in "Yes" "No"; do

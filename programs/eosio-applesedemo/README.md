@@ -1,12 +1,12 @@
-EOSIO supports two different elliptic curves for ECDSA -- secp256k1 and secp256r1 (also called prime256v1).
+Enumivo supports two different elliptic curves for ECDSA -- secp256k1 and secp256r1 (also called prime256v1).
 The benefit of the r1 curve is hardware support in many mobile devices such as iPhones or Android devices. This application
 demonstrates usage of the r1 curve in a hardware device via the Secure Enclave on recent MacBook Pros with the Touch Bar. An
 r1 private key is stored on the Secure Enclave and is not visible to the host. This private key can then be used to sign SHA256
-digests (which could be the hash of an EOSIO transaction) via the Secure Enclave. For verification of proper operation,
- the application then allows verification of public key recovery in the EOSIO code base.
+digests (which could be the hash of an Enumivo transaction) via the Secure Enclave. For verification of proper operation,
+ the application then allows verification of public key recovery in the Enumivo code base.
  
 # Building and Signing
-The application `applesedemo` will be built on macOS builds of the EOSIO source tree. The APIs in use require macOS 10.12+
+The application `applesedemo` will be built on macOS builds of the Enumivo source tree. The APIs in use require macOS 10.12+
 (and ought to function on iOS10+ as well). However, usage of the Secure Enclave requires that the application
 be signed with a Mac App Store (MAS) style signature -- older Darwin style signatures are not sufficient. This strong signature
 requirement ensures that the application which generated a particular private key is the only application that can use the private key.
@@ -55,7 +55,7 @@ public_key(PUB_R1_7iKCZrb1JqSjUncCbDGQenzSqyuNmPU8iUA15efNW5KD1iHd9x)
 The public key for the private key is printed; note it somewhere. It is possible to ask the Secure Enclave to
 create multiple private keys and assign labels to them but this application only allows a single key at once.
 ## Create A Digest and Sign It
-EOSIO uses SHA256 digests to sign transactions, create a simple SHA256 digest from a small string:
+Enumivo uses SHA256 digests to sign transactions, create a simple SHA256 digest from a small string:
 ```
 $ echo 'Hello world!' | shasum -a 256
 0ba904eae8773b70c75333db4de2f3ac45a8ad4ddba1b242f0b3cfc199391dd8  -

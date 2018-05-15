@@ -15,7 +15,7 @@ Simple and fast setup of EOS.IO on Docker is also available.
 ## Build eos image
 
 ```bash
-git clone https://github.com/EOSIO/eos.git --recursive
+git clone https://github.com/enumivo/enumivo.git --recursive
 cd eos/Docker
 docker build . -t eosio/eos
 ```
@@ -93,7 +93,7 @@ You can also create a Dockerfile that will do this for you.
 ```
 FROM eosio/builder
 
-RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
+RUN git clone -b master --depth 1 https://github.com/enumivo/enumivo.git --recursive \
     && cd eos \
     && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
        -DCMAKE_C_COMPILER=clang -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true \
