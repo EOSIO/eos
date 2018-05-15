@@ -133,4 +133,4 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
 
 } /// namespace eosio
 
-EOSIO_ABI( eosio::token, (create)(issue)(transfer) )
+ENUMIVO_ABI( eosio::token, (create)(issue)(transfer) )

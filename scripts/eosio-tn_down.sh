@@ -5,14 +5,14 @@
 #
 
 
-if [ "$PWD" != "$EOSIO_HOME" ]; then
-    echo $0 must only be run from $EOSIO_HOME
+if [ "$PWD" != "$ENUMIVO_HOME" ]; then
+    echo $0 must only be run from $ENUMIVO_HOME
     exit -1
 fi
 
 prog=nodeos
 
-DD=var/lib/node_$EOSIO_NODE
+DD=var/lib/node_$ENUMIVO_NODE
 runtest=`cat $DD/$prog.pid`
 echo runtest = $runtest
 running=`ps -e | grep $runtest | grep -cv grep `

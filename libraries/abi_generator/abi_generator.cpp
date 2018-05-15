@@ -180,17 +180,17 @@ void abi_generator::handle_decl(const Decl* decl) { try {
     return;
   }
 
-  // If EOSIO_ABI macro was found, check if the current declaration
+  // If ENUMIVO_ABI macro was found, check if the current declaration
   // is of the type specified in the macro and export their methods (actions).
   bool type_has_actions = false;
   if( target_contract.size() ) {
     type_has_actions = inspect_type_methods_for_actions(decl);
   }
 
-  // The current Decl was the type referenced in EOSIO_ABI macro
+  // The current Decl was the type referenced in ENUMIVO_ABI macro
   if( type_has_actions ) return;
 
-  // The current Decl was not the type referenced in EOSIO_ABI macro
+  // The current Decl was not the type referenced in ENUMIVO_ABI macro
   // so we try to see if it has comments attached to the declaration
   const RawComment* raw_comment = ast_context->getRawCommentForDeclNoCache(decl);
   if(raw_comment == nullptr) {
@@ -200,7 +200,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
   string raw_text = raw_comment->getRawText(source_manager);
   regex r;
 
-  // If EOSIO_ABI macro was found, we will only check if the current Decl
+  // If ENUMIVO_ABI macro was found, we will only check if the current Decl
   // is intented to be an ABI table record, otherwise we check for both (action or table)
   if( target_contract.size() )
     r = regex(R"(@abi (table)((?: [a-z0-9]+)*))");

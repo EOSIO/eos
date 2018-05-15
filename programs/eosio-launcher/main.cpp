@@ -518,7 +518,7 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
-  char* erd_env_var = getenv ("EOSIO_HOME");
+  char* erd_env_var = getenv ("ENUMIVO_HOME");
   if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
      erd_env_var = getenv ("PWD");
   }
@@ -1567,8 +1567,8 @@ launcher_def::bounce (const string& node_numbers) {
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
       string cmd = "cd " + host.eosio_home + "; "
-                 + "export EOSIO_HOME=" + host.eosio_home + string("; ")
-                 + "export EOSIO_TN_NODE=" + node_num + "; "
+                 + "export ENUMIVO_HOME=" + host.eosio_home + string("; ")
+                 + "export ENUMIVO_TN_NODE=" + node_num + "; "
                  + "./scripts/eosio-tn_bounce.sh";
       cout << "Bouncing " << node.name << endl;
       if (!do_ssh(cmd, host.host_name)) {
@@ -1586,9 +1586,9 @@ launcher_def::down (const string& node_numbers) {
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
       string cmd = "cd " + host.eosio_home + "; "
-                 + "export EOSIO_HOME=" + host.eosio_home + "; "
-                 + "export EOSIO_TN_NODE=" + node_num + "; "
-         + "export EOSIO_TN_RESTART_CONFIG_DIR=" + node.config_dir_name + "; "
+                 + "export ENUMIVO_HOME=" + host.eosio_home + "; "
+                 + "export ENUMIVO_TN_NODE=" + node_num + "; "
+         + "export ENUMIVO_TN_RESTART_CONFIG_DIR=" + node.config_dir_name + "; "
                  + "./scripts/eosio-tn_down.sh";
       cout << "Taking down " << node.name << endl;
       if (!do_ssh(cmd, host.host_name)) {
@@ -1606,7 +1606,7 @@ launcher_def::roll (const string& host_names) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
       string cmd = "cd " + host->eosio_home + "; "
-                 + "export EOSIO_HOME=" + host->eosio_home + "; "
+                 + "export ENUMIVO_HOME=" + host->eosio_home + "; "
                  + "./scripts/eosio-tn_roll.sh";
       if (!do_ssh(cmd, host_name)) {
          cerr << "Unable to roll " << host << endl;

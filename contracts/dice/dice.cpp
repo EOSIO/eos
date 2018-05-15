@@ -388,4 +388,4 @@ class dice : public eosio::contract {
       }
 };
 
-EOSIO_ABI( dice, (offerbet)(canceloffer)(reveal)(claimexpired)(deposit)(withdraw) )
+ENUMIVO_ABI( dice, (offerbet)(canceloffer)(reveal)(claimexpired)(deposit)(withdraw) )

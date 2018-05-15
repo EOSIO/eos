@@ -75,7 +75,7 @@ namespace eosiosystem {
 } /// enumivo.system
  
 
-EOSIO_ABI( eosiosystem::system_contract,
+ENUMIVO_ABI( eosiosystem::system_contract,
      (setram)
      // delegate_bandwith.cpp
      (delegatebw)(undelegatebw)(refund)

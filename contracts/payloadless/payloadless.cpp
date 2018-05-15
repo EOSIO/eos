@@ -11,4 +11,4 @@ class payloadless : public eosio::contract {
       }
 };
 
-EOSIO_ABI( payloadless, (doit) )
+ENUMIVO_ABI( payloadless, (doit) )
