@@ -1,4 +1,4 @@
-add_subdirectory( nodeos )
+add_subdirectory( enunode )
 add_subdirectory( enu-cli )
 add_subdirectory( keosd )
 add_subdirectory( enu-launcher )

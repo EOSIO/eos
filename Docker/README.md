@@ -26,16 +26,16 @@ The above will build off the most recent commit to the master branch by default.
 docker build -t eosio/eos:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
 ```
 
-## Start nodeos docker container only
+## Start enunode docker container only
 
 ```bash
-docker run --name nodeos -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
+docker run --name enunode -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
 ```
 
 By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
 
 ```bash
-$ docker inspect --format '{{ range .Mounts }}{{ .Name }} {{ end }}' nodeos
+$ docker inspect --format '{{ range .Mounts }}{{ .Name }} {{ end }}' enunode
 fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5cbc
 $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5cbc
 ```
@@ -43,7 +43,7 @@ $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5
 Alternately, you can directly mount host directory into the container
 
 ```bash
-docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
+docker run --name enunode -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
 ```
 
 ## Get chain info
@@ -52,15 +52,15 @@ docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:88
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-## Start both nodeos and keosd containers
+## Start both enunode and keosd containers
 
 ```bash
-docker volume create --name=nodeos-data-volume
+docker volume create --name=enunode-data-volume
 docker volume create --name=keosd-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to enu-cli when running enu-cli is running inside the keosd container as described in "Execute enu-cli commands" section.
+After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. enunode service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to enu-cli when running enu-cli is running inside the keosd container as described in "Execute enu-cli commands" section.
 
 ### Execute enu-cli commands
 
@@ -117,9 +117,9 @@ You can use docker compose override file to change the default configurations. F
 version: "2"
 
 services:
-  nodeos:
+  enunode:
     volumes:
-      - nodeos-data-volume:/opt/eosio/bin/data-dir
+      - enunode-data-volume:/opt/eosio/bin/data-dir
       - ./config2.ini:/opt/eosio/bin/data-dir/config.ini
 ```
 
@@ -135,7 +135,7 @@ docker-compose up
 The data volume created by docker-compose can be deleted as follows:
 
 ```bash
-docker volume rm nodeos-data-volume
+docker volume rm enunode-data-volume
 docker volume rm keosd-data-volume
 ```
 
@@ -158,7 +158,7 @@ services:
     expose:
       - "8888"
     volumes:
-      - nodeos-data-volume:/opt/eosio/bin/data-dir
+      - enunode-data-volume:/opt/eosio/bin/data-dir
 
   keosd:
     image: eosio/eos:latest
@@ -170,7 +170,7 @@ services:
       - keosd-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
-  nodeos-data-volume:
+  enunode-data-volume:
   keosd-data-volume:
 
 ```
@@ -192,7 +192,7 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 docker pull eosio/eos:latest
 docker pull mongo:latest
 # create volume
-docker volume create --name=nodeos-data-volume
+docker volume create --name=enunode-data-volume
 docker volume create --name=keosd-data-volume
 docker volume create --name=mongo-data-volume
 # start containers

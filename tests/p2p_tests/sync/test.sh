@@ -61,7 +61,7 @@ ls -l etc/eosio var/lib
 
 debugArg=""
 if [ "$debug" == true ]; then
-   debugArg="--nodeos \"--log-level-net-plugin debug\""
+   debugArg="--enunode \"--log-level-net-plugin debug\""
 fi
 
 cmd="$launcherPath -p $pnodes -n $total_nodes -s $topo -d $delay $debugArg"

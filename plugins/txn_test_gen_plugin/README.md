@@ -49,12 +49,12 @@ EOF
 
 ### Launch producer
 ```bash
-$ ./nodeos -d ~/eos.data/producer_node --config-dir ~/eos.data/producer_node -l ~/eos.data/logging.json --http-server-address "" -p eosio -e
+$ ./enunode -d ~/eos.data/producer_node --config-dir ~/eos.data/producer_node -l ~/eos.data/logging.json --http-server-address "" -p eosio -e
 ```
 
 ### Launch non-producer that will generate transactions
 ```bash
-$ ./nodeos -d ~/eos.data/generator_node --config-dir ~/eos.data/generator_node -l ~/eos.data/logging.json --plugin eosio::txn_test_gen_plugin --plugin eosio::wallet_api_plugin --plugin eosio::chain_api_plugin --p2p-peer-address localhost:9876 --p2p-listen-endpoint localhost:5555
+$ ./enunode -d ~/eos.data/generator_node --config-dir ~/eos.data/generator_node -l ~/eos.data/logging.json --plugin eosio::txn_test_gen_plugin --plugin eosio::wallet_api_plugin --plugin eosio::chain_api_plugin --p2p-peer-address localhost:9876 --p2p-listen-endpoint localhost:5555
 ```
 
 ### Create a wallet on the non-producer and set bios contract

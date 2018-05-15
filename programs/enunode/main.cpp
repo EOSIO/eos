@@ -82,16 +82,16 @@ void initialize_logging()
 int main(int argc, char** argv)
 {
    try {
-      app().set_version(eosio::nodeos::config::version);
+      app().set_version(eosio::enunode::config::version);
       app().register_plugin<history_plugin>();
 
       auto root = fc::app_path();
-      app().set_default_data_dir(root / "eosio/nodeos/data" );
-      app().set_default_config_dir(root / "eosio/nodeos/config" );
+      app().set_default_data_dir(root / "eosio/enunode/data" );
+      app().set_default_config_dir(root / "eosio/enunode/config" );
       if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
          return -1;
       initialize_logging();
-      ilog("nodeos version ${ver}", ("ver", eosio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
+      ilog("enunode version ${ver}", ("ver", eosio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
       ilog("eosio root is ${root}", ("root", root.string()));
       app().startup();
       app().exec();

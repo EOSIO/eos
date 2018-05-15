@@ -8,8 +8,8 @@ native token conforms to the standard.
 
 Configuring Nodeos
 ------------------
-This tutorial uses the `enu-cli` commandline tool to query a local `nodeos` server
-which should be connected to an eosio blockchain. `nodeos` will need to be configured
+This tutorial uses the `enu-cli` commandline tool to query a local `enunode` server
+which should be connected to an eosio blockchain. `enunode` will need to be configured
 with the following plugins:
 
   1. eosio::wallet_api_plugin 
@@ -23,7 +23,7 @@ plugin to only log activity relevant to your account(s).  This can be achieved w
 the following config param placed in your config.ini or passed on the commandline.
 
 ```
-  $ nodeos --filter_on_accounts youraccount
+  $ enunode --filter_on_accounts youraccount
 ```
 
 Replaying the Blockchain
@@ -33,21 +33,21 @@ If you have already synced the blockchain without the history plugin, then you m
 replay the blockchain to pickup any historical activity.
 
 ```
- $ nodeos --replay --filter_on_accounts youraccount 
+ $ enunode --replay --filter_on_accounts youraccount 
 ```
 
-You only need to replay once, subsequent runs of nodeos should not use the replay flag or
+You only need to replay once, subsequent runs of enunode should not use the replay flag or
 your startup times will be unnecessiarlly long. 
 
 
 Accepting Deposits
 -----------
-When designing this tutorial we assume that an exchange will poll `nodeos` for incoming
+When designing this tutorial we assume that an exchange will poll `enunode` for incoming
 transactions and will want to know when a transfer is considered irreversible or final. 
 
 With eosio based chains, finality of a transaction occurs once 2/3+1 of block produers have
 either directly or indirectly confirmed the block. This could take from less than a second to
-a couple of minutes, but either way nodeos will keep you posted on the status.
+a couple of minutes, but either way enunode will keep you posted on the status.
 
 ## Initial Condition
 ```
@@ -255,7 +255,7 @@ Now that we have received 3 deposits we should see that the exchange has a balan
 
 When a user requests a withdraw from your exchange they will need to provide you with their eosio account name and
 the amount to be withdrawn.  You can then run the enu-cli command which will interact with the "unlocked" wallet 
-running on `nodeos` which should only enable localhost connections. More advanced usage would have a separate
+running on `enunode` which should only enable localhost connections. More advanced usage would have a separate
 key-server (`keos`), but that will be covered later.
 
 Lets assume scott wants to withdraw `1.0000 EOS`:
@@ -269,7 +269,7 @@ executed transaction: 93e785202e7502bb1383ad10e786cc20f7dd738d3fd3da38712b3fb38f
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
-At this stage your local `nodeos` client accepted the transaction and likely broadcast it to the broader network. 
+At this stage your local `enunode` client accepted the transaction and likely broadcast it to the broader network. 
 
 Now we can get the history and see that there are "3" new actions listed all with trx id `93e78520...` which is what
 our transfer command returned to us. Because `exchange` authorized the transaction it is informed of all accounts which

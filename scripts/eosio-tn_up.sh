@@ -6,8 +6,8 @@
 
 connected="0"
 
-rundir=programs/nodeos
-prog=nodeos
+rundir=programs/enunode
+prog=enunode
 
 
 if [ "$PWD" != "$ENUMIVO_HOME" ]; then
@@ -16,7 +16,7 @@ if [ "$PWD" != "$ENUMIVO_HOME" ]; then
 fi
 
 if [ ! -e $rundir/$prog ]; then
-    echo unable to locate binary for nodeos
+    echo unable to locate binary for enunode
     exit -1
 fi
 

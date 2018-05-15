@@ -18,7 +18,7 @@ services:
     expose:
       - "8888"
     volumes:
-      - nodeos-data-volume:/opt/eosio/bin/data-dir
+      - enunode-data-volume:/opt/eosio/bin/data-dir
 
   keosd:
     image: eosio/eos
@@ -30,7 +30,7 @@ services:
       - keosd-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
-  nodeos-data-volume:
+  enunode-data-volume:
     external: true
   keosd-data-volume:
     external: true

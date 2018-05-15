@@ -13,8 +13,8 @@
 
 pushd $ENUMIVO_HOME
 
-if [ ! -f programs/nodeos/nodeos ]; then
-    echo unable to locate binary for nodeos
+if [ ! -f programs/enunode/enunode ]; then
+    echo unable to locate binary for enunode
     exit 1
 fi
 
