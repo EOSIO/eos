@@ -98,7 +98,6 @@ namespace fc { namespace crypto {
          return private_key::storage_type(from_wif<default_type>(base58str));
       } else {
          constexpr auto prefix = config::private_key_base_prefix;
-
          const auto prefix_str = base58str.substr(0, pivot);
          FC_ASSERT(prefix == prefix_str, "Private Key has invalid prefix: ${str}", ("str", base58str)("prefix_str", prefix_str));
 
