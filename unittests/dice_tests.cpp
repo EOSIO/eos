@@ -238,9 +238,6 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    push_action(N(eosio.token), N(create), N(eosio.token), mvo()
      ("issuer", "eosio.token")
      ("maximum_supply", "1000000000.0000 EOS")
-     ("can_freeze", "0")
-     ("can_recall", "0")
-     ("can_whitelist", "0")
    );
 
    push_action(N(eosio.token), N(issue), N(eosio.token), mvo()

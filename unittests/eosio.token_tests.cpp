@@ -66,17 +66,11 @@ public:
    }
 
    action_result create( account_name issuer,
-                asset        maximum_supply,
-                uint8_t      issuer_can_freeze,
-                uint8_t      issuer_can_recall,
-                uint8_t      issuer_can_whitelist ) {
+                asset        maximum_supply ) {
 
       return push_action( N(eosio.token), N(create), mvo()
            ( "issuer", issuer)
            ( "maximum_supply", maximum_supply)
-           ( "can_freeze", issuer_can_freeze)
-           ( "can_recall", issuer_can_recall)
-           ( "can_whitelist", issuer_can_whitelist)
       );
    }
 
@@ -107,17 +101,12 @@ BOOST_AUTO_TEST_SUITE(eosio_token_tests)
 
 BOOST_FIXTURE_TEST_CASE( create_tests, eosio_token_tester ) try {
 
-   auto token = create( N(alice), asset::from_string("1000.000 TKN"), false, false, false);
+   auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    auto stats = get_stats("3,TKN");
    REQUIRE_MATCHING_OBJECT( stats, mvo()
       ("supply", "0.000 TKN")
       ("max_supply", "1000.000 TKN")
       ("issuer", "alice")
-      ("can_freeze",0)
-      ("can_recall",0)
-      ("can_whitelist",0)
-      ("is_frozen",false)
-      ("enforce_whitelist",false)
    );
    produce_blocks(1);
 
@@ -126,53 +115,43 @@ BOOST_FIXTURE_TEST_CASE( create_tests, eosio_token_tester ) try {
 BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, eosio_token_tester ) try {
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: max-supply must be positive" ),
-      create( N(alice), asset::from_string("-1000.000 TKN"), false, false, false)
+      create( N(alice), asset::from_string("-1000.000 TKN"))
    );
 
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( symbol_already_exists, eosio_token_tester ) try {
 
-   auto token = create( N(alice), asset::from_string("100 TKN"), true, false, false);
+   auto token = create( N(alice), asset::from_string("100 TKN"));
    auto stats = get_stats("0,TKN");
    REQUIRE_MATCHING_OBJECT( stats, mvo()
-         ("supply", "0 TKN")
-               ("max_supply", "100 TKN")
-               ("issuer", "alice")
-               ("can_freeze",1)
-               ("can_recall",0)
-               ("can_whitelist",0)
-               ("is_frozen",false)
-               ("enforce_whitelist",false)
+      ("supply", "0 TKN")
+      ("max_supply", "100 TKN")
+      ("issuer", "alice")
    );
    produce_blocks(1);
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: token with symbol already exists" ),
-                        create( N(alice), asset::from_string("100 TKN"), true, false, false)
+                        create( N(alice), asset::from_string("100 TKN"))
    );
 
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
 
-   auto token = create( N(alice), asset::from_string("4611686018427387903 TKN"), true, false, false);
+   auto token = create( N(alice), asset::from_string("4611686018427387903 TKN"));
    auto stats = get_stats("0,TKN");
    REQUIRE_MATCHING_OBJECT( stats, mvo()
       ("supply", "0 TKN")
       ("max_supply", "4611686018427387903 TKN")
       ("issuer", "alice")
-      ("can_freeze",1)
-      ("can_recall",0)
-      ("can_whitelist",0)
-      ("is_frozen",false)
-      ("enforce_whitelist",false)
    );
    produce_blocks(1);
 
    asset max(10, symbol(SY(0, NKT)));
    max.amount = 4611686018427387904;
 
-   BOOST_CHECK_EXCEPTION( create( N(alice), max, true, false, false) , asset_type_exception, [](const asset_type_exception& e) {
+   BOOST_CHECK_EXCEPTION( create( N(alice), max) , asset_type_exception, [](const asset_type_exception& e) {
       return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
    });
 
@@ -181,17 +160,12 @@ BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
 
-   auto token = create( N(alice), asset::from_string("1.000000000000000000 TKN"), true, false, false);
+   auto token = create( N(alice), asset::from_string("1.000000000000000000 TKN"));
    auto stats = get_stats("18,TKN");
    REQUIRE_MATCHING_OBJECT( stats, mvo()
       ("supply", "0.000000000000000000 TKN")
       ("max_supply", "1.000000000000000000 TKN")
       ("issuer", "alice")
-      ("can_freeze",1)
-      ("can_recall",0)
-      ("can_whitelist",0)
-      ("is_frozen",false)
-      ("enforce_whitelist",false)
    );
    produce_blocks(1);
 
@@ -199,7 +173,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
    //1.0000000000000000000 => 0x8ac7230489e80000L
    max.amount = 0x8ac7230489e80000L;
 
-   BOOST_CHECK_EXCEPTION( create( N(alice), max, true, false, false) , asset_type_exception, [](const asset_type_exception& e) {
+   BOOST_CHECK_EXCEPTION( create( N(alice), max) , asset_type_exception, [](const asset_type_exception& e) {
       return expect_assert_message(e, "magnitude of asset amount must be less than 2^62");
    });
 
@@ -207,7 +181,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
 
-   auto token = create( N(alice), asset::from_string("1000.000 TKN"), false, false, false);
+   auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    produce_blocks(1);
 
    issue( N(alice), N(alice), asset::from_string("500.000 TKN"), "hola" );
@@ -217,18 +191,11 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
       ("supply", "500.000 TKN")
       ("max_supply", "1000.000 TKN")
       ("issuer", "alice")
-      ("can_freeze",0)
-      ("can_recall",0)
-      ("can_whitelist",0)
-      ("is_frozen",false)
-      ("enforce_whitelist",false)
    );
 
    auto alice_balance = get_account(N(alice), "3,TKN");
    REQUIRE_MATCHING_OBJECT( alice_balance, mvo()
       ("balance", "500.000 TKN")
-      ("frozen", 0)
-      ("whitelist", 1)
    );
 
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: quantity exceeds available supply" ),
@@ -248,7 +215,7 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
 
-   auto token = create( N(alice), asset::from_string("1000 CERO"), false, false, false);
+   auto token = create( N(alice), asset::from_string("1000 CERO"));
    produce_blocks(1);
 
    issue( N(alice), N(alice), asset::from_string("1000 CERO"), "hola" );
@@ -258,18 +225,11 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
       ("supply", "1000 CERO")
       ("max_supply", "1000 CERO")
       ("issuer", "alice")
-      ("can_freeze",0)
-      ("can_recall",0)
-      ("can_whitelist",0)
-      ("is_frozen",false)
-      ("enforce_whitelist",false)
    );
 
    auto alice_balance = get_account(N(alice), "0,CERO");
    REQUIRE_MATCHING_OBJECT( alice_balance, mvo()
       ("balance", "1000 CERO")
-      ("frozen", 0)
-      ("whitelist", 1)
    );
 
    transfer( N(alice), N(bob), asset::from_string("300 CERO"), "hola" );
