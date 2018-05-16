@@ -38,7 +38,7 @@ namespace eosiosystem {
       if ( prod != _producers.end() ) {
          _gstate.total_unpaid_blocks++;
          _producers.modify( prod, 0, [&](auto& p ) {
-               p.produced_blocks++;
+               p.unpaid_blocks++;
                p.last_produced_block_time = timestamp;
          });
       }
@@ -81,7 +81,7 @@ namespace eosiosystem {
          _gstate.last_pervote_bucket_fill = ct;
       }
 
-      int64_t producer_per_block_pay = (_gstate.perblock_bucket * prod.produced_blocks) / _gstate.total_unpaid_blocks;
+      int64_t producer_per_block_pay = (_gstate.perblock_bucket * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
       int64_t producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
       if( producer_per_vote_pay < 100'0000 ) {
          producer_per_vote_pay = 0;
@@ -90,11 +90,11 @@ namespace eosiosystem {
 
       _gstate.pervote_bucket      -= producer_per_vote_pay;
       _gstate.perblock_bucket     -= producer_per_block_pay;
-      _gstate.total_unpaid_blocks -= prod.produced_blocks;
+      _gstate.total_unpaid_blocks -= prod.unpaid_blocks;
 
       _producers.modify( prod, 0, [&](auto& p) {
           p.last_claim_time = ct;
-          p.produced_blocks = 0;
+          p.unpaid_blocks = 0;
       });
       
       if( total_pay > 0 ) {

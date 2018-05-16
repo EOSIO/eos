@@ -138,7 +138,7 @@
          {"name":"total_votes",              "type":"float64"},
          {"name":"producer_key",             "type":"public_key"},
          {"name":"url",                      "type":"string"},
-         {"name":"produced_blocks",          "type":"uint32"},
+         {"name":"unpaid_blocks",            "type":"uint32"},
          {"name":"last_claim_time",          "type":"uint64"},
          {"name":"location",                 "type":"uint16"},
          {"name":"time_became_active",       "type":"uint32"},

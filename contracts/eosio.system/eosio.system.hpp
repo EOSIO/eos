@@ -31,7 +31,7 @@ namespace eosiosystem {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             total_ram_bytes_reserved = 0;
-      int64_t              total_ram_stake;
+      int64_t              total_ram_stake = 0;
 
       block_timestamp      last_producer_schedule_update;
       uint64_t             last_pervote_bucket_fill = 0;
@@ -55,7 +55,7 @@ namespace eosiosystem {
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
       std::string           url;
-      uint32_t              produced_blocks;
+      uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
       block_timestamp       time_became_active;
@@ -67,7 +67,7 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(url)
-                        (produced_blocks)(last_claim_time)(location)
+                        (unpaid_blocks)(last_claim_time)(location)
                         (time_became_active)(last_produced_block_time) )
    };
 
