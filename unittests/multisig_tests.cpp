@@ -425,8 +425,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
    issue(config::system_account_name,      "1000000000.0000 EOS");
    BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
-   set_code( config::system_account_name, eosio_system_wast );
-   set_abi( config::system_account_name, eosio_system_abi );
+   set_code( config::system_account_name, enumivo_system_wast );
+   set_abi( config::system_account_name, enumivo_system_abi );
 
    produce_blocks();
 
@@ -536,8 +536,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
    issue(config::system_account_name,      "1000000000.0000 EOS");
    BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
-   set_code( config::system_account_name, eosio_system_wast );
-   set_abi( config::system_account_name, eosio_system_abi );
+   set_code( config::system_account_name, enumivo_system_wast );
+   set_abi( config::system_account_name, enumivo_system_abi );
 
    produce_blocks();
 
