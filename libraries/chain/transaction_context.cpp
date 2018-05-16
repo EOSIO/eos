@@ -247,11 +247,12 @@ namespace eosio { namespace chain {
       eager_net_limit = net_limit;
       check_net_usage();
 
-      trace->elapsed = fc::time_point::now() - start;
+      auto now = fc::time_point::now();
+      trace->elapsed = now - start;
 
       if( billed_cpu_time_us == 0 ) {
          const auto& cfg = control.get_global_properties().configuration;
-         billed_cpu_time_us = std::max( trace->elapsed.count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
+         billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
       }
 
       validate_cpu_usage_to_bill( billed_cpu_time_us );
