@@ -136,7 +136,7 @@
 	
 		case "$OS_NAME" in
 			"Amazon Linux AMI")
-				FILE="${PWD}/scripts/eosio_build_amazon.sh"
+				FILE="${PWD}/scripts/enumivo_build_amazon.sh"
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
@@ -145,7 +145,7 @@
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"CentOS Linux")
-				FILE="${PWD}/scripts/eosio_build_centos.sh"
+				FILE="${PWD}/scripts/enumivo_build_centos.sh"
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
@@ -154,28 +154,28 @@
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"elementary OS")
-				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
+				FILE="${PWD}/scripts/enumivo_build_ubuntu.sh"
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Fedora")
-				FILE="${PWD}/scripts/eosio_build_fedora.sh"
+				FILE="${PWD}/scripts/enumivo_build_fedora.sh"
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				MONGOD_CONF=/etc/mongod.conf
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			"Linux Mint")
-				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
+				FILE="${PWD}/scripts/enumivo_build_ubuntu.sh"
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Ubuntu")
-				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
+				FILE="${PWD}/scripts/enumivo_build_ubuntu.sh"
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
@@ -192,7 +192,7 @@
 	fi
 
 	if [ "$ARCH" == "Darwin" ]; then
-		FILE="${PWD}/scripts/eosio_build_darwin.sh"
+		FILE="${PWD}/scripts/enumivo_build_darwin.sh"
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf

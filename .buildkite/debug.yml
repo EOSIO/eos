@@ -3,7 +3,7 @@ steps:
       echo "--- Creating symbolic link to job directory :file_folder:" && \
       sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
       echo "+++ Building :hammer:" && \
-      echo 1 | ./eosio_build.sh -o Debug && \
+      echo 1 | ./enumivo_build.sh -o Debug && \
       echo "--- Compressing build directory :compression:" && \
       tar -pczf build.tar.gz build/
     label: ":darwin: Build"
@@ -14,7 +14,7 @@ steps:
 
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./enumivo_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":ubuntu: Build"
@@ -29,7 +29,7 @@ steps:
     
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./enumivo_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 18.04 Build"
@@ -44,7 +44,7 @@ steps:
 
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./enumivo_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":fedora: Build"
@@ -59,7 +59,7 @@ steps:
  
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./enumivo_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":centos: Build"
@@ -74,7 +74,7 @@ steps:
 
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./enumivo_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":aws: Build"

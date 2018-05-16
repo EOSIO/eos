@@ -121,7 +121,7 @@
 		DISPLAY="${DISPLAY}${COUNT}. ${name}\\n\\t"
 		printf "\\t\\t %s ${bldred}NOT${txtrst} found.\\n" "${name}"
 		(( COUNT++ ))
-	done < scripts/eosio_build_dep
+	done < scripts/enumivo_build_dep
 	IFS="${var_ifs}"
 		
 	printf "\\tChecking Python3 ... "
