@@ -398,36 +398,9 @@ public:
 
    }
 
-   transaction upgrade_system_contract( const vector<uint8_t>& code );
-
    abi_serializer abi_ser;
    abi_serializer token_abi_ser;
 };
-
-transaction eosio_system_tester::upgrade_system_contract( const vector<uint8_t>& code ) {
-   transaction trx;
-   variant pretty_trx = fc::mutable_variant_object()
-      ("expiration", "2020-01-01T00:30")
-      ("ref_block_num", 2)
-      ("ref_block_prefix", 3)
-      ("max_net_usage_words", 0)
-      ("max_cpu_usage_ms", 0)
-      ("delay_sec", 0)
-      ("actions", fc::variants({
-            fc::mutable_variant_object()
-               ("account", name(config::system_account_name))
-               ("name", "setcode")
-               ("authorization", vector<permission_level>{ { config::system_account_name, config::active_name } })
-               ("data", fc::mutable_variant_object() ("account", name(config::system_account_name))
-                ("vmtype", 0)
-                ("vmversion", "0")
-                ("code", bytes( code.begin(), code.end()))
-               )
-               })
-      );
-   abi_serializer::from_variant(pretty_trx, trx, get_resolver());
-   return trx;
-}
 
 fc::mutable_variant_object voter( account_name acct ) {
    return mutable_variant_object()
@@ -1966,7 +1939,31 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
    msg[0] = 'P';
    eosio_system_wast2.replace( pos, msg.size(), msg );
 
-   auto trx = upgrade_system_contract( wast_to_wasm( eosio_system_wast2 ) );
+   transaction trx;
+   {
+      auto code = wast_to_wasm( eosio_system_wast2 );
+      variant pretty_trx = fc::mutable_variant_object()
+         ("expiration", "2020-01-01T00:30")
+         ("ref_block_num", 2)
+         ("ref_block_prefix", 3)
+         ("max_net_usage_words", 0)
+         ("max_cpu_usage_ms", 0)
+         ("delay_sec", 0)
+         ("actions", fc::variants({
+               fc::mutable_variant_object()
+                  ("account", name(config::system_account_name))
+                  ("name", "setcode")
+                  ("authorization", vector<permission_level>{ { config::system_account_name, config::active_name } })
+                  ("data", fc::mutable_variant_object() ("account", name(config::system_account_name))
+                   ("vmtype", 0)
+                   ("vmversion", "0")
+                   ("code", bytes( code.begin(), code.end() ))
+                  )
+                  })
+         );
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   }
+
    BOOST_REQUIRE_EQUAL(success(), push_action_msig( N(alice1111111), N(propose), mvo()
                                                     ("proposer",      "alice1111111")
                                                     ("proposal_name", "upgrade1")
@@ -1975,14 +1972,32 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
                        )
    );
 
-   for ( auto& x : producer_names ) {
-      BOOST_REQUIRE_EQUAL(success(), push_action_msig( name(x), N(approve), mvo()
+   // get 15 approvals
+   for ( size_t i = 0; i < 14; ++i ) {
+      BOOST_REQUIRE_EQUAL(success(), push_action_msig( name(producer_names[i]), N(approve), mvo()
                                                        ("proposer",      "alice1111111")
                                                        ("proposal_name", "upgrade1")
-                                                       ("level",         permission_level{ name(x), config::active_name })
+                                                       ("level",         permission_level{ name(producer_names[i]), config::active_name })
                           )
       );
    }
+
+   //should fail
+   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: transaction authorization failed"),
+                       push_action_msig( N(alice1111111), N(exec), mvo()
+                                         ("proposer",      "alice1111111")
+                                         ("proposal_name", "upgrade1")
+                                         ("executer",      "alice1111111")
+                       )
+   );
+
+   // one more approval
+   BOOST_REQUIRE_EQUAL(success(), push_action_msig( name(producer_names[14]), N(approve), mvo()
+                                                    ("proposer",      "alice1111111")
+                                                    ("proposal_name", "upgrade1")
+                                                    ("level",         permission_level{ name(producer_names[14]), config::active_name })
+                          )
+   );
 
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
