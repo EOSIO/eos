@@ -187,18 +187,18 @@ namespace eosiosystem {
     */
    void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
-      int64_t ibytes = static_cast<int64_t>(bytes);
+      eosio_assert( bytes > 0, "cannot sell negative byte" );
 
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
       eosio_assert( res_itr != userres.end(), "no resource row" );
-      eosio_assert( res_itr->ram_bytes >= ibytes, "insufficient quota" );
+      eosio_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
 
       asset tokens_out;
       auto itr = _rammarket.find(S(4,RAMEOS));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
           /// the cast to int64_t of bytes is safe because we certify bytes is <= quota which is limited by prior purchases
-          tokens_out = es.convert( asset(ibytes,S(0,RAM)),  S(4,EOS) );
+          tokens_out = es.convert( asset(bytes,S(0,RAM)),  S(4,EOS) );
    //       print( "out: ", tokens_out, "\n" );
       });
 
