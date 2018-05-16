@@ -105,14 +105,14 @@ public:
       base_tester::push_action(contract, N(create), contract, act );
    }
    void issue( name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(eosio.coin), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.coin), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(eosio.coin), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.coin), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
