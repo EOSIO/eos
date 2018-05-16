@@ -96,7 +96,6 @@ namespace eosio { namespace chain {
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void commit_block();
-         void log_irreversible_blocks();
          void pop_block();
 
          void push_block( const signed_block_ptr& b, bool trust = false /* does the caller trust the block*/ );
