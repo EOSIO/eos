@@ -21,7 +21,7 @@
 
 #include <boost/test/framework.hpp>
 
-#include "config.hpp"
+#include <config.hpp>
 
 using namespace eosio;
 using namespace chain;

@@ -13,8 +13,6 @@ set( CMAKE_CXX_STANDARD 14 )
 
 include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/config.hpp ESCAPE_QUOTES)
-
 file(GLOB UNIT_TESTS "wallet_tests.cpp")
 
 add_executable( plugin_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} main.cpp)
