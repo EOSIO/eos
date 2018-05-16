@@ -159,17 +159,17 @@ namespace eosio {
 
          EOSLIB_SERIALIZE( block_timestamp, (slot) )
       private:
-      static constexpr uint32_t block_interval_ms = 500;
-      static constexpr uint64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000
+      static constexpr int32_t block_interval_ms = 500;
+      static constexpr int64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000
 
       void set_time_point(const time_point& t) {
-         auto micro_since_epoch = t.time_since_epoch();
-         auto msec_since_epoch  = micro_since_epoch.count() / 1000;
-         slot = uint32_t(( msec_since_epoch - block_timestamp_epoch ) / block_interval_ms);
+         int64_t micro_since_epoch = t.time_since_epoch().count();
+         int64_t msec_since_epoch  = micro_since_epoch / 1000;
+         slot = uint32_t(( msec_since_epoch - block_timestamp_epoch ) / int64_t(block_interval_ms));
       }
 
       void set_time_point(const time_point_sec& t) {
-         uint64_t  sec_since_epoch = t.sec_since_epoch();
+         int64_t  sec_since_epoch = t.sec_since_epoch();
          slot = uint32_t((sec_since_epoch * 1000 - block_timestamp_epoch) / block_interval_ms);
       }
    }; // block_timestamp
