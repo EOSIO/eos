@@ -22,7 +22,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in ${CMAKE_CURRENT_SOURCE_
 file(GLOB UNIT_TESTS "*.cpp")
 
 add_executable( unit_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
-target_link_libraries( unit_test eosio_chain chainbase eosio_testing eos_utilities abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( unit_test enumivo_chain chainbase enumivo_testing eos_utilities abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 
 target_include_directories( unit_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
 target_include_directories( unit_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
