@@ -138,8 +138,8 @@ void apply_eosio_setcode(apply_context& context) {
    const auto& account = db.get<account_object,by_name>(act.account);
 
    int64_t code_size = (int64_t)act.code.size();
-   int64_t old_size = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
-   int64_t new_size = code_size * config::setcode_ram_bytes_multiplier;
+   int64_t old_size  = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
+   int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    FC_ASSERT( account.code_version != code_id, "contract is already running this version of code" );
 //   wlog( "set code: ${size}", ("size",act.code.size()));
@@ -153,13 +153,18 @@ void apply_eosio_setcode(apply_context& context) {
 
    });
 
+   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+   db.modify( account_sequence, [&]( auto& aso ) {
+      aso.code_sequence += 1;
+   }); 
+
    if (new_size != old_size) {
       context.trx_context.add_ram_usage( act.account, new_size - old_size );
    }
 }
 
 void apply_eosio_setabi(apply_context& context) {
-   auto& db = context.db;
+   auto& db  = context.db;
    auto  act = context.act.data_as<setabi>();
 
    context.require_authorization(act.account);
@@ -182,6 +187,11 @@ void apply_eosio_setabi(apply_context& context) {
    db.modify( account, [&]( auto& a ) {
       a.set_abi( act.abi );
    });
+
+   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+   db.modify( account_sequence, [&]( auto& aso ) {
+      aso.abi_sequence += 1;
+   }); 
 
    if (new_size != old_size) {
       context.trx_context.add_ram_usage( act.account, new_size - old_size );
