@@ -143,6 +143,7 @@ public:
        return r;
     }
 
+
     auto undelegate_bandwidth( name from, name receiver, asset net, asset cpu ) {
        auto r = base_tester::push_action(N(eosio), N(undelegatebw), from, mvo()
                     ("from", from )
@@ -155,7 +156,7 @@ public:
     }
 
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(eosio.token), symbol(SY(4,EOS)), act);
+         return get_currency_balance(N(eosio.token), symbol(SY(4,SYS)), act);
     }
 
     void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr) {
@@ -200,9 +201,10 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         const auto& eosio_token_acc = get<account_object, by_name>(N(eosio.token));
         BOOST_TEST(eosio_token_acc.privileged == true);
 
+
         // Create EOS tokens in eosio.token, set its manager as eosio
-        auto max_supply = asset::from_string("10000000000.0000 EOS"); /// 1x larger than 1B initial tokens
-        auto initial_supply = asset::from_string("1000000000.0000 EOS"); /// 1x larger than 1B initial tokens
+        auto max_supply = asset::from_string("10000000000.0000 SYS"); /// 1x larger than 1B initial tokens
+        auto initial_supply = asset::from_string("1000000000.0000 SYS"); /// 1x larger than 1B initial tokens
         create_currency(N(eosio.token), config::system_account_name, max_supply);
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
         issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
@@ -334,6 +336,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
         wlog("minow" );
         votepro( N(minow1), {N(p1), N(p2)} );
+
 
 #warning Complete this test
     } FC_LOG_AND_RETHROW()

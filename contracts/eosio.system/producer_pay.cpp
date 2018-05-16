@@ -47,6 +47,50 @@ namespace eosiosystem {
       if( timestamp.slot - _gstate.last_producer_schedule_update.slot > 120 ) {
          update_elected_producers( timestamp );
       }
+
+   }
+   
+   eosio::asset system_contract::payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket ) {
+      eosio::asset payment(0, S(4,SYS));
+      const int64_t min_daily_amount = 100 * 10000;
+      if ( pervote_bucket.amount < min_daily_amount ) {
+         return payment;
+      }
+      
+      auto idx = _producers.template get_index<N(prototalvote)>();
+      
+      double total_producer_votes   = 0;   
+      double running_payment_amount = 0;
+      bool   to_be_payed            = false;
+      for ( auto itr = idx.cbegin(); itr != idx.cend(); ++itr ) {
+         if ( !(itr->total_votes > 0) ) {
+            break;
+         }
+         if ( !itr->active() ) {
+            continue;
+         }
+         
+         if ( itr->owner == owner ) {
+            to_be_payed = true;
+         }
+         
+         total_producer_votes += itr->total_votes;
+         running_payment_amount = (itr->total_votes) * double(pervote_bucket.amount) / total_producer_votes;
+         if ( running_payment_amount < min_daily_amount ) {
+            if ( itr->owner == owner ) {
+               to_be_payed = false;
+            }
+            total_producer_votes -= itr->total_votes;
+            break;
+         }
+      }
+      
+      if ( to_be_payed ) {
+         payment.amount = static_cast<int64_t>( (double(pervote_bucket.amount) * owners_votes) / total_producer_votes );
+      }
+      
+      return payment;
+
    }
 
    using namespace eosio;

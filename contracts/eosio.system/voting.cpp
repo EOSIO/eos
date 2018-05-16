@@ -131,7 +131,7 @@ namespace eosiosystem {
     *  @pre if proxy is set then proxy account must exist and be registered as a proxy
     *  @pre every listed producer or proxy must have been previously registered
     *  @pre voter must authorize this action
-    *  @pre voter must have previously staked some EOS for voting
+    *  @pre voter must have previously staked some SYS for voting
     *  @pre voter->staked must be up to date
     *
     *  @post every producer previously voted for will have vote reduced by previous vote weight 
