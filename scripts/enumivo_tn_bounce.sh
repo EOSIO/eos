@@ -1,14 +1,14 @@
 #!/bin/bash
 #
-# eosio-tn_bounce is used to restart a node that is acting badly or is down.
-# usage: eosio-tn_bounce.sh [arglist]
+# enumivo_tn_bounce is used to restart a node that is acting badly or is down.
+# usage: enumivo_tn_bounce.sh [arglist]
 # arglist will be passed to the node's command line. First with no modifiers
 # then with --replay and then a third time with --resync
 #
 # the data directory and log file are set by this script. Do not pass them on
 # the command line.
 #
-# in most cases, simply running ./eosio-tn_bounce.sh is sufficient.
+# in most cases, simply running ./enumivo_tn_bounce.sh is sufficient.
 #
 
 pushd $ENUMIVO_HOME
@@ -40,5 +40,5 @@ else
     fi
 fi
 
-bash $ENUMIVO_HOME/scripts/eosio-tn_down.sh
-bash $ENUMIVO_HOME/scripts/eosio-tn_up.sh $*
+bash $ENUMIVO_HOME/scripts/enumivo_tn_down.sh
+bash $ENUMIVO_HOME/scripts/enumivo_tn_up.sh $*
