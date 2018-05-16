@@ -11,11 +11,11 @@
 
 #include <test_api/test_api.wast.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+#include <enumivo.system/enumivo.system.wast.hpp>
+#include <enumivo.system/enumivo.system.abi.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -105,14 +105,14 @@ public:
       base_tester::push_action(contract, N(create), contract, act );
    }
    void issue( name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(eosio.token), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(eosio.coin), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(eosio.token), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(eosio.coin), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
@@ -124,7 +124,7 @@ public:
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
       const auto& db  = control->db();
-      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(eosio.token), act, N(accounts)));
+      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(enumivo.coin), act, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
@@ -417,11 +417,11 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    set_producers( {N(alice),N(bob),N(carol)} );
    produce_blocks(50);
 
-   create_accounts( { N(eosio.token) } );
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   create_accounts( { N(enumivo.coin) } );
+   set_code( N(enumivo.coin), enumivo_coin_wast );
+   set_abi( N(enumivo.coin), enumivo_coin_abi );
 
-   create_currency( N(eosio.token), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
+   create_currency( N(enumivo.coin), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
    issue(config::system_account_name,      "1000000000.0000 EOS");
    BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
@@ -528,11 +528,11 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    set_producers( {N(alice),N(bob),N(carol), N(apple)} );
    produce_blocks(50);
 
-   create_accounts( { N(eosio.token) } );
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   create_accounts( { N(enumivo.coin) } );
+   set_code( N(enumivo.coin), enumivo_coin_wast );
+   set_abi( N(enumivo.coin), enumivo_coin_abi );
 
-   create_currency( N(eosio.token), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
+   create_currency( N(enumivo.coin), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
    issue(config::system_account_name,      "1000000000.0000 EOS");
    BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
