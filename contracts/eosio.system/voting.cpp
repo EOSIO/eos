@@ -121,7 +121,8 @@ namespace eosiosystem {
    }
 
    double stake2vote( int64_t staked ) {
-      double weight = int64_t(now() / (seconds_per_day * 7)) / double( 52 );
+      /// TODO subtract 2080 brings the large numbers closer to this decade
+      double weight = int64_t( (now() / (seconds_per_day * 7)) ) / double( 52 );
       return double(staked) * std::pow( 2, weight );
    }
    /**
@@ -174,7 +175,7 @@ namespace eosiosystem {
       }
 
       boost::container::flat_map<account_name, pair<double, bool /*new*/> > producer_deltas;
-      if( voter->last_vote_weight > 0 ) {
+      if ( voter->last_vote_weight > 0 ) {
          if( voter->proxy ) {
             auto old_proxy = _voters.find( voter->proxy );
             eosio_assert( old_proxy != _voters.end(), "old proxy not found" ); //data corruption
@@ -270,8 +271,8 @@ namespace eosiosystem {
          new_weight += voter.proxied_vote_weight;
       }
 
-#warning come up with a better way to detect change, such as delta voter.staked and/or delta time
-      if( new_weight != voter.last_vote_weight ) {
+      /// don't propagate small changes (1 ~= epsilon)
+      if ( fabs( new_weight - voter.last_vote_weight ) > 1 )  {
          if ( voter.proxy ) {
             auto& proxy = _voters.get( voter.proxy, "proxy not found" ); //data corruption
             _voters.modify( proxy, 0, [&]( auto& p ) {
