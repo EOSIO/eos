@@ -1670,19 +1670,27 @@ int main( int argc, char** argv ) {
    string contractPath;
    string wastPath;
    string abiPath;
+   bool shouldSend = true;
+   auto codeSubcommand = setSubcommand->add_subcommand("code", localized("Create or update the code on an account"));
+   codeSubcommand->add_option("account", account, localized("The account to set code for"))->required();
+   codeSubcommand->add_option("code-file", wastPath, localized("The fullpath containing the contract WAST or WASM"))->required();
+
+   auto abiSubcommand = setSubcommand->add_subcommand("abi", localized("Create or update the abi on an account"));
+   abiSubcommand->add_option("account", account, localized("The account to set the ABI for"))->required();
+   abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract WAST or WASM"))->required();
+
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
    contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))
                      ->required();
-   contractSubcommand->add_option("contract-dir", contractPath, localized("The the path containing the .wast and .abi"))
+   contractSubcommand->add_option("contract-dir", contractPath, localized("The path containing the .wast and .abi"))
                      ->required();
    contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM relative to contract-dir"));
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
-
-
-   add_standard_transaction_options(contractSubcommand, "account@active");
-   contractSubcommand->set_callback([&] {
+   
+   std::vector<chain::action> actions;
+   auto set_code_callback = [&]() {
       std::string wast;
       fc::path cpath(contractPath);
 
@@ -1693,11 +1701,6 @@ int main( int argc, char** argv ) {
          wastPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
          if (!fc::exists(wastPath))
             wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
-      }
-
-      if( abiPath.empty() )
-      {
-         abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
 
       std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
@@ -1714,25 +1717,45 @@ int main( int argc, char** argv ) {
          wasm = wast_to_wasm(wast);
       }
 
-      std::vector<chain::action> actions;
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
+      if ( shouldSend ) {
+         std::cout << localized("Setting Code...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
+   };
+
+   auto set_abi_callback = [&]() {
+      fc::path cpath(contractPath);
+      if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
+
+      if( abiPath.empty() )
+      {
+         abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
+      }
 
       FC_ASSERT( fc::exists( abiPath ), "no abi file found ${f}", ("f", abiPath)  );
 
       try {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
+      if ( shouldSend ) {
+         std::cout << localized("Setting ABI...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
+   };
 
+   add_standard_transaction_options(contractSubcommand, "account@active");
+   add_standard_transaction_options(codeSubcommand, "account@active");
+   add_standard_transaction_options(abiSubcommand, "account@active");
+   contractSubcommand->set_callback([&] {
+      shouldSend = false;
+      set_code_callback();
+      set_abi_callback();
       std::cout << localized("Publishing contract...") << std::endl;
       send_actions(std::move(actions), 10000, packed_transaction::zlib);
-      /*
-      auto result = push_actions(std::move(actions), 10000, packed_transaction::zlib);
-
-      if( tx_dont_broadcast ) {
-         std::cout << fc::json::to_pretty_string(result) << "\n";
-      }
-      */
    });
+   codeSubcommand->set_callback(set_code_callback);
+   abiSubcommand->set_callback(set_abi_callback);
 
    // set account
    auto setAccount = setSubcommand->add_subcommand("account", localized("set or update blockchain account state"))->require_subcommand();
@@ -1977,13 +2000,13 @@ int main( int argc, char** argv ) {
    push->require_subcommand();
 
    // push action
-   string contract;
+   string contract_account;
    string action;
    string data;
    vector<string> permissions;
    auto actionsSubcommand = push->add_subcommand("action", localized("Push a transaction with a single action"));
    actionsSubcommand->fallthrough(false);
-   actionsSubcommand->add_option("contract", contract,
+   actionsSubcommand->add_option("account", contract_account,
                                  localized("The account providing the contract to execute"), true)->required();
    actionsSubcommand->add_option("action", action,
                                  localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
@@ -1997,14 +2020,14 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data",data))
 
       auto arg= fc::mutable_variant_object
-                ("code", contract)
+                ("code", contract_account)
                 ("action", action)
                 ("args", action_args_var);
       auto result = call(json_to_bin_func, arg);
 
       auto accountPermissions = get_account_permissions(tx_permission);
 
-      send_actions({chain::action{accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>()}});
+      send_actions({chain::action{accountPermissions, contract_account, action, result.get_object()["binargs"].as<bytes>()}});
    });
 
    // push transaction

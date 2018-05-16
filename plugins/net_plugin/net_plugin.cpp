@@ -439,7 +439,7 @@ namespace eosio {
       ~connection();
       void initialize();
 
-      peer_block_state_index       blk_state;
+      peer_block_state_index  blk_state;
       transaction_state_index trx_state;
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
       socket_ptr              socket;
@@ -715,7 +715,7 @@ namespace eosio {
    }
 
    bool connection::connected() {
-      return (socket->is_open() && !connecting);
+      return (socket && socket->is_open() && !connecting);
    }
 
    bool connection::current() {
@@ -1269,7 +1269,7 @@ namespace eosio {
        * 3. we have multiple peers, select the next available from the list
        */
 
-      if (conn) {
+      if (conn && conn->current() ) {
          source = conn;
       }
       else if (my_impl->connections.size() == 1) {
@@ -1281,35 +1281,34 @@ namespace eosio {
          }
       }
       else {
-         auto cptr = my_impl->connections.find(source);
-         if (cptr == my_impl->connections.end()) {
-            elog ("unable to find previous source connection in connections list");
-            source.reset();
-            cptr = my_impl->connections.begin();
-         } else {
-            ++cptr;
-         }
-         while (my_impl->connections.size() > 1) {
+         auto cptr = my_impl->connections.begin();
+         auto cend = my_impl->connections.end();
+         if (source) {
+            cptr = my_impl->connections.find(source);
+            cend = cptr;
             if (cptr == my_impl->connections.end()) {
+               elog ("unable to find previous source connection in connections list");
+               source.reset();
                cptr = my_impl->connections.begin();
-               if (!source) {
-                  break;
-               }
+            } else {
+               if (++cptr == my_impl->connections.end())
+                  cptr = my_impl->connections.begin();
             }
-            if (*cptr == source) {
-               break;
-            }
+         }
+         while (cptr != cend) {
             if ((*cptr)->current()) {
                source = *cptr;
                break;
             }
             else {
-               ++cptr;
+               if (++cptr == my_impl->connections.end()) {
+                  cptr = my_impl->connections.begin();
+               }
             }
          }
       }
 
-      if (!source) {
+      if (!source || !source->current() ) {
          elog("Unable to continue syncing at this time");
          sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
          sync_last_requested_num = 0;
