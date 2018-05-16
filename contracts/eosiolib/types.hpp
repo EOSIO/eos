@@ -91,7 +91,7 @@ namespace eosio {
             tmp >>= (i == 0 ? 4 : 5);
          }
 
-         trim_right_if( str, []( char c ){ return c == '.'; } );
+         trim_right_dots( str );
          return str;
       }
 
@@ -99,8 +99,7 @@ namespace eosio {
       account_name value = 0;
 
    private:
-      template<typename Lambda>
-      static void trim_right_if(std::string& str, Lambda&& l ) {
+      static void trim_right_dots(std::string& str ) {
          const auto last = str.find_last_not_of('.');
          if (last != std::string::npos)
             str = str.substr(0, last + 1);

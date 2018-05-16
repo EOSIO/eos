@@ -53,7 +53,7 @@ namespace eosio { namespace chain {
 	   }
 
    void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
-      my->get_instantiated_module(code_id, code)->apply(context);
+      my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
    }
 
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
@@ -681,7 +681,7 @@ class producer_api : public context_aware_api {
 
          auto copy_size = std::min( buffer_size, s );
          memcpy( producers, active_producers.data(), copy_size );
-         
+
          return copy_size;
       }
 };

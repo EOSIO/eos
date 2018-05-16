@@ -44,6 +44,9 @@
 #include <test_api_db/test_api_db.wast.hpp>
 #include <test_api_multi_index/test_api_multi_index.wast.hpp>
 
+#include <eosio.bios/eosio.bios.wast.hpp>
+#include <eosio.bios/eosio.bios.abi.hpp>
+
 #define DISABLE_EOSLIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
 
@@ -236,6 +239,50 @@ struct MySink : public bio::sink
    }
 };
 uint32_t last_fnc_err = 0;
+
+BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
+	produce_blocks(2);
+	create_account( N(testapi) );
+	create_account( N(testapi2) );
+	produce_blocks(10);
+	set_code( N(testapi), test_api_wast );
+	produce_blocks(1);
+
+	auto res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 1);
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 0);
+
+	set_code( N(testapi), test_api_db_wast );
+   set_code( config::system_account_name, test_api_db_wast );
+   res = CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 0);
+
+   {
+      signed_transaction trx;
+      auto pl = vector<permission_level>{{config::system_account_name, config::active_name}};
+      action act(pl, test_chain_action<TEST_METHOD("test_db", "primary_i64_general")>{});
+      act.authorization = {{config::system_account_name, config::active_name}};
+      trx.actions.push_back(act);
+      this->set_transaction_headers(trx, this->DEFAULT_EXPIRATION_DELTA);
+      trx.sign(this->get_private_key(config::system_account_name, "active"), chain_id_type());
+      trx.get_signature_keys(chain_id_type() );
+      auto res = this->push_transaction(trx);
+      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+      this->produce_block();
+      BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
+      BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
+   }
+   set_code( config::system_account_name, eosio_bios_wast );
+
+	set_code( N(testapi), eosio_bios_wast );
+   set_abi(N(testapi), eosio_bios_abi);
+	set_code( N(testapi), test_api_wast );
+	res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 4);
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
+
+} FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * action_tests test case
@@ -651,10 +698,6 @@ BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
-	// TODO: This is an extremely fragile test. It needs improvements:
-	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
-	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
-	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
    TESTER t;
    t.produce_blocks(2);
 
@@ -669,7 +712,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
    t.control->get_resource_limits_manager().get_account_limits( N(testapi), x, net, cpu );
    wdump((net)(cpu));
 
-   auto call_test = [](TESTER& test, auto ac, uint32_t billed_cpu_time_us, uint8_t max_cpu_usage_ms ) {
+   auto call_test = [](TESTER& test, auto ac, uint32_t billed_cpu_time_us /*, uint8_t max_cpu_usage_ms */ ) {
       signed_transaction trx;
 
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
@@ -679,7 +722,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
       trx.actions.push_back(act);
       test.set_transaction_headers(trx);
-      trx.max_cpu_usage_ms = max_cpu_usage_ms;
+      //trx.max_cpu_usage_ms = max_cpu_usage_ms;
       auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
       auto res = test.push_transaction( trx, fc::time_point::now() + fc::milliseconds(200), billed_cpu_time_us );
@@ -689,16 +732,23 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
 
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
-                                     5000, 0 ),
+                                     5000 ),
                           deadline_exception, is_deadline_exception );
 
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
-                                     0, 50 ),
+                                     0 ),
                           tx_cpu_usage_exceeded, is_tx_cpu_usage_exceeded );
 
+   uint32_t time_left_in_block_us = config::default_max_block_cpu_usage - config::default_min_transaction_cpu_usage;
+   std::string dummy_string = "nonce";
+   uint32_t increment = config::default_max_transaction_cpu_usage / 3;
+   for( auto i = 0; time_left_in_block_us > 2*increment; ++i ) {
+      t.push_dummy( N(testapi), dummy_string + std::to_string(i), increment );
+      time_left_in_block_us -= increment;
+   }
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
-                                    0, 0 ),
-                          block_cpu_usage_exceeded, is_block_cpu_usage_exceeded ); // Because the onblock uses up some of the CPU
+                                    0 ),
+                          block_cpu_usage_exceeded, is_block_cpu_usage_exceeded );
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }
