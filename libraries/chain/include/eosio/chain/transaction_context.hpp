@@ -30,7 +30,11 @@ namespace eosio { namespace chain {
          inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
 
          void check_net_usage()const;
+
          void checktime()const;
+
+         void pause_billing_timer();
+         void resume_billing_timer();
 
          void add_ram_usage( account_name account, int64_t ram_delta );
 
@@ -86,8 +90,12 @@ namespace eosio { namespace chain {
          uint64_t&                     net_usage; /// reference to trace->net_usage
 
          fc::microseconds              objective_duration_limit;
-         bool                          objective_duration_limit_due_to_block = true;
+         fc::time_point                _deadline = fc::time_point::maximum();
          int64_t                       deadline_exception_code = block_cpu_usage_exceeded::code_value;
+         int64_t                       billing_timer_exception_code = block_cpu_usage_exceeded::code_value;
+         fc::time_point                pseudo_start;
+         fc::microseconds              billed_time;
+         fc::microseconds              billing_timer_duration_limit;
    };
 
 } }

@@ -20,6 +20,7 @@ namespace eosio { namespace chain {
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
    ,net_usage(trace->net_usage)
+   ,pseudo_start(s)
    {
       trace->id = id;
       executed.reserve( trx.total_actions() );
@@ -31,26 +32,25 @@ namespace eosio { namespace chain {
       FC_ASSERT( !is_initialized, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
-      auto original_deadline = deadline;
-
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
 
       net_limit = rl.get_block_net_limit();
 
       objective_duration_limit = fc::microseconds( rl.get_block_cpu_limit() );
-      deadline = start + objective_duration_limit;
-
-      // Check if deadline is limited by block deadline or caller-set deadline
-      if( original_deadline <= deadline ) {
-         deadline = original_deadline;
-         deadline_exception_code = deadline_exception::code_value;
-      }
+      _deadline = start + objective_duration_limit;
 
       // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
       if( cfg.max_transaction_net_usage <= net_limit ) {
          net_limit = cfg.max_transaction_net_usage;
          net_limit_due_to_block = false;
+      }
+
+      // Possibly lower objective_duration_limit to the maximum cpu usage a transaction is allowed to be billed
+      if( cfg.max_transaction_cpu_usage <= objective_duration_limit.count() ) {
+         objective_duration_limit = fc::microseconds(cfg.max_transaction_cpu_usage);
+         billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
+         _deadline = start + objective_duration_limit;
       }
 
       // Possibly lower net_limit to optional limit set in the transaction header
@@ -65,14 +65,9 @@ namespace eosio { namespace chain {
          auto trx_specified_cpu_usage_limit = fc::milliseconds(trx.max_cpu_usage_ms);
          if( trx_specified_cpu_usage_limit <= objective_duration_limit ) {
             objective_duration_limit = trx_specified_cpu_usage_limit;
-            objective_duration_limit_due_to_block = false;
+            billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
+            _deadline = start + objective_duration_limit;
          }
-      }
-
-      // Possibly limit deadline if objective_duration_limit is not due to the block and does not exceed current delta
-      if( !objective_duration_limit_due_to_block && objective_duration_limit <= (deadline - start) ) {
-         deadline = start + objective_duration_limit;
-         deadline_exception_code = tx_cpu_usage_exceeded::code_value;
       }
 
       if( billed_cpu_time_us > 0 )
@@ -111,18 +106,25 @@ namespace eosio { namespace chain {
       }
 
       // Possibly limit deadline if the duration accounts can be billed for (+ a subjective leeway) does not exceed current delta
-      if( ( fc::microseconds(account_cpu_limit) + leeway ) <= (deadline - start) ) {
-         deadline = start + fc::microseconds(account_cpu_limit) + leeway;
-         deadline_exception_code = leeway_deadline_exception::code_value;
+      if( (fc::microseconds(account_cpu_limit) + leeway) <= (_deadline - start) ) {
+         _deadline = start + fc::microseconds(account_cpu_limit) + leeway;
+         billing_timer_exception_code = leeway_deadline_exception::code_value;
+      }
+
+      billing_timer_duration_limit = _deadline - start;
+
+      // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
+      if( billed_cpu_time_us > 0 || deadline < _deadline ) {
+         _deadline = deadline;
+         deadline_exception_code = deadline_exception::code_value;
+      } else {
+         deadline_exception_code = billing_timer_exception_code;
       }
 
       eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
 
       if( initial_net_usage > 0 )
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
-
-      if( billed_cpu_time_us > 0 )
-         deadline = original_deadline; // Only change deadline if billed_cpu_time_us is not set
 
       checktime(); // Fail early if deadline has already been exceeded
 
@@ -237,7 +239,7 @@ namespace eosio { namespace chain {
       // Possibly lower objective_duration_limit to what the billed accounts can pay
       if( account_cpu_limit <= objective_duration_limit.count() ) {
          objective_duration_limit = fc::microseconds(account_cpu_limit);
-         objective_duration_limit_due_to_block = false;
+         billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
       }
 
       net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
@@ -245,10 +247,13 @@ namespace eosio { namespace chain {
       eager_net_limit = net_limit;
       check_net_usage();
 
-      trace->elapsed = fc::time_point::now() - start;
+      auto now = fc::time_point::now();
+      trace->elapsed = now - start;
 
-      if( billed_cpu_time_us == 0 )
-         billed_cpu_time_us = std::max( trace->elapsed.count(), static_cast<int64_t>(config::default_min_transaction_cpu_usage_us) );
+      if( billed_cpu_time_us == 0 ) {
+         const auto& cfg = control.get_global_properties().configuration;
+         billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
+      }
 
       validate_cpu_usage_to_bill( billed_cpu_time_us );
 
@@ -277,34 +282,60 @@ namespace eosio { namespace chain {
 
    void transaction_context::checktime()const {
       auto now = fc::time_point::now();
-      if( BOOST_UNLIKELY( now > deadline ) ) {
+      if( BOOST_UNLIKELY( now > _deadline ) ) {
          if( billed_cpu_time_us > 0 || deadline_exception_code == deadline_exception::code_value ) {
-            EOS_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", deadline)("start", start) );
+            EOS_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
             EOS_THROW( block_cpu_usage_exceeded,
                        "not enough time left in block to complete executing transaction",
-                       ("now", now)("deadline", deadline)("start", start) );
+                       ("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
             EOS_THROW( tx_cpu_usage_exceeded,
                        "transaction was executing for too long",
-                       ("now", now)("deadline", deadline)("start", start) );
+                       ("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
             EOS_THROW( leeway_deadline_exception,
                        "the transaction was unable to complete by deadline, "
                        "but it is possible it could have succeeded if it were allow to run to completion",
-                       ("now", now)("deadline", deadline)("start", start) );
+                       ("now", now)("deadline", _deadline)("start", start) );
          }
          FC_ASSERT( false, "unexpected deadline exception code" );
       }
    }
-   void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
-#warning make min_transaction_cpu_us into a configuration parameter
-      EOS_ASSERT( !check_minimum || billed_us >= config::default_min_transaction_cpu_usage_us, transaction_exception,
-                  "cannot bill CPU time less than the minimum of ${min_billable} us",
-                  ("min_billable", config::default_min_transaction_cpu_usage_us)("billed_cpu_time_us", billed_us)
-                );
 
-      if( objective_duration_limit_due_to_block ) {
+   void transaction_context::pause_billing_timer() {
+      if( billed_cpu_time_us > 0 || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
+
+      auto now = fc::time_point::now();
+      billed_time = now - pseudo_start;
+      deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
+      pseudo_start = fc::time_point();
+   }
+
+   void transaction_context::resume_billing_timer() {
+      if( billed_cpu_time_us > 0 || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
+
+      auto now = fc::time_point::now();
+      pseudo_start = now - billed_time;
+      if( (pseudo_start + billing_timer_duration_limit) <= deadline ) {
+         _deadline = pseudo_start + billing_timer_duration_limit;
+         deadline_exception_code = billing_timer_exception_code;
+      } else {
+         _deadline = deadline;
+         deadline_exception_code = deadline_exception::code_value;
+      }
+   }
+
+   void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
+      if( check_minimum ) {
+         const auto& cfg = control.get_global_properties().configuration;
+         EOS_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,
+                     "cannot bill CPU time less than the minimum of ${min_billable} us",
+                     ("min_billable", cfg.min_transaction_cpu_usage)("billed_cpu_time_us", billed_us)
+                   );
+      }
+
+      if( billing_timer_exception_code == block_cpu_usage_exceeded::code_value ) {
          EOS_ASSERT( billed_us <= objective_duration_limit.count(),
                      block_cpu_usage_exceeded,
                      "billed CPU time (${billed} us) is greater than the billable CPU time left in the block (${billable} us)",
