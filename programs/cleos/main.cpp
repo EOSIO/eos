@@ -450,7 +450,7 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
 
 fc::variant regproducer_variant(const account_name& producer,
                                 public_key_type key,
-                                string url) {
+                                string url, uint16_t location = 0) {
    /*
    fc::variant_object params = fc::mutable_variant_object()
          ("max_block_net_usage", config::default_max_block_net_usage)
@@ -463,13 +463,6 @@ fc::variant regproducer_variant(const account_name& producer,
          ("max_block_cpu_usage", config::default_max_block_cpu_usage)
          ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
          ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
-         ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
-         ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
-         ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
-         ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
-         ("cpu_usage_leeway", config::default_cpu_usage_leeway)
-         ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
-         ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
          ("max_transaction_lifetime", config::default_max_trx_lifetime)
          ("deferred_trx_expiration_window", config::default_deferred_trx_expiration_window)
          ("max_transaction_delay", config::default_max_trx_delay)
@@ -485,7 +478,9 @@ fc::variant regproducer_variant(const account_name& producer,
    return fc::mutable_variant_object()
             ("producer", producer)
             ("producer_key", key)
-            ("url", url);
+            ("url", url)
+            ("location", 0)
+            ;
 }
 
 chain::action create_transfer(const string& contract, const name& sender, const name& recipient, asset amount, const string& memo ) {
@@ -718,7 +713,7 @@ bool port_used(uint16_t port) {
 void try_port( uint16_t port, uint32_t duration ) {
    using namespace std::chrono;
    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-   while ( !port_used(port)) { 
+   while ( !port_used(port)) {
       if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
          std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
          throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
@@ -783,12 +778,14 @@ struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
    string url;
+   uint16_t loc = 0;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
+      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), 0);
       add_standard_transaction_options(register_producer);
 
 
@@ -798,7 +795,7 @@ struct register_producer_subcommand {
             producer_key = public_key_type(producer_key_str);
          } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
-         auto regprod_var = regproducer_variant(producer_str, producer_key, url );
+         auto regprod_var = regproducer_variant(producer_str, producer_key, url, loc );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
       });
    }
@@ -833,13 +830,13 @@ struct create_account_subcommand {
          createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
                                    (localized("The amount of RAM bytes to purchase for the new account in EOS")));
          createAccount->add_flag("--transfer", transfer,
-                                 (localized("Transfer?")));
+                                 (localized("Transfer voting power and right to unstake EOS to receiver")));
       }
 
       add_standard_transaction_options(createAccount);
 
       createAccount->set_callback([this] {
-            if( !active_key_str.size() ) 
+            if( !active_key_str.size() )
                active_key_str = owner_key_str;
             public_key_type owner_key, active_key;
             try {
@@ -988,7 +985,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
-      delegate_bandwidth->add_flag("--transfer", transfer, localized("specify to stake in name of receiver rather than in name of from"))->required();
+      delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake EOS to receiver"));
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
@@ -1223,7 +1220,7 @@ void get_account( const string& accountName, bool json_format ) {
 
       std::cout << "net bandwidth: (averaged over 3 days)" << std::endl;
       if ( res.total_resources.is_object() ) {
-         asset net_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) : 0 );
+         asset net_own = res.delegated_bandwidth.is_object() ? asset::from_string( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) : asset(0) ;
          auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
          std::cout << indent << "staked:" << std::setw(20) << net_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
@@ -1269,7 +1266,7 @@ void get_account( const string& accountName, bool json_format ) {
 
 
       if ( res.total_resources.is_object() ) {
-         asset cpu_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : 0 );
+         asset cpu_own = res.delegated_bandwidth.is_object() ? asset::from_string( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : asset(0) ;
          auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
          std::cout << indent << "staked:" << std::setw(20) << cpu_own
                    << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl

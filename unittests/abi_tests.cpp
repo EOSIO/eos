@@ -112,11 +112,20 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
          "name": "string_arr",
          "type": "string[]"
       },{
-         "name": "time",
-         "type": "time"
+         "name": "block_timestamp_type",
+         "type": "block_timestamp_type"
       },{
-         "name": "time_arr",
-         "type": "time[]"
+         "name": "time_point",
+         "type": "time_point"
+      },{
+         "name": "time_point_arr",
+         "type": "time_point[]"
+      },{
+         "name": "time_point_sec",
+         "type": "time_point_sec"
+      },{
+         "name": "time_point_sec_arr",
+         "type": "time_point_sec[]"
       },{
          "name": "signature",
          "type": "signature"
@@ -464,6 +473,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
    #include <eosiolib/types.hpp>
    #include <eosiolib/asset.hpp>
    #include <eosiolib/action.hpp>
+   #include <eosiolib/time.hpp>
    #include <string>
 
    typedef eosio::symbol_type symbol;
@@ -471,7 +481,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
    //@abi action
    struct test_struct {
      std::string             field1;
-     time                    field2;
+     eosio::time_point_sec   field2;
      signature               field3;
      checksum256             field4;
      field_name              field5;
@@ -497,6 +507,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
      eosio::asset            field40;
      eosio::extended_asset   field41;
      symbol                  field42;
+     eosio::time_point       field43;
+     eosio::block_timestamp_type  field44;
    };
    )=====";
 
@@ -511,7 +523,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
              "type": "string"
            },{
              "name": "field2",
-             "type": "time"
+             "type": "time_point_sec"
            },{
              "name": "field3",
              "type": "signature"
@@ -587,6 +599,12 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
            },{
              "name": "field42",
              "type": "symbol"
+           },{
+             "name": "field43",
+             "type": "time_point"
+           },{
+             "name": "field44",
+             "type": "block_timestamp_type"
            }
          ]
        }
@@ -1742,8 +1760,11 @@ BOOST_AUTO_TEST_CASE(general)
 
       "string"            : "ola ke ase",
       "string_arr"        : ["ola ke ase","ola ke desi"],
-      "time"              : "2021-12-20T15:30",
-      "time_arr"          : ["2021-12-20T15:30","2021-12-20T15:31"],
+      "block_timestamp_type" : "2021-12-20T15",
+      "time_point"        : "2021-12-20T15:30",
+      "time_point_arr"    : ["2021-12-20T15:30","2021-12-20T15:31"],
+      "time_point_sec"    : "2021-12-20T15:30:21",
+      "time_point_sec_arr": ["2021-12-20T15:30:21","2021-12-20T15:31:21"],
       "signature"         : "SIG_K1_Jzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwV1v4G5",
       "signature_arr"     : ["SIG_K1_Jzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwV1v4G5","SIG_K1_Jzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwV1v4G5"],
       "checksum256"       : "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
