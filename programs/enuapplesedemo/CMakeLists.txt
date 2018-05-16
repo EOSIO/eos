@@ -1,24 +1,24 @@
 if(APPLE)
-add_executable( enu-applesedemo main.cpp r1_signature_compactor.cpp )
+add_executable( enuapplesedemo main.cpp r1_signature_compactor.cpp )
 
 
-target_link_libraries( enu-applesedemo
+target_link_libraries( enuapplesedemo
         PRIVATE fc ${PLATFORM_SPECIFIC_LIBS} 
         )
 
-set_target_properties(enu-applesedemo PROPERTIES LINK_FLAGS "-framework security -framework corefoundation")
+set_target_properties(enuapplesedemo PROPERTIES LINK_FLAGS "-framework security -framework corefoundation")
 
 #Demostration of signing automatically during build; you will need to change parameters for your signing credentials
 #[[
-add_custom_command(TARGET enu-applesedemo POST_BUILD
-                   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sign.sh C5139C2C4D7FA071EFBFD86CE44B652631C9376A 5A4683969Z.one.block.enu-applesedemo /Users/spoon/Library/MobileDevice/Provisioning\ Profiles/95813ad5-e880-432f-85c6-ade3b3298392.provisionprofile
+add_custom_command(TARGET enuapplesedemo POST_BUILD
+                   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sign.sh C5139C2C4D7FA071EFBFD86CE44B652631C9376A 5A4683969Z.one.block.enuapplesedemo /Users/spoon/Library/MobileDevice/Provisioning\ Profiles/95813ad5-e880-432f-85c6-ade3b3298392.provisionprofile
                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                    VERBATIM
                   )
 ]]
 
 install( TARGETS
-   enu-applesedemo
+   enuapplesedemo
 
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
