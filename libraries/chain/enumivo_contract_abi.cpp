@@ -1,4 +1,4 @@
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 
 namespace eosio { namespace chain {
 
