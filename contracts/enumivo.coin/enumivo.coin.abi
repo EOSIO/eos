@@ -14,10 +14,7 @@
      "base": "",
      "fields": [
         {"name":"issuer", "type":"account_name"},
-        {"name":"maximum_supply", "type":"asset"},
-        {"name":"can_freeze", "type":"uint8"},
-        {"name":"can_recall", "type":"uint8"},
-        {"name":"can_whitelist", "type":"uint8"}
+        {"name":"maximum_supply", "type":"asset"}
      ]
   },{
      "name": "issue",
@@ -31,9 +28,7 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"balance", "type":"asset"},
-        {"name":"frozen", "type":"uint8"},
-        {"name":"whitelist", "type":"uint8"}
+        {"name":"balance", "type":"asset"}
       ]
     },{
       "name": "currency_stats",
@@ -41,12 +36,7 @@
       "fields": [
         {"name":"supply", "type":"asset"},
         {"name":"max_supply", "type":"asset"},
-        {"name":"issuer", "type":"account_name"},
-        {"name":"can_freeze", "type":"uint8"},
-        {"name":"can_recall", "type":"uint8"},
-        {"name":"can_whitelist", "type":"uint8"},
-        {"name":"is_frozen", "type":"uint8"},
-        {"name":"enforce_whitelist", "type":"uint8"}
+        {"name":"issuer", "type":"account_name"}
       ]
     }
   ],

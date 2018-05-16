@@ -122,9 +122,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
 
@@ -281,9 +278,6 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", "enumivo.coin" )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    // issue to account "enumivo.coin"
@@ -404,9 +398,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -551,9 +542,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -692,9 +680,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -892,9 +877,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -1092,9 +1074,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -1291,9 +1270,6 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -1495,9 +1471,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -1664,9 +1637,6 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -1811,9 +1781,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -2057,9 +2024,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", enumivo_coin)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
@@ -2326,9 +2290,6 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    chain.push_action(N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
            ("issuer", "enumivo.coin" )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
    chain.push_action(N(enumivo.coin), name("issue"), N(enumivo.coin), fc::mutable_variant_object()
            ("to",       "tester")
