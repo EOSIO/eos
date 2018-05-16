@@ -577,6 +577,14 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    return result;
 }
 
+static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
+   variant v;
+   auto it = std::find_if(abi.structs.begin(), abi.structs.end(), [&](auto& x){return x.name == action_type;});
+   if( it != abi.structs.end() )
+      to_variant( it->fields,  v );
+   return v;
+};
+
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
    const auto code_account = db.db().find<account_object,by_name>( params.code );
@@ -585,11 +593,13 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {
       abi_serializer abis( abi );
+      auto action_type = abis.get_action_type(params.action);
+      ENU_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
-         result.binargs = abis.variant_to_binary(abis.get_action_type(params.action), params.args);
+         result.binargs = abis.variant_to_binary(action_type, params.args);
       } ENU_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
-                                "'${args}' is invalid args for action '${action}' code '${code}'",
-                                ("args", params.args)("action", params.action)("code", params.code))
+                                "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
+                                ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
    }
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )

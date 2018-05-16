@@ -159,7 +159,7 @@ namespace eosio { namespace client { namespace http {
       } else if (path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
          throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
       } else if (path.compare(0, account_history_func_base.size(), account_history_func_base) == 0) {
-         throw chain::missing_account_history_api_plugin_exception(FC_LOG_MESSAGE(error, "Account History API plugin is not enabled"));
+         throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
       } else if (path.compare(0, net_func_base.size(), net_func_base) == 0) {
          throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
       }

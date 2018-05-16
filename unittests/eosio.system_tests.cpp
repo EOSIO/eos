@@ -301,6 +301,7 @@ public:
                           ("producer",  acnt )
                           ("producer_key", get_public_key( acnt, "active" ) )
                           ("url", "" )
+                          ("location", 0 )
       );
       BOOST_REQUIRE_EQUAL( success(), r);
       return r;
@@ -478,9 +479,54 @@ BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
    bought_bytes = bytes - init_bytes;
    wdump((init_bytes)(bought_bytes)(bytes) );
 
-
    BOOST_REQUIRE_EQUAL( true, total["ram_bytes"].as_uint64() == init_bytes );
    BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9993 EOS"), get_balance( "alice1111111" ) );
+
+
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "30.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100000439.9993 EOS"), get_balance( "alice1111111" ) );
+
+   auto newtotal = get_total_stake( "alice1111111" );
+
+   auto newbytes = newtotal["ram_bytes"].as_uint64();
+   bought_bytes = newbytes - bytes;
+   wdump((newbytes)(bytes)(bought_bytes) );
+
+   BOOST_REQUIRE_EQUAL( success(), sellram( "alice1111111", bought_bytes ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9991 EOS"), get_balance( "alice1111111" ) );
+
+
+   newtotal = get_total_stake( "alice1111111" );
+   auto startbytes = newtotal["ram_bytes"].as_uint64();
+
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10000000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10000000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10000000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10000000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10000000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "100000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "300000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("49400999.9991 EOS"), get_balance( "alice1111111" ) );
+
+   auto finaltotal = get_total_stake( "alice1111111" );
+   auto endbytes = finaltotal["ram_bytes"].as_uint64();
+
+   bought_bytes = endbytes - startbytes;
+   wdump((startbytes)(endbytes)(bought_bytes) );
+
+   BOOST_REQUIRE_EQUAL( success(), sellram( "alice1111111", bought_bytes ) );
+
+   BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9943 EOS"), get_balance( "alice1111111" ) );
 
 } FC_LOG_AND_RETHROW() 
 
@@ -832,6 +878,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, enumivo_system_tester ) t
                                                ("producer",  "alice1111111")
                                                ("producer_key", key )
                                                ("url", "http://block.one")
+                                               ("location", "0")
                         )
    );
 
@@ -879,6 +926,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, enumivo_system_tester, * boost::unit
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "http://block.one")
+                                               ("location", 0 ) 
                         )
    );
    auto prod = get_producer_info( "alice1111111" );
@@ -984,6 +1032,7 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, enumivo_system_tester, * 
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
    //and then unregisters
@@ -1036,6 +1085,7 @@ BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, enumivo_system_tester ) tr
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key(N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
 
@@ -1062,6 +1112,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, enumivo_system_tester, * boost::un
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
 
@@ -1100,6 +1151,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, enumivo_system_tester, * boost::un
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url", "")
+                                               ("location", 0)
                         )
    );
    prod = get_producer_info( "alice1111111" );
@@ -1112,6 +1164,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, enumivo_system_tester, * boost::un
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url","")
+                                               ("location", 0)
                         )
    );
    prod = get_producer_info( "alice1111111" );
@@ -1131,6 +1184,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, enumivo_system_tester, * boost:
                                                ("producer",  "alice1111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url","")
+                                               ("location", 0)
                         )
    );
    //bob111111111 becomes a producer
@@ -1140,6 +1194,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, enumivo_system_tester, * boost:
                                                ("producer",  "bob111111111")
                                                ("producer_key", get_public_key( N(alice1111111), "active") )
                                                ("url","")
+                                               ("location", 0)
                         )
    );
 

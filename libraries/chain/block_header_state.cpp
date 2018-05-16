@@ -15,6 +15,18 @@ namespace eosio { namespace chain {
       return active_schedule.producers[index];
    }
 
+   uint32_t block_header_state::calc_dpos_last_irreversible()const {
+      vector<uint32_t> blocknums; blocknums.reserve( producer_to_last_implied_irb.size() );
+      for( auto& i : producer_to_last_implied_irb ) {
+         blocknums.push_back(i.second);
+      }
+      /// 2/3 must be greater, so if I go 1/3 into the list sorted from low to high, then 2/3 are greater
+
+      if( blocknums.size() == 0 ) return 0;
+      /// TODO: update to nth_element 
+      std::sort( blocknums.begin(), blocknums.end() );
+      return blocknums[ (blocknums.size()-1) / 3 ];
+   }
 
   /**
    *  Generate a template block header state for a given block time, it will not
@@ -29,28 +41,32 @@ namespace eosio { namespace chain {
     } else {
        (when = header.timestamp).slot++;
     }
-    result.header.timestamp                      = when;
-    result.header.previous                       = id;
-    result.header.schedule_version               = active_schedule.version;
-
-    auto prokey                                  = get_scheduled_producer(when);
-    result.block_signing_key                     = prokey.block_signing_key;
-    result.header.producer                       = prokey.producer_name;
-
-    result.pending_schedule_lib_num              = pending_schedule_lib_num;
-    result.pending_schedule_hash                 = pending_schedule_hash;
-    result.block_num                             = block_num + 1;
-    result.producer_to_last_produced             = producer_to_last_produced;
+    result.header.timestamp                                = when;
+    result.header.previous                                 = id;
+    result.header.schedule_version                         = active_schedule.version;
+                                                           
+    auto prokey                                            = get_scheduled_producer(when);
+    result.block_signing_key                               = prokey.block_signing_key;
+    result.header.producer                                 = prokey.producer_name;
+                                                           
+    result.pending_schedule_lib_num                        = pending_schedule_lib_num;
+    result.pending_schedule_hash                           = pending_schedule_hash;
+    result.block_num                                       = block_num + 1;
+    result.producer_to_last_produced                       = producer_to_last_produced;
+    result.producer_to_last_implied_irb                    = producer_to_last_implied_irb;
     result.producer_to_last_produced[prokey.producer_name] = result.block_num;
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
 
     auto block_mroot = result.blockroot_merkle.get_root();
 
-    result.active_schedule                   = active_schedule;
-    result.pending_schedule                  = pending_schedule;
-    result.dpos_irreversible_blocknum        = dpos_irreversible_blocknum;
-    result.bft_irreversible_blocknum         = bft_irreversible_blocknum;
+    result.active_schedule                       = active_schedule;
+    result.pending_schedule                      = pending_schedule;
+    result.dpos_proposed_irreversible_blocknum   = dpos_proposed_irreversible_blocknum;
+    result.bft_irreversible_blocknum             = bft_irreversible_blocknum;
+
+    result.producer_to_last_implied_irb[prokey.producer_name] = result.dpos_proposed_irreversible_blocknum;
+    result.dpos_irreversible_blocknum                         = result.calc_dpos_last_irreversible(); 
 
     /// grow the confirmed count
     static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
@@ -88,7 +104,19 @@ namespace eosio { namespace chain {
                new_producer_to_last_produced[pro.producer_name] = dpos_irreversible_blocknum;
             }
          }
+
+         flat_map<account_name,uint32_t> new_producer_to_last_implied_irb;
+         for( const auto& pro : active_schedule.producers ) {
+            auto existing = producer_to_last_implied_irb.find( pro.producer_name );
+            if( existing != producer_to_last_implied_irb.end() ) {
+               new_producer_to_last_implied_irb[pro.producer_name] = existing->second;
+            } else {
+               new_producer_to_last_implied_irb[pro.producer_name] = dpos_irreversible_blocknum;
+            }
+         }
+
          producer_to_last_produced = move( new_producer_to_last_produced );
+         producer_to_last_implied_irb = move( new_producer_to_last_implied_irb);
          producer_to_last_produced[header.producer] = block_num;
 
          return true;
@@ -175,7 +203,7 @@ namespace eosio { namespace chain {
         if( confirm_count[i] == 0 )
         {
            uint32_t block_num_for_i = block_num - (uint32_t)(confirm_count.size() - 1 - i);
-           dpos_irreversible_blocknum = block_num_for_i;
+           dpos_proposed_irreversible_blocknum = block_num_for_i;
            //idump((dpos2_lib)(block_num)(dpos_irreversible_blocknum));
 
            if (i == confirm_count.size() - 1) {
