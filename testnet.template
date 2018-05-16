@@ -37,9 +37,9 @@ echo Initializing ignition sequence  at $(date) | tee $logfile
 
 echo "http-server-address = $wdaddr" > $wddir/config.ini
 
-programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
+programs/enuwallet/enuwallet --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
 echo $$ > ignition_wallet.pid
-echo keosd log in $wddir/wdlog.txt >> $logfile
+echo enuwallet log in $wddir/wdlog.txt >> $logfile
 sleep 1
 
 ecmd () {
@@ -106,4 +106,4 @@ step=$(($step + 1))
 
 for a in {a..u}; do ecmd transfer eosio init$a 1000000.0000 "\"fund_producer_init$a\""; done
 
-pkill -15 keosd
+pkill -15 enuwallet

@@ -52,22 +52,22 @@ docker run --name enunode -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-## Start both enunode and keosd containers
+## Start both enunode and enuwallet containers
 
 ```bash
 docker volume create --name=enunode-data-volume
-docker volume create --name=keosd-data-volume
+docker volume create --name=enuwallet-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. enunode service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to enucli when running enucli is running inside the keosd container as described in "Execute enucli commands" section.
+After `docker-compose up -d`, two services named `nodeosd` and `enuwallet` will be started. enunode service would expose ports 8888 and 9876 to the host. enuwallet service does not expose any port to the host, it is only accessible to enucli when running enucli is running inside the enuwallet container as described in "Execute enucli commands" section.
 
 ### Execute enucli commands
 
 You can run the `enucli` commands via a bash alias.
 
 ```bash
-alias enucli='docker-compose exec keosd /opt/eosio/bin/enucli -u http://nodeosd:8888'
+alias enucli='docker-compose exec enuwallet /opt/eosio/bin/enucli -u http://nodeosd:8888'
 enucli get info
 enucli get account inita
 ```
@@ -78,10 +78,10 @@ Upload sample exchange contract
 enucli set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
 ```
 
-If you don't need keosd afterwards, you can stop the keosd service using
+If you don't need enuwallet afterwards, you can stop the enuwallet service using
 
 ```bash
-docker-compose stop keosd
+docker-compose stop enuwallet
 ```
 
 ### Develop/Build custom contracts
@@ -136,7 +136,7 @@ The data volume created by docker-compose can be deleted as follows:
 
 ```bash
 docker volume rm enunode-data-volume
-docker volume rm keosd-data-volume
+docker volume rm enuwallet-data-volume
 ```
 
 ### Docker Hub
@@ -160,18 +160,18 @@ services:
     volumes:
       - enunode-data-volume:/opt/eosio/bin/data-dir
 
-  keosd:
+  enuwallet:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/keosd
-    hostname: keosd
+    command: /opt/eosio/bin/enuwallet
+    hostname: enuwallet
     links:
       - nodeosd
     volumes:
-      - keosd-data-volume:/opt/eosio/bin/data-dir
+      - enuwallet-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
   enunode-data-volume:
-  keosd-data-volume:
+  enuwallet-data-volume:
 
 ```
 
@@ -193,7 +193,7 @@ docker pull eosio/eos:latest
 docker pull mongo:latest
 # create volume
 docker volume create --name=enunode-data-volume
-docker volume create --name=keosd-data-volume
+docker volume create --name=enuwallet-data-volume
 docker volume create --name=mongo-data-volume
 # start containers
 docker-compose -f docker-compose-dawn4.0.yaml up -d

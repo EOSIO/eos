@@ -80,9 +80,9 @@ try:
 
     #exit(0)
 
-    Print("Stand up EOS wallet keosd")
+    Print("Stand up EOS wallet enuwallet")
     if walletMgr.launch() is False:
-        errorExit("Failed to stand up keosd.")
+        errorExit("Failed to stand up enuwallet.")
 
     accountsCount=total_nodes
     walletName="MyWallet-%d" % (random.randrange(10000))
