@@ -139,7 +139,7 @@ namespace eosiosystem {
     */
    void system_contract::buyram( account_name payer, account_name receiver, asset quant ) 
    {
-      print( "\n payer: ", eosio::name{payer}, " buys ram for ", eosio::name{receiver}, " with ", quant, "\n" );
+   //   print( "\n payer: ", eosio::name{payer}, " buys ram for ", eosio::name{receiver}, " with ", quant, "\n" );
       require_auth( payer );
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
@@ -148,7 +148,7 @@ namespace eosiosystem {
                                                        { payer, N(eosio), quant, std::string("buy ram") } );
       }
 
-      print( "free ram: ", _gstate.free_ram(),  "\n");
+   //   print( "free ram: ", _gstate.free_ram(),  "\n");
 
       int64_t bytes_out;
 
@@ -157,7 +157,7 @@ namespace eosiosystem {
           bytes_out = es.convert( quant,  S(0,RAM) ).amount;
       });
 
-      print( "ram bytes out: ", bytes_out, "\n" );
+   //   print( "ram bytes out: ", bytes_out, "\n" );
 
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
@@ -187,17 +187,19 @@ namespace eosiosystem {
     */
    void system_contract::sellram( account_name account, uint64_t bytes ) {
       require_auth( account );
+      int64_t ibytes = static_cast<int64_t>(bytes);
 
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
       eosio_assert( res_itr != userres.end(), "no resource row" );
-      eosio_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
+      eosio_assert( res_itr->ram_bytes >= ibytes, "insufficient quota" );
 
       asset tokens_out;
       auto itr = _rammarket.find(S(4,RAMEOS));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
-          tokens_out = es.convert( asset(bytes,S(0,RAM)),  S(4,EOS) );
-          print( "out: ", tokens_out, "\n" );
+          /// the cast to int64_t of bytes is safe because we certify bytes is <= quota which is limited by prior purchases
+          tokens_out = es.convert( asset(ibytes,S(0,RAM)),  S(4,EOS) );
+   //       print( "out: ", tokens_out, "\n" );
       });
 
       _gstate.total_ram_bytes_reserved -= bytes;
@@ -223,7 +225,7 @@ namespace eosiosystem {
                                     
    {
       require_auth( from );
-      print( "from: ", eosio::name{from}, " to: ", eosio::name{receiver}, " net: ", stake_net_quantity, " cpu: ", stake_cpu_quantity );
+   //   print( "from: ", eosio::name{from}, " to: ", eosio::name{receiver}, " net: ", stake_net_quantity, " cpu: ", stake_cpu_quantity );
 
       eosio_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
       eosio_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );
@@ -252,7 +254,6 @@ namespace eosiosystem {
             });
       }
 
-      print( "totals" );
       user_resources_table   totals_tbl( _self, receiver );
       auto tot_itr = totals_tbl.find( receiver );
       if( tot_itr ==  totals_tbl.end() ) {
@@ -275,23 +276,18 @@ namespace eosiosystem {
                                                        { source_stake_from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
       }
 
-      print( "voters \n" );
       auto from_voter = _voters.find(from);
       if( from_voter == _voters.end() ) {
-         print( " create voter \n" );
          from_voter = _voters.emplace( from, [&]( auto& v ) {
             v.owner  = from;
             v.staked = total_stake;
-            print( "    vote weight: ", v.last_vote_weight, "\n" );
          });
       } else {
          _voters.modify( from_voter, 0, [&]( auto& v ) {
             v.staked += total_stake;
-            print( "    vote weight: ", v.last_vote_weight, "\n" );
          });
       }
 
-      print( "voteproducer\n" );
       if( from_voter->producers.size() || from_voter->proxy ) {
          voteproducer( from, from_voter->proxy, from_voter->producers );
       }
@@ -332,10 +328,14 @@ namespace eosiosystem {
 
       eosio_assert( total_refund > 0, "must unstake a positive amount" );
 
-      del_tbl.modify( dbw, from, [&]( auto& dbo ){
-            dbo.net_weight -= unstake_net_quantity;
-            dbo.cpu_weight -= unstake_cpu_quantity;
-      });
+      if( dbw.net_weight == unstake_net_quantity && dbw.cpu_weight == unstake_cpu_quantity ) {
+         del_tbl.erase( dbw );
+      } else { 
+         del_tbl.modify( dbw, from, [&]( auto& dbo ){
+               dbo.net_weight -= unstake_net_quantity;
+               dbo.cpu_weight -= unstake_cpu_quantity;
+         });
+      }
 
       user_resources_table totals_tbl( _self, receiver );
 
