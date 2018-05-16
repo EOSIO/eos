@@ -44,6 +44,9 @@
 #include <test_api_db/test_api_db.wast.hpp>
 #include <test_api_multi_index/test_api_multi_index.wast.hpp>
 
+#include <eosio.bios/eosio.bios.wast.hpp>
+#include <eosio.bios/eosio.bios.abi.hpp>
+
 #define DISABLE_EOSLIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
 
@@ -236,6 +239,50 @@ struct MySink : public bio::sink
    }
 };
 uint32_t last_fnc_err = 0;
+
+BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
+	produce_blocks(2);
+	create_account( N(testapi) );
+	create_account( N(testapi2) );
+	produce_blocks(10);
+	set_code( N(testapi), test_api_wast );
+	produce_blocks(1);
+
+	auto res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 1);
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 0);
+
+	set_code( N(testapi), test_api_db_wast );
+   set_code( config::system_account_name, test_api_db_wast );
+   res = CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 0);
+
+   {
+      signed_transaction trx;
+      auto pl = vector<permission_level>{{config::system_account_name, config::active_name}};
+      action act(pl, test_chain_action<TEST_METHOD("test_db", "primary_i64_general")>{});
+      act.authorization = {{config::system_account_name, config::active_name}};
+      trx.actions.push_back(act);
+      this->set_transaction_headers(trx, this->DEFAULT_EXPIRATION_DELTA);
+      trx.sign(this->get_private_key(config::system_account_name, "active"), chain_id_type());
+      trx.get_signature_keys(chain_id_type() );
+      auto res = this->push_transaction(trx);
+      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+      this->produce_block();
+      BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
+      BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
+   }
+   set_code( config::system_account_name, eosio_bios_wast );
+
+	set_code( N(testapi), eosio_bios_wast );
+   set_abi(N(testapi), eosio_bios_abi);
+	set_code( N(testapi), test_api_wast );
+	res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 4);
+   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
+
+} FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * action_tests test case
