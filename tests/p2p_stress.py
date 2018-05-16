@@ -50,7 +50,7 @@ class StressNetwork:
         print("issue currency0000 into %s" % (acc1.name))
         contract="eosio"
         action="issue"
-        data="{\"to\":\"" + acc1.name + "\",\"quantity\":\"1000000.0000 EOS\"}"
+        data="{\"to\":\"" + acc1.name + "\",\"quantity\":\"1000000.0000 SYS\"}"
         opts="--permission eosio@active"
         tr=node.pushMessage(contract, action, data, opts)
         trid = node.getTransId(tr[1])

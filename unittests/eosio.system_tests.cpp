@@ -1900,7 +1900,7 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
    abi_serializer msig_abi_ser;
    {
       create_account_with_resources( N(eosio.msig), N(eosio) );
-      BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "eosio.msig", "5000.0000 EOS" ) );
+      BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "eosio.msig", "5000.0000 SYS" ) );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
@@ -1920,8 +1920,8 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
    }
 
    //stake more than 15% of total EOS supply to activate chain
-   transfer( "eosio", "alice1111111", "650000000.0000 EOS", "eosio" );
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", "300000000.0000 EOS", "300000000.0000 EOS" ) );
+   transfer( "eosio", "alice1111111", "650000000.0000 SYS", "eosio" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", "300000000.0000 SYS", "300000000.0000 SYS" ) );
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;
@@ -1955,9 +1955,9 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
 
    //vote for producers
    {
-      transfer( config::system_account_name, "alice1111111", "100000000.0000 EOS", config::system_account_name );
-      BOOST_REQUIRE_EQUAL(success(), stake( "alice1111111", "30000000.0000 EOS", "30000000.0000 EOS" ) );
-      BOOST_REQUIRE_EQUAL(success(), buyram( "alice1111111", "alice1111111", "30000000.0000 EOS" ) );
+      transfer( config::system_account_name, "alice1111111", "100000000.0000 SYS", config::system_account_name );
+      BOOST_REQUIRE_EQUAL(success(), stake( "alice1111111", "30000000.0000 SYS", "30000000.0000 SYS" ) );
+      BOOST_REQUIRE_EQUAL(success(), buyram( "alice1111111", "alice1111111", "30000000.0000 SYS" ) );
       BOOST_REQUIRE_EQUAL(success(), push_action(N(alice1111111), N(voteproducer), mvo()
                                                  ("voter",  "alice1111111")
                                                  ("proxy", name(0).to_string())
