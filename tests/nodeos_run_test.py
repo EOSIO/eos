@@ -619,7 +619,7 @@ try:
             #         errorExit("mongo get messages by transaction id %s" % (transId))
 
 
-    Print("Request invalid block numbered %d. This will generate an extpected error message." % (currentBlockNum+1000))
+    Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
     block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
