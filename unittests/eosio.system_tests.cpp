@@ -50,27 +50,6 @@ public:
       issue(config::system_account_name,      "1000000000.0000 EOS");
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
-      //install multisig contract
-      {
-         create_accounts( { N(eosio.msig) } );
-         produce_block();
-
-         auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
-                                               config::system_account_name,  mutable_variant_object()
-                                               ("account", "eosio.msig")
-                                               ("is_priv", 1)
-         );
-
-         set_code( N(eosio.msig), eosio_msig_wast );
-         set_abi( N(eosio.msig), eosio_msig_abi );
-
-         produce_blocks();
-         const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
-         abi_def msig_abi;
-         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
-         msig_abi_ser.set_abi(msig_abi);
-      }
-
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
 
@@ -421,20 +400,8 @@ public:
 
    transaction upgrade_system_contract( const vector<uint8_t>& code );
 
-   action_result push_action_msig( const account_name& signer, const action_name &name, const variant_object &data, bool auth = true ) {
-         string action_type_name = msig_abi_ser.get_action_type(name);
-
-         action act;
-         act.account = N(eosio.msig);
-         act.name = name;
-         act.data = msig_abi_ser.variant_to_binary( action_type_name, data );
-
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
-   }
-
    abi_serializer abi_ser;
    abi_serializer token_abi_ser;
-   abi_serializer msig_abi_ser;
 };
 
 transaction eosio_system_tester::upgrade_system_contract( const vector<uint8_t>& code ) {
@@ -1899,6 +1866,29 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) try {
+   //install multisig contract
+   abi_serializer msig_abi_ser;
+   {
+      create_account_with_resources( N(eosio.msig), N(eosio) );
+      BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "eosio.msig", "5000.0000 EOS" ) );
+      produce_block();
+
+      auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
+                                            config::system_account_name,  mutable_variant_object()
+                                            ("account", "eosio.msig")
+                                            ("is_priv", 1)
+      );
+
+      set_code( N(eosio.msig), eosio_msig_wast );
+      set_abi( N(eosio.msig), eosio_msig_abi );
+
+      produce_blocks();
+      const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
+      abi_def msig_abi;
+      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
+      msig_abi_ser.set_abi(msig_abi);
+   }
+
    //stake more than 15% of total EOS supply to activate chain
    transfer( "eosio", "alice1111111", "650000000.0000 EOS", "eosio" );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", "300000000.0000 EOS", "300000000.0000 EOS" ) );
@@ -1950,6 +1940,18 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
    auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 21, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("defproducera"), producer_keys[0].producer_name );
+
+   //helper function
+   auto push_action_msig = [&]( const account_name& signer, const action_name &name, const variant_object &data, bool auth = true ) -> action_result {
+         string action_type_name = msig_abi_ser.get_action_type(name);
+
+         action act;
+         act.account = N(eosio.msig);
+         act.name = name;
+         act.data = msig_abi_ser.variant_to_binary( action_type_name, data );
+
+         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
+   };
 
    // test begins
    vector<permission_level> prod_perms;
