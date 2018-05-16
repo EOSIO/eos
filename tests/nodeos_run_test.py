@@ -101,6 +101,9 @@ try:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEosInstances=False
 
+    Print("Validating system accounts after bootstrap")
+    cluster.validateAccounts(None)
+
     accounts=testUtils.Cluster.createAccountKeys(3)
     if accounts is None:
         errorExit("FAILURE - create keys")
@@ -223,11 +226,30 @@ try:
     if node is None:
         errorExit("Cluster in bad state, received None node")
 
+    Print("Validating accounts before user accounts creation")
+    cluster.validateAccounts(None)
+
     Print("Create new account %s via %s" % (testeraAccount.name, defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, defproduceraAccount, stakedDeposit=0, waitForTransBlock=False)
     if transId is None:
-        cmdError("%s create account" % (ClientName))
+        cmdError("%s create account" % (testeraAccount.name))
         errorExit("Failed to create account %s" % (testeraAccount.name))
+
+    Print("Create new account %s via %s" % (currencyAccount.name, defproducerbAccount.name))
+    transId=node.createInitializeAccount(currencyAccount, defproducerbAccount, stakedDeposit=5000)
+    if transId is None:
+        cmdError("%s create account" % (ClientName))
+        errorExit("Failed to create account %s" % (currencyAccount.name))
+
+    Print("Create new account %s via %s" % (exchangeAccount.name, defproduceraAccount.name))
+    transId=node.createInitializeAccount(exchangeAccount, defproduceraAccount, waitForTransBlock=True)
+    if transId is None:
+        cmdError("%s create account" % (ClientName))
+        errorExit("Failed to create account %s" % (exchangeAccount.name))
+
+    Print("Validating accounts after user accounts creation")
+    accounts=[testeraAccount, currencyAccount, exchangeAccount]
+    cluster.validateAccounts(accounts)
 
     Print("Verify account %s" % (testeraAccount))
     if not node.verifyAccount(testeraAccount):
@@ -262,17 +284,9 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    Print("Create new account %s via %s" % (currencyAccount.name, defproducerbAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, defproducerbAccount, stakedDeposit=5000)
-    if transId is None:
-        cmdError("%s create account" % (ClientName))
-        errorExit("Failed to create account %s" % (currencyAccount.name))
-
-    Print("Create new account %s via %s" % (exchangeAccount.name, defproduceraAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, defproduceraAccount, waitForTransBlock=True)
-    if transId is None:
-        cmdError("%s create account" % (ClientName))
-        errorExit("Failed to create account %s" % (exchangeAccount.name))
+    Print("Validating accounts after some user trasactions")
+    accounts=[testeraAccount, currencyAccount, exchangeAccount]
+    cluster.validateAccounts(accounts)
 
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():
@@ -306,7 +320,7 @@ try:
     assert(actions)
     try:
         assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-    except (AssertionError, KeyError) as e:
+    except (AssertionError, TypeError, KeyError) as e:
         Print("Last action validation failed. Actions: %s" % (actions))
         raise
 
@@ -381,7 +395,7 @@ try:
             typeVal=  transaction["name"]
             amountVal=transaction["data"]["quantity"]
             amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
-    except (AssertionError, KeyError) as e:
+    except (TypeError, KeyError) as e:
         Print("Transaction validation parsing failed. Transaction: %s" % (transaction))
         raise
 
@@ -605,7 +619,7 @@ try:
             #         errorExit("mongo get messages by transaction id %s" % (transId))
 
 
-    Print("Request invalid block numbered %d. This will generate an extpected error message." % (currentBlockNum+1000))
+    Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
     block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
@@ -626,6 +640,10 @@ try:
             #  for now, hopefully the logs will get cleaned up in future.
             Print("WARNING: Asserts in var/lib/node_00/stderr.txt")
             #errorExit("FAILURE - Assert in var/lib/node_00/stderr.txt")
+
+    Print("Validating accounts at end of test")
+    accounts=[testeraAccount, currencyAccount, exchangeAccount]
+    cluster.validateAccounts(accounts)
 
     testSuccessful=True
 finally:
