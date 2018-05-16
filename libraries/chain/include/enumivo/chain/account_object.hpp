@@ -54,7 +54,6 @@ namespace eosio { namespace chain {
       >
    >;
 
-
    class account_sequence_object : public chainbase::object<account_sequence_object_type, account_sequence_object>
    {
       OBJECT_CTOR(account_sequence_object);
@@ -63,6 +62,8 @@ namespace eosio { namespace chain {
       account_name name;
       uint64_t     recv_sequence = 0;
       uint64_t     auth_sequence = 0;
+      uint64_t     code_sequence = 0;
+      uint64_t     abi_sequence  = 0;
    };
 
    struct by_name;
