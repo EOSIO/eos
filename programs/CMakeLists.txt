@@ -1,6 +1,6 @@
 add_subdirectory( enunode )
 add_subdirectory( enucli )
 add_subdirectory( enuwallet )
-add_subdirectory( enu-launcher )
+add_subdirectory( enulauncher )
 add_subdirectory( enu-applesedemo )
 add_subdirectory( enu-abigen )

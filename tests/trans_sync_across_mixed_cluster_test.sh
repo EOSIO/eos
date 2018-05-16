@@ -66,7 +66,7 @@ verifyErrorCode()
 
 killAll()
 {
-  programs/enu-launcher/enu-launcher -k 15
+  programs/enulauncher/enulauncher -k 15
 }
 
 cleanup()
@@ -114,7 +114,7 @@ cleanup
 # stand up enunode cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
 echo Launcher options: --enunode \"--plugin eosio::wallet_api_plugin\" $launcherOpts
-programs/enu-launcher/enu-launcher --enunode "--plugin eosio::wallet_api_plugin" $launcherOpts
+programs/enulauncher/enulauncher --enunode "--plugin eosio::wallet_api_plugin" $launcherOpts
 sleep 7
 
 startPort=8888

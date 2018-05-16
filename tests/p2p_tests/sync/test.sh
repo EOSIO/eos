@@ -53,7 +53,7 @@ else
 fi
 
 total_nodes="${total_nodes:-`echo $pnodes`}"
-launcherPath="programs/enu-launcher/enu-launcher"
+launcherPath="programs/enulauncher/enulauncher"
 clientPath="programs/enucli/enucli"
 
 rm -rf etc/eosio/node_* var/lib/* stage

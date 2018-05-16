@@ -1,4 +1,4 @@
-add_executable( enu-launcher main.cpp )
+add_executable( enulauncher main.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
@@ -26,13 +26,13 @@ endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-target_include_directories(enu-launcher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(enulauncher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(enu-launcher
+target_link_libraries(enulauncher
                       PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
-   enu-launcher
+   enulauncher
 
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
