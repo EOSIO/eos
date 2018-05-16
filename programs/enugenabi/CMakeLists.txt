@@ -3,7 +3,7 @@ find_package(LLVM 4.0 REQUIRED CONFIG)
 
 link_directories(${LLVM_LIBRARY_DIR})
 
-add_executable(enu-abigen ${SOURCES})
+add_executable(enugenabi ${SOURCES})
 
 set( CMAKE_CXX_STANDARD 14 )
 
@@ -17,11 +17,11 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-target_link_libraries(enu-abigen abi_generator)
+target_link_libraries(enugenabi abi_generator)
 
 
 install( TARGETS
-   enu-abigen
+   enugenabi
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
    ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}

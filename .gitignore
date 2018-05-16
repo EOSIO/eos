@@ -46,11 +46,11 @@ libraries/wasm-jit/Source/Programs/wavm
 programs/enucli/enucli
 programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
-programs/enu-abigen/enu-abigen
+programs/enugenabi/enugenabi
 programs/enucli/config.hpp
-programs/enu-applesedemo/enu-applesedemo
-programs/enu-launcher/config.hpp
-programs/enu-launcher/enu-launcher
+programs/enuapplesedemo/enuapplesedemo
+programs/enulauncher/config.hpp
+programs/enulauncher/enulauncher
 programs/enuwallet/enuwallet
 programs/enunode/config.hpp
 programs/enunode/enunode
