@@ -49,6 +49,8 @@ void test_action::test_dummy_action() {
    total = get_action( 1, 0, buffer, static_cast<size_t>(total) );
    eosio_assert( total > 0, "get_action failed" );
    eosio::action act = eosio::get_action( 1, 0 );
+   eosio_assert( act.authorization.back().actor == N(testapi), "incorrect permission actor" );
+   eosio_assert( act.authorization.back().permission == N(active), "incorrect permission name" );
    eosio_assert( eosio::pack_size(act) == static_cast<size_t>(total), "pack_size does not match get_action size" );
    eosio_assert( act.account == N(testapi), "expected testapi account" );
 
