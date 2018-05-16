@@ -278,6 +278,22 @@ class Node(object):
     def setWalletEndpointArgs(self, args):
         self.endpointArgs="--url http://%s:%d %s" % (self.host, self.port, args)
 
+    def validateAccounts(self, accounts):
+        assert(accounts)
+        assert(isinstance(accounts, list))
+
+        for account in accounts:
+            assert(account)
+            assert(isinstance(account, Account))
+            if Utils.Debug: Utils.Print("Validating account %s" % (account.name))
+            accountInfo=self.getEosAccount(account.name)
+            try:
+                assert(accountInfo)
+                assert(accountInfo["account_name"] == account.name)
+            except (AssertionError, TypeError, KeyError) as _:
+                Utils.Print("account validation failed. account: %s" % (account.name))
+                raise
+
     # pylint: disable=too-many-branches
     def getBlock(self, blockNum, retry=True, silentErrors=False):
         if not self.enableMongo:
@@ -337,15 +353,18 @@ class Node(object):
 
     def doesNodeHaveBlockNum(self, blockNum):
         assert isinstance(blockNum, int)
+        assert (blockNum > 0)
 
         info=self.getInfo(silentErrors=True)
-        if info is None:
-            return False
-        last_irreversible_block_num=int(info["last_irreversible_block_num"])
-        if blockNum > last_irreversible_block_num:
-            return False
-        else:
-            return True
+        assert(info)
+        last_irreversible_block_num=0
+        try:
+            last_irreversible_block_num=int(info["last_irreversible_block_num"])
+        except (TypeError, KeyError) as _:
+            Utils.Print("Failure in get info parsing. %s" % (trans))
+            raise
+
+        return True if blockNum <= last_irreversible_block_num else True
 
     # pylint: disable=too-many-branches
     def getTransaction(self, transId, retry=True, silentErrors=False):
@@ -452,16 +471,21 @@ class Node(object):
 
         return None
 
-    def doesNodeHaveTransId(self, transId):
-        trans=self.getTransaction(transId, silentErrors=True)
+    def doesNodeHaveTransId(self, transId, silentErrors=True):
+        trans=self.getTransaction(transId, silentErrors)
         if trans is None:
             return False
 
         blockNum=None
-        if not self.enableMongo:
-            blockNum=int(trans["trx"]["trx"]["ref_block_num"])
-        else:
-            blockNum=int(trans["ref_block_num"])
+        try:
+            if not self.enableMongo:
+                blockNum=int(trans["trx"]["trx"]["ref_block_num"])
+            else:
+                blockNum=int(trans["ref_block_num"])
+        except (TypeError, KeyError) as _:
+            if not silentErrors:
+                Utils.Print("Failure in transaction parsing. %s" % (trans))
+            return False
 
         blockNum += 1
         if Utils.Debug: Utils.Print("Check if block %d is irreversible." % (blockNum))
@@ -521,6 +545,7 @@ class Node(object):
         return trans
 
     def getEosAccount(self, name):
+        assert(isinstance(name, str))
         cmd="%s %s get account -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
@@ -563,7 +588,7 @@ class Node(object):
         assert(trans)
         try:
             return trans["rows"][0]["balance"]
-        except (AssertionError, KeyError) as e:
+        except (TypeError, KeyError) as e:
             print("Transaction parsing failed. Transaction: %s" % (trans))
             raise
 
@@ -1595,6 +1620,19 @@ class Cluster(object):
 
         return True
 
+    def validateAccounts(self, accounts, testSysAccounts=True):
+        assert(len(self.nodes) > 0)
+        node=self.nodes[0]
+
+        myAccounts = []
+        if testSysAccounts:
+            myAccounts += [self.eosioAccount, self.defproduceraAccount, self.defproducerbAccount]
+        if accounts:
+            assert(isinstance(accounts, list))
+            myAccounts += accounts
+
+        node.validateAccounts(myAccounts)
+
     # create account, verify account and return transaction id
     def createAccountAndVerify(self, account, creator, stakedDeposit=1000):
         assert(len(self.nodes) > 0)
@@ -1746,7 +1784,9 @@ class Cluster(object):
 
             Utils.Print("Creating accounts: %s " % ", ".join(producerKeys.keys()))
             producerKeys.pop(eosioName)
+            accounts=[]
             for name, keys in producerKeys.items():
+                initx = None
                 initx = Account(name)
                 initx.ownerPrivateKey=keys["private"]
                 initx.ownerPublicKey=keys["public"]
@@ -1757,9 +1797,13 @@ class Cluster(object):
                     Utils.Print("ERROR: Failed to create account %s" % (name))
                     return False
                 Node.validateTransaction(trans)
+                accounts.append(initx)
 
             transId=Node.getTransId(trans)
             biosNode.waitForTransIdOnNode(transId)
+
+            Utils.Print("Validating system accounts within bootstrap")
+            biosNode.validateAccounts(accounts)
 
             if not onlyBios:
                 if prodCount == -1:
@@ -1845,6 +1889,8 @@ class Cluster(object):
                 return False
 
             Node.validateTransaction(trans[1])
+            transId=Node.getTransId(trans[1])
+            biosNode.waitForTransIdOnNode(transId)
 
             contract=eosioTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))

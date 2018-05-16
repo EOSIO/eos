@@ -162,7 +162,7 @@ namespace eosiosystem {
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
-      _gstate.total_ram_stake.amount   += quant.amount;
+      _gstate.total_ram_stake          += quant.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
@@ -185,28 +185,28 @@ namespace eosiosystem {
     *  refunds the purchase price to the account. In this way there is no profit to be made through buying
     *  and selling ram.
     */
-   void system_contract::sellram( account_name account, uint64_t bytes ) {
+   void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
-      int64_t ibytes = static_cast<int64_t>(bytes);
+      eosio_assert( bytes > 0, "cannot sell negative byte" );
 
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
       eosio_assert( res_itr != userres.end(), "no resource row" );
-      eosio_assert( res_itr->ram_bytes >= ibytes, "insufficient quota" );
+      eosio_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
 
       asset tokens_out;
       auto itr = _rammarket.find(S(4,RAMEOS));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
           /// the cast to int64_t of bytes is safe because we certify bytes is <= quota which is limited by prior purchases
-          tokens_out = es.convert( asset(ibytes,S(0,RAM)),  S(4,EOS) );
+          tokens_out = es.convert( asset(bytes,S(0,RAM)),  S(4,EOS) );
    //       print( "out: ", tokens_out, "\n" );
       });
 
       _gstate.total_ram_bytes_reserved -= bytes;
-      _gstate.total_ram_stake.amount   -= tokens_out.amount;
+      _gstate.total_ram_stake          -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
-      eosio_assert( _gstate.total_ram_stake.amount >= 0, "error, attempt to unstake more tokens than previously staked" );
+      eosio_assert( _gstate.total_ram_stake >= 0, "error, attempt to unstake more tokens than previously staked" );
 
       userres.modify( res_itr, account, [&]( auto& res ) {
           res.ram_bytes -= bytes;
