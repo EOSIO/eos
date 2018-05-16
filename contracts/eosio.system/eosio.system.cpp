@@ -72,6 +72,11 @@ namespace eosiosystem {
       _global.set( _gstate, _self );
    }
 
+   void system_contract::setpriv( account_name account, uint8_t ispriv ) {
+      require_auth( _self );
+      set_privileged( account, ispriv );
+   }
+
 } /// eosio.system
  
 
@@ -85,7 +90,8 @@ EOSIO_ABI( eosiosystem::system_contract,
      (regproxy)(regproducer)(unregprod)(voteproducer)
      (claimrewards)
      // native.hpp
-     //XXX
      (onblock)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
+     //this file
+     (setpriv)
 )
