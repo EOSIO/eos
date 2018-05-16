@@ -196,7 +196,14 @@
       "fields": [
         {"name":"owner",   "type":"account_name"}
       ]
-    }
+    },{
+        "name": "setpriv",
+        "base": "",
+        "fields": [
+          {"name":"account",    "type":"account_name"},
+          {"name":"is_priv",    "type":"int8"}
+        ]
+      }
   ],
   "actions": [
     {
@@ -247,6 +254,10 @@
       "name": "claimrewards",
       "type": "claimrewards",
       "ricardian_contract": ""
+    },{
+       "name": "setpriv",
+       "type": "setpriv",
+       "ricardian_contract": ""
     }
   ],
   "tables": [{
