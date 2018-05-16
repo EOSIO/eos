@@ -389,7 +389,7 @@
 	fi
 
 	printf "\\n\\tChecking LLVM with WASM support installation.\\n"
-	if [  -d "${HOME}/opt/wasm/bin" ]; then
+	if [ ! -d "${HOME}/opt/wasm/bin" ]; then
 		printf "\\tInstalling LLVM & WASM\\n"
 		if ! cd "${TEMP_DIR}"
 		then
