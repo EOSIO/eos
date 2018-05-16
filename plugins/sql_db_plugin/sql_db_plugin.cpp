@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  *  @author Alessandro Siniscalchi <asiniscalchi@gmail.com>
  */
-#include <eosio/sql_db_plugin/sql_db_plugin.hpp>
+#include <enumivo/sql_db_plugin/sql_db_plugin.hpp>
 
 #include "database.h"
 

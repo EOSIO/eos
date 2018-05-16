@@ -6,7 +6,7 @@
 #include "localize.hpp"
 #include <regex>
 #include <fc/io/json.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <enumivo/chain/exceptions.hpp>
 
 using namespace eosio::client::localize;
 using namespace eosio::chain;

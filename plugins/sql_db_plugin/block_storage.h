@@ -7,7 +7,7 @@
 
 #include "consumer_core.h"
 
-#include <eosio/chain/block_state.hpp>
+#include <enumivo/chain/block_state.hpp>
 
 namespace eosio {
 
