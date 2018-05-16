@@ -33,7 +33,7 @@ delay=1
 prodCount=1 # producers per producer node
 pnodes=1
 total_nodes=pnodes
-actualTest="tests/nodeos_run_test.py"
+actualTest="tests/enunode_run_test.py"
 testSuccessful=False
 
 cluster=testUtils.Cluster()

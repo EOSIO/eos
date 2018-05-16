@@ -7,7 +7,7 @@ import argparse
 import re
 
 ###############################################################
-# nodeos_run_test
+# enunode_run_test
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
