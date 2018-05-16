@@ -142,7 +142,7 @@ docker volume rm keosd-data-volume
 ### Docker Hub
 
 Docker Hub image available from [docker hub](https://hub.docker.com/r/eosio/eos/).
-Replace the `docker-compose.yaml` file with the content below
+Create a new `docker-compose.yaml` file with the content below
 
 ```bash
 version: "3"
