@@ -399,7 +399,7 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, enumivo_msig_tester ) try {
 
 
 
-BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester ) try {
 
    // required to set up the link between (eosio active) and (eosio.prods active)
    //
@@ -516,7 +516,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    );
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_tester ) try {
 
    // set up the link between (eosio active) and (eosio.prods active)
    set_authority(N(eosio), "active", authority(1, 
