@@ -1572,7 +1572,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
    const int64_t secs_per_year  = 52 * 7 * 24 * 3600;
    const double  usecs_per_year = secs_per_year * 1000000;
-   const double cont_rate       = 4.879/100.;
+   const double  cont_rate      = 4.879/100.;
 
    const asset net = asset::from_string("80.0000 EOS");
    const asset cpu = asset::from_string("80.0000 EOS");
@@ -1679,6 +1679,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
          vote_shares[i] = get_producer_info(producer_names[i])["total_votes"].as<double>();
          total_votes += vote_shares[i];
       }
+      BOOST_TEST(total_votes == get_global_state()["total_producer_vote_weight"].as<double>());
       std::for_each(vote_shares.begin(), vote_shares.end(), [total_votes](double& x) { x /= total_votes; });
 
       BOOST_TEST(double(1) == std::accumulate(vote_shares.begin(), vote_shares.end(), double(0)));
@@ -1862,6 +1863,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       BOOST_REQUIRE_EQUAL(0, inactive_prod_info["time_became_active"].as<uint32_t>());
       BOOST_REQUIRE_EQUAL(error("condition: assertion failed: producer does not have an active key"),
                           push_action(producer_names[one_inactive_index], N(claimrewards), mvo()("owner", producer_names[one_inactive_index])));
+      // re-register deactivated producer and let him produce blocks again
       const uint32_t initial_unpaid_blocks = inactive_prod_info["unpaid_blocks"].as<uint32_t>();
       regproducer(producer_names[one_inactive_index]);
       produce_blocks(21 * 12);
