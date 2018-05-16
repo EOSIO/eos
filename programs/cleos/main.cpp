@@ -450,7 +450,7 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
 
 fc::variant regproducer_variant(const account_name& producer,
                                 public_key_type key,
-                                string url) {
+                                string url, uint16_t location = 0) {
    /*
    fc::variant_object params = fc::mutable_variant_object()
          ("max_block_net_usage", config::default_max_block_net_usage)
@@ -463,13 +463,6 @@ fc::variant regproducer_variant(const account_name& producer,
          ("max_block_cpu_usage", config::default_max_block_cpu_usage)
          ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
          ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
-         ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
-         ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
-         ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
-         ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
-         ("cpu_usage_leeway", config::default_cpu_usage_leeway)
-         ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
-         ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
          ("max_transaction_lifetime", config::default_max_trx_lifetime)
          ("deferred_trx_expiration_window", config::default_deferred_trx_expiration_window)
          ("max_transaction_delay", config::default_max_trx_delay)
@@ -485,7 +478,9 @@ fc::variant regproducer_variant(const account_name& producer,
    return fc::mutable_variant_object()
             ("producer", producer)
             ("producer_key", key)
-            ("url", url);
+            ("url", url)
+            ("location", 0)
+            ;
 }
 
 chain::action create_transfer(const string& contract, const name& sender, const name& recipient, asset amount, const string& memo ) {
@@ -718,7 +713,7 @@ bool port_used(uint16_t port) {
 void try_port( uint16_t port, uint32_t duration ) {
    using namespace std::chrono;
    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-   while ( !port_used(port)) { 
+   while ( !port_used(port)) {
       if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
          std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
          throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
@@ -783,12 +778,14 @@ struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
    string url;
+   uint16_t loc = 0;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
+      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), 0);
       add_standard_transaction_options(register_producer);
 
 
@@ -798,7 +795,7 @@ struct register_producer_subcommand {
             producer_key = public_key_type(producer_key_str);
          } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
-         auto regprod_var = regproducer_variant(producer_str, producer_key, url );
+         auto regprod_var = regproducer_variant(producer_str, producer_key, url, loc );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
       });
    }
@@ -839,7 +836,7 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount);
 
       createAccount->set_callback([this] {
-            if( !active_key_str.size() ) 
+            if( !active_key_str.size() )
                active_key_str = owner_key_str;
             public_key_type owner_key, active_key;
             try {
@@ -1680,19 +1677,27 @@ int main( int argc, char** argv ) {
    string contractPath;
    string wastPath;
    string abiPath;
+   bool shouldSend = true;
+   auto codeSubcommand = setSubcommand->add_subcommand("code", localized("Create or update the code on an account"));
+   codeSubcommand->add_option("account", account, localized("The account to set code for"))->required();
+   codeSubcommand->add_option("code-file", wastPath, localized("The fullpath containing the contract WAST or WASM"))->required();
+
+   auto abiSubcommand = setSubcommand->add_subcommand("abi", localized("Create or update the abi on an account"));
+   abiSubcommand->add_option("account", account, localized("The account to set the ABI for"))->required();
+   abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract WAST or WASM"))->required();
+
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
    contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))
                      ->required();
-   contractSubcommand->add_option("contract-dir", contractPath, localized("The the path containing the .wast and .abi"))
+   contractSubcommand->add_option("contract-dir", contractPath, localized("The path containing the .wast and .abi"))
                      ->required();
    contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM relative to contract-dir"));
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
-
-
-   add_standard_transaction_options(contractSubcommand, "account@active");
-   contractSubcommand->set_callback([&] {
+   
+   std::vector<chain::action> actions;
+   auto set_code_callback = [&]() {
       std::string wast;
       fc::path cpath(contractPath);
 
@@ -1703,11 +1708,6 @@ int main( int argc, char** argv ) {
          wastPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
          if (!fc::exists(wastPath))
             wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
-      }
-
-      if( abiPath.empty() )
-      {
-         abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
 
       std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
@@ -1724,25 +1724,45 @@ int main( int argc, char** argv ) {
          wasm = wast_to_wasm(wast);
       }
 
-      std::vector<chain::action> actions;
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
+      if ( shouldSend ) {
+         std::cout << localized("Setting Code...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
+   };
+
+   auto set_abi_callback = [&]() {
+      fc::path cpath(contractPath);
+      if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
+
+      if( abiPath.empty() )
+      {
+         abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
+      }
 
       FC_ASSERT( fc::exists( abiPath ), "no abi file found ${f}", ("f", abiPath)  );
 
       try {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
+      if ( shouldSend ) {
+         std::cout << localized("Setting ABI...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
+   };
 
+   add_standard_transaction_options(contractSubcommand, "account@active");
+   add_standard_transaction_options(codeSubcommand, "account@active");
+   add_standard_transaction_options(abiSubcommand, "account@active");
+   contractSubcommand->set_callback([&] {
+      shouldSend = false;
+      set_code_callback();
+      set_abi_callback();
       std::cout << localized("Publishing contract...") << std::endl;
       send_actions(std::move(actions), 10000, packed_transaction::zlib);
-      /*
-      auto result = push_actions(std::move(actions), 10000, packed_transaction::zlib);
-
-      if( tx_dont_broadcast ) {
-         std::cout << fc::json::to_pretty_string(result) << "\n";
-      }
-      */
    });
+   codeSubcommand->set_callback(set_code_callback);
+   abiSubcommand->set_callback(set_abi_callback);
 
    // set account
    auto setAccount = setSubcommand->add_subcommand("account", localized("set or update blockchain account state"))->require_subcommand();
@@ -1987,13 +2007,13 @@ int main( int argc, char** argv ) {
    push->require_subcommand();
 
    // push action
-   string contract;
+   string contract_account;
    string action;
    string data;
    vector<string> permissions;
    auto actionsSubcommand = push->add_subcommand("action", localized("Push a transaction with a single action"));
    actionsSubcommand->fallthrough(false);
-   actionsSubcommand->add_option("contract", contract,
+   actionsSubcommand->add_option("account", contract_account,
                                  localized("The account providing the contract to execute"), true)->required();
    actionsSubcommand->add_option("action", action,
                                  localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
@@ -2007,14 +2027,14 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data",data))
 
       auto arg= fc::mutable_variant_object
-                ("code", contract)
+                ("code", contract_account)
                 ("action", action)
                 ("args", action_args_var);
       auto result = call(json_to_bin_func, arg);
 
       auto accountPermissions = get_account_permissions(tx_permission);
 
-      send_actions({chain::action{accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>()}});
+      send_actions({chain::action{accountPermissions, contract_account, action, result.get_object()["binargs"].as<bytes>()}});
    });
 
    // push transaction

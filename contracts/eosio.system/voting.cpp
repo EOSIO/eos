@@ -34,7 +34,7 @@ namespace eosiosystem {
     *  @pre authority of producer to register
     *
     */
-   void system_contract::regproducer( const account_name producer, const eosio::public_key& producer_key, const std::string& url ) { //, const eosio_parameters& prefs ) {
+   void system_contract::regproducer( const account_name producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) { 
       eosio_assert( url.size() < 512, "url too long" );
       //eosio::print("produce_key: ", producer_key.size(), ", sizeof(public_key): ", sizeof(public_key), "\n");
       require_auth( producer );
@@ -45,15 +45,17 @@ namespace eosiosystem {
          if( producer_key != prod->producer_key ) {
              _producers.modify( prod, producer, [&]( producer_info& info ){
                   info.producer_key = producer_key;
-                  info.url = url;
+                  info.url          = url;
+                  info.location     = location;
              });
          }
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
-               info.owner       = producer;
-               info.total_votes = 0;
-               info.producer_key =  producer_key;
-               info.url         = url;
+               info.owner         = producer;
+               info.total_votes   = 0;
+               info.producer_key  =  producer_key;
+               info.url           = url;
+               info.location      = location;
          });
       }
    }
@@ -119,7 +121,8 @@ namespace eosiosystem {
    }
 
    double stake2vote( int64_t staked ) {
-      double weight = int64_t(now() / (seconds_per_day * 7)) / double( 52 );
+      /// TODO subtract 2080 brings the large numbers closer to this decade
+      double weight = int64_t( (now() / (seconds_per_day * 7)) ) / double( 52 );
       return double(staked) * std::pow( 2, weight );
    }
    /**
@@ -172,7 +175,7 @@ namespace eosiosystem {
       }
 
       boost::container::flat_map<account_name, pair<double, bool /*new*/> > producer_deltas;
-      if ( voter->last_vote_weight != 0 ) {
+      if ( voter->last_vote_weight > 0 ) {
          if( voter->proxy ) {
             auto old_proxy = _voters.find( voter->proxy );
             eosio_assert( old_proxy != _voters.end(), "old proxy not found" ); //data corruption
@@ -269,7 +272,8 @@ namespace eosiosystem {
          new_weight += voter.proxied_vote_weight;
       }
 
-      if ( new_weight != voter.last_vote_weight ) {
+      /// don't propagate small changes (1 ~= epsilon)
+      if ( fabs( new_weight - voter.last_vote_weight ) > 1 )  {
          if ( voter.proxy ) {
             auto& proxy = _voters.get( voter.proxy, "proxy not found" ); //data corruption
             _voters.modify( proxy, 0, [&]( auto& p ) {

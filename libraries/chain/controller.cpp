@@ -686,7 +686,7 @@ struct controller_impl {
 
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
-         push_transaction( onbtrx, fc::time_point::maximum(), true, config::default_min_transaction_cpu_usage_us);
+         push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
       } catch ( ... ) {
          ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
       }
