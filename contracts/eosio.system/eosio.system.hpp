@@ -194,6 +194,8 @@ namespace eosiosystem {
          // functions defined in producer_pay.cpp
          void claimrewards( const account_name& owner );
 
+         void setpriv( account_name account, uint8_t ispriv );
+
       private:
          eosio::asset payment_per_block( double rate, const eosio::asset& token_supply,  uint32_t num_blocks );
 
