@@ -5,7 +5,7 @@
 #pragma once
 
 #include <enumivolib/asset.hpp>
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 
 #include <string>
 

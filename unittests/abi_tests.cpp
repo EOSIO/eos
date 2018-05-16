@@ -1617,7 +1617,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <enumivolib/eosio.hpp>
+      #include <enumivolib/enumivo.hpp>
       #include <enumivolib/print.hpp>
 
 
@@ -1676,7 +1676,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <enumivolib/eosio.hpp>
+      #include <enumivolib/enumivo.hpp>
       #include <enumivolib/print.hpp>
 
 

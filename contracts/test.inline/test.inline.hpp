@@ -1,4 +1,4 @@
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/privileged.h>
 #include <enumivolib/producer_schedule.hpp>
 

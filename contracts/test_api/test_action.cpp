@@ -8,7 +8,7 @@
 #include <enumivolib/db.h>
 #include <enumivolib/crypto.h>
 #include <enumivolib/privileged.h>
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/datastream.hpp>
 #include <enumivolib/print.hpp>
 #include <enumivolib/compiler_builtins.h>

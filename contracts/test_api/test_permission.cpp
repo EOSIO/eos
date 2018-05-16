@@ -5,7 +5,7 @@
 #include <enumivolib/permission.h>
 #include <enumivolib/db.h>
 
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/print.hpp>
 #include <enumivolib/compiler_builtins.h>
 #include <enumivolib/serialize.hpp>

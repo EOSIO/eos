@@ -1,4 +1,4 @@
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/print.hpp>
 using namespace eosio;
 

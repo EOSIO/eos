@@ -3,7 +3,7 @@
  *    @copyright defined in eos/LICENSE.txt
  */
 
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/print.hpp>
 #include <enumivolib/compiler_builtins.h>
 

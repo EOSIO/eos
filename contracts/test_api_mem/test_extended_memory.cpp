@@ -1,4 +1,4 @@
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/memory.hpp>
 #include "../test_api/test_api.hpp"
 

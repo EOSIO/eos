@@ -1,5 +1,5 @@
 
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/datastream.hpp>
 
 #include "test_api.hpp"
