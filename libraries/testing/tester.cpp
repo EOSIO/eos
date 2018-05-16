@@ -160,7 +160,7 @@ namespace eosio { namespace testing {
       auto last_produced_block_num = control->last_irreversible_block_num();
       auto itr = last_produced_block.find(producer.producer_name);
       if (itr != last_produced_block.end()) {
-         last_produced_block_num = block_header::num_from_id(itr->second);
+         last_produced_block_num = std::max(control->last_irreversible_block_num(), block_header::num_from_id(itr->second));
       }
 
       control->abort_block();

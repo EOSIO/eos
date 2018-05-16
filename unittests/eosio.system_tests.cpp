@@ -42,13 +42,27 @@ public:
       set_code( N(eosio.token), eosio_token_wast );
       set_abi( N(eosio.token), eosio_token_abi );
 
+      {
+         const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
+         abi_def abi;
+         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+         token_abi_ser.set_abi(abi);
+      }
+
       create_currency( N(eosio.token), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
       issue(config::system_account_name,      "1000000000.0000 EOS");
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
-
+      
+      { 
+         const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
+         abi_def abi;
+         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+         abi_ser.set_abi(abi);
+      }
+      
       produce_blocks();
 
       create_account_with_resources( N(alice1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
@@ -56,25 +70,8 @@ public:
       create_account_with_resources( N(carol1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
 
       BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
-
-      // eosio pays it self for these...
-      //BOOST_REQUIRE_EQUAL( asset::from_string("999999998.5000 EOS"), get_balance( "eosio" ) );
-
-      produce_blocks();
-
-      {
-         const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
-         abi_def abi;
-         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-         abi_ser.set_abi(abi);
-      }
-      {
-         const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
-         abi_def abi;
-         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-         token_abi_ser.set_abi(abi);
-      }
    }
+
 
    void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(eosio) ) {
       for( auto a : accounts ) {
@@ -286,7 +283,6 @@ public:
          ("max_authority_depth", 6 + n)
          ("max_generated_transaction_count", 10 + n)
          ("max_ram_size", (n % 10 + 1) * 1024 * 1024)
-         ("percent_of_max_inflation_rate", 50 + n)
          ("ram_reserve_ratio", 100 + n);
    }
 
@@ -306,23 +302,8 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-      //return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
-      //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
-      //generic_currency table name is N(account).
-      const auto& db  = control->db();
-      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(eosio.token), act, N(accounts)));
-      share_type result = 0;
-
-      // the balance is implied to be 0 if either the table or row does not exist
-      if (tbl) {
-         const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).to_symbol_code()));
-         if (obj) {
-            // balance is the first field in the serialization
-            fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
-            fc::raw::unpack(ds, result);
-         }
-      }
-      return asset( result, symbol(SY(4,EOS)) );
+      vector<char> data = get_row_by_account( N(eosio.token), act, N(accounts), symbol(SY(4,EOS)).to_symbol_code().value );
+      return data.empty() ? asset(0, symbol(SY(4,EOS))) : token_abi_ser.binary_to_variant("account", data)["balance"].as<asset>();
    }
 
    fc::variant get_total_stake( const account_name& act ) {
@@ -1414,11 +1395,11 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
    const double secs_per_year   = 52 * 7 * 24 * 3600;
 
    const asset large_asset = asset::from_string("80.0000 EOS");
-   create_account_with_resources( N(defproducera), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(defproducerb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(defproducera), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(defproducerb), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
-   create_account_with_resources( N(producvotera), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvotera), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvoterb), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
    BOOST_REQUIRE_EQUAL(success(), regproducer(N(defproducera)));
    auto prod = get_producer_info( N(defproducera) );
@@ -1595,9 +1576,9 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
    const asset net = asset::from_string("80.0000 EOS");
    const asset cpu = asset::from_string("80.0000 EOS");
-   create_account_with_resources( N(producvotera), N(eosio), asset::from_string("1.0000 EOS"), false, net, cpu );
-   create_account_with_resources( N(producvoterb), N(eosio), asset::from_string("1.0000 EOS"), false, net, cpu );
-   create_account_with_resources( N(producvoterc), N(eosio), asset::from_string("1.0000 EOS"), false, net, cpu );
+   create_account_with_resources( N(producvotera), config::system_account_name, asset::from_string("1.0000 EOS"), false, net, cpu );
+   create_account_with_resources( N(producvoterb), config::system_account_name, asset::from_string("1.0000 EOS"), false, net, cpu );
+   create_account_with_resources( N(producvoterc), config::system_account_name, asset::from_string("1.0000 EOS"), false, net, cpu );
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;
@@ -1615,7 +1596,6 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
          wdump((p));
          BOOST_TEST(0 == get_producer_info(p)["total_votes"].as<double>());
       }
-
    }
 
    {
@@ -1817,9 +1797,10 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       BOOST_REQUIRE_EQUAL( int64_t(expected_supply_growth), supply.amount - initial_supply.amount );
       BOOST_REQUIRE_EQUAL( int64_t(expected_supply_growth) - int64_t(expected_supply_growth)/5, savings - initial_savings );
 
-      const int64_t expected_perblock_bucket = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.25 * cont_rate/ 5.) / usecs_per_year ) + initial_perblock_bucket;
-      const int64_t expected_pervote_bucket  = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.75 * cont_rate/ 5.) / usecs_per_year ) + initial_pervote_bucket;
-
+      const int64_t expected_perblock_bucket = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.25 * cont_rate/ 5.) / usecs_per_year )
+                                               + initial_perblock_bucket;
+      const int64_t expected_pervote_bucket  = int64_t( initial_supply.amount * double(usecs_between_fills) * (0.75 * cont_rate/ 5.) / usecs_per_year )
+                                               + initial_pervote_bucket;
       const int64_t from_perblock_bucket = initial_unpaid_blocks * expected_perblock_bucket / initial_tot_unpaid_blocks ;
       const int64_t from_pervote_bucket  = int64_t( vote_shares[prod_index] * expected_pervote_bucket);
 
@@ -1881,6 +1862,14 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       BOOST_REQUIRE_EQUAL(0, inactive_prod_info["time_became_active"].as<uint32_t>());
       BOOST_REQUIRE_EQUAL(error("condition: assertion failed: producer does not have an active key"),
                           push_action(producer_names[one_inactive_index], N(claimrewards), mvo()("owner", producer_names[one_inactive_index])));
+      const uint32_t initial_unpaid_blocks = inactive_prod_info["unpaid_blocks"].as<uint32_t>();
+      regproducer(producer_names[one_inactive_index]);
+      produce_blocks(21 * 12);
+      auto reactivated_prod_info   = get_producer_info(producer_names[one_inactive_index]);
+      const uint32_t unpaid_blocks = reactivated_prod_info["unpaid_blocks"].as<uint32_t>();
+      BOOST_REQUIRE(initial_unpaid_blocks + 12 <= unpaid_blocks);
+      BOOST_REQUIRE_EQUAL(success(),
+                          push_action(producer_names[one_inactive_index], N(claimrewards), mvo()("owner", producer_names[one_inactive_index])));
    }
 
 } FC_LOG_AND_RETHROW()
@@ -1888,12 +1877,10 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
 BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
 
-   const auto tol = boost::test_tools::tolerance(0.0000000001);
-
    const asset large_asset = asset::from_string("80.0000 EOS");
-   create_account_with_resources( N(producvotera), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterc), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvotera), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvoterb), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvoterc), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;
@@ -1907,11 +1894,12 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
    for (auto a:producer_names)
       regproducer(a);
 
-   BOOST_REQUIRE_EQUAL(0, get_producer_info( N(defproducera) )["total_votes"].as<double>());
-   BOOST_REQUIRE_EQUAL(0, get_producer_info( N(defproducerz) )["total_votes"].as<double>());
+   BOOST_REQUIRE_EQUAL(0, get_producer_info( producer_names.front() )["total_votes"].as<double>());
+   BOOST_REQUIRE_EQUAL(0, get_producer_info( producer_names.back() )["total_votes"].as<double>());
 
-   issue( "producvotera", "100000000.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL(success(), stake("producvotera", "30000000.0000 EOS", "30000000.0000 EOS"));
+   transfer(config::system_account_name, "producvotera", "200000000.0000 EOS", config::system_account_name);
+   
+   BOOST_REQUIRE_EQUAL(success(), stake("producvotera", "70000000.0000 EOS", "70000000.0000 EOS"));
    BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
                                                 ("voter",  "producvotera")
                                                 ("proxy", name(0).to_string())
@@ -1937,11 +1925,11 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
       BOOST_REQUIRE_EQUAL(true, rest_didnt_produce);
    }
 
-   // issue across 15% boundary
-   issue( "producvoterb", "100000000.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL(success(), stake("producvoterb", "30000000.0000 EOS", "30000000.0000 EOS"));
-   issue( "producvoterc", "100000000.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL(success(), stake("producvoterc", "30000000.0000 EOS", "30000000.0000 EOS"));
+   // stake across 15% boundary
+   transfer(config::system_account_name, "producvoterb", "100000000.0000 EOS", config::system_account_name);
+   BOOST_REQUIRE_EQUAL(success(), stake("producvoterb", "4000000.0000 EOS", "4000000.0000 EOS"));
+   transfer(config::system_account_name, "producvoterc", "100000000.0000 EOS", config::system_account_name);
+   BOOST_REQUIRE_EQUAL(success(), stake("producvoterc", "2000000.0000 EOS", "2000000.0000 EOS"));
 
    BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterb), N(voteproducer), mvo()
                                                 ("voter",  "producvoterb")
