@@ -29,7 +29,7 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 target_include_directories(enulauncher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(enulauncher
-                      PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                      PRIVATE enumivo_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
    enulauncher

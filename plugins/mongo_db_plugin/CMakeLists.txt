@@ -76,7 +76,7 @@ if(BUILD_MONGO_DB_PLUGIN)
     )
 
   target_link_libraries(mongo_db_plugin
-          PUBLIC chain_plugin eosio_chain appbase
+          PUBLIC chain_plugin enumivo_chain appbase
           ${ENU_LIBMONGOCXX} ${ENU_LIBBSONCXX}
           )
 else()

@@ -5,5 +5,5 @@ add_library( wallet_plugin
              wallet_manager.cpp
              ${HEADERS} )
 
-target_link_libraries( wallet_plugin eosio_chain appbase )
+target_link_libraries( wallet_plugin enumivo_chain appbase )
 target_include_directories( wallet_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
