@@ -51,7 +51,7 @@ programs/enucli/config.hpp
 programs/enu-applesedemo/enu-applesedemo
 programs/enu-launcher/config.hpp
 programs/enu-launcher/enu-launcher
-programs/keosd/keosd
+programs/enuwallet/enuwallet
 programs/enunode/config.hpp
 programs/enunode/enunode
 

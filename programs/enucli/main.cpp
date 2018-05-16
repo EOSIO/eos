@@ -25,7 +25,7 @@ Options:
   -u,--url TEXT=http://localhost:8888/
                               the http/https URL where enunode is running
   --wallet-url TEXT=http://localhost:8888/
-                              the http/https URL where keosd is running
+                              the http/https URL where enuwallet is running
   -v,--verbose                output verbose actions on error
 
 Subcommands:
@@ -212,7 +212,7 @@ fc::variant call( const std::string& url,
       if(url == ::url)
          std::cerr << localized("Failed to connect to enunode at ${u}; is enunode running?", ("u", url)) << std::endl;
       else if(url == ::wallet_url)
-         std::cerr << localized("Failed to connect to keosd at ${u}; is keosd running?", ("u", url)) << std::endl;
+         std::cerr << localized("Failed to connect to enuwallet at ${u}; is enuwallet running?", ("u", url)) << std::endl;
       throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, e.what())});
    }
 }
@@ -722,13 +722,13 @@ void try_port( uint16_t port, uint32_t duration ) {
    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
    while ( !port_used(port)) { 
       if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
-         std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
-         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
+         std::cerr << "Unable to connect to enuwallet, if enuwallet is running please kill the process and try again.\n";
+         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to enuwallet")});
       }
    }
 }
 
-void ensure_keosd_running() {
+void ensure_enuwallet_running() {
     auto parsed_url = parse_url(wallet_url);
     if (parsed_url.server != "localhost" && parsed_url.server == "127.0.0.1")
         return;
@@ -738,7 +738,7 @@ void ensure_keosd_running() {
         FC_THROW("port is not in valid range");
     }
 
-    if (port_used(uint16_t(wallet_port)))  // Hopefully taken by keosd
+    if (port_used(uint16_t(wallet_port)))  // Hopefully taken by enuwallet
         return;
 
 
@@ -747,9 +747,9 @@ void ensure_keosd_running() {
     // This extra check is necessary when running cleos like this: ./cleos ...
     if (binPath.filename_is_dot())
         binPath.remove_filename();
-    binPath.append("keosd"); // if cleos and keosd are in the same installation directory
+    binPath.append("enuwallet"); // if cleos and enuwallet are in the same installation directory
     if (!boost::filesystem::exists(binPath)) {
-        binPath.remove_filename().remove_filename().append("keosd").append("keosd");
+        binPath.remove_filename().remove_filename().append("enuwallet").append("enuwallet");
     }
 
     if (boost::filesystem::exists(binPath)) {
@@ -769,7 +769,7 @@ void ensure_keosd_running() {
         }
     } else {
         std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port)
-                  << ". Cannot automatically start keosd because keosd was not found." << std::endl;
+                  << ". Cannot automatically start enuwallet because enuwallet was not found." << std::endl;
     }
 }
 
@@ -1325,13 +1325,13 @@ int main( int argc, char** argv ) {
    app.require_subcommand();
    app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where enunode is running") )->group("hidden");
    app.add_option( "-p,--port", obsoleted_option_host_port, localized("the port where enunode is running") )->group("hidden");
-   app.add_option( "--wallet-host", obsoleted_option_host_port, localized("the host where keosd is running") )->group("hidden");
-   app.add_option( "--wallet-port", obsoleted_option_host_port, localized("the port where keosd is running") )->group("hidden");
+   app.add_option( "--wallet-host", obsoleted_option_host_port, localized("the host where enuwallet is running") )->group("hidden");
+   app.add_option( "--wallet-port", obsoleted_option_host_port, localized("the port where enuwallet is running") )->group("hidden");
 
    app.add_option( "-u,--url", url, localized("the http/https URL where enunode is running"), true );
-   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where enuwallet is running"), true );
 
-   app.set_callback([] { ensure_keosd_running();});
+   app.set_callback([] { ensure_enuwallet_running();});
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -1819,7 +1819,7 @@ int main( int argc, char** argv ) {
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
    createWallet->set_callback([&wallet_name] {
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
       const auto& v = call(wallet_url, wallet_create, wallet_name);
@@ -1833,7 +1833,7 @@ int main( int argc, char** argv ) {
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
       call(wallet_url, wallet_open, wallet_name);
@@ -1844,7 +1844,7 @@ int main( int argc, char** argv ) {
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
       call(wallet_url, wallet_lock, wallet_name);
@@ -1854,7 +1854,7 @@ int main( int argc, char** argv ) {
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
    locakAllWallets->set_callback([] {
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
       call(wallet_url, wallet_lock_all);
@@ -1873,7 +1873,7 @@ int main( int argc, char** argv ) {
          std::getline( std::cin, wallet_pw, '\n' );
          fc::set_console_echo(true);
       }
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
 
@@ -1916,7 +1916,7 @@ int main( int argc, char** argv ) {
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
       std::cout << localized("Wallets:") << std::endl;
@@ -1927,20 +1927,20 @@ int main( int argc, char** argv ) {
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
    listKeys->set_callback([] {
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
       const auto& v = call(wallet_url, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with enunode)."), false);
+   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop enuwallet (doesn't work with enunode)."), false);
    stopKeosd->set_callback([] {
-      // wait for keosd to come up
+      // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
-      const auto& v = call(wallet_url, keosd_stop);
-      if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
+      const auto& v = call(wallet_url, enuwallet_stop);
+      if ( !v.is_object() || v.get_object().size() != 0 ) { //on success enuwallet responds with empty object
          std::cerr << fc::json::to_pretty_string(v) << std::endl;
       } else {
          std::cout << "OK" << std::endl;

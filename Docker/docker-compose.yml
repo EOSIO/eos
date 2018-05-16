@@ -20,17 +20,17 @@ services:
     volumes:
       - enunode-data-volume:/opt/eosio/bin/data-dir
 
-  keosd:
+  enuwallet:
     image: eosio/eos
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir
-    hostname: keosd
+    command: /opt/eosio/bin/enuwallet --wallet-dir /opt/eosio/bin/data-dir
+    hostname: enuwallet
     links:
       - nodeosd
     volumes:
-      - keosd-data-volume:/opt/eosio/bin/data-dir
+      - enuwallet-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
   enunode-data-volume:
     external: true
-  keosd-data-volume:
+  enuwallet-data-volume:
     external: true
