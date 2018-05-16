@@ -2,7 +2,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <enumivo/testing/tester.hpp>
 #include <enumivo/chain/wast_to_wasm.hpp>
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 
 #include <enumivo.bios/enumivo.bios.wast.hpp>
 #include <enumivo.bios/enumivo.bios.abi.hpp>

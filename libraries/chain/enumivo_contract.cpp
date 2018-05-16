@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 #include <enumivo/chain/contract_table_objects.hpp>
 
 #include <enumivo/chain/controller.hpp>
@@ -171,7 +171,7 @@ void apply_eosio_setabi(apply_context& context) {
 
    // if system account append native abi
    if ( act.account == eosio::chain::config::system_account_name ) {
-      act.abi = eosio_contract_abi(act.abi);
+      act.abi = enumivo_contract_abi(act.abi);
    }
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
@@ -362,7 +362,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
 static const abi_serializer& get_abi_serializer() {
    static optional<abi_serializer> _abi_serializer;
    if (!_abi_serializer) {
-      _abi_serializer.emplace(eosio_contract_abi(abi_def()));
+      _abi_serializer.emplace(enumivo_contract_abi(abi_def()));
    }
 
    return *_abi_serializer;

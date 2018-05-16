@@ -13,7 +13,7 @@
 #include <enumivo/chain/wasm_interface.hpp>
 #include <enumivo/chain/resource_limits.hpp>
 
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 
 #include <enumivo/utilities/key_conversion.hpp>
 #include <enumivo/utilities/common.hpp>

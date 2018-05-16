@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <enumivo/mongo_db_plugin/mongo_db_plugin.hpp>
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 #include <enumivo/chain/config.hpp>
 #include <enumivo/chain/exceptions.hpp>
 #include <enumivo/chain/transaction.hpp>
@@ -249,7 +249,7 @@ namespace {
         }
         abi_serializer abis;
         if (msg.account == chain::config::system_account_name) {
-           abi = chain::eosio_contract_abi(abi);
+           abi = chain::enumivo_contract_abi(abi);
         }
         abis.set_abi(abi);
         auto v = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);

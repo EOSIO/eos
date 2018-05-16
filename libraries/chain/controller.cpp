@@ -19,7 +19,7 @@
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 
 namespace eosio { namespace chain {
 
@@ -282,7 +282,7 @@ struct controller_impl {
          a.privileged = is_privileged;
 
          if( name == config::system_account_name ) {
-            a.set_abi(eosio_contract_abi(abi_def()));
+            a.set_abi(enumivo_contract_abi(abi_def()));
          }
       });
       db.create<account_sequence_object>([&](auto & a) {
