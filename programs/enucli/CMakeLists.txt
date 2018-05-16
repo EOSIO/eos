@@ -35,7 +35,7 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 target_include_directories(enucli PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries( enucli
-                       PRIVATE appbase chain_api_plugin producer_plugin chain_plugin http_plugin eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
+                       PRIVATE appbase chain_api_plugin producer_plugin chain_plugin http_plugin enumivo_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
 
 install( TARGETS
    enucli

@@ -9,8 +9,8 @@
 #include <enumivo/chain/authorization_manager.hpp>
 #include <enumivo/chain/resource_limits.hpp>
 #include <enumivo/chain/wasm_interface_private.hpp>
-#include <enumivo/chain/wasm_eosio_validation.hpp>
-#include <enumivo/chain/wasm_eosio_injection.hpp>
+#include <enumivo/chain/wasm_enumivo_validation.hpp>
+#include <enumivo/chain/wasm_enumivo_injection.hpp>
 #include <enumivo/chain/global_property_object.hpp>
 #include <enumivo/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>

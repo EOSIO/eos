@@ -16,7 +16,7 @@
 
 #include <enumivo/chain/contract_types.hpp>
 #include <enumivo/chain/abi_serializer.hpp>
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 #include <enumivo/abi_generator/abi_generator.hpp>
 
 #include <boost/test/framework.hpp>
@@ -47,7 +47,7 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
 auto get_resolver(const abi_def& abi = abi_def())
 {
    return [&abi](const account_name &name) -> optional<abi_serializer> {
-      return abi_serializer(eosio_contract_abi(abi));
+      return abi_serializer(enumivo_contract_abi(abi));
    };
 }
 
@@ -377,7 +377,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
    auto abi = fc::json::from_string(currency_abi).as<abi_def>();
 
-   abi_serializer abis(eosio_contract_abi(abi));
+   abi_serializer abis(enumivo_contract_abi(abi));
    abis.validate();
 
    const char* test_data = R"=====(
@@ -432,7 +432,7 @@ struct abi_gen_helper {
     );
     FC_ASSERT(res == true);
 
-    abi_serializer(eosio_contract_abi(output)).validate();
+    abi_serializer(enumivo_contract_abi(output)).validate();
 
     auto abi1 = fc::json::from_string(abi).as<abi_def>();
 
@@ -1617,7 +1617,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <enumivolib/eosio.hpp>
+      #include <enumivolib/enumivo.hpp>
       #include <enumivolib/print.hpp>
 
 
@@ -1676,7 +1676,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <enumivolib/eosio.hpp>
+      #include <enumivolib/enumivo.hpp>
       #include <enumivolib/print.hpp>
 
 
@@ -1746,7 +1746,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
 BOOST_AUTO_TEST_CASE(general)
 { try {
 
-   auto abi = eosio_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
+   auto abi = enumivo_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
 
    abi_serializer abis(abi);
    abis.validate();
@@ -1985,7 +1985,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
+   auto abi = enumivo_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
    abi_serializer abis(abi);
 
    auto is_assert_exception = [](fc::assert_exception const & e) -> bool {
@@ -2002,7 +2002,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 BOOST_AUTO_TEST_CASE(linkauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(enumivo_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2036,7 +2036,7 @@ BOOST_AUTO_TEST_CASE(linkauth_test)
 BOOST_AUTO_TEST_CASE(unlinkauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(enumivo_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2067,7 +2067,7 @@ BOOST_AUTO_TEST_CASE(unlinkauth_test)
 BOOST_AUTO_TEST_CASE(updateauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(enumivo_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2137,7 +2137,7 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
 BOOST_AUTO_TEST_CASE(deleteauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(enumivo_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2165,7 +2165,7 @@ BOOST_AUTO_TEST_CASE(deleteauth_test)
 BOOST_AUTO_TEST_CASE(newaccount_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(enumivo_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2273,7 +2273,7 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
 BOOST_AUTO_TEST_CASE(setcode_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(enumivo_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2306,7 +2306,7 @@ BOOST_AUTO_TEST_CASE(setcode_test)
 BOOST_AUTO_TEST_CASE(setabi_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(enumivo_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2709,7 +2709,7 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = enumivo_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("types.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
@@ -2766,7 +2766,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = enumivo_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("structs.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
@@ -2826,7 +2826,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = enumivo_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("actions.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
@@ -2889,7 +2889,7 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = enumivo_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }

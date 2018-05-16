@@ -1,8 +1,8 @@
-#include <enumivo/chain/eosio_contract.hpp>
+#include <enumivo/chain/enumivo_contract.hpp>
 
 namespace eosio { namespace chain {
 
-abi_def eosio_contract_abi(const abi_def& enumivo_system_abi)
+abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
 {
    abi_def eos_abi(enumivo_system_abi);
    eos_abi.types.push_back( type_def{"account_name","name"} );

@@ -1,6 +1,6 @@
 #include <enumivo/chain/webassembly/wavm.hpp>
-#include <enumivo/chain/wasm_eosio_constraints.hpp>
-#include <enumivo/chain/wasm_eosio_injection.hpp>
+#include <enumivo/chain/wasm_enumivo_constraints.hpp>
+#include <enumivo/chain/wasm_enumivo_injection.hpp>
 #include <enumivo/chain/apply_context.hpp>
 #include <enumivo/chain/exceptions.hpp>
 

@@ -4,7 +4,7 @@
  */
 #include <enumivolib/action.h>
 #include <enumivolib/chain.h>
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include "test_api.hpp"
 
 #pragma pack(push, 1)

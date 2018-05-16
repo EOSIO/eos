@@ -14,7 +14,7 @@ target_include_directories(abi_generator
                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
                                   "${LLVM_INCLUDE_DIRS}")
 
-target_link_libraries(abi_generator eosio_chain
+target_link_libraries(abi_generator enumivo_chain
   clangRewrite
   clangTooling
   clangToolingCore

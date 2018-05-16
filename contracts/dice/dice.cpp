@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <enumivolib/eosio.hpp>
+#include <enumivolib/enumivo.hpp>
 #include <enumivolib/time.hpp>
 #include <enumivolib/asset.hpp>
 #include <enumivolib/contract.hpp>
