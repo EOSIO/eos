@@ -125,6 +125,8 @@ try:
     exchangeAccount.ownerPublicKey=PUB_KEY2
 
     Print("Stand up walletd")
+    walletMgr.killall()
+    walletMgr.cleanup()
     if walletMgr.launch() is False:
         cmdError("%s" % (WalletdName))
         errorExit("Failed to stand up eos walletd.")

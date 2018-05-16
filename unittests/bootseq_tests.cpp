@@ -278,6 +278,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                        ("producer",  name(pro))
                        ("producer_key", get_public_key( pro, "active" ) )
                        ("url", "" )
+                       ("location", 0 )
                     );
         }
         produce_blocks(10);
