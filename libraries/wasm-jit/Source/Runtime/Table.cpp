@@ -2,7 +2,7 @@
 #include "Runtime.h"
 #include "Platform/Platform.h"
 #include "RuntimePrivate.h"
-#include <enumivo/chain/wasm_eosio_constraints.hpp>
+#include <enumivo/chain/wasm_enumivo_constraints.hpp>
 
 namespace Runtime
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <enumivo/chain/wasm_interface.hpp>
-#include <enumivo/chain/wasm_eosio_constraints.hpp>
+#include <enumivo/chain/wasm_enumivo_constraints.hpp>
 
 #define ENUMIVO_INJECTED_MODULE_NAME "eosio_injection"
 

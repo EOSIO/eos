@@ -2,7 +2,7 @@
 
 #include <fc/exception/exception.hpp>
 #include <enumivo/chain/exceptions.hpp>
-#include <enumivo/chain/wasm_eosio_binary_ops.hpp>
+#include <enumivo/chain/wasm_enumivo_binary_ops.hpp>
 #include <functional>
 #include <vector>
 #include <iostream>
