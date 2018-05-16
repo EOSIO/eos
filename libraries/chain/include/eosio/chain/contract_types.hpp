@@ -5,12 +5,8 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 
-#include <boost/multiprecision/cpp_int.hpp>
-
 namespace eosio { namespace chain {
 
-using fixed_string32 = fc::fixed_string<fc::array<uint64_t,4>>;
-using fixed_string16 = fc::fixed_string<>;
 using type_name      = string;
 using field_name     = string;
 using table_name     = name;
@@ -259,7 +255,7 @@ FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(
 FC_REFLECT( eosio::chain::abi_def                          , (types)(structs)(actions)(tables)(ricardian_clauses) )
 
 FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
-FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) 
+FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) )
 FC_REFLECT( eosio::chain::setabi                           , (account)(abi) )
 FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(auth) )
 FC_REFLECT( eosio::chain::deleteauth                       , (account)(permission) )

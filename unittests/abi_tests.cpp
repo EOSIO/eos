@@ -145,18 +145,6 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
          "name": "fieldname_arr",
          "type": "field_name[]"
       },{
-         "name": "fixedstring32",
-         "type": "fixed_string32"
-      },{
-         "name": "fixedstring32_ar",
-         "type": "fixed_string32[]"
-      },{
-         "name": "fixedstring16",
-         "type": "fixed_string16"
-      },{
-         "name": "fixedstring16_ar",
-         "type": "fixed_string16[]"
-      },{
          "name": "typename",
          "type": "type_name"
       },{
@@ -193,12 +181,6 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
          "name": "uint128_arr",
          "type": "uint128[]"
       },{
-         "name": "uint256",
-         "type": "uint256"
-      },{
-         "name": "uint256_arr",
-         "type": "uint256[]"
-      },{
          "name": "int8",
          "type": "int8"
       },{
@@ -222,6 +204,12 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
       },{
          "name": "int64_arr",
          "type": "int64[]"
+      },{
+         "name": "int128",
+         "type": "int128"
+      },{
+         "name": "int128_arr",
+         "type": "int128[]"
       },{
          "name": "name",
          "type": "name"
@@ -485,18 +473,17 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
      signature               field3;
      checksum256             field4;
      field_name              field5;
-     fixed_string32          field6;
-     fixed_string16          field7;
-     type_name               field8;
-     uint8_t                 field9;
-     uint16_t                field10;
-     uint32_t                field11;
-     uint64_t                field12;
-     uint128_t               field13;
-     int8_t                  field15;
-     int16_t                 field16;
-     int32_t                 field17;
-     int64_t                 field18;
+     type_name               field6;
+     uint8_t                 field7;
+     uint16_t                field8;
+     uint32_t                field9;
+     uint64_t                field10;
+     uint128_t               field11;
+     int8_t                  field12;
+     int16_t                 field13;
+     int32_t                 field14;
+     int64_t                 field15;
+     int128_t                field16;
      eosio::name             field19;
      account_name            field23;
      permission_name         field24;
@@ -533,42 +520,39 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
            },{
              "name": "field5",
              "type": "field_name"
-           },{
+          },{
              "name": "field6",
-             "type": "fixed_string32"
-           },{
-             "name": "field7",
-             "type": "fixed_string16"
-           },{
-             "name": "field8",
              "type": "type_name"
            },{
-             "name": "field9",
+             "name": "field7",
              "type": "uint8"
            },{
-             "name": "field10",
+             "name": "field8",
              "type": "uint16"
            },{
-             "name": "field11",
+             "name": "field9",
              "type": "uint32"
            },{
-             "name": "field12",
+             "name": "field10",
              "type": "uint64"
            },{
-             "name": "field13",
+             "name": "field11",
              "type": "uint128"
            },{
-             "name": "field15",
+             "name": "field12",
              "type": "int8"
            },{
-             "name": "field16",
+             "name": "field13",
              "type": "int16"
            },{
-             "name": "field17",
+             "name": "field14",
              "type": "int32"
            },{
-             "name": "field18",
+             "name": "field15",
              "type": "int64"
+           },{
+             "name": "field16",
+             "type": "int128"
            },{
              "name": "field19",
              "type": "name"
@@ -1771,10 +1755,6 @@ BOOST_AUTO_TEST_CASE(general)
       "checksum256_arr"      : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
       "fieldname"         : "name1",
       "fieldname_arr"     : ["name1","name2"],
-      "fixedstring32"     : "1234567890abcdef1234567890abcdef",
-      "fixedstring32_ar"  : ["1234567890abcdef1234567890abcdef","1234567890abcdef1234567890abcdea"],
-      "fixedstring16"     : "1234567890abcdef",
-      "fixedstring16_ar"  : ["1234567890abcdef","1234567890abcdea"],
       "typename"          : "name3",
       "typename_arr"      : ["name4","name5"],
       "bytes"             : "010203",
@@ -1787,10 +1767,8 @@ BOOST_AUTO_TEST_CASE(general)
       "uint32_arr"        : [32,33],
       "uint64"            : 64,
       "uint64_arr"        : [64,65],
-      "uint128"           : "128",
-      "uint128_arr"       : ["128","129"],
-      "uint256"           : "256",
-      "uint256_arr"       : ["256","257"],
+      "uint128"           : 128,
+      "uint128_arr"       : ["0x00000000000000000000000000000080",129],
       "int8"              : 108,
       "int8_arr"          : [108,109],
       "int16"             : 116,
@@ -1799,6 +1777,8 @@ BOOST_AUTO_TEST_CASE(general)
       "int32_arr"         : [132,133],
       "int64"             : 164,
       "int64_arr"         : [164,165],
+      "int128"            : -128,
+      "int128_arr"        : ["0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF80",-129],
       "name"              : "xname1",
       "name_arr"          : ["xname2","xname3"],
       "field"             : {"name":"name1", "type":"type1"},

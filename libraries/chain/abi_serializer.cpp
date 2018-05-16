@@ -10,7 +10,6 @@
 #include <eosio/chain/asset.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <fc/io/varint.hpp>
 
 using namespace boost;
@@ -54,48 +53,48 @@ namespace eosio { namespace chain {
    }
 
    void abi_serializer::configure_built_in_types() {
-      //public_key.hpp
-      built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
 
-      //symbol.hpp
-      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
-      built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
+      built_in_types.emplace("bool",                      pack_unpack<uint8_t>());
+      built_in_types.emplace("int8",                      pack_unpack<int8_t>());
+      built_in_types.emplace("uint8",                     pack_unpack<uint8_t>());
+      built_in_types.emplace("int16",                     pack_unpack<int16_t>());
+      built_in_types.emplace("uint16",                    pack_unpack<uint16_t>());
+      built_in_types.emplace("int32",                     pack_unpack<int32_t>());
+      built_in_types.emplace("uint32",                    pack_unpack<uint32_t>());
+      built_in_types.emplace("int64",                     pack_unpack<int64_t>());
+      built_in_types.emplace("uint64",                    pack_unpack<uint64_t>());
+      built_in_types.emplace("int128",                    pack_unpack<int128_t>());
+      built_in_types.emplace("uint128",                   pack_unpack<uint128_t>());
+      built_in_types.emplace("varint32",                  pack_unpack<fc::signed_int>());
+      built_in_types.emplace("varuint32",                 pack_unpack<fc::unsigned_int>());
+      built_in_types.emplace("float64",                   pack_unpack<double>());
 
-      //asset.hpp
-      built_in_types.emplace("asset",                     pack_unpack<asset>());
-      built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
-
-      //native.hpp
-      built_in_types.emplace("string",                    pack_unpack<string>());
-      built_in_types.emplace("clause_pair",               pack_unpack<clause_pair>());
       built_in_types.emplace("time_point",                pack_unpack<fc::time_point>());
       built_in_types.emplace("time_point_sec",            pack_unpack<fc::time_point_sec>());
       built_in_types.emplace("block_timestamp_type",      pack_unpack<block_timestamp_type>());
-      built_in_types.emplace("signature",                 pack_unpack<signature_type>());
+
+      built_in_types.emplace("name",                      pack_unpack<name>());
+
+      built_in_types.emplace("bytes",                     pack_unpack<bytes>());
+      built_in_types.emplace("string",                    pack_unpack<string>());
+
       built_in_types.emplace("checksum160",               pack_unpack<checksum160_type>());
       built_in_types.emplace("checksum256",               pack_unpack<checksum256_type>());
       built_in_types.emplace("checksum512",               pack_unpack<checksum512_type>());
+
+      built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
+      built_in_types.emplace("signature",                 pack_unpack<signature_type>());
+
+      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+      built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
+      built_in_types.emplace("asset",                     pack_unpack<asset>());
+      built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
+
+      // TODO: Remove these from built_in_types:
+      built_in_types.emplace("clause_pair",               pack_unpack<clause_pair>());
       built_in_types.emplace("transaction_id_type",       pack_unpack<checksum256_type>());
       built_in_types.emplace("field_name",                pack_unpack<field_name>());
-      built_in_types.emplace("fixed_string32",            pack_unpack<fixed_string32>());
-      built_in_types.emplace("fixed_string16",            pack_unpack<fixed_string16>());
       built_in_types.emplace("type_name",                 pack_unpack<type_name>());
-      built_in_types.emplace("bytes",                     pack_unpack<bytes>());
-      built_in_types.emplace("uint128",                   pack_unpack<boost::multiprecision::uint128_t>());
-      built_in_types.emplace("uint256",                   pack_unpack<boost::multiprecision::uint256_t>());
-      built_in_types.emplace("varuint32",                 pack_unpack<fc::unsigned_int>());
-      built_in_types.emplace("bool",                      pack_unpack<uint8_t>());
-      built_in_types.emplace("int8",                      pack_unpack<int8_t>());
-      built_in_types.emplace("int16",                     pack_unpack<int16_t>());
-      built_in_types.emplace("int32",                     pack_unpack<int32_t>());
-      built_in_types.emplace("int64",                     pack_unpack<int64_t>());
-      built_in_types.emplace("uint8",                     pack_unpack<uint8_t>());
-      built_in_types.emplace("uint16",                    pack_unpack<uint16_t>());
-      built_in_types.emplace("uint32",                    pack_unpack<uint32_t>());
-      built_in_types.emplace("uint64",                    pack_unpack<uint64_t>());
-      built_in_types.emplace("varint32",                  pack_unpack<fc::signed_int>());
-      built_in_types.emplace("float64",                   pack_unpack<double>());
-      built_in_types.emplace("name",                      pack_unpack<name>());
       built_in_types.emplace("account_name",              pack_unpack<account_name>());
       built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
       built_in_types.emplace("action_name",               pack_unpack<action_name>());
@@ -103,6 +102,7 @@ namespace eosio { namespace chain {
       built_in_types.emplace("permission_level",          pack_unpack<permission_level>());
       built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
       built_in_types.emplace("newaccount",                pack_unpack<newaccount>());
+
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {
