@@ -55,10 +55,14 @@ action_trace apply_context::exec_one()
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
    action_receipt r;
-   r.receiver        = receiver;
-   r.act_digest      = digest_type::hash(act);
-   r.global_sequence = next_global_sequence();
-   r.recv_sequence   = next_recv_sequence( receiver );
+   r.receiver         = receiver;
+   r.act_digest       = digest_type::hash(act);
+   r.global_sequence  = next_global_sequence();
+   r.recv_sequence    = next_recv_sequence( receiver );
+
+   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+   r.code_sequence    = account_sequence.code_sequence;
+   r.abi_sequence     = account_sequence.abi_sequence;
 
    for( const auto& auth : act.authorization ) {
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
@@ -589,7 +593,6 @@ int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
 
    return keyval_cache.cache_table( *tab );
 }
-
 
 uint64_t apply_context::next_global_sequence() {
    const auto& p = control.get_dynamic_global_properties();
