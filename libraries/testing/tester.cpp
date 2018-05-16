@@ -399,7 +399,7 @@ namespace eosio { namespace testing {
     }
 
 
-   transaction_trace_ptr base_tester::push_dummy(account_name from, const string& v) {
+   transaction_trace_ptr base_tester::push_dummy(account_name from, const string& v, uint32_t billed_cpu_time_us) {
       // use reqauth for a normal action, this could be anything
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
@@ -430,7 +430,7 @@ namespace eosio { namespace testing {
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, "active" ), chain_id_type() );
-      return push_transaction( trx );
+      return push_transaction( trx, fc::time_point::maximum(), billed_cpu_time_us );
    }
 
 

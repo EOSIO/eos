@@ -65,30 +65,16 @@ const static uint32_t   transaction_id_net_usage                     = 32; // 32
 
 const static uint32_t   default_max_block_cpu_usage                 = 100'000; /// max block cpu usage in microseconds
 const static uint32_t   default_target_block_cpu_usage_pct          = 5 * percent_1; /// target 1000 TPS
-const static uint32_t   default_max_transaction_cpu_usage           = default_max_block_cpu_usage;
-const static uint32_t   default_min_transaction_cpu_usage_us        = 100; /// 10000 TPS equiv
-const static uint32_t   default_base_per_transaction_cpu_usage      = 512;        // TODO: is this reasonable?
-const static uint32_t   default_base_per_action_cpu_usage           = 1024;
-const static uint32_t   default_base_setcode_cpu_usage              = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
-const static uint32_t   default_per_signature_cpu_usage             = 100 * 1024; // TODO: is this reasonable?
-const static uint32_t   default_cpu_usage_leeway                    = 2048; // TODO: is this reasonable?
-const static uint32_t   default_context_free_discount_cpu_usage_num = 20;
-const static uint32_t   default_context_free_discount_cpu_usage_den = 100;
+const static uint32_t   default_max_transaction_cpu_usage           = default_max_block_cpu_usage / 2; /// max trx cpu usage in microseconds
+const static uint32_t   default_min_transaction_cpu_usage           = 100; /// min trx cpu usage in microseconds (10000 TPS equiv)
 
 const static uint32_t   default_max_trx_lifetime               = 60*60; // 1 hour
 const static uint32_t   default_deferred_trx_expiration_window = 10*60; // 10 minutes
-//static const uint32_t   deferred_trx_expiration_window_ms    = 10*60*1000l; // TODO: make 10 minutes configurable by system
 const static uint32_t   default_max_trx_delay                  = 45*24*3600; // 45 days
 const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 4 KB
 const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
 const static uint32_t   default_max_gen_trx_count              = 16;
-
-const static uint32_t   base_check_authorization_cpu_per_authorization      = 64;  // TODO: is this reasonable?
-const static uint32_t   base_authority_checker_cpu_per_permission           = 128; // TODO: is this reasonable?
-const static uint32_t   resource_processing_cpu_overhead_per_billed_account = 256; // TODO: is this reasonable?
-const static uint32_t   determine_payers_cpu_overhead_per_authorization     = 64;  // TODO: is this reasonable?
-const static uint32_t   ram_usage_validation_overhead_per_account           = 64;  // TODO: is this reasonable?
 
 const static uint32_t   fixed_net_overhead_of_packed_trx = 16; // TODO: is this reasonable?
 

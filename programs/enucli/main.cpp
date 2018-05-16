@@ -463,13 +463,6 @@ fc::variant regproducer_variant(const account_name& producer,
          ("max_block_cpu_usage", config::default_max_block_cpu_usage)
          ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
          ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
-         ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
-         ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
-         ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
-         ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
-         ("cpu_usage_leeway", config::default_cpu_usage_leeway)
-         ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
-         ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
          ("max_transaction_lifetime", config::default_max_trx_lifetime)
          ("deferred_trx_expiration_window", config::default_deferred_trx_expiration_window)
          ("max_transaction_delay", config::default_max_trx_delay)
@@ -720,7 +713,7 @@ bool port_used(uint16_t port) {
 void try_port( uint16_t port, uint32_t duration ) {
    using namespace std::chrono;
    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-   while ( !port_used(port)) { 
+   while ( !port_used(port)) {
       if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
          std::cerr << "Unable to connect to enuwallet, if enuwallet is running please kill the process and try again.\n";
          throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to enuwallet")});
@@ -843,7 +836,7 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount);
 
       createAccount->set_callback([this] {
-            if( !active_key_str.size() ) 
+            if( !active_key_str.size() )
                active_key_str = owner_key_str;
             public_key_type owner_key, active_key;
             try {
