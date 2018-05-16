@@ -32,7 +32,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <eosio/chain/contracts/genesis_state.hpp>
+#include <eosio/chain/genesis_state.hpp>
 
 #include "config.hpp"
 
@@ -291,8 +291,7 @@ struct prodkey_def {
 };
 
 struct producer_set_def {
-  uint32_t version;
-  vector<prodkey_def> producers;
+  vector<prodkey_def> schedule;
 };
 
 struct server_name_def {
@@ -745,7 +744,6 @@ launcher_def::bind_nodes () {
    int non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
-   producer_set.version = 1;
    unsigned int i = 0;
    for (auto &h : bindings) {
       for (auto &inst : h.instances) {
@@ -761,7 +759,7 @@ launcher_def::bind_nodes () {
          if (is_bios) {
             string prodname = "eosio";
             node.producers.push_back(prodname);
-            producer_set.producers.push_back({prodname,pubkey});
+            producer_set.schedule.push_back({prodname,pubkey});
          }
         else {
            if (i < non_bios) {
@@ -771,11 +769,11 @@ launcher_def::bind_nodes () {
                  --extra;
               }
               char ext = 'a' + i;
-              string pname = "init";
+              string pname = "defproducer";
               while (count--) {
                  string prodname = pname+ext;
                  node.producers.push_back(prodname);
-                 producer_set.producers.push_back({prodname,pubkey});
+                 producer_set.schedule.push_back({prodname,pubkey});
                  ext += non_bios;
               }
            }
@@ -1011,7 +1009,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::mongo_db_plugin\n";
   }
   cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::account_history_api_plugin\n";
+      << "plugin = eosio::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1042,6 +1040,11 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
                   ( "host", instance.name )
              ) );
     log_config.loggers.front().appenders.push_back("net");
+    fc::logger_config p2p ("net_plugin_impl");
+    p2p.level=fc::log_level::debug;
+    p2p.appenders.push_back ("stderr");
+    p2p.appenders.push_back ("net");
+    log_config.loggers.emplace_back(p2p);
   }
 
   auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );
@@ -1055,7 +1058,7 @@ launcher_def::init_genesis () {
    bfs::ifstream src(genesis_path);
    if (!src.good()) {
       cout << "generating default genesis file " << genesis_path << endl;
-      eosio::chain::contracts::genesis_state_type default_genesis;
+      eosio::chain::genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
       src.open(genesis_path);
    }
@@ -1100,11 +1103,10 @@ launcher_def::write_setprods_file() {
     exit (9);
   }
    producer_set_def no_bios;
-   for (auto &p : producer_set.producers) {
+   for (auto &p : producer_set.schedule) {
       if (p.producer_name != "eosio")
-         no_bios.producers.push_back(p);
+         no_bios.schedule.push_back(p);
    }
-   no_bios.version = 1;
   auto str = fc::json::to_pretty_string( no_bios, fc::json::stringify_large_ints_and_doubles );
   psfile.write( str.c_str(), str.size() );
   psfile.close();
@@ -1142,7 +1144,7 @@ launcher_def::write_bios_boot () {
             }
          }
          else if (key == "cacmd") {
-            for (auto &p : producer_set.producers) {
+            for (auto &p : producer_set.schedule) {
                if (p.producer_name == "eosio") {
                   continue;
                }
@@ -1290,12 +1292,11 @@ void
 launcher_def::make_custom () {
   bfs::path source = shape;
   fc::json::from_file(source).as<testnet_def>(network);
-  producer_set.version = 1;
   for (auto &h : bindings) {
     for (auto &inst : h.instances) {
       tn_node_def *node = &network.nodes[inst.name];
       for (auto &p : node->producers) {
-         producer_set.producers.push_back({p,node->keys[0].get_public_key()});
+         producer_set.schedule.push_back({p,node->keys[0].get_public_key()});
       }
       node->instance = &inst;
       inst.node = node;
@@ -1871,7 +1872,7 @@ FC_REFLECT( prodkey_def,
             (producer_name)(block_signing_key))
 
 FC_REFLECT( producer_set_def,
-            (version)(producers))
+            (schedule))
 
 FC_REFLECT( host_def,
             (genesis)(ssh_identity)(ssh_args)(eosio_home)

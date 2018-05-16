@@ -132,6 +132,10 @@ namespace fc {
        */
      struct public_key_shim : public crypto::shim<public_key_data> {
         using crypto::shim<public_key_data>::shim;
+
+        bool valid()const {
+           return public_key(_data).valid();
+        }
      };
 
      struct signature_shim : public crypto::shim<compact_signature> {

@@ -1,6 +1,6 @@
 	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 
-	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
+	MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
@@ -62,7 +62,7 @@
 	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
 	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
 	python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
-	graphviz.x86_64 doxygen.x86_64 ncurses-devel.x86_64 swig.x86_64 )
+	graphviz.x86_64 doxygen.x86_64 )
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -92,7 +92,7 @@
 			case $yn in
 				[Yy]* ) 
 					printf "\n\n\tInstalling dependencies\n\n"
-					sudo yum -y install ${DEP}
+					sudo yum -y install "${DEP}"
 					if [ $? -ne 0 ]; then
 						printf "\n\tYUM dependency installation failed.\n"
 						printf "\n\tExiting now.\n"
@@ -327,6 +327,6 @@
 	function print_instructions()
 	{
 		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
-		printf "\tcd ${HOME}/eos/build; make test\n\n"
+		printf "\tcd ${BUILD_DIR}; make test\n\n"
 	return 0
 	}

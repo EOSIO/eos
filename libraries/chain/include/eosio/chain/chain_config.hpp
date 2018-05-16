@@ -17,56 +17,48 @@ namespace eosio { namespace chain {
  * values specified by the producers.
  */
 struct chain_config {
+   uint64_t   max_block_net_usage;                 ///< the maxiumum net usage in instructions for a block
+   uint32_t   target_block_net_usage_pct;          ///< the target percent (1% == 100, 100%= 10,000) of maximum net usage; exceeding this triggers congestion handling
+   uint32_t   max_transaction_net_usage;           ///< the maximum objectively measured net usage that the chain will allow regardless of account limits
+   uint32_t   base_per_transaction_net_usage;      ///< the base amount of net usage billed for a transaction to cover incidentals
+   uint32_t   net_usage_leeway;
+   uint32_t   context_free_discount_net_usage_num; ///< the numerator for the discount on net usage of context-free data
+   uint32_t   context_free_discount_net_usage_den; ///< the denominator for the discount on net usage of context-free data
 
-   uint32_t   base_per_transaction_net_usage; ///< the base amount of net usage billed for a transaction to cover incidentals
-   uint32_t   base_per_transaction_cpu_usage; ///< the base amount of cpu usage billed for a transaction to cover incidentals
-   uint32_t   base_per_action_cpu_usage;      ///< the base amount of cpu usage billed for an action to cover incidentals
-   uint32_t   base_setcode_cpu_usage;         ///< the base amount of cpu usage billed for a setcode action to cover compilation/etc
-   uint32_t   per_signature_cpu_usage;        ///< the cpu usage billed for every signature on a transaction
-   uint32_t   per_lock_net_usage;             ///< the net usage billed for every lock on a transaction to cover overhead in the block shards
+   uint32_t   max_block_cpu_usage;                 ///< the maxiumum billable cpu usage (in microseconds) for a block
+   uint32_t   target_block_cpu_usage_pct;          ///< the target percent (1% == 100, 100%= 10,000) of maximum cpu usage; exceeding this triggers congestion handling
+   uint32_t   max_transaction_cpu_usage;           ///< the maximum billable cpu usage (in microseconds) that the chain will allow regardless of account limits
+   uint32_t   min_transaction_cpu_usage;           ///< the minimum billable cpu usage (in microseconds) that the chain requires
 
-   uint64_t   context_free_discount_cpu_usage_num;  ///< the numerator for the discount on cpu usage for CFA's
-   uint64_t   context_free_discount_cpu_usage_den;  ///< the denominator for the discount on cpu usage for CFA's
-
-   uint32_t   max_transaction_cpu_usage;      ///< the maximum objectively measured cpu usage that the chain will allow regardless of account limits
-   uint32_t   max_transaction_net_usage;      ///< the maximum objectively measured net usage that the chain will allow regardless of account limits
-
-   uint64_t   max_block_cpu_usage;            ///< the maxiumum cpu usage in instructions for a block
-   uint32_t   target_block_cpu_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum cpu usage; exceeding this triggers congestion handling
-   uint64_t   max_block_net_usage;            ///< the maxiumum net usage in instructions for a block
-   uint32_t   target_block_net_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum net usage; exceeding this triggers congestion handling
-
-   uint32_t   max_transaction_lifetime;
-   uint32_t   max_transaction_exec_time;
-   uint16_t   max_authority_depth;
-   uint16_t   max_inline_depth;
-   uint32_t   max_inline_action_size;
-   uint32_t   max_generated_transaction_count;
-   uint32_t   max_transaction_delay;
-
-   static chain_config get_median_values( vector<chain_config> votes );
+   uint32_t   max_transaction_lifetime;            ///< the maximum number of seconds that an input transaction's expiration can be ahead of the time of the block in which it is first included
+   uint32_t   deferred_trx_expiration_window;      ///< the number of seconds after the time a deferred transaction can first execute until it expires
+   uint32_t   max_transaction_delay;               ///< the maximum number of seconds that can be imposed as a delay requirement by authorization checks
+   uint32_t   max_inline_action_size;              ///< maximum allowed size (in bytes) of an inline action
+   uint16_t   max_inline_action_depth;             ///< recursion depth limit on sending inline actions
+   uint16_t   max_authority_depth;                 ///< recursion depth limit for checking if an authority is satisfied
+   uint32_t   max_generated_transaction_count;     ///< the number of generated transactions per action (TODO: implement?)
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config& c ) {
-      return out << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
-                 << "Base Per-Transaction CPU Usage: " << c.base_per_transaction_cpu_usage << ", "
-                 << "Base Per-Action CPU Usage: " << c.base_per_action_cpu_usage << ", "
-                 << "Base Setcode CPU Usage: " << c.base_setcode_cpu_usage << ", "
-                 << "Per-Signature CPU Usage: " << c.per_signature_cpu_usage << ", "
-                 << "Per-Lock NET Usage: " << c.per_lock_net_usage << ", "
-                 << "Context-Free Action CPU Usage Discount: " << (double)c.context_free_discount_cpu_usage_num * 100.0 / (double)c.context_free_discount_cpu_usage_den << "% , "
-                 << "Max Transaction CPU Usage: " << c.max_transaction_cpu_usage << ", "
+      return out << "Max Block Net Usage: " << c.max_block_net_usage << ", "
+                 << "Target Block Net Usage Percent: " << ((double)c.target_block_net_usage_pct / (double)config::percent_1) << "%, "
                  << "Max Transaction Net Usage: " << c.max_transaction_net_usage << ", "
+                 << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
+                 << "Net Usage Leeway: " << c.net_usage_leeway << ", "
+                 << "Context-Free Data Net Usage Discount: " << (double)c.context_free_discount_net_usage_num * 100.0 / (double)c.context_free_discount_net_usage_den << "% , "
+
                  << "Max Block CPU Usage: " << c.max_block_cpu_usage << ", "
-                 << "Target Block CPU Usage Percent: " << c.target_block_cpu_usage_pct << ", "
-                 << "Max Block NET Usage: " << c.max_block_net_usage << ", "
-                 << "Target Block NET Usage Percent: " << ((double)c.target_block_net_usage_pct / (double)config::percent_1) << "%, "
-                 << "Max Transaction Lifetime: " << ((double)c.max_transaction_lifetime / (double)config::percent_1) << "%, "
-                 << "Max Authority Depth: " << c.max_authority_depth << ", "
-                 << "Max Inline Depth: " << c.max_inline_depth << ", "
+                 << "Target Block CPU Usage Percent: " << ((double)c.target_block_cpu_usage_pct / (double)config::percent_1) << "%, "
+                 << "Max Transaction CPU Usage: " << c.max_transaction_cpu_usage << ", "
+                 << "Min Transaction CPU Usage: " << c.min_transaction_cpu_usage << ", "
+
+                 << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
+                 << "Deferred Transaction Expiration Window: " << c.deferred_trx_expiration_window << ", "
+                 << "Max Transaction Delay: " << c.max_transaction_delay << ", "
                  << "Max Inline Action Size: " << c.max_inline_action_size << ", "
-                 << "Max Generated Transaction Count: " << c.max_generated_transaction_count << "\n"
-                 << "Max Transaction Delay: " << c.max_transaction_delay << "\n";
+                 << "Max Inline Action Depth: " << c.max_inline_action_depth << ", "
+                 << "Max Authority Depth: " << c.max_authority_depth << ", "
+                 << "Max Generated Transaction Count: " << c.max_generated_transaction_count << "\n";
    }
 };
 
@@ -76,16 +68,15 @@ inline bool operator!=(const chain_config& a, const chain_config& b) { return !(
 } } // namespace eosio::chain
 
 FC_REFLECT(eosio::chain::chain_config,
-           (base_per_transaction_net_usage)
-           (base_per_transaction_cpu_usage)
-           (base_per_action_cpu_usage)
-           (base_setcode_cpu_usage)
-           (per_signature_cpu_usage)(per_lock_net_usage)
-           (context_free_discount_cpu_usage_num)(context_free_discount_cpu_usage_den)
-           (max_transaction_cpu_usage)(max_transaction_net_usage)
-           (max_block_cpu_usage)(target_block_cpu_usage_pct)
            (max_block_net_usage)(target_block_net_usage_pct)
-           (max_transaction_lifetime)(max_transaction_exec_time)(max_authority_depth)
-           (max_inline_depth)(max_inline_action_size)(max_generated_transaction_count)
-           (max_transaction_delay)
+           (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)
+           (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
+
+           (max_block_cpu_usage)(target_block_cpu_usage_pct)
+           (max_transaction_cpu_usage)(min_transaction_cpu_usage)
+
+           (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
+           (max_inline_action_size)(max_inline_action_depth)
+           (max_authority_depth)(max_generated_transaction_count)
+
 )

@@ -3,7 +3,7 @@
 ## ACTION NAME: hi
 
 ### Parameters
-Input paramters:
+Input parameters:
 
 * `user` (string to include in the output)
 

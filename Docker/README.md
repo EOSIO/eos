@@ -9,7 +9,8 @@ Simple and fast setup of EOS.IO on Docker is also available.
 
 ## Docker Requirement
 
-- At least 8GB RAM (Docker -> Preferences -> Advanced -> Memory -> 8GB or above)
+- At least 7GB RAM (Docker -> Preferences -> Advanced -> Memory -> 7GB or above)
+- If the build below fails, make sure you've adjusted Docker Memory settings and try again.
 
 ## Build eos image
 
@@ -17,6 +18,12 @@ Simple and fast setup of EOS.IO on Docker is also available.
 git clone https://github.com/EOSIO/eos.git --recursive
 cd eos/Docker
 docker build . -t eosio/eos
+```
+
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the dawn-v4.0.0 tag, you could do the following:
+
+```bash
+docker build -t eosio/eos:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
 ```
 
 ## Start nodeos docker container only
@@ -53,14 +60,14 @@ docker volume create --name=keosd-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when runing cleos is running inside the keosd container as described in "Execute cleos commands" section.
+After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when running cleos is running inside the keosd container as described in "Execute cleos commands" section.
 
 ### Execute cleos commands
 
 You can run the `cleos` commands via a bash alias.
 
 ```bash
-alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -H nodeosd'
+alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888'
 cleos get info
 cleos get account inita
 ```
@@ -76,6 +83,31 @@ If you don't need keosd afterwards, you can stop the keosd service using
 ```bash
 docker-compose stop keosd
 ```
+
+### Develop/Build custom contracts
+
+Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize eosio/builder. However, eosio/builder does not contain eosiocpp. As such, you will need to run eosio/builder interactively, and clone, build and install EOS. Once this is complete, you can then utilize eosiocpp to compile your contracts.
+
+You can also create a Dockerfile that will do this for you.
+
+```
+FROM eosio/builder
+
+RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
+    && cd eos \
+    && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
+       -DCMAKE_C_COMPILER=clang -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true \
+    && cmake --build /tmp/build --target install && rm -rf /tmp/build /eos
+```
+
+Then, from the same directory as the Dockerfile, simply run:
+
+```bash
+docker build -t eosio/contracts .
+docker run -it -v /path/to/custom/contracts:/contracts eosio/contracts /bin/bash
+```
+
+At this time you should be at a bash shell. You can navigate into the /contracts directory and use eosiocpp to compile your custom contracts.
 
 ### Change default configuration
 
@@ -110,7 +142,7 @@ docker volume rm keosd-data-volume
 ### Docker Hub
 
 Docker Hub image available from [docker hub](https://hub.docker.com/r/eosio/eos/).
-Replace the `docker-compose.yaml` file with the content below
+Create a new `docker-compose.yaml` file with the content below
 
 ```bash
 version: "3"
@@ -143,15 +175,15 @@ volumes:
 
 ```
 
-*NOTE:* the defalut version is the latest, you can change it to what you want
+*NOTE:* the default version is the latest, you can change it to what you want
 
-run `docker pull eosio/eos:latest` 
+run `docker pull eosio/eos:latest`
 
 run `docker-compose up`
 
-### Dawn3.0 Testnet
+### Dawn 4.0 Testnet
 
-We can easliy set up a dawn3.0 local testnet using docker images. Just run the following commands:
+We can easily set up a Dawn 4.0 local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 
@@ -164,13 +196,13 @@ docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
 docker volume create --name=mongo-data-volume
 # start containers
-docker-compose -f docker-compose-dawn3.0.yaml up -d
+docker-compose -f docker-compose-dawn4.0.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs nodeosd
 # stop containers
-docker-compose -f docker-compose-dawn3.0.yaml down
+docker-compose -f docker-compose-dawn4.0.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.

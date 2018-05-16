@@ -14,7 +14,7 @@ namespace eosio { namespace chain {
    namespace detail {
       class block_log_impl {
          public:
-            optional<signed_block>   head;
+            signed_block_ptr         head;
             block_id_type            head_id;
             std::fstream             block_stream;
             std::fstream             index_stream;
@@ -120,6 +120,7 @@ namespace eosio { namespace chain {
          ilog("Log is nonempty");
          my->head = read_head();
          my->head_id = my->head->id();
+         edump((my->head->block_num()));
 
          if (index_size) {
             my->check_block_read();
@@ -154,22 +155,22 @@ namespace eosio { namespace chain {
       }
    }
 
-   uint64_t block_log::append(const signed_block& b) {
+   uint64_t block_log::append(const signed_block_ptr& b) {
       try {
          my->check_block_write();
          my->check_index_write();
 
          uint64_t pos = my->block_stream.tellp();
-         FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b.block_num() - 1),
+         FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - 1),
                    "Append to index file occuring at wrong position.",
                    ("position", (uint64_t) my->index_stream.tellp())
-                   ("expected", (b.block_num() - 1) * sizeof(uint64_t)));
-         auto data = fc::raw::pack(b);
+                   ("expected", (b->block_num() - 1) * sizeof(uint64_t)));
+         auto data = fc::raw::pack(*b);
          my->block_stream.write(data.data(), data.size());
          my->block_stream.write((char*)&pos, sizeof(pos));
          my->index_stream.write((char*)&pos, sizeof(pos));
          my->head = b;
-         my->head_id = b.id();
+         my->head_id = b->id();
 
          return pos;
       }
@@ -181,19 +182,20 @@ namespace eosio { namespace chain {
       my->index_stream.flush();
    }
 
-   std::pair<signed_block, uint64_t> block_log::read_block(uint64_t pos)const {
+   std::pair<signed_block_ptr, uint64_t> block_log::read_block(uint64_t pos)const {
       my->check_block_read();
 
       my->block_stream.seekg(pos);
-      std::pair<signed_block,uint64_t> result;
-      fc::raw::unpack(my->block_stream, result.first);
+      std::pair<signed_block_ptr,uint64_t> result;
+      result.first = std::make_shared<signed_block>();
+      fc::raw::unpack(my->block_stream, *result.first);
       result.second = uint64_t(my->block_stream.tellg()) + 8;
       return result;
    }
 
-   optional<signed_block> block_log::read_block_by_num(uint32_t block_num)const {
+   signed_block_ptr block_log::read_block_by_num(uint32_t block_num)const {
       try {
-         optional<signed_block> b;
+         signed_block_ptr b;
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
             b = read_block(pos).first;
@@ -207,7 +209,7 @@ namespace eosio { namespace chain {
    uint64_t block_log::get_block_pos(uint32_t block_num) const {
       my->check_index_read();
 
-      if (!(my->head.valid() && block_num <= block_header::num_from_id(my->head_id) && block_num > 0))
+      if (!(my->head && block_num <= block_header::num_from_id(my->head_id) && block_num > 0))
          return npos;
       my->index_stream.seekg(sizeof(uint64_t) * (block_num - 1));
       uint64_t pos;
@@ -215,7 +217,7 @@ namespace eosio { namespace chain {
       return pos;
    }
 
-   optional<signed_block> block_log::read_head()const {
+   signed_block_ptr block_log::read_head()const {
       my->check_block_read();
 
       uint64_t pos;
@@ -230,7 +232,7 @@ namespace eosio { namespace chain {
       return read_block(pos).first;
    }
 
-   const optional<signed_block>& block_log::head()const {
+   const signed_block_ptr& block_log::head()const {
       return my->head;
    }
 
@@ -251,10 +253,11 @@ namespace eosio { namespace chain {
 
       my->block_stream.seekg(pos);
 
-      while (pos < end_pos) {
+      while( pos < end_pos ) {
          fc::raw::unpack(my->block_stream, tmp);
          my->block_stream.read((char*)&pos, sizeof(pos));
          my->index_stream.write((char*)&pos, sizeof(pos));
       }
-   }
-} }
+   } // construct_index
+
+} } /// eosio::chain

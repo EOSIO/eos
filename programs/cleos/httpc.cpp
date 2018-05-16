@@ -77,39 +77,44 @@ namespace eosio { namespace client { namespace http {
       return re.str();
    }
 
-   fc::variant call( const std::string& server_url,
-                     const std::string& path,
-                     const fc::variant& postdata ) {
+   parsed_url parse_url( const string& server_url ) {
+      parsed_url res;
+
+      //via rfc3986 and modified a bit to suck out the port number
+      //Sadly this doesn't work for ipv6 addresses
+      std::regex rgx(R"xx(^(([^:/?#]+):)?(//([^:/?#]*)(:(\d+))?)?([^?#]*)(\?([^#]*))?(#(.*))?)xx");
+      std::smatch match;
+      if(std::regex_search(server_url.begin(), server_url.end(), match, rgx)) {
+         res.scheme = match[2];
+         res.server = match[4];
+         res.port = match[6];
+         res.path_prefix = match[7];
+      }
+      if(res.scheme != "http" && res.scheme != "https")
+         FC_THROW("Unrecognized URL scheme (${s}) in URL \"${u}\"", ("s", res.scheme)("u", server_url));
+      if(res.server.empty())
+         FC_THROW("No server parsed from URL \"${u}\"", ("u", server_url));
+      if(res.port.empty())
+         res.port = res.scheme == "http" ? "8888" : "443";
+      boost::trim_right_if(res.path_prefix, boost::is_any_of("/"));
+      return res;
+   }
+
+   fc::variant do_http_call( const std::string& server_url,
+                             const std::string& path,
+                             const fc::variant& postdata ) {
    std::string postjson;
    if( !postdata.is_null() )
       postjson = fc::json::to_string( postdata );
 
    boost::asio::io_service io_service;
 
-   string scheme, server, port, path_prefix;
-
-   //via rfc3986 and modified a bit to suck out the port number
-   //Sadly this doesn't work for ipv6 addresses
-   std::regex rgx(R"xx(^(([^:/?#]+):)?(//([^:/?#]*)(:(\d+))?)?([^?#]*)(\?([^#]*))?(#(.*))?)xx");
-   std::smatch match;
-   if(std::regex_search(server_url.begin(), server_url.end(), match, rgx)) {
-      scheme = match[2];
-      server = match[4];
-      port = match[6];
-      path_prefix = match[7];
-   }
-   if(scheme != "http" && scheme != "https")
-      FC_THROW("Unrecognized URL scheme (${s}) in URL \"${u}\"", ("s", scheme)("u", server_url));
-   if(server.empty())
-      FC_THROW("No server parsed from URL \"${u}\"", ("u", server_url));
-   if(port.empty())
-      port = scheme == "http" ? "8888" : "443";
-   boost::trim_right_if(path_prefix, boost::is_any_of("/"));
+   auto url = parse_url( server_url );
 
    boost::asio::streambuf request;
    std::ostream request_stream(&request);
-   request_stream << "POST " << path_prefix + path << " HTTP/1.0\r\n";
-   request_stream << "Host: " << server << "\r\n";
+   request_stream << "POST " << url.path_prefix + path << " HTTP/1.0\r\n";
+   request_stream << "Host: " << url.server << "\r\n";
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
    request_stream << "Connection: close\r\n\r\n";
@@ -118,9 +123,9 @@ namespace eosio { namespace client { namespace http {
    unsigned int status_code;
    std::string re;
 
-   if(scheme == "http") {
+   if(url.scheme == "http") {
       tcp::socket socket(io_service);
-      do_connect(socket, server, port);
+      do_connect(socket, url.server, url.port);
       re = do_txrx(socket, request, status_code);
    }
    else { //https
@@ -137,13 +142,13 @@ namespace eosio { namespace client { namespace http {
       boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(io_service, ssl_context);
       socket.set_verify_mode(boost::asio::ssl::verify_peer);
 
-      do_connect(socket.next_layer(), server, port);
+      do_connect(socket.next_layer(), url.server, url.port);
       socket.handshake(boost::asio::ssl::stream_base::client);
       re = do_txrx(socket, request, status_code);
       //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
       try {socket.shutdown();} catch(...) {}
    }
-   
+
    const auto response_result = fc::json::from_string(re);
    if( status_code == 200 || status_code == 201 || status_code == 202 ) {
       return response_result;
@@ -154,7 +159,7 @@ namespace eosio { namespace client { namespace http {
       } else if (path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
          throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
       } else if (path.compare(0, account_history_func_base.size(), account_history_func_base) == 0) {
-         throw chain::missing_account_history_api_plugin_exception(FC_LOG_MESSAGE(error, "Account History API plugin is not enabled"));
+         throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
       } else if (path.compare(0, net_func_base.size(), net_func_base) == 0) {
          throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
       }
