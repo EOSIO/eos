@@ -8,7 +8,7 @@
 #include <iostream>
 
 
-namespace eosio {
+namespace enumivo {
 using namespace std;
 
 size_t mb_size(boost::asio::mutable_buffer& mb) {
@@ -256,5 +256,5 @@ BOOST_AUTO_TEST_CASE(message_buffer_write_ptr_to_end)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace eosio
+} // namespace enumivo
 

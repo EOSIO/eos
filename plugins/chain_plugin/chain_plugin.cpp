@@ -24,12 +24,12 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-namespace eosio {
+namespace enumivo {
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::chain::config;
-using namespace eosio::chain::plugin_interface;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::chain::config;
+using namespace enumivo::chain::plugin_interface;
 using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
 
@@ -100,7 +100,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
+         ("wasm-runtime", bpo::value<enumivo::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Maximum size MB of database shared memory file")
 
 #warning TODO: rate limiting
@@ -301,7 +301,7 @@ const string read_only::KEYi64 = "i64";
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
    const auto& rm = db.get_resource_limits_manager();
    return {
-      eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
+      enumivo::utilities::common::itoh(static_cast<uint32_t>(app().version())),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
@@ -378,7 +378,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    const abi_def abi = get_abi( db, p.code );
    auto table_type = get_table_type( abi, "stat" );
 
-   uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
+   uint64_t scope = ( enumivo::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
    walk_table<key_value_index, by_scope_primary>(p.code, scope, N(stat), [&](const key_value_object& obj){
       ENU_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
@@ -535,8 +535,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       ++perm;
    }
 
-   const auto& code_account = db.db().get<account_object,by_name>( N(eosio) );
-   //const abi_def abi = get_abi( db, N(eosio) );
+   const auto& code_account = db.db().get<account_object,by_name>( N(enumivo) );
+   //const abi_def abi = get_abi( db, N(enumivo) );
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );
@@ -626,4 +626,4 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 
 } // namespace chain_apis
-} // namespace eosio
+} // namespace enumivo

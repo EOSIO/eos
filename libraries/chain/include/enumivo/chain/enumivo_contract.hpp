@@ -7,7 +7,7 @@
 #include <enumivo/chain/types.hpp>
 #include <enumivo/chain/contract_types.hpp>
 
-namespace eosio { namespace chain { 
+namespace enumivo { namespace chain { 
 
    class apply_context;
 
@@ -35,4 +35,4 @@ namespace eosio { namespace chain {
    
    abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi);
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain

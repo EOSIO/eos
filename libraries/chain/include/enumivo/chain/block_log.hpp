@@ -6,7 +6,7 @@
 #include <fc/filesystem.hpp>
 #include <enumivo/chain/block.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    namespace detail { class block_log_impl; }
 

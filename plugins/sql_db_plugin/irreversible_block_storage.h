@@ -12,7 +12,7 @@
 
 #include "database.h"
 
-namespace eosio {
+namespace enumivo {
 
 class irreversible_block_storage : public consumer_core<chain::block_state_ptr>
 {

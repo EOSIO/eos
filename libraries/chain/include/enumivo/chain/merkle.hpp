@@ -1,7 +1,7 @@
 #pragma once
 #include <enumivo/chain/types.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    digest_type make_canonical_left(const digest_type& val);
    digest_type make_canonical_right(const digest_type& val);
@@ -19,4 +19,4 @@ namespace eosio { namespace chain {
     */
    digest_type merkle( vector<digest_type> ids );
 
-} } /// eosio::chain
+} } /// enumivo::chain

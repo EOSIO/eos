@@ -7,7 +7,7 @@
 #include <enumivo/chain/types.hpp>
 #include <enumivo/chain/config.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 /**
  * @brief Producer-voted blockchain configuration parameters
@@ -65,9 +65,9 @@ struct chain_config {
        bool operator==(const chain_config& a, const chain_config& b);
 inline bool operator!=(const chain_config& a, const chain_config& b) { return !(a == b); }
 
-} } // namespace eosio::chain
+} } // namespace enumivo::chain
 
-FC_REFLECT(eosio::chain::chain_config,
+FC_REFLECT(enumivo::chain::chain_config,
            (max_block_net_usage)(target_block_net_usage_pct)
            (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)
            (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)

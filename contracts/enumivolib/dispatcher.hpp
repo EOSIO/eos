@@ -6,8 +6,8 @@
 #include <boost/fusion/include/std_tuple.hpp>
 
 #include <boost/mp11/tuple.hpp>
-#define N(X) ::eosio::string_to_name(#X)
-namespace eosio {
+#define N(X) ::enumivo::string_to_name(#X)
+namespace enumivo {
    template<typename Contract, typename FirstAction>
    bool dispatch( uint64_t code, uint64_t act ) {
       if( code == FirstAction::get_account() && FirstAction::get_name() == act ) {
@@ -34,7 +34,7 @@ namespace eosio {
          Contract().on( unpack_action_data<FirstAction>() );
          return true;
       }
-      return eosio::dispatch<Contract,SecondAction,Actions...>( code, act );
+      return enumivo::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
 
    template<typename T, typename Q, typename... Args>
@@ -64,8 +64,8 @@ namespace eosio {
    }
 
 #define ENUMIVO_API_CALL( r, OP, elem ) \
-   case ::eosio::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
-      eosio::execute_action( &thiscontract, &OP::elem ); \
+   case ::enumivo::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
+      enumivo::execute_action( &thiscontract, &OP::elem ); \
       break;
 
 #define ENUMIVO_API( TYPE,  MEMBERS ) \
@@ -76,8 +76,8 @@ extern "C" { \
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
       auto self = receiver; \
       if( action == N(onerror)) { \
-         /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ \
-         eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
+         /* onerror is only valid if it is for the "enumivo" code account and authorized by "enumivo"'s "active permission */ \
+         eosio_assert(code == N(enumivo), "onerror action's are only valid from the \"enumivo\" system account"); \
       } \
       if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \

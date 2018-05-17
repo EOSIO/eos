@@ -19,7 +19,7 @@
 #include "IR/Operators.h"
 #include "IR/Module.h"
 
-namespace eosio { namespace chain { namespace wasm_ops {
+namespace enumivo { namespace chain { namespace wasm_ops {
 
 class instruction_stream {
    public:
@@ -135,9 +135,9 @@ template <typename Field>
 struct field_specific_params {
    static constexpr int skip_ahead = sizeof(uint16_t) + sizeof(Field);
    static auto unpack( char* opcode, Field& f ) { f = *reinterpret_cast<Field*>(opcode); }
-   static void pack(instruction_stream* stream, Field& f) { return eosio::chain::wasm_ops::pack(stream, f); }
+   static void pack(instruction_stream* stream, Field& f) { return enumivo::chain::wasm_ops::pack(stream, f); }
    static auto to_string(Field& f) { return std::string(" ")+
-                                       eosio::chain::wasm_ops::to_string(f); }
+                                       enumivo::chain::wasm_ops::to_string(f); }
 };
 template <>
 struct field_specific_params<voidtype> {
@@ -702,9 +702,9 @@ private:
 template <class Op_Types>
 const std::vector<instr*>* ENUMIVO_OperatorDecoderStream<Op_Types>::_cached_ops;
 
-}}} // namespace eosio, chain, wasm_ops
+}}} // namespace enumivo, chain, wasm_ops
 
-FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::block< T >, (code)(rt) )
-FC_REFLECT( eosio::chain::wasm_ops::memarg, (a)(o) )
-FC_REFLECT( eosio::chain::wasm_ops::blocktype, (result) )
-FC_REFLECT( eosio::chain::wasm_ops::memoryoptype, (end) )
+FC_REFLECT_TEMPLATE( (typename T), enumivo::chain::wasm_ops::block< T >, (code)(rt) )
+FC_REFLECT( enumivo::chain::wasm_ops::memarg, (a)(o) )
+FC_REFLECT( enumivo::chain::wasm_ops::blocktype, (result) )
+FC_REFLECT( enumivo::chain::wasm_ops::memoryoptype, (end) )

@@ -34,8 +34,8 @@ will explain how to use some of the APIs to get information about the blockchain
 
 Before you can query `eosd` you must first enable the necessary API plugin(s). Depending on which API you want to enable, add the following line to your `eosd`'s `config.ini`:
 ```
-plugin = eosio::chain_api_plugin // Enable Chain API
-plugin = eosio::wallet_api_plugin // Enable Wallet API
+plugin = enumivo::chain_api_plugin // Enable Chain API
+plugin = enumivo::wallet_api_plugin // Enable Wallet API
 ```
 Alternatively, for Wallet API, you can also have the wallet functionality separate from `eosd`, by running `eos-walletd` separately.
 

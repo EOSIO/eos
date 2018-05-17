@@ -2,7 +2,7 @@
 
 #include <fc/log/logger.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 accounts_table::accounts_table(std::shared_ptr<soci::session> session):
     m_session(session)

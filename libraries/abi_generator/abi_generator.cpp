@@ -1,6 +1,6 @@
 #include <enumivo/abi_generator/abi_generator.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 void abi_generator::set_target_contract(const string& contract, const vector<string>& actions) {
   target_contract = contract;

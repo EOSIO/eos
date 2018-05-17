@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# eosio-tn_up is a helper script used to start a node that was previously stopped.
+# enumivo-tn_up is a helper script used to start a node that was previously stopped.
 # It is not intended to be run stand-alone; it is a companion to the
-# eosio-tn_bounce.sh and eosio-tn_roll.sh scripts.
+# enumivo-tn_bounce.sh and enumivo-tn_roll.sh scripts.
 
 connected="0"
 
@@ -33,8 +33,8 @@ rm $datadir/stderr.txt
 ln -s $log $datadir/stderr.txt
 
 relaunch() {
-    echo "$rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$ENUMIVO_NODE > $datadir/stdout.txt  2>> $datadir/$log "
-    nohup $rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$ENUMIVO_NODE > $datadir/stdout.txt  2>> $datadir/$log &
+    echo "$rundir/$prog $* --data-dir $datadir --config-dir etc/enumivo/node_$ENUMIVO_NODE > $datadir/stdout.txt  2>> $datadir/$log "
+    nohup $rundir/$prog $* --data-dir $datadir --config-dir etc/enumivo/node_$ENUMIVO_NODE > $datadir/stdout.txt  2>> $datadir/$log &
     pid=$!
     echo pid = $pid
     echo $pid > $datadir/$prog.pid

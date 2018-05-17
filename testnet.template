@@ -12,7 +12,7 @@ if [ -z "$biosport" ]; then
     biosport=9776
 fi
 
-wddir=eosio-ignition-wd
+wddir=enumivo-ignition-wd
 wdaddr=localhost:8899
 wdurl=http://$wdaddr
 # Manual deployers, add a line below this block that looks like:
@@ -56,7 +56,7 @@ wcmd () {
 }
 
 cacmd () {
-    ecmd create account eosio $*
+    ecmd create account enumivo $*
 }
 
 sleep 2
@@ -85,25 +85,25 @@ wcmd create -n ignition
 ###INSERT cacmd
 
 
-ecmd set contract eosio contracts/enumivo.bios contracts/enumivo.bios/enumivo.bios.wast contracts/enumivo.bios/enumivo.bios.abi
+ecmd set contract enumivo contracts/enumivo.bios contracts/enumivo.bios/enumivo.bios.wast contracts/enumivo.bios/enumivo.bios.abi
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
 echo ===== Start: $step ============ >> $logfile
-echo executing: enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active | tee -a $logfile
+echo executing: enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo setprods setprods.json -p enumivo@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/enucli/enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active >> $logfile 2>&1
+programs/enucli/enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo setprods setprods.json -p enumivo@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio contracts/enumivo.system contracts/enumivo.system/enumivo.system.wast contracts/enumivo.system/enumivo.system.abi
+ecmd set contract enumivo contracts/enumivo.system contracts/enumivo.system/enumivo.system.wast contracts/enumivo.system/enumivo.system.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
+echo executing: enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo issue '{"to":"enumivo","quantity":"1000000000.0000 EOS","memo":"init"}' -p enumivo@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/enucli/enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active >> $logfile 2>&1
+programs/enucli/enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo issue '{"to":"enumivo","quantity":"1000000000.0000 EOS","memo":"init"}' -p enumivo@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-for a in {a..u}; do ecmd transfer eosio init$a 1000000.0000 "\"fund_producer_init$a\""; done
+for a in {a..u}; do ecmd transfer enumivo init$a 1000000.0000 "\"fund_producer_init$a\""; done
 
 pkill -15 enuwallet

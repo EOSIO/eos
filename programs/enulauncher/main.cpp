@@ -505,7 +505,7 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  config_dir_base = "etc/eosio";
+  config_dir_base = "etc/enumivo";
   data_dir_base = "var/lib";
   next_node = 0;
   ++prod_nodes; // add one for the bios node
@@ -757,7 +757,7 @@ launcher_def::bind_nodes () {
          auto pubkey = kp.get_public_key();
          node.keys.emplace_back (move(kp));
          if (is_bios) {
-            string prodname = "eosio";
+            string prodname = "enumivo";
             node.producers.push_back(prodname);
             producer_set.schedule.push_back({prodname,pubkey});
          }
@@ -1003,13 +1003,13 @@ launcher_def::write_config_file (tn_node_def &node) {
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }
-    cfg << "plugin = eosio::producer_plugin\n";
+    cfg << "plugin = enumivo::producer_plugin\n";
   }
   if( instance.has_db ) {
-    cfg << "plugin = eosio::mongo_db_plugin\n";
+    cfg << "plugin = enumivo::mongo_db_plugin\n";
   }
-  cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::history_api_plugin\n";
+  cfg << "plugin = enumivo::chain_api_plugin\n"
+      << "plugin = enumivo::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1058,7 +1058,7 @@ launcher_def::init_genesis () {
    bfs::ifstream src(genesis_path);
    if (!src.good()) {
       cout << "generating default genesis file " << genesis_path << endl;
-      eosio::chain::genesis_state default_genesis;
+      enumivo::chain::genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
       src.open(genesis_path);
    }
@@ -1104,7 +1104,7 @@ launcher_def::write_setprods_file() {
   }
    producer_set_def no_bios;
    for (auto &p : producer_set.schedule) {
-      if (p.producer_name != "eosio")
+      if (p.producer_name != "enumivo")
          no_bios.schedule.push_back(p);
    }
   auto str = fc::json::to_pretty_string( no_bios, fc::json::stringify_large_ints_and_doubles );
@@ -1145,7 +1145,7 @@ launcher_def::write_bios_boot () {
          }
          else if (key == "cacmd") {
             for (auto &p : producer_set.schedule) {
-               if (p.producer_name == "eosio") {
+               if (p.producer_name == "enumivo") {
                   continue;
                }
                brb << "cacmd " << p.producer_name
@@ -1405,7 +1405,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     if (instance.name == "bios") {
        // Strip the mongo-related options out of the bios node so
        // the plugins don't conflict between 00 and bios.
-       regex r("--plugin +eosio::mongo_db_plugin");
+       regex r("--plugin +enumivo::mongo_db_plugin");
        string args = std::regex_replace (eosd_extra_args,r,"");
        regex r2("--mongodb-uri +[^ ]+");
        args = std::regex_replace (args,r2,"");
@@ -1782,7 +1782,7 @@ int main (int argc, char *argv[]) {
       return 0;
     }
     if (vmap.count("version") > 0) {
-      cout << eosio::launcher::config::version_str << endl;
+      cout << enumivo::launcher::config::version_str << endl;
       return 0;
     }
 

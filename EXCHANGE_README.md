@@ -9,12 +9,12 @@ native token conforms to the standard.
 Configuring Nodeos
 ------------------
 This tutorial uses the `enucli` commandline tool to query a local `enunode` server
-which should be connected to an eosio blockchain. `enunode` will need to be configured
+which should be connected to an enumivo blockchain. `enunode` will need to be configured
 with the following plugins:
 
-  1. eosio::wallet_api_plugin 
-  2. eosio::history_api_plugin
-  3. eosio::chain_api_plugin
+  1. enumivo::wallet_api_plugin 
+  2. enumivo::history_api_plugin
+  3. enumivo::chain_api_plugin
 
 By default the history plugin will log the history of all accounts, but this is not
 the recomended configuration as it will consume tens of gigabytes of RAM in the
@@ -45,7 +45,7 @@ Accepting Deposits
 When designing this tutorial we assume that an exchange will poll `enunode` for incoming
 transactions and will want to know when a transfer is considered irreversible or final. 
 
-With eosio based chains, finality of a transaction occurs once 2/3+1 of block produers have
+With enumivo based chains, finality of a transaction occurs once 2/3+1 of block produers have
 either directly or indirectly confirmed the block. This could take from less than a second to
 a couple of minutes, but either way enunode will keep you posted on the status.
 
@@ -68,7 +68,7 @@ warning: transaction executed locally, but may not be confirmed by the network y
 ```
 
 This output indicates that the action "enumivo.coin::transfer" was delivered to 3 accounts/contracts, (enumivo.coin, scott, and exchange). 
-The eosio token standard requires that both the sender and receiver account/contract be notified of all transfer actions so those
+The enumivo token standard requires that both the sender and receiver account/contract be notified of all transfer actions so those
 accounts can run custom logic.  At this time neither `scott` nor `exchange` has any contact set, but the transaction log
 still notes that they were notified.  
 
@@ -253,7 +253,7 @@ Now that we have received 3 deposits we should see that the exchange has a balan
 
 (note, while generating this tutorial scott deposited another 1.0000 EOS (seq 3) for total exchange balance of 4.0000 EOS.)
 
-When a user requests a withdraw from your exchange they will need to provide you with their eosio account name and
+When a user requests a withdraw from your exchange they will need to provide you with their enumivo account name and
 the amount to be withdrawn.  You can then run the enucli command which will interact with the "unlocked" wallet 
 running on `enunode` which should only enable localhost connections. More advanced usage would have a separate
 key-server (`keos`), but that will be covered later.

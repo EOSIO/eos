@@ -3,7 +3,7 @@
 #include <enumivolib/asset.hpp>
 #include <enumivolib/multi_index.hpp>
 
-namespace eosio {
+namespace enumivo {
    using std::string;
    using std::array;
 
@@ -79,8 +79,8 @@ namespace eosio {
             ENULIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(enforce_whitelist) )
          };
 
-         typedef eosio::multi_index<N(accounts), account> accounts;
-         typedef eosio::multi_index<N(stat), currency_stats> stats;
+         typedef enumivo::multi_index<N(accounts), account> accounts;
+         typedef enumivo::multi_index<N(stat), currency_stats> stats;
 
 
          asset get_balance( account_name owner, symbol_name symbol )const {

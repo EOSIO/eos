@@ -7,7 +7,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <fc/reflect/variant.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 typedef boost::multiprecision::int128_t  int128_t;
 
 uint8_t asset::decimals()const {
@@ -52,7 +52,7 @@ asset asset::from_string(const string& from)
       // Parse symbol
       string precision_digit_str;
       if (dot_pos != string::npos) {
-         precision_digit_str = eosio::chain::to_string(amount_str.size() - dot_pos - 1);
+         precision_digit_str = enumivo::chain::to_string(amount_str.size() - dot_pos - 1);
       } else {
          precision_digit_str = "0";
       }
@@ -79,4 +79,4 @@ asset asset::from_string(const string& from)
    FC_CAPTURE_LOG_AND_RETHROW( (from) )
 }
 
-} }  // eosio::types
+} }  // enumivo::types

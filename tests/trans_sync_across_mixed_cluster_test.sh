@@ -71,7 +71,7 @@ killAll()
 
 cleanup()
 {
-    rm -rf etc/eosio/node_*
+    rm -rf etc/enumivo/node_*
     rm -rf var/lib/node_*
 }
 
@@ -113,8 +113,8 @@ cleanup
 
 # stand up enunode cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
-echo Launcher options: --enunode \"--plugin eosio::wallet_api_plugin\" $launcherOpts
-programs/enulauncher/enulauncher --enunode "--plugin eosio::wallet_api_plugin" $launcherOpts
+echo Launcher options: --enunode \"--plugin enumivo::wallet_api_plugin\" $launcherOpts
+programs/enulauncher/enulauncher --enunode "--plugin enumivo::wallet_api_plugin" $launcherOpts
 sleep 7
 
 startPort=8888

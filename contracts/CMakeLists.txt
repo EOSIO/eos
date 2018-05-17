@@ -38,17 +38,17 @@ file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
 
 # Documented multiple output support is broken, so properly setting up the multiple
 # dependencies in the custom target is not possible.  (CMake 3.5)
-add_custom_command(OUTPUT share/eosio/skeleton/skeleton.cpp
-                   COMMAND ${CMAKE_COMMAND} -E make_directory ../share/eosio/skeleton
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/skeleton ../share/eosio/skeleton
+add_custom_command(OUTPUT share/enumivo/skeleton/skeleton.cpp
+                   COMMAND ${CMAKE_COMMAND} -E make_directory ../share/enumivo/skeleton
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/skeleton ../share/enumivo/skeleton
                    DEPENDS ${SKELETONS}
                    COMMENT Copying skeleton contract...
                    VERBATIM)
-add_custom_target(copy_skeleton_contract ALL DEPENDS share/eosio/skeleton/skeleton.cpp)
+add_custom_target(copy_skeleton_contract ALL DEPENDS share/enumivo/skeleton/skeleton.cpp)
 
 install(DIRECTORY enumivolib DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 install(DIRECTORY enumivo.system DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 install(DIRECTORY musl DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 install(DIRECTORY libc++ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
-install(DIRECTORY skeleton DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/eosio)
-install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_DATAROOTDIR}/eosio)
+install(DIRECTORY skeleton DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/enumivo)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_DATAROOTDIR}/enumivo)

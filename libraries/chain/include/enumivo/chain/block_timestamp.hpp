@@ -7,7 +7,7 @@
 #include <fc/string.hpp>
 #include <fc/optional.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    /**
    * This class is used in the block headers to represent the block time
@@ -74,20 +74,20 @@ namespace eosio { namespace chain {
 
    typedef block_timestamp<config::block_interval_ms,config::block_timestamp_epoch> block_timestamp_type; 
 
-} } /// eosio::chain
+} } /// enumivo::chain
 
 
 #include <fc/reflect/reflect.hpp>
-FC_REFLECT(eosio::chain::block_timestamp_type, (slot))
+FC_REFLECT(enumivo::chain::block_timestamp_type, (slot))
 
 namespace fc {
   template<uint16_t IntervalMs, uint64_t EpochMs>
-  void to_variant(const eosio::chain::block_timestamp<IntervalMs,EpochMs>& t, fc::variant& v) {
+  void to_variant(const enumivo::chain::block_timestamp<IntervalMs,EpochMs>& t, fc::variant& v) {
      to_variant( (fc::time_point)t, v);
   }
 
   template<uint16_t IntervalMs, uint64_t EpochMs>
-  void from_variant(const fc::variant& v, eosio::chain::block_timestamp<IntervalMs,EpochMs>& t) {
+  void from_variant(const fc::variant& v, enumivo::chain::block_timestamp<IntervalMs,EpochMs>& t) {
      t = v.as<fc::time_point>();
   }
 }

@@ -13,7 +13,7 @@
 #include <enumivo/chain/contract_types.hpp>
 #include <enumivo/chain/generated_transaction_object.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    authorization_manager::authorization_manager(controller& c, database& d)
    :_control(c),_db(d){}
@@ -226,19 +226,19 @@ namespace eosio { namespace chain {
                   "the owner of the linked permission needs to be the actor of the declared authorization" );
 
       ENU_ASSERT( link.type != updateauth::get_name(),  action_validate_exception,
-                  "Cannot link eosio::updateauth to a minimum permission" );
+                  "Cannot link enumivo::updateauth to a minimum permission" );
       ENU_ASSERT( link.type != deleteauth::get_name(),  action_validate_exception,
-                  "Cannot link eosio::deleteauth to a minimum permission" );
+                  "Cannot link enumivo::deleteauth to a minimum permission" );
       ENU_ASSERT( link.type != linkauth::get_name(),    action_validate_exception,
-                  "Cannot link eosio::linkauth to a minimum permission" );
+                  "Cannot link enumivo::linkauth to a minimum permission" );
       ENU_ASSERT( link.type != unlinkauth::get_name(),  action_validate_exception,
-                  "Cannot link eosio::unlinkauth to a minimum permission" );
+                  "Cannot link enumivo::unlinkauth to a minimum permission" );
       ENU_ASSERT( link.type != canceldelay::get_name(), action_validate_exception,
-                  "Cannot link eosio::canceldelay to a minimum permission" );
+                  "Cannot link enumivo::canceldelay to a minimum permission" );
 
       const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
 
-      if( !linked_permission_name ) // if action is linked to eosio.any permission
+      if( !linked_permission_name ) // if action is linked to enumivo.any permission
          return;
 
       ENU_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
@@ -371,7 +371,7 @@ namespace eosio { namespace chain {
 
             if( !special_case ) {
                auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
-               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is eosio.any
+               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is enumivo.any
                   const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
                   ENU_ASSERT( get_permission(declared_auth).satisfies( min_permission,
                                                                        _db.get_index<permission_index>().indices() ),
@@ -470,4 +470,4 @@ namespace eosio { namespace chain {
       return checker.used_keys();
    }
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain

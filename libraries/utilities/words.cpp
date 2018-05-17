@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <enumivo/utilities/words.hpp>
 
-namespace eosio { namespace words {
+namespace enumivo { namespace words {
 
 const const_char_ptr word_list[] = { 
 "a",
@@ -49761,4 +49761,4 @@ void hide_unused_warning() {
   (void)word_list; 
 }
 
-} } // eosio::words
+} } // enumivo::words

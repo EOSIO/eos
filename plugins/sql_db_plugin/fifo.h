@@ -12,7 +12,7 @@
 #include <vector>
 #include <boost/noncopyable.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 template<typename T>
 class fifo : public boost::noncopyable

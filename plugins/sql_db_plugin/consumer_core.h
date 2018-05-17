@@ -7,7 +7,7 @@
 
 #include <vector>
 
-namespace eosio {
+namespace enumivo {
 
 template<typename T>
 class consumer_core {

@@ -1,6 +1,6 @@
 #include <exchange/exchange_accounts.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    void exchange_accounts::adjust_balance( account_name owner, extended_asset delta, const string& reason ) {
       (void)reason;
@@ -24,4 +24,4 @@ namespace eosio {
       }
    }
 
-} /// namespace eosio
+} /// namespace enumivo

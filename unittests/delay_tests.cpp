@@ -14,9 +14,9 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 
 
 BOOST_AUTO_TEST_SUITE(delay_tests)

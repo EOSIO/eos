@@ -62,8 +62,8 @@ FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
-using namespace eosio::testing;
+using namespace enumivo;
+using namespace enumivo::testing;
 using namespace chain;
 using namespace fc;
 
@@ -182,7 +182,7 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
 }
 
 #define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
-#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
+#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(enumivo)} )
 #define CALL_TEST_FUNCTION_SCOPE(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
 #define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(_TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
 BOOST_CHECK_EXCEPTION( \
@@ -197,7 +197,7 @@ bool is_access_violation(fc::unhandled_exception const & e) {
    try {
       std::rethrow_exception(e.get_inner_exception());
     }
-    catch (const eosio::chain::wasm_execution_error& e) {
+    catch (const enumivo::chain::wasm_execution_error& e) {
        return true;
     } catch (...) {
 
@@ -209,7 +209,7 @@ bool is_access_violation(const Runtime::Exception& e) { return true; }
 bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_unsatisfied_authorization(unsatisfied_authorization const & e) { return true;}
-bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
+bool is_wasm_execution_error(enumivo::chain::wasm_execution_error const& e) {return true;}
 bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
 bool is_block_net_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
 bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
@@ -318,8 +318,8 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test read_action_to_0
    raw_bytes.resize((1<<16)+1);
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes), eosio::chain::wasm_execution_error,
-         [](const eosio::chain::wasm_execution_error& e) {
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes), enumivo::chain::wasm_execution_error,
+         [](const enumivo::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
       );
@@ -330,8 +330,8 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    // test read_action_to_64k
    raw_bytes.resize(3);
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ), eosio::chain::wasm_execution_error,
-         [](const eosio::chain::wasm_execution_error& e) {
+	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ), enumivo::chain::wasm_execution_error,
+         [](const enumivo::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
       );
@@ -584,7 +584,7 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = N(enumivo);
 
    signed_transaction trx;
 
@@ -614,7 +614,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = N(enumivo);
 
    signed_transaction trx;
 
@@ -650,7 +650,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = N(enumivo);
 
    signed_transaction trx;
 
@@ -894,8 +894,8 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_prefix", fc::raw::pack(control->head_block_id()._hash[1]) );
 
    // test send_action_recurse
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), eosio::chain::transaction_exception,
-         [](const eosio::chain::transaction_exception& e) {
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), enumivo::chain::transaction_exception,
+         [](const enumivo::chain::transaction_exception& e) {
             return expect_assert_message(e, "inline action recursion depth reached");
          }
       );
@@ -1875,7 +1875,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
 
    push_action(config::system_account_name, linkauth::get_name(), N(bob), fc::mutable_variant_object()
            ("account", "bob")
-           ("code", "eosio")
+           ("code", "enumivo")
            ("type", "reqauth")
            ("requirement", "perm1")
    );

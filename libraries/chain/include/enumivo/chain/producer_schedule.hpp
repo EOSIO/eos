@@ -3,7 +3,7 @@
 #include <enumivo/chain/types.hpp>
 #include <chainbase/chainbase.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    /**
     *  Used as part of the producer_schedule_type, mapps the producer name to their key.
@@ -80,7 +80,7 @@ namespace eosio { namespace chain {
    }
 
 
-} } /// eosio::chain
+} } /// enumivo::chain
 
-FC_REFLECT( eosio::chain::producer_key, (producer_name)(block_signing_key) )
-FC_REFLECT( eosio::chain::producer_schedule_type, (version)(producers) )
+FC_REFLECT( enumivo::chain::producer_key, (producer_name)(block_signing_key) )
+FC_REFLECT( enumivo::chain::producer_schedule_type, (version)(producers) )

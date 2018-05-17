@@ -2,7 +2,7 @@
 #include <enumivo/chain/block_state.hpp>
 #include <boost/signals2/signal.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    using boost::signals2::signal;
 
@@ -75,4 +75,4 @@ namespace eosio { namespace chain {
          unique_ptr<fork_database_impl> my;
    };
 
-} } /// eosio::chain
+} } /// enumivo::chain

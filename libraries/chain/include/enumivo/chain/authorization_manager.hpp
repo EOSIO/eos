@@ -10,7 +10,7 @@
 #include <utility>
 #include <functional>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    class controller;
    struct updateauth;
@@ -130,4 +130,4 @@ namespace eosio { namespace chain {
                                                            )const;
    };
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain

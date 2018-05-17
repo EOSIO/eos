@@ -10,7 +10,7 @@
 
 #include <appbase/application.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    using namespace appbase;
 

@@ -26,7 +26,7 @@ struct check_auth_msg {
 void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint64_t action) {
    (void)code;
    (void)action;
-   using namespace eosio;
+   using namespace enumivo;
 
    auto self = receiver;
    auto params = unpack_action_data<check_auth_msg>();
@@ -61,7 +61,7 @@ struct test_permission_last_used_msg {
 void test_permission::test_permission_last_used(uint64_t receiver, uint64_t code, uint64_t action) {
    (void)code;
    (void)action;
-   using namespace eosio;
+   using namespace enumivo;
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 
@@ -71,7 +71,7 @@ void test_permission::test_permission_last_used(uint64_t receiver, uint64_t code
 void test_permission::test_account_creation_time(uint64_t receiver, uint64_t code, uint64_t action) {
    (void)code;
    (void)action;
-   using namespace eosio;
+   using namespace enumivo;
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 

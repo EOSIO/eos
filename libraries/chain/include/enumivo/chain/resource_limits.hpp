@@ -3,7 +3,7 @@
 #include <enumivo/chain/types.hpp>
 #include <chainbase/chainbase.hpp>
 
-namespace eosio { namespace chain { namespace resource_limits {
+namespace enumivo { namespace chain { namespace resource_limits {
    namespace impl {
       template<typename T>
       struct ratio {
@@ -74,6 +74,6 @@ namespace eosio { namespace chain { namespace resource_limits {
       private:
          chainbase::database& _db;
    };
-} } } /// eosio::chain
+} } } /// enumivo::chain
 
-FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
+FC_REFLECT( enumivo::chain::resource_limits::account_resource_limit, (used)(available)(max) )

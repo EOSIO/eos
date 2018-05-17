@@ -1,16 +1,16 @@
 #!/bin/sh
-cd /opt/eosio/bin
+cd /opt/enumivo/bin
 
-if [ -f '/opt/eosio/bin/data-dir/config.ini' ]; then
+if [ -f '/opt/enumivo/bin/data-dir/config.ini' ]; then
     echo
   else
-    cp /config.ini /opt/eosio/bin/data-dir
+    cp /config.ini /opt/enumivo/bin/data-dir
 fi
 
-if [ -d '/opt/eosio/bin/data-dir/contracts' ]; then
+if [ -d '/opt/enumivo/bin/data-dir/contracts' ]; then
     echo
   else
-    cp -r /contracts /opt/eosio/bin/data-dir
+    cp -r /contracts /opt/enumivo/bin/data-dir
 fi
 
 while :; do
@@ -25,9 +25,9 @@ while :; do
 done
 
 if [ ! "$CONFIG_DIR" ]; then
-    CONFIG_DIR="--config-dir=/opt/eosio/bin/data-dir"
+    CONFIG_DIR="--config-dir=/opt/enumivo/bin/data-dir"
 else
     CONFIG_DIR=""
 fi
 
-exec /opt/eosio/bin/enunode $CONFIG_DIR $@
+exec /opt/enumivo/bin/enunode $CONFIG_DIR $@

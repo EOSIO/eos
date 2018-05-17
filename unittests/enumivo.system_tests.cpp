@@ -25,10 +25,10 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio::testing;
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::testing;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 using namespace fc;
 
 using mvo = fc::mutable_variant_object;
@@ -48,21 +48,21 @@ public:
 
       create_currency( N(enumivo.coin), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
       issue(config::system_account_name,      "1000000000.0000 EOS");
-      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
 
       set_code( config::system_account_name, enumivo_system_wast );
       set_abi( config::system_account_name, enumivo_system_abi );
 
       produce_blocks();
 
-      create_account_with_resources( N(alice1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
-      create_account_with_resources( N(bob111111111), N(eosio), asset::from_string("0.4500 EOS"), false );
-      create_account_with_resources( N(carol1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
+      create_account_with_resources( N(alice1111111), N(enumivo), asset::from_string("1.0000 EOS"), false );
+      create_account_with_resources( N(bob111111111), N(enumivo), asset::from_string("0.4500 EOS"), false );
+      create_account_with_resources( N(carol1111111), N(enumivo), asset::from_string("1.0000 EOS"), false );
 
-      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
 
-      // eosio pays it self for these...
-      //BOOST_REQUIRE_EQUAL( asset::from_string("999999998.5000 EOS"), get_balance( "eosio" ) );
+      // enumivo pays it self for these...
+      //BOOST_REQUIRE_EQUAL( asset::from_string("999999998.5000 EOS"), get_balance( "enumivo" ) );
 
       produce_blocks();
 
@@ -80,7 +80,7 @@ public:
       }
    }
 
-   void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(eosio) ) {
+   void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(enumivo) ) {
       for( auto a : accounts ) {
          create_account_with_resources( a, creator );
       }
@@ -101,13 +101,13 @@ public:
                                    .active   = authority( get_public_key( a, "active" ) )
                                 });
 
-      trx.actions.emplace_back( get_action( N(eosio), N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
                                             ("bytes", 8000) )
                               );
-      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
@@ -143,14 +143,14 @@ public:
                                    .active   = authority( get_public_key( a, "active" ) )
                                 });
 
-      trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(buyram), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
                                             ("quant", ramfunds) )
                               );
 
-      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
@@ -166,7 +166,7 @@ public:
    }
 
    transaction_trace_ptr setup_producer_accounts( const std::vector<account_name>& accounts ) {
-      account_name creator(N(eosio));
+      account_name creator(N(enumivo));
       signed_transaction trx;
       set_transaction_headers(trx);
       asset cpu = asset::from_string("80.0000 EOS");
@@ -183,14 +183,14 @@ public:
                                          .active   = authority( get_public_key( a, "active" ) )
                                          });
 
-         trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{ {creator, config::active_name} },
+         trx.actions.emplace_back( get_action( N(enumivo), N(buyram), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("payer", creator)
                                                ("receiver", a)
                                                ("quant", ram) )
                                    );
 
-         trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{ {creator, config::active_name} },
+         trx.actions.emplace_back( get_action( N(enumivo), N(delegatebw), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("from", creator)
                                                ("receiver", a)
@@ -378,7 +378,7 @@ public:
    }
 
    fc::variant get_stats( const string& symbolname ) {
-      auto symb = eosio::chain::symbol::from_string(symbolname);
+      auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
       vector<char> data = get_row_by_account( N(enumivo.coin), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data );
@@ -389,7 +389,7 @@ public:
    }
 
    fc::variant get_global_state() {
-      vector<char> data = get_row_by_account( N(eosio), N(eosio), N(global), N(global) );
+      vector<char> data = get_row_by_account( N(enumivo), N(enumivo), N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data );
 
@@ -434,11 +434,11 @@ BOOST_AUTO_TEST_SUITE(enumivo_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice1111111" ) );
 
-   transfer( "eosio", "alice1111111", "1000.0000 EOS", "eosio" );
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
+   transfer( "enumivo", "alice1111111", "1000.0000 EOS", "enumivo" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "enumivo", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
 
    auto total = get_total_stake( "alice1111111" );
    auto init_bytes =  total["ram_bytes"].as_uint64();
@@ -458,7 +458,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
    total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( true, total["ram_bytes"].as_uint64() == init_bytes );
 
-   transfer( "eosio", "alice1111111", "100000000.0000 EOS", "eosio" );
+   transfer( "enumivo", "alice1111111", "100000000.0000 EOS", "enumivo" );
    BOOST_REQUIRE_EQUAL( asset::from_string("100000999.9999 EOS"), get_balance( "alice1111111" ) );
    BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", "10000000.0000 EOS" ) );
 
@@ -526,14 +526,14 @@ BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, enumivo_system_tester ) try {
-   //issue( "eosio", "1000.0000 EOS", config::system_account_name );
+   //issue( "enumivo", "1000.0000 EOS", config::system_account_name );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice1111111" ) );
-   transfer( "eosio", "alice1111111", "1000.0000 EOS", "eosio" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("999999000.0000 EOS"), get_balance( "eosio" ) );
+   transfer( "enumivo", "alice1111111", "1000.0000 EOS", "enumivo" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("999999000.0000 EOS"), get_balance( "enumivo" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "enumivo", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
 
    auto total = get_total_stake("alice1111111");
    BOOST_REQUIRE_EQUAL( asset::from_string("210.0000 EOS"), total["net_weight"].as<asset>());
@@ -585,12 +585,12 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, enumivo_system_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, enumivo_system_tester ) try {
-   //issue( "eosio", "1000.0000 EOS", config::system_account_name );
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   //issue( "enumivo", "1000.0000 EOS", config::system_account_name );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice1111111" ) );
 
-   //eosio stakes for alice with transfer flag
-   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "eosio", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
+   //enumivo stakes for alice with transfer flag
+   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "enumivo", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
 
    //check that alice has both bandwidth and voting power
    auto total = get_total_stake("alice1111111");
@@ -598,13 +598,13 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, enumivo_system_tester ) tr
    BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS"), total["cpu_weight"].as<asset>());
    REQUIRE_MATCHING_OBJECT( voter( "alice1111111", "300.0000 EOS"), get_voter_info( "alice1111111" ) );
 
-   //BOOST_REQUIRE_EQUAL( asset::from_string("999999700.0000 EOS"), get_balance( "eosio" ) );
+   //BOOST_REQUIRE_EQUAL( asset::from_string("999999700.0000 EOS"), get_balance( "enumivo" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS"), get_balance( "alice1111111" ) );
 
    //alice stakes for herself
-   transfer( "eosio", "alice1111111", "1000.0000 EOS", "eosio" );
+   transfer( "enumivo", "alice1111111", "1000.0000 EOS", "enumivo" );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", "200.0000 EOS", "100.0000 EOS" ) );
-   //now alice's stake should be equal to transfered from eosio + own stake
+   //now alice's stake should be equal to transfered from enumivo + own stake
    total = get_total_stake("alice1111111");
    BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice1111111" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("410.0000 EOS"), total["net_weight"].as<asset>());
@@ -633,7 +633,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, enumivo_system_tester ) tr
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, enumivo_system_tester ) try {
    issue( "alice1111111", "1000.0000 EOS",  config::system_account_name );
 
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", "2000.0000 EOS", "1000.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "enumivo", "alice1111111", "2000.0000 EOS", "1000.0000 EOS" ) );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", "10.0000 EOS", "10.0000 EOS" ) );
 
    BOOST_REQUIRE_EQUAL( error("missing authority of alice1111111"),
@@ -1415,11 +1415,11 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, enumivo_system_tester, * boost::unit_test:
    const double secs_per_year   = 52 * 7 * 24 * 3600;
 
    const asset large_asset = asset::from_string("80.0000 EOS");
-   create_account_with_resources( N(defproducera), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(defproducerb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(defproducera), N(enumivo), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(defproducerb), N(enumivo), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
-   create_account_with_resources( N(producvotera), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvotera), N(enumivo), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvoterb), N(enumivo), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
    BOOST_REQUIRE_EQUAL(success(), regproducer(N(defproducera)));
    auto prod = get_producer_info( N(defproducera) );
@@ -1596,9 +1596,9 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, enumivo_system_tester, * boost::u
 
    const asset net = asset::from_string("80.0000 EOS");
    const asset cpu = asset::from_string("80.0000 EOS");
-   create_account_with_resources( N(producvotera), N(eosio), asset::from_string("1.0000 EOS"), false, net, cpu );
-   create_account_with_resources( N(producvoterb), N(eosio), asset::from_string("1.0000 EOS"), false, net, cpu );
-   create_account_with_resources( N(producvoterc), N(eosio), asset::from_string("1.0000 EOS"), false, net, cpu );
+   create_account_with_resources( N(producvotera), N(enumivo), asset::from_string("1.0000 EOS"), false, net, cpu );
+   create_account_with_resources( N(producvoterb), N(enumivo), asset::from_string("1.0000 EOS"), false, net, cpu );
+   create_account_with_resources( N(producvoterc), N(enumivo), asset::from_string("1.0000 EOS"), false, net, cpu );
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;
@@ -1890,8 +1890,8 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, enumivo_system_tester
    //install multisig contract
    abi_serializer msig_abi_ser;
    {
-      create_account_with_resources( N(enumivo.msig), N(eosio) );
-      BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "enumivo.msig", "5000.0000 EOS" ) );
+      create_account_with_resources( N(enumivo.msig), N(enumivo) );
+      BOOST_REQUIRE_EQUAL( success(), buyram( "enumivo", "enumivo.msig", "5000.0000 EOS" ) );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
@@ -1911,7 +1911,7 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, enumivo_system_tester
    }
 
    //stake more than 15% of total EOS supply to activate chain
-   transfer( "eosio", "alice1111111", "650000000.0000 EOS", "eosio" );
+   transfer( "enumivo", "alice1111111", "650000000.0000 EOS", "enumivo" );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", "300000000.0000 EOS", "300000000.0000 EOS" ) );
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
@@ -2070,9 +2070,9 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, enumivo_system_tester) try {
    const auto tol = boost::test_tools::tolerance(0.0000000001);
 
    const asset large_asset = asset::from_string("80.0000 EOS");
-   create_account_with_resources( N(producvotera), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterb), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterc), N(eosio), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvotera), N(enumivo), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvoterb), N(enumivo), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvoterc), N(enumivo), asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;
@@ -2418,7 +2418,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, enumivo_system_tester )
 
 } FC_LOG_AND_RETHROW()
 
-fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& config ) {
+fc::mutable_variant_object config_to_variant( const enumivo::chain::chain_config& config ) {
    return mutable_variant_object()
       ( "max_block_net_usage", config.max_block_net_usage )
       ( "target_block_net_usage_pct", config.target_block_net_usage_pct )
@@ -2446,7 +2446,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, enumivo_system_tes
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer3", 3) );
 
    //stake more than 15% of total EOS supply to activate chain
-   transfer( "eosio", "alice1111111", "600000000.0000 EOS", "eosio" );
+   transfer( "enumivo", "alice1111111", "600000000.0000 EOS", "enumivo" );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", "300000000.0000 EOS", "300000000.0000 EOS" ) );
    //                                                           1000000000.0000
    //vote for producers

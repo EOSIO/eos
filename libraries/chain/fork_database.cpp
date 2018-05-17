@@ -9,7 +9,7 @@
 #include <fc/io/fstream.hpp>
 #include <fstream>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
 
@@ -346,4 +346,4 @@ namespace eosio { namespace chain {
       }
    }
 
-} } /// eosio::chain
+} } /// enumivo::chain

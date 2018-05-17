@@ -7,7 +7,7 @@
 #include <enumivo/chain/transaction_object.hpp>
 #include <enumivo/chain/global_property_object.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    transaction_context::transaction_context( controller& c,
                                              const signed_transaction& t,
@@ -412,4 +412,4 @@ namespace eosio { namespace chain {
    } /// record_transaction
 
 
-} } /// eosio::chain
+} } /// enumivo::chain

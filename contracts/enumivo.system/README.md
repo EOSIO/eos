@@ -60,7 +60,7 @@ Indicates that a particular account wishes to become a producer
    - memo is ignored 
 
 ## enumivo.system::stakevote account amount
-   - the primary currency of eosio is controlled by the token contract which enables users to transfer
+   - the primary currency of enumivo is controlled by the token contract which enables users to transfer
      balances from one user to another. The receiver is notified on incoming balances and the vote contract
      will stake the tokens on receipt.
 

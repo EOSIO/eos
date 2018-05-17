@@ -15,7 +15,7 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio::testing;
+using namespace enumivo::testing;
 
 BOOST_AUTO_TEST_SUITE(multi_index_tests)
 

@@ -4,13 +4,13 @@ services:
   builder:
     build:
       context: builder
-    image: eosio/builder
+    image: enumivo/builder
 
   nodeosd:
     build:
       context: .
-    image: eosio/eos
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir
+    image: enumivo/eos
+    command: /opt/enumivo/bin/nodeosd.sh --data-dir /opt/enumivo/bin/data-dir
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -18,16 +18,16 @@ services:
     expose:
       - "8888"
     volumes:
-      - enunode-data-volume:/opt/eosio/bin/data-dir
+      - enunode-data-volume:/opt/enumivo/bin/data-dir
 
   enuwallet:
-    image: eosio/eos
-    command: /opt/eosio/bin/enuwallet --wallet-dir /opt/eosio/bin/data-dir
+    image: enumivo/eos
+    command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir
     hostname: enuwallet
     links:
       - nodeosd
     volumes:
-      - enuwallet-data-volume:/opt/eosio/bin/data-dir
+      - enuwallet-data-volume:/opt/enumivo/bin/data-dir
 
 volumes:
   enunode-data-volume:

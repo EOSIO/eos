@@ -9,9 +9,9 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 
 struct action_proof_data {
    account_name              receiver;

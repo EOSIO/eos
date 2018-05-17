@@ -15,16 +15,16 @@
 
 namespace enumivosystem {
 
-   using eosio::asset;
-   using eosio::indexed_by;
-   using eosio::const_mem_fun;
-   using eosio::block_timestamp;
+   using enumivo::asset;
+   using enumivo::indexed_by;
+   using enumivo::const_mem_fun;
+   using enumivo::block_timestamp;
 
-   struct eosio_parameters : eosio::blockchain_parameters {
+   struct eosio_parameters : enumivo::blockchain_parameters {
       uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ENULIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
+      ENULIB_SERIALIZE_DERIVED( eosio_parameters, enumivo::blockchain_parameters, (max_ram_size) )
    };
 
    struct eosio_global_state : eosio_parameters {
@@ -53,7 +53,7 @@ namespace enumivosystem {
    struct producer_info {
       account_name          owner;
       double                total_votes = 0;
-      eosio::public_key     producer_key; /// a packed public key object
+      enumivo::public_key     producer_key; /// a packed public key object
       std::string           url;
       uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
@@ -94,7 +94,7 @@ namespace enumivosystem {
 
       uint32_t                    deferred_trx_id = 0; /// the ID of the 3-day delay deferred transaction
       time                        last_unstake_time = 0; /// the time when the deferred_trx_id was sent
-      eosio::asset                unstaking; /// the total unstaking (pending 3 day delay)
+      enumivo::asset                unstaking; /// the total unstaking (pending 3 day delay)
 
       uint64_t primary_key()const { return owner; }
 
@@ -102,14 +102,14 @@ namespace enumivosystem {
       ENULIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(deferred_trx_id)(last_unstake_time)(unstaking) )
    };
 
-   typedef eosio::multi_index< N(voters), voter_info>  voters_table;
+   typedef enumivo::multi_index< N(voters), voter_info>  voters_table;
 
 
-   typedef eosio::multi_index< N(producers), producer_info,
+   typedef enumivo::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
                                >  producers_table;
 
-   typedef eosio::singleton<N(global), eosio_global_state> global_state_singleton;
+   typedef enumivo::singleton<N(global), eosio_global_state> global_state_singleton;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;

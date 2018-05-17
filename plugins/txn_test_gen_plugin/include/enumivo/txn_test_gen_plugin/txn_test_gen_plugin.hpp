@@ -6,7 +6,7 @@
 #include <appbase/application.hpp>
 #include <enumivo/http_plugin/http_plugin.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 using namespace appbase;
 

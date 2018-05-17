@@ -35,12 +35,12 @@ using boost::multi_index_container;
 using std::string;
 using std::vector;
 
-namespace eosio {
+namespace enumivo {
 
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
 
-using namespace eosio::chain;
-using namespace eosio::chain::plugin_interface;
+using namespace enumivo::chain;
+using namespace enumivo::chain::plugin_interface;
 
 namespace {
    bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
@@ -82,7 +82,7 @@ class producer_plugin_impl {
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
       uint32_t _required_producer_participation    = uint32_t(config::required_producer_participation);
-      uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
+      uint32_t _production_skip_flags              = 0; //enumivo::chain::skip_nothing;
 
       std::map<chain::public_key_type, chain::private_key_type> _private_keys;
       std::set<chain::account_name>                             _producers;
@@ -247,7 +247,7 @@ class producer_plugin_impl {
       start_block_result start_block();
 };
 
-void new_chain_banner(const eosio::chain::controller& db)
+void new_chain_banner(const enumivo::chain::controller& db)
 {
    std::cerr << "\n"
       "*********************************\n"
@@ -390,7 +390,7 @@ void producer_plugin::plugin_startup()
       {
          if(chain.head_block_num() == 0)
             new_chain_banner(chain);
-         //_production_skip_flags |= eosio::chain::skip_undo_history_check;
+         //_production_skip_flags |= enumivo::chain::skip_undo_history_check;
       }
       my->schedule_production_loop();
    } else {
@@ -710,4 +710,4 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    return block_production_condition::produced;
 }
 
-} // namespace eosio
+} // namespace enumivo

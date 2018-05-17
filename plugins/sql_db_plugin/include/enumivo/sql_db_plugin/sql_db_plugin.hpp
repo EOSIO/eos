@@ -11,7 +11,7 @@
 
 #include "consumer.h"
 
-namespace eosio {
+namespace enumivo {
 
 /**
  * @author Alessandro Siniscalchi <asiniscalchi@gmail.com>

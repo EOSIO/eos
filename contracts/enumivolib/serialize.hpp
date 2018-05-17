@@ -10,7 +10,7 @@
 /**
  *  @def ENULIB_SERIALIZE(TYPE,MEMBERS)
  *
- *  @brief Specializes eosio::reflector for TYPE where
+ *  @brief Specializes enumivo::reflector for TYPE where
  *         type inherits other reflected classes
  *
  *  @param INHERITS - a sequence of base class names (basea)(baseb)(basec)

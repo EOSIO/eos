@@ -2,7 +2,7 @@
 #include <enumivolib/types.h>
 #include <enumivolib/print.hpp>
 
-namespace eosio
+namespace enumivo
 {
     /**
     * @defgroup fixedpoint Fixed Point

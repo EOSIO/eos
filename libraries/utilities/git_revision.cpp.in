@@ -5,10 +5,10 @@
 #define ENU_GIT_REVISION_UNIX_TIMESTAMP @ENU_GIT_REVISION_UNIX_TIMESTAMP@
 #define ENU_GIT_REVISION_DESCRIPTION "@ENU_GIT_REVISION_DESCRIPTION@"
 
-namespace eosio { namespace utilities {
+namespace enumivo { namespace utilities {
 
 const char* const git_revision_sha = ENU_GIT_REVISION_SHA;
 const uint32_t git_revision_unix_timestamp = ENU_GIT_REVISION_UNIX_TIMESTAMP;
 const char* const git_revision_description = ENU_GIT_REVISION_DESCRIPTION;
 
-} } // end namespace eosio::utilities
+} } // end namespace enumivo::utilities

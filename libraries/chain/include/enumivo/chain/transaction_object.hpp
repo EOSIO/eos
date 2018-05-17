@@ -13,7 +13,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
    /**
@@ -49,5 +49,5 @@ namespace eosio { namespace chain {
    typedef chainbase::generic_index<transaction_multi_index> transaction_index;
 } }
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::transaction_object, enumivo::chain::transaction_multi_index)
 

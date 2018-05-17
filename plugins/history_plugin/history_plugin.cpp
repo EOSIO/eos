@@ -5,7 +5,7 @@
 
 #include <fc/io/json.hpp>
 
-namespace eosio { 
+namespace enumivo { 
    using namespace chain;
 
    static appbase::abstract_plugin& _history_plugin = app().register_plugin<history_plugin>();
@@ -67,12 +67,12 @@ namespace eosio {
       >
    >;
 
-} /// namespace eosio
+} /// namespace enumivo
 
-CHAINBASE_SET_INDEX_TYPE(eosio::account_history_object, eosio::account_history_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::action_history_object, eosio::action_history_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::account_history_object, enumivo::account_history_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::action_history_object, enumivo::action_history_index)
 
-namespace eosio {
+namespace enumivo {
 
    class history_plugin_impl {
       public:
@@ -340,4 +340,4 @@ namespace eosio {
 
 
 
-} /// namespace eosio
+} /// namespace enumivo

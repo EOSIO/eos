@@ -4,7 +4,7 @@
 #include <memory>
 #include <soci/soci.h>
 
-namespace eosio {
+namespace enumivo {
 
 class accounts_table
 {

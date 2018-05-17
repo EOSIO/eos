@@ -5,7 +5,7 @@
 #include <tuple>
 #include <limits>
 
-namespace eosio {
+namespace enumivo {
 
    static constexpr uint64_t string_to_symbol( uint8_t precision, const char* str ) {
       uint32_t len = 0;
@@ -24,7 +24,7 @@ namespace eosio {
       return result;
    }
 
-   #define S(P,X) ::eosio::string_to_symbol(P,#X)
+   #define S(P,X) ::enumivo::string_to_symbol(P,#X)
 
    typedef uint64_t symbol_name;
 
@@ -70,7 +70,7 @@ namespace eosio {
 
       void print(bool show_precision=true)const {
          if( show_precision ){
-            ::eosio::print(precision());
+            ::enumivo::print(precision());
             prints(",");
          }
 
@@ -288,4 +288,4 @@ namespace eosio {
    };
 
 
-} /// namespace eosio
+} /// namespace enumivo

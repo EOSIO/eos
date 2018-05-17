@@ -22,10 +22,10 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 
-namespace eosio
+namespace enumivo
 {
 using namespace chain;
 using namespace std;
@@ -534,4 +534,4 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace eosio
+} // namespace enumivo

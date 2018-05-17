@@ -12,10 +12,10 @@ delay=1
 read -d '' config00 << EOF
 shared-file-size = 8192
 p2p-server-address = localhost:9876
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::account_history_plugin
-plugin = eosio::account_history_api_plugin
+plugin = enumivo::producer_plugin
+plugin = enumivo::chain_api_plugin
+plugin = enumivo::account_history_plugin
+plugin = enumivo::account_history_api_plugin
 required-participation = true
 shared-file-dir = blockchain
 http-server-address = 127.0.0.1:8888
@@ -61,9 +61,9 @@ p2p-listen-endpoint = 0.0.0.0:9877
 p2p-server-address = localhost:9877
 allowed-connection = any
 p2p-peer-address = localhost:9876
-plugin = eosio::chain_api_plugin
-plugin = eosio::account_history_plugin
-plugin = eosio::account_history_api_plugin
+plugin = enumivo::chain_api_plugin
+plugin = enumivo::account_history_plugin
+plugin = enumivo::account_history_api_plugin
 EOF
 
 read -d '' config02 << EOF
@@ -78,9 +78,9 @@ p2p-listen-endpoint = 0.0.0.0:9878
 p2p-server-address = localhost:9877
 allowed-connection = any
 p2p-peer-address = localhost:9876
-plugin = eosio::chain_api_plugin
-plugin = eosio::account_history_plugin
-plugin = eosio::account_history_api_plugin
+plugin = enumivo::chain_api_plugin
+plugin = enumivo::account_history_plugin
+plugin = enumivo::account_history_api_plugin
 EOF
 
 read -d '' logging00 << EOF
@@ -246,22 +246,22 @@ read -d '' logging02 << EOF
 EOF
 
 rm -rf staging
-rm -rf etc/eosio/node_*
+rm -rf etc/enumivo/node_*
 rm -rf var/lib
 cName=config.ini
 lName=logging.json
 
-path=staging/etc/eosio/node_00
+path=staging/etc/enumivo/node_00
 mkdir -p $path
 echo "$config00" > $path/$cName
 echo "$logging00" > $path/$lName
 
-path=staging/etc/eosio/node_01
+path=staging/etc/enumivo/node_01
 mkdir -p $path
 echo "$config01" > $path/$cName
 echo "$logging01" > $path/$lName
 
-path=staging/etc/eosio/node_02
+path=staging/etc/enumivo/node_02
 mkdir -p $path
 echo "$config02" > $path/$cName
 echo "$logging02" > $path/$lName
@@ -281,5 +281,5 @@ fi
 programs/launcher/launcher -k 15
 rm -rf staging
 rm -rf var/lib/node_*
-rm -rf etc/eosio/node_*
+rm -rf etc/enumivo/node_*
 exit $res

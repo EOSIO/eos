@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 struct genesis_state {
    chain_config   initial_configuration = {
@@ -55,8 +55,8 @@ struct genesis_state {
    chain_id_type compute_chain_id() const;
 };
 
-} } // namespace eosio::chain
+} } // namespace enumivo::chain
 
 
-FC_REFLECT(eosio::chain::genesis_state,
+FC_REFLECT(enumivo::chain::genesis_state,
            (initial_timestamp)(initial_key)(initial_configuration)(initial_chain_id))

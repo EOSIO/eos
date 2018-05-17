@@ -18,9 +18,9 @@ namespace enumivosystem {
 
 
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
-      using namespace eosio;
+      using namespace enumivo;
 
-      require_auth(N(eosio));
+      require_auth(N(enumivo));
 
       /** until activated stake crosses this threshold no new rewards are paid */
       if( _gstate.total_activated_stake < 150'000'000'0000 )
@@ -49,7 +49,7 @@ namespace enumivosystem {
       }
    }
 
-   using namespace eosio;
+   using namespace enumivo;
    void system_contract::claimrewards( const account_name& owner ) {
       require_auth(owner);
 
@@ -71,8 +71,8 @@ namespace enumivosystem {
          auto to_per_block_pay   = to_producers / 4;
          auto to_per_vote_pay    = to_producers - to_per_block_pay;
 
-         INLINE_ACTION_SENDER(eosio::token, issue)( N(enumivo.coin), {{N(eosio),N(active)}},
-                                                    {N(eosio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
+         INLINE_ACTION_SENDER(enumivo::token, issue)( N(enumivo.coin), {{N(enumivo),N(active)}},
+                                                    {N(enumivo), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
@@ -98,8 +98,8 @@ namespace enumivosystem {
       });
       
       if( total_pay > 0 ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.coin), {N(eosio),N(active)},
-                                                       { N(eosio), owner, asset(total_pay), std::string("producer pay") } );
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
+                                                       { N(enumivo), owner, asset(total_pay), std::string("producer pay") } );
       }
    }
 

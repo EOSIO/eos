@@ -1,6 +1,6 @@
 #pragma once
 
-namespace eosio {
+namespace enumivo {
 
 class contract {
    public:
@@ -12,4 +12,4 @@ class contract {
       account_name _self;
 };
 
-} /// namespace eosio
+} /// namespace enumivo

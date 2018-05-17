@@ -3,7 +3,7 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 
-namespace eosio { namespace unittests { namespace config {
+namespace enumivo { namespace unittests { namespace config {
    constexpr char enumivolib_path[] = "${CMAKE_CURRENT_SOURCE_DIR}/../contracts";
    constexpr char pfr_include_path[] = "${CMAKE_CURRENT_SOURCE_DIR}/../externals/magic_get/include";
    constexpr char boost_include_path[] = "${Boost_INCLUDE_DIR}";

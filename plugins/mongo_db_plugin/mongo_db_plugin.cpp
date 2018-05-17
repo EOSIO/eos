@@ -28,7 +28,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace enumivo {
 
 using chain::account_name;
 using chain::action_name;
@@ -838,7 +838,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
       }
       my->init();
    } else {
-      wlog("eosio::mongo_db_plugin configured, but no --mongodb-uri specified.");
+      wlog("enumivo::mongo_db_plugin configured, but no --mongodb-uri specified.");
       wlog("mongo_db_plugin disabled.");
    }
 }
@@ -860,4 +860,4 @@ void mongo_db_plugin::plugin_shutdown()
    my.reset();
 }
 
-} // namespace eosio
+} // namespace enumivo

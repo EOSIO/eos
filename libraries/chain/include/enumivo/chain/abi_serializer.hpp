@@ -8,7 +8,7 @@
 #include <enumivo/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 using std::map;
 using std::string;
@@ -509,4 +509,4 @@ void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver ) t
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
 
 
-} } // eosio::chain
+} } // enumivo::chain

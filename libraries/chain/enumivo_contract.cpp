@@ -24,7 +24,7 @@
 #include <enumivo/chain/authorization_manager.hpp>
 #include <enumivo/chain/resource_limits.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 
 
@@ -44,7 +44,7 @@ void validate_authority_precondition( const apply_context& context, const author
       if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
          continue; // account was already checked to exist, so its owner and active permissions should exist
 
-      if( a.permission.permission == config::eosio_code_name ) // virtual eosio.code permission does not really exist but is allowed
+      if( a.permission.permission == config::eosio_code_name ) // virtual enumivo.code permission does not really exist but is allowed
          continue;
 
       try {
@@ -81,8 +81,8 @@ void apply_eosio_newaccount(apply_context& context) {
    // Check if the creator is privileged
    const auto &creator = db.get<account_object, by_name>(create.creator);
    if( !creator.privileged ) {
-      ENU_ASSERT( name_str.find( "eosio." ) != 0, action_validate_exception,
-                  "only privileged accounts can have names that start with 'eosio.'" );
+      ENU_ASSERT( name_str.find( "enumivo." ) != 0, action_validate_exception,
+                  "only privileged accounts can have names that start with 'enumivo.'" );
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
@@ -170,7 +170,7 @@ void apply_eosio_setabi(apply_context& context) {
    context.require_authorization(act.account);
 
    // if system account append native abi
-   if ( act.account == eosio::chain::config::system_account_name ) {
+   if ( act.account == enumivo::chain::config::system_account_name ) {
       act.abi = enumivo_contract_abi(act.abi);
    }
    /// if an ABI is specified make sure it is well formed and doesn't
@@ -207,8 +207,8 @@ void apply_eosio_updateauth(apply_context& context) {
    auto& db = context.db;
 
    ENU_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
-   ENU_ASSERT( update.permission.to_string().find( "eosio." ) != 0, action_validate_exception,
-               "Permission names that start with 'eosio.' are reserved" );
+   ENU_ASSERT( update.permission.to_string().find( "enumivo." ) != 0, action_validate_exception,
+               "Permission names that start with 'enumivo.' are reserved" );
    ENU_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
    ENU_ASSERT(validate(update.auth), action_validate_exception,
@@ -378,4 +378,4 @@ void apply_eosio_canceldelay(apply_context& context) {
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 }
 
-} } // namespace eosio::chain
+} } // namespace enumivo::chain

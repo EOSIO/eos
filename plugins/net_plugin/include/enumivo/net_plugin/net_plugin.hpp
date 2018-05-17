@@ -7,7 +7,7 @@
 #include <enumivo/chain_plugin/chain_plugin.hpp>
 #include <enumivo/net_plugin/protocol.hpp>
 
-namespace eosio {
+namespace enumivo {
    using namespace appbase;
 
    struct connection_status {
@@ -44,4 +44,4 @@ namespace eosio {
 
 }
 
-FC_REFLECT( eosio::connection_status, (peer)(connecting)(syncing)(last_handshake) )
+FC_REFLECT( enumivo::connection_status, (peer)(connecting)(syncing)(last_handshake) )

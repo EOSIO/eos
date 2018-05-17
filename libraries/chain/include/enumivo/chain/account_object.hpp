@@ -10,7 +10,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    class account_object : public chainbase::object<account_object_type, account_object> {
       OBJECT_CTOR(account_object,(code)(abi))
@@ -28,14 +28,14 @@ namespace eosio { namespace chain {
       shared_string  code;
       shared_string  abi;
 
-      void set_abi( const eosio::chain::abi_def& a ) {
+      void set_abi( const enumivo::chain::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
          fc::datastream<char*> ds( abi.data(), abi.size() );
          fc::raw::pack( ds, a );
       }
 
-      eosio::chain::abi_def get_abi()const {
-         eosio::chain::abi_def a;
+      enumivo::chain::abi_def get_abi()const {
+         enumivo::chain::abi_def a;
          FC_ASSERT( abi.size() != 0, "No ABI set on account ${n}", ("n",name) );
 
          fc::datastream<const char*> ds( abi.data(), abi.size() );
@@ -75,10 +75,10 @@ namespace eosio { namespace chain {
       >
    >;
 
-} } // eosio::chain
+} } // enumivo::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::account_object, enumivo::chain::account_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::account_sequence_object, enumivo::chain::account_sequence_index)
 
 
-FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(enumivo::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))

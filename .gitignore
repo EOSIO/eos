@@ -75,7 +75,7 @@ witness_node_data_dir
 build/*
 build-debug/*
 
-etc/eosio/node_*
+etc/enumivo/node_*
 var/lib/node_*
 .vscode
 .DS_Store

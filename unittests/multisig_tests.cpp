@@ -21,10 +21,10 @@
 
 #include <fc/variant_object.hpp>
 
-using namespace eosio::testing;
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::testing;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 using namespace fc;
 
 using mvo = fc::mutable_variant_object;
@@ -73,14 +73,14 @@ public:
                                    .active   = authority( get_public_key( a, "active" ) )
                                 });
 
-      trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(buyram), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
                                             ("quant", ramfunds) )
                               );
 
-      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
@@ -401,18 +401,18 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, enumivo_msig_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester ) try {
 
-   // required to set up the link between (eosio active) and (eosio.prods active)
+   // required to set up the link between (enumivo active) and (enumivo.prods active)
    //
-   //                  eosio active
+   //                  enumivo active
    //                       |
-   //             eosio.prods active (2/3 threshold)
+   //             enumivo.prods active (2/3 threshold)
    //             /         |        \             <--- implicitly updated in onblock action
    // alice active     bob active   carol active
 
-   set_authority(N(eosio), "active", authority(1, 
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}}, 
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner", 
-      { { N(eosio), "active" } }, { get_private_key( N(eosio), "active" ) });
+   set_authority(N(enumivo), "active", authority(1, 
+      vector<key_weight>{{get_private_key("enumivo", "active").get_public_key(), 1}}, 
+      vector<permission_level_weight>{{{N(enumivo.prods), config::active_name}, 1}}), "owner", 
+      { { N(enumivo), "active" } }, { get_private_key( N(enumivo), "active" ) });
 
    set_producers( {N(alice),N(bob),N(carol)} );
    produce_blocks(50);
@@ -423,23 +423,23 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
 
    create_currency( N(enumivo.coin), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
    issue(config::system_account_name,      "1000000000.0000 EOS");
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
 
    set_code( config::system_account_name, enumivo_system_wast );
    set_abi( config::system_account_name, enumivo_system_abi );
 
    produce_blocks();
 
-   create_account_with_resources( N(alice1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
-   create_account_with_resources( N(bob111111111), N(eosio), asset::from_string("0.4500 EOS"), false );
-   create_account_with_resources( N(carol1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
+   create_account_with_resources( N(alice1111111), N(enumivo), asset::from_string("1.0000 EOS"), false );
+   create_account_with_resources( N(bob111111111), N(enumivo), asset::from_string("0.4500 EOS"), false );
+   create_account_with_resources( N(carol1111111), N(enumivo), asset::from_string("1.0000 EOS"), false );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name }, 
       {N(carol), config::active_name} };
 
-   vector<permission_level> action_perm = {{N(eosio), config::active_name}};
+   vector<permission_level> action_perm = {{N(enumivo), config::active_name}};
 
    auto wasm = wast_to_wasm( test_api_wast );
 
@@ -493,7 +493,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
                   ("proposal_name", "first")
                   ("level",         permission_level{ N(carol), config::active_name })
    );
-   // execute by alice to replace the eosio system contract
+   // execute by alice to replace the enumivo system contract
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
 
@@ -508,7 +508,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
    // can't create account because system contract was replace by the test_api contract
-   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
+   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(enumivo), asset::from_string("1.0000 EOS"), false ),
       fc::assert_exception,
       [](const fc::exception& e) {
          return expect_assert_message(e, "condition: assertion failed: Unknown Test");
@@ -518,11 +518,11 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
 
 BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_tester ) try {
 
-   // set up the link between (eosio active) and (eosio.prods active)
-   set_authority(N(eosio), "active", authority(1, 
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}}, 
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner", 
-      { { N(eosio), "active" } }, { get_private_key( N(eosio), "active" ) });
+   // set up the link between (enumivo active) and (enumivo.prods active)
+   set_authority(N(enumivo), "active", authority(1, 
+      vector<key_weight>{{get_private_key("enumivo", "active").get_public_key(), 1}}, 
+      vector<permission_level_weight>{{{N(enumivo.prods), config::active_name}, 1}}), "owner", 
+      { { N(enumivo), "active" } }, { get_private_key( N(enumivo), "active" ) });
 
    create_accounts( { N(apple) } );
    set_producers( {N(alice),N(bob),N(carol), N(apple)} );
@@ -534,23 +534,23 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
 
    create_currency( N(enumivo.coin), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
    issue(config::system_account_name,      "1000000000.0000 EOS");
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
 
    set_code( config::system_account_name, enumivo_system_wast );
    set_abi( config::system_account_name, enumivo_system_abi );
 
    produce_blocks();
 
-   create_account_with_resources( N(alice1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
-   create_account_with_resources( N(bob111111111), N(eosio), asset::from_string("0.4500 EOS"), false );
-   create_account_with_resources( N(carol1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
+   create_account_with_resources( N(alice1111111), N(enumivo), asset::from_string("1.0000 EOS"), false );
+   create_account_with_resources( N(bob111111111), N(enumivo), asset::from_string("0.4500 EOS"), false );
+   create_account_with_resources( N(carol1111111), N(enumivo), asset::from_string("1.0000 EOS"), false );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "enumivo" ) );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name }, 
       {N(carol), config::active_name}, {N(apple), config::active_name}};
 
-   vector<permission_level> action_perm = {{N(eosio), config::active_name}};
+   vector<permission_level> action_perm = {{N(enumivo), config::active_name}};
 
    auto wasm = wast_to_wasm( test_api_wast );
 
@@ -618,7 +618,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
                   ("proposal_name", "first")
                   ("level",         permission_level{ N(apple), config::active_name })
    );
-   // execute by alice to replace the eosio system contract
+   // execute by alice to replace the enumivo system contract
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
 
@@ -634,7 +634,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
    // can't create account because system contract was replace by the test_api contract
-   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
+   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(enumivo), asset::from_string("1.0000 EOS"), false ),
       fc::assert_exception,
       [](const fc::exception& e) {
          return expect_assert_message(e, "condition: assertion failed: Unknown Test");

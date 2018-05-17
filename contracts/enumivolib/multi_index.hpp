@@ -24,7 +24,7 @@
 #include <enumivolib/db.h>
 #include <enumivolib/fixed_key.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 using boost::multi_index::const_mem_fun;
 
@@ -815,4 +815,4 @@ class multi_index
 
 };
 
-}  /// eosio
+}  /// enumivo

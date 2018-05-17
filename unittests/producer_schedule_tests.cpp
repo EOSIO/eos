@@ -9,8 +9,8 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio::testing;
-using namespace eosio::chain;
+using namespace enumivo::testing;
+using namespace enumivo::chain;
 using mvo = fc::mutable_variant_object;
 
 BOOST_AUTO_TEST_SUITE(producer_schedule_tests)

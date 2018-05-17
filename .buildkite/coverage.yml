@@ -6,17 +6,17 @@ steps:
         echo "--- :spiral_note_pad: Generating Code Coverage Report" && \
         /usr/bin/ninja ENU_ut_coverage && \
         echo "--- :arrow_up: Publishing Code Coverage Report" && \
-        buildkite-agent artifact upload "ENU_ut_coverage/**/*" s3://eosio-coverage/$BUILDKITE_JOB_ID && \
+        buildkite-agent artifact upload "ENU_ut_coverage/**/*" s3://enumivo-coverage/$BUILDKITE_JOB_ID && \
         cp /config/.coveralls.yml . && \
         /usr/local/bin/coveralls-lcov ENU_ut_coverage_filtered.info && \
         echo "+++ View Report" && \
-        printf "\033]1339;url=https://eosio-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/ENU_ut_coverage/index.html;content=View Full Coverage Report\a\n"
+        printf "\033]1339;url=https://enumivo-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/ENU_ut_coverage/index.html;content=View Full Coverage Report\a\n"
     label: ":spiral_note_pad: Generate Report"
     agents:
       - "role=linux-coverage"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:ubuntu18"
+        image: "enumivo/ci:ubuntu18"
         workdir: /data/job
         mounts:
           - /etc/buildkite-agent/config:/config

@@ -24,7 +24,7 @@ Deleting the `transactions.txt` file will prevent replay from working.
 
 `enucli wallet import <private key from step 2>`
 
-`enucli create account eosio <account_name> <public key from step 1> <public key from step 2>`
+`enucli create account enumivo <account_name> <public key from step 1> <public key from step 2>`
 
 ### Set contract steps
 `enucli set contract enumivo.coin /contracts/enumivo.coin -p enumivo.coin@active`

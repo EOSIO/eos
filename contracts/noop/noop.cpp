@@ -5,7 +5,7 @@
 
 #include <enumivolib/enumivo.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    class noop: public contract {
       public:
@@ -20,4 +20,4 @@ namespace eosio {
 
    ENUMIVO_ABI( noop, ( anyaction ) )
 
-} /// eosio     
+} /// enumivo     

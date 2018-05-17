@@ -10,7 +10,7 @@
 #include <enumivolib/serialize.hpp>
 #include <vector>
 
-namespace eosio {
+namespace enumivo {
 
    /**
     * @defgroup transactioncppapi Transaction C++ API
@@ -81,7 +81,7 @@ namespace eosio {
       char buf[size];
       auto size2 = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
       eosio_assert( size == size2, "get_action failed" );
-      return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
+      return enumivo::unpack<enumivo::action>(&buf[0], static_cast<size_t>(size));
    }
 
    ///@} transactioncpp api

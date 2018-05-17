@@ -9,7 +9,7 @@
 
 #include <enumivo/chain/block_state.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 class block_storage : public consumer_core<chain::block_state_ptr>
 {

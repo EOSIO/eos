@@ -10,16 +10,16 @@
 namespace std {
 
    template<>
-   struct hash<eosio::chain::account_name>
+   struct hash<enumivo::chain::account_name>
    {
-    size_t operator()( const eosio::chain::account_name& name )const
+    size_t operator()( const enumivo::chain::account_name& name )const
     {
         return (uint64_t)name;
     }
    };
 }
 
-namespace eosio {
+namespace enumivo {
 using chain::account_name;
 using chain::shared_vector;
 using chain::transaction_id_type;
@@ -53,7 +53,7 @@ typedef chainbase::generic_index<account_transaction_history_multi_index> accoun
 
 }
 
-CHAINBASE_SET_INDEX_TYPE( eosio::account_transaction_history_object, eosio::account_transaction_history_multi_index )
+CHAINBASE_SET_INDEX_TYPE( enumivo::account_transaction_history_object, enumivo::account_transaction_history_multi_index )
 
-FC_REFLECT( eosio::account_transaction_history_object, (name)(transaction_id) )
+FC_REFLECT( enumivo::account_transaction_history_object, (name)(transaction_id) )
 

@@ -4,8 +4,8 @@
 #include <enumivo.coin/enumivo.coin.wast.hpp>
 #include <enumivo.coin/enumivo.coin.abi.hpp>
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 
 private_key_type get_private_key( name keyname, string role ) {
    return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
@@ -39,7 +39,7 @@ int main( int argc, char** argv ) {
 
 
       auto cr = c.push_action( N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
-                 ("issuer",       "eosio" )
+                 ("issuer",       "enumivo" )
                  ("maximum_supply", "10000000.0000 EOS")
                  ("can_freeze", 0)
                  ("can_recall", 0)
@@ -48,7 +48,7 @@ int main( int argc, char** argv ) {
 
       wdump((fc::json::to_pretty_string(cr)));
 
-      cr = c.push_action( N(enumivo.coin), N(issue), N(eosio), mutable_variant_object()
+      cr = c.push_action( N(enumivo.coin), N(issue), N(enumivo), mutable_variant_object()
                  ("to",       "dan" )
                  ("quantity", "100.0000 EOS")
                  ("memo", "")
@@ -187,7 +187,7 @@ int main( int argc, char** argv ) {
 
       c.produce_blocks(3);
 
-      cr = c.push_action( N(enumivo.coin), N(issue), N(eosio), mutable_variant_object()
+      cr = c.push_action( N(enumivo.coin), N(issue), N(enumivo), mutable_variant_object()
                  ("to",       "unregistered" )
                  ("quantity", "100.0000 EOS")
                  ("memo", "")

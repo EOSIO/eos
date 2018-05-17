@@ -10,7 +10,7 @@
 
 #include <fc/exception/exception.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    using chain::uint128_t;
 

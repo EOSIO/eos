@@ -8,8 +8,8 @@
 #include <fc/io/json.hpp>
 #include <enumivo/chain/exceptions.hpp>
 
-using namespace eosio::client::localize;
-using namespace eosio::chain;
+using namespace enumivo::client::localize;
+using namespace enumivo::chain;
 
 const char* transaction_help_text_header = _("An error occurred while submitting the transaction for this command!");
 
@@ -159,7 +159,7 @@ const char* error_advice_transaction_exception =  "Ensure that your transaction 
 const char* error_advice_expired_tx_exception =  "Please increase the expiration time of your transaction!";
 const char* error_advice_tx_exp_too_far_exception =  "Please decrease the expiration time of your transaction!";
 const char* error_advice_invalid_ref_block_exception =  "Ensure that the reference block exist in the blockchain!";
-const char* error_advice_tx_duplicate =  "You can try embedding eosio nonce action inside your transaction to ensure uniqueness.";
+const char* error_advice_tx_duplicate =  "You can try embedding enumivo nonce action inside your transaction to ensure uniqueness.";
 
 const char* error_advice_invalid_action_args_exception = R"=====(Ensure that your arguments follow the contract abi!
 You can check the contract's abi by using 'cleos get code' command.)=====";
@@ -231,11 +231,11 @@ const std::map<int64_t, std::string> error_advice = {
    { wallet_not_available_exception::code_value, error_advice_wallet_not_available_exception }
 };
 
-namespace eosio { namespace client { namespace help {
+namespace enumivo { namespace client { namespace help {
 
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
    // eos recognized error code is from 3000000 
-   // refer to libraries/chain/include/eosio/chain/exceptions.hpp
+   // refer to libraries/chain/include/enumivo/chain/exceptions.hpp
    if (e.code() >= chain_exception::code_value) {
       std::string advice, explanation, stack_trace;
 

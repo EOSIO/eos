@@ -2,7 +2,7 @@
 #include <enumivo/chain/block_header.hpp>
 #include <enumivo/chain/transaction.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    /**
     * When a transaction is referenced by a block it could imply one of several outcomes which
@@ -67,11 +67,11 @@ namespace eosio { namespace chain {
       signature_type  sig;
    };
 
-} } /// eosio::chain
+} } /// enumivo::chain
 
-FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
+FC_REFLECT_ENUM( enumivo::chain::transaction_receipt::status_enum,
                  (executed)(soft_fail)(hard_fail)(delayed)(expired) )
 
-FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words) )
-FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
-FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions)(block_extensions) )
+FC_REFLECT(enumivo::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words) )
+FC_REFLECT_DERIVED(enumivo::chain::transaction_receipt, (enumivo::chain::transaction_receipt_header), (trx) )
+FC_REFLECT_DERIVED(enumivo::chain::signed_block, (enumivo::chain::signed_block_header), (transactions)(block_extensions) )

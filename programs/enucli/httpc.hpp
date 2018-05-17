@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eosio { namespace client { namespace http {
+namespace enumivo { namespace client { namespace http {
 
    struct parsed_url {
       string scheme;

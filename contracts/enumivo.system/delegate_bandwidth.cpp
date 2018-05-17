@@ -19,12 +19,12 @@
 #include <map>
 
 namespace enumivosystem {
-   using eosio::asset;
-   using eosio::indexed_by;
-   using eosio::const_mem_fun;
-   using eosio::bytes;
-   using eosio::print;
-   using eosio::permission_level;
+   using enumivo::asset;
+   using enumivo::indexed_by;
+   using enumivo::const_mem_fun;
+   using enumivo::bytes;
+   using enumivo::print;
+   using enumivo::permission_level;
    using std::map;
    using std::pair;
 
@@ -63,7 +63,7 @@ namespace enumivosystem {
    struct refund_request {
       account_name  owner;
       time          request_time;
-      eosio::asset  amount;
+      enumivo::asset  amount;
 
       uint64_t  primary_key()const { return owner; }
 
@@ -75,9 +75,9 @@ namespace enumivosystem {
     *  These tables are designed to be constructed in the scope of the relevant user, this 
     *  facilitates simpler API for per-user queries
     */
-   typedef eosio::multi_index< N(userres), user_resources>      user_resources_table;
-   typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
-   typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
+   typedef enumivo::multi_index< N(userres), user_resources>      user_resources_table;
+   typedef enumivo::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
+   typedef enumivo::multi_index< N(refunds), refund_request>      refunds_table;
 
 
    /**
@@ -97,10 +97,10 @@ namespace enumivosystem {
                             /*  no need to parse authorites
                             const authority& owner,
                             const authority& active*/ ) {
-      auto name_str = eosio::name{newact}.to_string();
+      auto name_str = enumivo::name{newact}.to_string();
 
-      eosio_assert( name_str.size() == 12 || creator == N(eosio), "account names must be 12 chars long" );
-      eosio_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(eosio), "account names cannot contain '.' character");
+      eosio_assert( name_str.size() == 12 || creator == N(enumivo), "account names must be 12 chars long" );
+      eosio_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(enumivo), "account names cannot contain '.' character");
 
       user_resources_table  userres( _self, newact);
 
@@ -140,9 +140,9 @@ namespace enumivosystem {
       require_auth( payer );
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
-      if( payer != N(eosio) ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.coin), {payer,N(active)},
-                                                       { payer, N(eosio), quant, std::string("buy ram") } );
+      if( payer != N(enumivo) ) {
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {payer,N(active)},
+                                                       { payer, N(enumivo), quant, std::string("buy ram") } );
       }
 
 
@@ -207,9 +207,9 @@ namespace enumivosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      if( N(eosio) != account ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.coin), {N(eosio),N(active)},
-                                                       { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
+      if( N(enumivo) != account ) {
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
+                                                       { N(enumivo), account, asset(tokens_out), std::string("sell ram") } );
       }
    }
 
@@ -264,9 +264,9 @@ namespace enumivosystem {
 
       set_resource_limits( tot_itr->owner, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
-      if( N(eosio) != source_stake_from ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.coin), {from,N(active)},
-                                                       { source_stake_from, N(eosio), asset(total_stake), std::string("stake bandwidth") } );
+      if( N(enumivo) != source_stake_from ) {
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {from,N(active)},
+                                                       { source_stake_from, N(enumivo), asset(total_stake), std::string("stake bandwidth") } );
       }
 
       auto from_voter = _voters.find(from);
@@ -359,7 +359,7 @@ namespace enumivosystem {
       //create or replace deferred transaction
       //refund act;
       //act.owner = from;
-      eosio::transaction out;
+      enumivo::transaction out;
       out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
       out.delay_sec = refund_delay;
       out.send( from, receiver, true );
@@ -383,8 +383,8 @@ namespace enumivosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(enumivo.coin), {N(eosio),N(active)},
-                                                    { N(eosio), req->owner, req->amount, std::string("unstake") } );
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
+                                                    { N(enumivo), req->owner, req->amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }

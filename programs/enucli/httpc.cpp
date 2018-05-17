@@ -23,7 +23,7 @@
 #include "httpc.hpp"
 
 using boost::asio::ip::tcp;
-namespace eosio { namespace client { namespace http {
+namespace enumivo { namespace client { namespace http {
    void do_connect(tcp::socket& sock, const std::string& server, const std::string& port) {
       // Get a list of endpoints corresponding to the server name.
       tcp::resolver resolver(sock.get_io_service());
@@ -164,7 +164,7 @@ namespace eosio { namespace client { namespace http {
          throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
       }
    } else {
-      auto &&error_info = response_result.as<eosio::error_results>().error;
+      auto &&error_info = response_result.as<enumivo::error_results>().error;
       // Construct fc exception from error
       const auto &error_details = error_info.details;
 

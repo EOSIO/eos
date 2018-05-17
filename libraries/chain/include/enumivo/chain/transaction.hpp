@@ -7,7 +7,7 @@
 #include <enumivo/chain/action.hpp>
 #include <numeric>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    /**
     *  The transaction header contains the fixed-sized data
@@ -184,13 +184,13 @@ namespace eosio { namespace chain {
 
    uint128_t transaction_id_to_sender_id( const transaction_id_type& tid );
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain
 
-FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
+FC_REFLECT( enumivo::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
                                               (max_net_usage_words)(max_cpu_usage_ms)(delay_sec) )
-FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions) )
-FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
-FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
-FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
-FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::signed_transaction), (sender_id)(sender)(payer)(execute_after) )
-FC_REFLECT( eosio::chain::deferred_reference, (sender)(sender_id) )
+FC_REFLECT_DERIVED( enumivo::chain::transaction, (enumivo::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions) )
+FC_REFLECT_DERIVED( enumivo::chain::signed_transaction, (enumivo::chain::transaction), (signatures)(context_free_data) )
+FC_REFLECT_ENUM( enumivo::chain::packed_transaction::compression_type, (none)(zlib))
+FC_REFLECT( enumivo::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
+FC_REFLECT_DERIVED( enumivo::chain::deferred_transaction, (enumivo::chain::signed_transaction), (sender_id)(sender)(payer)(execute_after) )
+FC_REFLECT( enumivo::chain::deferred_reference, (sender)(sender_id) )

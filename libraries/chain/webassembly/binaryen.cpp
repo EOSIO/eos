@@ -4,7 +4,7 @@
 #include <wasm-binary.h>
 
 
-namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
+namespace enumivo { namespace chain { namespace webassembly { namespace binaryen {
 
 class binaryen_instantiated_module : public wasm_instantiated_module_interface {
    public:

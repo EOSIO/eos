@@ -3,7 +3,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <iosfwd>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
    using std::string;
 
    static constexpr uint64_t char_to_symbol( char c ) {
@@ -37,7 +37,7 @@ namespace eosio { namespace chain {
       return name;
    }
 
-#define N(X) eosio::chain::string_to_name(#X)
+#define N(X) enumivo::chain::string_to_name(#X)
 
    struct name {
       uint64_t value = 0;
@@ -97,11 +97,11 @@ namespace eosio { namespace chain {
       return names;
    }
 
-} } // eosio::chain
+} } // enumivo::chain
 
 namespace std {
-   template<> struct hash<eosio::chain::name> : private hash<uint64_t> {
-      typedef eosio::chain::name argument_type;
+   template<> struct hash<enumivo::chain::name> : private hash<uint64_t> {
+      typedef enumivo::chain::name argument_type;
       typedef typename hash<uint64_t>::result_type result_type;
       result_type operator()(const argument_type& name) const noexcept
       {
@@ -112,9 +112,9 @@ namespace std {
 
 namespace fc {
   class variant;
-  void to_variant(const eosio::chain::name& c, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::name& check);
+  void to_variant(const enumivo::chain::name& c, fc::variant& v);
+  void from_variant(const fc::variant& v, enumivo::chain::name& check);
 } // fc
 
 
-FC_REFLECT( eosio::chain::name, (value) )
+FC_REFLECT( enumivo::chain::name, (value) )

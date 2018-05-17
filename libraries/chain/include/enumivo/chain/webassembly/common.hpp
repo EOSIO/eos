@@ -7,7 +7,7 @@
 
 using namespace fc;
 
-namespace eosio { namespace chain { 
+namespace enumivo { namespace chain { 
 
    class apply_context;
    class transaction_context;
@@ -98,4 +98,4 @@ namespace eosio { namespace chain {
       char *value;
    };
 
- } } // eosio::chain
+ } } // enumivo::chain

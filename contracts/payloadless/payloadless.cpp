@@ -1,8 +1,8 @@
 #include <enumivolib/enumivo.hpp>
 #include <enumivolib/print.hpp>
-using namespace eosio;
+using namespace enumivo;
 
-class payloadless : public eosio::contract {
+class payloadless : public enumivo::contract {
   public:
       using contract::contract;
 

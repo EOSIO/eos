@@ -27,7 +27,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace enumivo {
 
 using chain::account_name;
 using chain::block_id_type;
@@ -530,4 +530,4 @@ read_only::get_controlled_accounts_results read_only::get_controlled_accounts(co
 }
 
 } // namespace account_history_apis
-} // namespace eosio
+} // namespace enumivo

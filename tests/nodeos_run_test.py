@@ -101,9 +101,6 @@ try:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEosInstances=False
 
-    Print("Validating system accounts after bootstrap")
-    cluster.validateAccounts(None)
-
     accounts=testUtils.Cluster.createAccountKeys(3)
     if accounts is None:
         errorExit("FAILURE - create keys")
@@ -226,30 +223,11 @@ try:
     if node is None:
         errorExit("Cluster in bad state, received None node")
 
-    Print("Validating accounts before user accounts creation")
-    cluster.validateAccounts(None)
-
     Print("Create new account %s via %s" % (testeraAccount.name, defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, defproduceraAccount, stakedDeposit=0, waitForTransBlock=False)
     if transId is None:
-        cmdError("%s create account" % (testeraAccount.name))
+        cmdError("%s create account" % (ClientName))
         errorExit("Failed to create account %s" % (testeraAccount.name))
-
-    Print("Create new account %s via %s" % (currencyAccount.name, defproducerbAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, defproducerbAccount, stakedDeposit=5000)
-    if transId is None:
-        cmdError("%s create account" % (ClientName))
-        errorExit("Failed to create account %s" % (currencyAccount.name))
-
-    Print("Create new account %s via %s" % (exchangeAccount.name, defproduceraAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, defproduceraAccount, waitForTransBlock=True)
-    if transId is None:
-        cmdError("%s create account" % (ClientName))
-        errorExit("Failed to create account %s" % (exchangeAccount.name))
-
-    Print("Validating accounts after user accounts creation")
-    accounts=[testeraAccount, currencyAccount, exchangeAccount]
-    cluster.validateAccounts(accounts)
 
     Print("Verify account %s" % (testeraAccount))
     if not node.verifyAccount(testeraAccount):
@@ -284,9 +262,17 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    Print("Validating accounts after some user trasactions")
-    accounts=[testeraAccount, currencyAccount, exchangeAccount]
-    cluster.validateAccounts(accounts)
+    Print("Create new account %s via %s" % (currencyAccount.name, defproducerbAccount.name))
+    transId=node.createInitializeAccount(currencyAccount, defproducerbAccount, stakedDeposit=5000)
+    if transId is None:
+        cmdError("%s create account" % (ClientName))
+        errorExit("Failed to create account %s" % (currencyAccount.name))
+
+    Print("Create new account %s via %s" % (exchangeAccount.name, defproduceraAccount.name))
+    transId=node.createInitializeAccount(exchangeAccount, defproduceraAccount, waitForTransBlock=True)
+    if transId is None:
+        cmdError("%s create account" % (ClientName))
+        errorExit("Failed to create account %s" % (exchangeAccount.name))
 
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():
@@ -320,7 +306,7 @@ try:
     assert(actions)
     try:
         assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-    except (AssertionError, TypeError, KeyError) as _:
+    except (AssertionError, KeyError) as e:
         Print("Last action validation failed. Actions: %s" % (actions))
         raise
 
@@ -395,7 +381,7 @@ try:
             typeVal=  transaction["name"]
             amountVal=transaction["data"]["quantity"]
             amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
-    except (TypeError, KeyError) as e:
+    except (AssertionError, KeyError) as e:
         Print("Transaction validation parsing failed. Transaction: %s" % (transaction))
         raise
 
@@ -485,7 +471,7 @@ try:
     expected="100000.0000 CUR"
     actual=amountStr
     if actual != expected:
-        errorExit("FAILURE - currency1111 balance check failed. Expected: %s, Recieved %s" % (expected, actual), raw=True)
+        errorExit("FAILURE - get currency1111 balance failed. Recieved response: <%s>" % (res), raw=True)
 
     # TBD: "get currency1111 stats is still not working. Enable when ready.
     # Print("Verify currency1111 contract has proper total supply of CUR (via get currency1111 stats)")
@@ -528,47 +514,6 @@ try:
     actual=amountStr
     if actual != expected:
         errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
-
-    Print("Test for block decoded packed transaction (issue 2932)")
-    blockId=node.getBlockIdByTransId(transId)
-    assert(blockId)
-    block=node.getBlock(blockId)
-    assert(block)
-    transactions=None
-    try:
-        transactions=block["transactions"]
-        assert(transactions)
-    except (AssertionError, TypeError, KeyError) as _:
-        Print("FAILURE - Failed to parse block. %s" % (block))
-        raise
-
-    myTrans=None
-    for trans in transactions:
-        assert(trans)
-        try:
-            myTransId=trans["trx"]["id"]
-            if transId == myTransId:
-                myTrans=trans["trx"]["transaction"]
-                assert(myTrans)
-                break
-        except (AssertionError, TypeError, KeyError) as _:
-            Print("FAILURE - Failed to parse block transactions. %s" % (trans))
-            raise
-
-    assert(myTrans)
-    try:
-        assert(myTrans["actions"][0]["name"] == "transfer")
-        assert(myTrans["actions"][0]["account"] == "currency1111")
-        assert(myTrans["actions"][0]["authorization"][0]["actor"] == "currency1111")
-        assert(myTrans["actions"][0]["authorization"][0]["permission"] == "active")
-        assert(myTrans["actions"][0]["data"]["from"] == "currency1111")
-        assert(myTrans["actions"][0]["data"]["to"] == "defproducera")
-        assert(myTrans["actions"][0]["data"]["quantity"] == "0.0050 CUR")
-        assert(myTrans["actions"][0]["data"]["memo"] == "test")
-    except (AssertionError, TypeError, KeyError) as _:
-        Print("FAILURE - Failed to parse block transaction. %s" % (myTrans))
-        raise
-
 
     Print("Exchange Contract Tests")
     Print("upload exchange contract")
@@ -637,7 +582,7 @@ try:
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(str(blockNum), retry=False, silentErrors=True)
+        block=node.getBlock(blockNum, retry=False, silentErrors=True)
         if block is None:
             # TBD: Known issue (Issue 2099) that the block containing setprods isn't retrievable.
             #  Enable errorExit() once that is resolved.
@@ -660,8 +605,8 @@ try:
             #         errorExit("mongo get messages by transaction id %s" % (transId))
 
 
-    Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
-    block=node.getBlock(str(currentBlockNum+1000), silentErrors=True, retry=False)
+    Print("Request invalid block numbered %d. This will generate an extpected error message." % (currentBlockNum+1000))
+    block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
     else:
@@ -681,10 +626,6 @@ try:
             #  for now, hopefully the logs will get cleaned up in future.
             Print("WARNING: Asserts in var/lib/node_00/stderr.txt")
             #errorExit("FAILURE - Assert in var/lib/node_00/stderr.txt")
-
-    Print("Validating accounts at end of test")
-    accounts=[testeraAccount, currencyAccount, exchangeAccount]
-    cluster.validateAccounts(accounts)
 
     testSuccessful=True
 finally:

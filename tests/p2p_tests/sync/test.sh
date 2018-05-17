@@ -56,8 +56,8 @@ total_nodes="${total_nodes:-`echo $pnodes`}"
 launcherPath="programs/enulauncher/enulauncher"
 clientPath="programs/enucli/enucli"
 
-rm -rf etc/eosio/node_* var/lib/* stage
-ls -l etc/eosio var/lib
+rm -rf etc/enumivo/node_* var/lib/* stage
+ls -l etc/enumivo var/lib
 
 debugArg=""
 if [ "$debug" == true ]; then
@@ -143,8 +143,8 @@ count=0
 while [ $count -lt $total_nodes ]; do
     num=$(printf "%02s" $count)
     echo =================================================================
-    echo Contents of etc/eosio/node_${num}/config.ini:
-    cat etc/eosio/node_${num}/config.ini
+    echo Contents of etc/enumivo/node_${num}/config.ini:
+    cat etc/enumivo/node_${num}/config.ini
     echo =================================================================
     echo Contents of var/lib/node_${num}/stderr.txt:
     cat var/lib/node_${num}/stderr.txt

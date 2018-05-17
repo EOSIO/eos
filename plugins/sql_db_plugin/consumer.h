@@ -14,7 +14,7 @@
 #include "consumer_core.h"
 #include "fifo.h"
 
-namespace eosio {
+namespace enumivo {
 
 template<typename T>
 class consumer final : public boost::noncopyable

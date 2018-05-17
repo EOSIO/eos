@@ -7,7 +7,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
    /**
     *  @brief tracks minimal information about past blocks to implement TaPOS
     *  @ingroup object
@@ -36,6 +36,6 @@ namespace eosio { namespace chain {
 
 } }
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::block_summary_object, eosio::chain::block_summary_multi_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::block_summary_object, enumivo::chain::block_summary_multi_index)
 
-FC_REFLECT( eosio::chain::block_summary_object, (block_id) )
+FC_REFLECT( enumivo::chain::block_summary_object, (block_id) )

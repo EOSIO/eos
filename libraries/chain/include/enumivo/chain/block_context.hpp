@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 
    class block_context {

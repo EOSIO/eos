@@ -1,5 +1,5 @@
 if(BUILD_MONGO_DB_PLUGIN)
-  file(GLOB HEADERS "include/eosio/mongo_db_plugin/*.hpp")
+  file(GLOB HEADERS "include/enumivo/mongo_db_plugin/*.hpp")
   add_library( mongo_db_plugin
                mongo_db_plugin.cpp
                ${HEADERS} )

@@ -2,7 +2,7 @@
 #include <enumivo/chain/block_header.hpp>
 #include <enumivo/chain/incremental_merkle.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 /**
  *  @struct block_header_state
@@ -55,9 +55,9 @@ struct block_header_state {
 
 
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain
 
-FC_REFLECT( eosio::chain::block_header_state,
+FC_REFLECT( enumivo::chain::block_header_state,
             (id)(block_num)(header)(dpos_proposed_irreversible_blocknum)(dpos_irreversible_blocknum)(bft_irreversible_blocknum)
             (pending_schedule_lib_num)(pending_schedule_hash)
             (pending_schedule)(active_schedule)(blockroot_merkle)

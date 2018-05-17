@@ -1,8 +1,8 @@
 #include <enumivolib/enumivo.hpp>
 
-using namespace eosio;
+using namespace enumivo;
 
-class hello : public eosio::contract {
+class hello : public enumivo::contract {
   public:
       using contract::contract;
 

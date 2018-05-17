@@ -20,7 +20,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace enumivo {
    using chain::controller;
    using std::unique_ptr;
    using namespace appbase;
@@ -248,11 +248,11 @@ public:
             scope = boost::lexical_cast<uint64_t>(trimmed_scope_str.c_str(), trimmed_scope_str.size());
          } catch( ... ) {
             try {
-               auto symb = eosio::chain::symbol::from_string(p.scope);
+               auto symb = enumivo::chain::symbol::from_string(p.scope);
                scope = symb.value();
             } catch( ... ) {
                try {
-                  scope = ( eosio::chain::string_to_symbol( 0, p.scope.c_str() ) >> 8 );
+                  scope = ( enumivo::chain::string_to_symbol( 0, p.scope.c_str() ) >> 8 );
                } catch( ... ) {
                   FC_ASSERT( false, "could not convert scope string to any of the following: uint64_t, valid name, or valid symbol (with or without the precision)" );
                }
@@ -368,29 +368,29 @@ private:
 
 }
 
-FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
-FC_REFLECT(eosio::chain_apis::empty, )
-FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
+FC_REFLECT( enumivo::chain_apis::permission, (perm_name)(parent)(required_auth) )
+FC_REFLECT(enumivo::chain_apis::empty, )
+FC_REFLECT(enumivo::chain_apis::read_only::get_info_results,
 (server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
-FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(enumivo::chain_apis::read_only::get_block_params, (block_num_or_id))
 
-FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
+FC_REFLECT( enumivo::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+FC_REFLECT( enumivo::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
-FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
-FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
-FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
+FC_REFLECT( enumivo::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
+FC_REFLECT( enumivo::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
+FC_REFLECT( enumivo::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 
-FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
-FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
-FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
-FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )
-FC_REFLECT( eosio::chain_apis::read_only::producer_info, (producer_name) )
-FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
-FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
-FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
-FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
-FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
-FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_account_params, (account_name) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_code_params, (account_name) )
+FC_REFLECT( enumivo::chain_apis::read_only::producer_info, (producer_name) )
+FC_REFLECT( enumivo::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
+FC_REFLECT( enumivo::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
+FC_REFLECT( enumivo::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
+FC_REFLECT( enumivo::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_required_keys_result, (required_keys) )

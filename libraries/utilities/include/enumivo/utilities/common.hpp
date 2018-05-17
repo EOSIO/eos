@@ -8,7 +8,7 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
-namespace eosio { namespace utilities { namespace common {
+namespace enumivo { namespace utilities { namespace common {
   template<typename I>
   std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
      static const char* digits = "0123456789abcdef";

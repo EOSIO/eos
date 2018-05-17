@@ -6,7 +6,7 @@
 #include "multi_index_includes.hpp"
 
 
-namespace eosio { namespace chain { namespace resource_limits {
+namespace enumivo { namespace chain { namespace resource_limits {
 
    namespace impl {
       template<typename T>
@@ -223,9 +223,9 @@ namespace eosio { namespace chain { namespace resource_limits {
       >
    >;
 
-} } } /// eosio::chain::resource_limits
+} } } /// enumivo::chain::resource_limits
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_object,        eosio::chain::resource_limits::resource_limits_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::resource_limits::resource_limits_object,        enumivo::chain::resource_limits::resource_limits_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::resource_limits::resource_usage_object,         enumivo::chain::resource_limits::resource_usage_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::resource_limits::resource_limits_config_object, enumivo::chain::resource_limits::resource_limits_config_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::resource_limits::resource_limits_state_object,  enumivo::chain::resource_limits::resource_limits_state_index)

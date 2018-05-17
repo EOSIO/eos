@@ -11,7 +11,7 @@ void test_checktime::checktime_pass() {
    for ( int i = 0; i < 10000; i++ )
       p += i;
 
-   eosio::print(p);
+   enumivo::print(p);
 }
 
 void test_checktime::checktime_failure() {
@@ -21,5 +21,5 @@ void test_checktime::checktime_failure() {
          p += i+j;
 
 
-   eosio::print(p);
+   enumivo::print(p);
 }

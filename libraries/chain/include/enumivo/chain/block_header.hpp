@@ -2,7 +2,7 @@
 #include <enumivo/chain/block_timestamp.hpp>
 #include <enumivo/chain/producer_schedule.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    struct block_header
    {
@@ -53,12 +53,12 @@ namespace eosio { namespace chain {
       signature_type  producer_signature;
    };
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain
 
-FC_REFLECT(eosio::chain::block_header, 
+FC_REFLECT(enumivo::chain::block_header, 
            (timestamp)(producer)(confirmed)(previous)
            (transaction_mroot)(action_mroot)
            (schedule_version)(new_producers)(header_extensions))
 
-FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
-FC_REFLECT(eosio::chain::header_confirmation,  (block_id)(producer)(producer_signature) )
+FC_REFLECT_DERIVED(enumivo::chain::signed_block_header, (enumivo::chain::block_header), (producer_signature))
+FC_REFLECT(enumivo::chain::header_confirmation,  (block_id)(producer)(producer_signature) )

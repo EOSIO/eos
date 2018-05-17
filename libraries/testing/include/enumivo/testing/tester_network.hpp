@@ -4,7 +4,7 @@
 #include <boost/signals2/signal.hpp>
 #include <boost/signals2/shared_connection_block.hpp>
 
-namespace eosio { namespace testing {
+namespace enumivo { namespace testing {
    using namespace boost::signals2;
 
    /**
@@ -45,4 +45,4 @@ namespace eosio { namespace testing {
       std::map<base_tester *, scoped_connection> blockchains;
    };
 
-} } /// eosio::testing
+} } /// enumivo::testing

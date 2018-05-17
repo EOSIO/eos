@@ -9,7 +9,7 @@
 #ifndef CONFIG_HPP_IN
 #define CONFIG_HPP_IN
 
-namespace eosio { namespace enunode { namespace config {
+namespace enumivo { namespace enunode { namespace config {
   constexpr uint64_t version = 0x${enunode_BUILD_VERSION};
 }}}
 
