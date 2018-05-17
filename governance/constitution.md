@@ -9,7 +9,7 @@ No Member shall offer nor accept anything of value in exchange for a vote of any
 # Article V
 This Enumivo Blockchain has no owner, manager or fiduciary. It is governed exclusively under the terms of this Constitution.
 # Article VI
-No Member nor any Beneficial Interest shall own more than 10% of issued tokens.
+No Member nor any Beneficial Interest shall own more than 20% of issued tokens.
 # Article VII
 Each Member agrees that penalties for violations may include, but are not limited to, fines, account freezing, and reversal of transactions.
 # Article VIII
