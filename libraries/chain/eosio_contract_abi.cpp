@@ -17,8 +17,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.types.push_back( type_def{"transaction_id_type", "checksum256"} );
    eos_abi.types.push_back( type_def{"block_id_type",       "checksum256"} );
    eos_abi.types.push_back( type_def{"weight_type", "uint16"} );
-   eos_abi.types.push_back( type_def{"type_name", "string"} );
-   eos_abi.types.push_back( type_def{"field_name", "string"} );
 
    // transaction
    eos_abi.structs.emplace_back( struct_def {
@@ -124,67 +122,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   // abi_def
-
-   eos_abi.structs.emplace_back( struct_def {
-      "type_def", "", {
-         {"new_type_name", "type_name"},
-         {"type",          "type_name"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "field_def", "", {
-         {"name", "field_name"},
-         {"type", "type_name"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "struct_def", "", {
-         {"name",   "type_name"},
-         {"base",   "type_name"},
-         {"fields", "field_def[]"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "action_def", "", {
-         {"name",               "action_name"},
-         {"type",               "type_name"},
-         {"ricardian_contract", "string"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "table_def", "", {
-         {"name",       "table_name"},
-         {"index_type", "type_name"},
-         {"key_names",  "field_name[]"},
-         {"key_types",  "type_name[]"},
-         {"type",       "type_name"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "clause_pair", "", {
-         {"id", "string"},
-         {"body", "string"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "abi_def", "", {
-         {"version",           "string"},
-         {"types",             "type_def[]"},
-         {"structs",           "struct_def[]"},
-         {"actions",           "action_def[]"},
-         {"tables",            "table_def[]"},
-         {"ricardian_clauses", "clause_pair[]"},
-         {"abi_extensions",    "extension[]"}
-      }
-   });
-
    // TODO add any ricardian_clauses
    //
    // ACTION PAYLOADS
@@ -210,7 +147,7 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "setabi", "", {
          {"account", "account_name"},
-         {"abi", "abi_def"}
+         {"abi",     "bytes"}
       }
    });
 
@@ -278,7 +215,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
-
 
    return eos_abi;
 }

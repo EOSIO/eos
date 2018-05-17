@@ -77,15 +77,131 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
 
     const char* my_abi = R"=====(
 {
-  "version": "",
-  "types": [{
+   "version": "",
+   "types": [{
+      "new_type_name": "type_name",
+      "type": "string"
+   },{
+      "new_type_name": "field_name",
+      "type": "string"
+   },{
       "new_type_name": "fields",
       "type": "field_def[]"
-  },{
+   },{
       "new_type_name": "scope_name",
       "type": "name"
-  }],
-  "structs": [{
+   }],
+   "structs": [{
+      "name": "abi_extension",
+      "base": "",
+      "fields": [{
+         "name": "type",
+         "type": "uint16"
+      },{
+         "name": "data",
+         "type": "bytes"
+      }]
+   },{
+      "name": "type_def",
+      "base": "",
+      "fields": [{
+         "name": "new_type_name",
+         "type": "type_name"
+      },{
+         "name": "type",
+         "type": "type_name"
+      }]
+   },{
+      "name": "field_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "field_name"
+      },{
+         "name": "type",
+         "type": "type_name"
+      }]
+   },{
+      "name": "struct_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "type_name"
+      },{
+         "name": "base",
+         "type": "type_name"
+      }{
+         "name": "fields",
+         "type": "field_def[]"
+      }]
+   },{
+      "name": "action_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "action_name"
+      },{
+         "name": "type",
+         "type": "type_name"
+      },{
+         "name": "ricardian_contract",
+         "type": "string"
+      }]
+   },{
+      "name": "table_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "table_name"
+      },{
+         "name": "index_type",
+         "type": "type_name"
+      },{
+         "name": "key_names",
+         "type": "field_name[]"
+      },{
+         "name": "key_types",
+         "type": "type_name[]"
+      },{
+         "name": "type",
+         "type": "type_name"
+      }]
+   },{
+     "name": "clause_pair",
+     "base": "",
+     "fields": [{
+         "name": "id",
+         "type": "string"
+     },{
+         "name": "body",
+         "type": "string"
+     }]
+   },{
+      "name": "abi_def",
+      "base": "",
+      "fields": [{
+         "name": "version",
+         "type": "string"
+      },{
+         "name": "types",
+         "type": "type_def[]"
+      },{
+         "name": "structs",
+         "type": "struct_def[]"
+      },{
+         "name": "actions",
+         "type": "action_def[]"
+      },{
+         "name": "tables",
+         "type": "table_def[]"
+      },{
+         "name": "ricardian_clauses",
+         "type": "clause_pair[]"
+      },{
+         "name": "abi_extensions",
+         "type": "abi_extension[]"
+      }]
+   },{
       "name"  : "A",
       "base"  : "PublicKeyTypes",
       "fields": []
@@ -2315,7 +2431,137 @@ BOOST_AUTO_TEST_CASE(setcode_test)
 BOOST_AUTO_TEST_CASE(setabi_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   const char* abi_def_abi = R"=====(
+      {
+         "version": "",
+         "types": [{
+            "new_type_name": "type_name",
+            "type": "string"
+         },{
+            "new_type_name": "field_name",
+            "type": "string"
+         }],
+         "structs": [{
+            "name": "abi_extension",
+            "base": "",
+            "fields": [{
+               "name": "type",
+               "type": "uint16"
+            },{
+               "name": "data",
+               "type": "bytes"
+            }]
+         },{
+            "name": "type_def",
+            "base": "",
+            "fields": [{
+               "name": "new_type_name",
+               "type": "type_name"
+            },{
+               "name": "type",
+               "type": "type_name"
+            }]
+         },{
+            "name": "field_def",
+            "base": "",
+            "fields": [{
+               "name": "name",
+               "type": "field_name"
+            },{
+               "name": "type",
+               "type": "type_name"
+            }]
+         },{
+            "name": "struct_def",
+            "base": "",
+            "fields": [{
+               "name": "name",
+               "type": "type_name"
+            },{
+               "name": "base",
+               "type": "type_name"
+            }{
+               "name": "fields",
+               "type": "field_def[]"
+            }]
+         },{
+               "name": "action_def",
+               "base": "",
+               "fields": [{
+                  "name": "name",
+                  "type": "action_name"
+               },{
+                  "name": "type",
+                  "type": "type_name"
+               },{
+                  "name": "ricardian_contract",
+                  "type": "string"
+               }]
+         },{
+               "name": "table_def",
+               "base": "",
+               "fields": [{
+                  "name": "name",
+                  "type": "table_name"
+               },{
+                  "name": "index_type",
+                  "type": "type_name"
+               },{
+                  "name": "key_names",
+                  "type": "field_name[]"
+               },{
+                  "name": "key_types",
+                  "type": "type_name[]"
+               },{
+                  "name": "type",
+                  "type": "type_name"
+               }]
+         },{
+            "name": "clause_pair",
+            "base": "",
+            "fields": [{
+               "name": "id",
+               "type": "string"
+            },{
+               "name": "body",
+               "type": "string"
+            }]
+         },{
+               "name": "abi_def",
+               "base": "",
+               "fields": [{
+                  "name": "version",
+                  "type": "string"
+               },{
+                  "name": "types",
+                  "type": "type_def[]"
+               },{
+                  "name": "structs",
+                  "type": "struct_def[]"
+               },{
+                  "name": "actions",
+                  "type": "action_def[]"
+               },{
+                  "name": "tables",
+                  "type": "table_def[]"
+               },{
+                  "name": "ricardian_clauses",
+                  "type": "clause_pair[]"
+               },{
+                  "name": "abi_extensions",
+                  "type": "abi_extension[]"
+               }]
+         }],
+         "actions": [],
+         "tables": [],
+         "ricardian_clauses": [],
+         "abi_extensions": []
+      }
+   )=====";
+
+   auto v = fc::json::from_string(abi_def_abi);
+
+   abi_serializer abis(eosio_contract_abi(v.as<abi_def>()));
 
    const char* abi_string = R"=====(
       {
