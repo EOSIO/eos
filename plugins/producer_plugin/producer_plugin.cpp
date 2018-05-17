@@ -156,7 +156,12 @@ class producer_plugin_impl {
          });
 
          try {
-            return f();
+            auto trace = f();
+            if (trace->except) {
+               publish_success.cancel();
+               channel.publish(std::pair<fc::exception_ptr, Type>(trace->except->dynamic_copy_exception(), data));
+            }
+            return trace;
          } catch (const fc::exception& e) {
             publish_success.cancel();
             channel.publish(std::pair<fc::exception_ptr, Type>(e.dynamic_copy_exception(), data));
@@ -571,6 +576,36 @@ void producer_plugin_impl::schedule_production_loop() {
             maybe_produce_block();
          }
       });
+   } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty()){
+      // if we have any producers then we should at least set a timer for our next available slot
+      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      const auto& hbs = chain.head_block_state();
+      const auto& active_schedule = hbs->active_schedule;
+      const auto& hbt = hbs->header.timestamp;
+      uint32_t producer_index = hbt.slot % (active_schedule.producers.size() * config::producer_repetitions);
+      producer_index /= config::producer_repetitions;
+
+      uint32_t producer_first_slot = hbt.slot - (hbt.slot % config::producer_repetitions);
+
+      for (int idx = producer_index + 1; idx < producer_index + active_schedule.producers.size(); idx++) {
+         auto producer_name = active_schedule.producers.at(idx % active_schedule.producers.size()).producer_name;
+         if (_producers.find(producer_name) != _producers.end()) {
+            uint32_t my_next_slot = producer_first_slot + ((idx - producer_index) * config::producer_repetitions);
+
+            // we should wake up 1 block prior to that so that we make our deadline
+            my_next_slot--;
+
+            static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
+            _timer.expires_at(epoch + boost::posix_time::microseconds(block_timestamp_type(my_next_slot).to_time_point().time_since_epoch().count()));
+            _timer.async_wait([&](const boost::system::error_code& ec) {
+               if (ec != boost::asio::error::operation_aborted) {
+                  schedule_production_loop();
+               }
+            });
+
+            break;
+         }
+      }
    }
 
 }
