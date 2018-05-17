@@ -1588,7 +1588,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, enumivo_system_tester, * boost::unit_test:
 
 
 
-BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::unit_test::tolerance(1e-10)) try {
+BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, enumivo_system_tester, * boost::unit_test::tolerance(1e-10)) try {
 
    const int64_t secs_per_year  = 52 * 7 * 24 * 3600;
    const double  usecs_per_year = secs_per_year * 1000000;
@@ -1886,7 +1886,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) try {
+BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, enumivo_system_tester) try {
    //install multisig contract
    abi_serializer msig_abi_ser;
    {
@@ -1980,16 +1980,16 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
       prod_perms.push_back( { name(x), config::active_name } );
    }
    //prepare system contract with different hash (contract differs in one byte)
-   string eosio_system_wast2 = eosio_system_wast;
+   string enumivo_system_wast2 = enumivo_system_wast;
    string msg = "producer votes must be unique and sorted";
-   auto pos = eosio_system_wast2.find(msg);
+   auto pos = enumivo_system_wast2.find(msg);
    BOOST_REQUIRE( pos != std::string::npos );
    msg[0] = 'P';
-   eosio_system_wast2.replace( pos, msg.size(), msg );
+   enumivo_system_wast2.replace( pos, msg.size(), msg );
 
    transaction trx;
    {
-      auto code = wast_to_wasm( eosio_system_wast2 );
+      auto code = wast_to_wasm( enumivo_system_wast2 );
       variant pretty_trx = fc::mutable_variant_object()
          ("expiration", "2020-01-01T00:30")
          ("ref_block_num", 2)
