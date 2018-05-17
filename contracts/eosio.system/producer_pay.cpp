@@ -4,8 +4,8 @@
 
 namespace eosiosystem {
 
-   const int64_t  min_daily_tokens = 100;
-
+   const int64_t  min_daily_tokens    = 100;
+   const int64_t  min_activated_stake = 150'000'000'0000;
    const double   continuous_rate     = 0.04879;          // 5% annual rate
    const double   perblock_rate       = 0.0025;           // 0.25%
    const double   standby_rate        = 0.0075;           // 0.75%
@@ -23,7 +23,7 @@ namespace eosiosystem {
       require_auth(N(eosio));
 
       /** until activated stake crosses this threshold no new rewards are paid */
-      if( _gstate.total_activated_stake < 150'000'000'0000 )
+      if( _gstate.total_activated_stake < min_activated_stake )
          return;
 
       if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
@@ -55,6 +55,8 @@ namespace eosiosystem {
 
       const auto& prod = _producers.get( owner );
       eosio_assert( prod.active(), "producer does not have an active key" );
+      
+      eosio_assert( _gstate.total_activated_stake >= min_activated_stake, "not enough has been staked for producers to claim rewards" );
 
       auto ct = current_time();
 
@@ -81,8 +83,14 @@ namespace eosiosystem {
          _gstate.last_pervote_bucket_fill = ct;
       }
 
-      int64_t producer_per_block_pay = (_gstate.perblock_bucket * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
-      int64_t producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
+      int64_t producer_per_block_pay = 0;
+      if( _gstate.total_unpaid_blocks > 0 ) {
+         producer_per_block_pay = (_gstate.perblock_bucket * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
+      }
+      int64_t producer_per_vote_pay = 0;
+      if( _gstate.total_producer_vote_weight > 0 ) { 
+         producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
+      }
       if( producer_per_vote_pay < 100'0000 ) {
          producer_per_vote_pay = 0;
       }
