@@ -6,6 +6,7 @@
 #include <soci/soci.h>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/name.hpp>
+#include <eosio/chain/block_state.hpp>
 
 #include "accounts_table.h"
 #include "transactions_table.h"
@@ -20,6 +21,7 @@ public:
     database(const std::string& uri);
 
     void wipe();
+    void add(chain::block_state_ptr block);
 
 private:
     mutable std::mutex m_mux;

@@ -28,4 +28,9 @@ void database::wipe()
     m_accounts_table->insert(eosio::chain::name(chain::config::system_account_name).to_string());
 }
 
+void database::add(chain::block_state_ptr block)
+{
+    m_blocks_table->add(block);
+}
+
 } // namespace

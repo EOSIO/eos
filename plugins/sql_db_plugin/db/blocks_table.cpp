@@ -33,4 +33,17 @@ void blocks_table::create()
             "updated_at NUMERIC)";
 }
 
+void blocks_table::add(eosio::chain::block_state_ptr block)
+{
+    *m_session << "INSERT INTO blocks(id, index, prev_block_id, timestamp, transaction_merkle_root, producer_account_id, pending, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
+            soci::use(block->header.id().str()),
+            soci::use(block->header.block_num()),
+            soci::use(block->header.previous.str()),
+            soci::use(block->header.timestamp.slot),
+            soci::use(block->header.transaction_mroot.str()),
+            soci::use(block->header.producer.to_string()),
+            soci::use(1),
+            soci::use(block->header.timestamp.slot);
+}
+
 } // namespace

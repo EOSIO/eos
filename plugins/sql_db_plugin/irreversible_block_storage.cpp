@@ -13,9 +13,7 @@ void irreversible_block_storage::consume(const std::vector<chain::block_state_pt
     for (const chain::block_state_ptr& block : blocks)
     {
         ilog(block->id.str());
-
-        //  TODO parse the block and ..
-        //  TODO m_db->act
+        m_db->add(block);
     }
 }
 
