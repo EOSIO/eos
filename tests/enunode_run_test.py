@@ -320,7 +320,7 @@ try:
     assert(actions)
     try:
         assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-    except (AssertionError, TypeError, KeyError) as e:
+    except (AssertionError, TypeError, KeyError) as _:
         Print("Last action validation failed. Actions: %s" % (actions))
         raise
 
@@ -485,7 +485,7 @@ try:
     expected="100000.0000 CUR"
     actual=amountStr
     if actual != expected:
-        errorExit("FAILURE - get currency1111 balance failed. Recieved response: <%s>" % (res), raw=True)
+        errorExit("FAILURE - currency1111 balance check failed. Expected: %s, Recieved %s" % (expected, actual), raw=True)
 
     # TBD: "get currency1111 stats is still not working. Enable when ready.
     # Print("Verify currency1111 contract has proper total supply of CUR (via get currency1111 stats)")
@@ -528,6 +528,47 @@ try:
     actual=amountStr
     if actual != expected:
         errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("Test for block decoded packed transaction (issue 2932)")
+    blockId=node.getBlockIdByTransId(transId)
+    assert(blockId)
+    block=node.getBlock(blockId)
+    assert(block)
+    transactions=None
+    try:
+        transactions=block["transactions"]
+        assert(transactions)
+    except (AssertionError, TypeError, KeyError) as _:
+        Print("FAILURE - Failed to parse block. %s" % (block))
+        raise
+
+    myTrans=None
+    for trans in transactions:
+        assert(trans)
+        try:
+            myTransId=trans["trx"]["id"]
+            if transId == myTransId:
+                myTrans=trans["trx"]["transaction"]
+                assert(myTrans)
+                break
+        except (AssertionError, TypeError, KeyError) as _:
+            Print("FAILURE - Failed to parse block transactions. %s" % (trans))
+            raise
+
+    assert(myTrans)
+    try:
+        assert(myTrans["actions"][0]["name"] == "transfer")
+        assert(myTrans["actions"][0]["account"] == "currency1111")
+        assert(myTrans["actions"][0]["authorization"][0]["actor"] == "currency1111")
+        assert(myTrans["actions"][0]["authorization"][0]["permission"] == "active")
+        assert(myTrans["actions"][0]["data"]["from"] == "currency1111")
+        assert(myTrans["actions"][0]["data"]["to"] == "defproducera")
+        assert(myTrans["actions"][0]["data"]["quantity"] == "0.0050 CUR")
+        assert(myTrans["actions"][0]["data"]["memo"] == "test")
+    except (AssertionError, TypeError, KeyError) as _:
+        Print("FAILURE - Failed to parse block transaction. %s" % (myTrans))
+        raise
+
 
     Print("Exchange Contract Tests")
     Print("upload exchange contract")
@@ -596,7 +637,7 @@ try:
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(blockNum, retry=False, silentErrors=True)
+        block=node.getBlock(str(blockNum), retry=False, silentErrors=True)
         if block is None:
             # TBD: Known issue (Issue 2099) that the block containing setprods isn't retrievable.
             #  Enable errorExit() once that is resolved.
@@ -620,7 +661,7 @@ try:
 
 
     Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
-    block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
+    block=node.getBlock(str(currentBlockNum+1000), silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
     else:

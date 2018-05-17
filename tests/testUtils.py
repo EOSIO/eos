@@ -296,6 +296,8 @@ class Node(object):
 
     # pylint: disable=too-many-branches
     def getBlock(self, blockNum, retry=True, silentErrors=False):
+        """Given a blockId will return block details."""
+        assert(isinstance(blockNum, str))
         if not self.enableMongo:
             cmd="%s %s get block %s" % (Utils.EosClientPath, self.endpointArgs, blockNum)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -361,7 +363,7 @@ class Node(object):
         try:
             last_irreversible_block_num=int(info["last_irreversible_block_num"])
         except (TypeError, KeyError) as _:
-            Utils.Print("Failure in get info parsing. %s" % (trans))
+            Utils.Print("Failure in get info parsing. %s" % (info))
             raise
 
         return True if blockNum <= last_irreversible_block_num else True
@@ -402,6 +404,68 @@ class Node(object):
                     time.sleep(self.mongoSyncTime)
 
         return None
+
+    def isTransInBlock(self, transId, blockId):
+        """Check if transId is within block identified by blockId"""
+        assert(transId)
+        assert(isinstance(transId, str))
+        assert(blockId)
+        assert(isinstance(blockId, str))
+
+        block=self.getBlock(blockId)
+        transactions=None
+        try:
+            transactions=block["transactions"]
+        except (AssertionError, TypeError, KeyError) as _:
+            Utils.Print("Failed to parse block. %s" % (block))
+            raise
+
+        if transactions is not None:
+            for trans in transactions:
+                assert(trans)
+                try:
+                    myTransId=trans["trx"]["id"]
+                    if transId == myTransId:
+                        return True
+                except (TypeError, KeyError) as _:
+                    Utils.Print("Failed to parse block transactions. %s" % (trans))
+
+        return False
+
+    def getBlockIdByTransId(self, transId):
+        """Given a transaction Id (string), will return block id (string) containing the transaction"""
+        assert(transId)
+        assert(isinstance(transId, str))
+        trans=self.getTransaction(transId)
+        assert(trans)
+
+        refBlockNum=None
+        try:
+            refBlockNum=trans["trx"]["trx"]["ref_block_num"]
+            refBlockNum=int(refBlockNum)+1
+        except (TypeError, ValueError, KeyError) as _:
+            Utils.Print("transaction parsing failed. Transaction: %s" % (trans))
+            raise
+
+        headBlockNum=self.getIrreversibleBlockNum()
+        assert(headBlockNum)
+        try:
+            headBlockNum=int(headBlockNum)
+        except(ValueError) as _:
+            Utils.Print("Info parsing failed. %s" % (headBlockNum))
+
+        for blockNum in range(refBlockNum, headBlockNum+1):
+            if self.isTransInBlock(str(transId), str(blockNum)):
+                return str(blockNum)
+
+        return None
+
+    def doesNodeHaveTransId(self, transId):
+        """Check if transaction (transId) has been finalized."""
+        assert(transId)
+        assert(isinstance(transId, str))
+        blockId=self.getBlockIdByTransId(transId)
+        return True if blockId else None
 
     def getTransByBlockId(self, blockId, retry=True, silentErrors=False):
         for _ in range(2):
@@ -470,26 +534,6 @@ class Node(object):
                 time.sleep(self.mongoSyncTime)
 
         return None
-
-    def doesNodeHaveTransId(self, transId, silentErrors=True):
-        trans=self.getTransaction(transId, silentErrors)
-        if trans is None:
-            return False
-
-        blockNum=None
-        try:
-            if not self.enableMongo:
-                blockNum=int(trans["trx"]["trx"]["ref_block_num"])
-            else:
-                blockNum=int(trans["ref_block_num"])
-        except (TypeError, KeyError) as _:
-            if not silentErrors:
-                Utils.Print("Failure in transaction parsing. %s" % (trans))
-            return False
-
-        blockNum += 1
-        if Utils.Debug: Utils.Print("Check if block %d is irreversible." % (blockNum))
-        return self.doesNodeHaveBlockNum(blockNum)
 
     # Create & initialize account and return creation transactions. Return transaction json object
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
@@ -588,7 +632,7 @@ class Node(object):
         assert(trans)
         try:
             return trans["rows"][0]["balance"]
-        except (TypeError, KeyError) as e:
+        except (TypeError, KeyError) as _:
             print("Transaction parsing failed. Transaction: %s" % (trans))
             raise
 
@@ -719,9 +763,9 @@ class Node(object):
         
     # Gets accounts mapped to key. Returns array
     def getAccountsArrByKey(self, key):
+        trans=self.getAccountsByKey(key)
         assert(trans)
         assert("account_names" in trans)
-        trans=self.getAccountsByKey(key)
         accounts=trans["account_names"]
         return accounts
 
@@ -931,6 +975,7 @@ class Node(object):
         return False if info is None else True
 
     def getHeadBlockNum(self):
+        """returns head block number(string) as returned by cleos get info."""
         if not self.enableMongo:
             info=self.getInfo()
             if info is not None:
@@ -1355,7 +1400,7 @@ class Cluster(object):
     def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
         port=Cluster.__BiosPort if onlyBios else self.port
         host=Cluster.__BiosHost if onlyBios else self.host
-        node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        node=Node(host, port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         node.setWalletEndpointArgs(self.walletEndpointArgs)
         if Utils.Debug: Utils.Print("Node:", node)
 
@@ -1839,6 +1884,7 @@ class Cluster(object):
                     if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
                     Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
                     opts="--permission eosio@active"
+                    # pylint: disable=redefined-variable-type
                     trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
                     if trans is None or not trans[0]:
                         Utils.Print("ERROR: Failed to set producer %s." % (keys["name"]))
@@ -1961,6 +2007,7 @@ class Cluster(object):
         nodes=[]
 
         pgrepOpts="-fl"
+        # pylint: disable=deprecated-method
         if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
             pgrepOpts="-a"
 
