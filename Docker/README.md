@@ -86,28 +86,7 @@ docker-compose stop keosd
 
 ### Develop/Build custom contracts
 
-Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize eosio/builder. However, eosio/builder does not contain eosiocpp. As such, you will need to run eosio/builder interactively, and clone, build and install EOS. Once this is complete, you can then utilize eosiocpp to compile your contracts.
-
-You can also create a Dockerfile that will do this for you.
-
-```
-FROM eosio/builder
-
-RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
-    && cd eos \
-    && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
-       -DCMAKE_C_COMPILER=clang -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true \
-    && cmake --build /tmp/build --target install && rm -rf /tmp/build /eos
-```
-
-Then, from the same directory as the Dockerfile, simply run:
-
-```bash
-docker build -t eosio/contracts .
-docker run -it -v /path/to/custom/contracts:/contracts eosio/contracts /bin/bash
-```
-
-At this time you should be at a bash shell. You can navigate into the /contracts directory and use eosiocpp to compile your custom contracts.
+Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize the eosio/eos-dev image. This image contains both the required binaries and dependencies to build contracts using eosiocpp.
 
 ### Change default configuration
 
