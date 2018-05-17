@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivo/chain/wast_to_wasm.hpp>
 #include <Inline/BasicTypes.h>

@@ -1,6 +1,6 @@
 /**
  * @file action_test.cpp
- * @copyright defined in eos/LICENSE.txt
+ * @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivolib/action.hpp>
 #include <enumivolib/transaction.hpp>

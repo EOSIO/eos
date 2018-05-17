@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivo/utilities/key_conversion.hpp>
 #include <enumivo/utilities/rand.hpp>

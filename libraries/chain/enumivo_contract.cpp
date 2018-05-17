@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivo/chain/enumivo_contract.hpp>
 #include <enumivo/chain/contract_table_objects.hpp>

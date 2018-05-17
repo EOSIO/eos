@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivo/net_api_plugin/net_api_plugin.hpp>
 #include <enumivo/chain/exceptions.hpp>
