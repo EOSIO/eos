@@ -18,7 +18,7 @@
 #include <cmath>
 #include <map>
 
-namespace eosiosystem {
+namespace enumivosystem {
    using eosio::asset;
    using eosio::indexed_by;
    using eosio::const_mem_fun;
@@ -390,4 +390,4 @@ namespace eosiosystem {
    }
 
 
-} //namespace eosiosystem
+} //namespace enumivosystem

@@ -13,7 +13,7 @@
 #include <enumivolib/producer_schedule.hpp>
 #include <enumivolib/contract.hpp>
 
-namespace eosiosystem {
+namespace enumivosystem {
    using eosio::permission_level;
    using eosio::public_key;
 

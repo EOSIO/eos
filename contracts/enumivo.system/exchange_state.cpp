@@ -1,6 +1,6 @@
 #include <exchange/exchange_state.hpp>
 
-namespace eosiosystem {
+namespace enumivosystem {
    asset exchange_state::convert_to_exchange( connector& c, asset in ) {
 
       real_type R(supply.amount);
@@ -82,4 +82,4 @@ namespace eosiosystem {
 
 
 
-} /// namespace eosiosystem
+} /// namespace enumivosystem

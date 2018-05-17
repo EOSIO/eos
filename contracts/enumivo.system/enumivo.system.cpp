@@ -7,7 +7,7 @@
 #include "exchange_state.cpp"
 
 
-namespace eosiosystem {
+namespace enumivosystem {
 
    system_contract::system_contract( account_name s )
    :native(s),
@@ -80,7 +80,7 @@ namespace eosiosystem {
 } /// enumivo.system
  
 
-ENUMIVO_ABI( eosiosystem::system_contract,
+ENUMIVO_ABI( enumivosystem::system_contract,
      (setram)
      // delegate_bandwith.cpp
      (delegatebw)(undelegatebw)(refund)
