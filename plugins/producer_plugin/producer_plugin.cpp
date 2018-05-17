@@ -235,9 +235,9 @@ class producer_plugin_impl {
                   } else {
                      trace->except->dynamic_rethrow_exception();
                   }
-               } else {
-                  return trace;
                }
+
+               return trace;
             }
          });
       }
