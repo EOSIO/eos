@@ -2437,6 +2437,7 @@ namespace eosio {
       try {
          chain_plug->accept_transaction( msg);
          fc_dlog(logger, "chain accepted transaction" );
+         dispatcher->bcast_transaction(msg);
          return;
       }
       catch( const fc::exception &ex) {
