@@ -17,6 +17,7 @@
 [submodule "externals/binaryen"]
 	path = externals/binaryen
 	url = https://github.com/enumivo/binaryen
+	branch = enumivo
 
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
