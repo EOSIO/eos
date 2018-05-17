@@ -306,6 +306,9 @@ struct txn_test_gen_plugin_impl {
 
    int32_t txn_reference_block_lag;
 
+   int startup_produce_blocks = 0;
+   private_key_type producer_key;
+
    abi_serializer eosio_token_serializer = fc::json::from_string(eosio_token_abi).as<abi_def>();
 };
 
@@ -313,22 +316,74 @@ txn_test_gen_plugin::txn_test_gen_plugin() {}
 txn_test_gen_plugin::~txn_test_gen_plugin() {}
 
 void txn_test_gen_plugin::set_program_options(options_description&, options_description& cfg) {
+   auto default_priv_key = private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("nathan")));
+   auto private_key_default = std::make_pair(default_priv_key.get_public_key(), default_priv_key );
    cfg.add_options()
       ("txn-reference-block-lag", bpo::value<int32_t>()->default_value(0), "Lag in number of blocks from the head block when selecting the reference block for transactions (-1 means Last Irreversible Block)")
+      ("startup-produce-blocks", bpo::value<int32_t>()->default_value(0), "number of block being produced at startup")
+      ("startup-sign-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({fc::json::to_string(private_key_default)},
+                                                                                                fc::json::to_string(private_key_default)), "key to sign startup blocks")
    ;
 }
 
+template<typename T>
+T dejsonify(const string& s) {
+   return fc::json::from_string(s).as<T>();
+}
+
 void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
+   ilog("initialize txn_test_gen plugin");
+
    my.reset(new txn_test_gen_plugin_impl);
    my->txn_reference_block_lag = options.at("txn-reference-block-lag").as<int32_t>();
+
+   my->startup_produce_blocks = options.at("startup-produce-blocks").as<int32_t>();
+   if (options.count("startup-sign-key")) {
+      const std::vector<std::string> key_id_to_wif_pair_strings = options["startup-sign-key"].as<std::vector<std::string>>();
+      for (const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
+      {
+         auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
+         my->producer_key = key_id_to_wif_pair.second;
+         break;
+      }
+   }
 }
 
 void txn_test_gen_plugin::plugin_startup() {
+   ilog("starting txn_test_gen plugin");
    app().get_plugin<http_plugin>().add_api({
       CALL(txn_test_gen, my, create_test_accounts, INVOKE_V_R_R(my, create_test_accounts, std::string, std::string), 200),
       CALL(txn_test_gen, my, stop_generation, INVOKE_V_V(my, stop_generation), 200),
       CALL(txn_test_gen, my, start_generation, INVOKE_V_R_R_R(my, start_generation, std::string, uint64_t, uint64_t), 200)
    });
+
+   if (my->startup_produce_blocks > 0) {
+      ilog("ready to generate ${i} initial block(s)", ("i", my->startup_produce_blocks));
+      controller *control = &(app().get_plugin<chain_plugin>().chain());
+      for (int i = 0; i < my->startup_produce_blocks; ++i) {
+         
+         control->abort_block();
+         auto head = control->head_block_state();
+         auto head_time = control->head_block_time();
+         auto next_time = head_time + fc::milliseconds(500);
+
+         auto head_block_number = control->head_block_num();
+         auto last_produced_block_num = control->last_irreversible_block_num();
+
+         control->start_block( next_time, 1);
+         control->finalize_block();
+         control->sign_block( [&]( digest_type d ) {
+                     return my->producer_key.sign(d);
+                     });
+         control->commit_block();
+         control->log_irreversible_blocks();
+         auto pending = control->head_block_state();
+         ilog("produced initial block ${id}... #${n}, lib: ${lib}, confirmed: ${confs}", ("id", fc::variant(pending->id).as_string().substr(0,16)) ("n",pending->block_num) ("lib",control->last_irreversible_block_num())("confs", pending->header.confirmed));
+      }
+      auto head_block_number = control->head_block_num();
+      auto last_produced_block_num = control->last_irreversible_block_num();
+      control->start_block(fc::time_point::now(), 1);
+   }
 }
 
 void txn_test_gen_plugin::plugin_shutdown() {
