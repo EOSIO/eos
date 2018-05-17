@@ -122,7 +122,7 @@
 			printf "\\tInstalling LCOV.\\n"
 			if ! cd "${TEMP_DIR}"
 			then
-				printf "\\n\\tUnable to enter %s. Exiting now.\\n" "${TEMP_DIR}"; 
+				printf "\\n\\tUnable to enter %s. Exiting now.\\n" "${TEMP_DIR}"
 				exit 1;
 			fi
 			if ! git clone "https://github.com/linux-test-project/lcov.git"
@@ -133,7 +133,7 @@
 			fi
 			if ! cd "${TEMP_DIR}/lcov"
 			then
-				printf "\\n\\tUnable to enter %s/lcov. Exiting now.\\n" "${TEMP_DIR}"; 
+				printf "\\n\\tUnable to enter %s/lcov. Exiting now.\\n" "${TEMP_DIR}"
 				exit 1;
 			fi
 			if ! sudo make install

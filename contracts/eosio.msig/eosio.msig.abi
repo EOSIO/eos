@@ -92,9 +92,15 @@
       "base": "",
       "fields": [
         {"name": "proposal_name", "type": "name"},
-        {"name": "requested_approvals", "type": "permission_level[]"},
-        {"name": "provided_approvals", "type": "permission_level[]"},
         {"name": "packed_transaction", "type": "bytes"}
+      ]
+    },{
+      "name": "approvals_info",
+      "base": "",
+      "fields": [
+        {"name": "proposal_name", "type": "name"},
+        {"name": "requested_approvals", "type": "permission_level[]"},
+        {"name": "provided_approvals", "type": "permission_level[]"}
       ]
     }
   ],
@@ -124,6 +130,12 @@
   "tables": [{
       "name": "proposal",
       "type": "proposal",
+      "index_type": "i64",
+      "key_names" : ["proposal_name"],
+      "key_types" : ["name"]
+    },{
+      "name": "approvals",
+      "type": "approvals_info",
       "index_type": "i64",
       "key_names" : ["proposal_name"],
       "key_types" : ["name"]
