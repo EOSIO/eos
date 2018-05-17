@@ -1,4 +1,5 @@
 {
+  "version": "eosio::abi/1.0",
   "types": [{
       "new_type_name": "my_account_name",
       "type": "name"
@@ -41,5 +42,6 @@
       "key_types" : ["my_account_name"]
     }
   ],
-  "ricardian_clauses": []
+  "ricardian_clauses": [],
+  "abi_extensions": []
 }

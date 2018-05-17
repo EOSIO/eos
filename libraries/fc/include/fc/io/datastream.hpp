@@ -7,7 +7,7 @@
 
 namespace fc {
 
-namespace detail 
+namespace detail
 {
   NO_RETURN void throw_datastream_range_error( const char* file, size_t len, int64_t over );
 }
@@ -16,7 +16,7 @@ namespace detail
  *  The purpose of this datastream is to provide a fast, effecient, means
  *  of calculating the amount of data "about to be written" and then
  *  writing it.  This means having two modes of operation, "test run" where
- *  you call the entire pack sequence calculating the size, and then 
+ *  you call the entire pack sequence calculating the size, and then
  *  actually packing it after doing a single allocation.
  */
 template<typename T>
@@ -24,8 +24,8 @@ class datastream {
    public:
       datastream( T start, size_t s )
       :_start(start),_pos(start),_end(start+s){};
-      
-      
+
+
       inline void skip( size_t s ){ _pos += s; }
       inline bool read( char* d, size_t s ) {
         if( size_t(_end - _pos) >= (size_t)s ) {
@@ -35,7 +35,7 @@ class datastream {
         }
         detail::throw_datastream_range_error( "read", _end-_start, int64_t(-((_end-_pos) - 1)));
       }
-      
+
       inline bool write( const char* d, size_t s ) {
         if( _end - _pos >= (int32_t)s ) {
           memcpy( _pos, d, s );
@@ -44,27 +44,27 @@ class datastream {
         }
         detail::throw_datastream_range_error( "write", _end-_start, int64_t(-((_end-_pos) - 1)));
       }
-      
-      inline bool   put(char c) { 
+
+      inline bool   put(char c) {
         if( _pos < _end ) {
-          *_pos = c; 
-          ++_pos; 
+          *_pos = c;
+          ++_pos;
           return true;
         }
         detail::throw_datastream_range_error( "put", _end-_start, int64_t(-((_end-_pos) - 1)));
       }
-      
+
       inline bool   get( unsigned char& c ) { return get( *(char*)&c ); }
-      inline bool   get( char& c ) 
+      inline bool   get( char& c )
       {
         if( _pos < _end ) {
           c = *_pos;
-          ++_pos; 
+          ++_pos;
           return true;
         }
         detail::throw_datastream_range_error( "get", _end-_start, int64_t(-((_end-_pos) - 1)));
       }
-      
+
       T               pos()const        { return _pos;                               }
       inline bool     valid()const      { return _pos <= _end && _pos >= _start;  }
       inline bool     seekp(size_t p) { _pos = _start + p; return _pos <= _end; }
@@ -92,26 +92,29 @@ class datastream<size_t> {
 };
 
 template<typename ST>
-inline datastream<ST>& operator<<(datastream<ST>& ds, const int32_t& d) {
-  ds.write( (const char*)&d, sizeof(d) );
-  return ds;
-}
-template<typename ST, typename DATA>
-inline datastream<ST>& operator>>(datastream<ST>& ds, int32_t& d) {
-  ds.read((char*)&d, sizeof(d) );
-  return ds;
-}
-template<typename ST>
-inline datastream<ST>& operator<<(datastream<ST>& ds, const uint32_t& d) {
+inline datastream<ST>& operator<<(datastream<ST>& ds, const __int128& d) {
   ds.write( (const char*)&d, sizeof(d) );
   return ds;
 }
 
 template<typename ST, typename DATA>
-inline datastream<ST>& operator>>(datastream<ST>& ds, uint32_t& d) {
+inline datastream<ST>& operator>>(datastream<ST>& ds, __int128& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }
+
+template<typename ST>
+inline datastream<ST>& operator<<(datastream<ST>& ds, const unsigned __int128& d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename ST, typename DATA>
+inline datastream<ST>& operator>>(datastream<ST>& ds, unsigned __int128& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
 template<typename ST>
 inline datastream<ST>& operator<<(datastream<ST>& ds, const int64_t& d) {
   ds.write( (const char*)&d, sizeof(d) );
@@ -123,6 +126,7 @@ inline datastream<ST>& operator>>(datastream<ST>& ds, int64_t& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }
+
 template<typename ST>
 inline datastream<ST>& operator<<(datastream<ST>& ds, const uint64_t& d) {
   ds.write( (const char*)&d, sizeof(d) );
@@ -134,6 +138,31 @@ inline datastream<ST>& operator>>(datastream<ST>& ds, uint64_t& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }
+
+template<typename ST>
+inline datastream<ST>& operator<<(datastream<ST>& ds, const int32_t& d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename ST, typename DATA>
+inline datastream<ST>& operator>>(datastream<ST>& ds, int32_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename ST>
+inline datastream<ST>& operator<<(datastream<ST>& ds, const uint32_t& d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename ST, typename DATA>
+inline datastream<ST>& operator>>(datastream<ST>& ds, uint32_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
 template<typename ST>
 inline datastream<ST>& operator<<(datastream<ST>& ds, const int16_t& d) {
   ds.write( (const char*)&d, sizeof(d) );
@@ -145,6 +174,7 @@ inline datastream<ST>& operator>>(datastream<ST>& ds, int16_t& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }
+
 template<typename ST>
 inline datastream<ST>& operator<<(datastream<ST>& ds, const uint16_t& d) {
   ds.write( (const char*)&d, sizeof(d) );
@@ -179,14 +209,14 @@ inline datastream<ST>& operator>>(datastream<ST>& ds, uint8_t& d) {
   return ds;
 }
 /*
-template<typename ST, typename T> 
+template<typename ST, typename T>
 inline datastream<ST>& operator<<(datastream<ST>& ds, const boost::multiprecision::number<T>& n) {
    unsigned char data[(std::numeric_limits<decltype(n)>::digits+1)/8];
    ds.read( (char*)data, sizeof(data) );
    boost::multiprecision::import_bits( n, data, data + sizeof(data), 1 );
 }
 
-template<typename ST, typename T> 
+template<typename ST, typename T>
 inline datastream<ST>& operator>>(datastream<ST>& ds, boost::multiprecision::number<T>& n) {
    unsigned char data[(std::numeric_limits<decltype(n)>::digits+1)/8];
    boost::multiprecision::export_bits( n, data, 1 );
@@ -196,4 +226,3 @@ inline datastream<ST>& operator>>(datastream<ST>& ds, boost::multiprecision::num
 
 
 } // namespace fc
-
