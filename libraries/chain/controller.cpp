@@ -142,8 +142,10 @@ struct controller_impl {
    void emit( const Signal& s, Arg&& a ) {
       try {
         s(std::forward<Arg>(a));
+      } catch ( fc::exception& e ) {
+         wlog( "${details}", ("details", e.to_detail_string()) );
       } catch ( ... ) {
-         elog( "signal handler threw exception" );
+         wlog( "signal handler threw exception" );
       }
    }
 
