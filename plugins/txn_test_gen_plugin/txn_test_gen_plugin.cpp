@@ -153,7 +153,7 @@ struct txn_test_gen_plugin_impl {
             act.account = N(enumivo.coin);
             act.name = N(create);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = enumivo_coin_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"enumivo.coin\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
+            act.data = enumivo_coin_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"enumivo.coin\",\"maximum_supply\":\"1000000000.0000 CUR\"}}"));
             trx.actions.push_back(act);
          }
          {

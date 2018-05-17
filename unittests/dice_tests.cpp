@@ -238,9 +238,6 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    push_action(N(enumivo.coin), N(create), N(enumivo.coin), mvo()
      ("issuer", "enumivo.coin")
      ("maximum_supply", "1000000000.0000 EOS")
-     ("can_freeze", "0")
-     ("can_recall", "0")
-     ("can_whitelist", "0")
    );
 
    push_action(N(enumivo.coin), N(issue), N(enumivo.coin), mvo()

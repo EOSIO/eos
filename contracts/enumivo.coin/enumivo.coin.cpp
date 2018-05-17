@@ -8,10 +8,7 @@
 namespace eosio {
 
 void token::create( account_name issuer,
-                    asset        maximum_supply,
-                    uint8_t      issuer_can_freeze,
-                    uint8_t      issuer_can_recall,
-                    uint8_t      issuer_can_whitelist )
+                    asset        maximum_supply )
 {
     require_auth( _self );
 
@@ -28,9 +25,6 @@ void token::create( account_name issuer,
        s.supply.symbol = maximum_supply.symbol;
        s.max_supply    = maximum_supply;
        s.issuer        = issuer;
-       s.can_freeze    = issuer_can_freeze;
-       s.can_recall    = issuer_can_recall;
-       s.can_whitelist = issuer_can_whitelist;
     });
 }
 
@@ -94,15 +88,6 @@ void token::sub_balance( account_name owner, asset value, const currency_stats& 
    const auto& from = from_acnts.get( value.symbol.name() );
    eosio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
 
-   if( has_auth( owner ) ) {
-      eosio_assert( !st.can_freeze || !from.frozen, "account is frozen by issuer" );
-      eosio_assert( !st.can_freeze || !st.is_frozen, "all transfers are frozen by issuer" );
-      eosio_assert( !st.enforce_whitelist || from.whitelist, "account is not white listed" );
-   } else if( has_auth( st.issuer ) ) {
-      eosio_assert( st.can_recall, "issuer may not recall token" );
-   } else {
-      eosio_assert( false, "insufficient authority" );
-   }
 
    if( from.balance.amount == value.amount ) {
       from_acnts.erase( from );
@@ -118,12 +103,10 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
    accounts to_acnts( _self, owner );
    auto to = to_acnts.find( value.symbol.name() );
    if( to == to_acnts.end() ) {
-      eosio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
       to_acnts.emplace( ram_payer, [&]( auto& a ){
         a.balance = value;
       });
    } else {
-      eosio_assert( !st.enforce_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
       to_acnts.modify( to, 0, [&]( auto& a ) {
         a.balance += value;
       });

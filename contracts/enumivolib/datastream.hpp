@@ -209,7 +209,7 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, bool& d) {
  */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum256& d) {
-   ds.write( (const char*)&d, sizeof(d) );
+   ds.write( (const char*)&d.hash[0], sizeof(d.hash) );
    return ds;
 }
 /**
@@ -220,7 +220,7 @@ inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum256&
  */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& d) {
-   ds.read((char*)&d, sizeof(d) );
+   ds.read((char*)&d.hash[0], sizeof(d.hash) );
    return ds;
 }
 
@@ -514,25 +514,25 @@ bytes pack( const T& value ) {
 
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum160& cs) {
-   ds.write((const char*)&cs, sizeof(cs));
+   ds.write((const char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
 
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum160& cs) {
-   ds.read((char*)&cs, sizeof(cs));
+   ds.read((char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
 
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum512& cs) {
-   ds.write((const char*)&cs, sizeof(cs));
+   ds.write((const char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
 
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum512& cs) {
-   ds.read((char*)&cs, sizeof(cs));
+   ds.read((char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
 
