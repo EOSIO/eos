@@ -24,7 +24,7 @@
          {"name":"quant", "type":"asset"}
       ]
     },{
-      "name": "delegatebw",
+      "name": "changebw",
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
@@ -224,8 +224,12 @@
       "type": "sellram",
       "ricardian_contract": ""
     },{
+      "name": "changebw",
+      "type": "changebw",
+      "ricardian_contract": ""
+    },{
       "name": "delegatebw",
-      "type": "delegatebw",
+      "type": "changebw",
       "ricardian_contract": ""
     },{
       "name": "undelegatebw",

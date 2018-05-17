@@ -83,7 +83,7 @@ namespace eosiosystem {
 EOSIO_ABI( eosiosystem::system_contract,
      (setram)
      // delegate_bandwith.cpp
-     (delegatebw)(undelegatebw)(refund)
+     (changebw)(delegatebw)(undelegatebw)(refund)
      (buyram)(buyrambytes)(sellram)
      // voting.cpp
      // producer_pay.cpp
