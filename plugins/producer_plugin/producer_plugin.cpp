@@ -68,6 +68,11 @@ using blacklisted_transaction_index = multi_index_container<
    >
 >;
 
+enum class pending_block_mode {
+   producing,
+   speculating
+};
+
 class producer_plugin_impl {
    public:
       producer_plugin_impl(boost::asio::io_service& io)
@@ -76,8 +81,8 @@ class producer_plugin_impl {
       {}
 
       void schedule_production_loop();
-      block_production_condition::block_production_condition_enum block_production_loop();
-      block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
+      void produce_block();
+      bool maybe_produce_block();
 
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
@@ -88,11 +93,9 @@ class producer_plugin_impl {
       std::set<chain::account_name>                             _producers;
       boost::asio::deadline_timer                               _timer;
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
+      pending_block_mode                                        _pending_block_mode;
 
       int32_t                                                   _max_transaction_time_ms;
-
-      block_production_condition::block_production_condition_enum _prev_result = block_production_condition::produced;
-      uint32_t _prev_result_count = 0;
 
       time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
@@ -191,12 +194,7 @@ class producer_plugin_impl {
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
-            if (!_producers.empty()) {
-               // restart our production loop
-               schedule_production_loop();
-            } else {
-               start_block();
-            }
+            schedule_production_loop();
          });
 
          // push the new block
@@ -224,13 +222,19 @@ class producer_plugin_impl {
                auto deadline = std::min(block_time, max_deadline);
                auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
 
-               // if we failed because the block was exhausted push the block out and try again
+               // if we failed because the block was exhausted push the block out and try again if it succeeds
                if (trace->except) {
-                  if (failure_is_subjective(*trace->except, deadline == block_time)) {
-                     block_production_loop();
-                  } else {
-                     trace->except->dynamic_rethrow_exception();
+                  if (failure_is_subjective(*trace->except, deadline == block_time) && _pending_block_mode == pending_block_mode::producing) {
+                     if (maybe_produce_block()) {
+                        continue;
+                     }
+
+                     // if we failed to produce a block that was not speculative (for some reason).  we are going to
+                     // throw the exception out to the caller. if they don't support any retry mechanics
+                     // this may result in a lost transaction
                   }
+
+                  trace->except->dynamic_rethrow_exception();
                } else {
                   return trace;
                }
@@ -383,20 +387,16 @@ void producer_plugin::plugin_startup()
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } );
 
-   if (!my->_producers.empty())
-   {
+   if (!my->_producers.empty()) {
       ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
-      if(my->_production_enabled)
-      {
-         if(chain.head_block_num() == 0)
+      if (my->_production_enabled) {
+         if (chain.head_block_num() == 0)
             new_chain_banner(chain);
          //_production_skip_flags |= eosio::chain::skip_undo_history_check;
       }
-      my->schedule_production_loop();
-   } else {
-      ilog("No producers configured! Starting as a validator");
-      my->start_block();
    }
+
+   my->schedule_production_loop();
 
    ilog("producer plugin:  plugin_startup() end");
 } FC_CAPTURE_AND_RETHROW() }
@@ -427,21 +427,53 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       block_time += fc::microseconds(config::block_interval_us);
    }
 
+   _pending_block_mode = pending_block_mode::producing;
+
+
+   // If the next block production opportunity is in the present or future, we're synced.
+   if( !_production_enabled ) {
+      _pending_block_mode = pending_block_mode::speculating;
+   }
+
+   // Not our turn
+   const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
+   if( _producers.find(scheduled_producer.producer_name) != _producers.end()) {
+      _pending_block_mode = pending_block_mode::speculating;
+   }
+
+   auto private_key_itr = _private_keys.find( scheduled_producer.block_signing_key );
+   if( private_key_itr == _private_keys.end() ) {
+      ilog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
+      _pending_block_mode = pending_block_mode::speculating;
+   }
+
+   // determine if our watermark excludes us from producing at this point
+   auto currrent_watermark_itr = _producer_watermarks.find(scheduled_producer.producer_name);
+   if (currrent_watermark_itr != _producer_watermarks.end()) {
+      if (currrent_watermark_itr->second >= hbs->block_num + 1) {
+         elog( "Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})",
+             ("producer", scheduled_producer.producer_name)
+             ("watermark",currrent_watermark_itr->second)
+             ("head_block_num",hbs->block_num));
+         _pending_block_mode = pending_block_mode::speculating;
+      }
+   }
+
    try {
-      // determine how many blocks this producer can confirm
-      // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
-      // 2) if it is a producer on this node that has never produced, the conservative approach is to assume no
-      //    confirmations to make sure we don't double sign after a crash TODO: make these watermarks durable?
-      // 3) if it is a producer on this node where this node knows the last block it produced, safely set it -UNLESS-
-      // 4) the producer on this node's last watermark is higher (meaning on a different fork)
-      const auto& hbs = chain.head_block_state();
-      auto producer_name = hbs->get_scheduled_producer(block_time).producer_name;
       uint16_t blocks_to_confirm = 0;
-      auto itr = _producer_watermarks.find(producer_name);
-      if (itr != _producer_watermarks.end()) {
-         auto watermark = itr->second;
-         if (watermark < hbs->block_num) {
-            blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
+
+      if (_pending_block_mode == pending_block_mode::producing) {
+         // determine how many blocks this producer can confirm
+         // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
+         // 2) if it is a producer on this node that has never produced, the conservative approach is to assume no
+         //    confirmations to make sure we don't double sign after a crash TODO: make these watermarks durable?
+         // 3) if it is a producer on this node where this node knows the last block it produced, safely set it -UNLESS-
+         // 4) the producer on this node's last watermark is higher (meaning on a different fork)
+         if (currrent_watermark_itr != _producer_watermarks.end()) {
+            auto watermark = currrent_watermark_itr->second;
+            if (watermark < hbs->block_num) {
+               blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
+            }
          }
       }
 
@@ -513,12 +545,8 @@ void producer_plugin_impl::schedule_production_loop() {
    _timer.cancel();
 
    auto result = start_block();
-   switch(result) {
-   case start_block_result::exhausted:
-      // immediately proceed to making the block
-      block_production_loop();
-      break;
-   case start_block_result::failed:
+
+   if (result == start_block_result::failed) {
       elog("Failed to start a pending block, will try again later");
       _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
 
@@ -528,158 +556,45 @@ void producer_plugin_impl::schedule_production_loop() {
             schedule_production_loop();
          }
       });
-      break;
-   case start_block_result::succeeded:
-      static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
-      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-      _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count()));
+   } else if (_pending_block_mode == pending_block_mode::producing) {
+      // we succeeded but block may be exhausted
+      if (result == start_block_result::succeeded) {
+         // ship this block off no later than its deadline
+         static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count()));
+      } else {
+         // ship this block off immediately
+         _timer.expires_from_now( boost::posix_time::microseconds( 0 ));
+      }
 
-      //_timer.async_wait(boost::bind(&producer_plugin_impl::block_production_loop, this));
       _timer.async_wait([&](const boost::system::error_code& ec) {
          if (ec != boost::asio::error::operation_aborted) {
-            block_production_loop();
+            maybe_produce_block();
          }
       });
-      break;
    }
+
 }
 
-block_production_condition::block_production_condition_enum producer_plugin_impl::block_production_loop() {
-   block_production_condition::block_production_condition_enum result;
-   fc::mutable_variant_object capture;
-   try
-   {
-      result = maybe_produce_block(capture);
-   }
-   catch( const fc::canceled_exception& )
-   {
-      //We're trying to exit. Go ahead and let this one out.
-      throw;
-   }
-   catch( const fc::exception& e )
-   {
-      elog("Got exception while generating block:\n${e}", ("e", e.to_detail_string()));
-      result = block_production_condition::exception_producing_block;
-   }
-   if(result != block_production_condition::produced && result == _prev_result) {
-      _prev_result_count++;
-   }
-   else {
-      /*
-      if (_prev_result_count > 1) {
-         ilog("Previous result occurred ${r} times",("r", _prev_result_count));
-      }
-      */
-      _prev_result_count = 1;
-      _prev_result = result;
-      switch(result)
-         {
-         case block_production_condition::produced: {
-            const auto& db = app().get_plugin<chain_plugin>().chain();
-            auto producer  = db.head_block_producer();
-            auto pending   = db.head_block_state();
-
-            ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-                 ("p",producer)("id",fc::variant(pending->id).as_string().substr(0,16))
-                 ("n",pending->block_num)("t",pending->block->timestamp)
-                 ("count",pending->block->transactions.size())("lib",db.last_irreversible_block_num())("confs", pending->header.confirmed)(capture) );
-            break;
-         }
-         case block_production_condition::not_synced:
-            ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
-            break;
-         case block_production_condition::not_my_turn:
-       //     ilog("Not producing block because it isn't my turn, its ${scheduled_producer}", (capture) );
-            break;
-         case block_production_condition::not_time_yet:
-        //    ilog("Not producing block because slot has not yet arrived");
-            break;
-         case block_production_condition::no_private_key:
-            ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
-            break;
-         case block_production_condition::low_participation:
-            elog("Not producing block because node appears to be on a minority fork with only ${pct}% producer participation", (capture) );
-            break;
-         case block_production_condition::lag:
-            elog("Not producing block because node didn't wake up within 500ms of the slot time.");
-            break;
-         case block_production_condition::exception_producing_block:
-            elog( "exception producing block" );
-            break;
-         case block_production_condition::fork_below_watermark:
-            elog( "Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})" );
-            break;
-         }
-   }
+bool producer_plugin_impl::maybe_produce_block() {
+   bool result = false;
+   try {
+      produce_block();
+      result = true;
+   } FC_LOG_AND_DROP();
    schedule_production_loop();
+
    return result;
 }
 
-block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
+void producer_plugin_impl::produce_block() {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   block_state_ptr hbs = chain.head_block_state();
-   fc::time_point now = fc::time_point::now();
+   const auto& pbs = chain.pending_block_state();
+   const auto& hbs = chain.head_block_state();
+   FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
+   auto private_key_itr = _private_keys.find( pbs->block_signing_key );
 
-   /*
-   if (app().get_plugin<chain_plugin>().is_skipping_transaction_signatures()) {
-      _production_skip_flags |= skip_transaction_signatures;
-   }
-   */
-   // If the next block production opportunity is in the present or future, we're synced.
-   if( !_production_enabled )
-   {
-      return block_production_condition::not_synced;
-   }
-
-   auto pending_block_timestamp = chain.pending_block_state()->header.timestamp;
-
-   //
-   // this assert should not fail, because now <= db.head_block_time()
-   // should have resulted in slot == 0.
-   //
-   // if this assert triggers, there is a serious bug in get_slot_at_time()
-   // which would result in allowing a later block to have a timestamp
-   // less than or equal to the previous block
-   //
-   assert( now > chain.head_block_time() );
-
-   const auto& scheduled_producer = hbs->get_scheduled_producer( pending_block_timestamp );
-   // we must control the producer scheduled to produce the next block.
-   if( _producers.find( scheduled_producer.producer_name ) == _producers.end() )
-   {
-      capture("scheduled_producer", scheduled_producer.producer_name);
-      return block_production_condition::not_my_turn;
-   }
-
-   auto private_key_itr = _private_keys.find( scheduled_producer.block_signing_key );
-
-   if( private_key_itr == _private_keys.end() )
-   {
-      capture("scheduled_key", scheduled_producer.block_signing_key);
-      return block_production_condition::no_private_key;
-   }
-
-   /*uint32_t prate = hbs->producer_participation_rate();
-   if( prate < _required_producer_participation )
-   {
-      capture("pct", uint32_t(prate / config::percent_1));
-      return block_production_condition::low_participation;
-   }*/
-
-   if( llabs(( pending_block_timestamp.to_time_point() - now).count()) > fc::milliseconds( config::block_interval_ms ).count() )
-   {
-      capture("scheduled_time", pending_block_timestamp)("now", now);
-      return block_production_condition::lag;
-   }
-
-   // determine if our watermark excludes us from producing at this point
-   auto itr = _producer_watermarks.find(scheduled_producer.producer_name);
-   if (itr != _producer_watermarks.end()) {
-      if (itr->second >= hbs->block_num + 1) {
-         capture("producer", scheduled_producer.producer_name)("watermark",itr->second)("head_block_num",hbs->block_num);
-         return block_production_condition::fork_below_watermark;
-      }
-   }
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
@@ -706,8 +621,13 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
          _producer_watermarks[new_producer] = chain.head_block_num();
       }
    }
-   _producer_watermarks[scheduled_producer.producer_name] = chain.head_block_num();
-   return block_production_condition::produced;
+   _producer_watermarks[new_bs->header.producer] = chain.head_block_num();
+
+   ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
+        ("p",new_bs->header.producer)("id",fc::variant(new_bs->id).as_string().substr(0,16))
+        ("n",new_bs->block_num)("t",new_bs->header.timestamp)
+        ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
+
 }
 
 } // namespace eosio
