@@ -13,6 +13,7 @@ public:
 
     void drop();
     void create();
+    void insert(std::string name);
 
 private:
     std::shared_ptr<soci::session> m_session;

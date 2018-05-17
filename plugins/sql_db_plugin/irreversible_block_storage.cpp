@@ -10,7 +10,7 @@ irreversible_block_storage::irreversible_block_storage(std::shared_ptr<database>
 
 void irreversible_block_storage::consume(const std::vector<chain::block_state_ptr>& blocks)
 {
-    for (const auto& block : blocks)
+    for (const chain::block_state_ptr& block : blocks)
     {
         ilog(block->id.str());
 

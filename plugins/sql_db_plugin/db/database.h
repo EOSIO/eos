@@ -4,6 +4,8 @@
 #include <memory>
 #include <mutex>
 #include <soci/soci.h>
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/name.hpp>
 
 #include "accounts_table.h"
 #include "transactions_table.h"

@@ -22,14 +22,19 @@ void accounts_table::drop()
 
 void accounts_table::create()
 {
-    *m_session << "create table accounts("
-                  "name TEXT,"
-                  "eos_balance REAL,"
-                  "staked_balance REAL,"
-                  "unstaking_balance REAL,"
-                  "abi TEXT,"
-                  "created_at DATETIME,"
-                  "updated_at DATETIME)";
+    *m_session << "CREATE TABLE accounts("
+            "name TEXT PRIMARY KEY,"
+            "eos_balance REAL,"
+            "staked_balance REAL,"
+            "unstaking_balance REAL,"
+            "abi TEXT,"
+            "created_at NUMERIC,"
+            "updated_at NUMERIC)";
+}
+
+void accounts_table::insert(std::string name)
+{
+    *m_session << "INSERT INTO accounts VALUES (:name, 0, 0, 0, '', strftime('%s','now'), strftime('%s','now'))", soci::use(name);
 }
 
 } // namespace
