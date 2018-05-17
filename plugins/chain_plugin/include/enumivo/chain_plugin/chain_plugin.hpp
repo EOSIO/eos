@@ -208,6 +208,19 @@ public:
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
+   struct get_producers_params {
+      bool        json = false;
+      string      lower_bound;
+      uint32_t    limit = 50;
+   };
+
+   struct get_producers_result {
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex string or JSON object
+      string              more; ///< fill lower_bound with this value to fetch more rows
+   };
+
+   get_producers_result get_producers( const get_producers_params& params )const;
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -372,7 +385,7 @@ FC_REFLECT( enumivo::chain_apis::permission, (perm_name)(parent)(required_auth) 
 FC_REFLECT(enumivo::chain_apis::empty, )
 FC_REFLECT(enumivo::chain_apis::read_only::get_info_results,
 (server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
-FC_REFLECT(enumivo::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT( enumivo::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT( enumivo::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
@@ -382,6 +395,9 @@ FC_REFLECT( enumivo::chain_apis::read_only::get_table_rows_result, (rows)(more) 
 FC_REFLECT( enumivo::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
 FC_REFLECT( enumivo::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( enumivo::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
+
+FC_REFLECT( enumivo::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_producers_result, (rows)(more) );
 
 FC_REFLECT( enumivo::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
 FC_REFLECT( enumivo::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
