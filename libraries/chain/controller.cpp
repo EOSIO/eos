@@ -73,7 +73,10 @@ struct controller_impl {
       FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
 
       if( const auto* b = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num) )
+      {
+         edump((b->blocknum));
          unconfirmed_blocks.remove( *b );
+      }
 
       for( const auto& t : head->trxs )
          unapplied_transactions[t->signed_id] = t;
@@ -94,7 +97,7 @@ struct controller_impl {
         cfg.shared_memory_size ),
     unconfirmed_blocks( cfg.block_log_dir/"unconfirmed",
         cfg.read_only ? database::read_only : database::read_write,
-        std::min<uint64_t>(cfg.shared_memory_size,128*1024*1024ll) ), /// 1GB should store 1000 1MB blocks + overhead
+        cfg.unconfirmed_cache_size ), 
     blog( cfg.block_log_dir ),
     fork_db( cfg.shared_memory_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -202,19 +205,9 @@ struct controller_impl {
                  ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
 
       edump((unconf_blocknum));
-      /*
       FC_ASSERT( head->block_num == unconf_blocknum, "unconfirmed block database out of sync",
                  ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
-                 */
 
-      /**
-       * The undoable state contains state transitions from blocks
-       * in the fork database that could be reversed. Because this
-       * is a new startup and the fork database is empty, we must
-       * unwind that pending state. This state will be regenerated
-       * when we catch up to the head block later.
-       */
-      //clear_all_undo();
    }
 
    ~controller_impl() {
@@ -400,20 +393,17 @@ struct controller_impl {
 
       }
 
-      if( !replaying ) {
-         auto itr = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num );
-         if( !itr ) {
-            unconfirmed_blocks.create<unconfirmed_block_object>( [&]( auto& ubo ) {
-               ubo.blocknum = head->block_num;
-               ubo.set_block( head->block );
-            });
-         }
-      }
-
-
   //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
       emit( self.accepted_block, pending->_pending_block_state );
       pending->push();
+
+      if( !replaying ) {
+         unconfirmed_blocks.create<unconfirmed_block_object>( [&]( auto& ubo ) {
+            ubo.blocknum = pending->_pending_block_state->block_num;
+            ubo.set_block( pending->_pending_block_state->block );
+         });
+      }
+
       pending.reset();
 
    }
