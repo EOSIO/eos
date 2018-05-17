@@ -63,9 +63,6 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    auto cr = c.push_action( N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
               ("issuer",       "eosio" )
               ("maximum_supply", "10000000.0000 EOS")
-              ("can_freeze", 0)
-              ("can_recall", 0)
-              ("can_whitelist", 0)
       );
 
    wdump((fc::json::to_pretty_string(cr)));
