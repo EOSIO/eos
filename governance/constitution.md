@@ -7,7 +7,7 @@ Each Member agrees to resolve disputes through the blockchain’s default arbitr
 # Article IV
 No Member shall offer nor accept anything of value in exchange for a vote of any type, including for Block Producer candidates, Amendments or Worker Proposals, nor shall any Member unduly influence the vote of another.
 # Article V
-This EOS Blockchain has no owner, manager or fiduciary. It is governed exclusively under the terms of this Constitution.
+This Enumivo Blockchain has no owner, manager or fiduciary. It is governed exclusively under the terms of this Constitution.
 # Article VI
 No Member nor any Beneficial Interest shall own more than 10% of issued tokens.
 # Article VII
@@ -30,8 +30,8 @@ As Developers are able to offer services and provide interaction with the blockc
 # Article XIV
 This Constitution creates no positive rights for or between any Members.
 # Article XV
-All disputes arising from this Constitution or its related governing documents shall be resolved using the EOS Core Arbitration Forum.
+All disputes arising from this Constitution or its related governing documents shall be resolved using the Enumivo Core Arbitration Forum.
 # Article XVI
 This Constitution and its subordinate documents the Block Producer Agreement and Arbitrator Agreement shall not be amended except by a vote of the Token Holders with no less than 15% vote participation among eligible tokens and no fewer than 10% more Yes than No vote power, sustained for 30 continuous days within a 120 day period.
 # Article XVII
-Choice of law for disputes shall be, in order of precedence, this Constitution, the Maxims of Equity, and the laws of Malta.
+Choice of law for disputes shall be, in order of precedence, this Constitution, and the Maxims of Equity.
