@@ -429,33 +429,31 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    _pending_block_mode = pending_block_mode::producing;
 
+   // Not our turn
+   const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
+   auto currrent_watermark_itr = _producer_watermarks.find(scheduled_producer.producer_name);
+   auto private_key_itr = _private_keys.find(scheduled_producer.block_signing_key);
 
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled ) {
       _pending_block_mode = pending_block_mode::speculating;
-   }
-
-   // Not our turn
-   const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
-   if( _producers.find(scheduled_producer.producer_name) != _producers.end()) {
+   } else if( _producers.find(scheduled_producer.producer_name) == _producers.end()) {
       _pending_block_mode = pending_block_mode::speculating;
-   }
-
-   auto private_key_itr = _private_keys.find( scheduled_producer.block_signing_key );
-   if( private_key_itr == _private_keys.end() ) {
-      ilog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
-      _pending_block_mode = pending_block_mode::speculating;
-   }
-
-   // determine if our watermark excludes us from producing at this point
-   auto currrent_watermark_itr = _producer_watermarks.find(scheduled_producer.producer_name);
-   if (currrent_watermark_itr != _producer_watermarks.end()) {
-      if (currrent_watermark_itr->second >= hbs->block_num + 1) {
-         elog( "Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})",
-             ("producer", scheduled_producer.producer_name)
-             ("watermark",currrent_watermark_itr->second)
-             ("head_block_num",hbs->block_num));
+   } else if (_pending_block_mode == pending_block_mode::producing) {
+      if (private_key_itr == _private_keys.end()) {
+         ilog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
          _pending_block_mode = pending_block_mode::speculating;
+      }
+   } else if (_pending_block_mode == pending_block_mode::producing) {
+      // determine if our watermark excludes us from producing at this point
+      if (currrent_watermark_itr != _producer_watermarks.end()) {
+         if (currrent_watermark_itr->second >= hbs->block_num + 1) {
+            elog("Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})",
+                 ("producer", scheduled_producer.producer_name)
+                         ("watermark", currrent_watermark_itr->second)
+                         ("head_block_num", hbs->block_num));
+            _pending_block_mode = pending_block_mode::speculating;
+         }
       }
    }
 
