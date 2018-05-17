@@ -96,10 +96,7 @@ public:
     void create_currency( name contract, name manager, asset maxsupply, const private_key_type* signer = nullptr ) {
         auto act =  mutable_variant_object()
                 ("issuer",       manager )
-                ("maximum_supply", maxsupply )
-                ("can_freeze", 0)
-                ("can_recall", 0)
-                ("can_whitelist", 0);
+                ("maximum_supply", maxsupply );
 
         base_tester::push_action(contract, N(create), contract, act );
     }
