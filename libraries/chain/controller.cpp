@@ -18,6 +18,7 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
+#include <signal.h>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -38,7 +39,7 @@ struct pending_state {
 
    block_context                      _block_ctx;
 
-   void push() {
+void push() {
       _db_session.push();
    }
 };
@@ -1058,8 +1059,15 @@ void controller::abort_block() {
 }
 
 void controller::push_block( const signed_block_ptr& b, bool trust ) {
-   my->push_block( b, trust );
-   log_irreversible_blocks();
+   try {
+      my->push_block( b, trust );
+      log_irreversible_blocks();
+   } catch ( boost::interprocess::bad_alloc& ) {
+      int a = 3;
+      elog("BAD ALLOC\n");
+      bad_alloc(a); 
+      throw;
+   }
 }
 
 void controller::push_confirmation( const header_confirmation& c ) {
@@ -1067,7 +1075,13 @@ void controller::push_confirmation( const header_confirmation& c ) {
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
-   return my->push_transaction(trx, deadline, false, billed_cpu_time_us);
+   try {
+      return my->push_transaction(trx, deadline, false, billed_cpu_time_us);
+   } catch ( boost::interprocess::bad_alloc& ) {
+      int a = 3;
+      elog("BAD ALLOC\n");
+      bad_alloc(a); 
+   }
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )

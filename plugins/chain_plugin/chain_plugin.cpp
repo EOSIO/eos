@@ -463,7 +463,6 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
 
 read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
    FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
-
    push_transactions_results result;
    result.reserve(params.size());
    for( const auto& item : params ) {

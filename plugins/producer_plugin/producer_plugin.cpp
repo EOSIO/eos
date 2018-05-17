@@ -73,7 +73,8 @@ class producer_plugin_impl {
       producer_plugin_impl(boost::asio::io_service& io)
       :_timer(io)
       ,_transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
-      {}
+      {
+      }
 
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
@@ -186,6 +187,8 @@ class producer_plugin_impl {
 
 
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+         chain.bad_alloc.connect([](const int& a) { std::cout << "BAD ALLOC\n"; });
          // abort the pending block
          chain.abort_block();
 
@@ -410,103 +413,108 @@ void producer_plugin::plugin_shutdown() {
 }
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   const auto& hbs = chain.head_block_state();
-
-   //Schedule for the next second's tick regardless of chain state
-   // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
-   fc::time_point now = fc::time_point::now();
-   fc::time_point base = std::max<fc::time_point>(now, chain.head_block_time());
-   int64_t min_time_to_next_block = (config::block_interval_us) - (base.time_since_epoch().count() % (config::block_interval_us) );
-   fc::time_point block_time = base + fc::microseconds(min_time_to_next_block);
-
-
-   if((block_time - now) < fc::microseconds(config::block_interval_us/10) ) {     // we must sleep for at least 50ms
-//      ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}",
-//           ("t", config::block_interval_us/10)("bt", block_time));
-      block_time += fc::microseconds(config::block_interval_us);
-   }
-
    try {
-      // determine how many blocks this producer can confirm
-      // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
-      // 2) if it is a producer on this node that has never produced, the conservative approach is to assume no
-      //    confirmations to make sure we don't double sign after a crash TODO: make these watermarks durable?
-      // 3) if it is a producer on this node where this node knows the last block it produced, safely set it -UNLESS-
-      // 4) the producer on this node's last watermark is higher (meaning on a different fork)
+      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
       const auto& hbs = chain.head_block_state();
-      auto producer_name = hbs->get_scheduled_producer(block_time).producer_name;
-      uint16_t blocks_to_confirm = 0;
-      auto itr = _producer_watermarks.find(producer_name);
-      if (itr != _producer_watermarks.end()) {
-         auto watermark = itr->second;
-         if (watermark < hbs->block_num) {
-            blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
-         }
+
+      //Schedule for the next second's tick regardless of chain state
+      // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
+      fc::time_point now = fc::time_point::now();
+      fc::time_point base = std::max<fc::time_point>(now, chain.head_block_time());
+      int64_t min_time_to_next_block = (config::block_interval_us) - (base.time_since_epoch().count() % (config::block_interval_us) );
+      fc::time_point block_time = base + fc::microseconds(min_time_to_next_block);
+
+
+      if((block_time - now) < fc::microseconds(config::block_interval_us/10) ) {     // we must sleep for at least 50ms
+   //      ilog("Less than ${t}us to next block time, time_to_next_block_time ${bt}",
+   //           ("t", config::block_interval_us/10)("bt", block_time));
+         block_time += fc::microseconds(config::block_interval_us);
       }
 
-      chain.abort_block();
-      chain.start_block(block_time, blocks_to_confirm);
-   } FC_LOG_AND_DROP();
-
-   if (chain.pending_block_state()) {
-      bool exhausted = false;
-      auto unapplied_trxs = chain.get_unapplied_transactions();
-      for (const auto& trx : unapplied_trxs) {
-         if (exhausted) {
-            break;
-         }
-
-         try {
-            auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
-            auto trace = chain.push_transaction(trx, deadline);
-            if (trace->except) {
-               if (failure_is_subjective(*trace->except, deadline == block_time)) {
-                  exhausted = true;
-               } else {
-                  // this failed our configured maximum transaction time, we don't want to replay it
-                  chain.drop_unapplied_transaction(trx);
-               }
+      try {
+         // determine how many blocks this producer can confirm
+         // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
+         // 2) if it is a producer on this node that has never produced, the conservative approach is to assume no
+         //    confirmations to make sure we don't double sign after a crash TODO: make these watermarks durable?
+         // 3) if it is a producer on this node where this node knows the last block it produced, safely set it -UNLESS-
+         // 4) the producer on this node's last watermark is higher (meaning on a different fork)
+         const auto& hbs = chain.head_block_state();
+         auto producer_name = hbs->get_scheduled_producer(block_time).producer_name;
+         uint16_t blocks_to_confirm = 0;
+         auto itr = _producer_watermarks.find(producer_name);
+         if (itr != _producer_watermarks.end()) {
+            auto watermark = itr->second;
+            if (watermark < hbs->block_num) {
+               blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
             }
-         } FC_LOG_AND_DROP();
-      }
-
-      auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
-      auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
-      auto now = fc::time_point::now();
-      while(!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= now) {
-         blacklist_by_expiry.erase(blacklist_by_expiry.begin());
-      }
-
-      auto scheduled_trxs = chain.get_scheduled_transactions();
-      for (const auto& trx : scheduled_trxs) {
-         if (exhausted) {
-            break;
          }
 
-         if (blacklist_by_id.find(trx) != blacklist_by_id.end()) {
-            continue;
-         }
+         chain.abort_block();
+         chain.start_block(block_time, blocks_to_confirm);
+      } FC_LOG_AND_DROP();
 
-         try {
-            auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
-            auto trace = chain.push_scheduled_transaction(trx, deadline);
-            if (trace->except) {
-               if (failure_is_subjective(*trace->except, deadline == block_time)) {
-                  exhausted = true;
-               } else {
-                  auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
-                  // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
-                  _blacklisted_transactions.insert(blacklisted_transaction{trx, expiration});
-               }
+      if (chain.pending_block_state()) {
+         bool exhausted = false;
+         auto unapplied_trxs = chain.get_unapplied_transactions();
+         for (const auto& trx : unapplied_trxs) {
+            if (exhausted) {
+               break;
             }
-         } FC_LOG_AND_DROP();
+
+            try {
+               auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
+               auto trace = chain.push_transaction(trx, deadline);
+               if (trace->except) {
+                  if (failure_is_subjective(*trace->except, deadline == block_time)) {
+                     exhausted = true;
+                  } else {
+                     // this failed our configured maximum transaction time, we don't want to replay it
+                     chain.drop_unapplied_transaction(trx);
+                  }
+               }
+            } FC_LOG_AND_DROP();
+         }
+
+         auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
+         auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
+         auto now = fc::time_point::now();
+         while(!blacklist_by_expiry.empty() && blacklist_by_expiry.begin()->expiry <= now) {
+            blacklist_by_expiry.erase(blacklist_by_expiry.begin());
+         }
+
+         auto scheduled_trxs = chain.get_scheduled_transactions();
+         for (const auto& trx : scheduled_trxs) {
+            if (exhausted) {
+               break;
+            }
+
+            if (blacklist_by_id.find(trx) != blacklist_by_id.end()) {
+               continue;
+            }
+
+            try {
+               auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
+               auto trace = chain.push_scheduled_transaction(trx, deadline);
+               if (trace->except) {
+                  if (failure_is_subjective(*trace->except, deadline == block_time)) {
+                     exhausted = true;
+                  } else {
+                     auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
+                     // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
+                     _blacklisted_transactions.insert(blacklisted_transaction{trx, expiration});
+                  }
+               }
+            } FC_LOG_AND_DROP();
+         }
+
+         return exhausted ? start_block_result::exhausted : start_block_result::succeeded;
       }
 
-      return exhausted ? start_block_result::exhausted : start_block_result::succeeded;
+      return start_block_result::failed;
+   } catch ( boost::interprocess::bad_alloc& ) {
+      elog( "BAD ALLOC\n" );
+      throw;
    }
-
-   return start_block_result::failed;
 }
 
 void producer_plugin_impl::schedule_production_loop() {
