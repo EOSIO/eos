@@ -98,10 +98,9 @@ namespace eosiosystem {
                             const authority& owner,
                             const authority& active*/ ) {
       auto name_str = eosio::name{newact}.to_string();
-      eosio::print( eosio::name{creator}, " created ", eosio::name{newact}, "\n");
 
-      eosio_assert( name_str.size() == 12, "account names must be 12 chars long" );
-      eosio_assert( name_str.find_first_of('.') == std::string::npos, "account names cannot contain '.' character");
+      eosio_assert( name_str.size() == 12 || creator == N(eosio), "account names must be 12 chars long" );
+      eosio_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(eosio), "account names cannot contain '.' character");
 
       user_resources_table  userres( _self, newact);
 
@@ -123,7 +122,6 @@ namespace eosiosystem {
       auto itr = _rammarket.find(S(4,RAMEOS));
       auto tmp = *itr;
       auto eosout = tmp.convert( asset(bytes,S(0,RAM)), S(4,EOS) );
-      print( "eosout: ", eosout, " ", tmp.base.balance, " ", tmp.quote.balance, "\n" );
 
       buyram( payer, receiver, eosout );
    }
@@ -139,7 +137,6 @@ namespace eosiosystem {
     */
    void system_contract::buyram( account_name payer, account_name receiver, asset quant ) 
    {
-   //   print( "\n payer: ", eosio::name{payer}, " buys ram for ", eosio::name{receiver}, " with ", quant, "\n" );
       require_auth( payer );
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
@@ -148,7 +145,6 @@ namespace eosiosystem {
                                                        { payer, N(eosio), quant, std::string("buy ram") } );
       }
 
-   //   print( "free ram: ", _gstate.free_ram(),  "\n");
 
       int64_t bytes_out;
 
@@ -157,12 +153,11 @@ namespace eosiosystem {
           bytes_out = es.convert( quant,  S(0,RAM) ).amount;
       });
 
-   //   print( "ram bytes out: ", bytes_out, "\n" );
 
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
-      _gstate.total_ram_stake.amount   += quant.amount;
+      _gstate.total_ram_stake          += quant.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
@@ -185,28 +180,27 @@ namespace eosiosystem {
     *  refunds the purchase price to the account. In this way there is no profit to be made through buying
     *  and selling ram.
     */
-   void system_contract::sellram( account_name account, uint64_t bytes ) {
+   void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
-      int64_t ibytes = static_cast<int64_t>(bytes);
+      eosio_assert( bytes > 0, "cannot sell negative byte" );
 
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
       eosio_assert( res_itr != userres.end(), "no resource row" );
-      eosio_assert( res_itr->ram_bytes >= ibytes, "insufficient quota" );
+      eosio_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
 
       asset tokens_out;
       auto itr = _rammarket.find(S(4,RAMEOS));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
           /// the cast to int64_t of bytes is safe because we certify bytes is <= quota which is limited by prior purchases
-          tokens_out = es.convert( asset(ibytes,S(0,RAM)),  S(4,EOS) );
-   //       print( "out: ", tokens_out, "\n" );
+          tokens_out = es.convert( asset(bytes,S(0,RAM)),  S(4,EOS) );
       });
 
       _gstate.total_ram_bytes_reserved -= bytes;
-      _gstate.total_ram_stake.amount   -= tokens_out.amount;
+      _gstate.total_ram_stake          -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
-      eosio_assert( _gstate.total_ram_stake.amount >= 0, "error, attempt to unstake more tokens than previously staked" );
+      eosio_assert( _gstate.total_ram_stake >= 0, "error, attempt to unstake more tokens than previously staked" );
 
       userres.modify( res_itr, account, [&]( auto& res ) {
           res.ram_bytes -= bytes;
@@ -225,7 +219,6 @@ namespace eosiosystem {
                                     
    {
       require_auth( from );
-   //   print( "from: ", eosio::name{from}, " to: ", eosio::name{receiver}, " net: ", stake_net_quantity, " cpu: ", stake_cpu_quantity );
 
       eosio_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
       eosio_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );

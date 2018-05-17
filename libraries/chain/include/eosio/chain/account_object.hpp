@@ -6,7 +6,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/block_timestamp.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/abi_def.hpp>
 
 #include "multi_index_includes.hpp"
 

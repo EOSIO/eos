@@ -509,7 +509,7 @@ chain::action create_setabi(const name& account, const abi_def& abi) {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
       setabi{
          .account   = account,
-         .abi       = abi
+         .abi       = fc::raw::pack(abi)
       }
    };
 }
@@ -918,56 +918,132 @@ struct vote_producers_subcommand {
    }
 };
 
-struct list_producers_subcommand {
-   bool print_json = false;
-   bool sort_names = false;
+struct approve_producer_subcommand {
+   eosio::name voter;
+   eosio::name producer_name;
 
-   list_producers_subcommand(CLI::App* actionRoot) {
-      auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
-      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
-      list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
-      list_producers->set_callback([this] {
+   approve_producer_subcommand(CLI::App* actionRoot) {
+      auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
+      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
+      approve_producer->add_option("producer", producer_name, localized("The account to vote for"))->required();
+      add_standard_transaction_options(approve_producer);
+
+      approve_producer->set_callback([this] {
             auto result = call(get_table_func, fc::mutable_variant_object("json", true)
                                ("code", name(config::system_account_name).to_string())
                                ("scope", name(config::system_account_name).to_string())
-                               ("table", "producers")
+                               ("table", "voters")
+                               ("table_key", "owner")
+                               ("lower_bound", voter.value)
+                               ("limit", 1)
             );
-
-            if ( !print_json ) {
-               auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-               std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
-               for ( auto& row : res.rows ) {
-                  auto& r = row.get_object();
-                  v.emplace_back( r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() );
-
-               }
-               if ( !v.empty() ) {
-                  if ( sort_names ) {
-                     std::sort( v.begin(), v.end(), [](auto a, auto b) { return std::get<0>(a) < std::get<0>(b); } );
-                  } else {
-                     std::sort( v.begin(), v.end(), [](auto a, auto b) {
-                           return std::get<1>(a) < std::get<1>(b) || (std::get<1>(a) == std::get<1>(b) && std::get<0>(a) < std::get<0>(b)); }
-                     );
-                  }
-
-                  std::cout << std::left << std::setw(14) << "Producer" << std::setw(55) << "Producer key"
-                            << std::setw(50) << "Url" << "Total votes" << std::endl;
-                  for ( auto& x : v ) {
-                     std::cout << std::left << std::setw(14) << std::get<0>(x) << std::setw(55) << std::get<2>(x)
-                               << std::setw(50) << std::get<3>(x) << std::get<1>(x) << std::endl;
-                  }
-               } else {
-                  std::cout << "No producers found" << std::endl;
-               }
-            } else {
-               if ( sort_names ) {
-                  FC_THROW("Sorting producers is not supported for JSON format");
-               }
-               std::cout << fc::json::to_pretty_string(result)
-                         << std::endl;
+            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
+               std::cerr << "Voter info not found for account " << voter << std::endl;
+               return;
             }
+            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            auto prod_vars = res.rows[0]["producers"].get_array();
+            vector<eosio::name> prods;
+            for ( auto& x : prod_vars ) {
+               prods.push_back( name(x.as_string()) );
+            }
+            prods.push_back( producer_name );
+            std::sort( prods.begin(), prods.end() );
+            auto it = std::unique( prods.begin(), prods.end() );
+            if (it != prods.end() ) {
+               std::cerr << "Producer \"" << producer_name << "\" is already on the list." << std::endl;
+               return;
+            }
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("voter", voter)
+               ("proxy", "")
+               ("producers", prods);
+            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+      });
+   }
+};
+
+struct unapprove_producer_subcommand {
+   eosio::name voter;
+   eosio::name producer_name;
+
+   unapprove_producer_subcommand(CLI::App* actionRoot) {
+      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
+      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
+      approve_producer->add_option("producer", producer_name, localized("The account to remove from voted producers"))->required();
+      add_standard_transaction_options(approve_producer);
+
+      approve_producer->set_callback([this] {
+            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", name(config::system_account_name).to_string())
+                               ("table", "voters")
+                               ("table_key", "owner")
+                               ("lower_bound", voter.value)
+                               ("limit", 1)
+            );
+            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
+               std::cerr << "Voter info not found for account " << voter << std::endl;
+               return;
+            }
+            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            auto prod_vars = res.rows[0]["producers"].get_array();
+            vector<eosio::name> prods;
+            for ( auto& x : prod_vars ) {
+               prods.push_back( name(x.as_string()) );
+            }
+            auto it = std::remove( prods.begin(), prods.end(), producer_name );
+            if (it == prods.end() ) {
+               std::cerr << "Cannot remove: producer \"" << producer_name << "\" is not on the list." << std::endl;
+               return;
+            }
+            prods.erase( it, prods.end() ); //should always delete only one element
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("voter", voter)
+               ("proxy", "")
+               ("producers", prods);
+            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+      });
+   }
+};
+
+struct list_producers_subcommand {
+   bool print_json = false;
+   uint32_t limit = 50;
+   std::string lower;
+
+   list_producers_subcommand(CLI::App* actionRoot) {
+      auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
+      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
+      list_producers->add_option("-l,--limit", limit, localized("The maximum number of rows to return"));
+      list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
+      list_producers->set_callback([this] {
+         auto rawResult = call(get_producers_func, fc::mutable_variant_object
+            ("json", true)("lower_bound", lower)("limit", limit));
+         if ( print_json ) {
+            std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
+            return;
          }
-      );
+         auto result = rawResult.as<eosio::chain_apis::read_only::get_producers_result>();
+         if ( result.rows.empty() ) {
+            std::cout << "No producers found" << std::endl;
+            return;
+         }
+         auto weight = result.total_producer_vote_weight;
+         if ( !weight )
+            weight = 1;
+         printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
+         for ( auto& row : result.rows )
+            printf("%-13.13s %-54.54s %-59.59s %1.4f\n", 
+                   row["owner"].as_string().c_str(),
+                   row["producer_key"].as_string().c_str(),
+                   row["url"].as_string().c_str(),
+                   row["total_votes"].as_double() / weight);
+         if ( !result.more.empty() )
+            std::cout << "-L " << result.more << " for more" << std::endl;
+      });
    }
 };
 
@@ -1688,7 +1764,7 @@ int main( int argc, char** argv ) {
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
-   
+
    std::vector<chain::action> actions;
    auto set_code_callback = [&]() {
       std::string wast;
@@ -2332,6 +2408,8 @@ int main( int argc, char** argv ) {
    voteProducer->require_subcommand();
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
+   auto approveProducer = approve_producer_subcommand(voteProducer);
+   auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
 
    auto listProducers = list_producers_subcommand(system);
 

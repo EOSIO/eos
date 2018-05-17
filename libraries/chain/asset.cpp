@@ -4,11 +4,9 @@
  */
 #include <eosio/chain/asset.hpp>
 #include <boost/rational.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <fc/reflect/variant.hpp>
 
 namespace eosio { namespace chain {
-typedef boost::multiprecision::int128_t  int128_t;
 
 uint8_t asset::decimals()const {
    return sym.decimals();
