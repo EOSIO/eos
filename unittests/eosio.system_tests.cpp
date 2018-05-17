@@ -1397,6 +1397,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
    const asset large_asset = asset::from_string("80.0000 EOS");
    create_account_with_resources( N(defproducera), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
    create_account_with_resources( N(defproducerb), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
+   create_account_with_resources( N(defproducerc), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
 
    create_account_with_resources( N(producvotera), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
    create_account_with_resources( N(producvoterb), config::system_account_name, asset::from_string("1.0000 EOS"), false, large_asset, large_asset );
@@ -1564,6 +1565,27 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
                           push_action(N(defproducerb), N(claimrewards), mvo()("owner", "defproducerb")));
    }
 
+   // test stability over a year
+   {
+      regproducer(N(defproducerb));
+      regproducer(N(defproducerc));
+      const asset   initial_supply  = get_token_supply();
+      const int64_t initial_savings = get_global_state()["savings"].as<int64_t>();
+      for (uint32_t i = 0; i < 7 * 52; ++i) {
+         produce_block(fc::seconds(8 * 3600));
+         BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducerc), N(claimrewards), mvo()("owner", "defproducerc")));
+         produce_block(fc::seconds(8 * 3600));
+         BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducerb), N(claimrewards), mvo()("owner", "defproducerb")));
+         produce_block(fc::seconds(8 * 3600));
+         BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
+      }
+      const asset   supply  = get_token_supply();
+      const int64_t savings = get_global_state()["savings"].as<int64_t>();
+      // Amount issued per year is very close to the 5% inflation target. Small difference (500 tokens out of 50'000'000 issued)
+      // is due to compounding every 8 hours in this test as opposed to theoretical continuous compounding 
+      BOOST_REQUIRE(500 * 10000 > int64_t(double(initial_supply.amount) * double(0.05)) - (supply.amount - initial_supply.amount));
+      BOOST_REQUIRE(500 * 10000 > int64_t(double(initial_supply.amount) * double(0.04)) - (savings - initial_savings));
+   }
 } FC_LOG_AND_RETHROW()
 
 
@@ -1700,7 +1722,6 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint32_t initial_tot_unpaid_blocks = initial_global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    initial_supply            = get_token_supply();
       const asset    initial_balance           = get_balance(prod_name);
-
       const uint32_t initial_unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
 
       BOOST_REQUIRE_EQUAL(success(), push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
@@ -1713,10 +1734,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    supply            = get_token_supply();
       const asset    balance           = get_balance(prod_name);
-
       const uint32_t unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
-      
-
 
       const uint64_t usecs_between_fills = claim_time - initial_claim_time;
       const int32_t secs_between_fills = static_cast<int32_t>(usecs_between_fills / 1000000);
@@ -1775,7 +1793,6 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint32_t initial_tot_unpaid_blocks = initial_global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    initial_supply            = get_token_supply();
       const asset    initial_balance           = get_balance(prod_name);
-
       const uint32_t initial_unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
 
       BOOST_REQUIRE_EQUAL(success(), push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
@@ -1788,9 +1805,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    supply            = get_token_supply();
       const asset    balance           = get_balance(prod_name);
-
       const uint32_t unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
-
 
       const uint64_t usecs_between_fills = claim_time - initial_claim_time;
 
@@ -1833,7 +1848,6 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
    // wait two more hours, now most producers haven't produced in a day and will
    // be deactivated
    produce_block(fc::seconds(2 * 3600));
-
    produce_blocks(8 * 21 * 12);
 
    {
