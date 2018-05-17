@@ -7,7 +7,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/contract_types.hpp>
 
-namespace eosio { namespace chain { 
+namespace eosio { namespace chain {
 
    class apply_context;
 
@@ -32,7 +32,5 @@ namespace eosio { namespace chain {
 
    void apply_eosio_canceldelay(apply_context&);
    ///@}  end action handlers
-   
-   abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
 
 } } /// namespace eosio::chain

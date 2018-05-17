@@ -67,7 +67,7 @@ namespace eosio { namespace chain {
       built_in_types.emplace("uint128",                   pack_unpack<uint128_t>());
       built_in_types.emplace("varint32",                  pack_unpack<fc::signed_int>());
       built_in_types.emplace("varuint32",                 pack_unpack<fc::unsigned_int>());
-      built_in_types.emplace("float64",                   pack_unpack<double>());
+      built_in_types.emplace("float64",                   pack_unpack<double>()); // TODO: Add proper support for floating point types
 
       built_in_types.emplace("time_point",                pack_unpack<fc::time_point>());
       built_in_types.emplace("time_point_sec",            pack_unpack<fc::time_point_sec>());
@@ -91,17 +91,17 @@ namespace eosio { namespace chain {
       built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
 
       // TODO: Remove these from built_in_types:
-      built_in_types.emplace("clause_pair",               pack_unpack<clause_pair>());
-      built_in_types.emplace("transaction_id_type",       pack_unpack<checksum256_type>());
-      built_in_types.emplace("field_name",                pack_unpack<field_name>());
-      built_in_types.emplace("type_name",                 pack_unpack<type_name>());
-      built_in_types.emplace("account_name",              pack_unpack<account_name>());
-      built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
-      built_in_types.emplace("action_name",               pack_unpack<action_name>());
-      built_in_types.emplace("scope_name",                pack_unpack<scope_name>());
-      built_in_types.emplace("permission_level",          pack_unpack<permission_level>());
-      built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
-      built_in_types.emplace("newaccount",                pack_unpack<newaccount>());
+      //built_in_types.emplace("clause_pair",               pack_unpack<clause_pair>());
+      //built_in_types.emplace("transaction_id_type",       pack_unpack<checksum256_type>());
+      //built_in_types.emplace("field_name",                pack_unpack<field_name>());
+      //built_in_types.emplace("type_name",                 pack_unpack<type_name>());
+      //built_in_types.emplace("account_name",              pack_unpack<account_name>());
+      //built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
+      //built_in_types.emplace("action_name",               pack_unpack<action_name>());
+      //built_in_types.emplace("scope_name",                pack_unpack<scope_name>());
+      //built_in_types.emplace("permission_level",          pack_unpack<permission_level>());
+      //built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
+      //built_in_types.emplace("newaccount",                pack_unpack<newaccount>());
 
    }
 

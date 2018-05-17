@@ -184,7 +184,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                                       .name     = N(eosio.msig),
                                       .owner    = eosio_active,
                                       .active   = eosio_active,
-                                      .recovery = eosio_active 
+                                      .recovery = eosio_active
                                    }).get_object() );
 
         base_tester::push_action(  N(eosio), N(newaccount), vector<permission_level>{{N(eosio),config::active_name}},
@@ -193,7 +193,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                                       .name     = N(eosio.token),
                                       .owner    = eosio_active,
                                       .active   = eosio_active,
-                                      .recovery = eosio_active 
+                                      .recovery = eosio_active
                                    }).get_object() );
                                    */
 
@@ -256,16 +256,16 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r =  base_tester::push_action(N(eosio), N(buyram), N(eosio), mutable_variant_object()
                     ("payer", "eosio")
                     ("receiver", name(a.aname))
-                    ("quant", asset(ram)) 
+                    ("quant", asset(ram))
                     );
            BOOST_REQUIRE( !r->except_ptr );
 
            r = base_tester::push_action(N(eosio), N(delegatebw), N(eosio), mutable_variant_object()
                     ("from", "eosio" )
                     ("receiver", name(a.aname))
-                    ("stake_net_quantity", asset(net)) 
-                    ("stake_cpu_quantity", asset(cpu)) 
-                    ("transfer", 1) 
+                    ("stake_net_quantity", asset(net))
+                    ("stake_cpu_quantity", asset(cpu))
+                    ("transfer", 1)
                     );
 
            BOOST_REQUIRE( !r->except_ptr );
@@ -288,7 +288,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
           base_tester::push_action(N(eosio), N(voteproducer), voter, mvo()
                                 ("voter",  name(voter))
                                 ("proxy", name(0) )
-                                ("producers", producers) 
+                                ("producers", producers)
                      );
         };
 

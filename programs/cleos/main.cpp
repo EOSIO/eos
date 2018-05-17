@@ -509,7 +509,7 @@ chain::action create_setabi(const name& account, const abi_def& abi) {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
       setabi{
          .account   = account,
-         .abi       = abi
+         .abi       = fc::raw::pack(abi)
       }
    };
 }
@@ -1688,7 +1688,7 @@ int main( int argc, char** argv ) {
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
-   
+
    std::vector<chain::action> actions;
    auto set_code_callback = [&]() {
       std::string wast;
