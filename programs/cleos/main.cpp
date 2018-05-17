@@ -1031,13 +1031,16 @@ struct list_producers_subcommand {
             std::cout << "No producers found" << std::endl;
             return;
          }
-         printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Total votes");
+         auto weight = result.total_producer_vote_weight;
+         if ( !weight )
+            weight = 1;
+         printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
          for ( auto& row : result.rows )
-            printf("%-13.13s %-54.54s %-59.59s %040f\n", 
+            printf("%-13.13s %-54.54s %-59.59s %1.4f\n", 
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
-                   row["total_votes"].as_double());
+                   row["total_votes"].as_double() / weight);
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
       });

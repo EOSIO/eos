@@ -216,6 +216,7 @@ public:
 
    struct get_producers_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex string or JSON object
+      double              total_producer_vote_weight;
       string              more; ///< fill lower_bound with this value to fetch more rows
    };
 
@@ -397,7 +398,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symb
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 
 FC_REFLECT( eosio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
-FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(more) );
+FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_producer_vote_weight)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
