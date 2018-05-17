@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivo/wallet_plugin/wallet_plugin.hpp>
 #include <enumivo/wallet_plugin/wallet_manager.hpp>

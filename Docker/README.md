@@ -86,7 +86,7 @@ docker-compose stop enuwallet
 
 ### Develop/Build custom contracts
 
-Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize eosio/builder. However, eosio/builder does not contain enumivocpp. As such, you will need to run eosio/builder interactively, and clone, build and install EOS. Once this is complete, you can then utilize enumivocpp to compile your contracts.
+Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize eosio/builder. However, eosio/builder does not contain enumivocpp. As such, you will need to run eosio/builder interactively, and clone, build and install Enumivo. Once this is complete, you can then utilize enumivocpp to compile your contracts.
 
 You can also create a Dockerfile that will do this for you.
 

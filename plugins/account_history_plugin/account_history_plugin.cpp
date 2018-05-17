@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivo/account_history_plugin/account_history_plugin.hpp>
 #include <enumivo/account_history_plugin/account_control_history_object.hpp>

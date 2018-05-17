@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  *  @defgroup eosclienttool Enumivo Command Line Client Reference
  *  @brief Tool for sending transactions and querying state from @ref enunode
  *  @ingroup eosclienttool

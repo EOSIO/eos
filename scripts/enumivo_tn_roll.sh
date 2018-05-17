@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# eosio-tn_roll is used to have all of the instances of the EOS daemon on a host brought down
+# eosio-tn_roll is used to have all of the instances of the Enumivo daemon on a host brought down
 # so that the underlying executable image file (the "text file") can be replaced. Then
 # all instances are restarted.
 # usage: eosio-tn_roll.sh [arglist]

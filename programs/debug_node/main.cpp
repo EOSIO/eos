@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <eos/app/application.hpp>
 
@@ -41,8 +41,8 @@ int main(int argc, char** argv) {
    app::application* node = new app::application();
    fc::oexception unhandled_exception;
    try {
-      bpo::options_description app_options("Eos Producer Node");
-      bpo::options_description cfg_options("Eos Producer Node");
+      bpo::options_description app_options("Enumivo Producer Node");
+      bpo::options_description cfg_options("Enumivo Producer Node");
       app_options.add_options()
             ("help,h", "Print this help message and exit.")
             ("data-dir,d", bpo::value<boost::filesystem::path>()->default_value("producer_node_data_dir"), "Directory containing databases, configuration file, etc.")

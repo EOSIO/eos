@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <enumivo/account_history_api_plugin/account_history_api_plugin.hpp>
 #include <enumivo/chain/chain_controller.hpp>
