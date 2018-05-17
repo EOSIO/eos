@@ -58,19 +58,19 @@ namespace fc
    using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
    template<size_t Size>
    using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
-   
+
    void to_variant( const UInt<8>& n, variant& v );
    void from_variant( const variant& v, UInt<8>& n );
-   
+
    void to_variant( const UInt<16>& n, variant& v );
    void from_variant( const variant& v, UInt<16>& n );
-   
+
    void to_variant( const UInt<32>& n, variant& v );
    void from_variant( const variant& v, UInt<32>& n );
-   
+
    void to_variant( const UInt<64>& n, variant& v );
    void from_variant( const variant& v, UInt<64>& n );
-   
+
    template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v );
    template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n );
 
@@ -98,6 +98,11 @@ namespace fc
    void from_variant( const variant& var,  uint32_t& vo );
    void to_variant( const int32_t& var,  variant& vo );
    void from_variant( const variant& var,  int32_t& vo );
+
+   void to_variant( const unsigned __int128& var,  variant& vo );
+   void from_variant( const variant& var,  unsigned __int128& vo );
+   void to_variant( const __int128& var,  variant& vo );
+   void from_variant( const variant& var,  __int128& vo );
 
    void to_variant( const variant_object& var,  variant& vo );
    void from_variant( const variant& var,  variant_object& vo );

@@ -6,12 +6,12 @@
 #include <stdexcept>
 #include "byteswap.hpp"
 
-namespace fc 
+namespace fc
 {
     typedef boost::multiprecision::uint128_t  m128;
 
     template <typename T>
-    static void divide(const T &numerator, const T &denominator, T &quotient, T &remainder) 
+    static void divide(const T &numerator, const T &denominator, T &quotient, T &remainder)
     {
       static const int bits = sizeof(T) * 8;//CHAR_BIT;
 
@@ -44,8 +44,8 @@ namespace fc
       }
     }
 
-    uint128::uint128(const std::string &sz) 
-    :hi(0), lo(0) 
+    uint128::uint128(const std::string &sz)
+    :hi(0), lo(0)
     {
       // do we have at least one character?
       if(!sz.empty()) {
@@ -151,33 +151,33 @@ namespace fc
     }
 
 
-    uint128& uint128::operator<<=(const uint128& rhs) 
+    uint128& uint128::operator<<=(const uint128& rhs)
     {
-        if(rhs >= 128) 
+        if(rhs >= 128)
         {
           hi = 0;
           lo = 0;
-        } 
-        else 
+        }
+        else
         {
           unsigned int n = rhs.to_integer();
           const unsigned int halfsize = 128 / 2;
-        
+
             if(n >= halfsize){
                 n -= halfsize;
                 hi = lo;
                 lo = 0;
             }
-        
+
             if(n != 0) {
             // shift high half
                 hi <<= n;
-        
+
             const uint64_t mask(~(uint64_t(-1) >> n));
-        
+
             // and add them to high half
                 hi |= (lo & mask) >> (halfsize - n);
-        
+
             // and finally shift also low half
                 lo <<= n;
             }
@@ -186,7 +186,7 @@ namespace fc
        return *this;
     }
 
-    uint128 & uint128::operator>>=(const uint128& rhs) 
+    uint128 & uint128::operator>>=(const uint128& rhs)
     {
        if(rhs >= 128)
        {
@@ -197,23 +197,23 @@ namespace fc
        {
          unsigned int n = rhs.to_integer();
          const unsigned int halfsize = 128 / 2;
-       
+
            if(n >= halfsize) {
                n -= halfsize;
                lo = hi;
                hi = 0;
            }
-       
+
            if(n != 0) {
            // shift low half
                lo >>= n;
-       
+
            // get lower N bits of high half
            const uint64_t mask(~(uint64_t(-1) << n));
-       
+
            // and add them to low qword
                lo |= (hi & mask) << (halfsize - n);
-       
+
            // and finally shift also high half
                hi >>= n;
            }
@@ -221,7 +221,7 @@ namespace fc
       return *this;
    }
 
-    uint128& uint128::operator/=(const uint128 &b) 
+    uint128& uint128::operator/=(const uint128 &b)
     {
         auto self = (m128(hi) << 64) + m128(lo);
         auto other = (m128(b.hi) << 64) + m128(b.lo);
@@ -238,7 +238,7 @@ namespace fc
            exit(1);
         }
         */
-       
+
         /*
         const auto&  b128 = std::reinterpret_cast<const m128&>(b);
         auto&     this128 = std::reinterpret_cast<m128&>(*this);
@@ -247,14 +247,14 @@ namespace fc
         return *this;
     }
 
-    uint128& uint128::operator%=(const uint128 &b) 
+    uint128& uint128::operator%=(const uint128 &b)
     {
         uint128 quotient;
         divide(*this, b, quotient, *this);
         return *this;
     }
 
-    uint128& uint128::operator*=(const uint128 &b) 
+    uint128& uint128::operator*=(const uint128 &b)
     {
         uint64_t a0 = (uint32_t) (this->lo        );
         uint64_t a1 = (uint32_t) (this->lo >> 0x20);
@@ -275,7 +275,7 @@ namespace fc
         // (a3 * b0 + a2 * b1 + a1 * b2 + a0 * b3) << 0x60
         //
         // all other cross terms are << 0x80 or higher, thus do not appear in result
-        
+
         this->hi = 0;
         this->lo = a3*b0;
         (*this) += a2*b1;
@@ -293,7 +293,7 @@ namespace fc
 
         return *this;
    }
-   
+
    void uint128::full_product( const uint128& a, const uint128& b, uint128& result_hi, uint128& result_lo )
    {
        //   (ah * 2**64 + al) * (bh * 2**64 + bl)
@@ -304,7 +304,7 @@ namespace fc
        // + Rh * 2**128 + Rl * 2**64
        // + Sh * 2**64  + Sl
        //
-       
+
        uint64_t ah = a.hi;
        uint64_t al = a.lo;
        uint64_t bh = b.hi;
@@ -318,7 +318,7 @@ namespace fc
        q *= bh;
        uint128 p = ah;
        p *= bh;
-       
+
        uint64_t sl = s.lo;
        uint64_t sh = s.hi;
        uint64_t rl = r.lo;
@@ -330,7 +330,7 @@ namespace fc
 
        uint64_t y[4];    // final result
        y[0] = sl;
-       
+
        uint128_t acc = sh;
        acc += ql;
        acc += rl;
@@ -341,10 +341,10 @@ namespace fc
        acc += pl;
        y[2] = acc.lo;
        y[3] = acc.hi + ph;
-       
+
        result_hi = uint128( y[3], y[2] );
        result_lo = uint128( y[1], y[0] );
-       
+
        return;
    }
 
@@ -376,13 +376,14 @@ namespace fc
 
    void to_variant( const uint128& var,  variant& vo )  { vo = std::string(var);         }
    void from_variant( const variant& var,  uint128& vo ){ vo = uint128(var.as_string()); }
+/*
    void to_variant( const unsigned __int128& var,  variant& vo ) { to_variant( uint128(var), vo); }
    void from_variant( const variant& var,  unsigned __int128& vo ) {
       uint128 tmp;
       from_variant( var, tmp );
       vo = (unsigned __int128)tmp;
    }
-
+*/
 } // namespace fc
 
 
@@ -402,4 +403,3 @@ namespace fc
  * suitability this software for any purpose. It is provided "as is"
  * without express or implied warranty.
  */
-

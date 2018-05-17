@@ -9,7 +9,7 @@ void abi_generator::set_target_contract(const string& contract, const vector<str
 
 void abi_generator::enable_optimizaton(abi_generator::optimization o) {
   optimizations |= o;
-} 
+}
 
 bool abi_generator::is_opt_enabled(abi_generator::optimization o) {
   return (optimizations & o) != 0;
@@ -35,10 +35,10 @@ void abi_generator::set_compiler_instance(CompilerInstance& compiler_instance) {
   this->compiler_instance = &compiler_instance;
 }
 
-void abi_generator::handle_tagdecl_definition(TagDecl* tag_decl) { 
+void abi_generator::handle_tagdecl_definition(TagDecl* tag_decl) {
   ast_context = &tag_decl->getASTContext();
   auto decl_location = tag_decl->getLocation().printToString(ast_context->getSourceManager());
-  try {    
+  try {
   handle_decl(tag_decl);
 } FC_CAPTURE_AND_RETHROW((decl_location)) }
 
@@ -71,7 +71,7 @@ string abi_generator::translate_type(const string& type_name) {
   string built_in_type = type_name;
 
   if (type_name == "unsigned __int128" || type_name == "uint128_t") built_in_type = "uint128";
-  else if (type_name == "__int128"          || type_name == "int128_t")  built_in_type = "unt128";
+  else if (type_name == "__int128"          || type_name == "int128_t")  built_in_type = "int128";
 
   else if (type_name == "unsigned long long" || type_name == "uint64_t") built_in_type = "uint64";
   else if (type_name == "unsigned long"      || type_name == "uint32_t") built_in_type = "uint32";
@@ -118,7 +118,7 @@ bool abi_generator::inspect_type_methods_for_actions(const Decl* decl) { try {
       string field_type_name = add_type(qt);
 
       field_def struct_field{field_name, field_type_name};
-      ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type)) 
+      ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type))
         || find_struct(get_vector_element_type(struct_field.type))
         || find_type(get_vector_element_type(struct_field.type))
         , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));
@@ -228,7 +228,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         auto qt = action_decl->getTypeForDecl()->getCanonicalTypeInternal();
 
         auto type_name = add_struct(qt);
-        ABI_ASSERT(!is_builtin_type(type_name), 
+        ABI_ASSERT(!is_builtin_type(type_name),
           "A built-in type with the same name exists, try using another name: ${type_name}", ("type_name",type_name));
 
         if(params.size()==0) {
@@ -236,7 +236,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         }
 
         for(const auto& action : params) {
-          const auto* ac = find_action(action);  
+          const auto* ac = find_action(action);
           if( ac ) {
             ABI_ASSERT(ac->type == type_name, "Same action name with different type ${action}",("action",action));
             continue;
@@ -252,7 +252,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         auto qt = table_decl->getTypeForDecl()->getCanonicalTypeInternal();
         auto type_name = add_struct(qt);
 
-        ABI_ASSERT(!is_builtin_type(type_name), 
+        ABI_ASSERT(!is_builtin_type(type_name),
           "A built-in type with the same name exists, try using another name: ${type_name}", ("type_name",type_name));
 
         const auto* s = find_struct(type_name);
@@ -279,7 +279,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         //TODO: assert that we are adding the same table
         const auto* ta = find_table(table.name);
         if(!ta) {
-          output->tables.push_back(table);  
+          output->tables.push_back(table);
         }
       }
     }
@@ -354,7 +354,7 @@ void abi_generator::guess_key_names(table_def& table, const struct_def s) {
   vector<field_def> fields;
   get_all_fields(s, fields);
 
- if( table.index_type == "i64i64i64" || table.index_type == "i128i128" 
+ if( table.index_type == "i64i64i64" || table.index_type == "i128i128"
     || table.index_type == "i64") {
 
     table.key_names.clear();
@@ -448,7 +448,7 @@ bool abi_generator::is_typedef(const clang::QualType& qt) {
 }
 
 bool abi_generator::is_elaborated(const clang::QualType& qt) {
-  return isa<ElaboratedType>(qt.getTypePtr()); 
+  return isa<ElaboratedType>(qt.getTypePtr());
 }
 
 bool abi_generator::is_vector(const clang::QualType& vqt) {
@@ -480,7 +480,7 @@ clang::QualType abi_generator::get_vector_element_type(const clang::QualType& qt
   const auto* tst = clang::dyn_cast<const clang::TemplateSpecializationType>(qt.getTypePtr());
   ABI_ASSERT(tst != nullptr);
   const clang::TemplateArgument& arg0 = tst->getArg(0);
-  return arg0.getAsType();  
+  return arg0.getAsType();
 }
 
 string abi_generator::get_vector_element_type(const string& type_name) {
@@ -491,7 +491,7 @@ string abi_generator::get_vector_element_type(const string& type_name) {
 
 string abi_generator::get_type_name(const clang::QualType& qt, bool with_namespace=false) {
   auto name = clang::TypeName::getFullyQualifiedName(qt, *ast_context);
-  if(!with_namespace) 
+  if(!with_namespace)
     name = remove_namespace(name);
   return name;
 }
@@ -571,7 +571,7 @@ string abi_generator::add_vector(const clang::QualType& vqt) {
   auto vector_element_type_str = translate_type(get_type_name(vector_element_type));
   vector_element_type_str += "[]";
 
-  return vector_element_type_str;  
+  return vector_element_type_str;
 }
 
 string abi_generator::add_type(const clang::QualType& tqt) {
@@ -658,7 +658,7 @@ string abi_generator::add_struct(const clang::QualType& sqt, string full_name) {
     string field_type_name = add_type(qt);
 
     field_def struct_field{field_name, field_type_name};
-    ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type)) 
+    ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type))
       || find_struct(get_vector_element_type(struct_field.type))
       || find_type(get_vector_element_type(struct_field.type))
       , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));

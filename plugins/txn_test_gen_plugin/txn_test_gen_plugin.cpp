@@ -144,7 +144,7 @@ struct txn_test_gen_plugin_impl {
          {
             setabi handler;
             handler.account = newaccountC;
-            handler.abi = json::from_string(eosio_token_abi).as<abi_def>();
+            handler.abi = fc::raw::pack(json::from_string(eosio_token_abi).as<abi_def>());
             trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
          }
 

@@ -36,6 +36,7 @@ namespace eosio { namespace testing {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
       cfg.shared_memory_size = 1024*1024*8;
+      cfg.unconfirmed_cache_size = 1024*1024*8;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
@@ -146,7 +147,6 @@ namespace eosio { namespace testing {
                     });
 
       control->commit_block();
-      control->log_irreversible_blocks();
       last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
 
       _start_block( next_time + fc::microseconds(config::block_interval_us));
@@ -180,9 +180,34 @@ namespace eosio { namespace testing {
 
 
    void base_tester::produce_blocks_until_end_of_round() {
-      while( control->pending_block_state()->has_pending_producers() ) {
+      uint64_t blocks_per_round;
+      while(true) {
+         blocks_per_round = control->active_producers().producers.size() * config::producer_repetitions;
          produce_block();
+         if (control->head_block_num() % blocks_per_round == (blocks_per_round - 1)) break;
       }
+   }
+
+   void base_tester::produce_blocks_for_n_rounds(const uint32_t num_of_rounds) {
+      for(uint32_t i = 0; i < num_of_rounds; i++) {
+         produce_blocks_until_end_of_round();
+      }
+   }
+
+   void base_tester::produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time) {
+      fc::microseconds elapsed_time;
+      while (elapsed_time < target_elapsed_time) {
+         for(uint32_t i = 0; i < control->head_block_state()->active_schedule.producers.size(); i++) {
+            const auto time_to_skip = fc::milliseconds(config::producer_repetitions * config::block_interval_ms);
+            produce_block(time_to_skip);
+            elapsed_time += time_to_skip;
+         }
+         // if it is more than 24 hours, producer will be marked as inactive
+         const auto time_to_skip = fc::seconds(23 * 60 * 60);
+         produce_block(time_to_skip);
+         elapsed_time += time_to_skip;
+      }
+
    }
 
 
@@ -607,7 +632,7 @@ namespace eosio { namespace testing {
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 setabi{
                                    .account    = account,
-                                   .abi        = abi
+                                   .abi        = fc::raw::pack(abi)
                                 });
 
       set_transaction_headers(trx);
