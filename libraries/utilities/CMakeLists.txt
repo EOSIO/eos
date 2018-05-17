@@ -7,7 +7,7 @@ if(NOT ENU_GIT_REVISION_DESCRIPTION)
     set(ENU_GIT_REVISION_DESCRIPTION "unknown")
 endif(NOT ENU_GIT_REVISION_DESCRIPTION)
 
-file(GLOB HEADERS "include/eosio/utilities/*.hpp")
+file(GLOB HEADERS "include/enumivo/utilities/*.hpp")
 
 set(sources
    key_conversion.cpp
@@ -19,14 +19,14 @@ set(sources
 #configure_file("${CMAKE_CURRENT_SOURCE_DIR}/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
 #list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 
-add_library( eos_utilities
+add_library( enu_utilities
              ${sources}
              ${HEADERS} )
-target_link_libraries( eos_utilities fc WAST WASM )
-target_include_directories( eos_utilities
+target_link_libraries( enu_utilities fc WAST WASM )
+target_include_directories( enu_utilities
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include" )
 if (USE_PCH)
-  set_target_properties(eos_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
-  cotire(eos_utilities)
+  set_target_properties(enu_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
+  cotire(enu_utilities)
 endif(USE_PCH)

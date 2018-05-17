@@ -7,7 +7,7 @@ add_library( enumivo_testing
              ${HEADERS}
         )
 
-target_link_libraries( enumivo_testing enumivo_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
+target_link_libraries( enumivo_testing enumivo_chain enu_utilities fc chainbase Logging IR WAST WASM Runtime )
 target_include_directories( enumivo_testing
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
