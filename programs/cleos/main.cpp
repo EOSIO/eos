@@ -1011,54 +1011,36 @@ struct unapprove_producer_subcommand {
 
 struct list_producers_subcommand {
    bool print_json = false;
-   bool sort_names = false;
+   uint32_t limit = 50;
+   std::string lower;
 
    list_producers_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
-      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format") );
-      list_producers->add_flag("--sort-account-names,-n", sort_names, localized("Sort by account names (default order is by votes)") );
+      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
+      list_producers->add_option("-l,--limit", limit, localized("The maximum number of rows to return"));
+      list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
       list_producers->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "producers")
-            );
-
-            if ( !print_json ) {
-               auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-               std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
-               for ( auto& row : res.rows ) {
-                  auto& r = row.get_object();
-                  v.emplace_back( r["owner"].as_string(), r["total_votes"].as_string(), r["producer_key"].as_string(), r["url"].as_string() );
-
-               }
-               if ( !v.empty() ) {
-                  if ( sort_names ) {
-                     std::sort( v.begin(), v.end(), [](auto a, auto b) { return std::get<0>(a) < std::get<0>(b); } );
-                  } else {
-                     std::sort( v.begin(), v.end(), [](auto a, auto b) {
-                           return std::get<1>(a) < std::get<1>(b) || (std::get<1>(a) == std::get<1>(b) && std::get<0>(a) < std::get<0>(b)); }
-                     );
-                  }
-
-                  std::cout << std::left << std::setw(14) << "Producer" << std::setw(55) << "Producer key"
-                            << std::setw(50) << "Url" << "Total votes" << std::endl;
-                  for ( auto& x : v ) {
-                     std::cout << std::left << std::setw(14) << std::get<0>(x) << std::setw(55) << std::get<2>(x)
-                               << std::setw(50) << std::get<3>(x) << std::get<1>(x) << std::endl;
-                  }
-               } else {
-                  std::cout << "No producers found" << std::endl;
-               }
-            } else {
-               if ( sort_names ) {
-                  FC_THROW("Sorting producers is not supported for JSON format");
-               }
-               std::cout << fc::json::to_pretty_string(result)
-                         << std::endl;
-            }
+         auto rawResult = call(get_producers_func, fc::mutable_variant_object
+            ("json", true)("lower_bound", lower)("limit", limit));
+         if ( print_json ) {
+            std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
+            return;
          }
-      );
+         auto result = rawResult.as<eosio::chain_apis::read_only::get_producers_result>();
+         if ( result.rows.empty() ) {
+            std::cout << "No producers found" << std::endl;
+            return;
+         }
+         printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Total votes");
+         for ( auto& row : result.rows )
+            printf("%-13.13s %-54.54s %-59.59s %040f\n", 
+                   row["owner"].as_string().c_str(),
+                   row["producer_key"].as_string().c_str(),
+                   row["url"].as_string().c_str(),
+                   row["total_votes"].as_double());
+         if ( !result.more.empty() )
+            std::cout << "-L " << result.more << " for more" << std::endl;
+      });
    }
 };
 
