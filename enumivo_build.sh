@@ -254,20 +254,20 @@
 	printf "\\tEnumivo Wiki: https://github.com/enumivo/enumivo/wiki\\n\\n\\n"
 				
 	if [ "x${ENUMIVO_BUILD_PACKAGE}" != "x" ]; then
-	  # Build eos.io package
+	  # Build Enumivo package
 		if ! "$CMAKE" -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
 			-DCMAKE_C_COMPILER="${C_COMPILER}" -DWASM_ROOT="${WASM_ROOT}" \
 			-DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX="/usr" ..
 		then
-			printf "\\n\\t>>>>>>>>>>>>>>>>>>>> CMAKE building eos.io package has exited with the above error.\\n\\n"
+			printf "\\n\\t>>>>>>>>>>>>>>>>>>>> CMAKE building Enumivo package has exited with the above error.\\n\\n"
 			exit -1
 		fi
 
 		if ! make -j${CPU_CORE} VERBOSE=0 package
 		then
-			printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building eos.io package has exited with the above error.\\n\\n"
+			printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building Enumivo package has exited with the above error.\\n\\n"
 			exit -1
 		fi
 
-		printf "\\n\\t>>>>>>>>>>>>>>>>>>>> eos.io package has been successfully built.\\n\\n"
+		printf "\\n\\t>>>>>>>>>>>>>>>>>>>> Enumivo package has been successfully built.\\n\\n"
 	fi
