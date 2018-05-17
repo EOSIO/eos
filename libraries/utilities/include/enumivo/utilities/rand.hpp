@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace eosio { namespace utilities { namespace rand {
+namespace enumivo { namespace utilities { namespace rand {
 
 /// High performance random generator
 /// http://xorshift.di.unimi.it/
@@ -39,6 +39,6 @@ public:
     }
 };
 
-} } } //eosio::utilities::rand
+} } } //enumivo::utilities::rand
 
 #endif // RAND_HPP

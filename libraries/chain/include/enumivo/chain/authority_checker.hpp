@@ -17,7 +17,7 @@
 
 #include <functional>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 namespace detail {
 
@@ -290,4 +290,4 @@ namespace detail {
                                                             checktime );
    }
 
-} } // namespace eosio::chain
+} } // namespace enumivo::chain

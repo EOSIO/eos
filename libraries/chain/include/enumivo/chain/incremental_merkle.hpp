@@ -3,7 +3,7 @@
 #include <enumivo/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 namespace detail {
 
@@ -241,6 +241,6 @@ class incremental_merkle_impl {
 typedef incremental_merkle_impl<digest_type>               incremental_merkle;
 typedef incremental_merkle_impl<digest_type,shared_vector> shared_incremental_merkle;
 
-} } /// eosio::chain
+} } /// enumivo::chain
 
-FC_REFLECT( eosio::chain::incremental_merkle, (_active_nodes)(_node_count) );
+FC_REFLECT( enumivo::chain::incremental_merkle, (_active_nodes)(_node_count) );

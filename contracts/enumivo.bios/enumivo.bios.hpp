@@ -2,7 +2,7 @@
 #include <enumivolib/enumivo.hpp>
 #include <enumivolib/privileged.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    class bios : public contract {
       public:
@@ -23,11 +23,11 @@ namespace eosio {
             require_auth( _self );
          }
 
-         void setprods( std::vector<eosio::producer_key> schedule ) {
+         void setprods( std::vector<enumivo::producer_key> schedule ) {
             (void)schedule; // schedule argument just forces the deserialization of the action data into vector<producer_key> (necessary check)
             require_auth( _self );
             char buffer[action_data_size()];
-            read_action_data( buffer, sizeof(buffer) ); // should be the same data as eosio::pack(schedule)
+            read_action_data( buffer, sizeof(buffer) ); // should be the same data as enumivo::pack(schedule)
             set_active_producers(buffer, sizeof(buffer));
          }
 
@@ -38,4 +38,4 @@ namespace eosio {
       private:
    };
 
-} /// namespace eosio
+} /// namespace enumivo

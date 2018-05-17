@@ -1,6 +1,6 @@
 #include <enumivolib/enumivo.hpp>
 
-class simpletoken : public eosio::contract {
+class simpletoken : public enumivo::contract {
    public:
       simpletoken( account_name self )
       :contract(self),_accounts( _self, _self){}
@@ -28,7 +28,7 @@ class simpletoken : public eosio::contract {
          uint64_t primary_key()const { return owner; }
       };
 
-      eosio::multi_index<N(accounts), account> _accounts;
+      enumivo::multi_index<N(accounts), account> _accounts;
 
       void add_balance( account_name payer, account_name to, uint64_t q ) {
          auto toitr = _accounts.find( to );

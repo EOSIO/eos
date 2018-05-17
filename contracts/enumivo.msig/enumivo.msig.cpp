@@ -2,7 +2,7 @@
 #include <enumivolib/action.hpp>
 #include <enumivolib/permission.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 /*
 propose function manually parses input data (instead of taking parsed arguments from dispatcher)
@@ -34,7 +34,7 @@ void multisig::propose() {
    ds >> trx_header;
 
    require_auth( proposer );
-   eosio_assert( trx_header.expiration >= eosio::time_point_sec(now()), "transaction expired" );
+   eosio_assert( trx_header.expiration >= enumivo::time_point_sec(now()), "transaction expired" );
    //eosio_assert( trx_header.actions.size() > 0, "transaction must have at least one action" );
 
    proposals proptable( _self, proposer );
@@ -95,7 +95,7 @@ void multisig::cancel( account_name proposer, name proposal_name, account_name c
    auto& prop = proptable.get( proposal_name, "proposal not found" );
 
    if( canceler != proposer ) {
-      eosio_assert( unpack<transaction_header>( prop.packed_transaction ).expiration < eosio::time_point_sec(now()), "cannot cancel until expiration" );
+      eosio_assert( unpack<transaction_header>( prop.packed_transaction ).expiration < enumivo::time_point_sec(now()), "cannot cancel until expiration" );
    }
 
    approvals apptable(  _self, proposer );
@@ -117,7 +117,7 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    transaction_header trx_header;
    datastream<const char*> ds( prop.packed_transaction.data(), prop.packed_transaction.size() );
    ds >> trx_header;
-   eosio_assert( trx_header.expiration >= eosio::time_point_sec(now()), "transaction expired" );
+   eosio_assert( trx_header.expiration >= enumivo::time_point_sec(now()), "transaction expired" );
 
    bytes packed_provided_approvals = pack(apps.provided_approvals);
    auto res = ::check_transaction_authorization( prop.packed_transaction.data(), prop.packed_transaction.size(),
@@ -132,6 +132,6 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    apptable.erase(apps);
 }
 
-} /// namespace eosio
+} /// namespace enumivo
 
-ENUMIVO_ABI( eosio::multisig, (propose)(approve)(unapprove)(cancel)(exec) )
+ENUMIVO_ABI( enumivo::multisig, (propose)(approve)(unapprove)(cancel)(exec) )

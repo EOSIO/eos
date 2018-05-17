@@ -1,3 +1,3 @@
 #include <enumivo.bios/enumivo.bios.hpp>
 
-ENUMIVO_ABI( eosio::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
+ENUMIVO_ABI( enumivo::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )

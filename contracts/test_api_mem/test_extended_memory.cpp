@@ -2,7 +2,7 @@
 #include <enumivolib/memory.hpp>
 #include "../test_api/test_api.hpp"
 
-//using namespace eosio;
+//using namespace enumivo;
 
 void verify( const void* const ptr, const uint32_t val, const uint32_t size) {
 	const char* char_ptr = (const char*)ptr;

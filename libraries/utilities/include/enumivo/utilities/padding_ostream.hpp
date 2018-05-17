@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eosio { namespace utilities {
+namespace enumivo { namespace utilities {
 
 template<size_t BlockSize=16, char PaddingChar=' '>
 class padding_ostream : public fc::buffered_ostream {
@@ -35,5 +35,5 @@ private:
    size_t bytes_out = 0;
 };
 
-} } //eosio::utilities
+} } //enumivo::utilities
 

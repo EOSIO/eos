@@ -29,13 +29,13 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
 
-using namespace eosio::chain::plugin_interface::compat;
+using namespace enumivo::chain::plugin_interface::compat;
 
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
 }
 
-namespace eosio {
+namespace enumivo {
    static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
 
    using std::vector;
@@ -48,7 +48,7 @@ namespace eosio {
 
    using fc::time_point;
    using fc::time_point_sec;
-   using eosio::chain::transaction_id_type;
+   using enumivo::chain::transaction_id_type;
    namespace bip = boost::interprocess;
 
    class connection;
@@ -390,22 +390,22 @@ namespace eosio {
       void operator() (struct transaction_state &ts) {
          ts.requested_time = time_point::now();
       }
-      void operator () (struct eosio::peer_block_state &bs) {
+      void operator () (struct enumivo::peer_block_state &bs) {
          bs.requested_time = time_point::now();
       }
    } set_request_time;
 
    typedef multi_index_container<
-      eosio::peer_block_state,
+      enumivo::peer_block_state,
       indexed_by<
-         ordered_unique< tag<by_id>, member<eosio::peer_block_state, block_id_type, &eosio::peer_block_state::id > >,
-         ordered_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
+         ordered_unique< tag<by_id>, member<enumivo::peer_block_state, block_id_type, &enumivo::peer_block_state::id > >,
+         ordered_unique< tag<by_block_num>, member<enumivo::peer_block_state, uint32_t, &enumivo::peer_block_state::block_num > >
          >
       > peer_block_state_index;
 
 
    struct update_known_by_peer {
-      void operator() (eosio::peer_block_state& bs) {
+      void operator() (enumivo::peer_block_state& bs) {
          bs.is_known = true;
       }
       void operator() (transaction_state& ts) {
@@ -1582,7 +1582,7 @@ namespace eosio {
                const auto& bs = c->blk_state.find(bid);
                bool unknown = bs == c->blk_state.end();
                if (unknown) {
-                  c->blk_state.insert((eosio::peer_block_state){bid,bnum,false,true,time_point()});
+                  c->blk_state.insert((enumivo::peer_block_state){bid,bnum,false,true,time_point()});
                }
                else {
                   elog("${p} already has knowledge of block ${b}", ("p",c->peer_name())("b",bid));
@@ -1597,11 +1597,11 @@ namespace eosio {
             }
             const auto& prev = cp->blk_state.find (bsum.previous);
             if (prev != cp->blk_state.end() && !prev->is_known) {
-               cp->blk_state.insert((eosio::peer_block_state){bid,bnum,false,true,time_point()});
+               cp->blk_state.insert((enumivo::peer_block_state){bid,bnum,false,true,time_point()});
                cp->enqueue( pending_notify );
             }
             else {
-               cp->blk_state.insert((eosio::peer_block_state){bid,bnum,true,true,time_point()});
+               cp->blk_state.insert((enumivo::peer_block_state){bid,bnum,true,true,time_point()});
                cp->enqueue( bsum );
             }
          }
@@ -1737,7 +1737,7 @@ namespace eosio {
                   const auto& bs = conn->blk_state.find(blk_id);
                   bool unknown = bs == conn->blk_state.end();
                   if (unknown) {
-                     conn->blk_state.insert(eosio::peer_block_state({blk_id,num,false,true,fc::time_point() }));
+                     conn->blk_state.insert(enumivo::peer_block_state({blk_id,num,false,true,fc::time_point() }));
                   }
                   return unknown;
                });
@@ -1779,7 +1779,7 @@ namespace eosio {
                   const auto& bs = conn->blk_state.find(blk_id);
                   bool unknown = bs == conn->blk_state.end();
                   if (unknown) {
-                     conn->blk_state.insert(eosio::peer_block_state({blk_id,num,false,true,fc::time_point() }));
+                     conn->blk_state.insert(enumivo::peer_block_state({blk_id,num,false,true,fc::time_point() }));
                   }
                   return unknown;
                });

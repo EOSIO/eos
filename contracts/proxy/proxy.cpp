@@ -7,7 +7,7 @@
 #include <enumivo.coin/enumivo.coin.hpp>
 
 namespace proxy {
-   using namespace eosio;
+   using namespace enumivo;
 
    namespace configs {
 
@@ -63,13 +63,13 @@ namespace proxy {
       configs::get(code_config, self);
       code_config.owner = params.owner;
       code_config.delay = params.delay;
-      eosio::print("Setting owner to: ", name{params.owner}, " with delay: ", params.delay, "\n");
+      enumivo::print("Setting owner to: ", name{params.owner}, " with delay: ", params.delay, "\n");
       configs::store(code_config, self);
    }
 
    template<size_t ...Args>
    void apply_onerror(uint64_t receiver, const onerror& error ) {
-      eosio::print("starting onerror\n");
+      enumivo::print("starting onerror\n");
       const auto self = receiver;
       config code_config;
       eosio_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
@@ -77,7 +77,7 @@ namespace proxy {
       auto id = code_config.next_id++;
       configs::store(code_config, self);
 
-      eosio::print("Resending Transaction: ", error.sender_id, " as ", id, "\n");
+      enumivo::print("Resending Transaction: ", error.sender_id, " as ", id, "\n");
       transaction dtrx = error.unpack_sent_trx();
       dtrx.delay_sec = code_config.delay;
       dtrx.send(id, self);
@@ -85,17 +85,17 @@ namespace proxy {
 }
 
 using namespace proxy;
-using namespace eosio;
+using namespace enumivo;
 
 extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      if( code == N(eosio) && action == N(onerror) ) {
+      if( code == N(enumivo) && action == N(onerror) ) {
          apply_onerror( receiver, onerror::from_current_action() );
       } else if( code == N(enumivo.coin) ) {
          if( action == N(transfer) ) {
-            apply_transfer(receiver, code, unpack_action_data<eosio::token::transfer_args>());
+            apply_transfer(receiver, code, unpack_action_data<enumivo::token::transfer_args>());
          }
       } else if( code == receiver ) {
          if( action == N(setowner) ) {

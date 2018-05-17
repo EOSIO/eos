@@ -8,7 +8,7 @@
 #include <enumivo/chain/action_receipt.hpp>
 #include <enumivo/chain/block.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    struct base_action_trace {
       base_action_trace( const action_receipt& r ):receipt(r){}
@@ -53,14 +53,14 @@ namespace eosio { namespace chain {
    };
    using block_trace_ptr = std::shared_ptr<block_trace>;
 
-} }  /// namespace eosio::chain
+} }  /// namespace enumivo::chain
 
-FC_REFLECT( eosio::chain::base_action_trace,
+FC_REFLECT( enumivo::chain::base_action_trace,
                     (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id) )
 
-FC_REFLECT_DERIVED( eosio::chain::action_trace,
-                    (eosio::chain::base_action_trace), (inline_traces) )
+FC_REFLECT_DERIVED( enumivo::chain::action_trace,
+                    (enumivo::chain::base_action_trace), (inline_traces) )
 
-FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(net_usage)(scheduled)
+FC_REFLECT( enumivo::chain::transaction_trace, (id)(receipt)(elapsed)(net_usage)(scheduled)
                                              (action_traces)(failed_dtrx_trace)(except) )
-FC_REFLECT( eosio::chain::block_trace, (elapsed)(billed_cpu_usage_us)(trx_traces) )
+FC_REFLECT( enumivo::chain::block_trace, (elapsed)(billed_cpu_usage_us)(trx_traces) )

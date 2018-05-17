@@ -2,7 +2,7 @@
 find_package(LLVM 4.0 REQUIRED CONFIG)
 set( CMAKE_CXX_STANDARD 14 )
 
-file(GLOB HEADERS "include/eosio/abi_generator/*.hpp")
+file(GLOB HEADERS "include/enumivo/abi_generator/*.hpp")
 
 set(SOURCES ${HEADERS})
 

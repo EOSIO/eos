@@ -5,7 +5,7 @@
 #include <enumivo/wallet_plugin/wallet_manager.hpp>
 #include <enumivo/chain/exceptions.hpp>
 #include <boost/algorithm/string.hpp>
-namespace eosio {
+namespace enumivo {
 namespace wallet {
 
 constexpr auto file_ext = ".wallet";
@@ -214,4 +214,4 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
 }
 
 } // namespace wallet
-} // namespace eosio
+} // namespace enumivo

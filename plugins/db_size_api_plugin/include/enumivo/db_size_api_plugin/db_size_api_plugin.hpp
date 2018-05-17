@@ -9,7 +9,7 @@
 
 #include <appbase/application.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 using namespace appbase;
 
@@ -48,5 +48,5 @@ private:
 
 }
 
-FC_REFLECT( eosio::db_size_index_count, (index)(row_count) )
-FC_REFLECT( eosio::db_size_stats, (free_bytes)(used_bytes)(size)(indices) )
+FC_REFLECT( enumivo::db_size_index_count, (index)(row_count) )
+FC_REFLECT( enumivo::db_size_stats, (free_bytes)(used_bytes)(size)(indices) )

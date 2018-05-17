@@ -20,11 +20,11 @@
 
 /**
  * Macro inspired from FC_RETHROW_EXCEPTIONS
- * The main difference here is that if the exception caught isn't of type "eosio::chain::chain_exception"
+ * The main difference here is that if the exception caught isn't of type "enumivo::chain::chain_exception"
  * This macro will rethrow the exception as the specified "exception_type"
  */
 #define ENU_RETHROW_EXCEPTIONS(exception_type, FORMAT, ... ) \
-   catch (eosio::chain::chain_exception& e) { \
+   catch (enumivo::chain::chain_exception& e) { \
       FC_RETHROW_EXCEPTION( e, warn, FORMAT, __VA_ARGS__ ); \
    } catch (fc::exception& e) { \
       exception_type new_exception(FC_LOG_MESSAGE( warn, FORMAT, __VA_ARGS__ )); \
@@ -43,11 +43,11 @@
 
 /**
  * Macro inspired from FC_CAPTURE_AND_RETHROW
- * The main difference here is that if the exception caught isn't of type "eosio::chain::chain_exception"
+ * The main difference here is that if the exception caught isn't of type "enumivo::chain::chain_exception"
  * This macro will rethrow the exception as the specified "exception_type"
  */
 #define ENU_CAPTURE_AND_RETHROW( exception_type, ... ) \
-   catch (eosio::chain::chain_exception& e) { \
+   catch (enumivo::chain::chain_exception& e) { \
       FC_RETHROW_EXCEPTION( e, warn, "", FC_FORMAT_ARG_PARAMS(__VA_ARGS__) ); \
    } catch (fc::exception& e) { \
       exception_type new_exception(e.get_log()); \
@@ -69,7 +69,7 @@
    { throw( effect_type( e.what(), e.get_log() ) ); }
 
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    FC_DECLARE_EXCEPTION( chain_exception,
                          3000000, "blockchain exception" )
@@ -274,4 +274,4 @@ namespace eosio { namespace chain {
                                     3120007, "Already unlocked" )
 
 
-} } // eosio::chain
+} } // enumivo::chain

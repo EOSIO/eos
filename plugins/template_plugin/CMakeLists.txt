@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/template_plugin/*.hpp")
+file(GLOB HEADERS "include/enumivo/template_plugin/*.hpp")
 add_library( template_plugin
              template_plugin.cpp
              ${HEADERS} )

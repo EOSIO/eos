@@ -138,7 +138,7 @@
 //include <enumivolib/eos.hpp>
 #include <enumivolib/dispatcher.hpp>
 
-using namespace eosio;
+using namespace enumivo;
 /*
 namespace std {
    extern ios_base __start_std_streams;
@@ -253,11 +253,11 @@ namespace stltest {
         }
 
         static void apply( account_name c, action_name act) {
-            eosio::dispatch<stltest::contract, message>(c,act);
+            enumivo::dispatch<stltest::contract, message>(c,act);
         }
     };
 
-} /// namespace eosio
+} /// namespace enumivo
 
 
 extern "C" {

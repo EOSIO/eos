@@ -5,9 +5,9 @@
 
 #include <algorithm>
 
-using namespace eosio::chain::resource_limits;
-using namespace eosio::testing;
-using namespace eosio::chain;
+using namespace enumivo::chain::resource_limits;
+using namespace enumivo::testing;
+using namespace enumivo::chain;
 
 
 

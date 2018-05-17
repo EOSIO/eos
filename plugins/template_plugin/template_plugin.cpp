@@ -4,7 +4,7 @@
  */
 #include <enumivo/template_plugin/template_plugin.hpp>
 
-namespace eosio {
+namespace enumivo {
    static appbase::abstract_plugin& _template_plugin = app().register_plugin<template_plugin>();
 
 class template_plugin_impl {

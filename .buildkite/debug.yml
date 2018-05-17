@@ -23,7 +23,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:ubuntu"
+        image: "enumivo/ci:ubuntu"
         workdir: /data/job
     timeout: 30
     
@@ -38,7 +38,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:ubuntu18"
+        image: "enumivo/ci:ubuntu18"
         workdir: /data/job
     timeout: 30
 
@@ -53,7 +53,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:fedora"
+        image: "enumivo/ci:fedora"
         workdir: /data/job
     timeout: 30
  
@@ -68,7 +68,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:centos"
+        image: "enumivo/ci:centos"
         workdir: /data/job
     timeout: 30
 
@@ -83,7 +83,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:amazonlinux"
+        image: "enumivo/ci:amazonlinux"
         workdir: /data/job
     timeout: 30
 
@@ -129,7 +129,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:ubuntu"
+        image: "enumivo/ci:ubuntu"
         workdir: /data/job
     timeout: 30
   
@@ -153,7 +153,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:ubuntu18"
+        image: "enumivo/ci:ubuntu18"
         workdir: /data/job
     timeout: 30
 
@@ -177,7 +177,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:fedora"
+        image: "enumivo/ci:fedora"
         workdir: /data/job
     timeout: 30
 
@@ -201,7 +201,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:centos"
+        image: "enumivo/ci:centos"
         workdir: /data/job
     timeout: 30
 
@@ -225,6 +225,6 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.1.1:
-        image: "eosio/ci:amazonlinux"
+        image: "enumivo/ci:amazonlinux"
         workdir: /data/job
     timeout: 30

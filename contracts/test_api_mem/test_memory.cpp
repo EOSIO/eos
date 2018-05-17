@@ -19,13 +19,13 @@ void verify_mem(const void* const ptr, const uint32_t val, const uint32_t size)
 void print(const void* const ptr, const uint32_t size)
 {
    const char* char_ptr = (const char*)ptr;
-   eosio::print("\n{ ");
+   enumivo::print("\n{ ");
    for (uint32_t i = 0; i < size; ++i)
    {
       const char* delim = (i % 8 == 7) ? ", " : " ";
-      eosio::print("", static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])), delim);
+      enumivo::print("", static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])), delim);
    }
-   eosio::print("}\n");
+   enumivo::print("}\n");
 }
 */
 

@@ -5,9 +5,9 @@
 #include <enumivolib/vector.hpp>
 
 namespace identity {
-   using eosio::action_meta;
-   using eosio::singleton;
-   using eosio::key256;
+   using enumivo::action_meta;
+   using enumivo::singleton;
+   using enumivo::key256;
    using std::string;
    using std::vector;
 

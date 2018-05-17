@@ -31,7 +31,7 @@
 # include <csignal>
 #endif
 
-using namespace eosio;
+using namespace enumivo;
 namespace bpo = boost::program_options;
 
 void write_default_logging_config_to_stream(std::ostream& out);

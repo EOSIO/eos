@@ -9,14 +9,15 @@
 [submodule "contracts/musl/upstream"]
 	path = contracts/musl/upstream
 	url = https://github.com/enumivo/musl.git
-	branch = eosio
+	branch = enumivo
 [submodule "contracts/libc++/upstream"]
 	path = contracts/libc++/upstream
 	url = https://github.com/enumivo/libcxx.git
-	branch = eosio
+	branch = enumivo
 [submodule "externals/binaryen"]
 	path = externals/binaryen
 	url = https://github.com/enumivo/binaryen
+	branch = enumivo
 
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat

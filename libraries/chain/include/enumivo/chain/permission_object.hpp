@@ -7,7 +7,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    class permission_usage_object : public chainbase::object<permission_usage_object_type, permission_usage_object> {
       OBJECT_CTOR(permission_usage_object)
@@ -105,13 +105,13 @@ namespace eosio { namespace chain {
          static const uint64_t  value = (config::billable_size_v<shared_authority> + 64) + overhead;  ///< fixed field size + overhead
       };
    }
-} } // eosio::chain
+} } // enumivo::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::permission_object, enumivo::chain::permission_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::permission_usage_object, enumivo::chain::permission_usage_index)
 
-FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
-FC_REFLECT(eosio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
+FC_REFLECT(chainbase::oid<enumivo::chain::permission_object>, (_id))
+FC_REFLECT(enumivo::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
 
-FC_REFLECT(chainbase::oid<eosio::chain::permission_usage_object>, (_id))
-FC_REFLECT(eosio::chain::permission_usage_object, (id)(last_used))
+FC_REFLECT(chainbase::oid<enumivo::chain::permission_usage_object>, (_id))
+FC_REFLECT(enumivo::chain::permission_usage_object, (id)(last_used))

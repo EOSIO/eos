@@ -138,6 +138,6 @@ namespace tic_tac_toe {
    /**
     * @brief table definition, used to store existing games and their current state
     */
-   typedef eosio::multi_index< games_account, game> games;
+   typedef enumivo::multi_index< games_account, game> games;
 }
 /// @}

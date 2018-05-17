@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace eosio {
+namespace enumivo {
    class transaction;
 }
 
@@ -161,7 +161,7 @@ struct test_transaction {
   static void send_transaction(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_transaction_trigger_error_handler(uint64_t receiver, uint64_t code, uint64_t action);
-  static void assert_false_error_handler(const eosio::transaction&);
+  static void assert_false_error_handler(const enumivo::transaction&);
   static void send_transaction_max();
   static void send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);

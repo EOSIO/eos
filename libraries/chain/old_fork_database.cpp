@@ -6,7 +6,7 @@
 #include <enumivo/chain/exceptions.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 fork_database::fork_database()
 {
 }
@@ -308,4 +308,4 @@ shared_ptr<header_state>   fork_database::push_confirmation( const producer_conf
    return shared_ptr<header_state>();
 }
 
-} } // eosio::chain
+} } // enumivo::chain

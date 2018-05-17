@@ -9,7 +9,7 @@ ABIGEN=${ENUMIVO_INSTALL_DIR}/bin/enugenabi
 BOOST_INCLUDE_DIR=@Boost_INCLUDE_DIR@
 function copy_skeleton {
     set -e
-    cp -r "${ENUMIVO_INSTALL_DIR}/share/eosio/skeleton/." $newname
+    cp -r "${ENUMIVO_INSTALL_DIR}/share/enumivo/skeleton/." $newname
 
     for file in $(find ./$newname -name 'skeleton.*')
     do
@@ -52,15 +52,15 @@ function build_contract {
     done
 
     ($PRINT_CMDS; @WASM_LLVM_LINK@ -only-needed -o $workdir/linked.bc $workdir/built/* \
-                                   ${ENUMIVO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/enumivolib.bc \
-                                   ${ENUMIVO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc \
-                                   ${ENUMIVO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc
+                                   ${ENUMIVO_INSTALL_DIR}/usr/share/enumivo/contractsdk/lib/enumivolib.bc \
+                                   ${ENUMIVO_INSTALL_DIR}/usr/share/enumivo/contractsdk/lib/libc++.bc \
+                                   ${ENUMIVO_INSTALL_DIR}/usr/share/enumivo/contractsdk/lib/libc.bc
 
 
     )
     ($PRINT_CMDS; @WASM_LLC@ -thread-model=single --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc)
-    ($PRINT_CMDS; ${ENUMIVO_INSTALL_DIR}/bin/eosio-s2wasm -o $outname -s 16384 $workdir/assembly.s)
-    ($PRINT_CMDS; ${ENUMIVO_INSTALL_DIR}/bin/eosio-wast2wasm $outname ${outname%.*}.wasm -n)
+    ($PRINT_CMDS; ${ENUMIVO_INSTALL_DIR}/bin/enumivo-s2wasm -o $outname -s 16384 $workdir/assembly.s)
+    ($PRINT_CMDS; ${ENUMIVO_INSTALL_DIR}/bin/enumivo-wast2wasm $outname ${outname%.*}.wasm -n)
 
     ($PRINT_CMDS; rm -rf $workdir)
     set +e

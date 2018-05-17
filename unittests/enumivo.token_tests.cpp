@@ -9,10 +9,10 @@
 
 #include <fc/variant_object.hpp>
 
-using namespace eosio::testing;
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::testing;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 using namespace fc;
 using namespace std;
 
@@ -51,7 +51,7 @@ public:
 
    fc::variant get_stats( const string& symbolname )
    {
-      auto symb = eosio::chain::symbol::from_string(symbolname);
+      auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
       vector<char> data = get_row_by_account( N(enumivo.coin), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data );
@@ -59,7 +59,7 @@ public:
 
    fc::variant get_account( account_name acc, const string& symbolname)
    {
-      auto symb = eosio::chain::symbol::from_string(symbolname);
+      auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
       vector<char> data = get_row_by_account( N(enumivo.coin), acc, N(accounts), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data );

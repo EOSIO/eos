@@ -4,7 +4,7 @@
 #include <cmath>
 #include <exchange/market_state.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    /**
     *  This contract enables users to create an exchange between any pair of
@@ -84,4 +84,4 @@ namespace eosio {
 
          void apply( account_name contract, account_name act );
    };
-} // namespace eosio
+} // namespace enumivo

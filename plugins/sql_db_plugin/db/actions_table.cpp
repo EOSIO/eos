@@ -1,6 +1,6 @@
 #include "actions_table.h"
 
-namespace eosio {
+namespace enumivo {
 
 actions_table::actions_table()
 {

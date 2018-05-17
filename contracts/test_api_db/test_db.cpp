@@ -441,8 +441,8 @@ void test_db::idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action
 void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t action)
 {
    (void)code;(void)action;
-   auto act = eosio::get_action(1, 0);
-   auto ia = eosio::unpack<invalid_access_action>(act.data);
+   auto act = enumivo::get_action(1, 0);
+   auto ia = enumivo::unpack<invalid_access_action>(act.data);
    uint64_t scope = N(access);
    uint64_t table = scope;
    uint64_t pk    = scope;
@@ -481,7 +481,7 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
             break;
          }
       }
-      //eosio::print("test_invalid_access: stored ", value_to_store, "\n");
+      //enumivo::print("test_invalid_access: stored ", value_to_store, "\n");
    } else {
       eosio_assert( itr >= 0, "test_invalid_access: could not find row" );
       switch( ia.index ) {
@@ -493,7 +493,7 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
                           "test_invalid_access: value in primary table was incorrect size" );
          break;
       }
-      //eosio::print("test_invalid_access: expected ", ia.val, " and retrieved ", value, "\n");
+      //enumivo::print("test_invalid_access: expected ", ia.val, " and retrieved ", value, "\n");
       eosio_assert( value == ia.val, "test_invalid_access: value did not match" );
    }
 }
@@ -514,8 +514,8 @@ void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) 
 }
 
 void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) {
-   auto act = eosio::get_action(1, 0);
-   auto lookup_type = eosio::unpack<uint32_t>(act.data);
+   auto act = enumivo::get_action(1, 0);
+   auto lookup_type = enumivo::unpack<uint32_t>(act.data);
 
    uint64_t pk;
    double x = 0.0;
@@ -537,11 +537,11 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
 }
 
 void test_db::misaligned_secondary_key256_tests(uint64_t receiver, uint64_t, uint64_t) {
-   auto key = eosio::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
+   auto key = enumivo::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
    char* ptr = (char*)(&key);
    ptr += 1;
    // test that store doesn't crash on unaligned data
-   db_idx256_store( N(testapi), N(testtable), N(testapi), 1, (eosio::key256*)(ptr), 2 );
+   db_idx256_store( N(testapi), N(testtable), N(testapi), 1, (enumivo::key256*)(ptr), 2 );
    // test that find_primary doesn't crash on unaligned data
-   db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (eosio::key256*)(ptr), 2, 0);
+   db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (enumivo::key256*)(ptr), 2, 0);
 }

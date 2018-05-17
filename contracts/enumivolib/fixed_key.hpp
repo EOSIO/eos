@@ -10,7 +10,7 @@
 
 #include <enumivolib/system.h>
 
-namespace eosio {
+namespace enumivo {
 
    template<size_t Size>
    class fixed_key;

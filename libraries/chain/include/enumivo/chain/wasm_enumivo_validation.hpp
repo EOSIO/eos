@@ -10,7 +10,7 @@
 #include "IR/Operators.h"
 #include "WASM/WASM.h"
 
-namespace eosio { namespace chain { namespace wasm_validations {
+namespace enumivo { namespace chain { namespace wasm_validations {
 
    // module validators
    // effectively do nothing and pass
@@ -330,4 +330,4 @@ namespace eosio { namespace chain { namespace wasm_validations {
          static standard_module_constraints_validators _module_validators;
    };
 
-}}} // namespace wasm_constraints, chain, eosio
+}}} // namespace wasm_constraints, chain, enumivo

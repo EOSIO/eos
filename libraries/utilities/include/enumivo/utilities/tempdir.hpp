@@ -8,8 +8,8 @@
 
 #include <fc/filesystem.hpp>
 
-namespace eosio { namespace utilities {
+namespace enumivo { namespace utilities {
 
 fc::path temp_directory_path();
 
-} } // eosio::utilities
+} } // enumivo::utilities

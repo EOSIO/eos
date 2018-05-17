@@ -112,7 +112,7 @@ macro(add_wast_library)
     VERBATIM
   )
   #TODO: Fix this path on pending cmake install changes
-  install(FILES ${${ARG_TARGET}_BC_FILENAME} DESTINATION usr/share/eosio/contractsdk/lib)
+  install(FILES ${${ARG_TARGET}_BC_FILENAME} DESTINATION usr/share/enumivo/contractsdk/lib)
 
 endmacro(add_wast_library)
 
@@ -151,7 +151,7 @@ macro(add_wast_executable)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND $<TARGET_FILE:eosio-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 10240 ${MAX_MEMORY_PARAM} ${target}.s
+    COMMAND $<TARGET_FILE:enumivo-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 10240 ${MAX_MEMORY_PARAM} ${target}.s
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
@@ -160,7 +160,7 @@ macro(add_wast_executable)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wasm
     DEPENDS ${target}.wast
-    COMMAND $<TARGET_FILE:eosio-wast2wasm> ${DESTINATION_FOLDER}/${target}.wast ${DESTINATION_FOLDER}/${target}.wasm -n
+    COMMAND $<TARGET_FILE:enumivo-wast2wasm> ${DESTINATION_FOLDER}/${target}.wast ${DESTINATION_FOLDER}/${target}.wasm -n
     COMMENT "Generating WASM ${target}.wasm"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM

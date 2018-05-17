@@ -4,7 +4,7 @@
  */
 #include "tic_tac_toe.hpp"
 
-using namespace eosio;
+using namespace enumivo;
 namespace tic_tac_toe {
 struct impl {
    /**
@@ -181,13 +181,13 @@ struct impl {
 
       if (code == code_account) {
          if (action == N(create)) {
-            impl::on(eosio::unpack_action_data<tic_tac_toe::create>());
+            impl::on(enumivo::unpack_action_data<tic_tac_toe::create>());
          } else if (action == N(restart)) {
-            impl::on(eosio::unpack_action_data<tic_tac_toe::restart>());
+            impl::on(enumivo::unpack_action_data<tic_tac_toe::restart>());
          } else if (action == N(close)) {
-            impl::on(eosio::unpack_action_data<tic_tac_toe::close>());
+            impl::on(enumivo::unpack_action_data<tic_tac_toe::close>());
          } else if (action == N(move)) {
-            impl::on(eosio::unpack_action_data<tic_tac_toe::move>());
+            impl::on(enumivo::unpack_action_data<tic_tac_toe::move>());
          }
       }
    }

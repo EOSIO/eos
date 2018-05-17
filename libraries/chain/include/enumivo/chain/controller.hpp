@@ -12,7 +12,7 @@ namespace chainbase {
 }
 
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    class authorization_manager;
 
@@ -197,9 +197,9 @@ namespace eosio { namespace chain {
 
    };
 
-} }  /// eosio::chain
+} }  /// enumivo::chain
 
-FC_REFLECT( eosio::chain::controller::config,
+FC_REFLECT( enumivo::chain::controller::config,
             (block_log_dir)
             (shared_memory_dir)(shared_memory_size)(read_only)
             (genesis)

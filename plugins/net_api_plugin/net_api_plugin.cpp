@@ -11,17 +11,17 @@
 
 #include <chrono>
 
-namespace eosio { namespace detail {
+namespace enumivo { namespace detail {
   struct net_api_plugin_empty {};
 }}
 
-FC_REFLECT(eosio::detail::net_api_plugin_empty, );
+FC_REFLECT(enumivo::detail::net_api_plugin_empty, );
 
-namespace eosio {
+namespace enumivo {
 
 static appbase::abstract_plugin& _net_api_plugin = app().register_plugin<net_api_plugin>();
 
-using namespace eosio;
+using namespace enumivo;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -53,16 +53,16 @@ using namespace eosio;
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     eosio::detail::net_api_plugin_empty result;
+     enumivo::detail::net_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     eosio::detail::net_api_plugin_empty result;
+     enumivo::detail::net_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
-     eosio::detail::net_api_plugin_empty result;
+     enumivo::detail::net_api_plugin_empty result;
 
 
 void net_api_plugin::plugin_startup() {

@@ -2,7 +2,7 @@
 
 #include "fifo.h"
 
-using namespace eosio;
+using namespace enumivo;
 
 BOOST_AUTO_TEST_SUITE(fifo_test)
 

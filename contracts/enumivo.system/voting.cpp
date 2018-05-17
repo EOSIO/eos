@@ -19,12 +19,12 @@
 #include <cmath>
 
 namespace enumivosystem {
-   using eosio::indexed_by;
-   using eosio::const_mem_fun;
-   using eosio::bytes;
-   using eosio::print;
-   using eosio::singleton;
-   using eosio::transaction;
+   using enumivo::indexed_by;
+   using enumivo::const_mem_fun;
+   using enumivo::bytes;
+   using enumivo::print;
+   using enumivo::singleton;
+   using enumivo::transaction;
 
    /**
     *  This method will create a producer_config and producer_info object for 'producer'
@@ -34,9 +34,9 @@ namespace enumivosystem {
     *  @pre authority of producer to register
     *
     */
-   void system_contract::regproducer( const account_name producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) { 
+   void system_contract::regproducer( const account_name producer, const enumivo::public_key& producer_key, const std::string& url, uint16_t location ) { 
       eosio_assert( url.size() < 512, "url too long" );
-      //eosio::print("produce_key: ", producer_key.size(), ", sizeof(public_key): ", sizeof(public_key), "\n");
+      //enumivo::print("produce_key: ", producer_key.size(), ", sizeof(public_key): ", sizeof(public_key), "\n");
       require_auth( producer );
 
       auto prod = _producers.find( producer );
@@ -66,7 +66,7 @@ namespace enumivosystem {
       const auto& prod = _producers.get( producer, "producer not found" );
 
       _producers.modify( prod, 0, [&]( producer_info& info ){
-         info.producer_key = eosio::public_key();
+         info.producer_key = enumivo::public_key();
       });
    }
 
@@ -75,7 +75,7 @@ namespace enumivosystem {
 
       auto idx = _producers.get_index<N(prototalvote)>();
 
-      std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
+      std::vector< std::pair<enumivo::producer_key,uint16_t> > top_producers;
       top_producers.reserve(21);
 
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes; ++it ) {
@@ -95,7 +95,7 @@ namespace enumivosystem {
             continue;
          }
 
-         top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
+         top_producers.emplace_back( std::pair<enumivo::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
       }
       
 
@@ -103,7 +103,7 @@ namespace enumivosystem {
       /// sort by producer name
       std::sort( top_producers.begin(), top_producers.end() );
 
-      std::vector<eosio::producer_key> producers;
+      std::vector<enumivo::producer_key> producers;
 
       producers.reserve(top_producers.size());
       for( const auto& item : top_producers )

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eosio/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <appbase/application.hpp>
 
@@ -21,7 +21,7 @@
 #include "config.hpp"
 
 using namespace appbase;
-using namespace eosio;
+using namespace enumivo;
 
 namespace fc {
    std::unordered_map<std::string,appender::ptr>& get_appender_map();
@@ -82,17 +82,17 @@ void initialize_logging()
 int main(int argc, char** argv)
 {
    try {
-      app().set_version(eosio::enunode::config::version);
+      app().set_version(enumivo::enunode::config::version);
       app().register_plugin<history_plugin>();
 
       auto root = fc::app_path();
-      app().set_default_data_dir(root / "eosio/enunode/data" );
-      app().set_default_config_dir(root / "eosio/enunode/config" );
+      app().set_default_data_dir(root / "enumivo/enunode/data" );
+      app().set_default_config_dir(root / "enumivo/enunode/config" );
       if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
          return -1;
       initialize_logging();
-      ilog("enunode version ${ver}", ("ver", eosio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
-      ilog("eosio root is ${root}", ("root", root.string()));
+      ilog("enunode version ${ver}", ("ver", enumivo::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
+      ilog("enumivo root is ${root}", ("root", root.string()));
       app().startup();
       app().exec();
    } catch (const fc::exception& e) {

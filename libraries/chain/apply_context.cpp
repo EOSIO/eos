@@ -13,7 +13,7 @@
 
 using boost::container::flat_set;
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
@@ -618,4 +618,4 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
 }
 
 
-} } /// eosio::chain
+} } /// enumivo::chain

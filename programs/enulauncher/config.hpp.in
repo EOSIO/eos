@@ -9,7 +9,7 @@
 #ifndef CONFIG_HPP_IN
 #define CONFIG_HPP_IN
 
-namespace eosio { namespace launcher { namespace config {
+namespace enumivo { namespace launcher { namespace config {
   constexpr char version_str[] = "${launcher_BUILD_VERSION}";
 }}}
 

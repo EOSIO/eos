@@ -20,7 +20,7 @@ const char* REPLAY_OPTION = "replay-blockchain";
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace enumivo {
 
 static appbase::abstract_plugin& _sql_db_plugin = app().register_plugin<sql_db_plugin>();
 
@@ -50,7 +50,7 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     std::string uri_str = options.at(SQL_DB_URI_OPTION).as<std::string>();
     if (uri_str.empty())
     {
-        wlog("db URI not specified => eosio::sql_db_plugin disabled.");
+        wlog("db URI not specified => enumivo::sql_db_plugin disabled.");
         return;
     }
     ilog("connecting to ${u}", ("u", uri_str));
@@ -85,4 +85,4 @@ void sql_db_plugin::plugin_shutdown()
     ilog("shutdown");
 }
 
-} // namespace eosio
+} // namespace enumivo

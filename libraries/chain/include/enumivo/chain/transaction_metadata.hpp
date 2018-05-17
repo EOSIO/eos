@@ -7,7 +7,7 @@
 #include <enumivo/chain/block.hpp>
 #include <enumivo/chain/trace.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 /**
  *  This data structure should store context-free cached data about a transaction such as
@@ -48,4 +48,4 @@ class transaction_metadata {
 
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
 
-} } // eosio::chain
+} } // enumivo::chain

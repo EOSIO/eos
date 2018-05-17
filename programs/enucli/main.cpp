@@ -12,7 +12,7 @@
   @section intro Introduction to cleos
 
   `cleos` is a command line tool that interfaces with the REST api exposed by @ref enunode. In order to use `cleos` you will need to
-  have a local copy of `enunode` running and configured to load the 'eosio::chain_api_plugin'.
+  have a local copy of `enunode` running and configured to load the 'enumivo::chain_api_plugin'.
 
    cleos contains documentation for all of its commands. For a list of all commands known to cleos, simply run it with no arguments:
 ```
@@ -125,13 +125,13 @@ Options:
 #include "httpc.hpp"
 
 using namespace std;
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::utilities;
-using namespace eosio::client::help;
-using namespace eosio::client::http;
-using namespace eosio::client::localize;
-using namespace eosio::client::config;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::utilities;
+using namespace enumivo::client::help;
+using namespace enumivo::client::http;
+using namespace enumivo::client::localize;
+using namespace enumivo::client::config;
 using namespace boost::filesystem;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
@@ -206,7 +206,7 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return eosio::client::http::do_http_call( url, path, fc::variant(v) );
+      return enumivo::client::http::do_http_call( url, path, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -225,8 +225,8 @@ template<>
 fc::variant call( const std::string& url,
                   const std::string& path) { return call( url, path, fc::variant() ); }
 
-eosio::chain_apis::read_only::get_info_results get_info() {
-   return call(url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
+enumivo::chain_apis::read_only::get_info_results get_info() {
+   return call(url, get_info_func).as<enumivo::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_string() {
@@ -308,7 +308,7 @@ void print_action( const fc::variant& at ) {
    auto console = at["console"].as_string();
 
    /*
-   if( code == "eosio" && func == "setcode" )
+   if( code == "enumivo" && func == "setcode" )
       args = args.substr(40)+"...";
    if( name(code) == config::system_account_name && func == "setabi" )
       args = args.substr(40)+"...";
@@ -391,7 +391,7 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    if( tx_print_json ) {
       cout << fc::json::to_pretty_string( result );
    } else {
-      auto trace = result["processed"].as<eosio::chain::transaction_trace>();
+      auto trace = result["processed"].as<enumivo::chain::transaction_trace>();
       print_result( result );
    }
 }
@@ -399,11 +399,11 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
 chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
-      eosio::chain::newaccount{
+      enumivo::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
-         .owner        = eosio::chain::authority{1, {{owner, 1}}, {}},
-         .active       = eosio::chain::authority{1, {{active, 1}}, {}}
+         .owner        = enumivo::chain::authority{1, {{owner, 1}}, {}},
+         .active       = enumivo::chain::authority{1, {{active, 1}}, {}}
       }
    };
 }
@@ -573,9 +573,9 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
 }
 
 asset to_asset( const string& code, const string& s ) {
-   static map<eosio::chain::symbol_code, eosio::chain::symbol> cache;
+   static map<enumivo::chain::symbol_code, enumivo::chain::symbol> cache;
    auto a = asset::from_string( s );
-   eosio::chain::symbol_code sym = a.sym.to_symbol_code();
+   enumivo::chain::symbol_code sym = a.sym.to_symbol_code();
    auto it = cache.find( sym );
    auto sym_str = a.symbol_name();
    if ( it == cache.end() ) {
@@ -586,7 +586,7 @@ asset to_asset( const string& code, const string& s ) {
       auto obj = json.get_object();
       auto obj_it = obj.find( sym_str );
       if (obj_it != obj.end()) {
-         auto result = obj_it->value().as<eosio::chain_apis::read_only::get_currency_stats_result>();
+         auto result = obj_it->value().as<enumivo::chain_apis::read_only::get_currency_stats_result>();
          auto p = cache.insert(make_pair( sym, result.max_supply.sym ));
          it = p.first;
       } else {
@@ -897,7 +897,7 @@ struct vote_producer_proxy_subcommand {
 
 struct vote_producers_subcommand {
    string voter_str;
-   vector<eosio::name> producer_names;
+   vector<enumivo::name> producer_names;
 
    vote_producers_subcommand(CLI::App* actionRoot) {
       auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
@@ -919,8 +919,8 @@ struct vote_producers_subcommand {
 };
 
 struct approve_producer_subcommand {
-   eosio::name voter;
-   eosio::name producer_name;
+   enumivo::name voter;
+   enumivo::name producer_name;
 
    approve_producer_subcommand(CLI::App* actionRoot) {
       auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
@@ -937,14 +937,14 @@ struct approve_producer_subcommand {
                                ("lower_bound", voter.value)
                                ("limit", 1)
             );
-            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            auto res = result.as<enumivo::chain_apis::read_only::get_table_rows_result>();
             if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
             FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<eosio::name> prods;
+            vector<enumivo::name> prods;
             for ( auto& x : prod_vars ) {
                prods.push_back( name(x.as_string()) );
             }
@@ -965,8 +965,8 @@ struct approve_producer_subcommand {
 };
 
 struct unapprove_producer_subcommand {
-   eosio::name voter;
-   eosio::name producer_name;
+   enumivo::name voter;
+   enumivo::name producer_name;
 
    unapprove_producer_subcommand(CLI::App* actionRoot) {
       auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
@@ -983,14 +983,14 @@ struct unapprove_producer_subcommand {
                                ("lower_bound", voter.value)
                                ("limit", 1)
             );
-            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            auto res = result.as<enumivo::chain_apis::read_only::get_table_rows_result>();
             if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
             FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<eosio::name> prods;
+            vector<enumivo::name> prods;
             for ( auto& x : prod_vars ) {
                prods.push_back( name(x.as_string()) );
             }
@@ -1025,7 +1025,7 @@ struct list_producers_subcommand {
             );
 
             if ( !print_json ) {
-               auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+               auto res = result.as<enumivo::chain_apis::read_only::get_table_rows_result>();
                std::vector<std::tuple<std::string, std::string, std::string, std::string>> v;
                for ( auto& row : res.rows ) {
                   auto& r = row.get_object();
@@ -1232,7 +1232,7 @@ struct canceldelay_subcommand {
 
 void get_account( const string& accountName, bool json_format ) {
    auto json = call(get_account_func, fc::mutable_variant_object("account_name", accountName));
-   auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
+   auto res = json.as<enumivo::chain_apis::read_only::get_account_results>();
 
    if (!json_format) {
       std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
@@ -1243,7 +1243,7 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << "permissions: " << std::endl;
       unordered_map<name, vector<name>/*children*/> tree;
       vector<name> roots; //we don't have multiple roots, but we can easily handle them here, so let's do it just in case
-      unordered_map<name, eosio::chain_apis::permission> cache;
+      unordered_map<name, enumivo::chain_apis::permission> cache;
       for ( auto& perm : res.permissions ) {
          if ( perm.parent ) {
             tree[perm.parent].push_back( perm.perm_name );
@@ -1424,7 +1424,7 @@ int main( int argc, char** argv ) {
    version->require_subcommand();
 
    version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
-     std::cout << localized("Build version: ${ver}", ("ver", eosio::client::config::version_str)) << std::endl;
+     std::cout << localized("Build version: ${ver}", ("ver", enumivo::client::config::version_str)) << std::endl;
    });
 
    // Create subcommand
@@ -2281,7 +2281,7 @@ int main( int argc, char** argv ) {
                          ("scope", proposer)
                          ("table", "proposal")
                          ("table_key", "")
-                         ("lower_bound", eosio::chain::string_to_name(proposal_name.c_str()))
+                         ("lower_bound", enumivo::chain::string_to_name(proposal_name.c_str()))
                          ("upper_bound", "")
                          ("limit", 1)
                          );

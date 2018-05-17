@@ -2,7 +2,7 @@
 #include <enumivo/chain/exceptions.hpp>
 #include <limits>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 
    bool block_header_state::is_active_producer( account_name n )const {
@@ -250,4 +250,4 @@ namespace eosio { namespace chain {
   }
 
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain

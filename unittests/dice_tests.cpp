@@ -19,9 +19,9 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 using namespace fc;
 using namespace std;
 using mvo = fc::mutable_variant_object;
@@ -241,14 +241,14 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    );
 
    push_action(N(enumivo.coin), N(issue), N(enumivo.coin), mvo()
-     ("to", "eosio")
+     ("to", "enumivo")
      ("quantity", "1000000000.0000 EOS")
      ("memo", "")
    );
 
-   transfer( N(eosio), N(alice), "10000.0000 EOS", "", N(enumivo.coin) );
-   transfer( N(eosio), N(bob),   "10000.0000 EOS", "", N(enumivo.coin) );
-   transfer( N(eosio), N(carol), "10000.0000 EOS", "", N(enumivo.coin) );
+   transfer( N(enumivo), N(alice), "10000.0000 EOS", "", N(enumivo.coin) );
+   transfer( N(enumivo), N(bob),   "10000.0000 EOS", "", N(enumivo.coin) );
+   transfer( N(enumivo), N(carol), "10000.0000 EOS", "", N(enumivo.coin) );
 
    produce_block();
 

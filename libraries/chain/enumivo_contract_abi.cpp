@@ -1,6 +1,6 @@
 #include <enumivo/chain/enumivo_contract.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
 {
@@ -294,4 +294,4 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
 
    return eos_abi;
 }
-} } /// eosio::chain
+} } /// enumivo::chain

@@ -10,8 +10,8 @@ services:
       - mongo-data-volume:/data/db
 
   nodeosd:
-    image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/EOS
+    image: enumivo/eos:latest
+    command: /opt/enumivo/bin/nodeosd.sh --data-dir /opt/enumivo/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/EOS
     hostname: nodeosd
     links:
       - mongo
@@ -21,16 +21,16 @@ services:
     expose:
       - "8888"
     volumes:
-      - enunode-data-volume:/opt/eosio/bin/data-dir
+      - enunode-data-volume:/opt/enumivo/bin/data-dir
 
   enuwallet:
-    image: eosio/eos:latest
-    command: /opt/eosio/bin/enuwallet --wallet-dir /opt/eosio/bin/data-dir
+    image: enumivo/eos:latest
+    command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir
     hostname: enuwallet
     links:
       - nodeosd
     volumes:
-      - enuwallet-data-volume:/opt/eosio/bin/data-dir
+      - enuwallet-data-volume:/opt/enumivo/bin/data-dir
 
 volumes:
  mongo-data-volume:

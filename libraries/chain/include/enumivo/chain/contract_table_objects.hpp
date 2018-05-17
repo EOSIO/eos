@@ -13,7 +13,7 @@
 #include <array>
 #include <type_traits>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    /**
     * @brief The table_id_object class tracks the mapping of (scope, code, table) to an opaque identifier
@@ -205,16 +205,16 @@ namespace config {
 
 } // namespace config
 
-} }  // namespace eosio::chain
+} }  // namespace enumivo::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::table_id_object, eosio::chain::table_id_multi_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::key_value_object, eosio::chain::key_value_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::table_id_object, enumivo::chain::table_id_multi_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::key_value_object, enumivo::chain::key_value_index)
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::index64_object, eosio::chain::index64_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::index128_object, eosio::chain::index128_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::index256_object, eosio::chain::index256_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_double_object, eosio::chain::index_double_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_long_double_object, eosio::chain::index_long_double_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::index64_object, enumivo::chain::index64_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::index128_object, enumivo::chain::index128_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::index256_object, enumivo::chain::index256_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::index_double_object, enumivo::chain::index_double_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::index_long_double_object, enumivo::chain::index_long_double_index)
 
-FC_REFLECT(eosio::chain::table_id_object, (id)(code)(scope)(table) )
-FC_REFLECT(eosio::chain::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(enumivo::chain::table_id_object, (id)(code)(scope)(table) )
+FC_REFLECT(enumivo::chain::key_value_object, (id)(t_id)(primary_key)(value)(payer) )

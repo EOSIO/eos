@@ -12,8 +12,8 @@
 #include <enumivo/chain/transaction_metadata.hpp>
 #include <enumivo/chain/trace.hpp>
 
-namespace eosio { namespace chain { namespace plugin_interface {
-   using namespace eosio::chain;
+namespace enumivo { namespace chain { namespace plugin_interface {
+   using namespace enumivo::chain;
    using namespace appbase;
 
    struct chain_plugin_interface;

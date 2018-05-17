@@ -8,7 +8,7 @@ template <typename T>
 struct testtype {
     static void run(const T &v, const char *errmsg = "") {
         char buf[128];
-        eosio::datastream<char *> ds(buf, sizeof(buf));
+        enumivo::datastream<char *> ds(buf, sizeof(buf));
         ds << v;
         T v2;
         ds.seekp(0);

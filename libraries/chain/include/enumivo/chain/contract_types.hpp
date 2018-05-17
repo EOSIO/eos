@@ -7,14 +7,14 @@
 
 #include <boost/multiprecision/cpp_int.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 using fixed_string32 = fc::fixed_string<fc::array<uint64_t,4>>;
 using fixed_string16 = fc::fixed_string<>;
 using type_name      = string;
 using field_name     = string;
 using table_name     = name;
-using action_name    = eosio::chain::action_name;
+using action_name    = enumivo::chain::action_name;
 
 struct type_def {
    type_def() = default;
@@ -248,22 +248,22 @@ struct canceldelay {
    }
 };
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain
 
-FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(type) )
-FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
-FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
-FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
-FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
-FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::abi_def                          , (types)(structs)(actions)(tables)(ricardian_clauses) )
+FC_REFLECT( enumivo::chain::type_def                         , (new_type_name)(type) )
+FC_REFLECT( enumivo::chain::field_def                        , (name)(type) )
+FC_REFLECT( enumivo::chain::struct_def                       , (name)(base)(fields) )
+FC_REFLECT( enumivo::chain::action_def                       , (name)(type)(ricardian_contract) )
+FC_REFLECT( enumivo::chain::clause_pair                      , (id)(body) )
+FC_REFLECT( enumivo::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
+FC_REFLECT( enumivo::chain::abi_def                          , (types)(structs)(actions)(tables)(ricardian_clauses) )
 
-FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
-FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) 
-FC_REFLECT( eosio::chain::setabi                           , (account)(abi) )
-FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(auth) )
-FC_REFLECT( eosio::chain::deleteauth                       , (account)(permission) )
-FC_REFLECT( eosio::chain::linkauth                         , (account)(code)(type)(requirement) )
-FC_REFLECT( eosio::chain::unlinkauth                       , (account)(code)(type) )
-FC_REFLECT( eosio::chain::canceldelay                      , (canceling_auth)(trx_id) )
-FC_REFLECT( eosio::chain::onerror, (sender_id)(sent_trx) )
+FC_REFLECT( enumivo::chain::newaccount                       , (creator)(name)(owner)(active) )
+FC_REFLECT( enumivo::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) 
+FC_REFLECT( enumivo::chain::setabi                           , (account)(abi) )
+FC_REFLECT( enumivo::chain::updateauth                       , (account)(permission)(parent)(auth) )
+FC_REFLECT( enumivo::chain::deleteauth                       , (account)(permission) )
+FC_REFLECT( enumivo::chain::linkauth                         , (account)(code)(type)(requirement) )
+FC_REFLECT( enumivo::chain::unlinkauth                       , (account)(code)(type) )
+FC_REFLECT( enumivo::chain::canceldelay                      , (canceling_auth)(trx_id) )
+FC_REFLECT( enumivo::chain::onerror, (sender_id)(sent_trx) )

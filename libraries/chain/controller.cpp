@@ -21,7 +21,7 @@
 
 #include <enumivo/chain/enumivo_contract.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
 using resource_limits::resource_limits_manager;
 
@@ -96,20 +96,20 @@ struct controller_impl {
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-   SET_APP_HANDLER( eosio, eosio, newaccount );
-   SET_APP_HANDLER( eosio, eosio, setcode );
-   SET_APP_HANDLER( eosio, eosio, setabi );
-   SET_APP_HANDLER( eosio, eosio, updateauth );
-   SET_APP_HANDLER( eosio, eosio, deleteauth );
-   SET_APP_HANDLER( eosio, eosio, linkauth );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth );
+   SET_APP_HANDLER( enumivo, enumivo, newaccount );
+   SET_APP_HANDLER( enumivo, enumivo, setcode );
+   SET_APP_HANDLER( enumivo, enumivo, setabi );
+   SET_APP_HANDLER( enumivo, enumivo, updateauth );
+   SET_APP_HANDLER( enumivo, enumivo, deleteauth );
+   SET_APP_HANDLER( enumivo, enumivo, linkauth );
+   SET_APP_HANDLER( enumivo, enumivo, unlinkauth );
 /*
-   SET_APP_HANDLER( eosio, eosio, postrecovery );
-   SET_APP_HANDLER( eosio, eosio, passrecovery );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery );
+   SET_APP_HANDLER( enumivo, enumivo, postrecovery );
+   SET_APP_HANDLER( enumivo, enumivo, passrecovery );
+   SET_APP_HANDLER( enumivo, enumivo, vetorecovery );
 */
 
-   SET_APP_HANDLER( eosio, eosio, canceldelay );
+   SET_APP_HANDLER( enumivo, enumivo, canceldelay );
 
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
@@ -235,7 +235,7 @@ struct controller_impl {
     */
    void initialize_fork_db() {
       wlog( " Initializing new blockchain with genesis state                  " );
-      producer_schedule_type initial_schedule{ 0, {{N(eosio), conf.genesis.initial_key}} };
+      producer_schedule_type initial_schedule{ 0, {{N(enumivo), conf.genesis.initial_key}} };
 
       block_header_state genheader;
       genheader.active_schedule       = initial_schedule;
@@ -1364,4 +1364,4 @@ void controller::validate_tapos( const transaction& trx )const { try {
 } FC_CAPTURE_AND_RETHROW() }
 
 
-} } /// eosio::chain
+} } /// enumivo::chain

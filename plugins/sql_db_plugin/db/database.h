@@ -10,7 +10,7 @@
 #include "blocks_table.h"
 #include "actions_table.h"
 
-namespace eosio {
+namespace enumivo {
 
 class database
 {

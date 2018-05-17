@@ -3,8 +3,8 @@
 #include <enumivolib/asset.hpp>
 
 namespace enumivosystem {
-   using eosio::asset;
-   using eosio::symbol_type;
+   using enumivo::asset;
+   using enumivo::symbol_type;
 
    typedef double real_type;
 
@@ -35,6 +35,6 @@ namespace enumivosystem {
       ENULIB_SERIALIZE( exchange_state, (supply)(base)(quote) )
    };
 
-   typedef eosio::multi_index<N(rammarket), exchange_state> rammarket;
+   typedef enumivo::multi_index<N(rammarket), exchange_state> rammarket;
 
 } /// namespace enumivosystem

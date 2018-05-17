@@ -7,7 +7,7 @@
 #include "IR/Operators.h"
 #include "WASM/WASM.h"
 
-namespace eosio { namespace chain { namespace wasm_validations {
+namespace enumivo { namespace chain { namespace wasm_validations {
 using namespace IR;
 
 void noop_validation_visitor::validate( const Module& m ) {
@@ -89,4 +89,4 @@ void ensure_apply_exported_visitor::validate( const IR::Module& m ) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract's apply function not exported; non-existent; or wrong type");
 }
 
-}}} // namespace eosio chain validation
+}}} // namespace enumivo chain validation

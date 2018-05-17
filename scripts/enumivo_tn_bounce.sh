@@ -18,7 +18,7 @@ if [ ! -f programs/enunode/enunode ]; then
     exit 1
 fi
 
-config_base=etc/eosio/node_
+config_base=etc/enumivo/node_
 if [ -z "$ENUMIVO_NODE" ]; then
     DD=`ls -d ${config_base}[012]?`
     ddcount=`echo $DD | wc -w`

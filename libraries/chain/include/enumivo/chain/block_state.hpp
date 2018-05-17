@@ -9,7 +9,7 @@
 #include <enumivo/chain/transaction_metadata.hpp>
 #include <enumivo/chain/action_receipt.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    struct block_state : public block_header_state {
       block_state( const block_header_state& cur ):block_header_state(cur){}
@@ -29,6 +29,6 @@ namespace eosio { namespace chain {
 
    using block_state_ptr = std::shared_ptr<block_state>;
 
-} } /// namespace eosio::chain
+} } /// namespace enumivo::chain
 
-FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated)(in_current_chain) )
+FC_REFLECT_DERIVED( enumivo::chain::block_state, (enumivo::chain::block_header_state), (block)(validated)(in_current_chain) )

@@ -46,7 +46,7 @@
 
 #define _V(n, v)  fc::mutable_variant_object(n, v)
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
    using                               std::map;
    using                               std::vector;
    using                               std::unordered_map;
@@ -177,10 +177,10 @@ namespace eosio { namespace chain {
    typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
 
-} }  // eosio::chain
+} }  // enumivo::chain
 
 
-FC_REFLECT_ENUM(eosio::chain::object_type,
+FC_REFLECT_ENUM(enumivo::chain::object_type,
                 (null_object_type)
                 (account_object_type)
                 (account_sequence_object_type)
@@ -220,4 +220,4 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (action_history_object_type)
                 (OBJECT_TYPE_COUNT)
                )
-FC_REFLECT( eosio::chain::void_t, )
+FC_REFLECT( enumivo::chain::void_t, )

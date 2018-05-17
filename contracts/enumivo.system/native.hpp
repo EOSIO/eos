@@ -14,8 +14,8 @@
 #include <enumivolib/contract.hpp>
 
 namespace enumivosystem {
-   using eosio::permission_level;
-   using eosio::public_key;
+   using enumivo::permission_level;
+   using enumivo::public_key;
 
    typedef std::vector<char> bytes;
 
@@ -53,7 +53,7 @@ namespace enumivosystem {
       checksum256                               transaction_mroot;
       checksum256                               action_mroot;
       uint32_t                                  schedule_version = 0;
-      eosio::optional<eosio::producer_schedule> new_producers;
+      enumivo::optional<enumivo::producer_schedule> new_producers;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ENULIB_SERIALIZE(block_header, (timestamp)(producer)(confirmed)(previous)(transaction_mroot)(action_mroot)
@@ -64,10 +64,10 @@ namespace enumivosystem {
    /*
     * Method parameters commented out to prevent generation of code that parses input data.
     */
-   class native : public eosio::contract {
+   class native : public enumivo::contract {
       public:
 
-         using eosio::contract::contract;
+         using enumivo::contract::contract;
 
          /**
           *  Called after a new account is created. This code enforces resource-limits rules

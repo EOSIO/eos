@@ -13,7 +13,7 @@
 #include <iomanip>
 #include <fc/exception/exception.hpp>
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    std::vector<uint8_t> wast_to_wasm( const std::string& wast ) 
    { 
@@ -71,4 +71,4 @@ namespace eosio { namespace chain {
    } FC_CAPTURE_AND_RETHROW() } /// wasm_to_wast
 
 
-} } // eosio::chain
+} } // enumivo::chain

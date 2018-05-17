@@ -3,8 +3,8 @@
 #include <enumivo/abi_generator/abi_generator.hpp>
 #include <fc/variant_object.hpp>
 
-using namespace eosio;
-using namespace eosio::chain;
+using namespace enumivo;
+using namespace enumivo::chain;
 
 using mvo = fc::mutable_variant_object;
 

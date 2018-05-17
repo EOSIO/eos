@@ -22,7 +22,7 @@ namespace enumivosystem {
       auto itr = _rammarket.find(S(4,RAMEOS));
 
       if( itr == _rammarket.end() ) {
-         auto system_token_supply   = eosio::token(N(enumivo.coin)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+         auto system_token_supply   = enumivo::token(N(enumivo.coin)).get_supply(enumivo::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;

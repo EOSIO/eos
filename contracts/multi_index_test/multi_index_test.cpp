@@ -2,7 +2,7 @@
 #include <enumivolib/dispatcher.hpp>
 #include <enumivolib/multi_index.hpp>
 
-using namespace eosio;
+using namespace enumivo;
 
 namespace multi_index_test {
 
@@ -51,7 +51,7 @@ struct limit_order {
                case 0:
                {
                   print("Testing uint128_t secondary index.\n");
-                  eosio::multi_index<N(orders), limit_order,
+                  enumivo::multi_index<N(orders), limit_order,
                      indexed_by< N(byexp),   const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration> >,
                      indexed_by< N(byprice), const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
                      > orders( N(multitest), N(multitest) );
@@ -99,7 +99,7 @@ struct limit_order {
                case 1: // Test key265 secondary index
                {
                   print("Testing key256 secondary index.\n");
-                  eosio::multi_index<N(test1), test_k256,
+                  enumivo::multi_index<N(test1), test_k256,
                      indexed_by< N(byval), const_mem_fun<test_k256, key256, &test_k256::get_val> >
                   > testtable( N(multitest), N(exchange) ); // Code must be same as the receiver? Scope doesn't have to be.
 
@@ -170,7 +170,7 @@ namespace multi_index_test {
       /// The apply method implements the dispatch of events to this contract
       void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
          require_auth(code);
-         eosio_assert(eosio::dispatch<multi_index_test, multi_index_test::trigger>(code, action),
+         eosio_assert(enumivo::dispatch<multi_index_test, multi_index_test::trigger>(code, action),
                       "Could not dispatch");
       }
    }

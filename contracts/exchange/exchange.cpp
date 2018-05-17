@@ -7,7 +7,7 @@
 
 #include <enumivolib/dispatcher.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    void exchange::deposit( account_name from, extended_asset quantity ) {
       eosio_assert( quantity.is_valid(), "invalid quantity" );
@@ -204,7 +204,7 @@ namespace eosio {
    }
 
 
-   #define N(X) ::eosio::string_to_name(#X)
+   #define N(X) ::enumivo::string_to_name(#X)
 
    void exchange::apply( account_name contract, account_name act ) {
 
@@ -237,13 +237,13 @@ namespace eosio {
       }
    }
 
-} /// namespace eosio
+} /// namespace enumivo
 
 
 
 extern "C" {
    [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      eosio::exchange  ex( receiver );
+      enumivo::exchange  ex( receiver );
       ex.apply( code, action );
       eosio_exit(0);
    }

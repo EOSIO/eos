@@ -2,7 +2,7 @@
 
 #include <enumivolib/asset.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    typedef double real_type;
 
@@ -82,6 +82,6 @@ namespace eosio {
       ENULIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(base)(quote) )
    };
 
-   typedef eosio::multi_index<N(markets), exchange_state> markets;
+   typedef enumivo::multi_index<N(markets), exchange_state> markets;
 
-} /// namespace eosio
+} /// namespace enumivo

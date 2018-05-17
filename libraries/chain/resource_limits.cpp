@@ -5,7 +5,7 @@
 #include <enumivo/chain/transaction.hpp>
 #include <algorithm>
 
-namespace eosio { namespace chain { namespace resource_limits {
+namespace enumivo { namespace chain { namespace resource_limits {
 
 static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
 
@@ -480,4 +480,4 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
 }
 
 
-} } } /// eosio::chain::resource_limits
+} } } /// enumivo::chain::resource_limits

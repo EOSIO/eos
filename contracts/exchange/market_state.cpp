@@ -1,7 +1,7 @@
 #include <exchange/market_state.hpp>
 #include <boost/math/special_functions/relative_difference.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    market_state::market_state( account_name this_contract, symbol_type market_symbol, exchange_accounts& acnts )
    :marketid( market_symbol.name() ),

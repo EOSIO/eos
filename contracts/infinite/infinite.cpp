@@ -10,7 +10,7 @@ extern "C" {
     void apply( uint64_t, uint64_t, uint64_t ) {
        int idx = 0;
        while(true) {
-          eosio::print(idx++);
+          enumivo::print(idx++);
        }
     }
 }

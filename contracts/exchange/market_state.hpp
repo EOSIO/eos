@@ -2,7 +2,7 @@
 #include <exchange/exchange_state.hpp>
 #include <exchange/exchange_accounts.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    /**
     *  We calculate a unique scope for each market/borrowed_symbol/collateral_symbol and then
@@ -21,8 +21,8 @@ namespace eosio {
       ENULIB_SERIALIZE( margin_position, (owner)(borrowed)(collateral)(call_price) )
    };
 
-   typedef eosio::multi_index<N(margins), margin_position,
-           indexed_by<N(callprice), eosio::const_mem_fun<margin_position, uint64_t, &margin_position::get_call> >
+   typedef enumivo::multi_index<N(margins), margin_position,
+           indexed_by<N(callprice), enumivo::const_mem_fun<margin_position, uint64_t, &margin_position::get_call> >
    > margins;
 
 
@@ -35,7 +35,7 @@ namespace eosio {
       ENULIB_SERIALIZE( loan_position, (owner)(interest_shares) )
    };
 
-   typedef eosio::multi_index<N(loans), loan_position> loans;
+   typedef enumivo::multi_index<N(loans), loan_position> loans;
 
    /**
     * Maintains a state along with the cache of margin positions and/or limit orders.
@@ -74,4 +74,4 @@ namespace eosio {
          void margin_call( exchange_state::connector& c, margins& m );
    };
 
-}  /// namespace eosio
+}  /// namespace enumivo

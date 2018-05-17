@@ -15,7 +15,7 @@
 
 using namespace boost;
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    using boost::algorithm::ends_with;
    using std::string;

@@ -23,9 +23,9 @@
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/permutation.hpp>
 
-using namespace eosio;
+using namespace enumivo;
 using namespace chain;
-using tester = eosio::testing::tester;
+using tester = enumivo::testing::tester;
 
 BOOST_AUTO_TEST_SUITE(special_account_tests)
 

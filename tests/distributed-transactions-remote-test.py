@@ -20,7 +20,7 @@ parser.add_argument("-p", type=int, help="producing nodes count", default=pnodes
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                    help="Upon error print etc/enumivo/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
 
 args = parser.parse_args()

@@ -3,7 +3,7 @@
 #include <string>
 #include <enumivolib/enumivo.hpp>
 
-namespace eosio {
+namespace enumivo {
   class microseconds {
     public:
         explicit microseconds( int64_t c = 0) :_count(c){}
@@ -76,10 +76,10 @@ namespace eosio {
         static time_point_sec maximum() { return time_point_sec(0xffffffff); }
         static time_point_sec min() { return time_point_sec(0); }
 
-        operator time_point()const { return time_point( eosio::seconds( utc_seconds) ); }
+        operator time_point()const { return time_point( enumivo::seconds( utc_seconds) ); }
         uint32_t sec_since_epoch()const { return utc_seconds; }
 
-        time_point_sec operator = ( const eosio::time_point& t )
+        time_point_sec operator = ( const enumivo::time_point& t )
         {
           utc_seconds = uint32_t(t.time_since_epoch().count() / 1000000ll);
           return *this;
@@ -175,4 +175,4 @@ namespace eosio {
    }; // block_timestamp
    typedef block_timestamp block_timestamp_type; 
 
-} // namespace eosio
+} // namespace enumivo

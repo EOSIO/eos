@@ -5,17 +5,17 @@
 
 namespace identity_test {
    
-   using eosio::action_meta;
-   using eosio::singleton;
+   using enumivo::action_meta;
+   using enumivo::singleton;
    using std::string;
    using std::vector;
 
-   class contract : public eosio::contract {
+   class contract : public enumivo::contract {
       public:
          static constexpr uint64_t code = N(identitytest);
          typedef singleton<N(result), uint64_t> result_table;
 
-         using eosio::contract::contract;
+         using enumivo::contract::contract;
 
          void getowner( const uint64_t identity ) {
             identity::interface iface( N(identity) );

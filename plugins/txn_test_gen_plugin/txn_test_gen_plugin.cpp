@@ -26,17 +26,17 @@
 #include <enumivo.coin/enumivo.coin.wast.hpp>
 #include <enumivo.coin/enumivo.coin.abi.hpp>
 
-namespace eosio { namespace detail {
+namespace enumivo { namespace detail {
   struct txn_test_gen_empty {};
 }}
 
-FC_REFLECT(eosio::detail::txn_test_gen_empty, );
+FC_REFLECT(enumivo::detail::txn_test_gen_empty, );
 
-namespace eosio {
+namespace enumivo {
 
 static appbase::abstract_plugin& _txn_test_gen_plugin = app().register_plugin<txn_test_gen_plugin>();
 
-using namespace eosio::chain;
+using namespace enumivo::chain;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -59,16 +59,16 @@ using namespace eosio::chain;
 #define INVOKE_V_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
-     eosio::detail::txn_test_gen_empty result;
+     enumivo::detail::txn_test_gen_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     eosio::detail::txn_test_gen_empty result;
+     enumivo::detail::txn_test_gen_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle->call_name(); \
-     eosio::detail::txn_test_gen_empty result;
+     enumivo::detail::txn_test_gen_empty result;
 
 struct txn_test_gen_plugin_impl {
    void push_transaction( signed_transaction& trx ) { try {
@@ -103,22 +103,22 @@ struct txn_test_gen_plugin_impl {
 
          //create "A" account
          {
-         auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
-         auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+         auto owner_auth   = enumivo::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+         auto active_auth  = enumivo::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
 
          trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountA, owner_auth, active_auth});
          }
          //create "B" account
          {
-         auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
-         auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+         auto owner_auth   = enumivo::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+         auto active_auth  = enumivo::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
 
          trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
          }
          //create "enumivo.coin" account
          {
-         auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
-         auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+         auto owner_auth   = enumivo::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+         auto active_auth  = enumivo::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
 
          trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountC, owner_auth, active_auth});
          }

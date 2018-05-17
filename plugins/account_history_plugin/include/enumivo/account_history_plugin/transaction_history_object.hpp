@@ -7,7 +7,7 @@
 #include <chainbase/chainbase.hpp>
 #include <enumivo/chain/transaction.hpp>
 
-namespace eosio {
+namespace enumivo {
 using chain::block_id_type;
 using chain::transaction_id_type;
 using chain::transaction_receipt;
@@ -36,7 +36,7 @@ typedef chainbase::generic_index<transaction_history_multi_index> transaction_hi
 
 }
 
-CHAINBASE_SET_INDEX_TYPE( eosio::transaction_history_object, eosio::transaction_history_multi_index )
+CHAINBASE_SET_INDEX_TYPE( enumivo::transaction_history_object, enumivo::transaction_history_multi_index )
 
-FC_REFLECT( eosio::transaction_history_object, (block_id)(transaction_id)(transaction_status) )
+FC_REFLECT( enumivo::transaction_history_object, (block_id)(transaction_id)(transaction_status) )
 

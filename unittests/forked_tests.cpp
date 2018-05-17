@@ -10,8 +10,8 @@
 
 #include <fc/variant_object.hpp>
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 
 private_key_type get_private_key( name keyname, string role ) {
    return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
@@ -61,13 +61,13 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
 
    auto cr = c.push_action( N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
-              ("issuer",       "eosio" )
+              ("issuer",       "enumivo" )
               ("maximum_supply", "10000000.0000 EOS")
       );
 
    wdump((fc::json::to_pretty_string(cr)));
 
-   cr = c.push_action( N(enumivo.coin), N(issue), N(eosio), mutable_variant_object()
+   cr = c.push_action( N(enumivo.coin), N(issue), N(enumivo), mutable_variant_object()
               ("to",       "dan" )
               ("quantity", "100.0000 EOS")
               ("memo", "")

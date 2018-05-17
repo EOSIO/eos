@@ -6,7 +6,7 @@
 
 #include <vector>
 
-namespace eosio { namespace chain { namespace wasm_ops {
+namespace enumivo { namespace chain { namespace wasm_ops {
 using namespace IR;
 
 inline std::string to_string( NoImm imm ) {
@@ -68,4 +68,4 @@ inline std::vector<U8> pack( branchtabletype field ) {
 
           };
 }
-}}} // namespace eosio, chain, wasm_ops
+}}} // namespace enumivo, chain, wasm_ops

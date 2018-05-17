@@ -23,9 +23,9 @@
 #endif
 
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 using namespace fc;
 
 using mvo = fc::mutable_variant_object;
@@ -172,21 +172,21 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //  enumivo.coin
         create_accounts({N(enumivo.msig), N(enumivo.coin)});
         /*
-        auto eosio_active = authority( 1, {}, {{{N(eosio),N(active)},1}} );
-        auto eosio_active_pk = get_private_key( N(eosio), "active" );
+        auto eosio_active = authority( 1, {}, {{{N(enumivo),N(active)},1}} );
+        auto eosio_active_pk = get_private_key( N(enumivo), "active" );
 
-        base_tester::push_action(  N(eosio), N(newaccount), vector<permission_level>{{N(eosio),config::active_name}},
+        base_tester::push_action(  N(enumivo), N(newaccount), vector<permission_level>{{N(enumivo),config::active_name}},
                                    fc::variant(newaccount{
-                                      .creator  = N(eosio),
+                                      .creator  = N(enumivo),
                                       .name     = N(enumivo.msig),
                                       .owner    = eosio_active,
                                       .active   = eosio_active,
                                       .recovery = eosio_active 
                                    }).get_object() );
 
-        base_tester::push_action(  N(eosio), N(newaccount), vector<permission_level>{{N(eosio),config::active_name}},
+        base_tester::push_action(  N(enumivo), N(newaccount), vector<permission_level>{{N(enumivo),config::active_name}},
                                    fc::variant(newaccount{
-                                      .creator  = N(eosio),
+                                      .creator  = N(enumivo),
                                       .name     = N(enumivo.coin),
                                       .owner    = eosio_active,
                                       .active   = eosio_active,
@@ -233,7 +233,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //create_accounts(gen_accounts);
 
         for( const auto& a : test_genesis ) {
-           create_account( a.aname, N(eosio) );
+           create_account( a.aname, N(enumivo) );
            /*
            base_tester::push_action(N(enumivo.coin), N(transfer), config::system_account_name, mutable_variant_object()
                     ("from", name(config::system_account_name))
@@ -242,7 +242,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                     ("memo", "" ) );
                     */
         }
-        set_code_abi(N(eosio), enumivo_system_wast, enumivo_system_abi); //, &eosio_active_pk);
+        set_code_abi(N(enumivo), enumivo_system_wast, enumivo_system_abi); //, &eosio_active_pk);
 
         for( const auto& a : test_genesis ) {
            auto ib = a.initial_balance;
@@ -250,15 +250,15 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto net = (ib - ram) / 2;
            auto cpu = ib - net - ram;
 
-           auto r =  base_tester::push_action(N(eosio), N(buyram), N(eosio), mutable_variant_object()
-                    ("payer", "eosio")
+           auto r =  base_tester::push_action(N(enumivo), N(buyram), N(enumivo), mutable_variant_object()
+                    ("payer", "enumivo")
                     ("receiver", name(a.aname))
                     ("quant", asset(ram)) 
                     );
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = base_tester::push_action(N(eosio), N(delegatebw), N(eosio), mutable_variant_object()
-                    ("from", "eosio" )
+           r = base_tester::push_action(N(enumivo), N(delegatebw), N(enumivo), mutable_variant_object()
+                    ("from", "enumivo" )
                     ("receiver", name(a.aname))
                     ("stake_net_quantity", asset(net)) 
                     ("stake_cpu_quantity", asset(cpu)) 
@@ -271,7 +271,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_blocks(10000);
 
         for( auto pro : { N(p1), N(p2), N(p3), N(p4), N(p5) } ) {
-           base_tester::push_action(N(eosio), N(regproducer), pro, mutable_variant_object()
+           base_tester::push_action(N(enumivo), N(regproducer), pro, mutable_variant_object()
                        ("producer",  name(pro))
                        ("producer_key", get_public_key( pro, "active" ) )
                        ("url", "" )
@@ -282,7 +282,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         auto votepro = [&]( account_name voter, vector<account_name> producers ) {
           std::sort( producers.begin(), producers.end() );
-          base_tester::push_action(N(eosio), N(voteproducer), voter, mvo()
+          base_tester::push_action(N(enumivo), N(voteproducer), voter, mvo()
                                 ("voter",  name(voter))
                                 ("proxy", name(0) )
                                 ("producers", producers) 

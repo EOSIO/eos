@@ -8,7 +8,7 @@
 
 #include <fc/reflect/reflect.hpp>
 
-namespace eosio {
+namespace enumivo {
    using namespace appbase;
 
    /**
@@ -123,6 +123,6 @@ namespace eosio {
    };
 }
 
-FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))
-FC_REFLECT(eosio::error_results::error_info, (code)(name)(what)(details))
-FC_REFLECT(eosio::error_results, (code)(message)(error))
+FC_REFLECT(enumivo::error_results::error_info::error_detail, (message)(file)(line_number)(method))
+FC_REFLECT(enumivo::error_results::error_info, (code)(name)(what)(details))
+FC_REFLECT(enumivo::error_results, (code)(message)(error))

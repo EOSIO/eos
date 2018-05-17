@@ -53,12 +53,12 @@ Example game session using enucli
 
 ##### Upload bios contract
 ````bash
-enucli set contract eosio build/contracts/enumivo.bios -p eosio
+enucli set contract enumivo build/contracts/enumivo.bios -p enumivo
 ````
 
 ##### Ceate enumivo.coin account
 ````bash
-enucli create account eosio enumivo.coin EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo enumivo.coin EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set enumivo.coin contract to enumivo.coin account
@@ -68,7 +68,7 @@ enucli set contract enumivo.coin build/contracts/enumivo.coin -p enumivo.coin
 
 ##### Create dice account
 ````bash
-enucli create account eosio dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set dice contract to dice account
@@ -78,27 +78,27 @@ enucli set contract dice build/contracts/dice -p dice
 
 ##### Create native EOS token
 ````bash
-enucli push action enumivo.coin create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p enumivo.coin
+enucli push action enumivo.coin create '[ "enumivo", "1000000000.0000 EOS", 0, 0, 0]' -p enumivo.coin
 ````
 
 ##### Create alice account
 ````bash
-enucli create account eosio alice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo alice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Create bob account
 ````bash
-enucli create account eosio bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Issue 1000 EOS to alice
 ````bash
-enucli push action enumivo.coin issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
+enucli push action enumivo.coin issue '[ "alice", "1000.0000 EOS", "" ]' -p enumivo
 ````
 
 ##### Issue 1000 EOS to bob
 ````bash
-enucli push action enumivo.coin issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
+enucli push action enumivo.coin issue '[ "bob", "1000.0000 EOS", "" ]' -p enumivo
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)

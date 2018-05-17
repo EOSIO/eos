@@ -7,7 +7,7 @@
 #include <enumivo.bios/enumivo.bios.wast.hpp>
 #include <enumivo.bios/enumivo.bios.abi.hpp>
 
-namespace eosio { namespace testing {
+namespace enumivo { namespace testing {
 
    bool expect_assert_message(const fc::exception& ex, string expected) {
       BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
@@ -719,7 +719,7 @@ namespace eosio { namespace testing {
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
                b.control->abort_block();
-               b.control->push_block(block); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(block); //, enumivo::chain::validation_steps::created_block);
             }
          }
       };
@@ -748,7 +748,7 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
       auto schedule = get_producer_keys( producer_names );
 
-      return push_action( N(eosio), N(setprods), N(eosio),
+      return push_action( N(enumivo), N(setprods), N(enumivo),
                           fc::mutable_variant_object()("schedule", schedule));
    }
 
@@ -831,7 +831,7 @@ namespace eosio { namespace testing {
       return match;
    }
 
-} }  /// eosio::testing
+} }  /// enumivo::testing
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
    //fc::json::to_stream( osm, v );

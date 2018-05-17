@@ -144,9 +144,9 @@ node0=cluster.getNode(0)
 if node0 is None:
     errorExit("cluster in bad state, received None node")
 
-# eosio should have the same key as defproducera
-eosio = copy.copy(defproduceraAccount)
-eosio.name = "eosio"
+# enumivo should have the same key as defproducera
+enumivo = copy.copy(defproduceraAccount)
+enumivo.name = "enumivo"
 
 Print("Info of each node:")
 for i in range(len(hosts)):
@@ -159,7 +159,7 @@ for i in range(len(hosts)):
 wastFile="contracts/enumivo.system/enumivo.system.wast"
 abiFile="contracts/enumivo.system/enumivo.system.abi"
 Print("\nPush system contract %s %s" % (wastFile, abiFile))
-trans=node0.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
+trans=node0.publishContract(enumivo.name, wastFile, abiFile, waitForTransBlock=True)
 if trans is None:
     Utils.errorExit("Failed to publish enumivo.system.")
 else:
@@ -168,7 +168,7 @@ else:
 try:
     maxIndex = module.maxIndex()
     for cmdInd in range(maxIndex):
-        (transIdList, checkacct, expBal, errmsg) = module.execute(cmdInd, node0, testeraAccount, eosio)
+        (transIdList, checkacct, expBal, errmsg) = module.execute(cmdInd, node0, testeraAccount, enumivo)
 
         if len(transIdList) == 0 and len(checkacct) == 0:
             errorExit("failed to execute command in host %s:%s" % (hosts[0], errmsg))

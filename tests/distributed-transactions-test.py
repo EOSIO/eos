@@ -23,7 +23,7 @@ parser.add_argument("--nodes-file", type=str, help="File containing nodes info i
 parser.add_argument("--seed", type=int, help="random seed", default=seed)
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                    help="Upon error print etc/enumivo/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
 
 args = parser.parse_args()

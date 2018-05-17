@@ -6,7 +6,7 @@
 
 #include "test_api.hpp"
 
-//using namespace eosio;
+//using namespace enumivo;
 
 void test_print::test_prints_l() {
   char ab[] = { 'a', 'b' };

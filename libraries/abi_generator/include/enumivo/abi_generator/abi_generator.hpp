@@ -42,8 +42,8 @@ using namespace std;
 using namespace clang::tooling;
 namespace cl = llvm::cl;
 
-namespace eosio {
-   using namespace eosio::chain;
+namespace enumivo {
+   using namespace enumivo::chain;
 
    FC_DECLARE_EXCEPTION( abi_generation_exception, 999999, "Unable to generate abi" );
 
@@ -54,7 +54,7 @@ namespace eosio {
          {                                                                      \
            if( fc::enable_record_assert_trip )                                  \
               fc::record_assert_trip( __FILE__, __LINE__, #TEST );              \
-           FC_THROW_EXCEPTION( eosio::abi_generation_exception, #TEST ": "  __VA_ARGS__ ); \
+           FC_THROW_EXCEPTION( enumivo::abi_generation_exception, #TEST ": "  __VA_ARGS__ ); \
          }                                                                      \
        FC_MULTILINE_MACRO_END \
       )
@@ -156,7 +156,7 @@ namespace eosio {
    };
 
    /**
-     * @brief Generates eosio::abi_def struct handling events from ASTConsumer
+     * @brief Generates enumivo::abi_def struct handling events from ASTConsumer
      */
    class abi_generator {
       private: 
@@ -415,6 +415,6 @@ namespace eosio {
          }
    };
 
-} //ns eosio
+} //ns enumivo
 
 #pragma pop_macro("N")

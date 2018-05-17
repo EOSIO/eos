@@ -7,11 +7,11 @@
 
 #include <fc/io/json.hpp>
 
-namespace eosio {
+namespace enumivo {
 
 static appbase::abstract_plugin& _chain_api_plugin = app().register_plugin<chain_api_plugin>();
 
-using namespace eosio;
+using namespace enumivo;
 
 class chain_api_plugin_impl {
 public:

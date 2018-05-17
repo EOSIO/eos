@@ -9,7 +9,7 @@
 #include <utility>
 #include <string>
 
-namespace eosio {
+namespace enumivo {
 
    static_assert( sizeof(long) == sizeof(int), "unexpected size difference" );
 

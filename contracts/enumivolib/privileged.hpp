@@ -3,7 +3,7 @@
 #include "serialize.hpp"
 #include "types.h"
 
-namespace eosio {
+namespace enumivo {
 
    struct blockchain_parameters {
       uint64_t max_block_net_usage;
@@ -41,9 +41,9 @@ namespace eosio {
       )
    };
 
-   void set_blockchain_parameters(const eosio::blockchain_parameters& params);
+   void set_blockchain_parameters(const enumivo::blockchain_parameters& params);
 
-   void get_blockchain_parameters(eosio::blockchain_parameters& params);
+   void get_blockchain_parameters(enumivo::blockchain_parameters& params);
 
    struct producer_key {
       account_name producer_name;

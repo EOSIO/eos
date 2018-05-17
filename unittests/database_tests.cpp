@@ -16,8 +16,8 @@
 #endif
 
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 namespace bfs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(database_tests)
