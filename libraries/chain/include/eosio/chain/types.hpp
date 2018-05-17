@@ -16,7 +16,6 @@
 #include <fc/container/flat.hpp>
 #include <fc/string.hpp>
 #include <fc/io/raw.hpp>
-#include <fc/uint128.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
@@ -102,6 +101,7 @@ namespace eosio { namespace chain {
    using scope_name       = name;
    using account_name     = name;
    using permission_name  = name;
+   using table_name       = name;
 
 
    /**
@@ -115,6 +115,7 @@ namespace eosio { namespace chain {
    {
       null_object_type,
       account_object_type,
+      account_sequence_object_type,
       permission_object_type,
       permission_usage_object_type,
       permission_link_object_type,
@@ -124,7 +125,7 @@ namespace eosio { namespace chain {
       index128_object_type,
       index256_object_type,
       index_double_object_type,
-      action_permission_object_type,
+      index_long_double_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
       block_summary_object_type,
@@ -147,6 +148,9 @@ namespace eosio { namespace chain {
       resource_usage_object_type,
       resource_limits_state_object_type,
       resource_limits_config_object_type,
+      account_history_object_type,
+      action_history_object_type,
+      unconfirmed_block_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -163,8 +167,16 @@ namespace eosio { namespace chain {
    using weight_type         = uint16_t;
    using block_num_type      = uint32_t;
    using share_type          = int64_t;
-   using uint128_t           = __uint128_t;
+   using int128_t            = __int128;
+   using uint128_t           = unsigned __int128;
    using bytes               = vector<char>;
+
+
+   /**
+    *  Extentions are prefixed with type and are a buffer that can be
+    *  interpreted by code that is aware and ignored by unaware code.
+    */
+   typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
 
 } }  // eosio::chain
@@ -173,6 +185,7 @@ namespace eosio { namespace chain {
 FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)
                 (account_object_type)
+                (account_sequence_object_type)
                 (permission_object_type)
                 (permission_usage_object_type)
                 (permission_link_object_type)
@@ -182,7 +195,7 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (index128_object_type)
                 (index256_object_type)
                 (index_double_object_type)
-                (action_permission_object_type)
+                (index_long_double_object_type)
                 (global_property_object_type)
                 (dynamic_global_property_object_type)
                 (block_summary_object_type)
@@ -205,6 +218,9 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (resource_usage_object_type)
                 (resource_limits_state_object_type)
                 (resource_limits_config_object_type)
+                (account_history_object_type)
+                (action_history_object_type)
+                (unconfirmed_block_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )

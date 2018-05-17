@@ -53,12 +53,21 @@ namespace eosio {
 
       struct symbol_code {
          uint64_t value;
+
+         operator uint64_t()const { return value; }
       };
 
       class symbol {
          public:
-            explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) { }
-            explicit symbol(uint64_t v = SY(4, EOS)): m_value(v) { }
+
+            static constexpr uint8_t max_precision = 18;
+
+            explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) {
+               FC_ASSERT(valid(), "invalid symbol: ${s}", ("s",s));
+            }
+            explicit symbol(uint64_t v = SY(4, EOS)): m_value(v) {
+               FC_ASSERT(valid(), "invalid symbol: ${name}", ("name",name()));
+            }
             static symbol from_string(const string& from)
             {
                try {
@@ -69,6 +78,7 @@ namespace eosio {
                   auto prec_part = s.substr(0, comma_pos);
                   uint8_t p = fc::to_int64(prec_part);
                   string name_part = s.substr(comma_pos + 1);
+                  FC_ASSERT( p <= max_precision, "precision should be <= 18");
                   return symbol(string_to_symbol(p, name_part.c_str()));
                } FC_CAPTURE_LOG_AND_RETHROW((from))
             }
@@ -76,7 +86,7 @@ namespace eosio {
             bool valid() const
             {
                const auto& s = name();
-               return valid_name(s);
+               return decimals() <= max_precision && valid_name(s);
             }
             static bool valid_name(const string& name)
             {
@@ -86,14 +96,12 @@ namespace eosio {
             uint8_t decimals() const { return m_value & 0xFF; }
             uint64_t precision() const
             {
-               static int64_t table[] = {
-                  1, 10, 100, 1000, 10000,
-                  100000, 1000000, 10000000, 100000000ll,
-                  1000000000ll, 10000000000ll,
-                  100000000000ll, 1000000000000ll,
-                  10000000000000ll, 100000000000000ll
-               };
-               return table[ decimals() ];
+               uint64_t p10 = 1;
+               uint64_t p = decimals();
+               while( p > 0  ) {
+                  p10 *= 10; --p;
+               }
+               return p10;
             }
             string name() const
             {

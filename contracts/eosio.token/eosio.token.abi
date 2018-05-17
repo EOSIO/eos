@@ -1,5 +1,9 @@
 {
-  "types": [],
+   "version": "eosio::abi/1.0",
+   "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+   }],
   "structs": [{
       "name": "transfer",
       "base": "",
@@ -14,10 +18,7 @@
      "base": "",
      "fields": [
         {"name":"issuer", "type":"account_name"},
-        {"name":"maximum_supply", "type":"asset"},
-        {"name":"can_freeze", "type":"uint8"},
-        {"name":"can_recall", "type":"uint8"},
-        {"name":"can_whitelist", "type":"uint8"}
+        {"name":"maximum_supply", "type":"asset"}
      ]
   },{
      "name": "issue",
@@ -31,15 +32,15 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"balance", "type":"uint64"}
+        {"name":"balance", "type":"asset"}
       ]
     },{
       "name": "currency_stats",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"supply", "type":"uint64"}
+        {"name":"supply", "type":"asset"},
+        {"name":"max_supply", "type":"asset"},
+        {"name":"issuer", "type":"account_name"}
       ]
     }
   ],
@@ -59,7 +60,7 @@
 
   ],
   "tables": [{
-      "name": "account",
+      "name": "accounts",
       "type": "account",
       "index_type": "i64",
       "key_names" : ["currency"],
@@ -72,5 +73,6 @@
       "key_types" : ["uint64"]
     }
   ],
-  "clauses": []
+  "ricardian_clauses": [],
+  "abi_extensions": []
 }

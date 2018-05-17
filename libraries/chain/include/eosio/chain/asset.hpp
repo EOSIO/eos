@@ -3,11 +3,11 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <fc/exception/exception.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/symbol.hpp>
 
-/// eos with 8 digits of precision
+/// eos with 4 digits of precision
 #define EOS_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
 static const eosio::chain::symbol EOS_SYMBOL(EOS_SYMBOL_VALUE);
 
@@ -25,14 +25,20 @@ with amount = 10 and symbol(4,"CUR")
 
 */
 
-
 struct asset
 {
-   explicit asset(share_type a = 0, symbol id = EOS_SYMBOL)
-      :amount(a), sym(id){}
+   static constexpr int64_t max_amount = (1LL << 62) - 1;
+
+   explicit asset(share_type a = 0, symbol id = EOS_SYMBOL) :amount(a), sym(id) {
+      EOS_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
+      EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
+   }
 
    share_type amount;
    symbol     sym;
+
+   bool is_amount_within_range()const { return -max_amount <= amount && amount <= max_amount; }
+   bool is_valid()const               { return is_amount_within_range() && sym.valid(); }
 
    double to_real()const { return static_cast<double>(amount) / precision(); }
 
