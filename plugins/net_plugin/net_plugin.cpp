@@ -2435,10 +2435,17 @@ namespace eosio {
       dispatcher->recv_transaction(c, tid);
       uint64_t code = 0;
       try {
-         chain_plug->accept_transaction( msg);
-         fc_dlog(logger, "chain accepted transaction" );
-         dispatcher->bcast_transaction(msg);
-         return;
+         auto trace = chain_plug->accept_transaction( msg);
+         if (!trace->except) {
+            fc_dlog(logger, "chain accepted transaction");
+            dispatcher->bcast_transaction(msg);
+            return;
+         }
+
+         // if accept didn't throw but there was an exception on the trace
+         // it means that this was non-fatally rejected from the chain.
+         // we will mark it as "rejected" and hope someone sends it to us later
+         // when we are able to accept it.
       }
       catch( const fc::exception &ex) {
          code = ex.code();

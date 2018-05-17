@@ -224,17 +224,17 @@ class producer_plugin_impl {
 
                // if we failed because the block was exhausted push the block out and try again if it succeeds
                if (trace->except) {
-                  if (failure_is_subjective(*trace->except, deadline == block_time) && _pending_block_mode == pending_block_mode::producing) {
-                     if (maybe_produce_block()) {
+                  if (failure_is_subjective(*trace->except, deadline == block_time) ) {
+                     if (_pending_block_mode == pending_block_mode::producing && maybe_produce_block()) {
                         continue;
                      }
 
                      // if we failed to produce a block that was not speculative (for some reason).  we are going to
-                     // throw the exception out to the caller. if they don't support any retry mechanics
+                     // return the trace with an exception set to the caller. if they don't support any retry mechanics
                      // this may result in a lost transaction
+                  } else {
+                     trace->except->dynamic_rethrow_exception();
                   }
-
-                  trace->except->dynamic_rethrow_exception();
                } else {
                   return trace;
                }

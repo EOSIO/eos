@@ -273,8 +273,8 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
+chain::transaction_trace_ptr chain_plugin::accept_transaction(const packed_transaction& trx) {
+   return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {

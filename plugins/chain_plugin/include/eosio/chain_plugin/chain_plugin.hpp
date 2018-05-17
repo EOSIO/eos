@@ -349,7 +349,7 @@ public:
    chain_apis::read_write get_read_write_api();
 
    void accept_block( const chain::signed_block_ptr& block );
-   void accept_transaction(const chain::packed_transaction& trx);
+   chain::transaction_trace_ptr accept_transaction(const chain::packed_transaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
