@@ -198,6 +198,8 @@ namespace eosiosystem {
          // functions defined in producer_pay.cpp
          void claimrewards( const account_name& owner );
 
+         void setpriv( account_name account, uint8_t ispriv );
+
       private:
          void update_elected_producers( block_timestamp timestamp );
 
