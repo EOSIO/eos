@@ -72,11 +72,8 @@ struct controller_impl {
       auto prev = fork_db.get_block( head->header.previous );
       FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
 
-      const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
-      auto objitr = ubi.find(head->block_num); 
-      if( objitr != ubi.end() ) {
-         unconfirmed_blocks.remove( *objitr );
-      }
+      if( const auto* b = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num) )
+         unconfirmed_blocks.remove( *b );
 
       for( const auto& t : head->trxs )
          unapplied_transactions[t->signed_id] = t;
@@ -97,7 +94,7 @@ struct controller_impl {
         cfg.shared_memory_size ),
     unconfirmed_blocks( cfg.block_log_dir/"unconfirmed",
         cfg.read_only ? database::read_only : database::read_write,
-        1024*1024*1024ll ), /// 1GB should store 1000 1MB blocks + overhead
+        std::min<uint64_t>(cfg.shared_memory_size,128*1024*1024ll) ), /// 1GB should store 1000 1MB blocks + overhead
     blog( cfg.block_log_dir ),
     fork_db( cfg.shared_memory_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -203,8 +200,12 @@ struct controller_impl {
 
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
                  ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
+
+      edump((unconf_blocknum));
+      /*
       FC_ASSERT( head->block_num == unconf_blocknum, "unconfirmed block database out of sync",
                  ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
+                 */
 
       /**
        * The undoable state contains state transitions from blocks
@@ -223,6 +224,7 @@ struct controller_impl {
       edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
+      unconfirmed_blocks.flush();
    }
 
    void add_indices() {
@@ -296,9 +298,19 @@ struct controller_impl {
                std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
             }
          }
+        
+         int unconf = 0;
+         while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
+            ++unconf;
+            self.push_block( obj->get_block(), true );
+         }
+
          std::cerr<< "\n";
+         ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
          auto end = fc::time_point::now();
-         ilog( "replayed blocks in ${n} seconds, ${spb} spb", ("n", (end-start).count()/1000000.0)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+         ilog( "replayed blocks in ${n} seconds, ${spb} spb", 
+               ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+         std::cerr<< "\n";
          replaying = false;
 
       } else if( !end ) {
@@ -386,10 +398,18 @@ struct controller_impl {
          head = fork_db.head();
          FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
 
-         unconfirmed_blocks.create<unconfirmed_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = head->block_num;
-         });
       }
+
+      if( !replaying ) {
+         auto itr = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num );
+         if( !itr ) {
+            unconfirmed_blocks.create<unconfirmed_block_object>( [&]( auto& ubo ) {
+               ubo.blocknum = head->block_num;
+               ubo.set_block( head->block );
+            });
+         }
+      }
+
 
   //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
       emit( self.accepted_block, pending->_pending_block_state );
