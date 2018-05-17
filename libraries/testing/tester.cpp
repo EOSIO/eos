@@ -632,7 +632,7 @@ namespace eosio { namespace testing {
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 setabi{
                                    .account    = account,
-                                   .abi        = abi
+                                   .abi        = fc::raw::pack(abi)
                                 });
 
       set_transaction_headers(trx);
