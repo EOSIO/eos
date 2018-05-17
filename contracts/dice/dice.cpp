@@ -35,15 +35,15 @@ class dice : public enumivo::contract {
       //@abi action
       void offerbet(const asset& bet, const account_name player, const checksum256& commitment) {
 
-         eosio_assert( bet.symbol == S(4,EOS) , "only EOS token allowed" );
-         eosio_assert( bet.is_valid(), "invalid bet" );
-         eosio_assert( bet.amount > 0, "must bet positive quantity" );
+         enumivo_assert( bet.symbol == S(4,EOS) , "only EOS token allowed" );
+         enumivo_assert( bet.is_valid(), "invalid bet" );
+         enumivo_assert( bet.amount > 0, "must bet positive quantity" );
 
-         eosio_assert( !has_offer( commitment ), "offer with this commitment already exist" );
+         enumivo_assert( !has_offer( commitment ), "offer with this commitment already exist" );
          require_auth( player );
 
          auto cur_player_itr = accounts.find( player );
-         eosio_assert(cur_player_itr != accounts.end(), "unknown account");
+         enumivo_assert(cur_player_itr != accounts.end(), "unknown account");
 
          // Store new offer
          auto new_offer_itr = offers.emplace(_self, [&](auto& offer){
@@ -64,7 +64,7 @@ class dice : public enumivo::contract {
 
             // No matching bet found, update player's account
             accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
-               eosio_assert( acnt.eos_balance >= bet, "insufficient balance" );
+               enumivo_assert( acnt.eos_balance >= bet, "insufficient balance" );
                acnt.eos_balance -= bet;
                acnt.open_offers++;
             });
@@ -114,7 +114,7 @@ class dice : public enumivo::contract {
             });
 
             accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
-               eosio_assert( acnt.eos_balance >= bet, "insufficient balance" );
+               enumivo_assert( acnt.eos_balance >= bet, "insufficient balance" );
                acnt.eos_balance -= bet;
                acnt.open_games++;
             });
@@ -127,8 +127,8 @@ class dice : public enumivo::contract {
          auto idx = offers.template get_index<N(commitment)>();
          auto offer_itr = idx.find( offer::get_commitment(commitment) );
 
-         eosio_assert( offer_itr != idx.end(), "offer does not exists" );
-         eosio_assert( offer_itr->gameid == 0, "unable to cancel offer" );
+         enumivo_assert( offer_itr != idx.end(), "offer does not exists" );
+         enumivo_assert( offer_itr->gameid == 0, "unable to cancel offer" );
          require_auth( offer_itr->owner );
 
          auto acnt_itr = accounts.find(offer_itr->owner);
@@ -148,8 +148,8 @@ class dice : public enumivo::contract {
          auto idx = offers.template get_index<N(commitment)>();
          auto curr_revealer_offer = idx.find( offer::get_commitment(commitment)  );
 
-         eosio_assert(curr_revealer_offer != idx.end(), "offer not found");
-         eosio_assert(curr_revealer_offer->gameid > 0, "unable to reveal");
+         enumivo_assert(curr_revealer_offer != idx.end(), "offer not found");
+         enumivo_assert(curr_revealer_offer->gameid > 0, "unable to reveal");
 
          auto game_itr = games.find( curr_revealer_offer->gameid );
 
@@ -160,7 +160,7 @@ class dice : public enumivo::contract {
             std::swap(curr_reveal, prev_reveal);
          }
 
-         eosio_assert( is_zero(curr_reveal.reveal) == true, "player already revealed");
+         enumivo_assert( is_zero(curr_reveal.reveal) == true, "player already revealed");
 
          if( !is_zero(prev_reveal.reveal) ) {
 
@@ -195,18 +195,18 @@ class dice : public enumivo::contract {
 
          auto game_itr = games.find(gameid);
 
-         eosio_assert(game_itr != games.end(), "game not found");
-         eosio_assert(game_itr->deadline != enumivo::time_point_sec(0) && enumivo::time_point_sec(now()) > game_itr->deadline, "game not expired");
+         enumivo_assert(game_itr != games.end(), "game not found");
+         enumivo_assert(game_itr->deadline != enumivo::time_point_sec(0) && enumivo::time_point_sec(now()) > game_itr->deadline, "game not expired");
 
          auto idx = offers.template get_index<N(commitment)>();
          auto player1_offer = idx.find( offer::get_commitment(game_itr->player1.commitment) );
          auto player2_offer = idx.find( offer::get_commitment(game_itr->player2.commitment) );
 
          if( !is_zero(game_itr->player1.reveal) ) {
-            eosio_assert( is_zero(game_itr->player2.reveal), "game error");
+            enumivo_assert( is_zero(game_itr->player2.reveal), "game error");
             pay_and_clean(*game_itr, *player1_offer, *player2_offer);
          } else {
-            eosio_assert( is_zero(game_itr->player1.reveal), "game error");
+            enumivo_assert( is_zero(game_itr->player1.reveal), "game error");
             pay_and_clean(*game_itr, *player2_offer, *player1_offer);
          }
 
@@ -215,8 +215,8 @@ class dice : public enumivo::contract {
       //@abi action
       void deposit( const account_name from, const asset& quantity ) {
          
-         eosio_assert( quantity.is_valid(), "invalid quantity" );
-         eosio_assert( quantity.amount > 0, "must deposit positive quantity" );
+         enumivo_assert( quantity.is_valid(), "invalid quantity" );
+         enumivo_assert( quantity.amount > 0, "must deposit positive quantity" );
 
          auto itr = accounts.find(from);
          if( itr == accounts.end() ) {
@@ -240,14 +240,14 @@ class dice : public enumivo::contract {
       void withdraw( const account_name to, const asset& quantity ) {
          require_auth( to );
 
-         eosio_assert( quantity.is_valid(), "invalid quantity" );
-         eosio_assert( quantity.amount > 0, "must withdraw positive quantity" );
+         enumivo_assert( quantity.is_valid(), "invalid quantity" );
+         enumivo_assert( quantity.amount > 0, "must withdraw positive quantity" );
 
          auto itr = accounts.find( to );
-         eosio_assert(itr != accounts.end(), "unknown account");
+         enumivo_assert(itr != accounts.end(), "unknown account");
 
          accounts.modify( itr, 0, [&]( auto& acnt ) {
-            eosio_assert( acnt.eos_balance >= quantity, "insufficient balance" );
+            enumivo_assert( acnt.eos_balance >= quantity, "insufficient balance" );
             acnt.eos_balance -= quantity;
          });
 

@@ -51,7 +51,7 @@
            if( action == N(transfer) ) 
               currency::apply_currency_transfer( current_action< currency::transfer >() );
         } else {
-           eosio_assert( false, "rejecting unexpected event" );
+           enumivo_assert( false, "rejecting unexpected event" );
         }
      }
   }

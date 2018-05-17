@@ -10,7 +10,7 @@ extern "C" {
  *
  *  checksum calc_hash;
  *  sha256( data, length, &calc_hash );
- *  eosio_assert( calc_hash == hash, "invalid hash" );
+ *  enumivo_assert( calc_hash == hash, "invalid hash" );
  *
  *  This method is optimized to a NO-OP when in fast evaluation mode
  */

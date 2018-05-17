@@ -77,10 +77,10 @@ namespace enumivo {
     */
    inline action get_action( uint32_t type, uint32_t index ) {
       auto size = ::get_action(type, index, nullptr, 0);
-      eosio_assert( size > 0, "get_action size failed" );
+      enumivo_assert( size > 0, "get_action size failed" );
       char buf[size];
       auto size2 = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
-      eosio_assert( size == size2, "get_action failed" );
+      enumivo_assert( size == size2, "get_action failed" );
       return enumivo::unpack<enumivo::action>(&buf[0], static_cast<size_t>(size));
    }
 

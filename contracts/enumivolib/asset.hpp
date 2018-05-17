@@ -117,8 +117,8 @@ namespace enumivo {
       explicit asset( int64_t a = 0, symbol_name s = S(4,EOS))
       :amount(a),symbol{s}
       {
-         eosio_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
-         eosio_assert( symbol.is_valid(),        "invalid symbol name" );
+         enumivo_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
+         enumivo_assert( symbol.is_valid(),        "invalid symbol name" );
       }
 
       bool is_amount_within_range()const { return -max_amount <= amount && amount <= max_amount; }
@@ -126,7 +126,7 @@ namespace enumivo {
 
       void set_amount( int64_t a ) {
          amount = a;
-         eosio_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
+         enumivo_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
       }
 
       asset operator-()const {
@@ -136,18 +136,18 @@ namespace enumivo {
       }
 
       asset& operator-=( const asset& a ) {
-         eosio_assert( a.symbol == symbol, "attempt to subtract asset with different symbol" );
+         enumivo_assert( a.symbol == symbol, "attempt to subtract asset with different symbol" );
          amount -= a.amount;
-         eosio_assert( -max_amount <= amount, "subtraction underflow" );
-         eosio_assert( amount <= max_amount,  "subtraction overflow" );
+         enumivo_assert( -max_amount <= amount, "subtraction underflow" );
+         enumivo_assert( amount <= max_amount,  "subtraction overflow" );
          return *this;
       }
 
       asset& operator+=( const asset& a ) {
-         eosio_assert( a.symbol == symbol, "attempt to add asset with different symbol" );
+         enumivo_assert( a.symbol == symbol, "attempt to add asset with different symbol" );
          amount += a.amount;
-         eosio_assert( -max_amount <= amount, "addition underflow" );
-         eosio_assert( amount <= max_amount,  "addition overflow" );
+         enumivo_assert( -max_amount <= amount, "addition underflow" );
+         enumivo_assert( amount <= max_amount,  "addition overflow" );
          return *this;
       }
 
@@ -164,9 +164,9 @@ namespace enumivo {
       }
 
       asset& operator*=( int64_t a ) {
-         eosio_assert( a == 0 || (amount * a) / a == amount, "multiplication overflow or underflow" );
-         eosio_assert( -max_amount <= amount, "multiplication underflow" );
-         eosio_assert( amount <= max_amount,  "multiplication overflow" );
+         enumivo_assert( a == 0 || (amount * a) / a == amount, "multiplication overflow or underflow" );
+         enumivo_assert( -max_amount <= amount, "multiplication underflow" );
+         enumivo_assert( amount <= max_amount,  "multiplication overflow" );
          amount *= a;
          return *this;
       }
@@ -195,12 +195,12 @@ namespace enumivo {
       }
 
       friend int64_t operator/( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         enumivo_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount / b.amount;
       }
 
       friend bool operator==( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         enumivo_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount == b.amount;
       }
 
@@ -209,22 +209,22 @@ namespace enumivo {
       }
 
       friend bool operator<( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         enumivo_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount < b.amount;
       }
 
       friend bool operator<=( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         enumivo_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount <= b.amount;
       }
 
       friend bool operator>( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         enumivo_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount > b.amount;
       }
 
       friend bool operator>=( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         enumivo_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount >= b.amount;
       }
 
@@ -273,13 +273,13 @@ namespace enumivo {
       }
 
       friend extended_asset operator - ( const extended_asset& a, const extended_asset& b ) {
-         eosio_assert( a.contract == b.contract, "type mismatch" );
+         enumivo_assert( a.contract == b.contract, "type mismatch" );
          asset r = static_cast<const asset&>(a) - static_cast<const asset&>(b);
          return {r, a.contract};
       }
 
       friend extended_asset operator + ( const extended_asset& a, const extended_asset& b ) {
-         eosio_assert( a.contract == b.contract, "type mismatch" );
+         enumivo_assert( a.contract == b.contract, "type mismatch" );
          asset r = static_cast<const asset&>(a) + static_cast<const asset&>(b);
          return {r, a.contract};
       }

@@ -34,18 +34,18 @@ void multisig::propose() {
    ds >> trx_header;
 
    require_auth( proposer );
-   eosio_assert( trx_header.expiration >= enumivo::time_point_sec(now()), "transaction expired" );
-   //eosio_assert( trx_header.actions.size() > 0, "transaction must have at least one action" );
+   enumivo_assert( trx_header.expiration >= enumivo::time_point_sec(now()), "transaction expired" );
+   //enumivo_assert( trx_header.actions.size() > 0, "transaction must have at least one action" );
 
    proposals proptable( _self, proposer );
-   eosio_assert( proptable.find( proposal_name ) == proptable.end(), "proposal with the same name exists" );
+   enumivo_assert( proptable.find( proposal_name ) == proptable.end(), "proposal with the same name exists" );
 
    bytes packed_requested = pack(requested);
    auto res = ::check_transaction_authorization( buffer+trx_pos, size-trx_pos,
                                                  (const char*)0, 0,
                                                  packed_requested.data(), packed_requested.size()
                                                );
-   eosio_assert( res > 0, "transaction authorization failed" );
+   enumivo_assert( res > 0, "transaction authorization failed" );
 
    proptable.emplace( proposer, [&]( auto& prop ) {
       prop.proposal_name       = proposal_name;
@@ -66,7 +66,7 @@ void multisig::approve( account_name proposer, name proposal_name, permission_le
    auto& apps = apptable.get( proposal_name, "proposal not found" );
 
    auto itr = std::find( apps.requested_approvals.begin(), apps.requested_approvals.end(), level );
-   eosio_assert( itr != apps.requested_approvals.end(), "approval is not on the list of requested approvals" );
+   enumivo_assert( itr != apps.requested_approvals.end(), "approval is not on the list of requested approvals" );
 
    apptable.modify( apps, proposer, [&]( auto& a ) {
       a.provided_approvals.push_back( level );
@@ -80,7 +80,7 @@ void multisig::unapprove( account_name proposer, name proposal_name, permission_
    approvals apptable(  _self, proposer );
    auto& apps = apptable.get( proposal_name, "proposal not found" );
    auto itr = std::find( apps.provided_approvals.begin(), apps.provided_approvals.end(), level );
-   eosio_assert( itr != apps.provided_approvals.end(), "no approval previously granted" );
+   enumivo_assert( itr != apps.provided_approvals.end(), "no approval previously granted" );
 
    apptable.modify( apps, proposer, [&]( auto& a ) {
       a.requested_approvals.push_back(level);
@@ -95,7 +95,7 @@ void multisig::cancel( account_name proposer, name proposal_name, account_name c
    auto& prop = proptable.get( proposal_name, "proposal not found" );
 
    if( canceler != proposer ) {
-      eosio_assert( unpack<transaction_header>( prop.packed_transaction ).expiration < enumivo::time_point_sec(now()), "cannot cancel until expiration" );
+      enumivo_assert( unpack<transaction_header>( prop.packed_transaction ).expiration < enumivo::time_point_sec(now()), "cannot cancel until expiration" );
    }
 
    approvals apptable(  _self, proposer );
@@ -117,14 +117,14 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    transaction_header trx_header;
    datastream<const char*> ds( prop.packed_transaction.data(), prop.packed_transaction.size() );
    ds >> trx_header;
-   eosio_assert( trx_header.expiration >= enumivo::time_point_sec(now()), "transaction expired" );
+   enumivo_assert( trx_header.expiration >= enumivo::time_point_sec(now()), "transaction expired" );
 
    bytes packed_provided_approvals = pack(apps.provided_approvals);
    auto res = ::check_transaction_authorization( prop.packed_transaction.data(), prop.packed_transaction.size(),
                                                  (const char*)0, 0,
                                                  packed_provided_approvals.data(), packed_provided_approvals.size()
                                                );
-   eosio_assert( res > 0, "transaction authorization failed" );
+   enumivo_assert( res > 0, "transaction authorization failed" );
 
    send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, prop.packed_transaction.data(), prop.packed_transaction.size() );
 

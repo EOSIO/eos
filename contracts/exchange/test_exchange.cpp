@@ -235,7 +235,7 @@ asset connector::convert_from_exchange( exchange_state& ex, const asset& input )
 }
 
 
-void eosio_assert( bool test, const string& msg ) {
+void enumivo_assert( bool test, const string& msg ) {
    if( !test ) throw std::runtime_error( msg );
 }
 
@@ -252,7 +252,7 @@ exchange_state convert( const exchange_state& current,
                         asset        min_output,
                         asset*       out = nullptr) {
 
-  eosio_assert( min_output.symbol != input.symbol, "cannot convert" );
+  enumivo_assert( min_output.symbol != input.symbol, "cannot convert" );
 
   exchange_state result(current);
 
@@ -265,7 +265,7 @@ exchange_state convert( const exchange_state& current,
      else if( input.symbol == result.quote.balance.symbol ) {
         initial_output = result.quote.convert_to_exchange( result, input );
      }
-     else eosio_assert( false, "invalid symbol" );
+     else enumivo_assert( false, "invalid symbol" );
   } else {
      if( min_output.symbol == result.base.balance.symbol ) {
         initial_output = result.base.convert_from_exchange( result, initial_output );
@@ -273,7 +273,7 @@ exchange_state convert( const exchange_state& current,
      else if( min_output.symbol == result.quote.balance.symbol ) {
         initial_output= result.quote.convert_from_exchange( result, initial_output );
      }
-     else eosio_assert( false, "invalid symbol" );
+     else enumivo_assert( false, "invalid symbol" );
   }
 
 

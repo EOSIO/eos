@@ -11,7 +11,7 @@ void verify_mem(const void* const ptr, const uint32_t val, const uint32_t size)
    const char* char_ptr = (const char*)ptr;
    for (uint32_t i = 0; i < size; ++i)
    {
-      eosio_assert(static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])) == val, "buf slot doesn't match");
+      enumivo_assert(static_cast<uint32_t>(static_cast<unsigned char>(char_ptr[i])) == val, "buf slot doesn't match");
    }
 }
 
@@ -37,76 +37,76 @@ void print(const void* const ptr, const uint32_t size)
 void test_memory::test_memory_allocs()
 {
     char* ptr1 = (char*)malloc(0);
-    eosio_assert(ptr1 == nullptr, "should not have allocated a 0 char buf");
+    enumivo_assert(ptr1 == nullptr, "should not have allocated a 0 char buf");
 
     // 20 chars - 20 + 4(header) which is divisible by 8
     ptr1 = (char*)malloc(20);
-    eosio_assert(ptr1 != nullptr, "should have allocated a 20 char buf");
+    enumivo_assert(ptr1 != nullptr, "should have allocated a 20 char buf");
     verify_mem(ptr1, 0, 20);
     // existing memory layout -> |24|
 
     // 36 chars allocated - 30 + 4 plus an extra 6 to be divisible by 8
     char* ptr1_realloc = (char*)realloc(ptr1, 30);
-    eosio_assert(ptr1_realloc != nullptr, "should have returned a 30 char buf");
-    eosio_assert(ptr1_realloc == ptr1, "should have enlarged the 20 char buf");
+    enumivo_assert(ptr1_realloc != nullptr, "should have returned a 30 char buf");
+    enumivo_assert(ptr1_realloc == ptr1, "should have enlarged the 20 char buf");
     // existing memory layout -> |40|
 
     // 20 chars allocated
     char* ptr2 = (char*)malloc(20);
-    eosio_assert(ptr2 != nullptr, "should have allocated another 20 char buf");
-    eosio_assert(ptr1 + 36 < ptr2, "20 char buf should have been created after ptr1"); // test specific to implementation (can remove for refactor)
+    enumivo_assert(ptr2 != nullptr, "should have allocated another 20 char buf");
+    enumivo_assert(ptr1 + 36 < ptr2, "20 char buf should have been created after ptr1"); // test specific to implementation (can remove for refactor)
     verify_mem(ptr1, 0, 36);
-    eosio_assert(ptr1[36] != 0, "should not have empty bytes following since block allocated"); // test specific to implementation (can remove for refactor)
+    enumivo_assert(ptr1[36] != 0, "should not have empty bytes following since block allocated"); // test specific to implementation (can remove for refactor)
     // existing memory layout -> |40|24|
 
     //shrink the buffer
     ptr1[14] = 0x7e;
     // 20 chars allocated (still)
     ptr1_realloc = (char*)realloc(ptr1, 15);
-    eosio_assert(ptr1_realloc != nullptr, "should have returned a 15 char buf");
-    eosio_assert(ptr1_realloc == ptr1, "should have shrunk the reallocated 30 char buf");
+    enumivo_assert(ptr1_realloc != nullptr, "should have returned a 15 char buf");
+    enumivo_assert(ptr1_realloc == ptr1, "should have shrunk the reallocated 30 char buf");
     verify_mem(ptr1, 0, 14); // test specific to implementation (can remove for refactor)
-    eosio_assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched");
+    enumivo_assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched");
     // existing memory layout -> |24(shrunk)|16(freed)|24|
 
     //same size the buffer (verify corner case)
     // 20 chars allocated (still)
     ptr1_realloc = (char*)realloc(ptr1, 15);
-    eosio_assert(ptr1_realloc != nullptr, "should have returned a reallocated 15 char buf");
-    eosio_assert(ptr1_realloc == ptr1, "should have reallocated 15 char buf as the same buf");
-    eosio_assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched for unchanged buf");
+    enumivo_assert(ptr1_realloc != nullptr, "should have returned a reallocated 15 char buf");
+    enumivo_assert(ptr1_realloc == ptr1, "should have reallocated 15 char buf as the same buf");
+    enumivo_assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched for unchanged buf");
 
     //same size as max allocated buffer -- test specific to implementation (can remove for refactor)
     ptr1_realloc = (char*)realloc(ptr1, 30);
-    eosio_assert(ptr1_realloc != nullptr, "should have returned a 30 char buf");
-    eosio_assert(ptr1_realloc == ptr1, "should have increased the buf back to orig max"); //test specific to implementation (can remove for refactor)
-    eosio_assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched for expanded buf");
+    enumivo_assert(ptr1_realloc != nullptr, "should have returned a 30 char buf");
+    enumivo_assert(ptr1_realloc == ptr1, "should have increased the buf back to orig max"); //test specific to implementation (can remove for refactor)
+    enumivo_assert(ptr1[14] == 0x7e, "remaining 15 chars of buf should be untouched for expanded buf");
 
     //increase buffer beyond (indicated) allocated space
     // 36 chars allocated (still)
     ptr1_realloc = (char*)realloc(ptr1, 36);
-    eosio_assert(ptr1_realloc != nullptr, "should have returned a 36 char buf");
-    eosio_assert(ptr1_realloc == ptr1, "should have increased char buf to actual size"); // test specific to implementation (can remove for refactor)
+    enumivo_assert(ptr1_realloc != nullptr, "should have returned a 36 char buf");
+    enumivo_assert(ptr1_realloc == ptr1, "should have increased char buf to actual size"); // test specific to implementation (can remove for refactor)
 
     //increase buffer beyond allocated space
     ptr1[35] = 0x7f;
     // 44 chars allocated - 37 + 4 plus an extra 7 to be divisible by 8
     ptr1_realloc = (char*)realloc(ptr1, 37);
-    eosio_assert(ptr1_realloc != nullptr, "should have returned a 37 char buf");
-    eosio_assert(ptr1_realloc != ptr1, "should have had to create new 37 char buf from 36 char buf");
-    eosio_assert(ptr2 < ptr1_realloc, "should have been created after ptr2"); // test specific to implementation (can remove for refactor)
-    eosio_assert(ptr1_realloc[14] == 0x7e, "orig 36 char buf's content should be copied");
-    eosio_assert(ptr1_realloc[35] == 0x7f, "orig 36 char buf's content should be copied");
+    enumivo_assert(ptr1_realloc != nullptr, "should have returned a 37 char buf");
+    enumivo_assert(ptr1_realloc != ptr1, "should have had to create new 37 char buf from 36 char buf");
+    enumivo_assert(ptr2 < ptr1_realloc, "should have been created after ptr2"); // test specific to implementation (can remove for refactor)
+    enumivo_assert(ptr1_realloc[14] == 0x7e, "orig 36 char buf's content should be copied");
+    enumivo_assert(ptr1_realloc[35] == 0x7f, "orig 36 char buf's content should be copied");
 
     //realloc with nullptr
     char* nullptr_realloc = (char*)realloc(nullptr, 50);
-    eosio_assert(nullptr_realloc != nullptr, "should have returned a 50 char buf and ignored nullptr");
-    eosio_assert(ptr1_realloc < nullptr_realloc, "should have created after ptr1_realloc"); // test specific to implementation (can remove for refactor)
+    enumivo_assert(nullptr_realloc != nullptr, "should have returned a 50 char buf and ignored nullptr");
+    enumivo_assert(ptr1_realloc < nullptr_realloc, "should have created after ptr1_realloc"); // test specific to implementation (can remove for refactor)
 
     //realloc with invalid ptr
     char* invalid_ptr_realloc = (char*)realloc(nullptr_realloc + 4, 10);
-    eosio_assert(invalid_ptr_realloc != nullptr, "should have returned a 10 char buf and ignored invalid ptr");
-    eosio_assert(nullptr_realloc < invalid_ptr_realloc, "should have created invalid_ptr_realloc after nullptr_realloc"); // test specific to implementation (can remove for refactor)
+    enumivo_assert(invalid_ptr_realloc != nullptr, "should have returned a 10 char buf and ignored invalid ptr");
+    enumivo_assert(nullptr_realloc < invalid_ptr_realloc, "should have created invalid_ptr_realloc after nullptr_realloc"); // test specific to implementation (can remove for refactor)
 }
 
 // this test verifies that malloc can allocate 15 64K pages and treat them as one big heap space (if sbrk is not called in the mean time)
@@ -114,7 +114,7 @@ void test_memory::test_memory_hunk()
 {
    // try to allocate the largest buffer we can, which is 15 contiguous 64K pages (with the 4 char space for the ptr header)
    char* ptr1 = (char*)malloc(15 * 64 * 1024 - 4);
-   eosio_assert(ptr1 != nullptr, "should have allocated a ~983K char buf");
+   enumivo_assert(ptr1 != nullptr, "should have allocated a ~983K char buf");
 }
 
 void test_memory::test_memory_hunks()
@@ -122,18 +122,18 @@ void test_memory::test_memory_hunks()
    // leave 784 bytes of initial buffer to allocate later (rounds up to nearest 8 byte boundary,
    // 16 bytes bigger than remainder left below in 15 64K page heap))
    char* ptr1 = (char*)malloc(7404);
-   eosio_assert(ptr1 != nullptr, "should have allocated a 7404 char buf");
+   enumivo_assert(ptr1 != nullptr, "should have allocated a 7404 char buf");
 
    char* last_ptr = nullptr;
    // 96 * (10 * 1024 - 15) => 15 ~64K pages with 768 byte buffer left to allocate
    for (int i = 0; i < 96; ++i)
    {
       char* ptr2 =  (char*)malloc(10 * 1024 - 15);
-      eosio_assert(ptr2 != nullptr, "should have allocated a ~10K char buf");
+      enumivo_assert(ptr2 != nullptr, "should have allocated a ~10K char buf");
       if (last_ptr != nullptr)
       {
          // - 15 rounds to -8
-         eosio_assert(last_ptr + 10 * 1024 - 8 == ptr2, "should allocate the very next ptr"); // test specific to implementation (can remove for refactor)
+         enumivo_assert(last_ptr + 10 * 1024 - 8 == ptr2, "should allocate the very next ptr"); // test specific to implementation (can remove for refactor)
       }
 
       last_ptr = ptr2;
@@ -141,29 +141,29 @@ void test_memory::test_memory_hunks()
 
    // try to allocate a buffer slightly larger than the remaining buffer| 765 + 4 rounds to 776
    char* ptr3 =  (char*)malloc(765);
-   eosio_assert(ptr3 != nullptr, "should have allocated a 772 char buf");
-   eosio_assert(ptr1 + 7408 == ptr3, "should allocate the very next ptr after ptr1 in initial heap"); // test specific to implementation (can remove for refactor)
+   enumivo_assert(ptr3 != nullptr, "should have allocated a 772 char buf");
+   enumivo_assert(ptr1 + 7408 == ptr3, "should allocate the very next ptr after ptr1 in initial heap"); // test specific to implementation (can remove for refactor)
 
    // use all but 8 chars
    char* ptr4 = (char*)malloc(764);
-   eosio_assert(ptr4 != nullptr, "should have allocated a 764 char buf");
-   eosio_assert(last_ptr + 10 * 1024 - 8 == ptr4, "should allocate the very next ptr after last_ptr at end of contiguous heap"); // test specific to implementation (can remove for refactor)
+   enumivo_assert(ptr4 != nullptr, "should have allocated a 764 char buf");
+   enumivo_assert(last_ptr + 10 * 1024 - 8 == ptr4, "should allocate the very next ptr after last_ptr at end of contiguous heap"); // test specific to implementation (can remove for refactor)
 
    // use up remaining 8 chars
    char* ptr5 = (char*)malloc(4);
-   eosio_assert(ptr5 != nullptr, "should have allocated a 4 char buf");
-   eosio_assert(ptr3 + 776 == ptr5, "should allocate the very next ptr after ptr3 in initial heap"); // test specific to implementation (can remove for refactor)
+   enumivo_assert(ptr5 != nullptr, "should have allocated a 4 char buf");
+   enumivo_assert(ptr3 + 776 == ptr5, "should allocate the very next ptr after ptr3 in initial heap"); // test specific to implementation (can remove for refactor)
 
    // nothing left to allocate
    char* ptr6 = (char*)malloc(4);
-   eosio_assert(ptr6 == nullptr, "should not have allocated a char buf");
+   enumivo_assert(ptr6 == nullptr, "should not have allocated a char buf");
 }
 
 void test_memory::test_memory_hunks_disjoint()
 {
    // leave 8 bytes of initial buffer to allocate later
    char* ptr1 = (char*)malloc(8 * 1024 - 12);
-   eosio_assert(ptr1 != nullptr, "should have allocated a 8184 char buf");
+   enumivo_assert(ptr1 != nullptr, "should have allocated a 8184 char buf");
 
    // can only make 14 extra (64K) heaps for malloc, since calls to sbrk will eat up part
    char* loop_ptr1[14];
@@ -172,37 +172,37 @@ void test_memory::test_memory_hunks_disjoint()
    {
       // allocates a new heap for each request, since sbrk call doesn't allow contiguous heaps to grow
       loop_ptr1[i] = (char*)malloc(64 * 1024 - 28);
-      eosio_assert(loop_ptr1[i] != nullptr, "should have allocated a 64K char buf");
+      enumivo_assert(loop_ptr1[i] != nullptr, "should have allocated a 64K char buf");
 
-      eosio_assert(reinterpret_cast<int32_t>(sbrk(4)) != -1, "should be able to allocate 8 bytes");
+      enumivo_assert(reinterpret_cast<int32_t>(sbrk(4)) != -1, "should be able to allocate 8 bytes");
    }
 
    // the 15th extra heap is reduced in size because of the 14 * 8 bytes allocated by sbrk calls
    // will leave 8 bytes to allocate later (verifying that we circle back in the list
    char* ptr2 = (char*)malloc(65412);
-   eosio_assert(ptr2 != nullptr, "should have allocated a 65412 char buf");
+   enumivo_assert(ptr2 != nullptr, "should have allocated a 65412 char buf");
 
    char* loop_ptr2[14];
    for (int i = 0; i < 14; ++i)
    {
       // 12 char buffer to leave 8 bytes for another pass
       loop_ptr2[i] = (char*)malloc(12);
-      eosio_assert(loop_ptr2[i] != nullptr, "should have allocated a 12 char buf");
-      eosio_assert(loop_ptr1[i] + 64 * 1024 - 24 == loop_ptr2[i], "loop_ptr2[i] should be very next pointer after loop_ptr1[i]");
+      enumivo_assert(loop_ptr2[i] != nullptr, "should have allocated a 12 char buf");
+      enumivo_assert(loop_ptr1[i] + 64 * 1024 - 24 == loop_ptr2[i], "loop_ptr2[i] should be very next pointer after loop_ptr1[i]");
    }
 
    // this shows that searching for free ptrs starts at the last loop to find free memory, not at the begining
    char* ptr3 = (char*)malloc(4);
-   eosio_assert(ptr3 != nullptr, "should have allocated a 4 char buf");
-   eosio_assert(loop_ptr2[13] + 16 == ptr3, "should allocate the very next ptr after loop_ptr2[13]"); // test specific to implementation (can remove for refactor)
+   enumivo_assert(ptr3 != nullptr, "should have allocated a 4 char buf");
+   enumivo_assert(loop_ptr2[13] + 16 == ptr3, "should allocate the very next ptr after loop_ptr2[13]"); // test specific to implementation (can remove for refactor)
 
    char* ptr4 = (char*)malloc(4);
-   eosio_assert(ptr4 != nullptr, "should have allocated a 4 char buf");
-   eosio_assert(ptr2 + 65416 == ptr4, "should allocate the very next ptr after ptr2 in last heap"); // test specific to implementation (can remove for refactor)
+   enumivo_assert(ptr4 != nullptr, "should have allocated a 4 char buf");
+   enumivo_assert(ptr2 + 65416 == ptr4, "should allocate the very next ptr after ptr2 in last heap"); // test specific to implementation (can remove for refactor)
 
    char* ptr5 = (char*)malloc(4);
-   eosio_assert(ptr5 != nullptr, "should have allocated a 4 char buf");
-   eosio_assert(ptr1 + 8184 == ptr5, "should allocate the very next ptr after ptr1 in last heap"); // test specific to implementation (can remove for refactor)
+   enumivo_assert(ptr5 != nullptr, "should have allocated a 4 char buf");
+   enumivo_assert(ptr1 + 8184 == ptr5, "should allocate the very next ptr after ptr1 in last heap"); // test specific to implementation (can remove for refactor)
 
    // will eat up remaining memory (14th heap already used up)
    char* loop_ptr3[13];
@@ -210,12 +210,12 @@ void test_memory::test_memory_hunks_disjoint()
    {
       // 4 char buffer to use up buffer
       loop_ptr3[i] = (char*)malloc(4);
-      eosio_assert(loop_ptr3[i] != nullptr, "should have allocated a 4 char buf");
-      eosio_assert(loop_ptr2[i] + 16 == loop_ptr3[i], "loop_ptr3[i] should be very next pointer after loop_ptr2[i]");
+      enumivo_assert(loop_ptr3[i] != nullptr, "should have allocated a 4 char buf");
+      enumivo_assert(loop_ptr2[i] + 16 == loop_ptr3[i], "loop_ptr3[i] should be very next pointer after loop_ptr2[i]");
    }
 
    char* ptr6 = (char*)malloc(4);
-   eosio_assert(ptr6 == nullptr, "should not have allocated a char buf");
+   enumivo_assert(ptr6 == nullptr, "should not have allocated a char buf");
 
    free(loop_ptr1[3]);
    free(loop_ptr2[3]);
@@ -225,15 +225,15 @@ void test_memory::test_memory_hunks_disjoint()
    for (int i = 0; i < 64; ++i)
    {
       slot3_ptr[i] = (char*)malloc(1020);
-      eosio_assert(slot3_ptr[i] != nullptr, "should have allocated a 1020 char buf");
+      enumivo_assert(slot3_ptr[i] != nullptr, "should have allocated a 1020 char buf");
       if (i == 0)
-         eosio_assert(loop_ptr1[3] == slot3_ptr[0], "loop_ptr1[3] should be very next pointer after slot3_ptr[0]");
+         enumivo_assert(loop_ptr1[3] == slot3_ptr[0], "loop_ptr1[3] should be very next pointer after slot3_ptr[0]");
       else
-         eosio_assert(slot3_ptr[i - 1] + 1024 == slot3_ptr[i], "slot3_ptr[i] should be very next pointer after slot3_ptr[i-1]");
+         enumivo_assert(slot3_ptr[i - 1] + 1024 == slot3_ptr[i], "slot3_ptr[i] should be very next pointer after slot3_ptr[i-1]");
    }
 
    char* ptr7 = (char*)malloc(4);
-   eosio_assert(ptr7 == nullptr, "should not have allocated a char buf");
+   enumivo_assert(ptr7 == nullptr, "should not have allocated a char buf");
 }   
 
 void test_memory::test_memset_memcpy()
@@ -298,17 +298,17 @@ void test_memory::test_memcmp()
    char buf1[] = "abcde";
    char buf2[] = "abcde";
    int32_t res1 = memcmp(buf1, buf2, 6);
-   eosio_assert(res1 == 0, "first data should be equal to second data");
+   enumivo_assert(res1 == 0, "first data should be equal to second data");
 
    char buf3[] = "abcde";
    char buf4[] = "fghij";
    int32_t res2 = memcmp(buf3, buf4, 6);
-   eosio_assert(res2 < 0, "first data should be smaller than second data");
+   enumivo_assert(res2 < 0, "first data should be smaller than second data");
 
    char buf5[] = "fghij";
    char buf6[] = "abcde";
    int32_t res3 = memcmp(buf5, buf6, 6);
-   eosio_assert(res3 > 0, "first data should be larger than second data");
+   enumivo_assert(res3 > 0, "first data should be larger than second data");
 }
 
 void test_memory::test_outofbound_0()

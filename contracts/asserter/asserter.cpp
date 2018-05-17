@@ -18,9 +18,9 @@ extern "C" {
              assertdef def = enumivo::unpack_action_data<assertdef>();
 
              // maybe assert?
-             eosio_assert((uint32_t)def.condition, def.message.c_str());
+             enumivo_assert((uint32_t)def.condition, def.message.c_str());
           } else if( action == N(provereset) ) {
-             eosio_assert(global_variable == 45, "Global Variable Initialized poorly");
+             enumivo_assert(global_variable == 45, "Global Variable Initialized poorly");
              global_variable = 100;
           }
        }

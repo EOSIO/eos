@@ -94,8 +94,8 @@ namespace identity {
             require_auth( creator );
             idents_table t( _self, _self );
             auto itr = t.find( identity );
-            eosio_assert( itr == t.end(), "identity already exists" );
-            eosio_assert( identity != 0, "identity=0 is not allowed" );
+            enumivo_assert( itr == t.end(), "identity already exists" );
+            enumivo_assert( identity != 0, "identity=0 is not allowed" );
             t.emplace(creator, [&](identrow& i) {
                   i.identity = identity;
                   i.creator = creator;
@@ -112,7 +112,7 @@ namespace identity {
                require_auth( bill_storage_to );
 
             idents_table t( _self, _self );
-            eosio_assert( t.find( identity ) != t.end(), "identity does not exist" );
+            enumivo_assert( t.find( identity ) != t.end(), "identity does not exist" );
 
             /// the table exists in the scope of the identity
             certs_table certs( _self, identity );
@@ -121,7 +121,7 @@ namespace identity {
             for( const auto& value : values ) {
                auto idx = certs.template get_index<N(bytuple)>();
                if (value.confidence) {
-                  eosio_assert(value.type.size() <= 32, "certrow::type should be not longer than 32 bytes");
+                  enumivo_assert(value.type.size() <= 32, "certrow::type should be not longer than 32 bytes");
                   auto itr = idx.lower_bound( certrow::key(value.property, trusted, certifier) );
 
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == certifier) {
@@ -150,7 +150,7 @@ namespace identity {
 
                   //special handling for owner
                   if (value.property == N(owner)) {
-                     eosio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
+                     enumivo_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
                      if (certifier == acnt) { //only self-certitication affects accounts_table
                         accounts_table( _self, acnt ).set( identity, acnt );
@@ -172,7 +172,7 @@ namespace identity {
                   }
                   //special handling for owner
                   if (value.property == N(owner)) {
-                     eosio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
+                     enumivo_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
                      if (certifier == acnt) { //only self-certitication affects accounts_table
                         accounts_table( _self, acnt ).remove();

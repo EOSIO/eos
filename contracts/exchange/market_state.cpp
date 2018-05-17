@@ -13,7 +13,7 @@ namespace enumivo {
     _accounts(acnts),
     market_state_itr( market_table.find(marketid) )
    {
-      eosio_assert( market_state_itr != market_table.end(), "unknown market" );
+      enumivo_assert( market_state_itr != market_table.end(), "unknown market" );
       exstate = *market_state_itr;
    }
 
@@ -31,7 +31,7 @@ namespace enumivo {
          return;
 
       auto receipt = exstate.convert( pos->collateral, pos->borrowed.get_extended_symbol() );
-      eosio_assert( receipt.amount >= pos->borrowed.amount, "programmer error: insufficient collateral to cover" );/// VERY BAD, SHOULD NOT HAPPEN
+      enumivo_assert( receipt.amount >= pos->borrowed.amount, "programmer error: insufficient collateral to cover" );/// VERY BAD, SHOULD NOT HAPPEN
       auto change_debt = receipt - pos->borrowed;
 
       auto change_collat = exstate.convert( change_debt, pos->collateral.get_extended_symbol() );
@@ -65,11 +65,11 @@ namespace enumivo {
          double new_shares = exstate.quote.peer_margin.lend( quantity.amount );
          adjust_lend_shares( lender, quote_loans, new_shares );
       }
-      else eosio_assert( false, "unable to lend to this market" );
+      else enumivo_assert( false, "unable to lend to this market" );
    }
 
    void market_state::unlend( account_name lender, double ishares, const extended_symbol& sym ) {
-      eosio_assert( ishares > 0, "cannot unlend negative balance" );
+      enumivo_assert( ishares > 0, "cannot unlend negative balance" );
       adjust_lend_shares( lender, base_loans, -ishares );
 
       print( "sym: ", sym );
@@ -82,7 +82,7 @@ namespace enumivo {
          extended_asset unlent  = exstate.quote.peer_margin.unlend( ishares );
          _accounts.adjust_balance( lender, unlent );
       }
-      else eosio_assert( false, "unable to lend to this market" );
+      else enumivo_assert( false, "unable to lend to this market" );
    }
 
 
@@ -93,12 +93,12 @@ namespace enumivo {
          l.emplace( lender, [&]( auto& obj ) {
             obj.owner = lender;
             obj.interest_shares = delta;
-            eosio_assert( delta >= 0, "underflow" );
+            enumivo_assert( delta >= 0, "underflow" );
          });
       } else {
          l.modify( existing, 0, [&]( auto& obj ) {
             obj.interest_shares += delta;
-            eosio_assert( obj.interest_shares >= 0, "underflow" );
+            enumivo_assert( obj.interest_shares >= 0, "underflow" );
          });
       }
    }
@@ -109,7 +109,7 @@ namespace enumivo {
       } else if( cover_amount.get_extended_symbol() == exstate.quote.balance.get_extended_symbol() ) {
          cover_margin( borrower, quote_margins, exstate.quote, cover_amount );
       } else {
-         eosio_assert( false, "invalid debt asset" );
+         enumivo_assert( false, "invalid debt asset" );
       }
    }
 
@@ -122,13 +122,13 @@ namespace enumivo {
                                     const extended_asset& cover_amount )
    {
       auto existing = m.find( borrower );
-      eosio_assert( existing != m.end(), "no known margin position" );
-      eosio_assert( existing->borrowed.amount >= cover_amount.amount, "attempt to cover more than user has" );
+      enumivo_assert( existing != m.end(), "no known margin position" );
+      enumivo_assert( existing->borrowed.amount >= cover_amount.amount, "attempt to cover more than user has" );
 
       auto tmp = exstate;
       auto estcol  = tmp.convert( cover_amount, existing->collateral.get_extended_symbol() );
       auto debpaid = exstate.convert( estcol, cover_amount.get_extended_symbol() );
-      eosio_assert( debpaid.amount >= cover_amount.amount, "unable to cover debt" );
+      enumivo_assert( debpaid.amount >= cover_amount.amount, "unable to cover debt" );
 
       auto refundcover = debpaid - cover_amount;
 
@@ -165,7 +165,7 @@ namespace enumivo {
       } else if( delta_debt.get_extended_symbol() == exstate.quote.balance.get_extended_symbol() ) {
          adjust_margin( borrower, quote_margins, exstate.quote, delta_debt, delta_col );
       } else {
-         eosio_assert( false, "invalid debt asset" );
+         enumivo_assert( false, "invalid debt asset" );
       }
    }
 
@@ -174,8 +174,8 @@ namespace enumivo {
    {
       auto existing = m.find( borrower );
       if( existing == m.end() ) {
-         eosio_assert( delta_debt.amount > 0, "cannot borrow neg" );
-         eosio_assert( delta_col.amount > 0, "cannot have neg collat" );
+         enumivo_assert( delta_debt.amount > 0, "cannot borrow neg" );
+         enumivo_assert( delta_col.amount > 0, "cannot have neg collat" );
 
          existing = m.emplace( borrower, [&]( auto& obj ) {
             obj.owner      = borrower;
@@ -185,7 +185,7 @@ namespace enumivo {
          });
       } else {
          if( existing->borrowed.amount == -delta_debt.amount ) {
-            eosio_assert( existing->collateral.amount == -delta_col.amount, "user failed to claim all collateral" );
+            enumivo_assert( existing->collateral.amount == -delta_col.amount, "user failed to claim all collateral" );
 
             m.erase( existing );
             existing = m.begin();
@@ -199,13 +199,13 @@ namespace enumivo {
       }
 
       c.peer_margin.total_lent += delta_debt;
-      eosio_assert( c.peer_margin.total_lent.amount <= c.peer_margin.total_lendable.amount, "insufficient funds availalbe to borrow" );
+      enumivo_assert( c.peer_margin.total_lent.amount <= c.peer_margin.total_lendable.amount, "insufficient funds availalbe to borrow" );
 
       if( existing != m.end() ) {
          if( existing->call_price < c.peer_margin.least_collateralized )
             c.peer_margin.least_collateralized = existing->call_price;
 
-         eosio_assert( !exstate.requires_margin_call( c ), "this update would trigger a margin call" );
+         enumivo_assert( !exstate.requires_margin_call( c ), "this update would trigger a margin call" );
       } else {
          c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
       }

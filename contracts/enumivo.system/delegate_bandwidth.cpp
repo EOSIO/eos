@@ -99,8 +99,8 @@ namespace enumivosystem {
                             const authority& active*/ ) {
       auto name_str = enumivo::name{newact}.to_string();
 
-      eosio_assert( name_str.size() == 12 || creator == N(enumivo), "account names must be 12 chars long" );
-      eosio_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(enumivo), "account names cannot contain '.' character");
+      enumivo_assert( name_str.size() == 12 || creator == N(enumivo), "account names must be 12 chars long" );
+      enumivo_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(enumivo), "account names cannot contain '.' character");
 
       user_resources_table  userres( _self, newact);
 
@@ -138,7 +138,7 @@ namespace enumivosystem {
    void system_contract::buyram( account_name payer, account_name receiver, asset quant ) 
    {
       require_auth( payer );
-      eosio_assert( quant.amount > 0, "must purchase a positive amount" );
+      enumivo_assert( quant.amount > 0, "must purchase a positive amount" );
 
       if( payer != N(enumivo) ) {
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {payer,N(active)},
@@ -154,7 +154,7 @@ namespace enumivosystem {
       });
 
 
-      eosio_assert( bytes_out > 0, "must reserve a positive amount" );
+      enumivo_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
       _gstate.total_ram_stake          += quant.amount;
@@ -182,12 +182,12 @@ namespace enumivosystem {
     */
    void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
-      eosio_assert( bytes > 0, "cannot sell negative byte" );
+      enumivo_assert( bytes > 0, "cannot sell negative byte" );
 
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
-      eosio_assert( res_itr != userres.end(), "no resource row" );
-      eosio_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
+      enumivo_assert( res_itr != userres.end(), "no resource row" );
+      enumivo_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
 
       asset tokens_out;
       auto itr = _rammarket.find(S(4,RAMEOS));
@@ -200,7 +200,7 @@ namespace enumivosystem {
       _gstate.total_ram_stake          -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
-      eosio_assert( _gstate.total_ram_stake >= 0, "error, attempt to unstake more tokens than previously staked" );
+      enumivo_assert( _gstate.total_ram_stake >= 0, "error, attempt to unstake more tokens than previously staked" );
 
       userres.modify( res_itr, account, [&]( auto& res ) {
           res.ram_bytes -= bytes;
@@ -220,11 +220,11 @@ namespace enumivosystem {
    {
       require_auth( from );
 
-      eosio_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
-      eosio_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );
+      enumivo_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
+      enumivo_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );
 
       auto total_stake = stake_cpu_quantity.amount + stake_net_quantity.amount;
-      eosio_assert( total_stake > 0, "must stake a positive amount" );
+      enumivo_assert( total_stake > 0, "must stake a positive amount" );
 
       account_name source_stake_from = from;
 
@@ -293,21 +293,21 @@ namespace enumivosystem {
       const int64_t max_claimable = 100'000'000'0000ll;
       const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
 
-      eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
+      enumivo_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
    }
 
    void system_contract::undelegatebw( account_name from, account_name receiver,
                                        asset unstake_net_quantity, asset unstake_cpu_quantity )
    {
-      eosio_assert( unstake_cpu_quantity >= asset(), "must unstake a positive amount" );
-      eosio_assert( unstake_net_quantity >= asset(), "must unstake a positive amount" );
+      enumivo_assert( unstake_cpu_quantity >= asset(), "must unstake a positive amount" );
+      enumivo_assert( unstake_net_quantity >= asset(), "must unstake a positive amount" );
 
       require_auth( from );
 
       del_bandwidth_table     del_tbl( _self, from );
       const auto& dbw = del_tbl.get( receiver );
-      eosio_assert( dbw.net_weight.amount >= unstake_net_quantity.amount, "insufficient staked net bandwidth" );
-      eosio_assert( dbw.cpu_weight.amount >= unstake_cpu_quantity.amount, "insufficient staked cpu bandwidth" );
+      enumivo_assert( dbw.net_weight.amount >= unstake_net_quantity.amount, "insufficient staked net bandwidth" );
+      enumivo_assert( dbw.cpu_weight.amount >= unstake_cpu_quantity.amount, "insufficient staked cpu bandwidth" );
 
       auto total_refund = unstake_cpu_quantity.amount + unstake_net_quantity.amount;
 
@@ -319,7 +319,7 @@ namespace enumivosystem {
       });
 
 
-      eosio_assert( total_refund > 0, "must unstake a positive amount" );
+      enumivo_assert( total_refund > 0, "must unstake a positive amount" );
 
       if( dbw.net_weight == unstake_net_quantity && dbw.cpu_weight == unstake_cpu_quantity ) {
          del_tbl.erase( dbw );
@@ -377,8 +377,8 @@ namespace enumivosystem {
 
       refunds_table refunds_tbl( _self, owner );
       auto req = refunds_tbl.find( owner );
-      eosio_assert( req != refunds_tbl.end(), "refund request not found" );
-      eosio_assert( req->request_time + refund_delay <= now(), "refund is not available yet" );
+      enumivo_assert( req != refunds_tbl.end(), "refund request not found" );
+      enumivo_assert( req->request_time + refund_delay <= now(), "refund is not available yet" );
       // Until now() becomes NOW, the fact that now() is the timestamp of the previous block could in theory
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.

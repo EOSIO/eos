@@ -46,7 +46,7 @@ class datastream {
       *  @param s the number of bytes to read
       */
       inline bool read( char* d, size_t s ) {
-        eosio_assert( size_t(_end - _pos) >= (size_t)s, "read" );
+        enumivo_assert( size_t(_end - _pos) >= (size_t)s, "read" );
         memcpy( d, _pos, s );
         _pos += s;
         return true;
@@ -59,7 +59,7 @@ class datastream {
       *  @param s The number of bytes to write
       */
       inline bool write( const char* d, size_t s ) {
-        eosio_assert( _end - _pos >= (int32_t)s, "write" );
+        enumivo_assert( _end - _pos >= (int32_t)s, "write" );
         memcpy( (void*)_pos, d, s );
         _pos += s;
         return true;
@@ -71,7 +71,7 @@ class datastream {
       *  @param c byte to write
       */
       inline bool put(char c) {
-        eosio_assert( _pos < _end, "put" );
+        enumivo_assert( _pos < _end, "put" );
         *_pos = c;
         ++_pos;
         return true;
@@ -85,7 +85,7 @@ class datastream {
       inline bool get( unsigned char& c ) { return get( *(char*)&c ); }
       inline bool get( char& c )
       {
-        eosio_assert( _pos < _end, "get" );
+        enumivo_assert( _pos < _end, "get" );
         c = *_pos;
         ++_pos;
         return true;
@@ -302,7 +302,7 @@ template<typename DataStream, typename T, std::size_t N,
 DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
    unsigned_int s;
    ds >> s;
-   eosio_assert( N == s.value, "T[] size and unpacked size don't match");
+   enumivo_assert( N == s.value, "T[] size and unpacked size don't match");
    for( uint32_t i = 0; i < N; ++i )
       ds >> v[i];
    return ds;
@@ -313,7 +313,7 @@ template<typename DataStream, typename T, std::size_t N,
 DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
    unsigned_int s;
    ds >> s;
-   eosio_assert( N == s.value, "T[] size and unpacked size don't match");
+   enumivo_assert( N == s.value, "T[] size and unpacked size don't match");
    ds.read((char*)&v[0], sizeof(v));
    return ds;
 }
