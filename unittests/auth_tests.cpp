@@ -325,10 +325,10 @@ try {
 
 
    // Creating account with enumivo. prefix with privileged account
-   chain.create_account("enumivo.test1");
+   chain.create_account("enumivo.tst1");
 
    // Creating account with enumivo. prefix with non-privileged account, should fail
-   BOOST_CHECK_EXCEPTION(chain.create_account("enumivo.test2", "joe"), action_validate_exception,
+   BOOST_CHECK_EXCEPTION(chain.create_account("enumivo.tst2", "joe"), action_validate_exception,
                          fc_exception_message_is("only privileged accounts can have names that start with 'enumivo.'"));
 
 } FC_LOG_AND_RETHROW() }
