@@ -160,7 +160,7 @@ namespace enumivo { namespace testing {
       auto last_produced_block_num = control->last_irreversible_block_num();
       auto itr = last_produced_block.find(producer.producer_name);
       if (itr != last_produced_block.end()) {
-         last_produced_block_num = block_header::num_from_id(itr->second);
+         last_produced_block_num = std::max(control->last_irreversible_block_num(), block_header::num_from_id(itr->second));
       }
 
       control->abort_block();
@@ -180,9 +180,34 @@ namespace enumivo { namespace testing {
 
 
    void base_tester::produce_blocks_until_end_of_round() {
-      while( control->pending_block_state()->has_pending_producers() ) {
+      uint64_t blocks_per_round;
+      while(true) {
+         blocks_per_round = control->active_producers().producers.size() * config::producer_repetitions;
          produce_block();
+         if (control->head_block_num() % blocks_per_round == (blocks_per_round - 1)) break;
       }
+   }
+
+   void base_tester::produce_blocks_for_n_rounds(const uint32_t num_of_rounds) {
+      for(uint32_t i = 0; i < num_of_rounds; i++) {
+         produce_blocks_until_end_of_round();
+      }
+   }
+
+   void base_tester::produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time) {
+      fc::microseconds elapsed_time;
+      while (elapsed_time < target_elapsed_time) {
+         for(uint32_t i = 0; i < control->head_block_state()->active_schedule.producers.size(); i++) {
+            const auto time_to_skip = fc::milliseconds(config::producer_repetitions * config::block_interval_ms);
+            produce_block(time_to_skip);
+            elapsed_time += time_to_skip;
+         }
+         // if it is more than 24 hours, producer will be marked as inactive
+         const auto time_to_skip = fc::seconds(23 * 60 * 60);
+         produce_block(time_to_skip);
+         elapsed_time += time_to_skip;
+      }
+
    }
 
 

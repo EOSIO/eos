@@ -397,6 +397,60 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    return results;
 }
 
+// TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
+// TODO: fix strict aliasing violation
+static float64_t to_softfloat64( double d ) {
+   return *reinterpret_cast<float64_t*>(&d);
+}
+
+read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
+   const abi_def abi = get_abi(db, N(enumivo));
+   const auto table_type = get_table_type(abi, N(producers));
+   const abi_serializer abis{ abi };
+   ENU_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type}", ("type",table_type));
+
+   const auto& d = db.db();
+   const auto lower = name{p.lower_bound};
+
+   static const uint8_t secondary_index_num = 0;
+   const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(enumivo), N(enumivo), N(producers)));
+   const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(enumivo), N(enumivo), N(producers) | secondary_index_num));
+   ENU_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
+
+   const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
+   const auto& secondary_index = d.get_index<index_double_index>().indices();
+   const auto& secondary_index_by_primary = secondary_index.get<by_primary>();
+   const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
+
+   read_only::get_producers_result result;
+   const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
+   vector<char> data;
+
+   auto it = [&]{
+      if(lower.value == 0)
+         return secondary_index_by_secondary.lower_bound(
+            boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0));
+      else
+         return secondary_index.project<by_secondary>(
+            secondary_index_by_primary.lower_bound(
+               boost::make_tuple(secondary_table_id->id, lower.value)));
+   }();
+
+   for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
+      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
+         result.more = name{it->primary_key}.to_string();
+         break;
+      }
+      copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
+      if (p.json)
+         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data));
+      else
+         result.rows.emplace_back(fc::variant(data));
+   }
+
+   return result;
+}
+
 template<typename Api>
 struct resolver_factory {
    static auto make(const Api *api) {
