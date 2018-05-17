@@ -918,6 +918,91 @@ struct vote_producers_subcommand {
    }
 };
 
+struct approve_producer_subcommand {
+   string voter_str;
+   eosio::name producer_name;
+
+   approve_producer_subcommand(CLI::App* actionRoot) {
+      auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
+      approve_producer->add_option("voter", voter_str, localized("The voting account"))->required();
+      approve_producer->add_option("producer", producer_name, localized("The account to vote for"))->required();
+      add_standard_transaction_options(approve_producer);
+
+      approve_producer->set_callback([this] {
+            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", name(config::system_account_name).to_string())
+                               ("table", "voters")
+            );
+            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            if (res.rows.empty()) {
+               std::cerr << "Voter info not found for account " << voter_str << std::endl;
+               return;
+            }
+            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            auto prod_vars = res.rows[0]["producers"].get_array();
+            vector<eosio::name> prods;
+            for ( auto& x : prod_vars ) {
+               prods.push_back( name(x.as_string()) );
+            }
+            prods.push_back( producer_name );
+            std::sort( prods.begin(), prods.end() );
+            auto it = std::unique( prods.begin(), prods.end() );
+            if (it != prods.end() ) {
+               std::cerr << "Producer \"" << producer_name << "\" is already on the list." << std::endl;
+               return;
+            }
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("voter", voter_str)
+               ("proxy", "")
+               ("producers", prods);
+            send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+      });
+   }
+};
+
+struct unapprove_producer_subcommand {
+   string voter_str;
+   eosio::name producer_name;
+
+   unapprove_producer_subcommand(CLI::App* actionRoot) {
+      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
+      approve_producer->add_option("voter", voter_str, localized("The voting account"))->required();
+      approve_producer->add_option("producer", producer_name, localized("The account to remove from voted producers"))->required();
+      add_standard_transaction_options(approve_producer);
+
+      approve_producer->set_callback([this] {
+            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", name(config::system_account_name).to_string())
+                               ("table", "voters")
+            );
+            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            if (res.rows.empty()) {
+               std::cerr << "Voter info not found for account " << voter_str << std::endl;
+               return;
+            }
+            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            auto prod_vars = res.rows[0]["producers"].get_array();
+            vector<eosio::name> prods;
+            for ( auto& x : prod_vars ) {
+               prods.push_back( name(x.as_string()) );
+            }
+            auto it = std::remove( prods.begin(), prods.end(), producer_name );
+            if (it == prods.end() ) {
+               std::cerr << "Cannot remove: producer \"" << producer_name << "\" is not on the list." << std::endl;
+               return;
+            }
+            prods.erase( it, prods.end() ); //should always delete only one element
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("voter", voter_str)
+               ("proxy", "")
+               ("producers", prods);
+            send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+      });
+   }
+};
+
 struct list_producers_subcommand {
    bool print_json = false;
    bool sort_names = false;
@@ -2332,6 +2417,8 @@ int main( int argc, char** argv ) {
    voteProducer->require_subcommand();
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
+   auto approveProducer = approve_producer_subcommand(voteProducer);
+   auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
 
    auto listProducers = list_producers_subcommand(system);
 
