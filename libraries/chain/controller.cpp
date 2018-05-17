@@ -74,7 +74,6 @@ struct controller_impl {
 
       if( const auto* b = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num) )
       {
-         edump((b->blocknum));
          unconfirmed_blocks.remove( *b );
       }
 
@@ -156,16 +155,16 @@ struct controller_impl {
       FC_ASSERT( log_head );
       auto lh_block_num = log_head->block_num();
 
-      if( s->block_num - 1  == lh_block_num ) {
-         FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
-         blog.append( s->block );
-      } else if( s->block_num -1 > lh_block_num ) {
-         wlog( "skipped blocks..." );
-         edump((s->block_num)(log_head->block_num()));
-         if( s->block_num == log_head->block_num() ) {
-            FC_ASSERT( s->id == log_head->id(), "", ("s->id",s->id)("hid",log_head->id()) );
-         }
+      if( s->block_num <= lh_block_num ) {
+//         edump((s->block_num)("double call to on_irr"));
+//         edump((s->block_num)(s->block->previous)(log_head->id()));
+         return;
       }
+      
+      FC_ASSERT( s->block_num - 1  == lh_block_num, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
+      FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
+      blog.append(s->block);
+
       emit( self.irreversible_block, s );
       db.commit( s->block_num );
 
@@ -395,7 +394,6 @@ struct controller_impl {
 
   //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
       emit( self.accepted_block, pending->_pending_block_state );
-      pending->push();
 
       if( !replaying ) {
          unconfirmed_blocks.create<unconfirmed_block_object>( [&]( auto& ubo ) {
@@ -404,6 +402,7 @@ struct controller_impl {
          });
       }
 
+      pending->push();
       pending.reset();
 
    }
