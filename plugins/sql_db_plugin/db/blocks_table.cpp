@@ -24,7 +24,7 @@ void blocks_table::create()
 {
     *m_session << "CREATE TABLE blocks("
             "id TEXT PRIMARY KEY,"
-            "index NUMERIC,"
+            "block_number NUMERIC,"
             "prev_block_id TEXT,"
             "timestamp NUMERIC,"
             "transaction_merkle_root TEXT,"
@@ -35,7 +35,7 @@ void blocks_table::create()
 
 void blocks_table::add(eosio::chain::block_state_ptr block)
 {
-    *m_session << "INSERT INTO blocks(id, index, prev_block_id, timestamp, transaction_merkle_root, producer_account_id, pending, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
+    *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root, producer_account_id, pending, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
             soci::use(block->header.id().str()),
             soci::use(block->header.block_num()),
             soci::use(block->header.previous.str()),

@@ -35,4 +35,9 @@ void transactions_table::create()
             "updated_at DATETIME)";
 }
 
+void transactions_table::add(eosio::chain::transaction_metadata_ptr transaction)
+{
+    // TODO: add transaction
+}
+
 } // namespace

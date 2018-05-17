@@ -24,7 +24,7 @@ void actions_table::create()
 {
     *m_session << "create table actions("
             "id TEXT,"
-            "index NUMERIC,"
+            "seq NUMERIC,"
             "transaction_id TEXT,"
             "handler_account_name TEXT,"
             "name TEXT,"

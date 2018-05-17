@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <soci/soci.h>
+#include <eosio/chain/transaction_metadata.hpp>
 
 namespace eosio {
 
@@ -13,6 +14,7 @@ public:
 
     void drop();
     void create();
+    void add(eosio::chain::transaction_metadata_ptr transaction);
 
 private:
     std::shared_ptr<soci::session> m_session;

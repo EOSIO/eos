@@ -33,4 +33,9 @@ void database::add(chain::block_state_ptr block)
     m_blocks_table->add(block);
 }
 
+void database::add(chain::transaction_metadata_ptr transaction)
+{
+    m_transactions_table->add(transaction);
+}
+
 } // namespace
