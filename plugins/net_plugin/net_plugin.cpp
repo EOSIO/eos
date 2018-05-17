@@ -1947,11 +1947,14 @@ namespace eosio {
       auto port = c->peer_addr.substr( colon + 1);
       idump((host)(port));
       tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+      connection_wptr weak_conn = c;
       // Note: need to add support for IPv6 too
 
       resolver->async_resolve( query,
-                               [c, this]( const boost::system::error_code& err,
+                               [weak_conn, this]( const boost::system::error_code& err,
                                           tcp::resolver::iterator endpoint_itr ){
+                                  auto c = weak_conn.lock();
+                                  if (!c) return;
                                   if( !err ) {
                                      connect( c, endpoint_itr );
                                   } else {
@@ -1969,7 +1972,10 @@ namespace eosio {
       auto current_endpoint = *endpoint_itr;
       ++endpoint_itr;
       c->connecting = true;
-      c->socket->async_connect( current_endpoint, [c, endpoint_itr, this] ( const boost::system::error_code& err ) {
+      connection_wptr weak_conn = c;
+      c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
+            auto c = weak_conn.lock();
+            if (!c) return;
             if( !err ) {
                start_session( c );
                c->send_handshake ();
