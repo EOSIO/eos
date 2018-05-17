@@ -85,6 +85,9 @@ namespace eosio { namespace testing {
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
+         void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
+         // Produce minimal number of blocks as possible to spend the given time without having any producer become inactive
+         void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds()); 
          signed_block_ptr     push_block(signed_block_ptr b);
 
          transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
