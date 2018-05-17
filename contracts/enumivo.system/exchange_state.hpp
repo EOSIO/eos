@@ -2,7 +2,7 @@
 
 #include <enumivolib/asset.hpp>
 
-namespace eosiosystem {
+namespace enumivosystem {
    using eosio::asset;
    using eosio::symbol_type;
 
@@ -37,4 +37,4 @@ namespace eosiosystem {
 
    typedef eosio::multi_index<N(rammarket), exchange_state> rammarket;
 
-} /// namespace eosiosystem
+} /// namespace enumivosystem

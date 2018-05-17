@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace eosiosystem {
+namespace enumivosystem {
    using eosio::indexed_by;
    using eosio::const_mem_fun;
    using eosio::bytes;
@@ -297,4 +297,4 @@ namespace eosiosystem {
       );
    }
 
-} /// namespace eosiosystem
+} /// namespace enumivosystem

@@ -2,7 +2,7 @@
 
 #include <enumivo.coin/enumivo.coin.hpp>
 
-namespace eosiosystem {
+namespace enumivosystem {
 
    const int64_t  min_daily_tokens = 100;
 
@@ -103,4 +103,4 @@ namespace eosiosystem {
       }
    }
 
-} //namespace eosiosystem
+} //namespace enumivosystem

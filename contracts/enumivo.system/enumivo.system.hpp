@@ -13,7 +13,7 @@
 
 #include <string>
 
-namespace eosiosystem {
+namespace enumivosystem {
 
    using eosio::asset;
    using eosio::indexed_by;
@@ -212,4 +212,4 @@ namespace eosiosystem {
          void propagate_weight_change( const voter_info& voter );
    };
 
-} /// eosiosystem
+} /// enumivosystem
