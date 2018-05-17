@@ -3,7 +3,7 @@
 static const char f32_test_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (data (i32.const 20) "1")
@@ -2521,7 +2521,7 @@ static const char f32_test_wast[] = R"=====(
    (export "apply" (func $apply))
    (export "assert_return" (func $assert_return))
    (export "assert_return_nan" (func $assert_return_nan))
-   (func $assert_return (param $0 f32) (param $1 f32 ) (param $2 i32) (call $eosio_assert(i32.eq (i32.reinterpret/f32 (get_local $0)) (i32.reinterpret/f32 (get_local $1))) (get_local $2)))
+   (func $assert_return (param $0 f32) (param $1 f32 ) (param $2 i32) (call $enumivo_assert(i32.eq (i32.reinterpret/f32 (get_local $0)) (i32.reinterpret/f32 (get_local $1))) (get_local $2)))
    (func $is_nanf (param $0 f32) (result i32)
     (i32.gt_u
      (i32.and
@@ -2533,7 +2533,7 @@ static const char f32_test_wast[] = R"=====(
      (i32.const 2139095040)
     )
    )
-   (func $assert_return_nan (param $0 f32) (param $1 i32)( call $eosio_assert (call $is_nanf (get_local $0)) (get_local $1)))
+   (func $assert_return_nan (param $0 f32) (param $1 i32)( call $enumivo_assert (call $is_nanf (get_local $0)) (get_local $1)))
    (func $add (param $0 f32) (param $1 f32) (result f32) (f32.add (get_local $0) (get_local $1)))
    (func $sub (param $0 f32) (param $1 f32) (result f32) (f32.sub (get_local $0) (get_local $1)))
    (func $mul (param $0 f32) (param $1 f32) (result f32) (f32.mul (get_local $0) (get_local $1)))
@@ -5052,7 +5052,7 @@ static const char f32_test_wast[] = R"=====(
 static const char f32_cmp_test_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (data (i32.const 20) "1")
@@ -7463,7 +7463,7 @@ static const char f32_cmp_test_wast[] = R"=====(
    (export "fle" (func $fle))
    (export "apply" (func $apply))
    (export "assert_return" (func $assert_return))
-   (func $assert_return (param $0 i32) (param $1 i32 ) (param $2 i32) (call $eosio_assert(i32.eq (get_local $0) (get_local $1)) (get_local $2)))
+   (func $assert_return (param $0 i32) (param $1 i32 ) (param $2 i32) (call $enumivo_assert(i32.eq (get_local $0) (get_local $1)) (get_local $2)))
    (func $feq (param $0 f32) (param $1 f32) (result i32) (f32.eq (get_local $0) (get_local $1)))
    (func $fne (param $0 f32) (param $1 f32) (result i32) (f32.ne (get_local $0) (get_local $1)))
    (func $fgt (param $0 f32) (param $1 f32) (result i32) (f32.gt (get_local $0) (get_local $1)))
@@ -9878,7 +9878,7 @@ static const char f32_cmp_test_wast[] = R"=====(
 static const char f32_bitwise_test_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (data (i32.const 20) "1")
@@ -10248,7 +10248,7 @@ static const char f32_bitwise_test_wast[] = R"=====(
    (export "apply" (func $apply))
    (export "assert_return" (func $assert_return))
    (export "assert_return_nan" (func $assert_return_nan))
-   (func $assert_return (param $0 f32) (param $1 f32 ) (param $2 i32) (call $eosio_assert(i32.eq (i32.reinterpret/f32 (get_local $0)) (i32.reinterpret/f32 (get_local $1))) (get_local $2)))
+   (func $assert_return (param $0 f32) (param $1 f32 ) (param $2 i32) (call $enumivo_assert(i32.eq (i32.reinterpret/f32 (get_local $0)) (i32.reinterpret/f32 (get_local $1))) (get_local $2)))
    (func $is_nanf (param $0 f32) (result i32)
     (i32.gt_u
      (i32.and
@@ -10260,7 +10260,7 @@ static const char f32_bitwise_test_wast[] = R"=====(
      (i32.const 2139095040)
     )
    )
-   (func $assert_return_nan (param $0 f32) (param $1 i32)( call $eosio_assert (call $is_nanf (get_local $0)) (get_local $1)))
+   (func $assert_return_nan (param $0 f32) (param $1 i32)( call $enumivo_assert (call $is_nanf (get_local $0)) (get_local $1)))
    (func $abs (param $0 f32) (result f32) (f32.abs (get_local $0)))
    (func $neg (param $0 f32) (result f32) (f32.neg (get_local $0)))
    (func $copysign (param $0 f32) (param $1 f32) (result f32) (f32.copysign (get_local $0) (get_local $1)))
@@ -10631,7 +10631,7 @@ static const char f32_bitwise_test_wast[] = R"=====(
 static const char f64_test_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (data (i32.const 20) "1")
@@ -13149,7 +13149,7 @@ static const char f64_test_wast[] = R"=====(
    (export "apply" (func $apply))
    (export "assert_return" (func $assert_return))
    (export "assert_return_nan" (func $assert_return_nan))
-   (func $assert_return (param $0 f64) (param $1 f64 ) (param $2 i32) (call $eosio_assert(i64.eq (i64.reinterpret/f64 (get_local $0)) (i64.reinterpret/f64 (get_local $1))) (get_local $2)))
+   (func $assert_return (param $0 f64) (param $1 f64 ) (param $2 i32) (call $enumivo_assert(i64.eq (i64.reinterpret/f64 (get_local $0)) (i64.reinterpret/f64 (get_local $1))) (get_local $2)))
    (func $is_nan (param $0 f64) (result i32)
     (i64.gt_u
      (i64.and
@@ -13161,7 +13161,7 @@ static const char f64_test_wast[] = R"=====(
      (i64.const 9218868437227405312)
     )
    )
-   (func $assert_return_nan (param $0 f64) (param $1 i32)( call $eosio_assert (call $is_nan (get_local $0)) (get_local $1)))
+   (func $assert_return_nan (param $0 f64) (param $1 i32)( call $enumivo_assert (call $is_nan (get_local $0)) (get_local $1)))
    (func $add (param $0 f64) (param $1 f64) (result f64) (f64.add (get_local $0) (get_local $1)))
    (func $sub (param $0 f64) (param $1 f64) (result f64) (f64.sub (get_local $0) (get_local $1)))
    (func $mul (param $0 f64) (param $1 f64) (result f64) (f64.mul (get_local $0) (get_local $1)))
@@ -15680,7 +15680,7 @@ static const char f64_test_wast[] = R"=====(
 static const char f64_bitwise_test_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (data (i32.const 20) "1")
@@ -16048,7 +16048,7 @@ static const char f64_bitwise_test_wast[] = R"=====(
    (export "copysign" (func $copysign))
    (export "apply" (func $apply))
    (export "assert_return" (func $assert_return))
-   (func $assert_return (param $0 f64) (param $1 f64 ) (param $2 i32) (call $eosio_assert(i64.eq (i64.reinterpret/f64 (get_local $0)) (i64.reinterpret/f64 (get_local $1))) (get_local $2)))
+   (func $assert_return (param $0 f64) (param $1 f64 ) (param $2 i32) (call $enumivo_assert(i64.eq (i64.reinterpret/f64 (get_local $0)) (i64.reinterpret/f64 (get_local $1))) (get_local $2)))
    (func $abs (param $0 f64) (result f64) (f64.abs (get_local $0)))
    (func $neg (param $0 f64) (result f64) (f64.neg (get_local $0)))
    (func $copysign (param $0 f64) (param $1 f64) (result f64) (f64.copysign (get_local $0) (get_local $1)))
@@ -16420,7 +16420,7 @@ static const char f64_bitwise_test_wast[] = R"=====(
 static const char f64_cmp_test_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (data (i32.const 20) "1")
@@ -18831,7 +18831,7 @@ static const char f64_cmp_test_wast[] = R"=====(
    (export "le" (func $le))
    (export "apply" (func $apply))
    (export "assert_return" (func $assert_return))
-   (func $assert_return (param $0 i32) (param $1 i32 ) (param $2 i32) (call $eosio_assert(i32.eq (get_local $0) (get_local $1)) (get_local $2)))
+   (func $assert_return (param $0 i32) (param $1 i32 ) (param $2 i32) (call $enumivo_assert(i32.eq (get_local $0) (get_local $1)) (get_local $2)))
    (func $eq (param $0 f64) (param $1 f64) (result i32) (f64.eq (get_local $0) (get_local $1)))
    (func $ne (param $0 f64) (param $1 f64) (result i32) (f64.ne (get_local $0) (get_local $1)))
    (func $gt (param $0 f64) (param $1 f64) (result i32) (f64.gt (get_local $0) (get_local $1)))
@@ -21246,7 +21246,7 @@ static const char f64_cmp_test_wast[] = R"=====(
 static const char f32_f64_conv_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (data (i32.const 20) "1")
@@ -21364,10 +21364,10 @@ static const char f32_f64_conv_wast[] = R"=====(
    (func $f64_convert_s_i64 (param $0 i64) (result f64) (f64.convert_s/i64 (get_local $0)))
    (func $f64_convert_u_i64 (param $0 i64) (result f64) (f64.convert_u/i64 (get_local $0)))
 
-   (func $assert_returni32 (param $0 i32) (param $1 i32 ) (param $2 i32) (call $eosio_assert(i32.eq (get_local $0)(get_local $1)) (get_local $2)))
-   (func $assert_returni64 (param $0 i64) (param $1 i64 ) (param $2 i32) (call $eosio_assert(i64.eq (get_local $0)(get_local $1)) (get_local $2)))
-   (func $assert_returnf32 (param $0 f32) (param $1 f32 ) (param $2 i32) (call $eosio_assert(i32.eq (i32.reinterpret/f32 (get_local $0)) (i32.reinterpret/f32 (get_local $1))) (get_local $2)))
-   (func $assert_returnf64 (param $0 f64) (param $1 f64 ) (param $2 i32) (call $eosio_assert(i64.eq (i64.reinterpret/f64 (get_local $0)) (i64.reinterpret/f64 (get_local $1))) (get_local $2)))
+   (func $assert_returni32 (param $0 i32) (param $1 i32 ) (param $2 i32) (call $enumivo_assert(i32.eq (get_local $0)(get_local $1)) (get_local $2)))
+   (func $assert_returni64 (param $0 i64) (param $1 i64 ) (param $2 i32) (call $enumivo_assert(i64.eq (get_local $0)(get_local $1)) (get_local $2)))
+   (func $assert_returnf32 (param $0 f32) (param $1 f32 ) (param $2 i32) (call $enumivo_assert(i32.eq (i32.reinterpret/f32 (get_local $0)) (i32.reinterpret/f32 (get_local $1))) (get_local $2)))
+   (func $assert_returnf64 (param $0 f64) (param $1 f64 ) (param $2 i32) (call $enumivo_assert(i64.eq (i64.reinterpret/f64 (get_local $0)) (i64.reinterpret/f64 (get_local $1))) (get_local $2)))
    (func $is_nan32 (param $0 f32) (result i32)
     (i32.gt_u
      (i32.and
@@ -21390,8 +21390,8 @@ static const char f32_f64_conv_wast[] = R"=====(
      (i64.const 9218868437227405312)
     )
    )
-   (func $assert_return_nan32 (param $0 f32) (param $1 i32)( call $eosio_assert (call $is_nan32 (get_local $0)) (get_local $1)))
-   (func $assert_return_nan64 (param $0 f64) (param $1 i32)( call $eosio_assert (call $is_nan64 (get_local $0)) (get_local $1)))
+   (func $assert_return_nan32 (param $0 f32) (param $1 i32)( call $enumivo_assert (call $is_nan32 (get_local $0)) (get_local $1)))
+   (func $assert_return_nan64 (param $0 f64) (param $1 i32)( call $enumivo_assert (call $is_nan64 (get_local $0)) (get_local $1)))
    (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
     (call $assert_returnf64 (call $f64_promote_f32 (f32.const 0.0)) (f64.const 0.0) (i32.const 20))
     (call $assert_returnf64 (call $f64_promote_f32 (f32.const -0.0)) (f64.const -0.0) (i32.const 24))
@@ -21652,7 +21652,7 @@ static const char f32_f64_conv_wast[] = R"=====(
 static const char i32_overflow_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (export "apply" (func $apply))
@@ -21669,7 +21669,7 @@ static const char i32_overflow_wast[] = R"=====(
 static const char i64_overflow_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (export "apply" (func $apply))

@@ -50,7 +50,7 @@ namespace enumivo {
    void get_blockchain_parameters(enumivo::blockchain_parameters& params) {
       char buf[sizeof(enumivo::blockchain_parameters)];
       size_t size = get_blockchain_parameters_packed( buf, sizeof(buf) );
-      eosio_assert( size <= sizeof(buf), "buffer is too small" );
+      enumivo_assert( size <= sizeof(buf), "buffer is too small" );
       enumivo::datastream<const char*> ds( buf, size_t(size) );
       ds >> params;
    }
@@ -298,7 +298,7 @@ namespace enumivo {
 
          char* malloc_from_freed(uint32_t size)
          {
-            eosio_assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
+            enumivo_assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
 
             char* current = _heap + _size_marker;
             while (current != nullptr)

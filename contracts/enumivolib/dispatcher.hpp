@@ -77,7 +77,7 @@ extern "C" { \
       auto self = receiver; \
       if( action == N(onerror)) { \
          /* onerror is only valid if it is for the "enumivo" code account and authorized by "enumivo"'s "active permission */ \
-         eosio_assert(code == N(enumivo), "onerror action's are only valid from the \"enumivo\" system account"); \
+         enumivo_assert(code == N(enumivo), "onerror action's are only valid from the \"enumivo\" system account"); \
       } \
       if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \

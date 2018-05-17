@@ -5,13 +5,13 @@
 /*
 static const char f32_add_wast[] = R"=====(
 (module
- (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
  (table 0 anyfunc)
  (memory $0 1)
  (export "memory" (memory $0))
  (export "apply" (func $apply))
  (func $apply (param $0 i64) (param $1 i64)
-    (call $eosio_assert (i32.eq (i32.trunc_u/f32 (f32.const 0x3f800000)) (i32.const 0x0)) (i32.const 0))
+    (call $enumivo_assert (i32.eq (i32.trunc_u/f32 (f32.const 0x3f800000)) (i32.const 0x0)) (i32.const 0))
   )
  )
 )=====";
@@ -110,7 +110,7 @@ static const char misaligned_const_ref_wast[] = R"=====(
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
  (import "env" "current_time" (func $current_time (result i64)))
  (table 0 anyfunc)
  (memory $0 1)
@@ -128,7 +128,7 @@ static const char entry_wast[] = R"=====(
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
   (block
    (call $require_auth (i64.const 6121376101093867520))
-   (call $eosio_assert
+   (call $enumivo_assert
     (i64.eq
      (i64.load offset=4
       (i32.const 0)
@@ -146,7 +146,7 @@ static const char entry_wast[] = R"=====(
 static const char entry_wast_2[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
  (import "env" "current_time" (func $current_time (result i64)))
  (table 0 anyfunc)
  (memory $0 1)
@@ -156,7 +156,7 @@ static const char entry_wast_2[] = R"=====(
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
   (block
    (call $require_auth (i64.const 6121376101093867520))
-   (call $eosio_assert
+   (call $enumivo_assert
     (i64.eq
      (i64.load offset=4
       (i32.const 0)
@@ -200,7 +200,7 @@ static const char simple_no_memory_wast[] = R"=====(
 static const char mutable_global_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $enumivo_assert (param i32 i32)))
  (table 0 anyfunc)
  (memory $0 1)
  (export "memory" (memory $0))
@@ -212,10 +212,10 @@ static const char mutable_global_wast[] = R"=====(
     (return)
   ))
   (if (i64.eq (get_local $2) (i64.const 1)) (then
-    (call $eosio_assert (i64.eq (get_global $g0) (i64.const 2)) (i32.const 0))
+    (call $enumivo_assert (i64.eq (get_global $g0) (i64.const 2)) (i32.const 0))
     (return)
   ))
-  (call $eosio_assert (i32.const 0) (i32.const 0))
+  (call $enumivo_assert (i32.const 0) (i32.const 0))
  )
  (global $g0 (mut i64) (i64.const 2))
 )
@@ -223,7 +223,7 @@ static const char mutable_global_wast[] = R"=====(
 
 static const char biggest_memory_wast[] = R"=====(
 (module
- (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $$enumivo_assert (param i32 i32)))
  (import "env" "require_auth" (func $$require_auth (param i64)))
  (table 0 anyfunc)
  (memory $$0 ${MAX_WASM_PAGES})
@@ -231,7 +231,7 @@ static const char biggest_memory_wast[] = R"=====(
  (export "apply" (func $$apply))
  (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
   (call $$require_auth (i64.const 4294504710842351616))
-  (call $$eosio_assert
+  (call $$enumivo_assert
    (i32.eq
      (grow_memory (i32.const 1))
      (i32.const -1)
@@ -311,7 +311,7 @@ static const char memory_table_import[] = R"=====(
 static const char table_checker_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "eosio_assert" (func $assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $assert (param i32 i32)))
  (type $SIG$vj (func (param i64)))
  (table 1024 anyfunc)
  (memory $0 1)
@@ -354,7 +354,7 @@ static const char table_checker_wast[] = R"=====(
 static const char table_checker_proper_syntax_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "eosio_assert" (func $assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $assert (param i32 i32)))
  (import "env" "printi" (func $printi (param i64)))
  (type $SIG$vj (func (param i64)))
  (table 1024 anyfunc)
@@ -398,7 +398,7 @@ static const char table_checker_proper_syntax_wast[] = R"=====(
 static const char table_checker_small_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
- (import "env" "eosio_assert" (func $assert (param i32 i32)))
+ (import "env" "enumivo_assert" (func $assert (param i32 i32)))
  (import "env" "printi" (func $printi (param i64)))
  (type $SIG$vj (func (param i64)))
  (table 128 anyfunc)

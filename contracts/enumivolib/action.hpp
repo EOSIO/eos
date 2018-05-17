@@ -168,7 +168,7 @@ namespace enumivo {
       }
 
       void send_context_free() const {
-         eosio_assert( authorization.size() == 0, "context free actions cannot have authorizations");
+         enumivo_assert( authorization.size() == 0, "context free actions cannot have authorizations");
          auto serialize = pack(*this);
          ::send_context_free_inline(serialize.data(), serialize.size());
       }
@@ -180,8 +180,8 @@ namespace enumivo {
        */
       template<typename T>
       T data_as() {
-         eosio_assert( name == T::get_name(), "Invalid name" );
-         eosio_assert( account == T::get_account(), "Invalid account" );
+         enumivo_assert( name == T::get_name(), "Invalid name" );
+         enumivo_assert( account == T::get_account(), "Invalid account" );
          return unpack<T>( &data[0], data.size() );
       }
 

@@ -54,11 +54,11 @@ namespace enumivosystem {
       require_auth(owner);
 
       const auto& prod = _producers.get( owner );
-      eosio_assert( prod.active(), "producer does not have an active key" );
+      enumivo_assert( prod.active(), "producer does not have an active key" );
 
       auto ct = current_time();
 
-      eosio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
+      enumivo_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
       const asset token_supply   = token( N(enumivo.coin)).get_supply(symbol_type(system_token_symbol).name() );
       const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;

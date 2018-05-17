@@ -34,7 +34,7 @@ namespace  enumivo {
 
          T get() {
             auto itr = _t.find( pk_value );
-            eosio_assert( itr != _t.end(), "singleton does not exist" );
+            enumivo_assert( itr != _t.end(), "singleton does not exist" );
             return itr->value;
          }
 

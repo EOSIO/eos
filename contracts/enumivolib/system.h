@@ -29,7 +29,7 @@ extern "C" {
     *  @param cstr - a null terminated action to explain the reason for failure
 
     */
-   void  eosio_assert( uint32_t test, const char* cstr );
+   void  enumivo_assert( uint32_t test, const char* cstr );
 
    /**
     * This method will abort execution of wasm without failing the contract. This
