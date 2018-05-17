@@ -36,6 +36,7 @@ namespace eosio { namespace testing {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
       cfg.shared_memory_size = 1024*1024*8;
+      cfg.unconfirmed_cache_size = 1024*1024*8;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
@@ -146,7 +147,6 @@ namespace eosio { namespace testing {
                     });
 
       control->commit_block();
-      control->log_irreversible_blocks();
       last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
 
       _start_block( next_time + fc::microseconds(config::block_interval_us));
@@ -632,7 +632,7 @@ namespace eosio { namespace testing {
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 setabi{
                                    .account    = account,
-                                   .abi        = abi
+                                   .abi        = fc::raw::pack(abi)
                                 });
 
       set_transaction_headers(trx);
