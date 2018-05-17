@@ -44,7 +44,7 @@ void validate_authority_precondition( const apply_context& context, const author
       if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
          continue; // account was already checked to exist, so its owner and active permissions should exist
 
-      if( a.permission.permission == config::eosio_code_name ) // virtual enumivo.code permission does not really exist but is allowed
+      if( a.permission.permission == config::enumivo_code_name ) // virtual enumivo.code permission does not really exist but is allowed
          continue;
 
       try {
@@ -65,7 +65,7 @@ void apply_enumivo_newaccount(apply_context& context) {
    auto create = context.act.data_as<newaccount>();
    try {
    context.require_authorization(create.creator);
-//   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::enumivo_auth_scope );
    auto& authorization = context.control.get_mutable_authorization_manager();
 
    ENU_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
@@ -125,7 +125,7 @@ void apply_enumivo_setcode(apply_context& context) {
    auto& db = context.db;
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
-//   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::enumivo_auth_scope );
 
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
@@ -263,7 +263,7 @@ void apply_enumivo_updateauth(apply_context& context) {
 }
 
 void apply_enumivo_deleteauth(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::enumivo_auth_scope );
 
    auto remove = context.act.data_as<deleteauth>();
    context.require_authorization(remove.account); // only here to mark the single authority on this action as used
@@ -293,7 +293,7 @@ void apply_enumivo_deleteauth(apply_context& context) {
 }
 
 void apply_enumivo_linkauth(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::enumivo_auth_scope );
 
    auto requirement = context.act.data_as<linkauth>();
    try {
@@ -308,7 +308,7 @@ void apply_enumivo_linkauth(apply_context& context) {
       const auto *code = db.find<account_object, by_name>(requirement.code);
       ENU_ASSERT(code != nullptr, account_query_exception,
                  "Failed to retrieve code for account: ${account}", ("account", requirement.code));
-      if( requirement.requirement != config::eosio_any_name ) {
+      if( requirement.requirement != config::enumivo_any_name ) {
          const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
          ENU_ASSERT(permission != nullptr, permission_query_exception,
                     "Failed to retrieve permission: ${permission}", ("permission", requirement.requirement));
@@ -341,7 +341,7 @@ void apply_enumivo_linkauth(apply_context& context) {
 }
 
 void apply_enumivo_unlinkauth(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::enumivo_auth_scope );
 
    auto& db = context.db;
    auto unlink = context.act.data_as<unlinkauth>();

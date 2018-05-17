@@ -245,6 +245,6 @@ extern "C" {
    [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       enumivo::exchange  ex( receiver );
       ex.apply( code, action );
-      eosio_exit(0);
+      enumivo_exit(0);
    }
 }

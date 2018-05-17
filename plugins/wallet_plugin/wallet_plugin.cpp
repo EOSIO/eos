@@ -53,8 +53,8 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
       wallet_manager_ptr->set_timeout(t);
    }
    if (options.count("enumivo-key")) {
-      std::string eosio_wif_key = options.at("enumivo-key").as<std::string>();
-      wallet_manager_ptr->set_eosio_key(eosio_wif_key);
+      std::string enumivo_wif_key = options.at("enumivo-key").as<std::string>();
+      wallet_manager_ptr->set_enumivo_key(enumivo_wif_key);
    }
 }
 } // namespace enumivo

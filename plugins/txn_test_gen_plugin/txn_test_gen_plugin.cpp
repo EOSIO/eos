@@ -248,7 +248,7 @@ struct txn_test_gen_plugin_impl {
       fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
       static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
-      abi_serializer eosio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
+      abi_serializer enumivo_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
 
       uint32_t reference_block_num = cc.last_irreversible_block_num();
       if (txn_reference_block_lag >= 0) {

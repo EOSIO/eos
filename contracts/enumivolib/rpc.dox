@@ -1,5 +1,5 @@
 /**
-@defgroup eosiorpc RPC Interface
+@defgroup enumivorpc RPC Interface
 @brief Describes how to interface with eosd over HTTP RPC
 
 @section tableofcontent Table Of Contents

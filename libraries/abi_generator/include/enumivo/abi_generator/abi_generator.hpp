@@ -321,13 +321,13 @@ namespace enumivo {
       }
    };
 
-   struct find_eosio_abi_macro_action : public PreprocessOnlyAction {
+   struct find_enumivo_abi_macro_action : public PreprocessOnlyAction {
 
          string& contract;
          vector<string>& actions;
          const string& abi_context;
 
-         find_eosio_abi_macro_action(string& contract, vector<string>& actions, const string& abi_context
+         find_enumivo_abi_macro_action(string& contract, vector<string>& actions, const string& abi_context
             ): contract(contract),
             actions(actions), abi_context(abi_context) {
          }
@@ -335,9 +335,9 @@ namespace enumivo {
          struct callback_handler : public PPCallbacks {
 
             CompilerInstance& compiler_instance;
-            find_eosio_abi_macro_action& act;
+            find_enumivo_abi_macro_action& act;
 
-            callback_handler(CompilerInstance& compiler_instance, find_eosio_abi_macro_action& act)
+            callback_handler(CompilerInstance& compiler_instance, find_enumivo_abi_macro_action& act)
             : compiler_instance(compiler_instance), act(act) {}
 
             void MacroExpands (const Token &token, const MacroDefinition &md, SourceRange range, const MacroArgs *args) override {

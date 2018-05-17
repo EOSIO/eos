@@ -7,7 +7,7 @@ Welcome to the Enumivo Documentation
  - [Additional resources - Github Readme](https://github.com/enumivo/enumivo#readme)
 
 ## Smart Contract Developers
-- @ref eosiorpc
+- @ref enumivorpc
 - @ref contractdev
 	- @ref accountapi - Define API for querying account data
 	- @ref chainapi - Define API for querying internal chain state

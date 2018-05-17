@@ -84,7 +84,7 @@ extern "C" { \
          switch( action ) { \
             ENUMIVO_API( TYPE, MEMBERS ) \
          } \
-         /* does not allow destructor of thiscontract to run: eosio_exit(0); */ \
+         /* does not allow destructor of thiscontract to run: enumivo_exit(0); */ \
       } \
    } \
 } \

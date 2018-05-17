@@ -24,13 +24,13 @@ const static uint64_t producers_account_name = N(enumivo.prods);
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
 const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
 
-const static uint64_t eosio_auth_scope       = N(enumivo.auth);
-const static uint64_t eosio_all_scope        = N(enumivo.all);
+const static uint64_t enumivo_auth_scope       = N(enumivo.auth);
+const static uint64_t enumivo_all_scope        = N(enumivo.all);
 
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
-const static uint64_t eosio_any_name = N(enumivo.any);
-const static uint64_t eosio_code_name = N(enumivo.code);
+const static uint64_t enumivo_any_name = N(enumivo.any);
+const static uint64_t enumivo_code_name = N(enumivo.code);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

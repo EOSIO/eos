@@ -20,14 +20,14 @@ namespace enumivosystem {
    using enumivo::const_mem_fun;
    using enumivo::block_timestamp;
 
-   struct eosio_parameters : enumivo::blockchain_parameters {
+   struct enumivo_parameters : enumivo::blockchain_parameters {
       uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ENULIB_SERIALIZE_DERIVED( eosio_parameters, enumivo::blockchain_parameters, (max_ram_size) )
+      ENULIB_SERIALIZE_DERIVED( enumivo_parameters, enumivo::blockchain_parameters, (max_ram_size) )
    };
 
-   struct eosio_global_state : eosio_parameters {
+   struct enumivo_global_state : enumivo_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             total_ram_bytes_reserved = 0;
@@ -44,7 +44,7 @@ namespace enumivosystem {
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ENULIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
+      ENULIB_SERIALIZE_DERIVED( enumivo_global_state, enumivo_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)
                                 (last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(savings)(total_unpaid_blocks)(total_activated_stake)(last_producer_schedule_id)(total_producer_vote_weight) )
@@ -109,7 +109,7 @@ namespace enumivosystem {
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
                                >  producers_table;
 
-   typedef enumivo::singleton<N(global), eosio_global_state> global_state_singleton;
+   typedef enumivo::singleton<N(global), enumivo_global_state> global_state_singleton;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
@@ -121,7 +121,7 @@ namespace enumivosystem {
          producers_table        _producers;
          global_state_singleton _global;
 
-         eosio_global_state     _gstate;
+         enumivo_global_state     _gstate;
          rammarket              _rammarket;
 
       public:
@@ -206,7 +206,7 @@ namespace enumivosystem {
          // Implementation details:
 
          //defined in voting.hpp
-         static eosio_global_state get_default_parameters();
+         static enumivo_global_state get_default_parameters();
 
          // defined in voting.cpp
          void propagate_weight_change( const voter_info& voter );

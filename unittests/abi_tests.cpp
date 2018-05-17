@@ -416,7 +416,7 @@ struct abi_gen_helper {
     std::string contract;
     std::vector<std::string> actions;
 
-    bool res = runToolOnCodeWithArgs(new find_eosio_abi_macro_action(contract, actions, ""), source,
+    bool res = runToolOnCodeWithArgs(new find_enumivo_abi_macro_action(contract, actions, ""), source,
       {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib",
       "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions",
       include_param, boost_include_param, stdcpp_include_param,
@@ -1609,10 +1609,10 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
+BOOST_FIXTURE_TEST_CASE(abgigen_enumivoabi_macro, abi_gen_helper)
 { try {
 
-   const char* abgigen_eosioabi_macro = R"=====(
+   const char* abgigen_enumivoabi_macro = R"=====(
 
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
@@ -1642,7 +1642,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
 
    )=====";
 
-   const char* abgigen_eosioabi_macro_abi = R"=====(
+   const char* abgigen_enumivoabi_macro_abi = R"=====(
    {
      "types": [],
      "structs": [{
@@ -1665,7 +1665,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
    }
    )=====";
 
-   BOOST_TEST( generate_abi(abgigen_eosioabi_macro, abgigen_eosioabi_macro_abi) == true );
+   BOOST_TEST( generate_abi(abgigen_enumivoabi_macro, abgigen_enumivoabi_macro_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
 

@@ -372,7 +372,7 @@ public:
    fc::variant get_global_state() {
       vector<char> data = get_row_by_account( N(enumivo), N(enumivo), N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "enumivo_global_state", data );
 
    }
 
@@ -1942,7 +1942,7 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, enumivo_system_tester
                                          ("permission", name(config::active_name).to_string())
                                          ("parent", name(config::owner_name).to_string())
                                          ("auth",  authority(1, {key_weight{get_public_key( config::system_account_name, "active" ), 1}}, {
-                                               permission_level_weight{{config::system_account_name, config::eosio_code_name}, 1},
+                                               permission_level_weight{{config::system_account_name, config::enumivo_code_name}, 1},
                                                permission_level_weight{{config::producers_account_name,  config::active_name}, 1}
                                             }
                                          ))

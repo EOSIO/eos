@@ -167,7 +167,7 @@ namespace enumivo { namespace chain {
          if( !linked_permission )
             return config::active_name;
 
-         if( *linked_permission == config::eosio_any_name )
+         if( *linked_permission == config::enumivo_any_name )
             return optional<permission_name>();
 
          return linked_permission;
@@ -263,7 +263,7 @@ namespace enumivo { namespace chain {
                   "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
                   ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
 
-      if( *unlinked_permission_name == config::eosio_any_name )
+      if( *unlinked_permission_name == config::enumivo_any_name )
          return;
 
       ENU_ASSERT( get_permission(auth).satisfies( get_permission({unlink.account, *unlinked_permission_name}),

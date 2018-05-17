@@ -103,10 +103,10 @@ const char* error_advice_name_type_exception = R"=====(Name should be less than 
 const char* error_advice_public_key_type_exception = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
 const char* error_advice_private_key_type_exception = R"=====(Private key should be encoded in base58 WIF)=====";
 const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON follows the right authority structure!
-You can refer to contracts/eosiolib/native.hpp for reference)=====";
+You can refer to contracts/enumivolib/native.hpp for reference)=====";
 const char* error_advice_action_type_exception = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
 const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!
-You can refer to contracts/eosiolib/transaction.hpp for reference)=====";
+You can refer to contracts/enumivolib/transaction.hpp for reference)=====";
 const char* error_advice_abi_type_exception =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
@@ -175,11 +175,11 @@ const char* error_advice_missing_auth_exception =  R"=====(Ensure that you have 
 If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.)=====";
 const char* error_advice_irrelevant_auth_exception =  "Please remove the unnecessary authority from your action!";
 
-const char* error_advice_missing_chain_api_plugin_exception =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
-const char* error_advice_missing_wallet_api_plugin_exception =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
+const char* error_advice_missing_chain_api_plugin_exception =  "Ensure that you have \033[2menumivo::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_wallet_api_plugin_exception =  "Ensure that you have \033[2menumivo::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
                                     "Otherwise specify your wallet location with \033[2m--wallet-url\033[0m\033[32m argument!";
-const char* error_advice_missing_history_api_plugin_exception =  "Ensure that you have \033[2meosio::history_api_plugin\033[0m\033[32m added to your node's configuration!";
-const char* error_advice_missing_net_api_plugin_exception =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_history_api_plugin_exception =  "Ensure that you have \033[2menumivo::history_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_net_api_plugin_exception =  "Ensure that you have \033[2menumivo::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
 const char* error_advice_wallet_exist_exception =  "Try to use different wallet name.";
 const char* error_advice_wallet_nonexistent_exception =  "Are you sure you typed the wallet name correctly?";
