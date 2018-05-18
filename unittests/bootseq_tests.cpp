@@ -79,12 +79,12 @@ public:
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "enumivo_global_state", data );
 
    }
-  
+
     auto buyram( name payer, name receiver, asset ram ) {
        auto r = base_tester::push_action(N(enumivo), N(buyram), payer, mvo()
                     ("payer", payer)
                     ("receiver", receiver)
-                    ("quant", ram) 
+                    ("quant", ram)
                     );
        produce_block();
        return r;
@@ -94,9 +94,9 @@ public:
        auto r = base_tester::push_action(N(enumivo), N(delegatebw), from, mvo()
                     ("from", "enumivo" )
                     ("receiver", receiver)
-                    ("stake_net_quantity", net) 
-                    ("stake_cpu_quantity", cpu) 
-                    ("transfer", transfer) 
+                    ("stake_net_quantity", net)
+                    ("stake_cpu_quantity", cpu)
+                    ("transfer", transfer)
                     );
        produce_block();
        return r;
@@ -142,16 +142,16 @@ public:
        produce_block();
        return r;
     }
-    
+
     auto undelegate_bandwidth( name from, name receiver, asset net, asset cpu ) {
        auto r = base_tester::push_action(N(enumivo), N(undelegatebw), from, mvo()
                     ("from", from )
                     ("receiver", receiver)
-                    ("unstake_net_quantity", net) 
-                    ("unstake_cpu_quantity", cpu) 
+                    ("unstake_net_quantity", net)
+                    ("unstake_cpu_quantity", cpu)
                     );
        produce_block();
-       return r;              
+       return r;
     }
 
     asset get_balance( const account_name& act ) {
@@ -218,7 +218,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Set enumivo.system to enumivo
         set_code_abi(N(enumivo), enumivo_system_wast, enumivo_system_abi);
 
-        // Buy ram and stake cpu and net for each genesis accounts 
+        // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {
            auto ib = a.initial_balance;
            auto ram = 1000;
@@ -235,7 +235,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto producer_candidates = {
                 N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
                 N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
-                N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ), 
+                N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ),
                 N(runnerup1), N(runnerup2), N(runnerup3)
         };
 
@@ -250,7 +250,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
           base_tester::push_action(N(enumivo), N(voteproducer), voter, mvo()
                                 ("voter",  name(voter))
                                 ("proxy", name(0) )
-                                ("producers", producers) 
+                                ("producers", producers)
                      );
         };
         votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
@@ -272,7 +272,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Since the total activated stake is less than 150,000,000, reward should remain zero
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
         // #warning TODO: now claiming rewards when the pool is empty will throw div by 0 error, fix this as separate issue
-        //   claim_rewards(N(runnerup1)); 
+        //   claim_rewards(N(runnerup1));
         produce_block();
         BOOST_TEST(get_balance(N(runnerup1)).amount == 0);
 
@@ -312,14 +312,14 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         claim_rewards(N(runnerup1));
         produce_block();
         BOOST_TEST(get_balance(N(runnerup1)).amount > 0);
-  
+
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
         const auto first_june_2028 = fc::seconds(1843430400); // 2028-06-01
         // Ensure that now is yet 10 years after 2018-06-01 yet
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS")), assert_exception); 
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS")), assert_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
@@ -329,7 +329,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         }
         // Block one should be able to unstake all his stake now
         undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS"));
-       
+
         return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
         wlog("minow" );

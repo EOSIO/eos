@@ -509,7 +509,7 @@ chain::action create_setabi(const name& account, const abi_def& abi) {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
       setabi{
          .account   = account,
-         .abi       = abi
+         .abi       = fc::raw::pack(abi)
       }
    };
 }
@@ -1031,13 +1031,16 @@ struct list_producers_subcommand {
             std::cout << "No producers found" << std::endl;
             return;
          }
-         printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Total votes");
+         auto weight = result.total_producer_vote_weight;
+         if ( !weight )
+            weight = 1;
+         printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
          for ( auto& row : result.rows )
-            printf("%-13.13s %-54.54s %-59.59s %040f\n", 
+            printf("%-13.13s %-54.54s %-59.59s %1.4f\n", 
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
-                   row["total_votes"].as_double());
+                   row["total_votes"].as_double() / weight);
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
       });
@@ -1761,7 +1764,7 @@ int main( int argc, char** argv ) {
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
-   
+
    std::vector<chain::action> actions;
    auto set_code_callback = [&]() {
       std::string wast;

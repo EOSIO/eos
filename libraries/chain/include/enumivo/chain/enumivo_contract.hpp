@@ -7,7 +7,7 @@
 #include <enumivo/chain/types.hpp>
 #include <enumivo/chain/contract_types.hpp>
 
-namespace enumivo { namespace chain { 
+namespace enumivo { namespace chain {
 
    class apply_context;
 
@@ -32,7 +32,5 @@ namespace enumivo { namespace chain {
 
    void apply_enumivo_canceldelay(apply_context&);
    ///@}  end action handlers
-   
-   abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi);
 
 } } /// namespace enumivo::chain

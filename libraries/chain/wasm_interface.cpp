@@ -5,7 +5,6 @@
 #include <enumivo/chain/producer_schedule.hpp>
 #include <enumivo/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
-#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <enumivo/chain/authorization_manager.hpp>
 #include <enumivo/chain/resource_limits.hpp>
 #include <enumivo/chain/wasm_interface_private.hpp>
