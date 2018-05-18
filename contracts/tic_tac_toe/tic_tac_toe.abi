@@ -1,5 +1,9 @@
 {
-  "types": [],
+  "version": "eosio::abi/1.0",
+  "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+  }],
   "structs": [{
       "name": "game",
       "base": "",
@@ -76,5 +80,6 @@
         "key_types" : ["account_name"]
       }
   ],
-  "ricardian_clauses": []
+  "ricardian_clauses": [],
+  "abi_extensions": []
 }

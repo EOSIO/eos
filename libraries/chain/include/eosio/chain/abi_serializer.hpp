@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
@@ -29,6 +29,7 @@ struct abi_serializer {
    map<type_name, struct_def> structs;
    map<name,type_name>        actions;
    map<name,type_name>        tables;
+   map<uint64_t, string>      error_messages;
 
    typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
    typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
@@ -53,6 +54,8 @@ struct abi_serializer {
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
+
+   optional<string>  get_error_message( uint64_t error_code )const;
 
    fc::variant binary_to_variant(const type_name& type, const bytes& binary)const;
    bytes       variant_to_binary(const type_name& type, const fc::variant& var)const;

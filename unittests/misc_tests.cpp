@@ -532,6 +532,66 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(transaction_test) { try {
+
+   testing::TESTER test;
+   signed_transaction trx;
+
+   variant pretty_trx = fc::mutable_variant_object()
+      ("actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "reqauth")
+            ("authorization", fc::variants({
+               fc::mutable_variant_object()
+                  ("actor", "eosio")
+                  ("permission", "active")
+            }))
+            ("data", fc::mutable_variant_object()
+               ("from", "eosio")
+            )
+         })
+      )
+      // lets also push a context free action, the multi chain test will then also include a context free action
+      ("context_free_actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "nonce")
+            ("data", fc::raw::pack(std::string("dummy")))
+         })
+      );
+
+   abi_serializer::from_variant(pretty_trx, trx, test.get_resolver());
+
+   test.set_transaction_headers(trx);
+
+   trx.expiration = fc::time_point::now();
+   trx.validate();
+   BOOST_CHECK_EQUAL(0, trx.signatures.size());
+   ((const signed_transaction &)trx).sign( test.get_private_key( N(eosio), "active" ), chain_id_type());
+   BOOST_CHECK_EQUAL(0, trx.signatures.size());
+   trx.sign( test.get_private_key( N(eosio), "active" ), chain_id_type()  );
+   BOOST_CHECK_EQUAL(1, trx.signatures.size());
+   trx.validate();
+
+   packed_transaction pkt;
+   pkt.set_transaction(trx, packed_transaction::none);
+
+   packed_transaction pkt2;
+   pkt2.set_transaction(trx, packed_transaction::zlib);
+
+   BOOST_CHECK_EQUAL(true, trx.expiration ==  pkt.expiration());
+   BOOST_CHECK_EQUAL(true, trx.expiration == pkt2.expiration());
+
+   BOOST_CHECK_EQUAL(trx.id(), pkt.id());
+   BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
+
+   bytes raw = pkt.get_raw_transaction();
+   bytes raw2 = pkt2.get_raw_transaction();
+   BOOST_CHECK_EQUAL(raw.size(), raw2.size());
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio

@@ -183,77 +183,77 @@ wallet_create</h2>
 <p>Create a new wallet with the given name</p>
 <h3><a class="anchor" id="examplewalletcreate"></a>
 Example wallet_create Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/create -X POST -d &#39;&quot;default&quot;&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletcreateresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/create -X POST -d &#39;&quot;default&quot;&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletcreateresult"></a>
 Example wallet_create Result</h3>
 <p>This command will return the password that can be used to unlock the wallet in the future </p><div class="fragment"><div class="line">PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX</div></div><!-- fragment --><h2><a class="anchor" id="v1walletopen"></a>
 wallet_open</h2>
 <p>Open an existing wallet of the given name</p>
 <h3><a class="anchor" id="examplewalletopen"></a>
 Example wallet_open Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/open -X POST -d &#39;&quot;default&quot;&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletopenresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/open -X POST -d &#39;&quot;default&quot;&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletopenresult"></a>
 Example wallet_open Result</h3>
 <div class="fragment"><div class="line">{}</div></div><!-- fragment --><h2><a class="anchor" id="v1walletlock"></a>
 wallet_lock</h2>
 <p>Lock a wallet of the given name</p>
 <h3><a class="anchor" id="examplewalletlock"></a>
 Example wallet_lock Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/lock -X POST -d &#39;&quot;default&quot;&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlockresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/lock -X POST -d &#39;&quot;default&quot;&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlockresult"></a>
 Example wallet_lock Result</h3>
 <div class="fragment"><div class="line">{}</div></div><!-- fragment --><h2><a class="anchor" id="v1walletlockall"></a>
 wallet_lock_all</h2>
 <p>Lock all wallets</p>
 <h3><a class="anchor" id="examplewalletlockall"></a>
 Example wallet_lock_all Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/lock_all </span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlockallresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/lock_all </span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlockallresult"></a>
 Example wallet_lock_all Result</h3>
 <div class="fragment"><div class="line">{}</div></div><!-- fragment --><h2><a class="anchor" id="v1walletunlock"></a>
 wallet_unlock</h2>
 <p>Unlock a wallet with the given name and password</p>
 <h3><a class="anchor" id="examplewalletunlock"></a>
 Example wallet_unlock Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/unlock -X POST -d &#39;[&quot;default&quot;, &quot;PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX&quot;]&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletunlockresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/unlock -X POST -d &#39;[&quot;default&quot;, &quot;PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX&quot;]&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletunlockresult"></a>
 Example wallet_unlock Result</h3>
 <div class="fragment"><div class="line">{}</div></div><!-- fragment --><h2><a class="anchor" id="v1walletimport"></a>
 wallet_import_key</h2>
 <p>Import a private key to the wallet of the given name</p>
 <h3><a class="anchor" id="examplewalletimport"></a>
 Example wallet_import_key Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/import_key -X POST -d &#39;[&quot;default&quot;,&quot;5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3&quot;]&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletimportresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/import_key -X POST -d &#39;[&quot;default&quot;,&quot;5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3&quot;]&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletimportresult"></a>
 Example wallet_import_key Result</h3>
 <div class="fragment"><div class="line">{}</div></div><!-- fragment --><h2><a class="anchor" id="v1walletlist"></a>
 wallet_list</h2>
 <p>List all wallets</p>
 <h3><a class="anchor" id="examplewalletlist"></a>
 Example wallet_list Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/list_wallets</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlistresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/list_wallets</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlistresult"></a>
 Example wallet_list Result</h3>
 <div class="fragment"><div class="line">[<span class="stringliteral">&quot;default *&quot;</span>]</div></div><!-- fragment --><h2><a class="anchor" id="v1walletlistkeys"></a>
 wallet_list_keys</h2>
 <p>List all key pairs across all wallets</p>
 <h3><a class="anchor" id="examplewalletlistkeys"></a>
 Example wallet_list_keys Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/list_keys</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlistkeysresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/list_keys</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletlistkeysresult"></a>
 Example wallet_list_keys Result</h3>
 <div class="fragment"><div class="line">[[<span class="stringliteral">&quot;EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV&quot;</span>,<span class="stringliteral">&quot;5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3&quot;</span>]]</div></div><!-- fragment --><h2><a class="anchor" id="v1walletgetpublickeys"></a>
 wallet_get_public_keys</h2>
 <p>List all public keys across all wallets</p>
 <h3><a class="anchor" id="examplewalletgetpublickeys"></a>
 Example wallet_get_public_keys Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/get_public_keys </span></div></div><!-- fragment --><h3><a class="anchor" id="examplewallegetpublickeysresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/get_public_keys </span></div></div><!-- fragment --><h3><a class="anchor" id="examplewallegetpublickeysresult"></a>
 Example wallet_get_public_keys Result</h3>
 <div class="fragment"><div class="line">[<span class="stringliteral">&quot;EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV&quot;</span>]</div></div><!-- fragment --><h2><a class="anchor" id="v1walletsettimeout"></a>
 wallet_set_timeout</h2>
 <p>Set wallet auto lock timeout (in seconds)</p>
 <h3><a class="anchor" id="examplewalletsettimeout"></a>
 Example wallet_set_timeout Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/set_timeout -X POST -d &#39;10&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletsettimeoutresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/set_timeout -X POST -d &#39;10&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletsettimeoutresult"></a>
 Example wallet_set_timeout Result</h3>
 <div class="fragment"><div class="line">{}</div></div><!-- fragment --><h2><a class="anchor" id="v1walletsigntrx"></a>
 wallet_sign_trx</h2>
 <p>Sign transaction given an array of transaction, require public keys, and chain id</p>
 <h3><a class="anchor" id="examplewalletsigntrx"></a>
 Example wallet_sign_trx Usage</h3>
-<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8889/v1/wallet/sign_transaction -X POST -d &#39;[{&quot;ref_block_num&quot;:21453,&quot;ref_block_prefix&quot;:3165644999,&quot;expiration&quot;:&quot;2017-12-08T10:28:49&quot;,&quot;scope&quot;:[&quot;initb&quot;,&quot;initc&quot;],&quot;read_scope&quot;:[],&quot;messages&quot;:[{&quot;code&quot;:&quot;currency&quot;,&quot;type&quot;:&quot;transfer&quot;,&quot;authorization&quot;:[{&quot;account&quot;:&quot;initb&quot;,&quot;permission&quot;:&quot;active&quot;}],&quot;data&quot;:&quot;000000008093dd74000000000094dd74e803000000000000&quot;}],&quot;signatures&quot;:[]}, [&quot;EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV&quot;], &quot;&quot;]&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletsigntrxresult"></a>
+<div class="fragment"><div class="line">$ curl http:<span class="comment">//localhost:8888/v1/wallet/sign_transaction -X POST -d &#39;[{&quot;ref_block_num&quot;:21453,&quot;ref_block_prefix&quot;:3165644999,&quot;expiration&quot;:&quot;2017-12-08T10:28:49&quot;,&quot;scope&quot;:[&quot;initb&quot;,&quot;initc&quot;],&quot;read_scope&quot;:[],&quot;messages&quot;:[{&quot;code&quot;:&quot;currency&quot;,&quot;type&quot;:&quot;transfer&quot;,&quot;authorization&quot;:[{&quot;account&quot;:&quot;initb&quot;,&quot;permission&quot;:&quot;active&quot;}],&quot;data&quot;:&quot;000000008093dd74000000000094dd74e803000000000000&quot;}],&quot;signatures&quot;:[]}, [&quot;EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV&quot;], &quot;&quot;]&#39;</span></div></div><!-- fragment --><h3><a class="anchor" id="examplewalletsigntrxresult"></a>
 Example wallet_sign_trx Result</h3>
 <div class="fragment"><div class="line">{</div><div class="line">  <span class="stringliteral">&quot;ref_block_num&quot;</span>: 21453,</div><div class="line">  <span class="stringliteral">&quot;ref_block_prefix&quot;</span>: 3165644999,</div><div class="line">  <span class="stringliteral">&quot;expiration&quot;</span>: <span class="stringliteral">&quot;2017-12-08T10:28:49&quot;</span>,</div><div class="line">  <span class="stringliteral">&quot;scope&quot;</span>: [</div><div class="line">    <span class="stringliteral">&quot;initb&quot;</span>,</div><div class="line">    <span class="stringliteral">&quot;initc&quot;</span></div><div class="line">  ],</div><div class="line">  <span class="stringliteral">&quot;read_scope&quot;</span>: [],</div><div class="line">  <span class="stringliteral">&quot;messages&quot;</span>: [</div><div class="line">    {</div><div class="line">      <span class="stringliteral">&quot;code&quot;</span>: <span class="stringliteral">&quot;currency&quot;</span>,</div><div class="line">      <span class="stringliteral">&quot;type&quot;</span>: <span class="stringliteral">&quot;transfer&quot;</span>,</div><div class="line">      <span class="stringliteral">&quot;authorization&quot;</span>: [</div><div class="line">        {</div><div class="line">          <span class="stringliteral">&quot;account&quot;</span>: <span class="stringliteral">&quot;initb&quot;</span>,</div><div class="line">          <span class="stringliteral">&quot;permission&quot;</span>: <span class="stringliteral">&quot;active&quot;</span></div><div class="line">        }</div><div class="line">      ],</div><div class="line">      <span class="stringliteral">&quot;data&quot;</span>: <span class="stringliteral">&quot;000000008093dd74000000000094dd74e803000000000000&quot;</span></div><div class="line">    }</div><div class="line">  ],</div><div class="line">  <span class="stringliteral">&quot;signatures&quot;</span>: [</div><div class="line">    <span class="stringliteral">&quot;1f393cc5ce6a6951fb53b11812345bcf14ffd978b07be386fd639eaf440bca7dca16b14833ec661ca0703d15e55a2a599a36d55ce78c4539433f6ce8bcee0158c3&quot;</span></div><div class="line">  ]</div><div class="line">}</div></div><!-- fragment --> </div><!-- contents -->
 <!-- start footer part -->

@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player1")
          ("mvt", mvt)
-      ), assert_exception, eosio_assert_message_starts_with("it's not your turn yet"));
+      ), eosio_assert_message_exception, eosio_assert_message_starts_with("it's not your turn yet"));
 
    mvt = mutable_variant_object()
            ("row", 1)
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player2")
          ("mvt", mvt)
-      ), assert_exception, eosio_assert_message_starts_with("not a valid movement"));
+      ), eosio_assert_message_exception, eosio_assert_message_starts_with("not a valid movement"));
 
    mvt = mutable_variant_object()
            ("row", 0)
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player2")
          ("mvt", mvt)
-      ), assert_exception, eosio_assert_message_starts_with("the game has ended"));
+      ), eosio_assert_message_exception, eosio_assert_message_starts_with("the game has ended"));
 
    game current;
    chain.get_table_entry(current, N(tic.tac.toe), N(player1), N(games), N(player2));
@@ -181,13 +181,13 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player1")
          ("by", "player2")
          ("mvt", mvt)
-      ), assert_exception, eosio_assert_message_starts_with("game doesn't exists"));
+      ), eosio_assert_message_exception, eosio_assert_message_starts_with("game doesn't exists"));
 
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(restart), N(player2), mutable_variant_object()
          ("challenger", "player2")
          ("host", "player1")
          ("by", "player2")
-      ), assert_exception, eosio_assert_message_starts_with("game doesn't exists"));
+      ), eosio_assert_message_exception, eosio_assert_message_starts_with("game doesn't exists"));
 
    chain.push_action(N(tic.tac.toe), N(create), N(player2), mutable_variant_object()
            ("challenger", "player1")
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("host", "player2")
          ("by", "player2")
          ("mvt", mvt)
-      ), assert_exception, eosio_assert_message_starts_with("it's not your turn yet"));
+      ), eosio_assert_message_exception, eosio_assert_message_starts_with("it's not your turn yet"));
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

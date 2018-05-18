@@ -1,9 +1,15 @@
 {
+  "version": "eosio::abi/1.0",
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
-    }  
-  ],
+   },{
+      "new_type_name": "permission_name",
+      "type": "name"
+   },{
+      "new_type_name": "action_name",
+      "type": "name"
+  }],
   "structs": [{
       "name": "permission_level",
       "base": "",
@@ -139,7 +145,8 @@
       "index_type": "i64",
       "key_names" : ["proposal_name"],
       "key_types" : ["name"]
-    } 
+    }
   ],
-  "ricardian_clauses": []
+  "ricardian_clauses": [],
+  "abi_extensions": []
 }

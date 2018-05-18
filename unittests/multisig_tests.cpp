@@ -53,7 +53,7 @@ public:
    }
 
    transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig,
-                                                        asset net = asset::from_string("10.0000 EOS"), asset cpu = asset::from_string("10.0000 EOS") ) {
+                                                        asset net = core_from_string("10.0000"), asset cpu = core_from_string("10.0000") ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -97,17 +97,14 @@ public:
    void create_currency( name contract, name manager, asset maxsupply ) {
       auto act =  mutable_variant_object()
          ("issuer",       manager )
-         ("maximum_supply", maxsupply )
-         ("can_freeze", 0)
-         ("can_recall", 0)
-         ("can_whitelist", 0);
+         ("maximum_supply", maxsupply );
 
       base_tester::push_action(contract, N(create), contract, act );
    }
-   void issue( name to, const string& amount, name manager = config::system_account_name ) {
+   void issue( name to, const asset& amount, name manager = config::system_account_name ) {
       base_tester::push_action( N(eosio.token), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
-                                ("quantity", asset::from_string(amount) )
+                                ("quantity", amount )
                                 ("memo", "")
                                 );
    }
@@ -120,7 +117,7 @@ public:
                                 );
    }
    asset get_balance( const account_name& act ) {
-      //return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
+      //return get_currency_balance( config::system_account_name, symbol(CORE_SYMBOL), act );
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
       const auto& db  = control->db();
@@ -129,14 +126,14 @@ public:
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).to_symbol_code()));
+         const auto *obj = db.find<key_value_object, by_scope_primary>(boost::make_tuple(tbl->id, symbol(CORE_SYMBOL).to_symbol_code()));
          if (obj) {
             // balance is the first field in the serialization
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }
       }
-      return asset( result, symbol(SY(4,EOS)) );
+      return asset( result, symbol(CORE_SYMBOL) );
    }
 
    transaction_trace_ptr push_action( const account_name& signer, const action_name& name, const variant_object& data, bool auth = true ) {
@@ -212,7 +209,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -264,7 +261,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -293,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -328,7 +325,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
                                              ("trx",           trx)
                                              ("requested", vector<permission_level>{ { N(alice), config::active_name } } )
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -409,9 +406,9 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    //             /         |        \             <--- implicitly updated in onblock action
    // alice active     bob active   carol active
 
-   set_authority(N(eosio), "active", authority(1, 
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}}, 
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner", 
+   set_authority(N(eosio), "active", authority(1,
+      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
+      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner",
       { { N(eosio), "active" } }, { get_private_key( N(eosio), "active" ) });
 
    set_producers( {N(alice),N(bob),N(carol)} );
@@ -421,22 +418,22 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    set_code( N(eosio.token), eosio_token_wast );
    set_abi( N(eosio.token), eosio_token_abi );
 
-   create_currency( N(eosio.token), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
-   issue(config::system_account_name,      "1000000000.0000 EOS");
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
+   issue(config::system_account_name, core_from_string("1000000000.0000"));
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
    set_code( config::system_account_name, eosio_system_wast );
    set_abi( config::system_account_name, eosio_system_abi );
 
    produce_blocks();
 
-   create_account_with_resources( N(alice1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
-   create_account_with_resources( N(bob111111111), N(eosio), asset::from_string("0.4500 EOS"), false );
-   create_account_with_resources( N(carol1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
+   create_account_with_resources( N(alice1111111), N(eosio), core_from_string("1.0000"), false );
+   create_account_with_resources( N(bob111111111), N(eosio), core_from_string("0.4500"), false );
+   create_account_with_resources( N(carol1111111), N(eosio), core_from_string("1.0000"), false );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
-   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name }, 
+   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
 
    vector<permission_level> action_perm = {{N(eosio), config::active_name}};
@@ -508,20 +505,19 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
    // can't create account because system contract was replace by the test_api contract
-   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
-      fc::assert_exception,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "condition: assertion failed: Unknown Test");
-      }
+
+   BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), N(eosio), core_from_string("1.0000"), false ),
+                            eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
+
    );
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester ) try {
 
    // set up the link between (eosio active) and (eosio.prods active)
-   set_authority(N(eosio), "active", authority(1, 
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}}, 
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner", 
+   set_authority(N(eosio), "active", authority(1,
+      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
+      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner",
       { { N(eosio), "active" } }, { get_private_key( N(eosio), "active" ) });
 
    create_accounts( { N(apple) } );
@@ -532,22 +528,22 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    set_code( N(eosio.token), eosio_token_wast );
    set_abi( N(eosio.token), eosio_token_abi );
 
-   create_currency( N(eosio.token), config::system_account_name, asset::from_string("10000000000.0000 EOS") );
-   issue(config::system_account_name,      "1000000000.0000 EOS");
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
+   issue(config::system_account_name, core_from_string("1000000000.0000"));
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
    set_code( config::system_account_name, eosio_system_wast );
    set_abi( config::system_account_name, eosio_system_abi );
 
    produce_blocks();
 
-   create_account_with_resources( N(alice1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
-   create_account_with_resources( N(bob111111111), N(eosio), asset::from_string("0.4500 EOS"), false );
-   create_account_with_resources( N(carol1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
+   create_account_with_resources( N(alice1111111), N(eosio), core_from_string("1.0000"), false );
+   create_account_with_resources( N(bob111111111), N(eosio), core_from_string("0.4500"), false );
+   create_account_with_resources( N(carol1111111), N(eosio), core_from_string("1.0000"), false );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
-   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name }, 
+   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};
 
    vector<permission_level> action_perm = {{N(eosio), config::active_name}};
@@ -606,10 +602,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
                      ("proposal_name", "first")
                      ("executer",      "alice")
       ),
-      fc::assert_exception,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "condition: assertion failed: transaction authorization failed");
-      }
+      eosio_assert_message_exception, eosio_assert_message_is("transaction authorization failed")
    );
 
    //approve by apple
@@ -634,11 +627,10 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
    // can't create account because system contract was replace by the test_api contract
-   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
-      fc::assert_exception,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "condition: assertion failed: Unknown Test");
-      }
+
+   BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), N(eosio), core_from_string("1.0000"), false ),
+                            eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
+
    );
 } FC_LOG_AND_RETHROW()
 

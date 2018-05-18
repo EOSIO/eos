@@ -77,13 +77,145 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
 
     const char* my_abi = R"=====(
 {
-  "types": [],
-  "structs": [{
+   "version": "",
+   "types": [{
+      "new_type_name": "type_name",
+      "type": "string"
+   },{
+      "new_type_name": "field_name",
+      "type": "string"
+   },{
+      "new_type_name": "fields",
+      "type": "field_def[]"
+   },{
+      "new_type_name": "scope_name",
+      "type": "name"
+   }],
+   "structs": [{
+      "name": "abi_extension",
+      "base": "",
+      "fields": [{
+         "name": "type",
+         "type": "uint16"
+      },{
+         "name": "data",
+         "type": "bytes"
+      }]
+   },{
+      "name": "type_def",
+      "base": "",
+      "fields": [{
+         "name": "new_type_name",
+         "type": "type_name"
+      },{
+         "name": "type",
+         "type": "type_name"
+      }]
+   },{
+      "name": "field_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "field_name"
+      },{
+         "name": "type",
+         "type": "type_name"
+      }]
+   },{
+      "name": "struct_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "type_name"
+      },{
+         "name": "base",
+         "type": "type_name"
+      }{
+         "name": "fields",
+         "type": "field_def[]"
+      }]
+   },{
+      "name": "action_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "action_name"
+      },{
+         "name": "type",
+         "type": "type_name"
+      },{
+         "name": "ricardian_contract",
+         "type": "string"
+      }]
+   },{
+      "name": "table_def",
+      "base": "",
+      "fields": [{
+         "name": "name",
+         "type": "table_name"
+      },{
+         "name": "index_type",
+         "type": "type_name"
+      },{
+         "name": "key_names",
+         "type": "field_name[]"
+      },{
+         "name": "key_types",
+         "type": "type_name[]"
+      },{
+         "name": "type",
+         "type": "type_name"
+      }]
+   },{
+     "name": "clause_pair",
+     "base": "",
+     "fields": [{
+         "name": "id",
+         "type": "string"
+     },{
+         "name": "body",
+         "type": "string"
+     }]
+   },{
+      "name": "abi_def",
+      "base": "",
+      "fields": [{
+         "name": "version",
+         "type": "string"
+      },{
+         "name": "types",
+         "type": "type_def[]"
+      },{
+         "name": "structs",
+         "type": "struct_def[]"
+      },{
+         "name": "actions",
+         "type": "action_def[]"
+      },{
+         "name": "tables",
+         "type": "table_def[]"
+      },{
+         "name": "ricardian_clauses",
+         "type": "clause_pair[]"
+      },{
+         "name": "abi_extensions",
+         "type": "abi_extension[]"
+      }]
+   },{
       "name"  : "A",
       "base"  : "PublicKeyTypes",
       "fields": []
-    },
-    {
+   },{
+      "name": "signed_transaction",
+      "base": "transaction",
+      "fields": [{
+         "name": "signatures",
+         "type": "signature[]"
+      },{
+         "name": "context_free_data",
+         "type": "bytes[]"
+      }]
+   },{
       "name": "PublicKeyTypes",
       "base" : "AssetTypes",
       "fields": [{
@@ -145,18 +277,6 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
          "name": "fieldname_arr",
          "type": "field_name[]"
       },{
-         "name": "fixedstring32",
-         "type": "fixed_string32"
-      },{
-         "name": "fixedstring32_ar",
-         "type": "fixed_string32[]"
-      },{
-         "name": "fixedstring16",
-         "type": "fixed_string16"
-      },{
-         "name": "fixedstring16_ar",
-         "type": "fixed_string16[]"
-      },{
          "name": "typename",
          "type": "type_name"
       },{
@@ -193,12 +313,6 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
          "name": "uint128_arr",
          "type": "uint128[]"
       },{
-         "name": "uint256",
-         "type": "uint256"
-      },{
-         "name": "uint256_arr",
-         "type": "uint256[]"
-      },{
          "name": "int8",
          "type": "int8"
       },{
@@ -223,6 +337,12 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
          "name": "int64_arr",
          "type": "int64[]"
       },{
+         "name": "int128",
+         "type": "int128"
+      },{
+         "name": "int128_arr",
+         "type": "int128[]"
+      },{
          "name": "name",
          "type": "name"
       },{
@@ -230,10 +350,10 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
          "type": "name[]"
       },{
          "name": "field",
-         "type": "field"
+         "type": "field_def"
       },{
          "name": "field_arr",
-         "type": "field[]"
+         "type": "field_def[]"
       },{
          "name": "struct",
          "type": "struct_def"
@@ -342,7 +462,8 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
   "actions": [],
   "tables": [],
   "ricardian_clauses": [{"id":"clause A","body":"clause body A"},
-              {"id":"clause B","body":"clause body B"}]
+              {"id":"clause B","body":"clause body B"}],
+  "abi_extensions": []
 }
 )=====";
 
@@ -432,7 +553,7 @@ struct abi_gen_helper {
     );
     FC_ASSERT(res == true);
 
-    abi_serializer(eosio_contract_abi(output)).validate();
+    abi_serializer(output).validate();
 
     auto abi1 = fc::json::from_string(abi).as<abi_def>();
 
@@ -471,44 +592,45 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
    const char* all_types = R"=====(
    #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
    #include <eosiolib/types.hpp>
+   #include <eosiolib/varint.hpp>
    #include <eosiolib/asset.hpp>
-   #include <eosiolib/action.hpp>
    #include <eosiolib/time.hpp>
-   #include <string>
 
-   typedef eosio::symbol_type symbol;
+   using namespace eosio;
+
+   typedef signed_int varint32;
+   typedef unsigned_int varuint32;
+   typedef symbol_type symbol;
 
    //@abi action
    struct test_struct {
-     std::string             field1;
-     eosio::time_point_sec   field2;
-     signature               field3;
-     checksum256             field4;
-     field_name              field5;
-     fixed_string32          field6;
-     fixed_string16          field7;
-     type_name               field8;
-     uint8_t                 field9;
-     uint16_t                field10;
-     uint32_t                field11;
-     uint64_t                field12;
-     uint128_t               field13;
-     int8_t                  field15;
-     int16_t                 field16;
-     int32_t                 field17;
-     int64_t                 field18;
-     eosio::name             field19;
-     account_name            field23;
-     permission_name         field24;
-     action_name             field25;
-     scope_name              field26;
-     eosio::permission_level field27;
-     public_key              field39;
-     eosio::asset            field40;
-     eosio::extended_asset   field41;
-     symbol                  field42;
-     eosio::time_point       field43;
-     eosio::block_timestamp_type  field44;
+      bool                    field1;
+      int8_t                  field2;
+      uint8_t                 field3;
+      int16_t                 field4;
+      uint16_t                field5;
+      int32_t                 field6;
+      uint32_t                field7;
+      int64_t                 field8;
+      uint64_t                field9;
+      int128_t                field10;
+      uint128_t               field11;
+      varint32                field12;
+      varuint32               field13;
+      time_point              field14;
+      time_point_sec          field15;
+      block_timestamp_type    field16;
+      name                    field17;
+      bytes                   field18;
+      std::string             field19;
+      checksum160             field20;
+      checksum256             field21;
+      checksum512             field22;
+      public_key              field23;
+      signature               field24;
+      symbol                  field25;
+      asset                   field26;
+      extended_asset          field27;
    };
    )=====";
 
@@ -516,99 +638,92 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
    {
      "types": [],
      "structs": [{
-         "name": "test_struct",
-         "base": "",
-         "fields": [{
-             "name": "field1",
-             "type": "string"
-           },{
-             "name": "field2",
-             "type": "time_point_sec"
-           },{
-             "name": "field3",
-             "type": "signature"
-           },{
-             "name": "field4",
-             "type": "checksum256"
-           },{
-             "name": "field5",
-             "type": "field_name"
-           },{
-             "name": "field6",
-             "type": "fixed_string32"
-           },{
-             "name": "field7",
-             "type": "fixed_string16"
-           },{
-             "name": "field8",
-             "type": "type_name"
-           },{
-             "name": "field9",
-             "type": "uint8"
-           },{
-             "name": "field10",
-             "type": "uint16"
-           },{
-             "name": "field11",
-             "type": "uint32"
-           },{
-             "name": "field12",
-             "type": "uint64"
-           },{
-             "name": "field13",
-             "type": "uint128"
-           },{
-             "name": "field15",
-             "type": "int8"
-           },{
-             "name": "field16",
-             "type": "int16"
-           },{
-             "name": "field17",
-             "type": "int32"
-           },{
-             "name": "field18",
-             "type": "int64"
-           },{
-             "name": "field19",
-             "type": "name"
-           },{
-             "name": "field23",
-             "type": "account_name"
-           },{
-             "name": "field24",
-             "type": "permission_name"
-           },{
-             "name": "field25",
-             "type": "action_name"
-           },{
-             "name": "field26",
-             "type": "scope_name"
-           },{
-             "name": "field27",
-             "type": "permission_level"
-           },{
-             "name": "field39",
-             "type": "public_key"
-           },{
-             "name": "field40",
-             "type": "asset"
-           },{
-             "name": "field41",
-             "type": "extended_asset"
-           },{
-             "name": "field42",
-             "type": "symbol"
-           },{
-             "name": "field43",
-             "type": "time_point"
-           },{
-             "name": "field44",
-             "type": "block_timestamp_type"
-           }
-         ]
-       }
-     ],
+      "name": "test_struct",
+      "base": "",
+      "fields": [{
+          "name": "field1",
+          "type": "bool"
+        },{
+          "name": "field2",
+          "type": "int8"
+        },{
+          "name": "field3",
+          "type": "uint8"
+        },{
+          "name": "field4",
+          "type": "int16"
+        },{
+          "name": "field5",
+          "type": "uint16"
+        },{
+          "name": "field6",
+          "type": "int32"
+        },{
+          "name": "field7",
+          "type": "uint32"
+        },{
+          "name": "field8",
+          "type": "int64"
+        },{
+          "name": "field9",
+          "type": "uint64"
+        },{
+          "name": "field10",
+          "type": "int128"
+        },{
+          "name": "field11",
+          "type": "uint128"
+        },{
+          "name": "field12",
+          "type": "varint32"
+        },{
+          "name": "field13",
+          "type": "varuint32"
+        },{
+          "name": "field14",
+          "type": "time_point"
+        },{
+          "name": "field15",
+          "type": "time_point_sec"
+        },{
+          "name": "field16",
+          "type": "block_timestamp_type"
+        },{
+          "name": "field17",
+          "type": "name"
+        },{
+          "name": "field18",
+          "type": "bytes"
+        },{
+          "name": "field19",
+          "type": "string"
+        },{
+          "name": "field20",
+          "type": "checksum160"
+        },{
+          "name": "field21",
+          "type": "checksum256"
+        },{
+          "name": "field22",
+          "type": "checksum512"
+        },{
+          "name": "field23",
+          "type": "public_key"
+        },{
+          "name": "field24",
+          "type": "signature"
+        },{
+          "name": "field25",
+          "type": "symbol"
+        },{
+          "name": "field26",
+          "type": "asset"
+        },{
+          "name": "field27",
+          "type": "extended_asset"
+        }
+      ]
+     }],
      "actions": [{
          "name": "teststruct",
          "type": "test_struct",
@@ -739,8 +854,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
    };
 
    struct my_complex_value {
-      uint64_t    a;
-      account_name b;
+      uint64_t a;
+      name     b;
    };
 
    //@abi table
@@ -792,7 +907,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
             "type" : "uint64"
           },{
             "name" : "b",
-            "type" : "account_name"
+            "type" : "name"
           }]
        },{
           "name" : "table4",
@@ -1541,10 +1656,10 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension, abi_gen_helper)
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
+BOOST_FIXTURE_TEST_CASE(abigen_vector_alias, abi_gen_helper)
 { try {
 
-   const char* abgigen_vector_alias = R"=====(
+   const char* abigen_vector_alias = R"=====(
    #include <string>
    #include <vector>
    #include <eosiolib/types.hpp>
@@ -1566,7 +1681,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
 
    )=====";
 
-   const char* abgigen_vector_alias_abi = R"=====(
+   const char* abigen_vector_alias_abi = R"=====(
    {
      "types": [{
          "new_type_name": "array_of_rows",
@@ -1605,14 +1720,14 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
    }
    )=====";
 
-   BOOST_TEST( generate_abi(abgigen_vector_alias, abgigen_vector_alias_abi) == true );
+   BOOST_TEST( generate_abi(abigen_vector_alias, abigen_vector_alias_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
+BOOST_FIXTURE_TEST_CASE(abigen_eosioabi_macro, abi_gen_helper)
 { try {
 
-   const char* abgigen_eosioabi_macro = R"=====(
+   const char* abigen_eosioabi_macro = R"=====(
 
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
@@ -1627,11 +1742,11 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
         public:
             using contract::contract;
 
-            void hi( account_name user ) {
+            void hi( name user ) {
                print( "Hello, ", name{user} );
             }
 
-            void bye( account_name user ) {
+            void bye( name user ) {
                print( "Bye, ", name{user} );
             }
       };
@@ -1642,7 +1757,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
 
    )=====";
 
-   const char* abgigen_eosioabi_macro_abi = R"=====(
+   const char* abigen_eosioabi_macro_abi = R"=====(
    {
      "types": [],
      "structs": [{
@@ -1650,7 +1765,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
          "base": "",
          "fields": [{
              "name": "user",
-             "type": "account_name"
+             "type": "name"
            }
          ]
        }
@@ -1665,14 +1780,14 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
    }
    )=====";
 
-   BOOST_TEST( generate_abi(abgigen_eosioabi_macro, abgigen_eosioabi_macro_abi) == true );
+   BOOST_TEST( generate_abi(abigen_eosioabi_macro, abigen_eosioabi_macro_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
+BOOST_FIXTURE_TEST_CASE(abigen_contract_inheritance, abi_gen_helper)
 { try {
 
-   const char* abgigen_contract_inheritance = R"=====(
+   const char* abigen_contract_inheritance = R"=====(
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
@@ -1686,7 +1801,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
         public:
             using contract::contract;
 
-            void hi( account_name user ) {
+            void hi( name user ) {
                print( "Hello, ", name{user} );
             }
       };
@@ -1694,7 +1809,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
       struct new_hello : hello {
         public:
             new_hello(account_name self) : hello(self) {}
-            void bye( account_name user ) {
+            void bye( name user ) {
                print( "Bye, ", name{user} );
             }
       };
@@ -1704,7 +1819,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
       #pragma GCC diagnostic pop
    )=====";
 
-   const char* abgigen_contract_inheritance_abi = R"=====(
+   const char* abigen_contract_inheritance_abi = R"=====(
    {
      "types": [],
      "structs": [{
@@ -1712,7 +1827,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
          "base": "",
          "fields": [{
              "name": "user",
-             "type": "account_name"
+             "type": "name"
            }
          ]
        },{
@@ -1720,7 +1835,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
          "base": "",
          "fields": [{
              "name": "user",
-             "type": "account_name"
+             "type": "name"
            }
          ]
        }
@@ -1738,7 +1853,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
    }
    )=====";
 
-   BOOST_TEST( generate_abi(abgigen_contract_inheritance, abgigen_contract_inheritance_abi) == true );
+   BOOST_TEST( generate_abi(abigen_contract_inheritance, abigen_contract_inheritance_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1755,8 +1870,8 @@ BOOST_AUTO_TEST_CASE(general)
     {
       "publickey"     :  "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "publickey_arr" :  ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
-      "asset"         : "100.0000 EOS",
-      "asset_arr"     : ["100.0000 EOS","100.0000 EOS"],
+      "asset"         : "100.0000 SYS",
+      "asset_arr"     : ["100.0000 SYS","100.0000 SYS"],
 
       "string"            : "ola ke ase",
       "string_arr"        : ["ola ke ase","ola ke desi"],
@@ -1771,10 +1886,6 @@ BOOST_AUTO_TEST_CASE(general)
       "checksum256_arr"      : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
       "fieldname"         : "name1",
       "fieldname_arr"     : ["name1","name2"],
-      "fixedstring32"     : "1234567890abcdef1234567890abcdef",
-      "fixedstring32_ar"  : ["1234567890abcdef1234567890abcdef","1234567890abcdef1234567890abcdea"],
-      "fixedstring16"     : "1234567890abcdef",
-      "fixedstring16_ar"  : ["1234567890abcdef","1234567890abcdea"],
       "typename"          : "name3",
       "typename_arr"      : ["name4","name5"],
       "bytes"             : "010203",
@@ -1787,10 +1898,8 @@ BOOST_AUTO_TEST_CASE(general)
       "uint32_arr"        : [32,33],
       "uint64"            : 64,
       "uint64_arr"        : [64,65],
-      "uint128"           : "128",
-      "uint128_arr"       : ["128","129"],
-      "uint256"           : "256",
-      "uint256_arr"       : ["256","257"],
+      "uint128"           : 128,
+      "uint128_arr"       : ["0x00000000000000000000000000000080",129],
       "int8"              : 108,
       "int8_arr"          : [108,109],
       "int16"             : 116,
@@ -1799,6 +1908,8 @@ BOOST_AUTO_TEST_CASE(general)
       "int32_arr"         : [132,133],
       "int64"             : 164,
       "int64_arr"         : [164,165],
+      "int128"            : -128,
+      "int128_arr"        : ["0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF80",-129],
       "name"              : "xname1",
       "name_arr"          : ["xname2","xname3"],
       "field"             : {"name":"name1", "type":"type1"},
@@ -1829,7 +1940,8 @@ BOOST_AUTO_TEST_CASE(general)
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
         "max_net_usage_words":15,
         "max_cpu_usage_ms":43,
-        "delay_sec":0
+        "delay_sec":0,
+        "transaction_extensions": []
       },
       "transaction_arr": [{
         "ref_block_num":"1",
@@ -1839,7 +1951,8 @@ BOOST_AUTO_TEST_CASE(general)
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
         "max_net_usage_words":15,
         "max_cpu_usage_ms":43,
-        "delay_sec":0
+        "delay_sec":0,
+        "transaction_extensions": []
       },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
@@ -1848,7 +1961,8 @@ BOOST_AUTO_TEST_CASE(general)
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
         "max_net_usage_words":21,
         "max_cpu_usage_ms":87,
-        "delay_sec":0
+        "delay_sec":0,
+        "transaction_extensions": []
       }],
       "strx": {
         "ref_block_num":"1",
@@ -1861,7 +1975,8 @@ BOOST_AUTO_TEST_CASE(general)
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
         "max_net_usage_words":15,
         "max_cpu_usage_ms":43,
-        "delay_sec":0
+        "delay_sec":0,
+        "transaction_extensions": []
       },
       "strx_arr": [{
         "ref_block_num":"1",
@@ -1874,7 +1989,8 @@ BOOST_AUTO_TEST_CASE(general)
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
         "max_net_usage_words":15,
         "max_cpu_usage_ms":43,
-        "delay_sec":0
+        "delay_sec":0,
+        "transaction_extensions": []
       },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
@@ -1886,7 +2002,8 @@ BOOST_AUTO_TEST_CASE(general)
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
         "max_net_usage_words":15,
         "max_cpu_usage_ms":43,
-        "delay_sec":0
+        "delay_sec":0,
+        "transaction_extensions": []
       }],
       "keyweight": {"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},
       "keyweight_arr": [{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
@@ -1917,24 +2034,30 @@ BOOST_AUTO_TEST_CASE(general)
          {"name":"table2","index_type":"indextype2","key_names":["keyname2"],"key_types":["typename2"],"type":"type2"}
       ],
       "abidef":{
+        "version": "",
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
         "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
         "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
-        "ricardian_clauses": []
+        "ricardian_clauses": [],
+        "abi_extensions": []
       },
       "abidef_arr": [{
+        "version": "",
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
         "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
         "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
-        "ricardian_clauses": []
+        "ricardian_clauses": [],
+        "abi_extensions": []
       },{
+        "version": "",
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
         "actions" : [{"name":"action1","type":"type1", "ricardian_contract": ""}],
         "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
-        "ricardian_clauses": []
+        "ricardian_clauses": [],
+        "abi_extensions": []
       }]
     }
    )=====";
@@ -2177,14 +2300,16 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
         "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005},
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
         "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
-                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
+                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }],
+        "waits" : []
      },
      "active" : {
         "threshold" : 2146483145,
         "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005},
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
         "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
-                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
+                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }],
+        "waits" : []
      }   }
    )=====";
 
@@ -2306,12 +2431,141 @@ BOOST_AUTO_TEST_CASE(setcode_test)
 BOOST_AUTO_TEST_CASE(setabi_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   const char* abi_def_abi = R"=====(
+      {
+         "version": "",
+         "types": [{
+            "new_type_name": "type_name",
+            "type": "string"
+         },{
+            "new_type_name": "field_name",
+            "type": "string"
+         }],
+         "structs": [{
+            "name": "abi_extension",
+            "base": "",
+            "fields": [{
+               "name": "type",
+               "type": "uint16"
+            },{
+               "name": "data",
+               "type": "bytes"
+            }]
+         },{
+            "name": "type_def",
+            "base": "",
+            "fields": [{
+               "name": "new_type_name",
+               "type": "type_name"
+            },{
+               "name": "type",
+               "type": "type_name"
+            }]
+         },{
+            "name": "field_def",
+            "base": "",
+            "fields": [{
+               "name": "name",
+               "type": "field_name"
+            },{
+               "name": "type",
+               "type": "type_name"
+            }]
+         },{
+            "name": "struct_def",
+            "base": "",
+            "fields": [{
+               "name": "name",
+               "type": "type_name"
+            },{
+               "name": "base",
+               "type": "type_name"
+            }{
+               "name": "fields",
+               "type": "field_def[]"
+            }]
+         },{
+               "name": "action_def",
+               "base": "",
+               "fields": [{
+                  "name": "name",
+                  "type": "action_name"
+               },{
+                  "name": "type",
+                  "type": "type_name"
+               },{
+                  "name": "ricardian_contract",
+                  "type": "string"
+               }]
+         },{
+               "name": "table_def",
+               "base": "",
+               "fields": [{
+                  "name": "name",
+                  "type": "table_name"
+               },{
+                  "name": "index_type",
+                  "type": "type_name"
+               },{
+                  "name": "key_names",
+                  "type": "field_name[]"
+               },{
+                  "name": "key_types",
+                  "type": "type_name[]"
+               },{
+                  "name": "type",
+                  "type": "type_name"
+               }]
+         },{
+            "name": "clause_pair",
+            "base": "",
+            "fields": [{
+               "name": "id",
+               "type": "string"
+            },{
+               "name": "body",
+               "type": "string"
+            }]
+         },{
+               "name": "abi_def",
+               "base": "",
+               "fields": [{
+                  "name": "version",
+                  "type": "string"
+               },{
+                  "name": "types",
+                  "type": "type_def[]"
+               },{
+                  "name": "structs",
+                  "type": "struct_def[]"
+               },{
+                  "name": "actions",
+                  "type": "action_def[]"
+               },{
+                  "name": "tables",
+                  "type": "table_def[]"
+               },{
+                  "name": "ricardian_clauses",
+                  "type": "clause_pair[]"
+               },{
+                  "name": "abi_extensions",
+                  "type": "abi_extension[]"
+               }]
+         }],
+         "actions": [],
+         "tables": [],
+         "ricardian_clauses": [],
+         "abi_extensions": []
+      }
+   )=====";
 
-   const char* test_data = R"=====(
-   {
-      "account": "setabi.acc",
-      "abi":  {
+   auto v = fc::json::from_string(abi_def_abi);
+
+   abi_serializer abis(eosio_contract_abi(v.as<abi_def>()));
+
+   const char* abi_string = R"=====(
+      {
+        "version": "",
         "types": [{
             "new_type_name": "account_name",
             "type": "name"
@@ -2363,110 +2617,104 @@ BOOST_AUTO_TEST_CASE(setabi_test)
             "key_types" : ["name"]
           }
         ],
-       "ricardian_clauses": []
+       "ricardian_clauses": [],
+       "abi_extensions": []
       }
-   }
    )=====";
 
-   auto var = fc::json::from_string(test_data);
+   auto var = fc::json::from_string(abi_string);
+   auto abi = var.as<abi_def>();
 
-   auto set_abi = var.as<setabi>();
-   BOOST_TEST("setabi.acc" == set_abi.account);
+   BOOST_TEST_REQUIRE(1 == abi.types.size());
 
-   BOOST_TEST_REQUIRE(1 == set_abi.abi.types.size());
+   BOOST_TEST("account_name" == abi.types[0].new_type_name);
+   BOOST_TEST("name" == abi.types[0].type);
 
-   BOOST_TEST("account_name" == set_abi.abi.types[0].new_type_name);
-   BOOST_TEST("name" == set_abi.abi.types[0].type);
+   BOOST_TEST_REQUIRE(3 == abi.structs.size());
 
-   BOOST_TEST_REQUIRE(3 == set_abi.abi.structs.size());
+   BOOST_TEST("transfer_base" == abi.structs[0].name);
+   BOOST_TEST("" == abi.structs[0].base);
+   BOOST_TEST_REQUIRE(1 == abi.structs[0].fields.size());
+   BOOST_TEST("memo" == abi.structs[0].fields[0].name);
+   BOOST_TEST("string" == abi.structs[0].fields[0].type);
 
-   BOOST_TEST("transfer_base" == set_abi.abi.structs[0].name);
-   BOOST_TEST("" == set_abi.abi.structs[0].base);
-   BOOST_TEST_REQUIRE(1 == set_abi.abi.structs[0].fields.size());
-   BOOST_TEST("memo" == set_abi.abi.structs[0].fields[0].name);
-   BOOST_TEST("string" == set_abi.abi.structs[0].fields[0].type);
+   BOOST_TEST("transfer" == abi.structs[1].name);
+   BOOST_TEST("transfer_base" == abi.structs[1].base);
+   BOOST_TEST_REQUIRE(3 == abi.structs[1].fields.size());
+   BOOST_TEST("from" == abi.structs[1].fields[0].name);
+   BOOST_TEST("account_name" == abi.structs[1].fields[0].type);
+   BOOST_TEST("to" == abi.structs[1].fields[1].name);
+   BOOST_TEST("account_name" == abi.structs[1].fields[1].type);
+   BOOST_TEST("amount" == abi.structs[1].fields[2].name);
+   BOOST_TEST("uint64" == abi.structs[1].fields[2].type);
 
-   BOOST_TEST("transfer" == set_abi.abi.structs[1].name);
-   BOOST_TEST("transfer_base" == set_abi.abi.structs[1].base);
-   BOOST_TEST_REQUIRE(3 == set_abi.abi.structs[1].fields.size());
-   BOOST_TEST("from" == set_abi.abi.structs[1].fields[0].name);
-   BOOST_TEST("account_name" == set_abi.abi.structs[1].fields[0].type);
-   BOOST_TEST("to" == set_abi.abi.structs[1].fields[1].name);
-   BOOST_TEST("account_name" == set_abi.abi.structs[1].fields[1].type);
-   BOOST_TEST("amount" == set_abi.abi.structs[1].fields[2].name);
-   BOOST_TEST("uint64" == set_abi.abi.structs[1].fields[2].type);
+   BOOST_TEST("account" == abi.structs[2].name);
+   BOOST_TEST("" == abi.structs[2].base);
+   BOOST_TEST_REQUIRE(2 == abi.structs[2].fields.size());
+   BOOST_TEST("account" == abi.structs[2].fields[0].name);
+   BOOST_TEST("name" == abi.structs[2].fields[0].type);
+   BOOST_TEST("balance" == abi.structs[2].fields[1].name);
+   BOOST_TEST("uint64" == abi.structs[2].fields[1].type);
 
-   BOOST_TEST("account" == set_abi.abi.structs[2].name);
-   BOOST_TEST("" == set_abi.abi.structs[2].base);
-   BOOST_TEST_REQUIRE(2 == set_abi.abi.structs[2].fields.size());
-   BOOST_TEST("account" == set_abi.abi.structs[2].fields[0].name);
-   BOOST_TEST("name" == set_abi.abi.structs[2].fields[0].type);
-   BOOST_TEST("balance" == set_abi.abi.structs[2].fields[1].name);
-   BOOST_TEST("uint64" == set_abi.abi.structs[2].fields[1].type);
+   BOOST_TEST_REQUIRE(1 == abi.actions.size());
+   BOOST_TEST("transfer" == abi.actions[0].name);
+   BOOST_TEST("transfer" == abi.actions[0].type);
 
-   BOOST_TEST_REQUIRE(1 == set_abi.abi.actions.size());
-   BOOST_TEST("transfer" == set_abi.abi.actions[0].name);
-   BOOST_TEST("transfer" == set_abi.abi.actions[0].type);
+   BOOST_TEST_REQUIRE(1 == abi.tables.size());
+   BOOST_TEST("account" == abi.tables[0].name);
+   BOOST_TEST("account" == abi.tables[0].type);
+   BOOST_TEST("i64" == abi.tables[0].index_type);
+   BOOST_TEST_REQUIRE(1 == abi.tables[0].key_names.size());
+   BOOST_TEST("account" == abi.tables[0].key_names[0]);
+   BOOST_TEST_REQUIRE(1 == abi.tables[0].key_types.size());
+   BOOST_TEST("name" == abi.tables[0].key_types[0]);
 
-   BOOST_TEST_REQUIRE(1 == set_abi.abi.tables.size());
-   BOOST_TEST("account" == set_abi.abi.tables[0].name);
-   BOOST_TEST("account" == set_abi.abi.tables[0].type);
-   BOOST_TEST("i64" == set_abi.abi.tables[0].index_type);
-   BOOST_TEST_REQUIRE(1 == set_abi.abi.tables[0].key_names.size());
-   BOOST_TEST("account" == set_abi.abi.tables[0].key_names[0]);
-   BOOST_TEST_REQUIRE(1 == set_abi.abi.tables[0].key_types.size());
-   BOOST_TEST("name" == set_abi.abi.tables[0].key_types[0]);
+   auto var2 = verify_byte_round_trip_conversion( abis, "abi_def", var );
+   auto abi2 = var2.as<abi_def>();
 
-   auto var2 = verify_byte_round_trip_conversion( abis, "setabi", var );
-   auto setabi2 = var2.as<setabi>();
+   BOOST_TEST_REQUIRE(abi.types.size() == abi2.types.size());
 
-   BOOST_TEST(set_abi.account == setabi2.account);
+   BOOST_TEST(abi.types[0].new_type_name == abi2.types[0].new_type_name);
+   BOOST_TEST(abi.types[0].type == abi2.types[0].type);
 
-   BOOST_TEST_REQUIRE(set_abi.abi.types.size() == setabi2.abi.types.size());
+   BOOST_TEST_REQUIRE(abi.structs.size() == abi2.structs.size());
 
-   BOOST_TEST(set_abi.abi.types[0].new_type_name == setabi2.abi.types[0].new_type_name);
-   BOOST_TEST(set_abi.abi.types[0].type == setabi2.abi.types[0].type);
+   BOOST_TEST(abi.structs[0].name == abi2.structs[0].name);
+   BOOST_TEST(abi.structs[0].base == abi2.structs[0].base);
+   BOOST_TEST_REQUIRE(abi.structs[0].fields.size() == abi2.structs[0].fields.size());
+   BOOST_TEST(abi.structs[0].fields[0].name == abi2.structs[0].fields[0].name);
+   BOOST_TEST(abi.structs[0].fields[0].type == abi2.structs[0].fields[0].type);
 
-   BOOST_TEST_REQUIRE(set_abi.abi.structs.size() == setabi2.abi.structs.size());
+   BOOST_TEST(abi.structs[1].name == abi2.structs[1].name);
+   BOOST_TEST(abi.structs[1].base == abi2.structs[1].base);
+   BOOST_TEST_REQUIRE(abi.structs[1].fields.size() == abi2.structs[1].fields.size());
+   BOOST_TEST(abi.structs[1].fields[0].name == abi2.structs[1].fields[0].name);
+   BOOST_TEST(abi.structs[1].fields[0].type == abi2.structs[1].fields[0].type);
+   BOOST_TEST(abi.structs[1].fields[1].name == abi2.structs[1].fields[1].name);
+   BOOST_TEST(abi.structs[1].fields[1].type == abi2.structs[1].fields[1].type);
+   BOOST_TEST(abi.structs[1].fields[2].name == abi2.structs[1].fields[2].name);
+   BOOST_TEST(abi.structs[1].fields[2].type == abi2.structs[1].fields[2].type);
 
-   BOOST_TEST(set_abi.abi.structs[0].name == setabi2.abi.structs[0].name);
-   BOOST_TEST(set_abi.abi.structs[0].base == setabi2.abi.structs[0].base);
-   BOOST_TEST_REQUIRE(set_abi.abi.structs[0].fields.size() == setabi2.abi.structs[0].fields.size());
-   BOOST_TEST(set_abi.abi.structs[0].fields[0].name == setabi2.abi.structs[0].fields[0].name);
-   BOOST_TEST(set_abi.abi.structs[0].fields[0].type == setabi2.abi.structs[0].fields[0].type);
+   BOOST_TEST(abi.structs[2].name == abi2.structs[2].name);
+   BOOST_TEST(abi.structs[2].base == abi2.structs[2].base);
+   BOOST_TEST_REQUIRE(abi.structs[2].fields.size() == abi2.structs[2].fields.size());
+   BOOST_TEST(abi.structs[2].fields[0].name == abi2.structs[2].fields[0].name);
+   BOOST_TEST(abi.structs[2].fields[0].type == abi2.structs[2].fields[0].type);
+   BOOST_TEST(abi.structs[2].fields[1].name == abi2.structs[2].fields[1].name);
+   BOOST_TEST(abi.structs[2].fields[1].type == abi2.structs[2].fields[1].type);
 
-   BOOST_TEST(set_abi.abi.structs[1].name == setabi2.abi.structs[1].name);
-   BOOST_TEST(set_abi.abi.structs[1].base == setabi2.abi.structs[1].base);
-   BOOST_TEST_REQUIRE(set_abi.abi.structs[1].fields.size() == setabi2.abi.structs[1].fields.size());
-   BOOST_TEST(set_abi.abi.structs[1].fields[0].name == setabi2.abi.structs[1].fields[0].name);
-   BOOST_TEST(set_abi.abi.structs[1].fields[0].type == setabi2.abi.structs[1].fields[0].type);
-   BOOST_TEST(set_abi.abi.structs[1].fields[1].name == setabi2.abi.structs[1].fields[1].name);
-   BOOST_TEST(set_abi.abi.structs[1].fields[1].type == setabi2.abi.structs[1].fields[1].type);
-   BOOST_TEST(set_abi.abi.structs[1].fields[2].name == setabi2.abi.structs[1].fields[2].name);
-   BOOST_TEST(set_abi.abi.structs[1].fields[2].type == setabi2.abi.structs[1].fields[2].type);
+   BOOST_TEST_REQUIRE(abi.actions.size() == abi2.actions.size());
+   BOOST_TEST(abi.actions[0].name == abi2.actions[0].name);
+   BOOST_TEST(abi.actions[0].type == abi2.actions[0].type);
 
-   BOOST_TEST(set_abi.abi.structs[2].name == setabi2.abi.structs[2].name);
-   BOOST_TEST(set_abi.abi.structs[2].base == setabi2.abi.structs[2].base);
-   BOOST_TEST_REQUIRE(set_abi.abi.structs[2].fields.size() == setabi2.abi.structs[2].fields.size());
-   BOOST_TEST(set_abi.abi.structs[2].fields[0].name == setabi2.abi.structs[2].fields[0].name);
-   BOOST_TEST(set_abi.abi.structs[2].fields[0].type == setabi2.abi.structs[2].fields[0].type);
-   BOOST_TEST(set_abi.abi.structs[2].fields[1].name == setabi2.abi.structs[2].fields[1].name);
-   BOOST_TEST(set_abi.abi.structs[2].fields[1].type == setabi2.abi.structs[2].fields[1].type);
-
-   BOOST_TEST_REQUIRE(set_abi.abi.actions.size() == setabi2.abi.actions.size());
-   BOOST_TEST(set_abi.abi.actions[0].name == setabi2.abi.actions[0].name);
-   BOOST_TEST(set_abi.abi.actions[0].type == setabi2.abi.actions[0].type);
-
-   BOOST_TEST_REQUIRE(set_abi.abi.tables.size() == setabi2.abi.tables.size());
-   BOOST_TEST(set_abi.abi.tables[0].name == setabi2.abi.tables[0].name);
-   BOOST_TEST(set_abi.abi.tables[0].type == setabi2.abi.tables[0].type);
-   BOOST_TEST(set_abi.abi.tables[0].index_type == setabi2.abi.tables[0].index_type);
-   BOOST_TEST_REQUIRE(set_abi.abi.tables[0].key_names.size() == setabi2.abi.tables[0].key_names.size());
-   BOOST_TEST(set_abi.abi.tables[0].key_names[0] == setabi2.abi.tables[0].key_names[0]);
-   BOOST_TEST_REQUIRE(set_abi.abi.tables[0].key_types.size() == setabi2.abi.tables[0].key_types.size());
-   BOOST_TEST(set_abi.abi.tables[0].key_types[0] == setabi2.abi.tables[0].key_types[0]);
-
-   verify_type_round_trip_conversion<setabi>( abis, "setabi", var);
+   BOOST_TEST_REQUIRE(abi.tables.size() == abi2.tables.size());
+   BOOST_TEST(abi.tables[0].name == abi2.tables[0].name);
+   BOOST_TEST(abi.tables[0].type == abi2.tables[0].type);
+   BOOST_TEST(abi.tables[0].index_type == abi2.tables[0].index_type);
+   BOOST_TEST_REQUIRE(abi.tables[0].key_names.size() == abi2.tables[0].key_names.size());
+   BOOST_TEST(abi.tables[0].key_names[0] == abi2.tables[0].key_names[0]);
+   BOOST_TEST_REQUIRE(abi.tables[0].key_types.size() == abi2.tables[0].key_types.size());
+   BOOST_TEST(abi.tables[0].key_types[0] == abi2.tables[0].key_types[0]);
 
 } FC_LOG_AND_RETHROW() }
 

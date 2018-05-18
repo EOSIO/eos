@@ -15,6 +15,7 @@ import re
 Print=testUtils.Utils.Print
 errorExit=testUtils.Utils.errorExit
 
+from core_symbol import CORE_SYMBOL
 
 def cmdError(name, cmdCode=0, exitNow=False):
     msg="FAILURE - %s%s" % (name, ("" if cmdCode == 0 else (" returned error code %d" % cmdCode)))
@@ -255,7 +256,7 @@ try:
     if not node.verifyAccount(testeraAccount):
         errorExit("FAILURE - account creation failed.", raw=True)
 
-    transferAmount="97.5321 EOS"
+    transferAmount="97.5321 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
     if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer") is None:
         cmdError("%s transfer" % (ClientName))
@@ -269,7 +270,7 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    transferAmount="0.0100 EOS"
+    transferAmount="0.0100 {0}".format(CORE_SYMBOL)
     Print("Force transfer funds %s from account %s to %s" % (
         transferAmount, defproduceraAccount.name, testeraAccount.name))
     if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True) is None:
@@ -277,7 +278,7 @@ try:
         errorExit("Failed to force transfer funds %d from account %s to %s" % (
             transferAmount, defproduceraAccount.name, testeraAccount.name))
 
-    expectedAmount="97.5421 EOS"
+    expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
     actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
@@ -298,7 +299,7 @@ try:
         cmdError("%s wallet unlock" % (ClientName))
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
-    transferAmount="97.5311 EOS"
+    transferAmount="97.5311 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
     trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
@@ -308,7 +309,7 @@ try:
             transferAmount, testeraAccount.name, currencyAccount.name))
     transId=testUtils.Node.getTransId(trans)
 
-    expectedAmount="98.0311 EOS" # 5000 initial deposit
+    expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
     actualAmount=node.getAccountEosBalanceStr(currencyAccount.name)
     if expectedAmount != actualAmount:

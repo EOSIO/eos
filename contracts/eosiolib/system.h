@@ -26,10 +26,27 @@ extern "C" {
     *  Aborts processing of this action and unwinds all pending changes if the test condition is true
     *  @brief Aborts processing of this action and unwinds all pending changes
     *  @param test - 0 to abort, 1 to ignore
-    *  @param cstr - a null terminated action to explain the reason for failure
+    *  @param msg - a null terminated string explaining the reason for failure
+    */
+   void  eosio_assert( uint32_t test, const char* msg );
+
+   /**
+    *  Aborts processing of this action and unwinds all pending changes if the test condition is true
+    *  @brief Aborts processing of this action and unwinds all pending changes
+    *  @param test - 0 to abort, 1 to ignore
+    *  @param msg - a pointer to the start of string explaining the reason for failure
+    *  @param msg_len - length of the string
+    */
+   void  eosio_assert_message( uint32_t test, const char* msg, uint32_t msg_len );
+
+   /**
+    *  Aborts processing of this action and unwinds all pending changes if the test condition is true
+    *  @brief Aborts processing of this action and unwinds all pending changes
+    *  @param test - 0 to abort, 1 to ignore
+    *  @param code - the error code
 
     */
-   void  eosio_assert( uint32_t test, const char* cstr );
+   void  eosio_assert_code( uint32_t test, uint64_t code );
 
    /**
     * This method will abort execution of wasm without failing the contract. This
@@ -51,7 +68,7 @@ extern "C" {
     *  @return time in seconds from 1970 of the current block
     */
    uint32_t  now() {
-      return (uint32_t)( current_time() / 1000000 ); 
+      return (uint32_t)( current_time() / 1000000 );
    }
    ///@ } systemcapi
 
