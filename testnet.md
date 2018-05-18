@@ -48,7 +48,7 @@ To address the complexity implied by distributing multiple enudaemon nodes acros
 
 Based on a handful of command line arguments the Launcher is able to compose per-node configuration files, distribute these files securely amongst the peer hosts, then start up the multiple instances of enudaemon.
 
-Eosd instances started this way have their output logged in individual text files. Finally the launcher application is also able to shut down some or all of the test network. 
+Instances of enudaemon started this way have their output logged in individual text files. Finally the launcher application is also able to shut down some or all of the test network. 
 
 ## Running the Launcher application
 
