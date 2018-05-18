@@ -100,6 +100,7 @@ namespace eosio { namespace chain {
       structs.clear();
       actions.clear();
       tables.clear();
+      error_messages.clear();
 
       for( const auto& st : abi.structs )
          structs[st.name] = st;
@@ -115,6 +116,9 @@ namespace eosio { namespace chain {
       for( const auto& t : abi.tables )
          tables[t.name] = t.type;
 
+      for( const auto& e : abi.error_messages )
+         error_messages[e.error_code] = e.error_msg;
+
       /**
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
@@ -123,6 +127,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( structs.size() == abi.structs.size() );
       FC_ASSERT( actions.size() == abi.actions.size() );
       FC_ASSERT( tables.size() == abi.tables.size() );
+      FC_ASSERT( error_messages.size() == abi.error_messages.size() );
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
@@ -343,6 +348,14 @@ namespace eosio { namespace chain {
       auto itr = tables.find(action);
       if( itr != tables.end() ) return itr->second;
       return type_name();
+   }
+
+   optional<string> abi_serializer::get_error_message( uint64_t error_code )const {
+      auto itr = error_messages.find( error_code );
+      if( itr == error_messages.end() )
+         return optional<string>();
+
+      return itr->second;
    }
 
 } }
