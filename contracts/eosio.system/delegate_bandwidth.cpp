@@ -319,7 +319,7 @@ namespace eosiosystem {
             } else {
                need_deferred_trx = true;
             }
-         } else if ( net_balance < asset(0) && cpu_balance < asset(0) ) { //need to create refund
+         } else if ( net_balance < asset(0) || cpu_balance < asset(0) ) { //need to create refund
             refunds_tbl.emplace( from, [&]( refund_request& r ) {
                   r.owner = from;
                   if ( net_balance < asset(0) ) {
