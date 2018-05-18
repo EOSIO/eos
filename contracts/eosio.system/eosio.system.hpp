@@ -211,6 +211,8 @@ namespace eosiosystem {
          //defined in voting.hpp
          static eosio_global_state get_default_parameters();
 
+         void update_votes( const account_name voter, const account_name proxy, const std::vector<account_name>& producers, bool voting );
+
          // defined in voting.cpp
          void propagate_weight_change( const voter_info& voter );
    };

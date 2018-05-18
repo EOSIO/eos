@@ -371,7 +371,7 @@ namespace eosiosystem {
          }
 
          if( from_voter->producers.size() || from_voter->proxy ) {
-            voteproducer( from, from_voter->proxy, from_voter->producers );
+            update_votes( from, from_voter->proxy, from_voter->producers, false );
          }
       }
    }
