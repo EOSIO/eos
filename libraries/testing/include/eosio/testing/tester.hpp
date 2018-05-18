@@ -24,6 +24,8 @@ std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v );
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e );
 
+eosio::chain::asset core_from_string(const std::string& s);
+
 namespace boost { namespace test_tools { namespace tt_detail {
 
    template<>
