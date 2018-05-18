@@ -121,9 +121,9 @@ namespace enumivosystem {
    void system_contract::buyrambytes( account_name payer, account_name receiver, uint32_t bytes ) {
       auto itr = _rammarket.find(S(4,RAMENU));
       auto tmp = *itr;
-      auto eosout = tmp.convert( asset(bytes,S(0,RAM)), S(4,ENU) );
+      auto enuout = tmp.convert( asset(bytes,S(0,RAM)), S(4,ENU) );
 
-      buyram( payer, receiver, eosout );
+      buyram( payer, receiver, enuout );
    }
 
 
