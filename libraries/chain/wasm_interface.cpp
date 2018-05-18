@@ -1257,9 +1257,9 @@ class transaction_api : public context_aware_api {
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
-      void cancel_deferred( const unsigned __int128& val ) {
+      bool cancel_deferred( const unsigned __int128& val ) {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
-         context.cancel_deferred_transaction( (unsigned __int128)sender_id );
+         return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
 };
 
@@ -1754,7 +1754,7 @@ REGISTER_INTRINSICS(transaction_api,
    (send_inline,               void(int, int)               )
    (send_context_free_inline,  void(int, int)               )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
-   (cancel_deferred,           void(int)                    )
+   (cancel_deferred,           int(int)                     )
 );
 
 REGISTER_INTRINSICS(context_free_api,

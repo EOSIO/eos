@@ -296,6 +296,9 @@ namespace eosiosystem {
          bool need_deferred_trx = false;
          if ( req != refunds_tbl.end() ) { //need to update refund
             refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
+                  if ( net_balance <= asset(0) || cpu_balance <= asset(0) ) {
+                     r.request_time = now();
+                  }
                   r.net_amount -= net_balance;
                   if ( r.net_amount < asset(0) ) {
                      net_balance = -r.net_amount;
@@ -306,7 +309,6 @@ namespace eosiosystem {
                      cpu_balance = -r.cpu_amount;
                      r.cpu_amount = asset(0);
                   }
-                  r.request_time = now();
                });
             eosio_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
             eosio_assert( asset(0) <= req->cpu_amount, "negative cpu refund amount" ); //should never happen
@@ -339,7 +341,7 @@ namespace eosiosystem {
             out.delay_sec = refund_delay;
             out.send( from, receiver, true );
          } else {
-            //cancel_deferred( from );
+            cancel_deferred( from );
          }
 
          auto transfer_amount = net_balance + cpu_balance;
