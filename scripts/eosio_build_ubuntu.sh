@@ -39,7 +39,7 @@
 		   fi
 		;;
 		"Ubuntu")
-			if [ "${OS_MIN}" -lt 4 ]; then
+			if [ "${OS_MAJ}" -lt 16 ]; then
 				printf "\\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\\n"
 				printf "\\tExiting now.\\n"
 				exit 1
