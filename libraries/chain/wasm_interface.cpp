@@ -722,22 +722,22 @@ class crypto_api : public context_aware_api {
 
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
          auto result = fc::sha256::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
          auto result = fc::sha1::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
          auto result = fc::sha512::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
          auto result = fc::ripemd160::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
@@ -902,11 +902,28 @@ public:
       FC_ASSERT( false, "abort() called");
    }
 
-   void eosio_assert(bool condition, null_terminated_ptr str) {
-      if( !condition ) {
-         std::string message( str );
+   // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
+   void eosio_assert( bool condition, null_terminated_ptr msg ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         std::string message( msg );
          edump((message));
-         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+      }
+   }
+
+   void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         std::string message( msg, msg_len );
+         edump((message));
+         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+      }
+   }
+
+   void eosio_assert_code( bool condition, uint64_t error_code ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         edump((error_code));
+         EOS_THROW( eosio_assert_code_exception,
+                    "assertion failure with error code: ${error_code}", ("error_code", error_code) );
       }
    }
 
@@ -945,6 +962,7 @@ class console_api : public context_aware_api {
       console_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
+      // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
       }
@@ -1708,9 +1726,11 @@ REGISTER_INTRINSICS(system_api,
 );
 
 REGISTER_INTRINSICS(context_free_system_api,
-   (abort,        void()         )
-   (eosio_assert, void(int, int) )
-   (eosio_exit,   void(int)      )
+   (abort,                void()              )
+   (eosio_assert,         void(int, int)      )
+   (eosio_assert_message, void(int, int, int) )
+   (eosio_assert_code,    void(int, int64_t)  )
+   (eosio_exit,           void(int)           )
 );
 
 REGISTER_INTRINSICS(action_api,

@@ -59,14 +59,14 @@ public:
 
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
-      
-      { 
+
+      {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          abi_ser.set_abi(abi);
       }
-      
+
       produce_blocks();
 
       create_account_with_resources( N(alice1111111), N(eosio), asset::from_string("1.0000 EOS"), false );
@@ -645,19 +645,19 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( stake_negative, eosio_system_tester ) try {
    issue( "alice1111111", "1000.0000 EOS",  config::system_account_name );
 
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("must stake a positive amount"),
                         stake( "alice1111111", "-0.0001 EOS", "0.0000 EOS" )
    );
 
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("must stake a positive amount"),
                         stake( "alice1111111", "0.0000 EOS", "-0.0001 EOS" )
    );
 
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("must stake a positive amount"),
                         stake( "alice1111111", "00.0000 EOS", "00.0000 EOS" )
    );
 
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("must stake a positive amount"),
                         stake( "alice1111111", "0.0000 EOS", "00.0000 EOS" )
    );
 
@@ -676,16 +676,16 @@ BOOST_FIXTURE_TEST_CASE( unstake_negative, eosio_system_tester ) try {
    wdump((vinfo));
    REQUIRE_MATCHING_OBJECT( voter( "alice1111111", "300.0002 EOS" ), get_voter_info( "alice1111111" ) );
 
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("must unstake a positive amount"),
                         unstake( "alice1111111", "bob111111111", "-1.0000 EOS", "0.0000 EOS" )
    );
 
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("must unstake a positive amount"),
                         unstake( "alice1111111", "bob111111111", "0.0000 EOS", "-1.0000 EOS" )
    );
 
    //unstake all zeros
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("must unstake a positive amount"),
                         unstake( "alice1111111", "bob111111111", "0.0000 EOS", "0.0000 EOS" )
    );
 
@@ -703,12 +703,12 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("700.0000 EOS"), get_balance( "alice1111111" ) );
 
    //trying to unstake more net bandwith than at stake
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("insufficient staked net bandwidth"),
                         unstake( "alice1111111", "200.0001 EOS", "0.0000 EOS" )
    );
 
    //trying to unstake more cpu bandwith than at stake
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked cpu bandwidth"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("insufficient staked cpu bandwidth"),
                         unstake( "alice1111111", "0.0000 EOS", "100.0001 EOS" )
    );
 
@@ -735,7 +735,7 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( true, get_voter_info( "bob111111111" ).is_null() );
 
    //bob111111111 should not be able to unstake what was staked by alice1111111
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: unable to find key"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("unable to find key"),
                         unstake( "bob111111111", "0.0000 EOS", "10.0000 EOS" )
    );
 
@@ -748,11 +748,11 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    REQUIRE_MATCHING_OBJECT( voter( "carol1111111", "30.0000 EOS" ), get_voter_info( "carol1111111" ) );
 
    //alice1111111 should not be able to unstake money staked by carol1111111
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("insufficient staked net bandwidth"),
                         unstake( "alice1111111", "bob111111111", "2001.0000 EOS", "1.0000 EOS" )
    );
 
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked cpu bandwidth"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("insufficient staked cpu bandwidth"),
                         unstake( "alice1111111", "bob111111111", "1.0000 EOS", "101.0000 EOS" )
    );
 
@@ -886,7 +886,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( "http://block.one", info["url"].as_string() );
 
    //unregister bob111111111 who is not a producer
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer not found" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer not found" ),
                         push_action( N(bob111111111), N(unregprod), mvo()
                                      ("producer",  "bob111111111")
                         )
@@ -993,7 +993,7 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester, * bo
    REQUIRE_MATCHING_OBJECT( voter( "bob111111111", "13.5791 EOS" ), get_voter_info( "bob111111111" ) );
 
    //bob111111111 should not be able to vote for alice1111111 who is not a producer
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer is not registered" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer is not registered" ),
                         push_action( N(bob111111111), N(voteproducer), mvo()
                                     ("voter",  "bob111111111")
                                     ("proxy", name(0).to_string() )
@@ -1021,7 +1021,7 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester, * bo
    BOOST_REQUIRE_EQUAL( fc::crypto::public_key(), fc::crypto::public_key(prod["producer_key"].as_string()) );
 
    //bob111111111 should not be able to vote for alice1111111 who is an unregistered producer
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer is not currently registered" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer is not currently registered" ),
                         push_action( N(bob111111111), N(voteproducer), mvo()
                                     ("voter",  "bob111111111")
                                     ("proxy", name(0).to_string() )
@@ -1038,7 +1038,7 @@ BOOST_FIXTURE_TEST_CASE( more_than_30_producer_voting, eosio_system_tester ) try
    REQUIRE_MATCHING_OBJECT( voter( "bob111111111", "13.5791 EOS" ), get_voter_info( "bob111111111" ) );
 
    //bob111111111 should not be able to vote for alice1111111 who is not a producer
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: attempt to vote for too many producers" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "attempt to vote for too many producers" ),
                         push_action( N(bob111111111), N(voteproducer), mvo()
                                      ("voter",  "bob111111111")
                                      ("proxy", name(0).to_string() )
@@ -1066,7 +1066,7 @@ BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, eosio_system_tester ) try 
    );
 
    //bob111111111 should not be able to vote for alice1111111 who is not a producer
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer votes must be unique and sorted" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer votes must be unique and sorted" ),
                         push_action( N(bob111111111), N(voteproducer), mvo()
                                      ("voter",  "bob111111111")
                                      ("proxy", name(0).to_string() )
@@ -1434,14 +1434,14 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const uint32_t unpaid_blocks = prod["unpaid_blocks"].as<uint32_t>();
       BOOST_REQUIRE(1 < unpaid_blocks);
       BOOST_REQUIRE_EQUAL(0, prod["last_claim_time"].as<uint64_t>());
-      
+
       BOOST_REQUIRE_EQUAL(initial_tot_unpaid_blocks, unpaid_blocks);
 
       const asset initial_supply  = get_token_supply();
       const asset initial_balance = get_balance(N(defproducera));
 
       BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
-      
+
       const auto global_state          = get_global_state();
       const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
@@ -1464,7 +1464,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       BOOST_REQUIRE_EQUAL(0, initial_savings);
       BOOST_REQUIRE_EQUAL(0, initial_perblock_bucket);
       BOOST_REQUIRE_EQUAL(0, initial_pervote_bucket);
-      
+
       BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(secs_between_fills) * continuous_rate ) / secs_per_year ),
                           supply.amount - initial_supply.amount);
       BOOST_REQUIRE_EQUAL(int64_t( ( initial_supply.amount * double(secs_between_fills) * (4.   * continuous_rate/ 5.) / secs_per_year ) ),
@@ -1474,7 +1474,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
 
       int64_t from_perblock_bucket = int64_t( initial_supply.amount * double(secs_between_fills) * (0.25 * continuous_rate/ 5.) / secs_per_year ) ;
       int64_t from_pervote_bucket  = int64_t( initial_supply.amount * double(secs_between_fills) * (0.75 * continuous_rate/ 5.) / secs_per_year ) ;
-      
+
 
       if (from_pervote_bucket >= 100 * 10000) {
          BOOST_REQUIRE_EQUAL(from_perblock_bucket + from_pervote_bucket, balance.amount - initial_balance.amount);
@@ -1486,14 +1486,14 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
    }
 
    {
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within past day"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
                           push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
    }
 
    // defproducera waits for 23 hours and 55 minutes, can't claim rewards yet
    {
       produce_block(fc::seconds(23 * 3600 + 55 * 60));
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within past day"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
                           push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
    }
 
@@ -1562,7 +1562,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
 
    // defproducerb tries to claim rewards but he's not on the list
    {
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: unable to find key"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("unable to find key"),
                           push_action(N(defproducerb), N(claimrewards), mvo()("owner", "defproducerb")));
    }
 
@@ -1583,7 +1583,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const asset   supply  = get_token_supply();
       const int64_t savings = get_global_state()["savings"].as<int64_t>();
       // Amount issued per year is very close to the 5% inflation target. Small difference (500 tokens out of 50'000'000 issued)
-      // is due to compounding every 8 hours in this test as opposed to theoretical continuous compounding 
+      // is due to compounding every 8 hours in this test as opposed to theoretical continuous compounding
       BOOST_REQUIRE(500 * 10000 > int64_t(double(initial_supply.amount) * double(0.05)) - (supply.amount - initial_supply.amount));
       BOOST_REQUIRE(500 * 10000 > int64_t(double(initial_supply.amount) * double(0.04)) - (savings - initial_savings));
    }
@@ -1726,7 +1726,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint32_t initial_unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
 
       BOOST_REQUIRE_EQUAL(success(), push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
-      
+
       const auto     global_state      = get_global_state();
       const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
@@ -1750,7 +1750,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
       const int64_t from_perblock_bucket = initial_unpaid_blocks * expected_perblock_bucket / initial_tot_unpaid_blocks ;
       const int64_t from_pervote_bucket  = int64_t( vote_shares[prod_index] * expected_pervote_bucket);
-      
+
       BOOST_REQUIRE( 1 >= abs(int32_t(initial_tot_unpaid_blocks - tot_unpaid_blocks) - int32_t(initial_unpaid_blocks - unpaid_blocks)) );
 
       if (from_pervote_bucket >= 100 * 10000) {
@@ -1763,7 +1763,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
       produce_blocks(5);
 
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within past day"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
    }
 
@@ -1773,7 +1773,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       BOOST_REQUIRE_EQUAL(success(),
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
       BOOST_REQUIRE_EQUAL(0, get_balance(prod_name).amount);
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within past day"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
    }
 
@@ -1832,7 +1832,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
       produce_blocks(5);
 
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within past day"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
    }
 
@@ -1842,7 +1842,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       BOOST_REQUIRE_EQUAL(success(),
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
       BOOST_REQUIRE(100 * 10000 <= get_balance(prod_name).amount);
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: already claimed rewards within past day"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
    }
 
@@ -1876,7 +1876,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
       auto inactive_prod_info = get_producer_info(producer_names[one_inactive_index]);
       BOOST_REQUIRE_EQUAL(0, inactive_prod_info["time_became_active"].as<uint32_t>());
-      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: producer does not have an active key"),
+      BOOST_REQUIRE_EQUAL(wasm_assert_msg("producer does not have an active key"),
                           push_action(producer_names[one_inactive_index], N(claimrewards), mvo()("owner", producer_names[one_inactive_index])));
       // re-register deactivated producer and let him produce blocks again
       const uint32_t initial_unpaid_blocks = inactive_prod_info["unpaid_blocks"].as<uint32_t>();
@@ -2036,7 +2036,7 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
    }
 
    //should fail
-   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: transaction authorization failed"),
+   BOOST_REQUIRE_EQUAL(wasm_assert_msg("transaction authorization failed"),
                        push_action_msig( N(alice1111111), N(exec), mvo()
                                          ("proposer",      "alice1111111")
                                          ("proposal_name", "upgrade1")
@@ -2093,7 +2093,7 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
    BOOST_REQUIRE_EQUAL(0, get_producer_info( producer_names.back() )["total_votes"].as<double>());
 
    transfer(config::system_account_name, "producvotera", "200000000.0000 EOS", config::system_account_name);
-   
+
    BOOST_REQUIRE_EQUAL(success(), stake("producvotera", "70000000.0000 EOS", "70000000.0000 EOS"));
    BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
                                                 ("voter",  "producvotera")
@@ -2281,7 +2281,7 @@ BOOST_FIXTURE_TEST_CASE( vote_both_proxy_and_producers, eosio_system_tester ) tr
    //bob111111111 chooses alice1111111 as a proxy
    issue( "bob111111111", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", "100.0002 EOS", "50.0001 EOS" ) );
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: cannot vote for producers and proxy at same time"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("cannot vote for producers and proxy at same time"),
                         push_action( N(bob111111111), N(voteproducer), mvo()
                                      ("voter",  "bob111111111")
                                      ("proxy", "alice1111111" )
@@ -2298,7 +2298,7 @@ BOOST_FIXTURE_TEST_CASE( select_invalid_proxy, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", "100.0002 EOS", "50.0001 EOS" ) );
 
    //selecting account not registered as a proxy
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid proxy specified" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "invalid proxy specified" ),
                         push_action(N(bob111111111), N(voteproducer), mvo()
                                     ("voter",  "bob111111111")
                                     ("proxy", "alice1111111" )
@@ -2307,7 +2307,7 @@ BOOST_FIXTURE_TEST_CASE( select_invalid_proxy, eosio_system_tester ) try {
    );
 
    //selecting not existing account as a proxy
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: invalid proxy specified" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "invalid proxy specified" ),
                         push_action(N(bob111111111), N(voteproducer), mvo()
                                     ("voter",  "bob111111111")
                                     ("proxy", "notexist" )
@@ -2342,7 +2342,7 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
    REQUIRE_MATCHING_OBJECT( proxy( "alice1111111" )( "proxied_vote_weight", stake2votes( "150.0003 EOS" ))( "staked", 100000 ), get_voter_info( "alice1111111" ) );
 
    //double regestering should fail without affecting total votes and stake
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: action has no effect" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "action has no effect" ),
                         push_action( N(alice1111111), N(regproxy), mvo()
                                      ("proxy",  "alice1111111")
                                      ("isproxy",  1)
@@ -2359,7 +2359,7 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
    REQUIRE_MATCHING_OBJECT( voter( "alice1111111" )( "proxied_vote_weight", stake2votes("150.0003 EOS") )( "staked", 100000 ), get_voter_info( "alice1111111" ) );
 
    //double unregistering should not affect proxied_votes and stake
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: action has no effect" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "action has no effect" ),
                         push_action( N(alice1111111), N(regproxy), mvo()
                                      ("proxy",  "alice1111111")
                                      ("isproxy",  0)
@@ -2387,7 +2387,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
    //proxy should not be able to use a proxy
    issue( "bob111111111", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", "100.0002 EOS", "50.0001 EOS" ) );
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account registered as a proxy is not allowed to use a proxy" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "account registered as a proxy is not allowed to use a proxy" ),
                         push_action( N(bob111111111), N(voteproducer), mvo()
                                      ("voter",  "bob111111111")
                                      ("proxy", "alice1111111" )
@@ -2404,7 +2404,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
                                                 ("producers", vector<account_name>() )
                         )
    );
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account that uses a proxy is not allowed to become a proxy" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "account that uses a proxy is not allowed to become a proxy" ),
                         push_action( N(carol1111111), N(regproxy), mvo()
                                      ("proxy",  "carol1111111")
                                      ("isproxy",  1)
@@ -2412,7 +2412,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
    );
 
    //proxy should not be able to use itself as a proxy
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: cannot proxy to self" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "cannot proxy to self" ),
                         push_action( N(bob111111111), N(voteproducer), mvo()
                                      ("voter",  "bob111111111")
                                      ("proxy", "bob111111111" )

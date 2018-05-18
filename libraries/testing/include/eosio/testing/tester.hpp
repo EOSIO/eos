@@ -87,7 +87,7 @@ namespace eosio { namespace testing {
          void                 produce_blocks_until_end_of_round();
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
          // Produce minimal number of blocks as possible to spend the given time without having any producer become inactive
-         void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds()); 
+         void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds());
          signed_block_ptr     push_block(signed_block_ptr b);
 
          transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
@@ -207,7 +207,11 @@ namespace eosio { namespace testing {
 
          static action_result success() { return string(); }
 
-         static action_result error(const string& msg) { return msg; }
+         static action_result error( const string& msg ) { return msg; }
+
+         static action_result wasm_assert_msg( const string& msg ) { return "assertion failure with message: " + msg; }
+
+         static action_result wasm_assert_code( uint64_t error_code ) { return "assertion failure with error code: " + std::to_string(error_code); }
 
          auto get_resolver() {
             return [this]( const account_name& name ) -> optional<abi_serializer> {
@@ -424,11 +428,11 @@ namespace eosio { namespace testing {
    */
   struct eosio_assert_message_is {
      eosio_assert_message_is( const string& msg )
-           : expected( "assertion failed: " ) {
+           : expected( "assertion failure with message: " ) {
         expected.append( msg );
      }
 
-     bool operator()( const fc::assert_exception& ex );
+     bool operator()( const eosio_assert_message_exception& ex );
 
      string expected;
   };
@@ -438,11 +442,25 @@ namespace eosio { namespace testing {
    */
   struct eosio_assert_message_starts_with {
      eosio_assert_message_starts_with( const string& msg )
-           : expected( "assertion failed: " ) {
+           : expected( "assertion failure with message: " ) {
         expected.append( msg );
      }
 
-     bool operator()( const fc::assert_exception& ex );
+     bool operator()( const eosio_assert_message_exception& ex );
+
+     string expected;
+  };
+
+  /**
+   * Utility predicate to check whether an eosio_assert_code error code is equivalent to a given number
+   */
+  struct eosio_assert_code_is {
+     eosio_assert_code_is( uint64_t error_code )
+           : expected( "assertion failure with error code " ) {
+        expected.append( std::to_string(error_code) );
+     }
+
+     bool operator()( const eosio_assert_code_exception& ex );
 
      string expected;
   };

@@ -120,7 +120,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(push_transaction( trx ), assert_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), eosio_assert_message_exception);
    }
 
    produce_blocks(1);
@@ -616,7 +616,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
    while (count < 4) {
       signed_transaction trx;
 
-      for (int i = 0; i < 10; ++i) {
+      for (int i = 0; i < 2; ++i) {
          action act;
          act.account = N(f_tests);
          act.name = N() + (i * 16);
@@ -629,7 +629,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
 
       try {
          push_transaction(trx, fc::time_point::maximum(), 0);
-         produce_blocks(1);
+         produce_block();
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
          count++;
@@ -640,7 +640,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
       BOOST_REQUIRE_EQUAL(true, validate());
 
       if (count == 2) { // add a big weight on acc2, making f_tests out of resource
-        mgr.set_account_limits(N(acc2), -1, -1, 1000);
+        mgr.set_account_limits(N(acc2), -1, -1, 100000000);
       }
    }
    BOOST_REQUIRE_EQUAL(count, 3);
@@ -1130,7 +1130,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
 
    //should fail, a check to make sure assert() in wasm is being evaluated correctly
-   BOOST_CHECK_THROW(push_transaction(trx), assert_exception);
+   BOOST_CHECK_THROW(push_transaction(trx), eosio_assert_message_exception);
    }
 
    produce_blocks(1);

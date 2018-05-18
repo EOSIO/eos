@@ -828,28 +828,27 @@ namespace eosio { namespace testing {
       return match;
    }
 
-   bool eosio_assert_message_is::operator()( const fc::assert_exception& ex ) {
+   bool eosio_assert_message_is::operator()( const eosio_assert_message_exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
-      bool match = false;
-      auto pos = message.find( ": " );
-      if( pos != std::string::npos ) {
-         message = message.substr( pos + 2 );
-         match = (message == expected);
-      }
+      bool match = (message == expected);
       if( !match ) {
          BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
       }
       return match;
    }
 
-   bool eosio_assert_message_starts_with::operator()( const fc::assert_exception& ex ) {
+   bool eosio_assert_message_starts_with::operator()( const eosio_assert_message_exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
-      bool match = false;
-      auto pos = message.find( ": " );
-      if( pos != std::string::npos ) {
-         message = message.substr( pos + 2 );
-         match = boost::algorithm::starts_with( message, expected );
+      bool match = boost::algorithm::starts_with( message, expected );
+      if( !match ) {
+         BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
       }
+      return match;
+   }
+
+   bool eosio_assert_code_is::operator()( const eosio_assert_code_exception& ex ) {
+      auto message = ex.get_log().at( 0 ).get_message();
+      bool match = (message == expected);
       if( !match ) {
          BOOST_TEST_MESSAGE( "LOG: expected: " << expected << ", actual: " << message );
       }

@@ -319,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS")), assert_exception);
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS")), eosio_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());

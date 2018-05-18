@@ -212,7 +212,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -264,7 +264,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -293,7 +293,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -328,7 +328,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
                                              ("trx",           trx)
                                              ("requested", vector<permission_level>{ { N(alice), config::active_name } } )
                             ),
-                            fc::assert_exception,
+                            eosio_assert_message_exception,
                             eosio_assert_message_is("transaction authorization failed")
    );
 
@@ -409,9 +409,9 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    //             /         |        \             <--- implicitly updated in onblock action
    // alice active     bob active   carol active
 
-   set_authority(N(eosio), "active", authority(1, 
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}}, 
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner", 
+   set_authority(N(eosio), "active", authority(1,
+      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
+      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner",
       { { N(eosio), "active" } }, { get_private_key( N(eosio), "active" ) });
 
    set_producers( {N(alice),N(bob),N(carol)} );
@@ -436,7 +436,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
 
    BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
-   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name }, 
+   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
 
    vector<permission_level> action_perm = {{N(eosio), config::active_name}};
@@ -508,20 +508,17 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
    // can't create account because system contract was replace by the test_api contract
-   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
-      fc::assert_exception,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "condition: assertion failed: Unknown Test");
-      }
+   BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
+                            eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
    );
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester ) try {
 
    // set up the link between (eosio active) and (eosio.prods active)
-   set_authority(N(eosio), "active", authority(1, 
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}}, 
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner", 
+   set_authority(N(eosio), "active", authority(1,
+      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
+      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner",
       { { N(eosio), "active" } }, { get_private_key( N(eosio), "active" ) });
 
    create_accounts( { N(apple) } );
@@ -547,7 +544,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
 
    BOOST_REQUIRE_EQUAL( asset::from_string("1000000000.0000 EOS"), get_balance( "eosio" ) );
 
-   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name }, 
+   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};
 
    vector<permission_level> action_perm = {{N(eosio), config::active_name}};
@@ -606,10 +603,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
                      ("proposal_name", "first")
                      ("executer",      "alice")
       ),
-      fc::assert_exception,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "condition: assertion failed: transaction authorization failed");
-      }
+      eosio_assert_message_exception, eosio_assert_message_is("transaction authorization failed")
    );
 
    //approve by apple
@@ -634,11 +628,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
    // can't create account because system contract was replace by the test_api contract
-   BOOST_REQUIRE_EXCEPTION(create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
-      fc::assert_exception,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "condition: assertion failed: Unknown Test");
-      }
+   BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), N(eosio), asset::from_string("1.0000 EOS"), false ),
+                            eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
    );
 } FC_LOG_AND_RETHROW()
 
