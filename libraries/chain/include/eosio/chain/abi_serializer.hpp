@@ -55,8 +55,7 @@ struct abi_serializer {
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
 
-   optional<map<uint64_t, string>::const_iterator>  find_error_message( uint64_t error_code )const;
-   const string&                                    get_error_message( uint64_t error_code )const;
+   optional<string>  get_error_message( uint64_t error_code )const;
 
    fc::variant binary_to_variant(const type_name& type, const bytes& binary)const;
    bytes       variant_to_binary(const type_name& type, const fc::variant& var)const;

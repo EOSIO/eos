@@ -350,18 +350,11 @@ namespace eosio { namespace chain {
       return type_name();
    }
 
-   optional<map<uint64_t, string>::const_iterator>
-   abi_serializer::find_error_message( uint64_t error_code )const {
+   optional<string> abi_serializer::get_error_message( uint64_t error_code )const {
       auto itr = error_messages.find( error_code );
       if( itr == error_messages.end() )
-         return optional<map<uint64_t, string>::const_iterator>();
+         return optional<string>();
 
-      return itr;
-   }
-
-   const string& abi_serializer::get_error_message( uint64_t error_code )const {
-      auto itr = error_messages.find( error_code );
-      FC_ASSERT( itr != error_messages.end(), "Unknown error code ${error_code}", ("error_code",error_code) );
       return itr->second;
    }
 

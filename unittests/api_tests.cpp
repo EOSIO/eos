@@ -1951,11 +1951,16 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
 
    produce_block();
 
-   BOOST_CHECK_EQUAL( abis.get_error_message(1), "standard error message" );
+   auto omsg1 = abis.get_error_message(1);
+   BOOST_REQUIRE_EQUAL( omsg1.valid(), true );
+   BOOST_CHECK_EQUAL( *omsg1, "standard error message" );
 
-   auto oitr = abis.find_error_message(42);
-   BOOST_REQUIRE_EQUAL( oitr.valid(), true );
-   BOOST_CHECK_EQUAL( (*oitr)->second, "The answer to life, the universe, and everything." );
+   auto omsg2 = abis.get_error_message(2);
+   BOOST_CHECK_EQUAL( omsg2.valid(), false );
+
+   auto omsg3 = abis.get_error_message(42);
+   BOOST_REQUIRE_EQUAL( omsg3.valid(), true );
+   BOOST_CHECK_EQUAL( *omsg3, "The answer to life, the universe, and everything." );
 
    produce_block();
 
