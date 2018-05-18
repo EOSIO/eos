@@ -160,10 +160,8 @@ FC_REFLECT(eosio::history_apis::read_only::get_transaction_results, (transaction
 FC_REFLECT(eosio::history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
 FC_REFLECT(eosio::history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
 FC_REFLECT(eosio::history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
+*/
 FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_params, (public_key) )
 FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_results, (account_names) )
 FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
 FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
-*/
-
-

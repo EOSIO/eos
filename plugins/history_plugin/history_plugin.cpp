@@ -1,4 +1,6 @@
 #include <eosio/history_plugin.hpp>
+#include <eosio/history_plugin/account_control_history_object.hpp>
+#include <eosio/history_plugin/public_key_history_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -74,6 +76,47 @@ CHAINBASE_SET_INDEX_TYPE(eosio::action_history_object, eosio::action_history_ind
 
 namespace eosio {
 
+   template<typename MultiIndex, typename LookupType>
+   static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
+   {
+      const auto& idx = db.get_index<MultiIndex, LookupType>();
+      auto& mutable_idx = db.get_mutable_index<MultiIndex>();
+      while(!idx.empty()) {
+         auto key = boost::make_tuple(account_name, permission);
+         const auto& itr = idx.lower_bound(key);
+         if (itr == idx.end())
+            break;
+
+         const auto& range_end = idx.upper_bound(key);
+         if (itr == range_end)
+            break;
+
+         mutable_idx.remove(*itr);
+      }
+   }
+
+   static void add(chainbase::database& db, const vector<key_weight>& keys, const account_name& name, const permission_name& permission)
+   {
+      for (auto pub_key_weight : keys ) {
+         db.create<public_key_history_object>([&](public_key_history_object& obj) {
+            obj.public_key = pub_key_weight.key;
+            obj.name = name;
+            obj.permission = permission;
+         });
+      }
+   }
+
+   static void add(chainbase::database& db, const vector<permission_level_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission)
+   {
+      for (auto controlling_account : controlling_accounts ) {
+         db.create<account_control_history_object>([&](account_control_history_object& obj) {
+            obj.controlled_account = account_name;
+            obj.controlled_permission = permission;
+            obj.controlling_account = controlling_account.permission.actor;
+         });
+      }
+   }
+
    class history_plugin_impl {
       public:
          std::set<account_name> filter_on;
@@ -123,6 +166,33 @@ namespace eosio {
             //idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
          }
 
+         void on_account_action( const action_trace& at ) {
+            auto& chain = chain_plug->chain();
+            auto& db = chain.db();
+            if( at.act.name == N(newaccount) )
+            {
+               const auto create = at.act.data_as<chain::newaccount>();
+               add(db, create.owner.keys, create.name, N(owner));
+               add(db, create.owner.accounts, create.name, N(owner));
+               add(db, create.active.keys, create.name, N(active));
+               add(db, create.active.accounts, create.name, N(active));
+            }
+            else if( at.act.name == N(updateauth) )
+            {
+               const auto update = at.act.data_as<chain::updateauth>();
+               remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
+               remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
+               add(db, update.auth.keys, update.account, update.permission);
+               add(db, update.auth.accounts, update.account, update.permission);
+            }
+            else if( at.act.name == N(deleteauth) )
+            {
+               const auto del = at.act.data_as<chain::deleteauth>();
+               remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
+               remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
+            }
+         }
+
          void on_action_trace( const action_trace& at ) {
             if( filter( at ) ) {
                //idump((fc::json::to_pretty_string(at)));
@@ -144,6 +214,9 @@ namespace eosio {
                for( auto a : aset ) {
                   record_account_action( a, at );
                }
+
+               if( at.receipt.receiver == chain::config::system_account_name && is_filtered( at.receipt.receiver ) )
+                  on_account_action( at );
             }
             for( const auto& iline : at.inline_traces ) {
                on_action_trace( iline );
@@ -186,6 +259,8 @@ namespace eosio {
 
       chain.db().add_index<account_history_index>();
       chain.db().add_index<action_history_index>();
+      chain.db().add_index<account_control_history_multi_index>();
+      chain.db().add_index<public_key_history_multi_index>();
 
       chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
             my->on_applied_transaction(p);
@@ -334,6 +409,26 @@ namespace eosio {
          }
 
          return result;
+      }
+
+      read_only::get_key_accounts_results read_only::get_key_accounts(const get_key_accounts_params& params) const {
+         std::set<account_name> accounts;
+         const auto& db = history->chain_plug->chain().db();
+         const auto& pub_key_idx = db.get_index<public_key_history_multi_index, by_pub_key>();
+         auto range = pub_key_idx.equal_range( params.public_key );
+         for (auto obj = range.first; obj != range.second; ++obj)
+            accounts.insert(obj->name);
+         return {vector<account_name>(accounts.begin(), accounts.end())};
+      }
+
+      read_only::get_controlled_accounts_results read_only::get_controlled_accounts(const get_controlled_accounts_params& params) const {
+         std::set<account_name> accounts;
+         const auto& db = history->chain_plug->chain().db();
+         const auto& account_control_idx = db.get_index<account_control_history_multi_index, by_controlling>();
+         auto range = account_control_idx.equal_range( params.controlling_account );
+         for (auto obj = range.first; obj != range.second; ++obj)
+            accounts.insert(obj->controlled_account);
+         return {vector<account_name>(accounts.begin(), accounts.end())};
       }
 
    } /// history_apis
