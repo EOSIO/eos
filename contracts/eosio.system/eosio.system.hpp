@@ -134,9 +134,6 @@ namespace eosiosystem {
 
          // functions defined in delegate_bandwidth.cpp
 
-         void changebw( account_name from, account_name receiver,
-                        asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
-
          /**
           *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'. 
           *  If transfer == true, then 'receiver' can unstake to their account
@@ -207,6 +204,10 @@ namespace eosiosystem {
          void update_elected_producers( block_timestamp timestamp );
 
          // Implementation details:
+
+         //defind in delegate_bandwidth.cpp
+         void changebw( account_name from, account_name receiver,
+                        asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
 
          //defined in voting.hpp
          static eosio_global_state get_default_parameters();

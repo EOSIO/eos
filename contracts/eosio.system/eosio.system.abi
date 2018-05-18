@@ -149,16 +149,6 @@
          {"name":"quant", "type":"asset"}
       ]
     },{
-      "name": "changebw",
-      "base": "",
-      "fields": [
-         {"name":"from", "type":"account_name"},
-         {"name":"receiver", "type":"account_name"},
-         {"name":"stake_net_quantity", "type":"asset"},
-         {"name":"stake_cpu_quantity", "type":"asset"},
-         {"name":"transfer", "type":"bool"}
-      ]
-    },{
       "name": "undelegatebw",
       "base": "",
       "fields": [
@@ -384,12 +374,8 @@
       "type": "sellram",
       "ricardian_contract": ""
    },{
-      "name": "changebw",
-      "type": "changebw",
-      "ricardian_contract": ""
-   },{
       "name": "delegatebw",
-      "type": "changebw",
+      "type": "delegatebw",
       "ricardian_contract": ""
    },{
       "name": "undelegatebw",
