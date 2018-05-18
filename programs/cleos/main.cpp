@@ -149,6 +149,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 
 string url = "http://localhost:8888/";
 string wallet_url = "http://localhost:8900/";
+int64_t wallet_unlock_timeout = 0;
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -748,7 +749,14 @@ void ensure_keosd_running() {
     if (boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
-        ::boost::process::child keos(binPath, "--http-server-address=127.0.0.1:" + parsed_url.port,
+
+        vector<std::string> pargs;
+        pargs.push_back("--http-server-address=127.0.0.1:" + parsed_url.port);
+        if (wallet_unlock_timeout > 0) {
+            pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
+        }
+
+        ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
                                      bp::std_out > bp::null,
                                      bp::std_err > bp::null);
@@ -1958,6 +1966,7 @@ int main( int argc, char** argv ) {
    auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+   unlockWallet->add_option( "--unlock-timeout", wallet_unlock_timeout, localized("The timeout for unlocked wallet in seconds"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
       if( wallet_pw.size() == 0 ) {
          std::cout << localized("password: ");
