@@ -7,7 +7,7 @@
 #include <enumivo/chain/types.hpp>
 #include <enumivo/chain/symbol.hpp>
 
-/// eos with 4 digits of precision
+/// enu with 4 digits of precision
 #define ENU_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('N') << 16) | (uint64_t('U') << 24))
 static const enumivo::chain::symbol ENU_SYMBOL(ENU_SYMBOL_VALUE);
 
