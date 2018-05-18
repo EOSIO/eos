@@ -245,7 +245,7 @@ sub perform_work {
         my $stoptime = time () + $run_duration;
         my $counter = 0;
         while (time () < $stoptime) {
-            `$enuclient transfer eos inita 10 >> enuclient.out 2>> enuclient.err`;
+            `$enuclient transfer enu inita 10 >> enuclient.out 2>> enuclient.err`;
             $counter++;
             if ($counter % 1000 == 0) {
                 print "$counter client iterations\n";

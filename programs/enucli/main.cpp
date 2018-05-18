@@ -809,7 +809,7 @@ struct create_account_subcommand {
    string stake_net;
    string stake_cpu;
    uint32_t buy_ram_bytes_in_kbytes = 8;
-   string buy_ram_eos;
+   string buy_ram_enu;
    bool transfer;
    bool simple;
 
@@ -827,7 +827,7 @@ struct create_account_subcommand {
                                    (localized("The amount of ENU delegated for CPU bandwidth")))->required();
          createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
                                    (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
-         createAccount->add_option("--buy-ram-ENU", buy_ram_eos,
+         createAccount->add_option("--buy-ram-ENU", buy_ram_enu,
                                    (localized("The amount of RAM bytes to purchase for the new account in ENU")));
          createAccount->add_flag("--transfer", transfer,
                                  (localized("Transfer voting power and right to unstake ENU to receiver")));
@@ -847,7 +847,7 @@ struct create_account_subcommand {
             } ENU_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
-               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
+               action buyram = !buy_ram_enu.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_enu))
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
                action delegate = create_delegate( creator, account_name, to_asset(stake_net), to_asset(stake_cpu), transfer);
                send_actions( { create, buyram, delegate } );

@@ -12,24 +12,24 @@ Simple and fast setup of Enumivo on Docker is also available.
 - At least 7GB RAM (Docker -> Preferences -> Advanced -> Memory -> 7GB or above)
 - If the build below fails, make sure you've adjusted Docker Memory settings and try again.
 
-## Build eos image
+## Build Enumivo image
 
 ```bash
 git clone https://github.com/enumivo/enumivo.git --recursive  --depth 1
-cd eos/Docker
-docker build . -t enumivo/eos
+cd enumivo/Docker
+docker build . -t enumivo/enumivo
 ```
 
 The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the dawn-v4.0.0 tag, you could do the following:
 
 ```bash
-docker build -t enumivo/eos:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
+docker build -t enumivo/enumivo --build-arg branch=enumivo .
 ```
 
 ## Start enunode docker container only
 
 ```bash
-docker run --name enunode -p 8888:8888 -p 9876:9876 -t enumivo/eos enunoded.sh arg1 arg2
+docker run --name enunode -p 8888:8888 -p 9876:9876 -t enumivo/enumivo enunoded.sh arg1 arg2
 ```
 
 By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
@@ -43,7 +43,7 @@ $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5
 Alternately, you can directly mount host directory into the container
 
 ```bash
-docker run --name enunode -v /path-to-data-dir:/opt/enumivo/bin/data-dir -p 8888:8888 -p 9876:9876 -t enumivo/eos enunoded.sh arg1 arg2
+docker run --name enunode -v /path-to-data-dir:/opt/enumivo/bin/data-dir -p 8888:8888 -p 9876:9876 -t enumivo/enumivo enunoded.sh arg1 arg2
 ```
 
 ## Get chain info
@@ -86,13 +86,13 @@ docker-compose stop enuwallet
 
 ### Develop/Build custom contracts
 
-Due to the fact that the enumivo/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize the enumivo/eos-dev image. This image contains both the required binaries and dependencies to build contracts using enumivocpp.
+Due to the fact that the enumivo/enumivo image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize the enumivo/enumivo image. This image contains both the required binaries and dependencies to build contracts using enumivocpp.
 
-You can either use the image available on [Docker Hub](https://hub.docker.com/r/enumivo/eos-dev/) or navigate into the dev folder and build the image manually.
+You can either use the image available on [Docker Hub](https://hub.docker.com/r/enumivo/enumivo/) or navigate into the dev folder and build the image manually.
 
 ```bash
 cd dev
-docker build -t enumivo/eos-dev .
+docker build -t enumivo/enumivo .
 ```
 
 ### Change default configuration
@@ -127,7 +127,7 @@ docker volume rm enuwallet-data-volume
 
 ### Docker Hub
 
-Docker Hub image available from [docker hub](https://hub.docker.com/r/enumivo/eos/).
+Docker Hub image available from [docker hub](https://hub.docker.com/r/enumivo/enumivo/).
 Create a new `docker-compose.yaml` file with the content below
 
 ```bash
@@ -135,7 +135,7 @@ version: "3"
 
 services:
   enunoded:
-    image: enumivo/eos:latest
+    image: enumivo/enumivo:latest
     command: /opt/enumivo/bin/enunoded.sh
     hostname: enunoded
     ports:
@@ -147,7 +147,7 @@ services:
       - enunode-data-volume:/opt/enumivo/bin/data-dir
 
   enuwallet:
-    image: enumivo/eos:latest
+    image: enumivo/enumivo:latest
     command: /opt/enumivo/bin/enuwallet
     hostname: enuwallet
     links:
@@ -163,7 +163,7 @@ volumes:
 
 *NOTE:* the default version is the latest, you can change it to what you want
 
-run `docker pull enumivo/eos:latest`
+run `docker pull enumivo/enumivo:latest`
 
 run `docker-compose up`
 
@@ -175,7 +175,7 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 
 ```
 # pull images
-docker pull enumivo/eos:latest
+docker pull enumivo/enumivo:latest
 docker pull mongo:latest
 # create volume
 docker volume create --name=enunode-data-volume

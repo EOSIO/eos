@@ -9,7 +9,7 @@ services:
   enunoded:
     build:
       context: .
-    image: enumivo/eos
+    image: enumivo/enumivo
     command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir
     hostname: enunoded
     ports:

@@ -116,7 +116,7 @@ The ssh helper fields are paths to ssh and scp, an identity if necessary, and an
         "remote": true,
         "ssh_identity": "",
         "ssh_args": "",
-        "enu_root_dir": "/home/phil/blockchain/eos",
+        "enu_root_dir": "/home/phil/blockchain/enu",
         "data_dir": "tn_data_0",
         "hostname": "remoteserv",
         "public_name": "remoteserv",
@@ -184,7 +184,7 @@ This table describes all of the key/value pairs used in the testnet.json file.
 ### Provisioning Distributed Servers
 The ssh_helper section of the testnet.json file contains the ssh elements necessary to connect and issue commands to other servers. In addition to the ssh_helper section which provides access to global configuration settings, the per-node configuration may provide overriding identity and connection arguments.
 
-It is also necessary to provision the server by at least copying the enudaemon executable, and the genesis.json files to their appropriate locations relative to some named Enumivo root directory. For example, I defined the Enumivo root to be `/home/phil/blockchain/eos`. When run, the launcher will run through a variety of shell commands using ssh and finally using scp to copy a config.ini file to the appropriate data directory on the remote.
+It is also necessary to provision the server by at least copying the enudaemon executable, and the genesis.json files to their appropriate locations relative to some named Enumivo root directory. For example, I defined the Enumivo root to be `/home/phil/blockchain/enu`. When run, the launcher will run through a variety of shell commands using ssh and finally using scp to copy a config.ini file to the appropriate data directory on the remote.
 
 ## Runtime Artifacts
 The launcher app creates a separate date and configuration directory for each node instance. This directory is named `tn_data_<n>` with n ranging from 0 to the number of nodes being launched. 
