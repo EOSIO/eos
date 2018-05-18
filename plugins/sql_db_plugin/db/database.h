@@ -23,6 +23,7 @@ public:
     void wipe();
     void add(chain::block_state_ptr block);
     void add(chain::transaction_metadata_ptr transaction);
+    void add(chain::action action);
 
 private:
     mutable std::mutex m_mux;

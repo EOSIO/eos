@@ -23,12 +23,20 @@ void actions_table::drop()
 void actions_table::create()
 {
     *m_session << "create table actions("
-            "id TEXT,"
-            "seq NUMERIC,"
-            "transaction_id TEXT,"
-            "handler_account_name TEXT,"
+            "account TEXT,"
             "name TEXT,"
-            "data TEXT,"
-            "created_at DATETIME)";
+            "data TEXT)";
 }
+
+void actions_table::add(eosio::chain::action action){
+
+    // TODO: we may do different stuff depending of the action and account (ex: sync balance, create account)
+    const auto data = std::string(action.data.begin(),action.data.end());
+
+    *m_session << "INSERT INTO actions(account, name, data) VALUES (:ac, :na, :da) ",
+            soci::use(action.account.to_string()),
+            soci::use(action.name.to_string()),
+            soci::use(data);
+}
+
 } // namespace

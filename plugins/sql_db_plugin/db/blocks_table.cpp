@@ -35,15 +35,23 @@ void blocks_table::create()
 
 void blocks_table::add(eosio::chain::block_state_ptr block)
 {
-    *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root, producer_account_id, pending, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
-            soci::use(block->header.id().str()),
-            soci::use(block->header.block_num()),
-            soci::use(block->header.previous.str()),
-            soci::use(block->header.timestamp.slot),
-            soci::use(block->header.transaction_mroot.str()),
+    const auto block_id_str = block->block->id().str();
+    const auto previous_block_id_str = block->block->previous.str();
+    const auto transaction_mroot_str = block->block->transaction_mroot.str();
+    const auto timestamp = std::chrono::milliseconds{
+                    std::chrono::seconds{block->block->timestamp.operator fc::time_point().sec_since_epoch()}
+                }.count();
+
+    *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root,"
+                  "producer_account_id, pending, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
+            soci::use(block_id_str),
+            soci::use(block->block->block_num()),
+            soci::use(previous_block_id_str),
+            soci::use(timestamp),
+            soci::use(transaction_mroot_str),
             soci::use(block->header.producer.to_string()),
-            soci::use(1),
-            soci::use(block->header.timestamp.slot);
+            soci::use(0),
+            soci::use(timestamp);
 }
 
 } // namespace

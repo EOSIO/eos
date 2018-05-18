@@ -15,6 +15,9 @@ void irreversible_block_storage::consume(const std::vector<chain::block_state_pt
         m_db->add(block);
         for (const chain::transaction_metadata_ptr& transaction : block->trxs) {
             m_db->add(transaction);
+            for (const chain::action& action : transaction->trx.actions) {
+                m_db->add(action);
+            }
         }
     }
 }

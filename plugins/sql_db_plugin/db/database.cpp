@@ -38,4 +38,9 @@ void database::add(chain::transaction_metadata_ptr transaction)
     m_transactions_table->add(transaction);
 }
 
+void database::add(chain::action action)
+{
+    m_actions_table->add(action);
+}
+
 } // namespace
