@@ -349,7 +349,7 @@ Create a new wallet with the given name
 
 @subsubsection examplewalletcreate Example wallet_create Usage
 ```
-$ curl http://localhost:8889/v1/wallet/create -X POST -d '"default"'
+$ curl http://localhost:8888/v1/wallet/create -X POST -d '"default"'
 ```
 
 @subsubsection examplewalletcreateresult  Example wallet_create Result
@@ -364,7 +364,7 @@ Open an existing wallet of the given name
 
 @subsubsection examplewalletopen Example wallet_open Usage
 ```
-$ curl http://localhost:8889/v1/wallet/open -X POST -d '"default"'
+$ curl http://localhost:8888/v1/wallet/open -X POST -d '"default"'
 ```
 
 @subsubsection examplewalletopenresult  Example wallet_open Result
@@ -379,7 +379,7 @@ Lock a wallet of the given name
 
 @subsubsection examplewalletlock Example wallet_lock Usage
 ```
-$ curl http://localhost:8889/v1/wallet/lock -X POST -d '"default"'
+$ curl http://localhost:8888/v1/wallet/lock -X POST -d '"default"'
 ```
 
 @subsubsection examplewalletlockresult  Example wallet_lock Result
@@ -394,7 +394,7 @@ Lock all wallets
 
 @subsubsection examplewalletlockall Example wallet_lock_all Usage
 ```
-$ curl http://localhost:8889/v1/wallet/lock_all 
+$ curl http://localhost:8888/v1/wallet/lock_all
 ```
 
 @subsubsection examplewalletlockallresult  Example wallet_lock_all Result
@@ -408,7 +408,7 @@ Unlock a wallet with the given name and password
 
 @subsubsection examplewalletunlock Example wallet_unlock Usage
 ```
-$ curl http://localhost:8889/v1/wallet/unlock -X POST -d '["default", "PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX"]'
+$ curl http://localhost:8888/v1/wallet/unlock -X POST -d '["default", "PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX"]'
 ```
 
 @subsubsection examplewalletunlockresult  Example wallet_unlock Result
@@ -422,7 +422,7 @@ Import a private key to the wallet of the given name
 
 @subsubsection examplewalletimport Example wallet_import_key Usage
 ```
-$ curl http://localhost:8889/v1/wallet/import_key -X POST -d '["default","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]'
+$ curl http://localhost:8888/v1/wallet/import_key -X POST -d '["default","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]'
 ```
 
 @subsubsection examplewalletimportresult  Example wallet_import_key Result
@@ -436,7 +436,7 @@ List all wallets
 
 @subsubsection examplewalletlist Example wallet_list Usage
 ```
-$ curl http://localhost:8889/v1/wallet/list_wallets
+$ curl http://localhost:8888/v1/wallet/list_wallets
 ```
 
 @subsubsection examplewalletlistresult  Example wallet_list Result
@@ -450,7 +450,7 @@ List all key pairs across all wallets
 
 @subsubsection examplewalletlistkeys Example wallet_list_keys Usage
 ```
-$ curl http://localhost:8889/v1/wallet/list_keys
+$ curl http://localhost:8888/v1/wallet/list_keys
 ```
 
 @subsubsection examplewalletlistkeysresult  Example wallet_list_keys Result
@@ -464,7 +464,7 @@ List all public keys across all wallets
 
 @subsubsection examplewalletgetpublickeys Example wallet_get_public_keys Usage
 ```
-$ curl http://localhost:8889/v1/wallet/get_public_keys 
+$ curl http://localhost:8888/v1/wallet/get_public_keys
 ```
 
 @subsubsection examplewallegetpublickeysresult  Example wallet_get_public_keys Result
@@ -478,7 +478,7 @@ Set wallet auto lock timeout (in seconds)
 
 @subsubsection examplewalletsettimeout Example wallet_set_timeout Usage
 ```
-$ curl http://localhost:8889/v1/wallet/set_timeout -X POST -d '10'
+$ curl http://localhost:8888/v1/wallet/set_timeout -X POST -d '10'
 ```
 
 @subsubsection examplewalletsettimeoutresult  Example wallet_set_timeout Result
@@ -492,7 +492,7 @@ Sign transaction given an array of transaction, require public keys, and chain i
 
 @subsubsection examplewalletsigntrx Example wallet_sign_trx Usage
 ```
-$ curl http://localhost:8889/v1/wallet/sign_transaction -X POST -d '[{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":[]}, ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"], ""]'
+$ curl http://localhost:8888/v1/wallet/sign_transaction -X POST -d '[{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":[]}, ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"], ""]'
 ```
 
 @subsubsection examplewalletsigntrxresult  Example wallet_sign_trx Result

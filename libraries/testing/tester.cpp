@@ -7,6 +7,10 @@
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>
 
+eosio::chain::asset core_from_string(const std::string& s) {
+  return eosio::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
+}
+
 namespace eosio { namespace testing {
 
    bool expect_assert_message(const fc::exception& ex, string expected) {

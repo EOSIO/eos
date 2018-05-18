@@ -31,6 +31,14 @@
         {"name":"weight", "type":"weight_type"}
       ]
     },{
+      "name": "bidname",
+      "base": "",
+      "fields": [
+        {"name":"bidder",  "type":"account_name"},
+        {"name":"newname", "type":"account_name"},
+        {"name":"bid", "type":"asset"}
+      ]
+    },{
       "name": "permission_level_weight",
       "base": "",
       "fields": [
@@ -402,6 +410,10 @@
    },{
       "name": "setram",
       "type": "setram",
+      "ricardian_contract": ""
+   },{
+      "name": "bidname",
+      "type": "bidname",
       "ricardian_contract": ""
    },{
       "name": "unregprod",

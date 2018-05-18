@@ -19,18 +19,18 @@ namespace eosiosystem {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
 
-      auto itr = _rammarket.find(S(4,RAMEOS));
+      auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
          auto system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
-               m.supply.symbol = S(4,RAMEOS);
+               m.supply.symbol = S(4,RAMCORE);
                m.base.balance.amount = int64_t(_gstate.free_ram());
                m.base.balance.symbol = S(0,RAM);
                m.quote.balance.amount = system_token_supply / 1000;
-               m.quote.balance.symbol = S(4,EOS);
+               m.quote.balance.symbol = CORE_SYMBOL;
             });
          }
       } else {
@@ -58,7 +58,7 @@ namespace eosiosystem {
       eosio_assert( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
 
       auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
-      auto itr = _rammarket.find(S(4,RAMEOS));
+      auto itr = _rammarket.find(S(4,RAMCORE));
 
       /**
        *  Increase or decrease the amount of ram for sale based upon the change in max
@@ -88,8 +88,9 @@ namespace eosiosystem {
                                                     { bidder, N(eosio), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
+      print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
       auto current = bids.find( newname );
-      if( current != bids.end() ) {
+      if( current == bids.end() ) {
          bids.emplace( bidder, [&]( auto& b ) {
             b.newname = newname;
             b.high_bidder = bidder;
@@ -101,7 +102,7 @@ namespace eosiosystem {
          eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          eosio_assert( current->high_bidder != bidder, "account is already high bidder" );
 
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(eosio.code)},
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
                                                        { N(eosio), current->high_bidder, asset(current->high_bid), 
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
