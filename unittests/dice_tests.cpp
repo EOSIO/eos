@@ -237,18 +237,18 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    push_action(N(eosio.token), N(create), N(eosio.token), mvo()
      ("issuer", "eosio.token")
-     ("maximum_supply", "1000000000.0000 EOS")
+     ("maximum_supply", core_from_string("1000000000.0000"))
    );
 
    push_action(N(eosio.token), N(issue), N(eosio.token), mvo()
      ("to", "eosio")
-     ("quantity", "1000000000.0000 EOS")
+     ("quantity", core_from_string("1000000000.0000"))
      ("memo", "")
    );
 
-   transfer( N(eosio), N(alice), "10000.0000 EOS", "", N(eosio.token) );
-   transfer( N(eosio), N(bob),   "10000.0000 EOS", "", N(eosio.token) );
-   transfer( N(eosio), N(carol), "10000.0000 EOS", "", N(eosio.token) );
+   transfer( N(eosio), N(alice), core_from_string("10000.0000"), "", N(eosio.token) );
+   transfer( N(eosio), N(bob),   core_from_string("10000.0000"), "", N(eosio.token) );
+   transfer( N(eosio), N(carol), core_from_string("10000.0000"), "", N(eosio.token) );
 
    produce_block();
 
@@ -257,54 +257,54 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    produce_block();
 
-   // Alice deposits 1000 EOS
-   deposit( N(alice), asset::from_string("1000.0000 EOS")); 
+   // Alice deposits 1000
+   deposit( N(alice), core_from_string("1000.0000")); 
    produce_block();
 
-   BOOST_REQUIRE_EQUAL( balance_of(N(alice)), asset::from_string("1000.0000 EOS"));
+   BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1000.0000"));
    BOOST_REQUIRE_EQUAL( open_games(N(alice)), 0);
 
-   // Alice tries to bet 0 EOS (fail)
+   // Alice tries to bet 0 (fail)
    // secret : 9b886346e1351d4144d0b8392a975612eb0f8b6de7eae1cc9bcc55eb52be343c
-   BOOST_CHECK_THROW( offer_bet( N(alice), asset::from_string("0.0000 EOS"), 
+   BOOST_CHECK_THROW( offer_bet( N(alice), core_from_string("0.0000"), 
       commitment_for("9b886346e1351d4144d0b8392a975612eb0f8b6de7eae1cc9bcc55eb52be343c")
    ), fc::exception);
    
-   // Alice bets 10 EOS (success)
+   // Alice bets 10 (success)
    // secret : 0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46
-   offer_bet( N(alice), asset::from_string("10.0000 EOS"), 
+   offer_bet( N(alice), core_from_string("10.0000"), 
       commitment_for("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46")
    );
    produce_block();
 
    // Bob tries to bet using a secret previously used by Alice (fail)
    // secret : 00000000000000000000000000000002c334abe6ce13219a4cf3b862abb03c46
-   BOOST_CHECK_THROW( offer_bet( N(bob), asset::from_string("10.0000 EOS"),
+   BOOST_CHECK_THROW( offer_bet( N(bob), core_from_string("10.0000"),
       commitment_for("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46")
    ), fc::exception);
    produce_block();
 
-   // Alice tries to bet 1000 EOS (fail)
+   // Alice tries to bet 1000 (fail)
    // secret : a512f6b1b589a8906d574e9de74a529e504a5c53a760f0991a3e00256c027971
-   BOOST_CHECK_THROW( offer_bet( N(alice), asset::from_string("1000.0000 EOS"), 
+   BOOST_CHECK_THROW( offer_bet( N(alice), core_from_string("1000.0000"), 
       commitment_for("a512f6b1b589a8906d574e9de74a529e504a5c53a760f0991a3e00256c027971")
    ), fc::exception);
    produce_block();
 
-   // Bob tries to bet 90 EOS without deposit
+   // Bob tries to bet 90 without deposit
    // secret : 4facfc98932dde46fdc4403125a16337f6879a842a7ff8b0dc8e1ecddd59f3c8
-   BOOST_CHECK_THROW( offer_bet( N(bob), asset::from_string("90.0000 EOS"), 
+   BOOST_CHECK_THROW( offer_bet( N(bob), core_from_string("90.0000"), 
       commitment_for("4facfc98932dde46fdc4403125a16337f6879a842a7ff8b0dc8e1ecddd59f3c8")
    ), fc::exception);
    produce_block();
 
-   // Bob deposits 500 EOS
-   deposit( N(bob), asset::from_string("500.0000 EOS"));
-   BOOST_REQUIRE_EQUAL( balance_of(N(bob)), asset::from_string("500.0000 EOS"));
+   // Bob deposits 500
+   deposit( N(bob), core_from_string("500.0000"));
+   BOOST_REQUIRE_EQUAL( balance_of(N(bob)), core_from_string("500.0000"));
 
-   // Bob bets 11 EOS (success)
+   // Bob bets 11 (success)
    // secret : eec3272712d974c474a3e7b4028b53081344a5f50008e9ccf918ba0725a8d784
-   offer_bet( N(bob), asset::from_string("11.0000 EOS"), 
+   offer_bet( N(bob), core_from_string("11.0000"), 
       commitment_for("eec3272712d974c474a3e7b4028b53081344a5f50008e9ccf918ba0725a8d784")
    );
    produce_block();
@@ -314,12 +314,12 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    cancel_offer( N(bob), commitment_for("eec3272712d974c474a3e7b4028b53081344a5f50008e9ccf918ba0725a8d784") );
    BOOST_REQUIRE_EQUAL( open_offers(N(bob)), 0);
 
-   // Carol deposits 300 EOS
-   deposit( N(carol), asset::from_string("300.0000 EOS"));
+   // Carol deposits 300
+   deposit( N(carol), core_from_string("300.0000"));
 
-   // Carol bets 10 EOS (success)
+   // Carol bets 10 (success)
    // secret : 3efb4bd5e19b780f4980c919330c0306f8157f93db1fc72c7cefec63e0e7f37a
-   offer_bet( N(carol), asset::from_string("10.0000 EOS"), 
+   offer_bet( N(carol), core_from_string("10.0000"), 
       commitment_for("3efb4bd5e19b780f4980c919330c0306f8157f93db1fc72c7cefec63e0e7f37a")
    );
    produce_block();
@@ -330,7 +330,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( open_games(N(carol)), 1);
    BOOST_REQUIRE_EQUAL( open_offers(N(carol)), 0);
 
-   BOOST_REQUIRE_EQUAL( game_bet(1), asset::from_string("10.0000 EOS"));
+   BOOST_REQUIRE_EQUAL( game_bet(1), core_from_string("10.0000"));
 
 
    // Alice tries to cancel a nonexistent bet (fail)
@@ -376,31 +376,31 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    BOOST_REQUIRE_EQUAL( open_games(N(alice)), 0);
    BOOST_REQUIRE_EQUAL( open_offers(N(alice)), 0);
-   BOOST_REQUIRE_EQUAL( balance_of(N(alice)), asset::from_string("1010.0000 EOS"));
+   BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1010.0000"));
    
    BOOST_REQUIRE_EQUAL( open_games(N(carol)), 0);
    BOOST_REQUIRE_EQUAL( open_offers(N(carol)), 0);
-   BOOST_REQUIRE_EQUAL( balance_of(N(carol)), asset::from_string("290.0000 EOS"));
+   BOOST_REQUIRE_EQUAL( balance_of(N(carol)), core_from_string("290.0000"));
 
-   // Alice withdraw 1009 EOS (success)
-   withdraw( N(alice), asset::from_string("1009.0000 EOS"));
-   BOOST_REQUIRE_EQUAL( balance_of(N(alice)), asset::from_string("1.0000 EOS"));
+   // Alice withdraw 1009 (success)
+   withdraw( N(alice), core_from_string("1009.0000"));
+   BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL( 
-      get_currency_balance(N(eosio.token), EOS_SYMBOL, N(alice)),
-      asset::from_string("10009.0000 EOS")
+      get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), N(alice)),
+      core_from_string("10009.0000")
    );
 
-   // Alice withdraw 2 EOS (fail)
-   BOOST_CHECK_THROW( withdraw( N(alice), asset::from_string("2.0000 EOS")), 
+   // Alice withdraw 2 (fail)
+   BOOST_CHECK_THROW( withdraw( N(alice), core_from_string("2.0000")), 
       fc::exception);
 
-   // Alice withdraw 1 EOS (success)
-   withdraw( N(alice), asset::from_string("1.0000 EOS"));
+   // Alice withdraw 1 (success)
+   withdraw( N(alice), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL( 
-      get_currency_balance(N(eosio.token), EOS_SYMBOL, N(alice)),
-      asset::from_string("10010.0000 EOS")
+      get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), N(alice)),
+      core_from_string("10010.0000")
    );
 
    // Verify alice account was deleted
