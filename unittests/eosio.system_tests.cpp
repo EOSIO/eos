@@ -746,7 +746,7 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
                         unstake( "bob111111111", core_from_string("0.0000"), core_from_string("10.0000") )
 
    );
-   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("insufficient staked net bandwidth"),
                         unstake( "bob111111111", core_from_string("10.0000"),  core_from_string("0.0000") )
    );
 
