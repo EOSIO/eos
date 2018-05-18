@@ -32,9 +32,9 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
 parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
-parser.add_argument("-h", "--host", type=str, help="%s host name" % (testUtils.Utils.EosServerName),
+parser.add_argument("-h", "--host", type=str, help="%s host name" % (testUtils.Utils.EnuServerName),
                     default=LOCAL_HOST)
-parser.add_argument("-p", "--port", type=int, help="%s host port" % testUtils.Utils.EosServerName,
+parser.add_argument("-p", "--port", type=int, help="%s host port" % testUtils.Utils.EnuServerName,
                     default=DEFAULT_PORT)
 parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
 parser.add_argument("--defproducera_prvt_key", type=str, help="defproducera private key.")
@@ -71,7 +71,7 @@ localTest=True if server == LOCAL_HOST else False
 cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=testUtils.WalletMgr(True)
 testSuccessful=False
-killEosInstances=not dontKill
+killEnuInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName="enuwallet"
@@ -99,7 +99,7 @@ try:
             errorExit("Failed to stand up eos cluster.")
     else:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
-        killEosInstances=False
+        killEnuInstances=False
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
@@ -264,7 +264,7 @@ try:
 
     expectedAmount=transferAmount
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEnuBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -279,7 +279,7 @@ try:
 
     expectedAmount="97.5421 EOS"
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountEosBalanceStr(testeraAccount.name)
+    actualAmount=node.getAccountEnuBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -310,7 +310,7 @@ try:
 
     expectedAmount="98.0311 EOS" # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
-    actualAmount=node.getAccountEosBalanceStr(currencyAccount.name)
+    actualAmount=node.getAccountEnuBalanceStr(currencyAccount.name)
     if expectedAmount != actualAmount:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
@@ -442,7 +442,7 @@ try:
             errorExit("FAILURE - get code currency1111 failed", raw=True)
     else:
         Print("verify abi is set")
-        account=node.getEosAccountFromDb(currencyAccount.name)
+        account=node.getEnuAccountFromDb(currencyAccount.name)
         abiName=account["abi"]["structs"][0]["name"]
         abiActionName=account["abi"]["actions"][0]["name"]
         abiType=account["abi"]["actions"][0]["type"]
@@ -622,7 +622,7 @@ try:
         errorExit("Failed to unlock wallet %s" % (defproduceraWallet.name))
 
     Print("Get account defproducera")
-    account=node.getEosAccount(defproduceraAccount.name)
+    account=node.getEnuAccount(defproduceraAccount.name)
     if account is None:
         cmdError("%s get account" % (ClientName))
         errorExit("Failed to get account %s" % (defproduceraAccount.name))
@@ -697,7 +697,7 @@ finally:
         walletMgr.dumpErrorDetails()
         Print("== Errors see above ==")
 
-    if killEosInstances:
+    if killEnuInstances:
         Print("Shut down the cluster.")
         cluster.killall()
         if testSuccessful and not keepLogs:
