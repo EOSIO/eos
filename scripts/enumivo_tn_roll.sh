@@ -59,7 +59,7 @@ if [ \( -z "$prog" \) -o \( -z "$RD" \) ]; then
     exit 1
 fi
 
-SDIR=staging/eos
+SDIR=staging/enu
 if [ ! -e $SDIR/$RD/$prog ]; then
     echo $SDIR/$RD/$prog does not exist
     exit 1

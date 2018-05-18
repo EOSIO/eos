@@ -7,9 +7,9 @@ This plugin provides a way to generate a given amount of transactions per second
 The following instructions describe how to use the `txn_test_gen_plugin` plugin to generate 1,000 transaction per second load on a simple Enumivo node.
 
 ### Create config and data directories
-Make an empty directory for our configs and data, `mkdir ~/eos.data`, and define a logging.json that doesn't print debug information (which occurs for each txn) to the console:
+Make an empty directory for our configs and data, `mkdir ~/enumivo.data`, and define a logging.json that doesn't print debug information (which occurs for each txn) to the console:
 ```bash
-cat << EOF > ~/eos.data/logging.json
+cat << EOF > ~/enumivo.data/logging.json
 {
   "includes": [],
   "appenders": [{
@@ -49,18 +49,18 @@ EOF
 
 ### Launch producer
 ```bash
-$ ./enunode -d ~/eos.data/producer_node --config-dir ~/eos.data/producer_node -l ~/eos.data/logging.json --http-server-address "" -p enumivo -e
+$ ./enunode -d ~/enumivo.data/producer_node --config-dir ~/enumivo.data/producer_node -l ~/enumivo.data/logging.json --http-server-address "" -p enumivo -e
 ```
 
 ### Launch non-producer that will generate transactions
 ```bash
-$ ./enunode -d ~/eos.data/generator_node --config-dir ~/eos.data/generator_node -l ~/eos.data/logging.json --plugin enumivo::txn_test_gen_plugin --plugin enumivo::wallet_api_plugin --plugin enumivo::chain_api_plugin --p2p-peer-address localhost:9876 --p2p-listen-endpoint localhost:5555
+$ ./enunode -d ~/enumivo.data/generator_node --config-dir ~/enumivo.data/generator_node -l ~/enumivo.data/logging.json --plugin enumivo::txn_test_gen_plugin --plugin enumivo::wallet_api_plugin --plugin enumivo::chain_api_plugin --p2p-peer-address localhost:9876 --p2p-listen-endpoint localhost:5555
 ```
 
 ### Create a wallet on the non-producer and set bios contract
 ```bash
 $ ./enucli wallet create
-$ ./enucli set contract enumivo ~/eos/build.release/contracts/enumivo.bios/ 
+$ ./enucli set contract enumivo ~/enumivo/build.release/contracts/enumivo.bios/ 
 ```
 
 ### Initialize the accounts txn_test_gen_plugin uses

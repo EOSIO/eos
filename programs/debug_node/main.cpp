@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in enumivo/LICENSE.txt
  */
-#include <eos/app/application.hpp>
+#include <enumivo/app/application.hpp>
 
-#include <eos/debug_producer/debug_producer.hpp>
+#include <enumivo/debug_producer/debug_producer.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>

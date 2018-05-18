@@ -96,7 +96,7 @@ try:
         Print("Stand up cluster")
         if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill) is False:
             cmdError("launcher")
-            errorExit("Failed to stand up eos cluster.")
+            errorExit("Failed to stand up enu cluster.")
     else:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEnuInstances=False
@@ -129,13 +129,13 @@ try:
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
+        errorExit("Failed to stand up enu walletd.")
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
     testWallet=walletMgr.create(testWalletName)
     if testWallet is None:
-        cmdError("eos wallet create")
+        cmdError("enu wallet create")
         errorExit("Failed to create wallet %s." % (testWalletName))
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
@@ -150,7 +150,7 @@ try:
     Print("Creating wallet \"%s\"." % (defproduceraWalletName))
     defproduceraWallet=walletMgr.create(defproduceraWalletName)
     if defproduceraWallet is None:
-        cmdError("eos wallet create")
+        cmdError("enu wallet create")
         errorExit("Failed to create wallet %s." % (defproduceraWalletName))
 
     defproduceraAccount=cluster.defproduceraAccount

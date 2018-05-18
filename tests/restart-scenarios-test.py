@@ -80,7 +80,7 @@ try:
 
     Print("Stand up cluster")
     if cluster.launch(pnodes, total_nodes, topo=topo, delay=delay) is False:
-        errorExit("Failed to stand up eos cluster.")
+        errorExit("Failed to stand up enu cluster.")
 
     Print ("Wait for Cluster stabilization")
     # wait for cluster to start producing blocks

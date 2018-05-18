@@ -970,10 +970,10 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, enumivo_system_tester, * boost::unit
    //should decrease alice1111111's total_votes
    prod = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes("20.2220 EOS") == prod["total_votes"].as_double() );
-   //but eos should still be at stake
+   //but enu should still be at stake
    BOOST_REQUIRE_EQUAL( asset::from_string("1933.3334 EOS"), get_balance( "bob111111111" ) );
 
-   //carol1111111 unstakes rest of eos
+   //carol1111111 unstakes rest of enu
    BOOST_REQUIRE_EQUAL( success(), unstake( "carol1111111", "20.0000 EOS", "0.2220 EOS" ) );
    //should decrease alice1111111's total_votes to zero
    prod = get_producer_info( "alice1111111" );

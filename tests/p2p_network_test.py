@@ -110,13 +110,13 @@ exchangeAccount.ownerPublicKey=PUB_KEY2
 print("Stand up walletd")
 if walletMgr.launch() is False:
     cmdError("%s" % (WalletdName))
-    errorExit("Failed to stand up eos walletd.")
+    errorExit("Failed to stand up enu walletd.")
 
 testWalletName="test"
 Print("Creating wallet \"%s\"." % (testWalletName))
 testWallet=walletMgr.create(testWalletName)
 if testWallet is None:
-    cmdError("eos wallet create")
+    cmdError("enu wallet create")
     errorExit("Failed to create wallet %s." % (testWalletName))
 
 for account in accounts:
@@ -129,7 +129,7 @@ defproduceraWalletName="defproducera"
 Print("Creating wallet \"%s\"." % (defproduceraWalletName))
 defproduceraWallet=walletMgr.create(defproduceraWalletName)
 if defproduceraWallet is None:
-    cmdError("eos wallet create")
+    cmdError("enu wallet create")
     errorExit("Failed to create wallet %s." % (defproduceraWalletName))
 
 defproduceraAccount=testUtils.Cluster.defproduceraAccount

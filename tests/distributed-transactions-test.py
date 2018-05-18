@@ -70,7 +70,7 @@ try:
 
         Print("Stand up cluster")
         if cluster.launch(pnodes, total_nodes, topo=topo, delay=delay) is False:
-            errorExit("Failed to stand up eos cluster.")
+            errorExit("Failed to stand up enu cluster.")
 
         #exit(0)
         Print ("Wait for Cluster stabilization")

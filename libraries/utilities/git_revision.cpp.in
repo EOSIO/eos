@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <eos/utilities/git_revision.hpp>
+#include <enumivo/utilities/git_revision.hpp>
 
 #define ENU_GIT_REVISION_SHA "@ENU_GIT_REVISION_SHA@"
 #define ENU_GIT_REVISION_UNIX_TIMESTAMP @ENU_GIT_REVISION_UNIX_TIMESTAMP@

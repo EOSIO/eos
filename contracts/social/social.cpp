@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in enumivo/LICENSE.txt
  */
-#include <eos.hpp>
+#include <enumivo.hpp>
 
 /**
  *  The purpose of this contract is to implement something like Steem on EOS, this

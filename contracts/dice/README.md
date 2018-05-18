@@ -263,7 +263,7 @@ enucli push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
 
 ##### Balance of alice after withdraw
 ````bash
-enucli get currency balance enumivo.coin alice eos
+enucli get currency balance enumivo.coin alice enu
 1003.0000 EOS
 ````
 

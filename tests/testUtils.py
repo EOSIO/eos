@@ -1249,11 +1249,11 @@ class Cluster(object):
         """Cluster container.
         walletd [True|False] Is wallet enuwallet running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
-        host: eos server host
-        port: eos server port
-        walletHost: eos wallet host
-        walletPort: wos wallet port
-        enableMongo: Include mongoDb support, configures eos mongo plugin
+        host: enu server host
+        port: enu server port
+        walletHost: enu wallet host
+        walletPort: enu wallet port
+        enableMongo: Include mongoDb support, configures enu mongo plugin
         mongoHost: MongoDB host
         mongoPort: MongoDB port
         defproduceraPrvtKey: Defproducera account private key
@@ -1577,7 +1577,7 @@ class Cluster(object):
         node=self.nodes[0]
         fromm=self.defproduceraAccount
         to=self.accounts[0]
-        Utils.Print("Transfer %d units from account %s to %s on eos server port %d" % (
+        Utils.Print("Transfer %d units from account %s to %s on enu server port %d" % (
             transferAmount, fromm.name, to.name, node.port))
         trans=node.transferFunds(fromm, to, transferAmount)
         transId=Node.getTransId(trans)
@@ -1613,7 +1613,7 @@ class Cluster(object):
             transferAmount -= amount
             fromm=account
             to=self.accounts[i+1] if i < (count-1) else self.defproduceraAccount
-            Utils.Print("Transfer %d units from account %s to %s on eos server port %d." %
+            Utils.Print("Transfer %d units from account %s to %s on enu server port %d." %
                     (transferAmount, fromm.name, to.name, node.port))
 
             trans=node.transferFunds(fromm, to, transferAmount)
@@ -1642,7 +1642,7 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
                                             (Utils.EnuServerName, node.port))
                 if node.validateSpreadFundsOnNode(self.defproduceraAccount, self.accounts, expectedTotal) is False:
-                    Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
+                    Utils.Print("ERROR: Failed to validate funds on enu node port: %d" % (node.port))
                     return False
 
         return True
@@ -2098,13 +2098,13 @@ class Cluster(object):
         cmd="%s -k 15" % (Utils.EnuLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
+            if not silent: Utils.Print("Launcher failed to shut down enu cluster.")
 
-        # ocassionally the launcher cannot kill the eos server
+        # ocassionally the launcher cannot kill the enu server
         cmd="pkill -9 %s" % (Utils.EnuServerName)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Failed to shut down eos cluster.")
+            if not silent: Utils.Print("Failed to shut down enu cluster.")
 
         # another explicit nodes shutdown
         for node in self.nodes:
