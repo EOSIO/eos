@@ -1171,7 +1171,8 @@ struct regproxy_subcommand {
 
       register_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy);
+                  ("proxy", proxy)
+                  ("isproxy", true);
          send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(regproxy), act_payload)});
       });
    }
@@ -1187,30 +1188,31 @@ struct unregproxy_subcommand {
 
       unregister_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(unregproxy), act_payload)});
+                  ("proxy", proxy)
+                  ("isproxy", false);
+         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(regproxy), act_payload)});
       });
    }
 };
 
 struct canceldelay_subcommand {
-   string cancelling_account;
-   string cancelling_permission;
+   string canceling_account;
+   string canceling_permission;
    string trx_id;
 
    canceldelay_subcommand(CLI::App* actionRoot) {
       auto cancel_delay = actionRoot->add_subcommand("canceldelay", localized("Cancel a delayed transaction"));
-      cancel_delay->add_option("cancelling_account", cancelling_account, localized("Account from authorization on the original delayed transaction"))->required();
-      cancel_delay->add_option("cancelling_permission", cancelling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
+      cancel_delay->add_option("canceling_account", canceling_account, localized("Account from authorization on the original delayed transaction"))->required();
+      cancel_delay->add_option("canceling_permission", canceling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
       cancel_delay->add_option("trx_id", trx_id, localized("The transaction id of the original delayed transaction"))->required();
       add_standard_transaction_options(cancel_delay);
 
       cancel_delay->set_callback([this] {
-         const auto cancelling_auth = permission_level{cancelling_account, cancelling_permission};
+         const auto canceling_auth = permission_level{canceling_account, canceling_permission};
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("cancelling_auth", cancelling_auth)
+                  ("canceling_auth", canceling_auth)
                   ("trx_id", trx_id);
-         send_actions({create_action({cancelling_auth}, config::system_account_name, N(canceldelay), act_payload)});
+         send_actions({create_action({canceling_auth}, config::system_account_name, N(canceldelay), act_payload)});
       });
    }
 };
