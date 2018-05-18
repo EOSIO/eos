@@ -19,18 +19,18 @@ namespace eosiosystem {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
 
-      auto itr = _rammarket.find(S(4,RAMSYS));
+      auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
          auto system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
-               m.supply.symbol = S(4,RAMSYS);
+               m.supply.symbol = S(4,RAMCORE);
                m.base.balance.amount = int64_t(_gstate.free_ram());
                m.base.balance.symbol = S(0,RAM);
                m.quote.balance.amount = system_token_supply / 1000;
-               m.quote.balance.symbol = S(4,SYS);
+               m.quote.balance.symbol = CORE_SYMBOL;
             });
          }
       } else {
@@ -58,7 +58,7 @@ namespace eosiosystem {
       eosio_assert( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
 
       auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
-      auto itr = _rammarket.find(S(4,RAMSYS));
+      auto itr = _rammarket.find(S(4,RAMCORE));
 
       /**
        *  Increase or decrease the amount of ram for sale based upon the change in max

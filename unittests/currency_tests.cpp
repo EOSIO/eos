@@ -275,18 +275,18 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    }
 
    {
-      symbol eos(4, "SYS");
-      BOOST_REQUIRE_EQUAL(SYS_SYMBOL_VALUE, eos.value());
-      BOOST_REQUIRE_EQUAL("4,SYS", eos.to_string());
-      BOOST_REQUIRE_EQUAL("SYS", eos.name());
-      BOOST_REQUIRE_EQUAL(4, eos.decimals());
+      symbol sys(4, "SYS");
+      BOOST_REQUIRE_EQUAL(SY(4,SYS), sys.value());
+      BOOST_REQUIRE_EQUAL("4,SYS", sys.to_string());
+      BOOST_REQUIRE_EQUAL("SYS", sys.name());
+      BOOST_REQUIRE_EQUAL(4, sys.decimals());
    }
 
-   // default is "4,EOS"
+   // default is "4,${CORE_SYMBOL_NAME}"
    {
       symbol def;
       BOOST_REQUIRE_EQUAL(4, def.decimals());
-      BOOST_REQUIRE_EQUAL("SYS", def.name());
+      BOOST_REQUIRE_EQUAL(CORE_SYMBOL_NAME, def.name());
    }
    // from string
    {

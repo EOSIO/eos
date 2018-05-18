@@ -7,13 +7,6 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/symbol.hpp>
 
-/// eos with 8 digits of precision
-#define SYS_SYMBOL_VALUE  (int64_t(4) | (uint64_t('S') << 8) | (uint64_t('Y') << 16) | (uint64_t('S') << 24))
-static const eosio::chain::symbol SYS_SYMBOL(SYS_SYMBOL_VALUE);
-
-/// Defined to be largest power of 10 that fits in 53 bits of precision
-#define EOS_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
-
 namespace eosio { namespace chain {
 
 /**
@@ -29,7 +22,7 @@ struct asset
 {
    static constexpr int64_t max_amount = (1LL << 62) - 1;
 
-   explicit asset(share_type a = 0, symbol id = SYS_SYMBOL) :amount(a), sym(id) {
+   explicit asset(share_type a = 0, symbol id = symbol(CORE_SYMBOL)) :amount(a), sym(id) {
       EOS_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
       EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
    }
