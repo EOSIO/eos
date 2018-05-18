@@ -73,11 +73,11 @@ FC_REFLECT( withdraw_t, (to)(amount) );
 
 struct __attribute((packed)) account_t {
    account_name owner;
-   asset        eos_balance;
+   asset        enu_balance;
    uint32_t     open_offers;
    uint32_t     open_games;
 };
-FC_REFLECT(account_t, (owner)(eos_balance)(open_offers)(open_games));
+FC_REFLECT(account_t, (owner)(enu_balance)(open_offers)(open_games));
 
 struct player_t {
    checksum_type commitment;
@@ -195,7 +195,7 @@ struct dice_tester : TESTER {
    asset balance_of(account_name account) {
       account_t acnt;
       if(!dice_account(account, acnt)) return asset();
-      return acnt.eos_balance;
+      return acnt.enu_balance;
    }
 
    checksum_type commitment_for( const char* secret ) {

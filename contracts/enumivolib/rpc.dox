@@ -111,7 +111,7 @@ $ curl  http://127.0.0.1:8888/v1/chain/get_account -X POST -d '{"account_name":"
 ```
 {
   "name": "inita",
-  "eos_balance": "999998.9574 EOS",
+  "enu_balance": "999998.9574 EOS",
   "staked_balance": "0.0000 EOS",
   "unstaking_balance": "0.0000 EOS",
   "last_unstaking_time": "2106-02-07T06:28:15",

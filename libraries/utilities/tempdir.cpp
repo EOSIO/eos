@@ -11,9 +11,9 @@ namespace enumivo { namespace utilities {
 
 fc::path temp_directory_path()
 {
-   const char* eos_tempdir = getenv("ENU_TEMPDIR");
-   if( eos_tempdir != nullptr )
-      return fc::path( eos_tempdir );
+   const char* enu_tempdir = getenv("ENU_TEMPDIR");
+   if( enu_tempdir != nullptr )
+      return fc::path( enu_tempdir );
    return fc::temp_directory_path() / "eos-tmp";
 }
 

@@ -407,8 +407,8 @@ fc::mutable_variant_object proxy( account_name acct ) {
    return voter( acct )( "is_proxy", 1 );
 }
 
-inline uint64_t M( const string& eos_str ) {
-   return asset::from_string( eos_str ).amount;
+inline uint64_t M( const string& enu_str ) {
+   return asset::from_string( enu_str ).amount;
 }
 
 BOOST_AUTO_TEST_SUITE(enumivo_system_tests)

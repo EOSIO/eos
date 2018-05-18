@@ -24,7 +24,7 @@ void accounts_table::create()
 {
     *m_session << "create table accounts("
                   "name TEXT,"
-                  "eos_balance REAL,"
+                  "enu_balance REAL,"
                   "staked_balance REAL,"
                   "unstaking_balance REAL,"
                   "abi TEXT,"

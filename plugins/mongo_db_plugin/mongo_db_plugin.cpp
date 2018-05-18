@@ -57,7 +57,7 @@ public:
    void init();
    void wipe_database();
 
-   static abi_def eos_abi; // cached for common use
+   static abi_def enu_abi; // cached for common use
 
    bool configured{false};
    bool wipe_database_on_startup{false};
@@ -618,7 +618,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
 
 }
 
-// For now providing some simple account processing to maintain eos_balance
+// For now providing some simple account processing to maintain enu_balance
 void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::stream::document;
@@ -644,19 +644,19 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
       auto from_account = find_account(accounts, from_name);
       auto to_account = find_account(accounts, to_name);
 
-      asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
-      asset to_balance = asset::from_string(to_account.view()["eos_balance"].get_utf8().value.to_string());
+      asset from_balance = asset::from_string(from_account.view()["enu_balance"].get_utf8().value.to_string());
+      asset to_balance = asset::from_string(to_account.view()["enu_balance"].get_utf8().value.to_string());
       auto asset_quantity = transfer["quantity"].as<asset>();
       edump((from_balance)(to_balance)(asset_quantity));
       from_balance -= asset_quantity;
       to_balance += asset_quantity;
 
       document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
+      update_from << "$set" << open_document << "enu_balance" << from_balance.to_string()
                   << "updatedAt" << b_date{now}
                   << close_document;
       document update_to{};
-      update_to << "$set" << open_document << "eos_balance" << to_balance.to_string()
+      update_to << "$set" << open_document << "enu_balance" << to_balance.to_string()
                 << "updatedAt" << b_date{now}
                 << close_document;
 
@@ -671,7 +671,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
       // create new account
       bsoncxx::builder::stream::document doc{};
       doc << "name" << newaccount.name.to_string()
-          << "eos_balance" << asset().to_string()
+          << "enu_balance" << asset().to_string()
           << "staked_balance" << asset().to_string()
           << "unstaking_balance" << asset().to_string()
           << "createdAt" << b_date{now}
@@ -740,7 +740,7 @@ void mongo_db_plugin_impl::init() {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       doc << "name" << name(chain::config::system_account_name).to_string()
-          << "eos_balance" << asset().to_string()
+          << "enu_balance" << asset().to_string()
           << "staked_balance" << asset().to_string()
           << "unstaking_balance" << asset().to_string()
           << "createdAt" << b_date{now}
