@@ -638,13 +638,10 @@ try:
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(str(blockNum), retry=False, silentErrors=True)
+        block=node.getBlock(str(blockNum), retry=False, silentErrors=False)
         if block is None:
-            # TBD: Known issue (Issue 2099) that the block containing setprods isn't retrievable.
-            #  Enable errorExit() once that is resolved.
-            Print("WARNING: Failed to get block %d (probably issue 2099). Report and keep going..." % (blockNum))
-            # cmdError("%s get block" % (ClientName))
-            # errorExit("get block by num %d" % blockNum)
+            cmdError("%s get block" % (ClientName))
+            errorExit("get block by num %d" % blockNum)
 
         if enableMongo:
             blockId=block["block_id"]
