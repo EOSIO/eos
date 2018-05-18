@@ -27,6 +27,23 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
    };
 
+   struct name_bid {
+     account_name            newname;
+     account_name            high_bidder;
+     int64_t                 high_bid = 0; ///< negative high_bid == closed auction waiting to be claimed
+     uint64_t                last_bid_time = 0;
+
+     auto     primary_key()const { return newname;   }
+     uint64_t by_high_bid()const { return -high_bid; }
+   };
+
+   typedef eosio::multi_index< N(namebids), name_bid,
+                               indexed_by<N(highbid), const_mem_fun<name_bid, uint64_t, &name_bid::by_high_bid>  >
+                               >  name_bid_table;
+
+
+
+
    struct eosio_global_state : eosio_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
@@ -42,12 +59,13 @@ namespace eosiosystem {
       int64_t              total_activated_stake = 0;
       checksum160          last_producer_schedule_id;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
+      block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)
                                 (last_pervote_bucket_fill)
-                                (pervote_bucket)(perblock_bucket)(savings)(total_unpaid_blocks)(total_activated_stake)(last_producer_schedule_id)(total_producer_vote_weight) )
+                                (pervote_bucket)(perblock_bucket)(savings)(total_unpaid_blocks)(total_activated_stake)(last_producer_schedule_id)(total_producer_vote_weight)(last_name_close) )
    };
 
    struct producer_info {
@@ -200,6 +218,7 @@ namespace eosiosystem {
 
          void setpriv( account_name account, uint8_t ispriv );
 
+         void bidname( account_name bidder, account_name newname, asset bid );
       private:
          void update_elected_producers( block_timestamp timestamp );
 
