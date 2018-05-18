@@ -80,6 +80,7 @@ class producer_plugin_impl {
       ,_transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
       {}
 
+      optional<fc::time_point> calculate_next_block_time(const account_name& producer_name) const;
       void schedule_production_loop();
       void produce_block();
       bool maybe_produce_block();
@@ -414,6 +415,59 @@ void producer_plugin::plugin_shutdown() {
    }
 }
 
+optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   const auto& hbs = chain.head_block_state();
+   const auto& active_schedule = hbs->active_schedule.producers;
+   const auto& hbt = hbs->header.timestamp;
+
+   // determine if this producer is in the active schedule and if so, where
+   auto itr = std::find_if(active_schedule.begin(), active_schedule.end(), [&](const auto& asp){ return asp.producer_name == producer_name; });
+   if (itr == active_schedule.end()) {
+      // this producer is not in the active producer set
+      return optional<fc::time_point>();
+   }
+
+   size_t producer_index = itr - active_schedule.begin();
+   uint32_t minimum_offset = 1; // must at least be the "next" block
+
+   // account for a watermark in the future which is disqualifying this producer for now
+   // this is conservative assuming no blocks are dropped.  If blocks are dropped the watermark will
+   // disqualify this producer for longer but it is assumed they will wake up, determine that they
+   // are disqualified for longer due to skipped blocks and re-caculate their next block with better
+   // information then
+   auto current_watermark_itr = _producer_watermarks.find(producer_name);
+   if (current_watermark_itr != _producer_watermarks.end()) {
+      auto watermark = current_watermark_itr->second;
+      if (watermark > hbs->block_num) {
+         // if I have a watermark then I need to wait until after that watermark
+         minimum_offset = watermark - hbs->block_num + 1;
+      }
+   }
+
+   // this producers next opportuity to produce is the next time its slot arrives after or at the calculated minimum
+   uint32_t minimum_slot = hbt.slot + minimum_offset;
+   size_t minimum_slot_producer_index = (minimum_slot % (active_schedule.size() * config::producer_repetitions)) / config::producer_repetitions;
+   if ( producer_index == minimum_slot_producer_index ) {
+      // this is the producer for the minimum slot, go with that
+      return block_timestamp_type(minimum_slot).to_time_point();
+   } else {
+      // calculate how many rounds are between the minimum producer and the producer in question
+      size_t producer_distance = producer_index - minimum_slot_producer_index;
+      // check for unsigned underflow
+      if (producer_distance > producer_index) {
+         producer_distance += active_schedule.size();
+      }
+
+      // align the minimum slot to the first of its set of reps
+      uint32_t first_minimum_producer_slot = minimum_slot - (minimum_slot % config::producer_repetitions);
+
+      // offset the aligned minimum to the *earliest* next set of slots for this producer
+      uint32_t next_block_slot = first_minimum_producer_slot  + (producer_distance * config::producer_repetitions);
+      return block_timestamp_type(next_block_slot).to_time_point();
+   }
+}
+
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    const auto& hbs = chain.head_block_state();
@@ -578,36 +632,30 @@ void producer_plugin_impl::schedule_production_loop() {
       });
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty()){
       // if we have any producers then we should at least set a timer for our next available slot
-      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-      const auto& hbs = chain.head_block_state();
-      const auto& active_schedule = hbs->active_schedule;
-      const auto& hbt = hbs->header.timestamp;
-      uint32_t producer_index = hbt.slot % (active_schedule.producers.size() * config::producer_repetitions);
-      producer_index /= config::producer_repetitions;
-
-      uint32_t producer_first_slot = hbt.slot - (hbt.slot % config::producer_repetitions);
-
-      for (int idx = producer_index + 1; idx < producer_index + active_schedule.producers.size(); idx++) {
-         auto producer_name = active_schedule.producers.at(idx % active_schedule.producers.size()).producer_name;
-         if (_producers.find(producer_name) != _producers.end()) {
-            uint32_t my_next_slot = producer_first_slot + ((idx - producer_index) * config::producer_repetitions);
-
-            // we should wake up 1 block prior to that so that we make our deadline
-            my_next_slot--;
-
-            static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
-            _timer.expires_at(epoch + boost::posix_time::microseconds(block_timestamp_type(my_next_slot).to_time_point().time_since_epoch().count()));
-            _timer.async_wait([&](const boost::system::error_code& ec) {
-               if (ec != boost::asio::error::operation_aborted) {
-                  schedule_production_loop();
-               }
-            });
-
-            break;
+      optional<fc::time_point> wake_up_time;
+      for (const auto&p: _producers) {
+         auto next_producer_block_time = calculate_next_block_time(p);
+         if (next_producer_block_time) {
+            auto producer_wake_up_time = *next_producer_block_time - fc::microseconds(config::block_interval_us);
+            if (wake_up_time) {
+               // wake up with a full block interval to the deadline
+               wake_up_time = std::min<fc::time_point>(*wake_up_time, producer_wake_up_time);
+            } else {
+               wake_up_time = producer_wake_up_time;
+            }
          }
       }
-   }
 
+      if (wake_up_time) {
+         static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
+         _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
+         _timer.async_wait([&](const boost::system::error_code& ec) {
+            if (ec != boost::asio::error::operation_aborted) {
+               schedule_production_loop();
+            }
+         });
+      }
+   }
 }
 
 bool producer_plugin_impl::maybe_produce_block() {
