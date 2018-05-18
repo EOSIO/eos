@@ -6,7 +6,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/block_timestamp.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <eosio/chain/abi_def.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -21,23 +21,23 @@ namespace eosio { namespace chain {
       uint8_t              vm_version   = 0;
       bool                 privileged   = false;
 
-      time_point_sec       last_code_update;
+      time_point           last_code_update;
       digest_type          code_version;
       block_timestamp_type creation_date;
 
-      shared_vector<char>  code;
-      shared_vector<char>  abi;
+      shared_string  code;
+      shared_string  abi;
 
-      void set_abi( const eosio::chain::contracts::abi_def& a ) {
-         // Added resize(0) here to avoid bug in boost vector container
-         abi.resize( 0 );
+      void set_abi( const eosio::chain::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
          fc::datastream<char*> ds( abi.data(), abi.size() );
          fc::raw::pack( ds, a );
       }
 
-      eosio::chain::contracts::abi_def get_abi()const {
-         eosio::chain::contracts::abi_def a;
+      eosio::chain::abi_def get_abi()const {
+         eosio::chain::abi_def a;
+         FC_ASSERT( abi.size() != 0, "No ABI set on account ${n}", ("n",name) );
+
          fc::datastream<const char*> ds( abi.data(), abi.size() );
          fc::raw::unpack( ds, a );
          return a;
@@ -54,9 +54,31 @@ namespace eosio { namespace chain {
       >
    >;
 
+   class account_sequence_object : public chainbase::object<account_sequence_object_type, account_sequence_object>
+   {
+      OBJECT_CTOR(account_sequence_object);
+
+      id_type      id;
+      account_name name;
+      uint64_t     recv_sequence = 0;
+      uint64_t     auth_sequence = 0;
+      uint64_t     code_sequence = 0;
+      uint64_t     abi_sequence  = 0;
+   };
+
+   struct by_name;
+   using account_sequence_index = chainbase::shared_multi_index_container<
+      account_sequence_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<account_sequence_object, account_sequence_object::id_type, &account_sequence_object::id>>,
+         ordered_unique<tag<by_name>, member<account_sequence_object, account_name, &account_sequence_object::name>>
+      >
+   >;
+
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
 
 
 FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))

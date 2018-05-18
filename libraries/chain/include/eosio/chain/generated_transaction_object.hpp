@@ -34,7 +34,15 @@ namespace eosio { namespace chain {
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
-         shared_vector<char>           packed_trx;
+         shared_string                 packed_trx;
+
+         uint32_t set( const transaction& trx ) {
+            auto trxsize = fc::raw::pack_size( trx );
+            packed_trx.resize( trxsize );
+            fc::datastream<char*> ds( packed_trx.data(), trxsize );
+            fc::raw::pack( ds, trx );
+            return trxsize;
+         }
    };
 
    struct by_trx_id;
@@ -48,13 +56,13 @@ namespace eosio { namespace chain {
       indexed_by<
          ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
          ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, transaction_id_type, trx_id)>,
-         ordered_unique< tag<by_expiration>, 
+         ordered_unique< tag<by_expiration>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, expiration),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
             >
          >,
-         ordered_unique< tag<by_delay>, 
+         ordered_unique< tag<by_delay>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, delay_until),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
@@ -69,8 +77,6 @@ namespace eosio { namespace chain {
       >
    >;
 
-   typedef chainbase::generic_index<generated_transaction_multi_index> generated_transaction_index;
-
    namespace config {
       template<>
       struct billable_size<generated_transaction_object> {
@@ -81,4 +87,3 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
-

@@ -4,6 +4,7 @@
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
 #include <eosiolib/memory.hpp>
+#include <eosiolib/fixed_key.hpp>
 #include "../test_api/test_api.hpp"
 
 int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};
@@ -153,14 +154,15 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
       auto len = db_get_i64(itr, value, buffer_len);
       value[buffer_len] = '\0';
       std::string s(value);
-      eosio_assert(uint32_t(len) == strlen("bob's info"), "primary_i64_general - db_get_i64");
-      eosio_assert(s == "bob's", "primary_i64_general - db_get_i64");
+      eosio_assert(uint32_t(len) == buffer_len, "primary_i64_general - db_get_i64");
+      eosio_assert(s == "bob's", "primary_i64_general - db_get_i64  - 5");
 
       buffer_len = 20;
-      db_get_i64(itr, value, buffer_len);
-      value[buffer_len] = '\0';
+      len = db_get_i64(itr, value, 0);
+      len = db_get_i64(itr, value, len);
+      value[len] = '\0';
       std::string sfull(value);
-      eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64");
+      eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64 - full");
    }
 
    // update
@@ -532,4 +534,14 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
       default:
          eosio_assert( false, "idx_double_nan_lookup_fail: unexpected lookup_type" );
    }
+}
+
+void test_db::misaligned_secondary_key256_tests(uint64_t receiver, uint64_t, uint64_t) {
+   auto key = eosio::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
+   char* ptr = (char*)(&key);
+   ptr += 1;
+   // test that store doesn't crash on unaligned data
+   db_idx256_store( N(testapi), N(testtable), N(testapi), 1, (eosio::key256*)(ptr), 2 );
+   // test that find_primary doesn't crash on unaligned data
+   db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (eosio::key256*)(ptr), 2, 0);
 }

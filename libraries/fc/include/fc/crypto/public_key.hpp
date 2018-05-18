@@ -8,7 +8,8 @@
 
 namespace fc { namespace crypto {
    namespace config {
-      constexpr const char* public_key_base_prefix = "EOS";
+      constexpr const char* public_key_legacy_prefix = "EOS";
+      constexpr const char* public_key_base_prefix = "PUB";
       constexpr const char* public_key_prefix[] = {
          "K1",
          "R1"
@@ -26,6 +27,8 @@ namespace fc { namespace crypto {
          public_key& operator= (const public_key& ) = default;
 
          public_key( const signature& c, const sha256& digest, bool check_canonical = true );
+
+         bool valid()const;
 
          // serialize to/from string
          explicit public_key(const string& base58str);

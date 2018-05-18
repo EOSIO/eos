@@ -90,18 +90,21 @@ namespace fc { namespace crypto {
 
    static private_key::storage_type parse_base58(const string& base58str)
    {
-      try {
+      const auto pivot = base58str.find('_');
+
+      if (pivot == std::string::npos) {
          // wif import
          using default_type = private_key::storage_type::template type_at<0>;
          return private_key::storage_type(from_wif<default_type>(base58str));
-      } catch (...) {
-         // wif import failed
-      }
+      } else {
+         constexpr auto prefix = config::private_key_base_prefix;
+         const auto prefix_str = base58str.substr(0, pivot);
+         FC_ASSERT(prefix == prefix_str, "Private Key has invalid prefix: ${str}", ("str", base58str)("prefix_str", prefix_str));
 
-      constexpr auto prefix = config::private_key_base_prefix;
-      FC_ASSERT(prefix_matches(prefix, base58str), "Private Key has invalid prefix: ${str}", ("str", base58str));
-      auto sub_str = base58str.substr(const_strlen(prefix));
-      return base58_str_parser<private_key::storage_type, config::private_key_prefix>::apply(sub_str);
+         auto data_str = base58str.substr(pivot + 1);
+         FC_ASSERT(!data_str.empty(), "Private Key has no data: ${str}", ("str", base58str));
+         return base58_str_parser<private_key::storage_type, config::private_key_prefix>::apply(data_str);
+      }
    }
 
    private_key::private_key(const std::string& base58str)
@@ -118,7 +121,7 @@ namespace fc { namespace crypto {
       }
 
       auto data_str = _storage.visit(base58str_visitor<storage_type, config::private_key_prefix>());
-      return std::string(config::private_key_base_prefix) + data_str;
+      return std::string(config::private_key_base_prefix) + "_" + data_str;
    }
 
    std::ostream& operator<<(std::ostream& s, const private_key& k) {

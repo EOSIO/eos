@@ -98,22 +98,22 @@ try:
     if not cluster.populateWallet(accountsCount, wallet):
         errorExit("Wallet initialization failed.")
 
-    initaAccount=cluster.initaAccount
+    defproduceraAccount=cluster.defproduceraAccount
 
-    Print("Importing keys for account %s into wallet %s." % (initaAccount.name, wallet.name))
-    if not walletMgr.importKey(initaAccount, wallet):
-        errorExit("Failed to import key for account %s" % (initaAccount.name))
+    Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, wallet.name))
+    if not walletMgr.importKey(defproduceraAccount, wallet):
+        errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
     Print("Create accounts.")
     #if not cluster.createAccounts(wallet):
-    if not cluster.createAccounts(initaAccount):
+    if not cluster.createAccounts(defproduceraAccount):
         errorExit("Accounts creation failed.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
         errorExit("Cluster sync wait failed.")
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+    # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
     # Print("Spread funds and validate")
     # if not cluster.spreadFundsAndValidate(10):
@@ -128,7 +128,7 @@ try:
         errorExit("Failed to kill Eos instances")
     Print("nodeos instances killed.")
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+    # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
     # Print("Spread funds and validate")
     # if not cluster.spreadFundsAndValidate(10):
@@ -148,7 +148,7 @@ try:
         errorExit("Cluster never synchronized")
     Print ("Cluster synched")
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+    # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
     # Print("Spread funds and validate")
     # if not cluster.spreadFundsAndValidate(10):

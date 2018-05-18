@@ -45,6 +45,10 @@ using namespace eosio;
 #define INVOKE_R_R(api_handle, call_name, in_param) \
      auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>());
 
+#define INVOKE_R_R_R(api_handle, call_name, in_param0, in_param1) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>());
+
 #define INVOKE_R_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>());
@@ -88,6 +92,8 @@ void wallet_api_plugin::plugin_startup() {
             INVOKE_V_R_R(wallet_mgr, unlock, std::string, std::string), 200),
        CALL(wallet, wallet_mgr, import_key,
             INVOKE_V_R_R(wallet_mgr, import_key, std::string, std::string), 201),
+       CALL(wallet, wallet_mgr, create_key,
+            INVOKE_R_R_R(wallet_mgr, create_key, std::string, std::string), 201),
        CALL(wallet, wallet_mgr, list_wallets,
             INVOKE_R_V(wallet_mgr, list_wallets), 200),
        CALL(wallet, wallet_mgr, list_keys,

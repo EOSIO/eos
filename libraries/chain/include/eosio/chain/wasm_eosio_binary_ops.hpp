@@ -21,6 +21,33 @@
 
 namespace eosio { namespace chain { namespace wasm_ops {
 
+class instruction_stream {
+   public:
+      instruction_stream(size_t size) : idx(0) {
+         data.resize(size);
+      }
+      void operator<< (const char c) { 
+         if (idx >= data.size())
+            data.resize(data.size()*2);
+         data[idx++] = static_cast<U8>(c);
+      }
+      void set(size_t i, const char* arr) {
+         if (i+idx >= data.size())
+            data.resize(data.size()*2+i);
+         memcpy((char*)&data[idx], arr, i);
+         idx += i;
+      }
+      size_t get_index() { return idx; }
+      std::vector<U8> get() {
+         std::vector<U8> ret = data;
+         ret.resize(idx);
+         return ret;
+      }
+//   private:
+      size_t idx;
+      std::vector<U8> data;
+};
+
 // forward declaration
 struct instr;
 using namespace fc;
@@ -73,40 +100,42 @@ inline std::string to_string( branchtabletype field ) {
    return std::string("branchtabletype : ")+std::to_string(field.target_depth)+std::string(", ")+std::to_string(field.table_index);
 }
 
-inline std::vector<U8> pack( uint32_t field ) {
-   return { U8(field), U8(field >> 8), U8(field >> 16), U8(field >> 24) };
+inline void pack( instruction_stream* stream, uint32_t field ) {
+   const char packed[] = { char(field), char(field >> 8), char(field >> 16), char(field >> 24) };
+   stream->set(sizeof(packed), packed);
 }
-inline std::vector<U8> pack( uint64_t field ) {
-   return { U8(field), U8(field >> 8), U8(field >> 16), U8(field >> 24), 
-            U8(field >> 32), U8(field >> 40), U8(field >> 48), U8(field >> 56) 
-          };
+inline void pack( instruction_stream* stream, uint64_t field ) {
+   const char packed[] = { char(field), char(field >> 8), char(field >> 16), char(field >> 24), 
+                           char(field >> 32), char(field >> 40), char(field >> 48), char(field >> 56) };
+   stream->set(sizeof(packed), packed);
 }
-inline std::vector<U8> pack( blocktype field ) {
-   return { U8(field.result) };
+inline void pack( instruction_stream* stream, blocktype field ) {
+   const char packed[] = { char(field.result) };
+   stream->set(sizeof(packed), packed);
 }
-inline std::vector<U8> pack( memoryoptype field ) {
-   return { U8(field.end) };
+inline void pack( instruction_stream* stream,  memoryoptype field ) {
+   const char packed[] = { char(field.end) };
+   stream->set(sizeof(packed), packed);
 }
-inline std::vector<U8> pack( memarg field ) {
-   return { U8(field.a), U8(field.a >> 8), U8(field.a >> 16), U8(field.a >> 24), 
-            U8(field.o), U8(field.o >> 8), U8(field.o >> 16), U8(field.o >> 24), 
-          };
+inline void pack( instruction_stream* stream, memarg field ) {
+   const char packed[] = { char(field.a), char(field.a >> 8), char(field.a >> 16), char(field.a >> 24), 
+                           char(field.o), char(field.o >> 8), char(field.o >> 16), char(field.o >> 24)};
+   stream->set(sizeof(packed), packed);
 
 }
-inline std::vector<U8> pack( branchtabletype field ) {
-   return { U8(field.target_depth), U8(field.target_depth >> 8), U8(field.target_depth >> 16), U8(field.target_depth >> 24), 
-            U8(field.target_depth >> 32), U8(field.target_depth >> 40), U8(field.target_depth >> 48), U8(field.target_depth >> 56), 
-            U8(field.table_index), U8(field.table_index >> 8), U8(field.table_index >> 16), U8(field.table_index >> 24), 
-            U8(field.table_index >> 32), U8(field.table_index >> 40), U8(field.table_index >> 48), U8(field.table_index >> 56) 
-
-          };
+inline void pack( instruction_stream* stream, branchtabletype field ) {
+   const char packed[] = { char(field.target_depth), char(field.target_depth >> 8), char(field.target_depth >> 16), char(field.target_depth >> 24), 
+            char(field.target_depth >> 32), char(field.target_depth >> 40), char(field.target_depth >> 48), char(field.target_depth >> 56), 
+            char(field.table_index), char(field.table_index >> 8), char(field.table_index >> 16), char(field.table_index >> 24), 
+            char(field.table_index >> 32), char(field.table_index >> 40), char(field.table_index >> 48), char(field.table_index >> 56) };
+   stream->set(sizeof(packed), packed);
 }
 
 template <typename Field>
 struct field_specific_params {
    static constexpr int skip_ahead = sizeof(uint16_t) + sizeof(Field);
    static auto unpack( char* opcode, Field& f ) { f = *reinterpret_cast<Field*>(opcode); }
-   static auto pack(Field& f) { return eosio::chain::wasm_ops::pack(f); }
+   static void pack(instruction_stream* stream, Field& f) { return eosio::chain::wasm_ops::pack(stream, f); }
    static auto to_string(Field& f) { return std::string(" ")+
                                        eosio::chain::wasm_ops::to_string(f); }
 };
@@ -114,7 +143,7 @@ template <>
 struct field_specific_params<voidtype> {
    static constexpr int skip_ahead = sizeof(uint16_t);
    static auto unpack( char* opcode, voidtype& f ) {}
-   static auto pack(voidtype& f) { return std::vector<U8>{}; }
+   static void pack(instruction_stream* stream, voidtype& f) {}
    static auto to_string(voidtype& f) { return ""; }
 }; 
 
@@ -128,11 +157,9 @@ struct OP final : instr_base<Mutators...> {                                     
    void unpack( char* opcode ) override {                                                           \
       field_specific_params<DATA>::unpack( opcode, field );                                         \
    }                                                                                                \
-   std::vector<U8> pack() override {                                                                \
-      std::vector<U8> output = { U8(code), 0 };                                                     \
-      std::vector<U8> field_pack = field_specific_params<DATA>::pack( field );                      \
-      output.insert( output.end(), field_pack.begin(), field_pack.end() );                          \
-      return output;                                                                                \
+   void pack(instruction_stream* stream) override {                                                 \
+      stream->set(2, (const char*)&code);                                                           \
+      field_specific_params<DATA>::pack( stream, field );                                           \
    }                                                                                                \
    std::string to_string() override {                                                               \
       return std::string(BOOST_PP_STRINGIZE(OP))+field_specific_params<DATA>::to_string( field );   \
@@ -495,10 +522,10 @@ enum code {
 }; // code
 
 struct visitor_arg {
-   IR::Module*       module;
-   std::vector<U8>*  new_code;
-   IR::FunctionDef*  function_def;
-   uint32_t          code_index;
+   IR::Module*         module;
+   instruction_stream* new_code;
+   IR::FunctionDef*    function_def;
+   size_t              start_index;
 };
 
 struct instr {
@@ -507,7 +534,9 @@ struct instr {
    virtual void visit( visitor_arg&& arg ) = 0;
    virtual int skip_ahead() = 0;
    virtual void unpack( char* opcode ) = 0;
-   virtual std::vector<U8> pack() = 0;
+   virtual void pack( instruction_stream* stream ) = 0;
+   virtual bool is_kill() = 0;
+   virtual bool is_post() = 0;
 };
 
 // base injector and utility classes for encoding if we should reflect the instr to the new code block
@@ -527,40 +556,14 @@ template <typename Mutator>
 struct propagate_post_injection<Mutator> {
    static constexpr bool value = Mutator::post;
 };
-
-template <bool Kills, bool Post>
-struct base_mutator;
-
-template <bool Post>
-struct base_mutator<true, Post> {
-   static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-   }
-};
-
-template<>
-struct base_mutator<false, true> {
-   static void accept(wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-      std::vector<U8> self_code = inst->pack();
-      arg.new_code->insert( arg.new_code->begin(), self_code.begin(), self_code.end() );
-   }
-};
-
-template<>
-struct base_mutator<false, false> {
-   static void accept(wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-      std::vector<U8> self_code = inst->pack();
-      arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
-   }
-};
-
 template <typename ... Mutators>
 struct instr_base : instr {
+   bool is_post() override { return propagate_post_injection<Mutators...>::value; }
+   bool is_kill() override { return propagate_should_kill<Mutators...>::value; }
    virtual void visit( visitor_arg&& arg ) override {
       for ( auto m : { Mutators::accept... } ) {
          m(this, arg);
       }
-      base_mutator<propagate_should_kill<Mutators...>::value,
-                   propagate_post_injection<Mutators...>::value>::accept( this, arg );
    } 
 };
 

@@ -203,7 +203,7 @@ namespace eosio {
     * @return if c1 > c2, return true, otherwise false
     */
    template<size_t Size>
-   bool operator>(const fixed_key<Size> &c1, const fixed_key<Size> &c2) {
+   bool operator>(const fixed_key<Size>& c1, const fixed_key<Size>& c2) {
       return c1._data > c2._data;
    }
 

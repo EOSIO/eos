@@ -221,7 +221,7 @@ struct faucet_testnet_plugin_impl {
       chain::chain_id_type chainid;
       auto& plugin = _app.get_plugin<chain_plugin>();
       plugin.get_chain_id(chainid);
-      chain_controller& cc = plugin.chain();
+      controller& cc = plugin.chain();
 
       signed_transaction trx;
       auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
@@ -232,14 +232,14 @@ struct faucet_testnet_plugin_impl {
       auto recovery_auth = chain::authority{1, {}, {{{_create_account_name, "active"}, 1}}};
 
       trx.actions.emplace_back(vector<chain::permission_level>{{_create_account_name,"active"}},
-                               contracts::newaccount{_create_account_name, new_account_name, owner_auth, active_auth, recovery_auth});
+                               newaccount{_create_account_name, new_account_name, owner_auth, active_auth});
 
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(_create_account_private_key, chainid);
 
       try {
-         cc.push_transaction(packed_transaction(trx));
+         cc.push_transaction( std::make_shared<transaction_metadata>(trx) );
       } catch (const account_name_exists_exception& ) {
          // another transaction ended up adding the account, so look for alternates
          return find_alternates(new_account_name);
@@ -260,7 +260,7 @@ struct faucet_testnet_plugin_impl {
    const chainbase::database& database() {
       static const chainbase::database* db = nullptr;
       if (db == nullptr)
-         db = &_app.get_plugin<chain_plugin>().chain().get_database();
+         db = &_app.get_plugin<chain_plugin>().chain().db();
 
       return *db;
    }

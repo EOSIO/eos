@@ -17,6 +17,7 @@
 
 #include <boost/multi_index/mem_fun.hpp>
 
+#include <eosiolib/action.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/datastream.hpp>
@@ -105,6 +106,9 @@ namespace _multi_index_detail {
 
    WRAP_SECONDARY_SIMPLE_TYPE(idx_double, double)
    MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(double)
+
+   WRAP_SECONDARY_SIMPLE_TYPE(idx_long_double, long double)
+   MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(long double)
 
    WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
    template<>
@@ -205,12 +209,16 @@ class multi_index
                   const T& operator*()const { return *static_cast<const T*>(_item); }
                   const T* operator->()const { return static_cast<const T*>(_item); }
 
-                  const_iterator operator++(int)const {
-                     return ++(const_iterator(*this));
+                  const_iterator operator++(int){
+                     const_iterator result(*this);
+                     ++(*this);
+                     return result;
                   }
 
-                  const_iterator operator--(int)const {
-                     return --(const_iterator(*this));
+                  const_iterator operator--(int){
+                     const_iterator result(*this);
+                     --(*this);
+                     return result;
                   }
 
                   const_iterator& operator++() {
@@ -499,11 +507,16 @@ class multi_index
          const T& operator*()const { return *static_cast<const T*>(_item); }
          const T* operator->()const { return static_cast<const T*>(_item); }
 
-         const_iterator operator++(int)const {
-            return ++(const_iterator(*this));
+         const_iterator operator++(int) {
+            const_iterator result(*this);
+            ++(*this);
+            return result;
          }
-         const_iterator operator--(int)const {
-            return --(const_iterator(*this));
+
+         const_iterator operator--(int) {
+            const_iterator result(*this);
+            --(*this);
+            return result;
          }
 
          const_iterator& operator++() {
@@ -724,7 +737,7 @@ class multi_index
             typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             auto secondary = index_type::extract_secondary_key( obj );
-            if( hana::at_c<index_type::index_number>(secondary_keys) != secondary ) {
+            if( memcmp( &hana::at_c<index_type::index_number>(secondary_keys), &secondary, sizeof(secondary) ) != 0 ) {
                auto indexitr = mutableitem.__iters[index_type::number()];
 
                if( indexitr < 0 ) {
@@ -738,9 +751,9 @@ class multi_index
          });
       }
 
-      const T& get( uint64_t primary )const {
+   const T& get( uint64_t primary, const char* error_msg = "unable to find key" )const {
          auto result = find( primary );
-         eosio_assert( result != cend(), "unable to find key" );
+         eosio_assert( result != cend(), error_msg );
          return *result;
       }
 

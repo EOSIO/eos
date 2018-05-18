@@ -15,6 +15,7 @@ namespace eosio { namespace chain {
                  ("name", string(str))("normalized", to_string()));
    }
 
+   // keep in sync with name::to_string() in contract definition for name
    name::operator string()const {
      static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 

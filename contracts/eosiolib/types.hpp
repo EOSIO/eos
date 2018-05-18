@@ -6,8 +6,11 @@
 #include <eosiolib/types.h>
 #include <functional>
 #include <tuple>
+#include <string>
 
 namespace eosio {
+
+   typedef std::vector<std::tuple<uint16_t,std::vector<char>>> extensions_type;
 
    /**
     *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
@@ -75,8 +78,32 @@ namespace eosio {
    struct name {
       operator uint64_t()const { return value; }
 
+      // keep in sync with name::operator string() in eosio source code definition for name
+      std::string to_string() const {
+         static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
+
+         std::string str(13,'.');
+
+         uint64_t tmp = value;
+         for( uint32_t i = 0; i <= 12; ++i ) {
+            char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
+            str[12-i] = c;
+            tmp >>= (i == 0 ? 4 : 5);
+         }
+
+         trim_right_dots( str );
+         return str;
+      }
+
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
+
+   private:
+      static void trim_right_dots(std::string& str ) {
+         const auto last = str.find_last_not_of('.');
+         if (last != std::string::npos)
+            str = str.substr(0, last + 1);
+      }
    };
    /// @}
 
@@ -100,4 +127,10 @@ namespace std {
  */
 bool operator==(const checksum256& lhs, const checksum256& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
+}
+bool operator==(const checksum160& lhs, const checksum160& rhs) {
+   return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
+}
+bool operator!=(const checksum160& lhs, const checksum160& rhs) {
+   return memcmp(&lhs, &rhs, sizeof(lhs)) != 0;
 }

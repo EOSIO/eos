@@ -41,9 +41,9 @@ struct impl {
          (current_game.board[1] == current_game.board[4] && current_game.board[4] == current_game.board[7]) ||
          (current_game.board[2] == current_game.board[4] && current_game.board[4] == current_game.board[6]) ||
          (current_game.board[3] == current_game.board[4] && current_game.board[4] == current_game.board[5])) {
-         //  - | - | x    x | - | -    - | - | -    - | x | -
-         //  - | x | -    - | x | -    x | x | x    - | x | -
-         //  x | - | -    - | - | x    - | - | -    - | x | -
+         //  x | - | -    - | x | -    - | - | x    - | - | -
+         //  - | x | -    - | x | -    - | x | -    x | x | x
+         //  - | - | x    - | x | -    x | - | -    - | - | -
          if (current_game.board[4] == 1) {
             return current_game.host;
          } else if (current_game.board[4] == 2) {
@@ -61,9 +61,9 @@ struct impl {
          }
       } else if ((current_game.board[2] == current_game.board[5] && current_game.board[5] == current_game.board[8]) ||
                  (current_game.board[6] == current_game.board[7] && current_game.board[7] == current_game.board[8])) {
-         //  - | - | -       - | - | x
-         //  - | - | -       - | - | x
-         //  x | x | x       - | - | x
+         //  - | - | x       - | - | -
+         //  - | - | x       - | - | -
+         //  - | - | x       x | x | x
          if (current_game.board[8] == 1) {
             return current_game.host;
          } else if (current_game.board[8] == 2) {

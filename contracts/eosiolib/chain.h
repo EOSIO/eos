@@ -23,8 +23,8 @@ extern "C" {
    /**
     * Return the set of active producers
     * @param producers - a pointer to an buffer of account_names
-    * @param datalen - byte length of buffer
-    * @return the number of bytes actually populated
+    * @param datalen - byte length of buffer, 0 to report required size
+    * @return the number of bytes actually populated, or number of bytes that can be copied if datalen==0 passed
     *
     *  Example:
     *  @code

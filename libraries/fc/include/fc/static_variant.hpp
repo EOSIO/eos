@@ -339,12 +339,17 @@ public:
         return impl::storage_ops<0, Types...>::apply(_tag, storage, v);
     }
 
-    static int count() { return impl::type_info<Types...>::count; }
-    void set_which( int w ) {
-      FC_ASSERT( w < count() );
+    static uint32_t count() { return impl::type_info<Types...>::count; }
+    void set_which( uint32_t w ) {
+      FC_ASSERT( w < count()  );
       this->~static_variant();
-      _tag = w;
-      impl::storage_ops<0, Types...>::con(_tag, storage);
+      try {
+         _tag = w;
+         impl::storage_ops<0, Types...>::con(_tag, storage);
+      } catch ( ... ) { 
+         _tag = 0;
+         impl::storage_ops<0, Types...>::con(_tag, storage);
+      } 
     }
 
     int which() const {return _tag;}
