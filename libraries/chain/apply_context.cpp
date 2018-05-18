@@ -290,16 +290,15 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    trx_context.checktime();
 }
 
-void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
+bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
-   EOS_ASSERT( gto != nullptr, transaction_exception,
-               "there is no generated transaction created by account ${sender} with sender id ${sender_id}",
-               ("sender", sender)("sender_id", sender_id) );
-
-   trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
-   generated_transaction_idx.remove(*gto);
+   if ( gto ) {
+      trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
+      generated_transaction_idx.remove(*gto);
+   }
    trx_context.checktime();
+   return gto;
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {

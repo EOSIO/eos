@@ -273,7 +273,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
         // Since the total activated stake is less than 150,000,000, it shouldn't be possible to claim rewards
-        BOOST_REQUIRE_THROW(claim_rewards(N(runnerup1)), assert_exception);
+        BOOST_REQUIRE_THROW(claim_rewards(N(runnerup1)), eosio_assert_message_exception);
 
         // This will increase the total vote stake by (40,000,000 - 1,000)
         votepro( N(whale4), {N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
@@ -317,14 +317,12 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000")), assert_exception);
+
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000")), eosio_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
-        // Register back producers after 10 years of inactivity
-        for( auto pro : producer_candidates ) {
-           register_producer(pro);
-        }
+
         // Block one should be able to unstake all his stake now
         undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
 
