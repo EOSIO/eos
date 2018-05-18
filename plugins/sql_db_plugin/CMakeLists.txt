@@ -15,8 +15,6 @@ add_library(sql_db_plugin
     db/blocks_table.cpp
     db/actions_table.cpp
     sql_db_plugin.cpp
-    irreversible_block_storage.cpp
-    block_storage.cpp
     )
 
 target_link_libraries(sql_db_plugin

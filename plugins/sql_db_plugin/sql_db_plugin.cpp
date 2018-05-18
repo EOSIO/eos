@@ -7,10 +7,6 @@
 
 #include "database.h"
 
-#include "consumer_core.h"
-#include "irreversible_block_storage.h"
-#include "block_storage.h"
-
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
 const char* SQL_DB_URI_OPTION = "sql_db-uri";
@@ -23,12 +19,6 @@ namespace fc { class variant; }
 namespace eosio {
 
 static appbase::abstract_plugin& _sql_db_plugin = app().register_plugin<sql_db_plugin>();
-
-sql_db_plugin::sql_db_plugin():
-    m_block_consumer(std::make_unique<block_storage>())
-{
-
-}
 
 void sql_db_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
@@ -54,9 +44,7 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
         return;
     }
     ilog("connecting to ${u}", ("u", uri_str));
-
-    auto db = std::make_shared<database>(uri_str);
-
+    auto db = std::make_unique<database>(uri_str);
 
     if (options.at(RESYNC_OPTION).as<bool>() ||
          options.at(REPLAY_OPTION).as<bool>())
@@ -65,13 +53,11 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
         db->wipe();
     }
 
+    m_irreversible_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::move(db));
+
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
     FC_ASSERT(chain_plug);
     auto& chain = chain_plug->chain();
-
-    m_irreversible_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::make_unique<irreversible_block_storage>(db));
-
-   // chain.accepted_block.connect([=](const chain::block_state_ptr& b) {m_block_consumer.push(b);});
     chain.irreversible_block.connect([=](const chain::block_state_ptr& b) {m_irreversible_block_consumer->push(b);});
 }
 

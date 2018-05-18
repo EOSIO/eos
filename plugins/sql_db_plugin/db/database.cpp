@@ -13,7 +13,16 @@ database::database(const std::string &uri)
 
 void database::consume(const std::vector<chain::block_state_ptr> &blocks)
 {
-
+    for (const chain::block_state_ptr& block : blocks)
+    {
+        add(block);
+        for (const chain::transaction_metadata_ptr& transaction : block->trxs) {
+            add(transaction);
+            for (const chain::action& action : transaction->trx.actions) {
+                add(action);
+            }
+        }
+    }
 }
 
 void database::wipe()

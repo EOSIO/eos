@@ -36,8 +36,6 @@ class sql_db_plugin final : public plugin<sql_db_plugin> {
 public:
     APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
-    sql_db_plugin();
-
     virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
     void plugin_initialize(const variables_map& options);
@@ -46,7 +44,6 @@ public:
 
 private:
     std::unique_ptr<consumer<chain::block_state_ptr>> m_irreversible_block_consumer;
-    consumer<chain::block_state_ptr> m_block_consumer;
 };
 
 }
