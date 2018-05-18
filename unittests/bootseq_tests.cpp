@@ -269,12 +269,9 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.front().producer_name == "eosio");
 
         // Spend some time so the producer pay pool is filled by the inflation rate
-        // Since the total activated stake is less than 150,000,000, reward should remain zero
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
-        // #warning TODO: now claiming rewards when the pool is empty will throw div by 0 error, fix this as separate issue
-        //   claim_rewards(N(runnerup1));
-        produce_block();
-        BOOST_TEST(get_balance(N(runnerup1)).amount == 0);
+        // Since the total activated stake is less than 150,000,000, it shouldn't be possible to claim rewards
+        BOOST_REQUIRE_THROW(claim_rewards(N(runnerup1)), assert_exception);
 
         // This will increase the total vote stake by (40,000,000 - 1,000)
         votepro( N(whale4), {N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
@@ -310,7 +307,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
         // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
         claim_rewards(N(runnerup1));
-        produce_block();
         BOOST_TEST(get_balance(N(runnerup1)).amount > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
