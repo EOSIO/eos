@@ -25,11 +25,12 @@ public:
     void consume(const std::vector<chain::block_state_ptr>& blocks) override;
 
     void wipe();
+
+private:
     void add(chain::block_state_ptr block);
     void add(chain::transaction_metadata_ptr transaction);
     void add(chain::action action);
 
-private:
     mutable std::mutex m_mux;
     std::shared_ptr<soci::session> m_session;
     std::unique_ptr<accounts_table> m_accounts_table;
