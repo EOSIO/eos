@@ -353,7 +353,7 @@ public:
 
    double stake2votes( asset stake ) {
       auto now = control->pending_block_time().time_since_epoch().count() / 1000000;
-      return stake.amount * pow(2, int64_t(now/ (86400 * 7))/ double(52) ); // 52 week periods (i.e. ~years)
+      return stake.amount * pow(2, int64_t((now - (config::block_timestamp_epoch / 1000)) / (86400 * 7))/ double(52) ); // 52 week periods (i.e. ~years)
    }
 
    double stake2votes( const string& s ) {
