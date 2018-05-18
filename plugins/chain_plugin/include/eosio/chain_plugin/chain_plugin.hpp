@@ -123,6 +123,15 @@ public:
    get_code_results get_code( const get_code_params& params )const;
 
 
+   struct get_abi_results {
+      name    account_name;
+      abi_def abi;
+   };
+
+   struct get_abi_params {
+      name account_name;
+   };
+   get_abi_results get_abi( const get_abi_params& params )const;
 
    struct abi_json_to_bin_params {
       name         code;
@@ -402,8 +411,10 @@ FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_pro
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
+FC_REFLECT( eosio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )
+FC_REFLECT( eosio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs) )

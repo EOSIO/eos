@@ -1490,6 +1490,14 @@ int main( int argc, char** argv ) {
       }
    });
 
+   // get abi
+   auto getAbi = get->add_subcommand("abi", localized("Retrieve ABI for an account"), false);
+   getAbi->add_option("name", accountName, localized("Account name whose abi is to be retrieved"))->required();
+   getAbi->set_callback([&] {
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", accountName));
+      std::cout << fc::json::to_pretty_string( result["abi"] ) << std::endl;
+   });
+
    // get table
    string scope;
    string code;

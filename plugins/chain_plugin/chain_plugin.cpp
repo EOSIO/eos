@@ -317,7 +317,7 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-abi_def get_abi( const controller& db, const name& account ) {
+abi_def _get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
    EOS_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
@@ -336,7 +336,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   const abi_def abi = get_abi( db, p.code );
+   const abi_def abi = _get_abi( db, p.code );
    auto table_type = get_table_type( abi, p.table );
 
    if( table_type == KEYi64 ) {
@@ -348,7 +348,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
 
-   const abi_def abi = get_abi( db, p.code );
+   const abi_def abi = _get_abi( db, p.code );
    auto table_type = get_table_type( abi, "accounts" );
 
    vector<asset> results;
@@ -375,7 +375,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
    fc::mutable_variant_object results;
 
-   const abi_def abi = get_abi( db, p.code );
+   const abi_def abi = _get_abi( db, p.code );
    auto table_type = get_table_type( abi, "stat" );
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
@@ -420,7 +420,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
-   const abi_def abi = get_abi(db, N(eosio));
+   const abi_def abi = _get_abi(db, N(eosio));
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
@@ -565,6 +565,21 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
       result.abi = std::move(abi);
    }
 
+   return result;
+}
+
+read_only::get_abi_results read_only::get_abi( const get_abi_params& params )const {
+   std::cout << "Here 1" << std::endl;
+   get_abi_results result;
+   result.account_name = params.account_name;
+   const auto& d = db.db();
+   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+   std::cout << "Here 2" << std::endl;
+   abi_def abi;
+   if( abi_serializer::to_abi(accnt.abi, abi) ) {
+      result.abi = std::move(abi);
+   }
+   std::cout << "Here 3" << std::endl;
    return result;
 }
 
