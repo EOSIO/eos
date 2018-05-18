@@ -1132,11 +1132,11 @@ struct list_bw_subcommand {
                auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
                if ( !res.rows.empty() ) {
                   std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "Net bandwidth"
-                            << std::setw(21) << std::left << "Net bandwidth" << std::endl;
+                            << std::setw(21) << std::left << "CPU bandwidth" << std::endl;
                   for ( auto& r : res.rows ){
                      std::cout << std::setw(13) << std::left << r["to"].as_string()
                                << std::setw(21) << std::left << r["net_weight"].as_string()
-                               << std::setw(21) << std::left << r["net_weight"].as_string()
+                               << std::setw(21) << std::left << r["cpu_weight"].as_string()
                                << std::endl;
                   }
                } else {
