@@ -359,6 +359,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "1000000000.00000 CUR");
    }
 
    // Valid asset
@@ -367,6 +368,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "1000000000.00000 CUR");
    }
 
    // Negative asset
@@ -375,6 +377,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, -100000000010);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "-1000000.00010 CUR");
    }
 
    // Negative asset below 1
@@ -383,6 +386,16 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, -100);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "-0.00100 CUR");
+   }
+
+   // Negative asset below 1
+   {
+      asset a = asset::from_string("-0.0001 PPP");
+      BOOST_REQUIRE_EQUAL(a.amount, -1);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 4);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "PPP");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "-0.0001 PPP");
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol
