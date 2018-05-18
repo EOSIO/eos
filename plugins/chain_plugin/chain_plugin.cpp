@@ -405,14 +405,14 @@ static float64_t to_softfloat64( double d ) {
 
 static fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis ) {
    const auto table_type = get_table_type(abi, N(global));
-   EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
+   ENU_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
    const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(enumivo), N(enumivo), N(global)));
-   EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
+   ENU_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
 
    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
    const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global)));
-   EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
+   ENU_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
