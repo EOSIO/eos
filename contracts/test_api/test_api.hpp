@@ -71,6 +71,7 @@ struct test_action {
   static void test_abort() __attribute__ ((noreturn)) ;
   static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
   static void test_publication_time();
+  static void test_assert_code();
 };
 
 struct test_db {
