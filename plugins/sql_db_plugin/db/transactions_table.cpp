@@ -1,5 +1,6 @@
 #include "transactions_table.h"
 
+#include <chrono>
 #include <fc/log/logger.hpp>
 
 namespace eosio {
