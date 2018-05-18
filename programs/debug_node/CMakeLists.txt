@@ -10,7 +10,7 @@ if( GPERFTOOLS_FOUND )
 endif()
 
 target_link_libraries( debug_node
-                       PRIVATE eos_app eos_producer eos_debug_producer eos_chain eos_egenesis_full fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                       PRIVATE enu_app enu_producer enu_debug_producer enu_chain enu_egenesis_full fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
    debug_node

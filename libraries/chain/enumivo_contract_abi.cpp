@@ -4,29 +4,29 @@ namespace enumivo { namespace chain {
 
 abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
 {
-   abi_def eos_abi(enumivo_system_abi);
+   abi_def enu_abi(enumivo_system_abi);
 
-   if( eos_abi.version.size() == 0 ) {
-      eos_abi.version = "enumivo::abi/1.0";
+   if( enu_abi.version.size() == 0 ) {
+      enu_abi.version = "enumivo::abi/1.0";
    }
 
-   eos_abi.types.push_back( type_def{"account_name",    "name"} );
-   eos_abi.types.push_back( type_def{"permission_name", "name"} );
-   eos_abi.types.push_back( type_def{"action_name",     "name"} );
-   eos_abi.types.push_back( type_def{"table_name",      "name"} );
-   eos_abi.types.push_back( type_def{"transaction_id_type", "checksum256"} );
-   eos_abi.types.push_back( type_def{"block_id_type",       "checksum256"} );
-   eos_abi.types.push_back( type_def{"weight_type", "uint16"} );
+   enu_abi.types.push_back( type_def{"account_name",    "name"} );
+   enu_abi.types.push_back( type_def{"permission_name", "name"} );
+   enu_abi.types.push_back( type_def{"action_name",     "name"} );
+   enu_abi.types.push_back( type_def{"table_name",      "name"} );
+   enu_abi.types.push_back( type_def{"transaction_id_type", "checksum256"} );
+   enu_abi.types.push_back( type_def{"block_id_type",       "checksum256"} );
+   enu_abi.types.push_back( type_def{"weight_type", "uint16"} );
 
    // transaction
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "permission_level", "", {
          {"actor", "account_name"},
          {"permission", "permission_name"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "action", "", {
          {"account", "account_name"},
          {"name", "action_name"},
@@ -35,14 +35,14 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "extension", "", {
          {"type", "uint16"},
          {"data", "bytes"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "transaction_header", "", {
          {"expiration", "time_point_sec"},
          {"ref_block_num", "uint16"},
@@ -53,7 +53,7 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "transaction", "transaction_header", {
          {"context_free_actions", "action[]"},
          {"actions", "action[]"},
@@ -63,21 +63,21 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
 
    // block_header
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "producer_key", "", {
          {"producer_name", "account_name"},
          {"block_signing_key", "public_key"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "producer_schedule", "", {
          {"version", "uint32"},
          {"producers", "producer_key[]"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "block_header", "", {
          {"timestamp", "uint32"},
          {"producer", "account_name"},
@@ -92,28 +92,28 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
    });
 
    // authority
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "key_weight", "", {
          {"key", "public_key"},
          {"weight", "weight_type"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "permission_level_weight", "", {
          {"permission", "permission_level"},
          {"weight", "weight_type"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "wait_weight", "", {
          {"wait_sec", "uint32"},
          {"weight", "weight_type"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "authority", "", {
          {"threshold", "uint32"},
          {"keys", "key_weight[]"},
@@ -126,7 +126,7 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
    //
    // ACTION PAYLOADS
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "newaccount", "", {
          {"creator", "account_name"},
          {"name", "account_name"},
@@ -135,7 +135,7 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "setcode", "", {
          {"account", "account_name"},
          {"vmtype", "uint8"},
@@ -144,14 +144,14 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "setabi", "", {
          {"account", "account_name"},
          {"abi",     "bytes"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "updateauth", "", {
          {"account", "account_name"},
          {"permission", "permission_name"},
@@ -160,14 +160,14 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "deleteauth", "", {
          {"account", "account_name"},
          {"permission", "permission_name"},
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "linkauth", "", {
          {"account", "account_name"},
          {"code", "account_name"},
@@ -176,7 +176,7 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "unlinkauth", "", {
          {"account", "account_name"},
          {"code", "account_name"},
@@ -184,39 +184,39 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
          {"canceling_auth", "permission_level"},
          {"trx_id", "transaction_id_type"},
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
          "onerror", "", {
             {"sender_id", "uint128"},
             {"sent_trx",  "bytes"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   enu_abi.structs.emplace_back( struct_def {
          "onblock", "", {
             {"header", "block_header"}
       }
    });
 
    // TODO add ricardian contracts
-   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount",""} );
-   eos_abi.actions.push_back( action_def{name("setcode"), "setcode",""} );
-   eos_abi.actions.push_back( action_def{name("setabi"), "setabi",""} );
-   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth",""} );
-   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth",""} );
-   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth",""} );
-   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth",""} );
-   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
-   eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
-   eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
+   enu_abi.actions.push_back( action_def{name("newaccount"), "newaccount",""} );
+   enu_abi.actions.push_back( action_def{name("setcode"), "setcode",""} );
+   enu_abi.actions.push_back( action_def{name("setabi"), "setabi",""} );
+   enu_abi.actions.push_back( action_def{name("updateauth"), "updateauth",""} );
+   enu_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth",""} );
+   enu_abi.actions.push_back( action_def{name("linkauth"), "linkauth",""} );
+   enu_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth",""} );
+   enu_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
+   enu_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
+   enu_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
 
-   return eos_abi;
+   return enu_abi;
 }
 
 } } /// enumivo::chain

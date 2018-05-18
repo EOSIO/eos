@@ -800,7 +800,7 @@ class Node(object):
 
             account=self.getEosAccountFromDb(scope)
             if account is not None:
-                balance=account["eos_balance"]
+                balance=account["enu_balance"]
                 return balance
 
         return None

@@ -73,7 +73,7 @@
           "name": "owner",
           "type": "account_name"
         },{
-          "name": "eos_balance",
+          "name": "enu_balance",
           "type": "asset"
         },{
           "name": "open_offers",
