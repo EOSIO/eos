@@ -35,7 +35,7 @@ class dice : public eosio::contract {
       //@abi action
       void offerbet(const asset& bet, const account_name player, const checksum256& commitment) {
 
-         eosio_assert( bet.symbol == S(4,EOS) , "only EOS token allowed" );
+         eosio_assert( bet.symbol == CORE_SYMBOL, "only core token allowed" );
          eosio_assert( bet.is_valid(), "invalid bet" );
          eosio_assert( bet.amount > 0, "must bet positive quantity" );
 
