@@ -15,11 +15,11 @@ void database::consume(const std::vector<chain::block_state_ptr> &blocks)
 {
     for (const chain::block_state_ptr& block : blocks)
     {
-        add(block);
+        m_blocks_table->add(block);
         for (const chain::transaction_metadata_ptr& transaction : block->trxs) {
-            add(transaction);
+            m_transactions_table->add(transaction);
             for (const chain::action& action : transaction->trx.actions) {
-                add(action);
+                m_actions_table->add(action);
             }
         }
     }
@@ -27,8 +27,6 @@ void database::consume(const std::vector<chain::block_state_ptr> &blocks)
 
 void database::wipe()
 {
-    std::unique_lock<std::mutex> lock(m_mux);
-
     m_actions_table->drop();
     m_transactions_table->drop();
     m_blocks_table->drop();
@@ -40,21 +38,6 @@ void database::wipe()
     m_actions_table->create();
 
     m_accounts_table->insert(eosio::chain::name(chain::config::system_account_name).to_string());
-}
-
-void database::add(chain::block_state_ptr block)
-{
-    m_blocks_table->add(block);
-}
-
-void database::add(chain::transaction_metadata_ptr transaction)
-{
-    m_transactions_table->add(transaction);
-}
-
-void database::add(chain::action action)
-{
-    m_actions_table->add(action);
 }
 
 } // namespace
