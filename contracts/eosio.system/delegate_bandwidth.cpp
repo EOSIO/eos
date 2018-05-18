@@ -296,7 +296,7 @@ namespace eosiosystem {
          bool need_deferred_trx = false;
          if ( req != refunds_tbl.end() ) { //need to update refund
             refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
-                  if ( net_balance <= asset(0) || cpu_balance <= asset(0) ) {
+                  if ( net_balance < asset(0) || cpu_balance < asset(0) ) {
                      r.request_time = now();
                   }
                   r.net_amount -= net_balance;
