@@ -224,13 +224,19 @@ class producer_plugin_impl {
             while (true) {
                chain::controller& chain = app().get_plugin<chain_plugin>().chain();
                auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
-               auto max_deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
-               auto deadline = std::min(block_time, max_deadline);
+
+               auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+               bool deadline_is_subjective = false;
+               if (_pending_block_mode == pending_block_mode::producing && block_time < deadline) {
+                  deadline_is_subjective = true;
+                  deadline = block_time;
+               }
+
                auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
 
                // if we failed because the block was exhausted push the block out and try again if it succeeds
                if (trace->except) {
-                  if (failure_is_subjective(*trace->except, deadline == block_time) ) {
+                  if (failure_is_subjective(*trace->except, deadline_is_subjective) ) {
                      if (_pending_block_mode == pending_block_mode::producing && maybe_produce_block()) {
                         continue;
                      }
@@ -547,10 +553,16 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          }
 
          try {
-            auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
+            auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+            bool deadline_is_subjective = false;
+            if (_pending_block_mode == pending_block_mode::producing && block_time < deadline) {
+               deadline_is_subjective = true;
+               deadline = block_time;
+            }
+
             auto trace = chain.push_transaction(trx, deadline);
             if (trace->except) {
-               if (failure_is_subjective(*trace->except, deadline == block_time)) {
+               if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                   exhausted = true;
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
@@ -578,10 +590,16 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          }
 
          try {
-            auto deadline = std::min(block_time, fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms));
+            auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+            bool deadline_is_subjective = false;
+            if (_pending_block_mode == pending_block_mode::producing && block_time < deadline) {
+               deadline_is_subjective = true;
+               deadline = block_time;
+            }
+
             auto trace = chain.push_scheduled_transaction(trx, deadline);
             if (trace->except) {
-               if (failure_is_subjective(*trace->except, deadline == block_time)) {
+               if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                   exhausted = true;
                } else {
                   auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
