@@ -82,7 +82,7 @@ namespace eosio { namespace chain {
       validate_ram_usage.reserve( bill_to_accounts.size() );
 
       // Update usage values of accounts to reflect new time
-      rl.add_transaction_usage( bill_to_accounts, 0, 0, block_timestamp_type(control.pending_block_time()).slot );
+      rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot );
 
       // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = large_number_no_overflow;

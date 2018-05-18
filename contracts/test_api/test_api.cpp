@@ -78,6 +78,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, test_abort);
       WASM_TEST_HANDLER_EX(test_action, test_current_receiver);
       WASM_TEST_HANDLER(test_action, test_publication_time);
+      WASM_TEST_HANDLER(test_action, test_assert_code);
 
       // test named actions
       // We enforce action name matches action data type name, so name mangling will not work for these tests.
