@@ -46,7 +46,7 @@ testUtils.Utils.Debug=debug
 testSuccessful=False
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster(walletd=True)
+cluster=testUtils.Cluster(enuwalletd=True)
 walletMgr=testUtils.WalletMgr(True)
 
 try:

@@ -136,10 +136,10 @@ msgstr ""
 msgid "the port where enudaemon is running"
 msgstr ""
 
-msgid "the host where enu-walletd is running"
+msgid "the host where enuwalletd is running"
 msgstr ""
 
-msgid "the port where enu-walletd is running"
+msgid "the port where enuwalletd is running"
 msgstr ""
 
 msgid "output verbose messages on error"
@@ -499,7 +499,7 @@ msgstr ""
 msgid "Failed to connect to enu at ${ip}:${port}; is enudaemon running?"
 msgstr ""
 
-msgid "Failed to connect to enu-walletd at ${ip}:${port}; is enu-walletd running?"
+msgid "Failed to connect to enuwalletd at ${ip}:${port}; is enuwalletd running?"
 msgstr ""
 
 msgid "Failed to connect"
