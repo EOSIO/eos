@@ -27,7 +27,7 @@ onlyBios=args.only_bios
 
 testUtils.Utils.Debug=debug
 
-killEosInstances=not dontKill
+killEnuInstances=not dontKill
 topo="mesh"
 delay=1
 prodCount=1 # producers per producer node
@@ -74,7 +74,7 @@ finally:
         cluster.dumpErrorDetails()
         Print("== Errors see above ==")
 
-    if killEosInstances:
+    if killEnuInstances:
         Print("Shut down the cluster and cleanup.")
         cluster.killall()
         cluster.cleanup()

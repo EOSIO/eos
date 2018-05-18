@@ -151,7 +151,7 @@ enumivo.name = "enumivo"
 Print("Info of each node:")
 for i in range(len(hosts)):
     node = cluster.getNode(0)
-    cmd="%s %s get info" % (testUtils.Utils.EosClientPath, node.endpointArgs)
+    cmd="%s %s get info" % (testUtils.Utils.EnuClientPath, node.endpointArgs)
     trans = node.runCmdReturnJson(cmd)
     Print("host %s: %s" % (hosts[i], trans))
 

@@ -55,7 +55,7 @@ debug=args.v
 total_nodes = pnodes
 killCount=args.kill_count if args.kill_count > 0 else 1
 killSignal=args.kill_sig
-killEosInstances= not args.dont_kill
+killEnuInstances= not args.dont_kill
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 
@@ -124,8 +124,8 @@ try:
         errorExit("Cluster sync wait failed.")
 
     Print("Kill %d cluster node instances." % (killCount))
-    if cluster.killSomeEosInstances(killCount, killSignal) is False:
-        errorExit("Failed to kill Eos instances")
+    if cluster.killSomeEnuInstances(killCount, killSignal) is False:
+        errorExit("Failed to kill Enu instances")
     Print("enunode instances killed.")
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
@@ -139,8 +139,8 @@ try:
         errorExit("Cluster sync wait failed.")
 
     Print ("Relaunch dead cluster nodes instances.")
-    if cluster.relaunchEosInstances() is False:
-        errorExit("Failed to relaunch Eos instances")
+    if cluster.relaunchEnuInstances() is False:
+        errorExit("Failed to relaunch Enu instances")
     Print("enunode instances relaunched.")
 
     Print ("Resyncing cluster nodes.")
@@ -165,7 +165,7 @@ finally:
         walletMgr.dumpErrorDetails()
         Print("== Errors see above ==")
 
-    if killEosInstances:
+    if killEnuInstances:
         Print("Shut down the cluster%s" % (" and cleanup." if (testSuccessful and not keepLogs) else "."))
         cluster.killall()
         walletMgr.killall()
