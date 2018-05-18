@@ -13,7 +13,7 @@ def errorExit(msg="", errorCode=1):
     Print("ERROR:", msg)
     exit(errorCode)
 
-pnodes=3
+pnodes=1
 # nodesFile="tests/sample-cluster-map.json"
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", type=int, help="producing nodes count", default=pnodes)
@@ -36,7 +36,7 @@ killEosInstances=not dontKill
 topo="mesh"
 delay=1
 prodCount=1 # producers per producer node
-total_nodes=pnodes
+total_nodes=pnodes+3
 actualTest="tests/distributed-transactions-test.py"
 testSuccessful=False
 
