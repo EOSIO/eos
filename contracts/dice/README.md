@@ -58,7 +58,7 @@ enucli set contract enumivo build/contracts/enumivo.bios -p enumivo
 
 ##### Ceate enumivo.coin account
 ````bash
-enucli create account enumivo enumivo.coin EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo enumivo.coin ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set enumivo.coin contract to enumivo.coin account
@@ -68,7 +68,7 @@ enucli set contract enumivo.coin build/contracts/enumivo.coin -p enumivo.coin
 
 ##### Create dice account
 ````bash
-enucli create account enumivo dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo dice ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set dice contract to dice account
@@ -83,12 +83,12 @@ enucli push action enumivo.coin create '[ "enumivo", "1000000000.0000 ENU", 0, 0
 
 ##### Create alice account
 ````bash
-enucli create account enumivo alice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo alice ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Create bob account
 ````bash
-enucli create account enumivo bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo bob ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Issue 1000 ENU to alice

@@ -74,7 +74,7 @@ launcher command line arguments:
                                         set the path to genesis.json
   -o [ --output ] arg                   save a copy of the generated topology 
                                         in this file
-  --skip-signature                      EOSD does not require transaction 
+  --skip-signature                      ENUD does not require transaction 
                                         signatures.
   -i [ --timestamp ] arg                set the timestamp for the first block. 
                                         Use "now" to indicate the current time
