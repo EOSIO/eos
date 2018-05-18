@@ -236,7 +236,7 @@ testUtils.Utils.iAmNotNoon()
 def myTest(transWillEnterBlock):
     testSuccessful=False
 
-    cluster=testUtils.Cluster(walletd=True, staging=True)
+    cluster=testUtils.Cluster(enuwalletd=True, staging=True)
     walletMgr=testUtils.WalletMgr(True)
 
     try:
@@ -261,9 +261,9 @@ def myTest(transWillEnterBlock):
         currencyAccount=accounts[0]
         currencyAccount.name="currency0000"
 
-        Print("Stand up walletd")
+        Print("Stand up enuwalletd")
         if walletMgr.launch() is False:
-            error("Failed to stand up enu walletd.")
+            error("Failed to stand up enuwalletd.")
             return False
 
         testWalletName="test"

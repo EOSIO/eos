@@ -39,7 +39,7 @@ parser.add_argument("--wallet_port", type=int, help="wallet port", default=8899)
 parser.add_argument("--impaired_network", help="test impaired network", action='store_true')
 parser.add_argument("--lossy_network", help="test lossy network", action='store_true')
 parser.add_argument("--stress_network", help="test load/stress network", action='store_true')
-parser.add_argument("--not_kill_wallet", help="not killing walletd", action='store_true')
+parser.add_argument("--not_kill_wallet", help="not killing enuwalletd", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -58,7 +58,7 @@ elif args.stress_network:
 else:
     errorExit("one of impaired_network, lossy_network or stress_network must be set. Please also check peer configs in p2p_test_peers.py.")
 
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
+cluster=testUtils.Cluster(enuwalletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
 
 print("BEGIN")
 print("TEST_OUTPUT: %s" % (testOutputFile))
@@ -107,10 +107,10 @@ testeraAccount.activePublicKey=currencyAccount.activePublicKey=PUB_KEY3
 exchangeAccount.ownerPrivateKey=PRV_KEY2
 exchangeAccount.ownerPublicKey=PUB_KEY2
 
-print("Stand up walletd")
+print("Stand up enuwalletd")
 if walletMgr.launch() is False:
-    cmdError("%s" % (WalletdName))
-    errorExit("Failed to stand up enu walletd.")
+    cmdError("%s" % (EnuWalletDName))
+    errorExit("Failed to stand up enuwalletd.")
 
 testWalletName="test"
 Print("Creating wallet \"%s\"." % (testWalletName))

@@ -1064,9 +1064,9 @@ class WalletMgr(object):
     __walletDataDir="test_wallet_0"
 
     # pylint: disable=too-many-arguments
-    # walletd [True|False] True=Launch wallet(enuwallet) process; False=Manage launch process externally.
-    def __init__(self, walletd, enunodePort=8888, enunodeHost="localhost", port=8899, host="localhost"):
-        self.walletd=walletd
+    # enuwalletd [True|False] True=Launch wallet(enuwallet) process; False=Manage launch process externally.
+    def __init__(self, enuwalletd, enunodePort=8888, enunodeHost="localhost", port=8899, host="localhost"):
+        self.enuwalletd=enuwalletd
         self.enunodePort=enunodePort
         self.enunodeHost=enunodeHost
         self.port=port
@@ -1075,12 +1075,12 @@ class WalletMgr(object):
         self.__walletPid=None
         self.endpointArgs="--url http://%s:%d" % (self.enunodeHost, self.enunodePort)
         self.walletEndpointArgs=""
-        if self.walletd:
+        if self.enuwalletd:
             self.walletEndpointArgs += " --wallet-url http://%s:%d" % (self.host, self.port)
             self.endpointArgs += self.walletEndpointArgs
 
     def launch(self):
-        if not self.walletd:
+        if not self.enuwalletd:
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch enuwallet")
             return False
 
@@ -1244,10 +1244,10 @@ class Cluster(object):
     __BiosPort=8788
     
     # pylint: disable=too-many-arguments
-    # walletd [True|False] Is enuwallet running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="ENUtest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
+    # enuwalletd [True|False] Is enuwallet running. If not load the wallet plugin
+    def __init__(self, enuwalletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="ENUtest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
-        walletd [True|False] Is wallet enuwallet running. If not load the wallet plugin
+        enuwalletd [True|False] Is wallet enuwallet running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
         host: enu server host
         port: enu server port
@@ -1263,7 +1263,7 @@ class Cluster(object):
         self.nodes={}
         self.localCluster=localCluster
         self.wallet=None
-        self.walletd=walletd
+        self.enuwalletd=enuwalletd
         self.enableMongo=enableMongo
         self.mongoHost=mongoHost
         self.mongoPort=mongoPort
@@ -1274,7 +1274,7 @@ class Cluster(object):
         self.walletHost=walletHost
         self.walletPort=walletPort
         self.walletEndpointArgs=""
-        if self.walletd:
+        if self.enuwalletd:
             self.walletEndpointArgs += " --wallet-url http://%s:%d" % (self.walletHost, self.walletPort)
         self.mongoEndpointArgs=""
         self.mongoUri=""
@@ -1328,7 +1328,7 @@ class Cluster(object):
             cmdArr.append("--nogen")
 
         enunodeArgs="--max-transaction-time 5000"
-        if not self.walletd:
+        if not self.enuwalletd:
             enunodeArgs += " --plugin enumivo::wallet_api_plugin"
         if self.enableMongo:
             enunodeArgs += " --plugin enumivo::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
