@@ -11,6 +11,7 @@
 #include <enumivo/chain/contract_table_objects.hpp>
 #include <enumivo/chain/generated_transaction_object.hpp>
 #include <enumivo/chain/transaction_object.hpp>
+#include <enumivo/chain/unconfirmed_block_object.hpp>
 
 #include <enumivo/chain/authorization_manager.hpp>
 #include <enumivo/chain/resource_limits.hpp>
@@ -46,6 +47,7 @@ struct pending_state {
 struct controller_impl {
    controller&                    self;
    chainbase::database            db;
+   chainbase::database            unconfirmed_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
    optional<pending_state>        pending;
    block_state_ptr                head;
@@ -69,10 +71,17 @@ struct controller_impl {
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
       FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
+
+      if( const auto* b = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num) )
+      {
+         unconfirmed_blocks.remove( *b );
+      }
+
       for( const auto& t : head->trxs )
          unapplied_transactions[t->signed_id] = t;
       head = prev;
       db.undo();
+
    }
 
 
@@ -85,6 +94,9 @@ struct controller_impl {
     db( cfg.shared_memory_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.shared_memory_size ),
+    unconfirmed_blocks( cfg.block_log_dir/"unconfirmed",
+        cfg.read_only ? database::read_only : database::read_write,
+        cfg.unconfirmed_cache_size ), 
     blog( cfg.block_log_dir ),
     fork_db( cfg.shared_memory_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -130,8 +142,10 @@ struct controller_impl {
    void emit( const Signal& s, Arg&& a ) {
       try {
         s(std::forward<Arg>(a));
+      } catch ( fc::exception& e ) {
+         wlog( "${details}", ("details", e.to_detail_string()) );
       } catch ( ... ) {
-         elog( "signal handler threw exception" );
+         wlog( "signal handler threw exception" );
       }
    }
 
@@ -143,18 +157,25 @@ struct controller_impl {
       FC_ASSERT( log_head );
       auto lh_block_num = log_head->block_num();
 
-      if( s->block_num - 1  == lh_block_num ) {
-         FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
-         blog.append( s->block );
-      } else if( s->block_num -1 > lh_block_num ) {
-         wlog( "skipped blocks..." );
-         edump((s->block_num)(log_head->block_num()));
-         if( s->block_num == log_head->block_num() ) {
-            FC_ASSERT( s->id == log_head->id(), "", ("s->id",s->id)("hid",log_head->id()) );
-         }
+      if( s->block_num <= lh_block_num ) {
+//         edump((s->block_num)("double call to on_irr"));
+//         edump((s->block_num)(s->block->previous)(log_head->id()));
+         return;
       }
+      
+      FC_ASSERT( s->block_num - 1  == lh_block_num, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
+      FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
+      blog.append(s->block);
+
       emit( self.irreversible_block, s );
       db.commit( s->block_num );
+
+      const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
+      auto objitr = ubi.begin(); 
+      while( objitr != ubi.end() && objitr->blocknum <= s->block_num ) {
+         unconfirmed_blocks.remove( *objitr );
+         objitr = ubi.begin(); 
+      }
    }
 
    void init() {
@@ -174,17 +195,20 @@ struct controller_impl {
          db.undo();
       }
 
-      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
-                 ("db",db.revision())("head",head->block_num) );
+      uint32_t unconf_blocknum = 1;
+      const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
+      auto objitr = ubi.rbegin();
+      if( objitr != ubi.rend() ) {
+         unconf_blocknum = objitr->blocknum;
+      }
 
-      /**
-       * The undoable state contains state transitions from blocks
-       * in the fork database that could be reversed. Because this
-       * is a new startup and the fork database is empty, we must
-       * unwind that pending state. This state will be regenerated
-       * when we catch up to the head block later.
-       */
-      //clear_all_undo();
+      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
+                 ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
+
+      edump((unconf_blocknum));
+      FC_ASSERT( head->block_num == unconf_blocknum, "unconfirmed block database out of sync",
+                 ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
+
    }
 
    ~controller_impl() {
@@ -194,9 +218,12 @@ struct controller_impl {
       edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
+      unconfirmed_blocks.flush();
    }
 
    void add_indices() {
+      unconfirmed_blocks.add_index<unconfirmed_block_index>(); 
+
       db.add_index<account_index>();
       db.add_index<account_sequence_index>();
 
@@ -265,9 +292,19 @@ struct controller_impl {
                std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
             }
          }
+        
+         int unconf = 0;
+         while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
+            ++unconf;
+            self.push_block( obj->get_block(), true );
+         }
+
          std::cerr<< "\n";
+         ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
          auto end = fc::time_point::now();
-         ilog( "replayed blocks in ${n} seconds, ${spb} spb", ("n", (end-start).count()/1000000.0)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+         ilog( "replayed blocks in ${n} seconds, ${spb} spb", 
+               ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+         std::cerr<< "\n";
          replaying = false;
 
       } else if( !end ) {
@@ -354,14 +391,22 @@ struct controller_impl {
          emit( self.accepted_block_header, pending->_pending_block_state );
          head = fork_db.head();
          FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
+
       }
 
   //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
       emit( self.accepted_block, pending->_pending_block_state );
+
+      if( !replaying ) {
+         unconfirmed_blocks.create<unconfirmed_block_object>( [&]( auto& ubo ) {
+            ubo.blocknum = pending->_pending_block_state->block_num;
+            ubo.set_block( pending->_pending_block_state->block );
+         });
+      }
+
       pending->push();
       pending.reset();
 
-      self.log_irreversible_blocks();
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -1059,7 +1104,6 @@ void controller::abort_block() {
 
 void controller::push_block( const signed_block_ptr& b, bool trust ) {
    my->push_block( b, trust );
-   log_irreversible_blocks();
 }
 
 void controller::push_confirmation( const header_confirmation& c ) {
@@ -1125,47 +1169,6 @@ const global_property_object& controller::get_global_properties()const {
   return my->db.get<global_property_object>();
 }
 
-/**
- *  This method reads the current dpos_irreverible block number, if it is higher
- *  than the last block number of the log, it grabs the next block from the
- *  fork database, saves it to disk, then removes the block from the fork database.
- *
- *  Any forks built off of a different block with the same number are also pruned.
- */
-void controller::log_irreversible_blocks() {
-   /*
-   if( !my->blog.head() )
-      my->blog.read_head();
-
-   const auto& log_head = my->blog.head();
-   auto lib = my->head->dpos_irreversible_blocknum;
-
-
-   if( lib > 2 ) {
-      if( log_head && log_head->block_num() > lib ) {
-         auto blk = my->fork_db.get_block_in_current_chain_by_num( lib - 1 );
-         FC_ASSERT( blk, "unable to find block state", ("block_num",lib-1));
-         my->fork_db.prune( blk  );
-         my->db.commit( lib -1 );
-         return;
-      }
-
-      while( log_head && (log_head->block_num()+1) < lib ) {
-         auto lhead = log_head->block_num();
-         auto blk = my->fork_db.get_block_in_current_chain_by_num( lhead + 1 );
-         FC_ASSERT( blk, "unable to find block state", ("block_num",lhead+1));
-         irreversible_block( blk );
-
-         if( !my->replaying ) {
-            my->blog.append( blk->block );
-         }
-
-         my->fork_db.prune( blk );
-         my->db.commit( lhead );
-      }
-   }
-   */
-}
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    auto state = my->fork_db.get_block(id);
    if( state ) return state->block;

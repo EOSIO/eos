@@ -15,7 +15,7 @@ Simple and fast setup of Enumivo on Docker is also available.
 ## Build eos image
 
 ```bash
-git clone https://github.com/enumivo/enumivo.git --recursive
+git clone https://github.com/enumivo/enumivo.git --recursive  --depth 1
 cd eos/Docker
 docker build . -t enumivo/eos
 ```
@@ -67,7 +67,7 @@ After `docker-compose up -d`, two services named `nodeosd` and `enuwallet` will 
 You can run the `enucli` commands via a bash alias.
 
 ```bash
-alias enucli='docker-compose exec enuwallet /opt/enumivo/bin/enucli -u http://nodeosd:8888'
+alias enucli='docker-compose exec enuwallet /opt/enumivo/bin/enucli -u http://nodeosd:8888 --wallet-url http://localhost:8888'
 enucli get info
 enucli get account inita
 ```
@@ -86,28 +86,14 @@ docker-compose stop enuwallet
 
 ### Develop/Build custom contracts
 
-Due to the fact that the enumivo/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize enumivo/builder. However, enumivo/builder does not contain enumivocpp. As such, you will need to run enumivo/builder interactively, and clone, build and install Enumivo. Once this is complete, you can then utilize enumivocpp to compile your contracts.
+Due to the fact that the enumivo/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize the enumivo/eos-dev image. This image contains both the required binaries and dependencies to build contracts using enumivocpp.
 
-You can also create a Dockerfile that will do this for you.
-
-```
-FROM enumivo/builder
-
-RUN git clone -b master --depth 1 https://github.com/enumivo/enumivo.git --recursive \
-    && cd eos \
-    && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
-       -DCMAKE_C_COMPILER=clang -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true \
-    && cmake --build /tmp/build --target install && rm -rf /tmp/build /eos
-```
-
-Then, from the same directory as the Dockerfile, simply run:
+You can either use the image available on [Docker Hub](https://hub.docker.com/r/enumivo/eos-dev/) or navigate into the dev folder and build the image manually.
 
 ```bash
-docker build -t enumivo/contracts .
-docker run -it -v /path/to/custom/contracts:/contracts enumivo/contracts /bin/bash
+cd dev
+docker build -t enumivo/eos-dev .
 ```
-
-At this time you should be at a bash shell. You can navigate into the /contracts directory and use enumivocpp to compile your custom contracts.
 
 ### Change default configuration
 

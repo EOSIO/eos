@@ -3,7 +3,7 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <enumivo/chain/contract_types.hpp>
+#include <enumivo/chain/abi_def.hpp>
 #include <enumivo/chain/trace.hpp>
 #include <enumivo/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>

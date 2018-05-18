@@ -58,8 +58,6 @@ programs/enunode/enunode
 scripts/tn_init.sh
 
 tests/plugin_test
-tests/config.hpp
-unittests/config.hpp
 unittests/unit_test
 
 doxygen

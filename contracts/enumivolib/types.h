@@ -26,13 +26,12 @@ typedef uint64_t table_name;
 typedef uint32_t time;
 typedef uint64_t scope_name;
 typedef uint64_t action_name;
-typedef uint16_t region_id;
 
 typedef uint64_t asset_symbol;
 typedef int64_t share_type;
 typedef uint16_t weight_type;
 
-/* macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned */ 
+/* macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned */
 #define ALIGNED(X) __attribute__ ((aligned (16))) X
 
 struct public_key {
@@ -55,22 +54,8 @@ struct ALIGNED(checksum512) {
    uint8_t hash[64];
 };
 
-struct fixed_string16 {
-   uint8_t len;
-   char str[16];
-};
-
 typedef struct checksum256 transaction_id_type;
 typedef struct checksum256 block_id_type;
-
-typedef struct fixed_string16 field_name;
-
-struct fixed_string32 {
-   uint8_t len;
-   char str[32];
-};
-
-typedef struct fixed_string32 type_name;
 
 struct account_permission {
    account_name account;
