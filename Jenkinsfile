@@ -8,7 +8,7 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo 1 | ./eosio_build.sh
+                            echo 1 | ./enumivo_build.sh
                         '''
                         stash includes: 'build/**/*', name: 'buildUbuntu'
                     }
@@ -18,7 +18,7 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo 1 | ./eosio_build.sh
+                            echo 1 | ./enumivo_build.sh
                         '''
                         stash includes: 'build/**/*', name: 'buildMacOS'
                     }
@@ -28,7 +28,7 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo 1 | ./eosio_build.sh
+                            echo 1 | ./enumivo_build.sh
                         '''
                         stash includes: 'build/**/*', name: 'buildFedora'
                     }
@@ -56,7 +56,7 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/etc/enumivo/node_00/config.ini'
                             archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
@@ -78,7 +78,7 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/etc/enumivo/node_00/config.ini'
                             archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
@@ -103,7 +103,7 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/etc/enumivo/node_00/config.ini'
                             archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
