@@ -11,7 +11,7 @@ use Cwd;
 
 my $enu_home = defined $ENV{ENU_HOME} ? $ENV{ENU_HOME} : getcwd;
 my $enudaemon = $enu_home . "/programs/enudaemon/enudaemon";
-my $eosc = $enu_home . "/programs/eosc/eosc";
+my $enuclient = $enu_home . "/programs/enuclient/enuclient";
 
 my $nodes = defined $ENV{ENU_TEST_RING} ? $ENV{ENU_TEST_RING} : "1";
 my $pnodes = defined $ENV{ENU_TEST_PRODUCERS} ? $ENV{ENU_TEST_PRODUCERS} : "1";
@@ -245,7 +245,7 @@ sub perform_work {
         my $stoptime = time () + $run_duration;
         my $counter = 0;
         while (time () < $stoptime) {
-            `$eosc transfer eos inita 10 >> eosc.out 2>> eosc.err`;
+            `$enuclient transfer eos inita 10 >> enuclient.out 2>> enuclient.err`;
             $counter++;
             if ($counter % 1000 == 0) {
                 print "$counter client iterations\n";

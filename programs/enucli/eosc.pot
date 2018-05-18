@@ -1,4 +1,4 @@
-# Localization template for eosc
+# Localization template for enuclient
 # see LICENSE.txt
 #, fuzzy
 msgid ""
@@ -85,7 +85,7 @@ msgid ""
 "The ABI for the code on account \"${1}\" does not specify table \"${2}\".\n"
 "\n"
 "Please check the account and table name, and verify that the account has the expected code using:\n"
-"  eosc get code ${1}"
+"  enuclient get code ${1}"
 msgstr ""
 
 msgid "Error locating help text: ${code} ${what}"
