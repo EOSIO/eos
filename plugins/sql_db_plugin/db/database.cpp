@@ -11,6 +11,11 @@ database::database(const std::string &uri)
     m_blocks_table = std::make_unique<blocks_table>(m_session);
 }
 
+void database::consume(const std::vector<chain::block_state_ptr> &blocks)
+{
+
+}
+
 void database::wipe()
 {
     std::unique_lock<std::mutex> lock(m_mux);

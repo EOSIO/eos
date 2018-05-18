@@ -1,6 +1,8 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
+#include "consumer_core.h"
+
 #include <memory>
 #include <mutex>
 #include <soci/soci.h>
@@ -15,10 +17,12 @@
 
 namespace eosio {
 
-class database
+class database : public consumer_core<chain::block_state_ptr>
 {
 public:
     database(const std::string& uri);
+
+    void consume(const std::vector<chain::block_state_ptr>& blocks) override;
 
     void wipe();
     void add(chain::block_state_ptr block);
