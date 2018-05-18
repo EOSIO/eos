@@ -231,9 +231,11 @@ namespace impl {
          if (abi.valid()) {
             auto type = abi->get_action_type(act.name);
             if (!type.empty()) {
-               mvo( "data", abi->binary_to_variant( type, act.data ));
+               mvo("data", abi->binary_to_variant(type, act.data));
+               mvo("hex_data", act.data);
+            } else {
+               mvo("data", act.data);
             }
-            mvo("hex_data", act.data);
          } else {
             mvo("data", act.data);
          }
@@ -396,6 +398,9 @@ namespace impl {
                   if (!type.empty()) {
                      act.data = std::move( abi->variant_to_binary( type, data ));
                   }
+               }
+               if (act.data.empty()) {
+                  from_variant(data, act.data);
                }
             }
          }
