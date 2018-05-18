@@ -402,9 +402,6 @@ namespace impl {
                      act.data = std::move( abi->variant_to_binary( type, data ));
                   }
                }
-               if (act.data.empty()) {
-                  from_variant(data, act.data);
-               }
             }
          }
 
