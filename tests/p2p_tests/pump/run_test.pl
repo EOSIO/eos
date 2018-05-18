@@ -112,7 +112,7 @@ sub write_config {
     if (defined $producer) {
         print $cfg "enable-stale-production = true\n";
         print $cfg "required-participation = true\n";
-        print $cfg "private-key = [\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]\n";
+        print $cfg "private-key = [\"ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]\n";
 
         print $cfg "plugin = enumivo::producer_plugin\n";
         print $cfg "plugin = enumivo::chain_api_plugin\n";

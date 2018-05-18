@@ -8,7 +8,7 @@ if(BUILD_MONGO_DB_PLUGIN)
 
   if (libmongoc-1.0_FOUND)
 
-      # EOS has no direct dependencies on libmongoc but its shared libraries
+      # ENU has no direct dependencies on libmongoc but its shared libraries
       # will need to be present at runtime for the C++ libraries we use:
       # libbsoncxx & libmongocxx (both from github.com/mongodb/mongo-cxx-driver)
 

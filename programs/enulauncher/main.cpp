@@ -1068,7 +1068,7 @@ launcher_def::init_genesis () {
    while(getline(src,str)) {
       size_t pos = str.find(prefix);
       if (pos != string::npos) {
-         size_t cut = str.find("EOS",pos);
+         size_t cut = str.find("ENU",pos);
          genesis_block.push_back(str.substr(0,cut) + bioskey + "\",");
       }
       else {

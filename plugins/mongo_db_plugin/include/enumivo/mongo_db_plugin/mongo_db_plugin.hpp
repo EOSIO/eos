@@ -19,7 +19,7 @@ using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
  *   Actions
  *   Accounts
  *
- *   See data dictionary (DB Schema Definition - EOS API) for description of MongoDB schema.
+ *   See data dictionary (DB Schema Definition - ENU API) for description of MongoDB schema.
  *
  *   The goal ultimately is for all chainbase data to be mirrored in MongoDB via a delayed node processing
  *   irreversible blocks. Currently, only Blocks, Transactions, Messages, and Account balance it mirrored.

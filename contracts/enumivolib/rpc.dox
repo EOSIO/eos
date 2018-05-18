@@ -111,9 +111,9 @@ $ curl  http://127.0.0.1:8888/v1/chain/get_account -X POST -d '{"account_name":"
 ```
 {
   "name": "inita",
-  "enu_balance": "999998.9574 EOS",
-  "staked_balance": "0.0000 EOS",
-  "unstaking_balance": "0.0000 EOS",
+  "enu_balance": "999998.9574 ENU",
+  "staked_balance": "0.0000 ENU",
+  "unstaking_balance": "0.0000 ENU",
   "last_unstaking_time": "2106-02-07T06:28:15",
   "permissions": [
     {
@@ -123,7 +123,7 @@ $ curl  http://127.0.0.1:8888/v1/chain/get_account -X POST -d '{"account_name":"
         "threshold": 1,
         "keys": [
           {
-            "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+            "key": "ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
             "weight": 1
           }
         ],
@@ -137,7 +137,7 @@ $ curl  http://127.0.0.1:8888/v1/chain/get_account -X POST -d '{"account_name":"
         "threshold": 1,
         "keys": [
           {
-            "key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+            "key": "ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
             "weight": 1
           }
         ],
@@ -329,14 +329,14 @@ Get required keys to sign a transaction from list of your keys.
 
 @subsubsection examplegetrequiredkeys  Example get_required_keys Usage
 ```
-curl  http://localhost:8888/v1/chain/get_required_keys -X POST -d '{"transaction": {"ref_block_num":"100","ref_block_prefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, "available_keys":["EOS4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq","EOS7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]}'
+curl  http://localhost:8888/v1/chain/get_required_keys -X POST -d '{"transaction": {"ref_block_num":"100","ref_block_prefix":"137469861","expiration":"2017-09-25T06:28:49","scope":["initb","initc"],"actions":[{"code":"currency","type":"transfer","recipients":["initb","initc"],"authorization":[{"account":"initb","permission":"active"}],"data":"000000000041934b000000008041934be803000000000000"}],"signatures":[],"authorizations":[]}, "available_keys":["ENU4toFS3YXEQCkuuw1aqDLrtHim86Gz9u3hBdcBw5KNPZcursVHq","ENU7d9A3uLe6As66jzN8j44TXJUqJSK3bFjjEEqR4oTvNAB3iM9SA","ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]}'
 ```
 
 @subsubsection examplegetrequiredkeysresult  Example get_required_keys Result
 ```
 {
   "required_keys": [
-    "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+    "ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
   ]
 }
 ```
@@ -455,7 +455,7 @@ $ curl http://localhost:8889/v1/wallet/list_keys
 
 @subsubsection examplewalletlistkeysresult  Example wallet_list_keys Result
 ```
-[["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]]
+[["ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]]
 ```
 
 @subsection v1walletgetpublickeys wallet_get_public_keys
@@ -469,7 +469,7 @@ $ curl http://localhost:8889/v1/wallet/get_public_keys
 
 @subsubsection examplewallegetpublickeysresult  Example wallet_get_public_keys Result
 ```
-["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+["ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
 ```
 
 @subsection v1walletsettimeout wallet_set_timeout
@@ -492,7 +492,7 @@ Sign transaction given an array of transaction, require public keys, and chain i
 
 @subsubsection examplewalletsigntrx Example wallet_sign_trx Usage
 ```
-$ curl http://localhost:8889/v1/wallet/sign_transaction -X POST -d '[{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":[]}, ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"], ""]'
+$ curl http://localhost:8889/v1/wallet/sign_transaction -X POST -d '[{"ref_block_num":21453,"ref_block_prefix":3165644999,"expiration":"2017-12-08T10:28:49","scope":["initb","initc"],"read_scope":[],"messages":[{"code":"currency","type":"transfer","authorization":[{"account":"initb","permission":"active"}],"data":"000000008093dd74000000000094dd74e803000000000000"}],"signatures":[]}, ["ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"], ""]'
 ```
 
 @subsubsection examplewalletsigntrxresult  Example wallet_sign_trx Result

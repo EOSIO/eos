@@ -137,7 +137,7 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, pid=None, cmd=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, host, port, pid=None, cmd=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="ENUtest"):
         self.host=host
         self.port=port
         self.pid=pid
@@ -537,7 +537,7 @@ class Node(object):
 
     # Create & initialize account and return creation transactions. Return transaction json object
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
-        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 EOS" --stake-cpu "100 EOS" --buy-ram-EOS "100 EOS"' % (
+        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 ENU" --stake-cpu "100 ENU" --buy-ram-ENU "100 ENU"' % (
             Utils.EnuClientPath, self.endpointArgs, creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey)
 
@@ -553,7 +553,7 @@ class Node(object):
 
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
-            trans = self.transferFunds(creatorAccount, account, "%0.04f EOS" % (stakedDeposit/10000), "init")
+            trans = self.transferFunds(creatorAccount, account, "%0.04f ENU" % (stakedDeposit/10000), "init")
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -580,7 +580,7 @@ class Node(object):
 
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
-            trans = self.transferFunds(creatorAccount, account, "%0.04f EOS" % (stakedDeposit/10000), "init")
+            trans = self.transferFunds(creatorAccount, account, "%0.04f ENU" % (stakedDeposit/10000), "init")
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -786,7 +786,7 @@ class Node(object):
         return servants
 
     def getAccountEnuBalanceStr(self, scope):
-        """Returns EOS currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 EOS". """
+        """Returns ENU currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 ENU". """
         assert isinstance(scope, str)
         if not self.enableMongo:
             amount=self.getNodeAccountBalance("enumivo.coin", scope)
@@ -806,7 +806,7 @@ class Node(object):
         return None
 
     def getAccountEnuBalance(self, scope):
-        """Returns EOS currency0000 account balance from enucli get table command. Returned balance is an integer e.g. 980311. """
+        """Returns ENU currency0000 account balance from enucli get table command. Returned balance is an integer e.g. 980311. """
         balanceStr=self.getAccountEnuBalanceStr(scope)
         balanceStr=balanceStr.split()[0]
         balance=int(decimal.Decimal(balanceStr[1:])*10000)
@@ -1245,7 +1245,7 @@ class Cluster(object):
     
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is enuwallet running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="ENUtest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
         walletd [True|False] Is wallet enuwallet running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -1773,7 +1773,7 @@ class Cluster(object):
 
     @staticmethod
     def bootstrap(totalNodes, prodCount, biosHost, biosPort, dontKill=False, onlyBios=False):
-        """Create 'prodCount' init accounts and deposits 10000000000 EOS in each. If prodCount is -1 will initialize all possible producers.
+        """Create 'prodCount' init accounts and deposits 10000000000 ENU in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
         Utils.Print("Starting cluster bootstrap.")
@@ -1927,7 +1927,7 @@ class Cluster(object):
             contract=enumivoTokenAccount.name
             Utils.Print("push create action to %s contract" % (contract))
             action="create"
-            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 EOS\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (enumivoTokenAccount.name)
+            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 ENU\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (enumivoTokenAccount.name)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
@@ -1941,7 +1941,7 @@ class Cluster(object):
             contract=enumivoTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))
             action="issue"
-            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 EOS\",\"memo\":\"initial issue\"}" % (enumivoAccount.name)
+            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 ENU\",\"memo\":\"initial issue\"}" % (enumivoAccount.name)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
@@ -1953,7 +1953,7 @@ class Cluster(object):
             transId=Node.getTransId(trans[1])
             biosNode.waitForTransIdOnNode(transId)
 
-            expectedAmount="1000000000.0000 EOS"
+            expectedAmount="1000000000.0000 ENU"
             Utils.Print("Verify enumivo issue, Expected: %s" % (expectedAmount))
             actualAmount=biosNode.getAccountEnuBalanceStr(enumivoAccount.name)
             if expectedAmount != actualAmount:
@@ -1973,7 +1973,7 @@ class Cluster(object):
 
             Node.validateTransaction(trans)
 
-            initialFunds="1000000.0000 EOS"
+            initialFunds="1000000.0000 ENU"
             Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
             trans=None
             contract=enumivoTokenAccount.name

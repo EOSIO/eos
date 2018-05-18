@@ -121,7 +121,7 @@ namespace enumivosystem {
    void system_contract::buyrambytes( account_name payer, account_name receiver, uint32_t bytes ) {
       auto itr = _rammarket.find(S(4,RAMEOS));
       auto tmp = *itr;
-      auto eosout = tmp.convert( asset(bytes,S(0,RAM)), S(4,EOS) );
+      auto eosout = tmp.convert( asset(bytes,S(0,RAM)), S(4,ENU) );
 
       buyram( payer, receiver, eosout );
    }
@@ -193,7 +193,7 @@ namespace enumivosystem {
       auto itr = _rammarket.find(S(4,RAMEOS));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
           /// the cast to int64_t of bytes is safe because we certify bytes is <= quota which is limited by prior purchases
-          tokens_out = es.convert( asset(bytes,S(0,RAM)),  S(4,EOS) );
+          tokens_out = es.convert( asset(bytes,S(0,RAM)),  S(4,ENU) );
       });
 
       _gstate.total_ram_bytes_reserved -= bytes;

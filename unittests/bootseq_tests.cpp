@@ -155,7 +155,7 @@ public:
     }
 
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(enumivo.coin), symbol(SY(4,EOS)), act);
+         return get_currency_balance(N(enumivo.coin), symbol(SY(4,ENU)), act);
     }
 
     void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr) {
@@ -200,11 +200,11 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         const auto& enumivo_coin_acc = get<account_object, by_name>(N(enumivo.coin));
         BOOST_TEST(enumivo_coin_acc.privileged == true);
 
-        // Create EOS tokens in enumivo.coin, set its manager as enumivo
-        auto max_supply = asset::from_string("10000000000.0000 EOS"); /// 1x larger than 1B initial tokens
-        auto initial_supply = asset::from_string("1000000000.0000 EOS"); /// 1x larger than 1B initial tokens
+        // Create ENU tokens in enumivo.coin, set its manager as enumivo
+        auto max_supply = asset::from_string("10000000000.0000 ENU"); /// 1x larger than 1B initial tokens
+        auto initial_supply = asset::from_string("1000000000.0000 ENU"); /// 1x larger than 1B initial tokens
         create_currency(N(enumivo.coin), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion EOS tokens to enumivo.system
+        // Issue the genesis supply of 1 billion ENU tokens to enumivo.system
         issue(N(enumivo.coin), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
@@ -319,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS")), assert_exception);
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 ENU"), asset::from_string("49999500.0000 ENU")), assert_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
@@ -328,7 +328,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            register_producer(pro);
         }
         // Block one should be able to unstake all his stake now
-        undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS"));
+        undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 ENU"), asset::from_string("49999500.0000 ENU"));
 
         return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user

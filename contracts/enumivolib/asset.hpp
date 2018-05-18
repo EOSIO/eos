@@ -114,7 +114,7 @@ namespace enumivo {
 
       static constexpr int64_t max_amount    = (1LL << 62) - 1;
 
-      explicit asset( int64_t a = 0, symbol_name s = S(4,EOS))
+      explicit asset( int64_t a = 0, symbol_name s = S(4,ENU))
       :amount(a),symbol{s}
       {
          enumivo_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );

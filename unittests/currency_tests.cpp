@@ -275,18 +275,18 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    }
 
    {
-      symbol enu(4, "EOS");
+      symbol enu(4, "ENU");
       BOOST_REQUIRE_EQUAL(ENU_SYMBOL_VALUE, enu.value());
-      BOOST_REQUIRE_EQUAL("4,EOS", enu.to_string());
-      BOOST_REQUIRE_EQUAL("EOS", enu.name());
+      BOOST_REQUIRE_EQUAL("4,ENU", enu.to_string());
+      BOOST_REQUIRE_EQUAL("ENU", enu.name());
       BOOST_REQUIRE_EQUAL(4, enu.decimals());
    }
 
-   // default is "4,EOS"
+   // default is "4,ENU"
    {
       symbol def;
       BOOST_REQUIRE_EQUAL(4, def.decimals());
-      BOOST_REQUIRE_EQUAL("EOS", def.name());
+      BOOST_REQUIRE_EQUAL("ENU", def.name());
    }
    // from string
    {

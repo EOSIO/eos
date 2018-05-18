@@ -98,9 +98,9 @@ step=$(($step + 1))
 ecmd set contract enumivo contracts/enumivo.system contracts/enumivo.system/enumivo.system.wast contracts/enumivo.system/enumivo.system.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo issue '{"to":"enumivo","quantity":"1000000000.0000 EOS","memo":"init"}' -p enumivo@active | tee -a $logfile
+echo executing: enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo issue '{"to":"enumivo","quantity":"1000000000.0000 ENU","memo":"init"}' -p enumivo@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/enucli/enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo issue '{"to":"enumivo","quantity":"1000000000.0000 EOS","memo":"init"}' -p enumivo@active >> $logfile 2>&1
+programs/enucli/enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo issue '{"to":"enumivo","quantity":"1000000000.0000 ENU","memo":"init"}' -p enumivo@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
