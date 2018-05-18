@@ -261,7 +261,8 @@
          {"name":"total_unpaid_blocks",           "type":"uint32"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
-         {"name":"total_producer_vote_weight",    "type":"float64"}
+         {"name":"total_producer_vote_weight",    "type":"float64"},
+         {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
     },{
       "name": "producer_info",

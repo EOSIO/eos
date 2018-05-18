@@ -2578,7 +2578,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    BOOST_REQUIRE_THROW( create_accounts_with_resources( { N(fail) }, N(dan) ), fc::exception ); // dan shouldn't be able to create fail
 
    bidname( "dan", "nofail", core_from_string( "1.0000" ) );
-   BOOST_REQUIRE_EQUAL( "condition: assertion failed: must increase bid by 10%", bidname( "sam", "nofail", core_from_string( "1.0000" ) )); // didn't increase bid by 10%
+   BOOST_REQUIRE_EQUAL( "assertion failure with message: must increase bid by 10%", bidname( "sam", "nofail", core_from_string( "1.0000" ) )); // didn't increase bid by 10%
    BOOST_REQUIRE_EQUAL( success(), bidname( "sam", "nofail", core_from_string( "2.0000" ) )); // didn't increase bid by 10%
    produce_block( fc::days(1) );
    produce_block();
