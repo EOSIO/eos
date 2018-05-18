@@ -40,7 +40,7 @@ int main( int argc, char** argv ) {
 
       auto cr = c.push_action( N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
                  ("issuer",       "enumivo" )
-                 ("maximum_supply", "10000000.0000 EOS")
+                 ("maximum_supply", "10000000.0000 ENU")
                  ("can_freeze", 0)
                  ("can_recall", 0)
                  ("can_whitelist", 0)
@@ -50,7 +50,7 @@ int main( int argc, char** argv ) {
 
       cr = c.push_action( N(enumivo.coin), N(issue), N(enumivo), mutable_variant_object()
                  ("to",       "dan" )
-                 ("quantity", "100.0000 EOS")
+                 ("quantity", "100.0000 ENU")
                  ("memo", "")
          );
 
@@ -189,7 +189,7 @@ int main( int argc, char** argv ) {
 
       cr = c.push_action( N(enumivo.coin), N(issue), N(enumivo), mutable_variant_object()
                  ("to",       "unregistered" )
-                 ("quantity", "100.0000 EOS")
+                 ("quantity", "100.0000 ENU")
                  ("memo", "")
          );
 

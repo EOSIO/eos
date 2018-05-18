@@ -259,8 +259,8 @@ namespace {
            msg_doc.append(kvp("data", value));
            return;
         } catch (std::exception& e) {
-           elog("Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
-           elog("  EOS JSON: ${j}", ("j", json));
+           elog("Unable to convert ENU JSON to MongoDB JSON: ${e}", ("e", e.what()));
+           elog("  ENU JSON: ${j}", ("j", json));
         }
      } catch (fc::exception& e) {
         elog("Unable to convert action.data to ABI: ${s} :: ${n}, what: ${e}", ("s", msg.account)("n", msg.name)("e", e.to_string()));
@@ -793,7 +793,7 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          "The queue size between enunode and MongoDB plugin thread.")
          ("mongodb-uri,m", bpo::value<std::string>(),
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
-               " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.")
+               " If not specified then plugin is disabled. Default database 'ENU' is used if not specified in URI.")
          ;
 }
 
@@ -822,7 +822,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
       mongocxx::uri uri = mongocxx::uri{uri_str};
       my->db_name = uri.database();
       if (my->db_name.empty())
-         my->db_name = "EOS";
+         my->db_name = "ENU";
       my->mongo_conn = mongocxx::client{uri};
 
       // add callback to chain_controller config

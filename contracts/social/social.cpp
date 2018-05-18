@@ -5,7 +5,7 @@
 #include <enumivo.hpp>
 
 /**
- *  The purpose of this contract is to implement something like Steem on EOS, this
+ *  The purpose of this contract is to implement something like Steem on ENU, this
  *  means this contract defines its own currency, allows people to create posts, vote
  *  on posts, and stake their voting power.
  *

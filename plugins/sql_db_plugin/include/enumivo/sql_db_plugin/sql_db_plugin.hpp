@@ -22,7 +22,7 @@ namespace enumivo {
  *   Actions
  *   Accounts
  *
- *   See data dictionary (DB Schema Definition - EOS API) for description of SQL DB schema.
+ *   See data dictionary (DB Schema Definition - ENU API) for description of SQL DB schema.
  *
  *   The goal ultimately is for all chainbase data to be mirrored in SQL DB via a delayed node processing
  *   irreversible blocks. Currently, only Blocks, Transactions, Messages, and Account balance it mirrored.

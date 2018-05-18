@@ -39,7 +39,7 @@ void sql_db_plugin::set_program_options(options_description& cli, options_descri
              "The queue size between nodeos and SQL DB plugin thread.")
             (SQL_DB_URI_OPTION, bpo::value<std::string>(),
              "Sql DB URI connection string"
-             " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.")
+             " If not specified then plugin is disabled. Default database 'ENU' is used if not specified in URI.")
             ;
 }
 

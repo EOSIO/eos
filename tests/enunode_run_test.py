@@ -255,7 +255,7 @@ try:
     if not node.verifyAccount(testeraAccount):
         errorExit("FAILURE - account creation failed.", raw=True)
 
-    transferAmount="97.5321 EOS"
+    transferAmount="97.5321 ENU"
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
     if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer") is None:
         cmdError("%s transfer" % (ClientName))
@@ -269,7 +269,7 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    transferAmount="0.0100 EOS"
+    transferAmount="0.0100 ENU"
     Print("Force transfer funds %s from account %s to %s" % (
         transferAmount, defproduceraAccount.name, testeraAccount.name))
     if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True) is None:
@@ -277,7 +277,7 @@ try:
         errorExit("Failed to force transfer funds %d from account %s to %s" % (
             transferAmount, defproduceraAccount.name, testeraAccount.name))
 
-    expectedAmount="97.5421 EOS"
+    expectedAmount="97.5421 ENU"
     Print("Verify transfer, Expected: %s" % (expectedAmount))
     actualAmount=node.getAccountEnuBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
@@ -298,7 +298,7 @@ try:
         cmdError("%s wallet unlock" % (ClientName))
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
-    transferAmount="97.5311 EOS"
+    transferAmount="97.5311 ENU"
     Print("Transfer funds %s from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
     trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
@@ -308,7 +308,7 @@ try:
             transferAmount, testeraAccount.name, currencyAccount.name))
     transId=testUtils.Node.getTransId(trans)
 
-    expectedAmount="98.0311 EOS" # 5000 initial deposit
+    expectedAmount="98.0311 ENU" # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
     actualAmount=node.getAccountEnuBalanceStr(currencyAccount.name)
     if expectedAmount != actualAmount:
@@ -447,7 +447,7 @@ try:
         abiActionName=account["abi"]["actions"][0]["name"]
         abiType=account["abi"]["actions"][0]["type"]
         if abiName != "transfer" or abiActionName != "transfer" or abiType != "transfer":
-            errorExit("FAILURE - get EOS account failed", raw=True)
+            errorExit("FAILURE - get ENU account failed", raw=True)
 
     Print("push create action to currency1111 contract")
     contract="currency1111"

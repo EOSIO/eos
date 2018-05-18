@@ -5,8 +5,8 @@ This contract implements a simple DICE game between two players with 50/50 odds 
 
 Before playing all players deposit funds into their @dice account just like the @exchange contract
 
-1. Player 1 proposes to bet 1 EOS and submits SHA256(secret1)
-2. Player 2 proposes to bet 1 EOS and submits SHA256(secret2)
+1. Player 1 proposes to bet 1 ENU and submits SHA256(secret1)
+2. Player 2 proposes to bet 1 ENU and submits SHA256(secret2)
 
 Because Player 1 and 2 bet equal amounts their orders are matched and the game begins.
 
@@ -76,9 +76,9 @@ enucli create account enumivo dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7
 enucli set contract dice build/contracts/dice -p dice
 ````
 
-##### Create native EOS token
+##### Create native ENU token
 ````bash
-enucli push action enumivo.coin create '[ "enumivo", "1000000000.0000 EOS", 0, 0, 0]' -p enumivo.coin
+enucli push action enumivo.coin create '[ "enumivo", "1000000000.0000 ENU", 0, 0, 0]' -p enumivo.coin
 ````
 
 ##### Create alice account
@@ -91,34 +91,34 @@ enucli create account enumivo alice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq
 enucli create account enumivo bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
-##### Issue 1000 EOS to alice
+##### Issue 1000 ENU to alice
 ````bash
-enucli push action enumivo.coin issue '[ "alice", "1000.0000 EOS", "" ]' -p enumivo
+enucli push action enumivo.coin issue '[ "alice", "1000.0000 ENU", "" ]' -p enumivo
 ````
 
-##### Issue 1000 EOS to bob
+##### Issue 1000 ENU to bob
 ````bash
-enucli push action enumivo.coin issue '[ "bob", "1000.0000 EOS", "" ]' -p enumivo
+enucli push action enumivo.coin issue '[ "bob", "1000.0000 ENU", "" ]' -p enumivo
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)
 ````bash
-enucli set account permission alice active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p alice
+enucli set account permission alice active '{"threshold": 1,"keys": [{"key": "ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p alice
 ````
 
 ##### Allow dice contract to make transfers on bob behalf (deposit)
 ````bash
-enucli set account permission bob active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p bob
+enucli set account permission bob active '{"threshold": 1,"keys": [{"key": "ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p bob
 ````
 
-##### Alice deposits 100 EOS into the dice contract
+##### Alice deposits 100 ENU into the dice contract
 ````bash
-enucli push action dice deposit '[ "alice", "100.0000 EOS" ]' -p alice
+enucli push action dice deposit '[ "alice", "100.0000 ENU" ]' -p alice
 ````
 
-##### Bob deposits 100 EOS into the dice contract
+##### Bob deposits 100 ENU into the dice contract
 ````bash
-enucli push action dice deposit '[ "bob", "100.0000 EOS" ]' -p bob
+enucli push action dice deposit '[ "bob", "100.0000 ENU" ]' -p bob
 ````
 
 ##### Alice generates a secret
@@ -133,9 +133,9 @@ echo -n '28349b1d4bcdc9905e4ef9719019e55743c84efa0c5e9a0b077f0b54fcd84905' | xxd
 d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883
 ````
 
-##### Alice bets 3 EOS
+##### Alice bets 3 ENU
 ````bash
-enucli push action dice offerbet '[ "3.0000 EOS", "alice", "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883" ]' -p alice
+enucli push action dice offerbet '[ "3.0000 ENU", "alice", "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883" ]' -p alice
 ````
 
 ##### Bob generates a secret
@@ -150,9 +150,9 @@ echo -n '15fe76d25e124b08feb835f12e00a879bd15666a33786e64b655891fba7d6c12' | xxd
 50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129
 ````
 
-##### Bob also bets 3 EOS (a game is started)
+##### Bob also bets 3 ENU (a game is started)
 ````bash
-enucli push action dice offerbet '[ "3.0000 EOS", "bob", "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129" ]' -p bob
+enucli push action dice offerbet '[ "3.0000 ENU", "bob", "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129" ]' -p bob
 ````
 
 ##### Dice contract tables right after the game started
@@ -163,12 +163,12 @@ enucli get table dice dice account
 {
   "rows": [{
       "owner": "alice",
-      "enu_balance": "97.0000 EOS",
+      "enu_balance": "97.0000 ENU",
       "open_offers": 0,
       "open_games": 1
     },{
       "owner": "bob",
-      "enu_balance": "97.0000 EOS",
+      "enu_balance": "97.0000 ENU",
       "open_offers": 0,
       "open_games": 1
     }
@@ -184,7 +184,7 @@ enucli get table dice dice game
 {
   "rows": [{
       "id": 1,
-      "bet": "3.0000 EOS",
+      "bet": "3.0000 ENU",
       "deadline": "1970-01-01T00:00:00",
       "player1": {
         "commitment": "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883",
@@ -213,7 +213,7 @@ enucli get table dice dice game
 {
   "rows": [{
       "id": 1,
-      "bet": "3.0000 EOS",
+      "bet": "3.0000 ENU",
       "deadline": "2018-04-17T07:45:49",
       "player1": {
         "commitment": "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883",
@@ -242,12 +242,12 @@ enucli get table dice dice account
 {
   "rows": [{
       "owner": "alice",
-      "enu_balance": "103.0000 EOS",
+      "enu_balance": "103.0000 ENU",
       "open_offers": 0,
       "open_games": 0
     },{
       "owner": "bob",
-      "enu_balance": "97.0000 EOS",
+      "enu_balance": "97.0000 ENU",
       "open_offers": 0,
       "open_games": 0
     }
@@ -256,14 +256,14 @@ enucli get table dice dice account
 }
 ````
 
-##### Alice withdraw from her dice account 103 EOS
+##### Alice withdraw from her dice account 103 ENU
 ````bash
-enucli push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
+enucli push action dice withdraw '[ "alice", "103.0000 ENU" ]' -p alice
 ````
 
 ##### Balance of alice after withdraw
 ````bash
 enucli get currency balance enumivo.coin alice enu
-1003.0000 EOS
+1003.0000 ENU
 ````
 

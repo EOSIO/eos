@@ -30,7 +30,7 @@ namespace enumivosystem {
                m.base.balance.amount = int64_t(_gstate.free_ram());
                m.base.balance.symbol = S(0,RAM);
                m.quote.balance.amount = system_token_supply / 1000;
-               m.quote.balance.symbol = S(4,EOS);
+               m.quote.balance.symbol = S(4,ENU);
             });
          }
       } else {

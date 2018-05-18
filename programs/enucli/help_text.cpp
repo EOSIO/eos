@@ -100,7 +100,7 @@ auto smatch_to_variant(const std::smatch& smatch) {
 };
 
 const char* error_advice_name_type_exception = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
-const char* error_advice_public_key_type_exception = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
+const char* error_advice_public_key_type_exception = R"=====(Public key should be encoded in base58 and starts with ENU prefix)=====";
 const char* error_advice_private_key_type_exception = R"=====(Private key should be encoded in base58 WIF)=====";
 const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON follows the right authority structure!
 You can refer to contracts/enumivolib/native.hpp for reference)=====";

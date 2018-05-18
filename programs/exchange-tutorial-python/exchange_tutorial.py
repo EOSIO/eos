@@ -62,8 +62,8 @@ def update_balance(action, to):
 
 
 def transfer(to, quantity):
-    if quantity[:-4] != ' EOS':
-        quantity += ' EOS'
+    if quantity[:-4] != ' ENU':
+        quantity += ' ENU'
     results = enucli('transfer exchange {} "{}" {} -j'.format(to, quantity, KEY_TO_INTERNAL_ACCOUNT))
     transaction_info = json.loads(str(results.stdout, 'utf-8'))
     transaction_id = transaction_info['transaction_id']
@@ -99,7 +99,7 @@ def is_valid_deposit(action):
             memo == KEY_TO_INTERNAL_ACCOUNT and
             valid_user and
             from_user == DEMO_USER and
-            token == 'EOS'):
+            token == 'ENU'):
         return True
 
     print('Invalid deposit')
@@ -127,7 +127,7 @@ def is_valid_withdrawal(action):
             valid_user and
             to_user == DEMO_USER and
             transaction_id in get_transactions() and
-            token == 'EOS'):
+            token == 'ENU'):
         return True
 
     print('Invalid withdrawal')

@@ -80,7 +80,7 @@ try:
 
     #exit(0)
 
-    Print("Stand up EOS wallet enuwallet")
+    Print("Stand up ENU wallet enuwallet")
     if walletMgr.launch() is False:
         errorExit("Failed to stand up enuwallet.")
 

@@ -11,7 +11,7 @@ services:
 
   nodeosd:
     image: enumivo/eos:latest
-    command: /opt/enumivo/bin/nodeosd.sh --data-dir /opt/enumivo/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/EOS
+    command: /opt/enumivo/bin/nodeosd.sh --data-dir /opt/enumivo/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/ENU
     hostname: nodeosd
     links:
       - mongo

@@ -33,7 +33,7 @@ Subcommands:
   create                      Create various items, on and off the blockchain
   get                         Retrieve various items and information from the blockchain
   set                         Set or update blockchain state
-  transfer                    Transfer EOS from account to account
+  transfer                    Transfer ENU from account to account
   net                         Interact with local p2p network connections
   wallet                      Interact with local wallet
   sign                        Sign a transaction
@@ -563,7 +563,7 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
-   if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
+   if (boost::istarts_with(authorityJsonOrFile, "ENU")) {
       try {
          return authority(public_key_type(authorityJsonOrFile));
       } ENU_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
@@ -822,15 +822,15 @@ struct create_account_subcommand {
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,
-                                   (localized("The amount of EOS delegated for net bandwidth")))->required();
+                                   (localized("The amount of ENU delegated for net bandwidth")))->required();
          createAccount->add_option("--stake-cpu", stake_cpu,
-                                   (localized("The amount of EOS delegated for CPU bandwidth")))->required();
+                                   (localized("The amount of ENU delegated for CPU bandwidth")))->required();
          createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
                                    (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
-         createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
-                                   (localized("The amount of RAM bytes to purchase for the new account in EOS")));
+         createAccount->add_option("--buy-ram-ENU", buy_ram_eos,
+                                   (localized("The amount of RAM bytes to purchase for the new account in ENU")));
          createAccount->add_flag("--transfer", transfer,
-                                 (localized("Transfer voting power and right to unstake EOS to receiver")));
+                                 (localized("Transfer voting power and right to unstake ENU to receiver")));
       }
 
       add_standard_transaction_options(createAccount);
@@ -1059,9 +1059,9 @@ struct delegate_bandwidth_subcommand {
       auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
       delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
-      delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake EOS to receiver"));
+      delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of ENU to stake for network bandwidth"))->required();
+      delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of ENU to stake for CPU bandwidth"))->required();
+      delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake ENU to receiver"));
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
@@ -1089,8 +1089,8 @@ struct undelegate_bandwidth_subcommand {
       auto undelegate_bandwidth = actionRoot->add_subcommand("undelegatebw", localized("Undelegate bandwidth"));
       undelegate_bandwidth->add_option("from", from_str, localized("The account undelegating bandwidth"))->required();
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
-      undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to undelegate for network bandwidth"))->required();
-      undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to undelegate for CPU bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of ENU to undelegate for network bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of ENU to undelegate for CPU bandwidth"))->required();
       add_standard_transaction_options(undelegate_bandwidth);
 
       undelegate_bandwidth->set_callback([this] {
@@ -1113,7 +1113,7 @@ struct buyram_subcommand {
       auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
       buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
       buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
-      buyram->add_option("tokens", amount, localized("The amount of EOS to pay for RAM"))->required();
+      buyram->add_option("tokens", amount, localized("The amount of ENU to pay for RAM"))->required();
       add_standard_transaction_options(buyram);
       buyram->set_callback([this] {
             fc::variant act_payload = fc::mutable_variant_object()
@@ -1132,7 +1132,7 @@ struct sellram_subcommand {
 
    sellram_subcommand(CLI::App* actionRoot) {
       auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
-      sellram->add_option("account", receiver_str, localized("The account to receive EOS for sold RAM"))->required();
+      sellram->add_option("account", receiver_str, localized("The account to receive ENU for sold RAM"))->required();
       sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
       add_standard_transaction_options(sellram);
 
@@ -1851,10 +1851,10 @@ int main( int argc, char** argv ) {
    string recipient;
    string amount;
    string memo;
-   auto transfer = app.add_subcommand("transfer", localized("Transfer EOS from account to account"), false);
-   transfer->add_option("sender", sender, localized("The account sending EOS"))->required();
-   transfer->add_option("recipient", recipient, localized("The account receiving EOS"))->required();
-   transfer->add_option("amount", amount, localized("The amount of EOS to send"))->required();
+   auto transfer = app.add_subcommand("transfer", localized("Transfer ENU from account to account"), false);
+   transfer->add_option("sender", sender, localized("The account sending ENU"))->required();
+   transfer->add_option("recipient", recipient, localized("The account receiving ENU"))->required();
+   transfer->add_option("amount", amount, localized("The amount of ENU to send"))->required();
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
    transfer->add_option("--contract,-c", con, localized("The contract which controls the token"));
 

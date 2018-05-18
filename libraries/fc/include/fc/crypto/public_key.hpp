@@ -8,7 +8,7 @@
 
 namespace fc { namespace crypto {
    namespace config {
-      constexpr const char* public_key_legacy_prefix = "EOS";
+      constexpr const char* public_key_legacy_prefix = "ENU";
       constexpr const char* public_key_base_prefix = "PUB";
       constexpr const char* public_key_prefix[] = {
          "K1",
