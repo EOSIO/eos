@@ -17,6 +17,8 @@ import random
 import json
 import shlex
 
+from core_symbol import CORE_SYMBOL
+
 ###########################################################################################
 class Utils:
     Debug=False
@@ -537,9 +539,10 @@ class Node(object):
 
     # Create & initialize account and return creation transactions. Return transaction json object
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
-        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 EOS" --stake-cpu "100 EOS" --buy-ram-EOS "100 EOS"' % (
+        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 %s" --stake-cpu "100 %s" --buy-ram-EOS "100 %s"' % (
             Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
-            account.ownerPublicKey, account.activePublicKey)
+            account.ownerPublicKey, account.activePublicKey,
+            CORE_SYMBOL, CORE_SYMBOL, CORE_SYMBOL)
 
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
@@ -553,7 +556,7 @@ class Node(object):
 
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
-            trans = self.transferFunds(creatorAccount, account, "%0.04f EOS" % (stakedDeposit/10000), "init")
+            trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -580,7 +583,7 @@ class Node(object):
 
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
-            trans = self.transferFunds(creatorAccount, account, "%0.04f EOS" % (stakedDeposit/10000), "init")
+            trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -786,7 +789,7 @@ class Node(object):
         return servants
 
     def getAccountEosBalanceStr(self, scope):
-        """Returns EOS currency0000 account balance from cleos get table command. Returned balance is string following syntax "98.0311 EOS". """
+        """Returns EOS currency0000 account balance from cleos get table command. Returned balance is string following syntax "98.0311 SYS". """
         assert isinstance(scope, str)
         if not self.enableMongo:
             amount=self.getNodeAccountBalance("eosio.token", scope)
@@ -1927,7 +1930,7 @@ class Cluster(object):
             contract=eosioTokenAccount.name
             Utils.Print("push create action to %s contract" % (contract))
             action="create"
-            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 EOS\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (eosioTokenAccount.name)
+            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (eosioTokenAccount.name, CORE_SYMBOL)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
@@ -1941,7 +1944,7 @@ class Cluster(object):
             contract=eosioTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))
             action="issue"
-            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 EOS\",\"memo\":\"initial issue\"}" % (eosioAccount.name)
+            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (eosioAccount.name, CORE_SYMBOL)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
@@ -1953,7 +1956,7 @@ class Cluster(object):
             transId=Node.getTransId(trans[1])
             biosNode.waitForTransIdOnNode(transId)
 
-            expectedAmount="1000000000.0000 EOS"
+            expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
             actualAmount=biosNode.getAccountEosBalanceStr(eosioAccount.name)
             if expectedAmount != actualAmount:
@@ -1973,7 +1976,7 @@ class Cluster(object):
 
             Node.validateTransaction(trans)
 
-            initialFunds="1000000.0000 EOS"
+            initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
             trans=None
             contract=eosioTokenAccount.name
