@@ -271,9 +271,16 @@ void test_transaction::send_deferred_tx_with_dtt_action() {
 }
 
 
-void test_transaction::cancel_deferred_transaction() {
+void test_transaction::cancel_deferred_transaction_success() {
    using namespace eosio;
-   cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
+   auto r = cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
+   eosio_assert( r, "transaction was not found" );
+}
+
+void test_transaction::cancel_deferred_transaction_not_found() {
+   using namespace eosio;
+   auto r = cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
+   eosio_assert( !r, "transaction was canceled, whild should not be found" );
 }
 
 void test_transaction::send_cf_action() {

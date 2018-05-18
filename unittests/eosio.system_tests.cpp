@@ -742,9 +742,12 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( true, get_voter_info( "bob111111111" ).is_null() );
 
    //bob111111111 should not be able to unstake what was staked by alice1111111
-   BOOST_REQUIRE_EQUAL( wasm_assert_msg("unable to find key"),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("insufficient staked cpu bandwidth"),
                         unstake( "bob111111111", core_from_string("0.0000"), core_from_string("10.0000") )
 
+   );
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg("insufficient staked net bandwidth"),
+                        unstake( "bob111111111", core_from_string("10.0000"),  core_from_string("0.0000") )
    );
 
    issue( "carol1111111", core_from_string("1000.0000"),  config::system_account_name );

@@ -970,7 +970,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       transaction_trace_ptr trace;
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
-      CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
+      CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction_success", {});
       produce_block( fc::seconds(2) );
       BOOST_CHECK(!trace);
       c.disconnect();
@@ -978,9 +978,9 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
-   //cancel_deferred() fails if no transaction is scheduled
+   //cancel_deferred() return zero if no scheduled transaction found
    {
-      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {}), transaction_exception);
+      CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction_not_found", {});
    }
 
    produce_blocks(10);

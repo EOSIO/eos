@@ -139,7 +139,8 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction);
       WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction_replace);
       WASM_TEST_HANDLER(test_transaction, send_deferred_tx_with_dtt_action);
-      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
+      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction_success);
+      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction_not_found);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
       WASM_TEST_HANDLER(test_transaction, stateful_api);
