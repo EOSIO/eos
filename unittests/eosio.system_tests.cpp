@@ -2120,6 +2120,16 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
       BOOST_REQUIRE_EQUAL(true, rest_didnt_produce);
    }
 
+   {
+      BOOST_CHECK_EQUAL(0, get_global_state()["total_unpaid_blocks"].as<uint32_t>());
+      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: not enough has been staked for producers to claim rewards"),
+                          push_action(producer_names.front(), N(claimrewards), mvo()("owner", producer_names.front())));
+      BOOST_REQUIRE_EQUAL(0, get_balance(producer_names.front()).amount);
+      BOOST_REQUIRE_EQUAL(error("condition: assertion failed: not enough has been staked for producers to claim rewards"),
+                          push_action(producer_names.back(), N(claimrewards), mvo()("owner", producer_names.back())));
+      BOOST_REQUIRE_EQUAL(0, get_balance(producer_names.back()).amount);
+   }
+
    // stake across 15% boundary
    transfer(config::system_account_name, "producvoterb", "100000000.0000 EOS", config::system_account_name);
    BOOST_REQUIRE_EQUAL(success(), stake("producvoterb", "4000000.0000 EOS", "4000000.0000 EOS"));
@@ -2157,6 +2167,9 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
       }
       BOOST_REQUIRE_EQUAL(true, all_21_produced);
       BOOST_REQUIRE_EQUAL(true, rest_didnt_produce);
+      BOOST_REQUIRE_EQUAL(success(),
+                          push_action(producer_names.front(), N(claimrewards), mvo()("owner", producer_names.front())));
+      BOOST_REQUIRE(0 < get_balance(producer_names.front()).amount);
    }
 
 } FC_LOG_AND_RETHROW()
