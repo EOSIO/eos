@@ -170,8 +170,8 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
 
    if( ram_bytes >= 0 ) {
       ENU_ASSERT( usage.ram_usage <= ram_bytes, ram_usage_exceeded,
-                  "account ${account} has insufficient ram bytes; needs ${available} has ${needs}",
-                  ("account", account)("available",usage.ram_usage)("needs",ram_bytes)              );
+                  "account ${account} has insufficient ram; needs ${needs} bytes has ${available} bytes",
+                  ("account", account)("needs",usage.ram_usage)("available",ram_bytes)              );
    }
 }
 
