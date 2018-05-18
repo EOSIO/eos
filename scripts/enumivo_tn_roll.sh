@@ -39,7 +39,7 @@ fi
 
 prog=""
 RD=""
-for p in eosd enumivod enunode; do
+for p in enudaemon enumivod enunode; do
     prog=$p
     RD=bin
     if [ -f $RD/$prog ]; then
@@ -55,7 +55,7 @@ for p in eosd enumivod enunode; do
 done
 
 if [ \( -z "$prog" \) -o \( -z "$RD" \) ]; then
-    echo unable to locate binary for eosd or enumivod or enunode
+    echo unable to locate binary for enudaemon or enumivod or enunode
     exit 1
 fi
 

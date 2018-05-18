@@ -1,6 +1,6 @@
 /**
 @defgroup enumivorpc RPC Interface
-@brief Describes how to interface with eosd over HTTP RPC
+@brief Describes how to interface with enudaemon over HTTP RPC
 
 @section tableofcontent Table Of Contents
 - [Configuration](#configuration)
@@ -29,17 +29,17 @@
 
 @section configuration Configuration
 
-`eosd` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
+`enudaemon` uses a REST RPC interface where plugins can register their own endpoints with the API server. This page
 will explain how to use some of the APIs to get information about the blockchain and send transactions.
 
-Before you can query `eosd` you must first enable the necessary API plugin(s). Depending on which API you want to enable, add the following line to your `eosd`'s `config.ini`:
+Before you can query `enudaemon` you must first enable the necessary API plugin(s). Depending on which API you want to enable, add the following line to your `enudaemon`'s `config.ini`:
 ```
 plugin = enumivo::chain_api_plugin // Enable Chain API
 plugin = enumivo::wallet_api_plugin // Enable Wallet API
 ```
-Alternatively, for Wallet API, you can also have the wallet functionality separate from `eosd`, by running `eos-walletd` separately.
+Alternatively, for Wallet API, you can also have the wallet functionality separate from `enudaemon`, by running `eos-walletd` separately.
 
-For the following guide, we will assume that we have `eosd` running on `127.0.0.1:8888` (Chain API Plugin enabled, Wallet API Plugin disabled) and `eos-walletd` running on `127.0.0.1:8889`.
+For the following guide, we will assume that we have `enudaemon` running on `127.0.0.1:8888` (Chain API Plugin enabled, Wallet API Plugin disabled) and `eos-walletd` running on `127.0.0.1:8889`.
 
 ===
 

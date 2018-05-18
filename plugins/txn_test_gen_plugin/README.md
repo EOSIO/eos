@@ -1,6 +1,6 @@
 # txn\_test\_gen\_plugin
 
-This plugin provides a way to generate a given amount of transactions per second against the currency contract. It runs internally to eosd to reduce overhead.
+This plugin provides a way to generate a given amount of transactions per second against the currency contract. It runs internally to enudaemon to reduce overhead.
 
 ## Performance testing
 
