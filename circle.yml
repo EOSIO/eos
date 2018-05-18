@@ -4,10 +4,10 @@ machine:
 
 dependencies:
   override:
-    - cd ~/eos && docker build -t enumivo/eos -f Docker/Dockerfile .
+    - cd ~/enumivo && docker build -t enumivo/enumivo -f Docker/Dockerfile .
 
 test:
   pre:
     - sleep 5
   override:
-    - docker run enumivo/eos
+    - docker run enumivo/enumivo

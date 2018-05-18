@@ -197,4 +197,4 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace eos
+} // namespace enumivo

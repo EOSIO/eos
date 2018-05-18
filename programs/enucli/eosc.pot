@@ -136,10 +136,10 @@ msgstr ""
 msgid "the port where eosd is running"
 msgstr ""
 
-msgid "the host where eos-walletd is running"
+msgid "the host where enu-walletd is running"
 msgstr ""
 
-msgid "the port where eos-walletd is running"
+msgid "the port where enu-walletd is running"
 msgstr ""
 
 msgid "output verbose messages on error"
@@ -496,10 +496,10 @@ msgstr ""
 msgid "The JSON array of the transactions to push"
 msgstr ""
 
-msgid "Failed to connect to eosd at ${ip}:${port}; is eosd running?"
+msgid "Failed to connect to enu at ${ip}:${port}; is eosd running?"
 msgstr ""
 
-msgid "Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?"
+msgid "Failed to connect to enu-walletd at ${ip}:${port}; is enu-walletd running?"
 msgstr ""
 
 msgid "Failed to connect"

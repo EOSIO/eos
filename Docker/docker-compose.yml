@@ -21,7 +21,7 @@ services:
       - enunode-data-volume:/opt/enumivo/bin/data-dir
 
   enuwallet:
-    image: enumivo/eos
+    image: enumivo/enu
     command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir
     hostname: enuwallet
     links:

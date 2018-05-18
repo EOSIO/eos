@@ -251,7 +251,7 @@ def myTest(transWillEnterBlock):
         delay=0
         Print("Stand up cluster")
         if cluster.launch(pnodes, total_nodes, topo, delay) is False:
-            error("Failed to stand up eos cluster.")
+            error("Failed to stand up enu cluster.")
             return False
 
         accounts=testUtils.Cluster.createAccountKeys(1)
@@ -263,7 +263,7 @@ def myTest(transWillEnterBlock):
 
         Print("Stand up walletd")
         if walletMgr.launch() is False:
-            error("Failed to stand up eos walletd.")
+            error("Failed to stand up enu walletd.")
             return False
 
         testWalletName="test"

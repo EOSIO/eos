@@ -234,7 +234,7 @@ const std::map<int64_t, std::string> error_advice = {
 namespace enumivo { namespace client { namespace help {
 
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
-   // eos recognized error code is from 3000000 
+   // enu recognized error code is from 3000000 
    // refer to libraries/chain/include/enumivo/chain/exceptions.hpp
    if (e.code() >= chain_exception::code_value) {
       std::string advice, explanation, stack_trace;
