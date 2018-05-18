@@ -37,9 +37,9 @@ Before you can query `enudaemon` you must first enable the necessary API plugin(
 plugin = enumivo::chain_api_plugin // Enable Chain API
 plugin = enumivo::wallet_api_plugin // Enable Wallet API
 ```
-Alternatively, for Wallet API, you can also have the wallet functionality separate from `enudaemon`, by running `eos-walletd` separately.
+Alternatively, for Wallet API, you can also have the wallet functionality separate from `enudaemon`, by running `enuwalletd` separately.
 
-For the following guide, we will assume that we have `enudaemon` running on `127.0.0.1:8888` (Chain API Plugin enabled, Wallet API Plugin disabled) and `eos-walletd` running on `127.0.0.1:8889`.
+For the following guide, we will assume that we have `enudaemon` running on `127.0.0.1:8888` (Chain API Plugin enabled, Wallet API Plugin disabled) and `enuwalletd` running on `127.0.0.1:8889`.
 
 ===
 
