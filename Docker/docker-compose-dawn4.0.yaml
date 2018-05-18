@@ -9,10 +9,10 @@ services:
     volumes:
       - mongo-data-volume:/data/db
 
-  nodeosd:
+  enunoded:
     image: enumivo/eos:latest
-    command: /opt/enumivo/bin/nodeosd.sh --data-dir /opt/enumivo/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/ENU
-    hostname: nodeosd
+    command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/ENU
+    hostname: enunoded
     links:
       - mongo
     ports:
@@ -28,7 +28,7 @@ services:
     command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir
     hostname: enuwallet
     links:
-      - nodeosd
+      - enunoded
     volumes:
       - enuwallet-data-volume:/opt/enumivo/bin/data-dir
 

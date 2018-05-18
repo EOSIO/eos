@@ -5,7 +5,7 @@
  */
 
 namespace enumivo { namespace client { namespace config {
-   constexpr char version_str[] = "${cleos_BUILD_VERSION}";
+   constexpr char version_str[] = "${enucli_BUILD_VERSION}";
    constexpr char locale_path[] = "${LOCALEDIR}";
    constexpr char locale_domain[] = "${LOCALEDOMAIN}";
 }}}

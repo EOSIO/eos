@@ -6,12 +6,12 @@ services:
       context: builder
     image: enumivo/builder
 
-  nodeosd:
+  enunoded:
     build:
       context: .
     image: enumivo/eos
-    command: /opt/enumivo/bin/nodeosd.sh --data-dir /opt/enumivo/bin/data-dir
-    hostname: nodeosd
+    command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir
+    hostname: enunoded
     ports:
       - 8888:8888
       - 9876:9876
@@ -25,7 +25,7 @@ services:
     command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir
     hostname: enuwallet
     links:
-      - nodeosd
+      - enunoded
     volumes:
       - enuwallet-data-volume:/opt/enumivo/bin/data-dir
 

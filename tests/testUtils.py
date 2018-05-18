@@ -975,7 +975,7 @@ class Node(object):
         return False if info is None else True
 
     def getHeadBlockNum(self):
-        """returns head block number(string) as returned by cleos get info."""
+        """returns head block number(string) as returned by enucli get info."""
         if not self.enableMongo:
             info=self.getInfo()
             if info is not None:
@@ -1065,15 +1065,15 @@ class WalletMgr(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(enuwallet) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=8899, host="localhost"):
+    def __init__(self, walletd, enunodePort=8888, enunodeHost="localhost", port=8899, host="localhost"):
         self.walletd=walletd
-        self.nodeosPort=nodeosPort
-        self.nodeosHost=nodeosHost
+        self.enunodePort=enunodePort
+        self.enunodeHost=enunodeHost
         self.port=port
         self.host=host
         self.wallets={}
         self.__walletPid=None
-        self.endpointArgs="--url http://%s:%d" % (self.nodeosHost, self.nodeosPort)
+        self.endpointArgs="--url http://%s:%d" % (self.enunodeHost, self.enunodePort)
         self.walletEndpointArgs=""
         if self.walletd:
             self.walletEndpointArgs += " --wallet-url http://%s:%d" % (self.host, self.port)
@@ -1327,15 +1327,15 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 5000"
+        enunodeArgs="--max-transaction-time 5000"
         if not self.walletd:
-            nodeosArgs += " --plugin enumivo::wallet_api_plugin"
+            enunodeArgs += " --plugin enumivo::wallet_api_plugin"
         if self.enableMongo:
-            nodeosArgs += " --plugin enumivo::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
+            enunodeArgs += " --plugin enumivo::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
 
-        if nodeosArgs:
+        if enunodeArgs:
             cmdArr.append("--enunode")
-            cmdArr.append(nodeosArgs)
+            cmdArr.append(enunodeArgs)
 
         s=" ".join(cmdArr)
         if Utils.Debug: Utils.Print("cmd: %s" % (s))

@@ -6,7 +6,7 @@ and withdraw of standard-conforming Enumivo token contracts. The blockchain's
 native token conforms to the standard. 
 
 
-Configuring Nodeos
+Configuring Enunode
 ------------------
 This tutorial uses the `enucli` commandline tool to query a local `enunode` server
 which should be connected to an enumivo blockchain. `enunode` will need to be configured
@@ -256,7 +256,7 @@ Now that we have received 3 deposits we should see that the exchange has a balan
 When a user requests a withdraw from your exchange they will need to provide you with their enumivo account name and
 the amount to be withdrawn.  You can then run the enucli command which will interact with the "unlocked" wallet 
 running on `enunode` which should only enable localhost connections. More advanced usage would have a separate
-key-server (`keos`), but that will be covered later.
+key-server (`enuwallet`), but that will be covered later.
 
 Lets assume scott wants to withdraw `1.0000 ENU`:
 ```

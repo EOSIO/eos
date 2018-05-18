@@ -195,7 +195,7 @@ namespace stltest {
            */
            /*
            prints("STD string: "); prints(s.c_str());
-           prints("\nEOS string: "); prints_l(s2.get_data(), s2.get_size());
+           prints("\nENU string: "); prints_l(s2.get_data(), s2.get_size());
            */
            prints("STL test start\n");
            /* doesn't work with WASM::serializeWithInjection

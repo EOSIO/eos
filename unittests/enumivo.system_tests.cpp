@@ -203,8 +203,8 @@ public:
       return push_transaction( trx );
    }
 
-   action_result buyram( const account_name& payer, account_name receiver, string eosin ) {
-      return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",eosin) );
+   action_result buyram( const account_name& payer, account_name receiver, string enuin ) {
+      return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",enuin) );
    }
    action_result buyrambytes( const account_name& payer, account_name receiver, uint32_t numbytes ) {
       return push_action( payer, N(buyrambytes), mvo()( "payer",payer)("receiver",receiver)("bytes",numbytes) );

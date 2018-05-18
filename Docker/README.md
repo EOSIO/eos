@@ -29,7 +29,7 @@ docker build -t enumivo/eos:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
 ## Start enunode docker container only
 
 ```bash
-docker run --name enunode -p 8888:8888 -p 9876:9876 -t enumivo/eos nodeosd.sh arg1 arg2
+docker run --name enunode -p 8888:8888 -p 9876:9876 -t enumivo/eos enunoded.sh arg1 arg2
 ```
 
 By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
@@ -43,7 +43,7 @@ $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5
 Alternately, you can directly mount host directory into the container
 
 ```bash
-docker run --name enunode -v /path-to-data-dir:/opt/enumivo/bin/data-dir -p 8888:8888 -p 9876:9876 -t enumivo/eos nodeosd.sh arg1 arg2
+docker run --name enunode -v /path-to-data-dir:/opt/enumivo/bin/data-dir -p 8888:8888 -p 9876:9876 -t enumivo/eos enunoded.sh arg1 arg2
 ```
 
 ## Get chain info
@@ -60,14 +60,14 @@ docker volume create --name=enuwallet-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `enuwallet` will be started. enunode service would expose ports 8888 and 9876 to the host. enuwallet service does not expose any port to the host, it is only accessible to enucli when running enucli is running inside the enuwallet container as described in "Execute enucli commands" section.
+After `docker-compose up -d`, two services named `enunoded` and `enuwallet` will be started. enunode service would expose ports 8888 and 9876 to the host. enuwallet service does not expose any port to the host, it is only accessible to enucli when running enucli is running inside the enuwallet container as described in "Execute enucli commands" section.
 
 ### Execute enucli commands
 
 You can run the `enucli` commands via a bash alias.
 
 ```bash
-alias enucli='docker-compose exec enuwallet /opt/enumivo/bin/enucli -u http://nodeosd:8888 --wallet-url http://localhost:8888'
+alias enucli='docker-compose exec enuwallet /opt/enumivo/bin/enucli -u http://enunoded:8888 --wallet-url http://localhost:8888'
 enucli get info
 enucli get account inita
 ```
@@ -134,10 +134,10 @@ Create a new `docker-compose.yaml` file with the content below
 version: "3"
 
 services:
-  nodeosd:
+  enunoded:
     image: enumivo/eos:latest
-    command: /opt/enumivo/bin/nodeosd.sh
-    hostname: nodeosd
+    command: /opt/enumivo/bin/enunoded.sh
+    hostname: enunoded
     ports:
       - 8888:8888
       - 9876:9876
@@ -151,7 +151,7 @@ services:
     command: /opt/enumivo/bin/enuwallet
     hostname: enuwallet
     links:
-      - nodeosd
+      - enunoded
     volumes:
       - enuwallet-data-volume:/opt/enumivo/bin/data-dir
 
@@ -186,7 +186,7 @@ docker-compose -f docker-compose-dawn4.0.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
-docker-compose logs nodeosd
+docker-compose logs enunoded
 # stop containers
 docker-compose -f docker-compose-dawn4.0.yaml down
 ```

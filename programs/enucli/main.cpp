@@ -9,16 +9,16 @@
 /**
   @defgroup eosclienttool
 
-  @section intro Introduction to cleos
+  @section intro Introduction to enucli
 
-  `cleos` is a command line tool that interfaces with the REST api exposed by @ref enunode. In order to use `cleos` you will need to
+  `enucli` is a command line tool that interfaces with the REST api exposed by @ref enunode. In order to use `enucli` you will need to
   have a local copy of `enunode` running and configured to load the 'enumivo::chain_api_plugin'.
 
-   cleos contains documentation for all of its commands. For a list of all commands known to cleos, simply run it with no arguments:
+   enucli contains documentation for all of its commands. For a list of all commands known to enucli, simply run it with no arguments:
 ```
-$ ./cleos
+$ ./enucli
 Command Line Interface to Enumivo Client
-Usage: programs/cleos/cleos [OPTIONS] SUBCOMMAND
+Usage: programs/enucli/enucli [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit
@@ -43,17 +43,17 @@ Subcommands:
 ```
 To get help with any particular subcommand, run it with no arguments as well:
 ```
-$ ./cleos create
+$ ./enucli create
 Create various items, on and off the blockchain
-Usage: ./cleos create SUBCOMMAND
+Usage: ./enucli create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys
   account                     Create a new account on the blockchain
 
-$ ./cleos create account
+$ ./enucli create account
 Create a new account on the blockchain
-Usage: ./cleos create account [OPTIONS] creator name OwnerKey ActiveKey
+Usage: ./enucli create account [OPTIONS] creator name OwnerKey ActiveKey
 
 Positionals:
   creator TEXT                The name of the account creating the new account
@@ -136,7 +136,7 @@ using namespace boost::filesystem;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
-#define EOSC_ASSERT( TEST, ... ) \
+#define ENUC_ASSERT( TEST, ... ) \
   FC_EXPAND_MACRO( \
     FC_MULTILINE_MACRO_BEGIN \
       if( UNLIKELY(!(TEST)) ) \
@@ -737,10 +737,10 @@ void ensure_enuwallet_running() {
 
     boost::filesystem::path binPath = boost::dll::program_location();
     binPath.remove_filename();
-    // This extra check is necessary when running cleos like this: ./cleos ...
+    // This extra check is necessary when running enucli like this: ./enucli ...
     if (binPath.filename_is_dot())
         binPath.remove_filename();
-    binPath.append("enuwallet"); // if cleos and enuwallet are in the same installation directory
+    binPath.append("enuwallet"); // if enucli and enuwallet are in the same installation directory
     if (!boost::filesystem::exists(binPath)) {
         binPath.remove_filename().remove_filename().append("enuwallet").append("enuwallet");
     }
@@ -748,13 +748,13 @@ void ensure_enuwallet_running() {
     if (boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
-        ::boost::process::child keos(binPath, "--http-server-address=127.0.0.1:" + parsed_url.port,
+        ::boost::process::child enuwallet(binPath, "--http-server-address=127.0.0.1:" + parsed_url.port,
                                      bp::std_in.close(),
                                      bp::std_out > bp::null,
                                      bp::std_err > bp::null);
-        if (keos.running()) {
+        if (enuwallet.running()) {
             std::cerr << binPath << " launched" << std::endl;
-            keos.detach();
+            enuwallet.detach();
             sleep(1);
         } else {
             std::cerr << "No wallet service listening on 127.0.0.1:"
@@ -2026,8 +2026,8 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop enuwallet (doesn't work with enunode)."), false);
-   stopKeosd->set_callback([] {
+   auto stopEnuwallet = wallet->add_subcommand("stop", localized("Stop enuwallet (doesn't work with enunode)."), false);
+   stopEnuwallet->set_callback([] {
       // wait for enuwallet to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
