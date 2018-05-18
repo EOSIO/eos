@@ -217,7 +217,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("memo", "overspend! Alice");
 
       BOOST_CHECK_EXCEPTION( push_action(N(alice), N(transfer), data),
-                             fc::assert_exception, eosio_assert_message_is("overdrawn balance") );
+                             fc::assert_exception, enumivo_assert_message_is("overdrawn balance") );
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));

@@ -38,8 +38,8 @@ namespace enumivosystem {
       }
    }
 
-   eosio_global_state system_contract::get_default_parameters() {
-      eosio_global_state dp;
+   enumivo_global_state system_contract::get_default_parameters() {
+      enumivo_global_state dp;
       get_blockchain_parameters(dp);
       return dp;
    }
@@ -48,7 +48,7 @@ namespace enumivosystem {
    system_contract::~system_contract() {
       //print( "destruct system\n" );
       _global.set( _gstate, _self );
-      //eosio_exit(0);
+      //enumivo_exit(0);
    }
 
    void system_contract::setram( uint64_t max_ram_size ) {

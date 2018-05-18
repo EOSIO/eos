@@ -213,7 +213,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, enumivo_msig_tester ) try {
                                           ("executer",      "alice")
                             ),
                             fc::assert_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            enumivo_assert_message_is("transaction authorization failed")
    );
 
    //approve and execute
@@ -265,7 +265,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, enumivo_msig_tester ) try {
                                           ("executer",      "alice")
                             ),
                             fc::assert_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            enumivo_assert_message_is("transaction authorization failed")
    );
 
 } FC_LOG_AND_RETHROW()
@@ -294,7 +294,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, enumivo_msig_tester ) try {
                                           ("executer",      "alice")
                             ),
                             fc::assert_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            enumivo_assert_message_is("transaction authorization failed")
    );
 
    //approve by bob and execute
@@ -329,7 +329,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, enumivo_msig_tester 
                                              ("requested", vector<permission_level>{ { N(alice), config::active_name } } )
                             ),
                             fc::assert_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            enumivo_assert_message_is("transaction authorization failed")
    );
 
 } FC_LOG_AND_RETHROW()

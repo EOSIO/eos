@@ -422,8 +422,8 @@ namespace enumivo { namespace testing {
   /**
    * Utility predicate to check whether an enumivo_assert message is equivalent to a given string
    */
-  struct eosio_assert_message_is {
-     eosio_assert_message_is( const string& msg )
+  struct enumivo_assert_message_is {
+     enumivo_assert_message_is( const string& msg )
            : expected( "assertion failed: " ) {
         expected.append( msg );
      }
@@ -436,8 +436,8 @@ namespace enumivo { namespace testing {
   /**
    * Utility predicate to check whether an enumivo_assert message starts with a given string
    */
-  struct eosio_assert_message_starts_with {
-     eosio_assert_message_starts_with( const string& msg )
+  struct enumivo_assert_message_starts_with {
+     enumivo_assert_message_starts_with( const string& msg )
            : expected( "assertion failed: " ) {
         expected.append( msg );
      }

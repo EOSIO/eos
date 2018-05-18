@@ -635,8 +635,8 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
       abi_serializer abis;
-      auto eosio_account = find_account(accounts, msg.account);
-      auto abi = fc::json::from_string(bsoncxx::to_json(eosio_account.view()["abi"].get_document())).as<abi_def>();
+      auto enumivo_account = find_account(accounts, msg.account);
+      auto abi = fc::json::from_string(bsoncxx::to_json(enumivo_account.view()["abi"].get_document())).as<abi_def>();
       abis.set_abi(abi);
       auto transfer = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
       auto from_name = transfer["from"].as<name>().to_string();

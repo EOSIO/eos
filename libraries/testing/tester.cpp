@@ -246,10 +246,10 @@ namespace enumivo { namespace testing {
       if( include_code ) {
          FC_ASSERT( owner_auth.threshold <= std::numeric_limits<weight_type>::max(), "threshold is too high" );
          FC_ASSERT( active_auth.threshold <= std::numeric_limits<weight_type>::max(), "threshold is too high" );
-         owner_auth.accounts.push_back( permission_level_weight{ {a, config::eosio_code_name},
+         owner_auth.accounts.push_back( permission_level_weight{ {a, config::enumivo_code_name},
                                                                  static_cast<weight_type>(owner_auth.threshold) } );
          sort_permissions(owner_auth);
-         active_auth.accounts.push_back( permission_level_weight{ {a, config::eosio_code_name},
+         active_auth.accounts.push_back( permission_level_weight{ {a, config::enumivo_code_name},
                                                                   static_cast<weight_type>(active_auth.threshold) } );
          sort_permissions(active_auth);
       }
@@ -828,7 +828,7 @@ namespace enumivo { namespace testing {
       return match;
    }
 
-   bool eosio_assert_message_is::operator()( const fc::assert_exception& ex ) {
+   bool enumivo_assert_message_is::operator()( const fc::assert_exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = false;
       auto pos = message.find( ": " );
@@ -842,7 +842,7 @@ namespace enumivo { namespace testing {
       return match;
    }
 
-   bool eosio_assert_message_starts_with::operator()( const fc::assert_exception& ex ) {
+   bool enumivo_assert_message_starts_with::operator()( const fc::assert_exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = false;
       auto pos = message.find( ": " );

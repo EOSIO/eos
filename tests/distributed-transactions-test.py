@@ -97,11 +97,11 @@ try:
 
     defproduceraAccount=cluster.defproduceraAccount
     defproducerbAccount=cluster.defproducerbAccount
-    eosioAccount=cluster.eosioAccount
+    enumivoAccount=cluster.enumivoAccount
 
     # TBD: get account is currently failing. Enable when ready
     # Print("Create accounts.")
-    # if not cluster.createAccounts(eosioAccount):
+    # if not cluster.createAccounts(enumivoAccount):
     #     errorExit("Accounts creation failed.")
 
     # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.

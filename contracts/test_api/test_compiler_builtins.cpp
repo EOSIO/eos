@@ -142,7 +142,7 @@ void test_compiler_builtins::test_divti3_by_0() {
    __int128 res = 0;
 
    __divti3( res, 100, 0, 0, 0 );
-   enumivo_assert( false, "Should have eosio_asserted" );
+   enumivo_assert( false, "Should have enumivo_asserted" );
 }
 
 void test_compiler_builtins::test_udivti3() {
@@ -193,7 +193,7 @@ void test_compiler_builtins::test_udivti3_by_0() {
    unsigned __int128 res = 0;
 
    __udivti3( res, 100, 0, 0, 0 );
-   enumivo_assert( false, "Should have eosio_asserted" );
+   enumivo_assert( false, "Should have enumivo_asserted" );
 }
 
 

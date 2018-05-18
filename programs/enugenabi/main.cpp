@@ -46,7 +46,7 @@ std::unique_ptr<FrontendActionFactory> create_find_macro_factory(string& contrac
       string abi_context ) : contract(contract), actions(actions), abi_context(abi_context) {}
 
     clang::FrontendAction *create() override {
-      return new find_eosio_abi_macro_action(contract, actions, abi_context);
+      return new find_enumivo_abi_macro_action(contract, actions, abi_context);
     }
 
   };

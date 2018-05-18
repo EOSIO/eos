@@ -1011,7 +1011,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    dtt_act2.delay_sec = 5;
 
    auto auth = authority(get_public_key("testapi", name(dtt_act2.permission_name).to_string()), 10);
-   auth.accounts.push_back( permission_level_weight{{N(testapi), config::eosio_code_name}, 1} );
+   auth.accounts.push_back( permission_level_weight{{N(testapi), config::enumivo_code_name}, 1} );
 
    push_action(config::system_account_name, updateauth::get_name(), "testapi", fc::mutable_variant_object()
            ("account", "testapi")

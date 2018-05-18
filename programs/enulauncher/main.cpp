@@ -121,7 +121,7 @@ public:
     : genesis("genesis.json"),
       ssh_identity (""),
       ssh_args (""),
-      eosio_home(),
+      enumivo_home(),
       host_name("127.0.0.1"),
       public_name("localhost"),
       listen_addr("0.0.0.0"),
@@ -137,7 +137,7 @@ public:
   string           genesis;
   string           ssh_identity;
   string           ssh_args;
-  string           eosio_home;
+  string           enumivo_home;
   string           host_name;
   string           public_name;
   string           listen_addr;
@@ -298,16 +298,16 @@ struct server_name_def {
   string ipaddr;
   string name;
   bool has_bios;
-  string eosio_home;
+  string enumivo_home;
   uint16_t instances;
-  server_name_def () : ipaddr(), name(), has_bios(false), eosio_home(), instances(1) {}
+  server_name_def () : ipaddr(), name(), has_bios(false), enumivo_home(), instances(1) {}
 };
 
 struct server_identities {
   vector<server_name_def> producer;
   vector<server_name_def> nonprod;
   vector<string> db;
-  string default_eosio_home;
+  string default_enumivo_home;
   remote_deploy ssh;
 };
 
@@ -659,7 +659,7 @@ launcher_def::define_network () {
 
   if (per_host == 0) {
     host_def local_host;
-    local_host.eosio_home = erd;
+    local_host.enumivo_home = erd;
     local_host.genesis = genesis.string();
     for (size_t i = 0; i < (total_nodes); i++) {
       eosd_def eosd;
@@ -705,9 +705,9 @@ launcher_def::define_network () {
           lhost->public_name = lhost->host_name;
           ph_count = 1;
         }
-        lhost->eosio_home =
-          (local_id.contains (lhost->host_name) || servers.default_eosio_home.empty()) ?
-          erd : servers.default_eosio_home;
+        lhost->enumivo_home =
+          (local_id.contains (lhost->host_name) || servers.default_enumivo_home.empty()) ?
+          erd : servers.default_enumivo_home;
         host_ndx++;
       } // ph_count == 0
 
@@ -831,8 +831,8 @@ launcher_def::deploy_config_files (tn_node_def &node) {
   bfs::path genesis_source = stage / instance.config_dir_name / "genesis.json";
 
   if (host->is_local()) {
-    bfs::path cfgdir = bfs::path(host->eosio_home) / instance.config_dir_name;
-    bfs::path dd = bfs::path(host->eosio_home) / instance.data_dir_name;
+    bfs::path cfgdir = bfs::path(host->enumivo_home) / instance.config_dir_name;
+    bfs::path dd = bfs::path(host->enumivo_home) / instance.data_dir_name;
 
     if (!bfs::exists (cfgdir)) {
        if (!bfs::create_directories (cfgdir, ec) && ec.value()) {
@@ -880,7 +880,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
   else {
     prep_remote_config_dir (instance, host);
 
-    bfs::path rfile = bfs::path (host->eosio_home) / instance.config_dir_name / "config.ini";
+    bfs::path rfile = bfs::path (host->enumivo_home) / instance.config_dir_name / "config.ini";
     auto scp_cmd_line = compose_scp_command(*host, source, rfile);
 
     cerr << "cmdline = " << scp_cmd_line << endl;
@@ -890,7 +890,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
       exit(-1);
     }
 
-    rfile = bfs::path (host->eosio_home) / instance.config_dir_name / "logging.json";
+    rfile = bfs::path (host->enumivo_home) / instance.config_dir_name / "logging.json";
 
     scp_cmd_line = compose_scp_command(*host, logging_source, rfile);
 
@@ -900,7 +900,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
       exit(-1);
     }
 
-    rfile = bfs::path (host->eosio_home) / instance.config_dir_name / "genesis.json";
+    rfile = bfs::path (host->enumivo_home) / instance.config_dir_name / "genesis.json";
 
     scp_cmd_line = compose_scp_command(*host, genesis_source, rfile);
 
@@ -1330,16 +1330,16 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 
 void
 launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
-  bfs::path abs_config_dir = bfs::path(host->eosio_home) / node.config_dir_name;
-  bfs::path abs_data_dir = bfs::path(host->eosio_home) / node.data_dir_name;
+  bfs::path abs_config_dir = bfs::path(host->enumivo_home) / node.config_dir_name;
+  bfs::path abs_data_dir = bfs::path(host->enumivo_home) / node.data_dir_name;
 
   string acd = abs_config_dir.string();
   string add = abs_data_dir.string();
-  string cmd = "cd " + host->eosio_home;
+  string cmd = "cd " + host->enumivo_home;
 
-  cmd = "cd " + host->eosio_home;
+  cmd = "cd " + host->enumivo_home;
   if (!do_ssh(cmd, host->host_name)) {
-    cerr << "Unable to switch to path " << host->eosio_home
+    cerr << "Unable to switch to path " << host->enumivo_home
          << " on host " <<  host->host_name << endl;
     exit (-1);
   }
@@ -1428,7 +1428,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
 
   if (!host->is_local()) {
     string cmdl ("cd ");
-    cmdl += host->eosio_home + "; nohup " + eosdcmd + " > "
+    cmdl += host->enumivo_home + "; nohup " + eosdcmd + " > "
       + reout.string() + " 2> " + reerr.string() + "& echo $! > " + pidf.string()
       + "; rm -f " + reerr_sl.string()
       + "; ln -s " + reerr_base.string() + " " + reerr_sl.string();
@@ -1438,7 +1438,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
       exit (-1);
     }
 
-    string cmd = "cd " + host->eosio_home + "; kill -15 $(cat " + pidf.string() + ")";
+    string cmd = "cd " + host->enumivo_home + "; kill -15 $(cat " + pidf.string() + ")";
     format_ssh (cmd, host->host_name, info.kill_cmd);
   }
   else {
@@ -1566,8 +1566,8 @@ launcher_def::bounce (const string& node_numbers) {
       const host_def& host = node_pair.first;
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
-      string cmd = "cd " + host.eosio_home + "; "
-                 + "export ENUMIVO_HOME=" + host.eosio_home + string("; ")
+      string cmd = "cd " + host.enumivo_home + "; "
+                 + "export ENUMIVO_HOME=" + host.enumivo_home + string("; ")
                  + "export ENUMIVO_TN_NODE=" + node_num + "; "
                  + "./scripts/enumivo_tn_bounce.sh";
       cout << "Bouncing " << node.name << endl;
@@ -1585,8 +1585,8 @@ launcher_def::down (const string& node_numbers) {
       const host_def& host = node_pair.first;
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
-      string cmd = "cd " + host.eosio_home + "; "
-                 + "export ENUMIVO_HOME=" + host.eosio_home + "; "
+      string cmd = "cd " + host.enumivo_home + "; "
+                 + "export ENUMIVO_HOME=" + host.enumivo_home + "; "
                  + "export ENUMIVO_TN_NODE=" + node_num + "; "
          + "export ENUMIVO_TN_RESTART_CONFIG_DIR=" + node.config_dir_name + "; "
                  + "./scripts/enumivo_tn_down.sh";
@@ -1605,8 +1605,8 @@ launcher_def::roll (const string& host_names) {
    for (string host_name: hosts) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
-      string cmd = "cd " + host->eosio_home + "; "
-                 + "export ENUMIVO_HOME=" + host->eosio_home + "; "
+      string cmd = "cd " + host->enumivo_home + "; "
+                 + "export ENUMIVO_HOME=" + host->enumivo_home + "; "
                  + "./scripts/enumivo_tn_roll.sh";
       if (!do_ssh(cmd, host_name)) {
          cerr << "Unable to roll " << host << endl;
@@ -1875,7 +1875,7 @@ FC_REFLECT( producer_set_def,
             (schedule))
 
 FC_REFLECT( host_def,
-            (genesis)(ssh_identity)(ssh_args)(eosio_home)
+            (genesis)(ssh_identity)(ssh_args)(enumivo_home)
             (host_name)(public_name)
             (base_p2p_port)(base_http_port)(def_file_size)
             (instances) )
@@ -1888,9 +1888,9 @@ FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
 
 FC_REFLECT( testnet_def, (name)(ssh_helper)(nodes) )
 
-FC_REFLECT( server_name_def, (ipaddr) (name) (has_bios) (eosio_home) (instances) )
+FC_REFLECT( server_name_def, (ipaddr) (name) (has_bios) (enumivo_home) (instances) )
 
-FC_REFLECT( server_identities, (producer) (nonprod) (db) (default_eosio_home) (ssh) )
+FC_REFLECT( server_identities, (producer) (nonprod) (db) (default_enumivo_home) (ssh) )
 
 FC_REFLECT( node_rt_info, (remote)(pid_file)(kill_cmd) )
 
