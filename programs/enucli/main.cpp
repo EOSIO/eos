@@ -1,13 +1,13 @@
 /**
  *  @file
  *  @copyright defined in enumivo/LICENSE.txt
- *  @defgroup eosclienttool Enumivo Command Line Client Reference
+ *  @defgroup enuclienttool Enumivo Command Line Interface Client Reference
  *  @brief Tool for sending transactions and querying state from @ref enunode
- *  @ingroup eosclienttool
+ *  @ingroup enuclienttool
  */
 
 /**
-  @defgroup eosclienttool
+  @defgroup enuclienttool
 
   @section intro Introduction to enucli
 
