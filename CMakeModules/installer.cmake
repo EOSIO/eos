@@ -2,7 +2,7 @@ include(InstallRequiredSystemLibraries)
 
 #install_directory_permissions( DIRECTORY usr/${CMAKE_INSTALL_INCLUDEDIR}/enumivo )
 
-set(CPACK_PACKAGE_CONTACT "support@block.one")
+set(CPACK_PACKAGE_CONTACT "admin@enumivo.org")
 set(CPACK_OUTPUT_FILE_PREFIX ${CMAKE_BINARY_DIR}/packages)
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
   set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
