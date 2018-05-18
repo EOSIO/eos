@@ -113,7 +113,7 @@ struct local_identity {
 
 } local_id;
 
-class eosd_def;
+class enudaemon_def;
 
 class host_def {
 public:
@@ -144,7 +144,7 @@ public:
   uint16_t         base_p2p_port;
   uint16_t         base_http_port;
   uint16_t         def_file_size;
-  vector<eosd_def> instances;
+  vector<enudaemon_def> instances;
 
   uint16_t p2p_port() {
     return base_p2p_port + p2p_count++;
@@ -194,9 +194,9 @@ protected:
 
 class tn_node_def;
 
-class eosd_def {
+class enudaemon_def {
 public:
-  eosd_def()
+  enudaemon_def()
     : config_dir_name (),
       data_dir_name (),
       p2p_port(),
@@ -240,12 +240,12 @@ public:
   vector<private_key_type> keys;
   vector<string>  peers;
   vector<string>  producers;
-  eosd_def*       instance;
+  enudaemon_def*       instance;
   string          gelf_endpoint;
 };
 
 void
-eosd_def::mk_dot_label () {
+enudaemon_def::mk_dot_label () {
   dot_label_str = name + "\\nprod=";
   if (node == 0 || node->producers.empty()) {
     dot_label_str += "<none>";
@@ -263,7 +263,7 @@ eosd_def::mk_dot_label () {
 }
 
 void
-eosd_def::set_host( host_def* h, bool is_bios ) {
+enudaemon_def::set_host( host_def* h, bool is_bios ) {
   host = h->host_name;
   p2p_port = is_bios ? h->p2p_bios_port() : h->p2p_port();
   http_port = is_bios ? h->http_bios_port() : h->http_port();
@@ -356,7 +356,7 @@ struct launcher_def {
   bfs::path config_dir_base;
   bfs::path data_dir_base;
   bool skip_transaction_signatures = false;
-  string eosd_extra_args;
+  string enudaemon_extra_args;
   testnet_def network;
   string gelf_endpoint;
   vector <string> aliases;
@@ -376,7 +376,7 @@ struct launcher_def {
    string start_temp;
    string start_script;
 
-   void assign_name (eosd_def &node, bool is_bios);
+   void assign_name (enudaemon_def &node, bool is_bios);
 
   void set_options (bpo::options_description &cli);
   void initialize (const variables_map &vmap);
@@ -408,11 +408,11 @@ struct launcher_def {
   void write_dot_file ();
   void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
   bool do_ssh (const string &cmd, const string &host_name);
-  void prep_remote_config_dir (eosd_def &node, host_def *host);
-  void launch (eosd_def &node, string &gts);
+  void prep_remote_config_dir (enudaemon_def &node, host_def *host);
+  void launch (enudaemon_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
-  pair<host_def, eosd_def> find_node(uint16_t node_num);
-  vector<pair<host_def, eosd_def>> get_nodes(const string& node_number_list);
+  pair<host_def, enudaemon_def> find_node(uint16_t node_num);
+  vector<pair<host_def, enudaemon_def>> get_nodes(const string& node_number_list);
   void bounce (const string& node_numbers);
   void down (const string& node_numbers);
   void roll (const string& host_names);
@@ -431,7 +431,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bfs::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "enunode does not require transaction signatures.")
-    ("enunode", bpo::value<string>(&eosd_extra_args), "forward enunode command line argument(s) to each instance of enunode, enclose arg in quotes")
+    ("enunode", bpo::value<string>(&enudaemon_extra_args), "forward enunode command line argument(s) to each instance of enunode, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
@@ -494,11 +494,11 @@ launcher_def::initialize (const variables_map &vmap) {
     try {
       fc::json::from_file(host_map_file).as<vector<host_def>>(bindings);
       for (auto &binding : bindings) {
-        for (auto &eosd : binding.instances) {
-          eosd.host = binding.host_name;
-          eosd.p2p_endpoint = binding.public_name + ":" + boost::lexical_cast<string,uint16_t>(eosd.p2p_port);
+        for (auto &enudaemon : binding.instances) {
+          enudaemon.host = binding.host_name;
+          enudaemon.p2p_endpoint = binding.public_name + ":" + boost::lexical_cast<string,uint16_t>(enudaemon.p2p_port);
 
-          aliases.push_back (eosd.name);
+          aliases.push_back (enudaemon.name);
         }
       }
     } catch (...) { // this is an optional feature, so an exception is OK
@@ -569,7 +569,7 @@ launcher_def::load_servers () {
 
 
 void
-launcher_def::assign_name (eosd_def &node, bool is_bios) {
+launcher_def::assign_name (enudaemon_def &node, bool is_bios) {
    string node_cfg_name;
 
    if (is_bios) {
@@ -662,11 +662,11 @@ launcher_def::define_network () {
     local_host.enumivo_home = erd;
     local_host.genesis = genesis.string();
     for (size_t i = 0; i < (total_nodes); i++) {
-      eosd_def eosd;
-      assign_name(eosd, i == 0);
-      aliases.push_back(eosd.name);
-      eosd.set_host (&local_host, i == 0);
-      local_host.instances.emplace_back(move(eosd));
+      enudaemon_def enudaemon;
+      assign_name(enudaemon, i == 0);
+      aliases.push_back(enudaemon.name);
+      enudaemon.set_host (&local_host, i == 0);
+      local_host.instances.emplace_back(move(enudaemon));
     }
     bindings.emplace_back(move(local_host));
   }
@@ -711,22 +711,22 @@ launcher_def::define_network () {
         host_ndx++;
       } // ph_count == 0
 
-      eosd_def eosd;
-      assign_name(eosd, do_bios);
-      eosd.has_db = false;
+      enudaemon_def enudaemon;
+      assign_name(enudaemon, do_bios);
+      enudaemon.has_db = false;
 
       if (servers.db.size()) {
         for (auto &dbn : servers.db) {
           if (lhost->host_name == dbn) {
-            eosd.has_db = true;
+            enudaemon.has_db = true;
             break;
          }
         }
       }
-      aliases.push_back(eosd.name);
-      eosd.set_host (lhost, do_bios);
+      aliases.push_back(enudaemon.name);
+      enudaemon.set_host (lhost, do_bios);
       do_bios = false;
-      lhost->instances.emplace_back(move(eosd));
+      lhost->instances.emplace_back(move(enudaemon));
       --ph_count;
     } // for i
     bindings.emplace_back( move(*lhost) );
@@ -823,7 +823,7 @@ launcher_def::find_host_by_name_or_address (const string &host_id)
 host_def *
 launcher_def::deploy_config_files (tn_node_def &node) {
   boost::system::error_code ec;
-  eosd_def &instance = *node.instance;
+  enudaemon_def &instance = *node.instance;
   host_def *host = find_host (instance.host);
 
   bfs::path source = stage / instance.config_dir_name / "config.ini";
@@ -936,7 +936,7 @@ void
 launcher_def::write_config_file (tn_node_def &node) {
    bool is_bios = (node.name == "bios");
    bfs::path filename;
-   eosd_def &instance = *node.instance;
+   enudaemon_def &instance = *node.instance;
    host_def *host = find_host (instance.host);
 
    bfs::path dd = stage / instance.config_dir_name;
@@ -1016,7 +1016,7 @@ launcher_def::write_config_file (tn_node_def &node) {
 void
 launcher_def::write_logging_config_file(tn_node_def &node) {
   bfs::path filename;
-  eosd_def &instance = *node.instance;
+  enudaemon_def &instance = *node.instance;
 
   bfs::path dd = stage / instance.config_dir_name;
   if (!bfs::exists(dd)) {
@@ -1080,7 +1080,7 @@ launcher_def::init_genesis () {
 void
 launcher_def::write_genesis_file(tn_node_def &node) {
   bfs::path filename;
-  eosd_def &instance = *node.instance;
+  enudaemon_def &instance = *node.instance;
 
   bfs::path dd = stage / instance.config_dir_name;
   if (!bfs::exists(dd)) {
@@ -1329,7 +1329,7 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 }
 
 void
-launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
+launcher_def::prep_remote_config_dir (enudaemon_def &node, host_def *host) {
   bfs::path abs_config_dir = bfs::path(host->enumivo_home) / node.config_dir_name;
   bfs::path abs_data_dir = bfs::path(host->enumivo_home) / node.data_dir_name;
 
@@ -1379,7 +1379,7 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
 }
 
 void
-launcher_def::launch (eosd_def &instance, string &gts) {
+launcher_def::launch (enudaemon_def &instance, string &gts) {
   bfs::path dd = instance.data_dir_name;
   bfs::path reout = dd / "stdout.txt";
   bfs::path reerr_sl = dd / "stderr.txt";
@@ -1397,38 +1397,38 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   node_rt_info info;
   info.remote = !host->is_local();
 
-  string eosdcmd = "programs/enunode/enunode ";
+  string enudaemoncmd = "programs/enunode/enunode ";
   if (skip_transaction_signatures) {
-    eosdcmd += "--skip-transaction-signatures ";
+    enudaemoncmd += "--skip-transaction-signatures ";
   }
-  if (!eosd_extra_args.empty()) {
+  if (!enudaemon_extra_args.empty()) {
     if (instance.name == "bios") {
        // Strip the mongo-related options out of the bios node so
        // the plugins don't conflict between 00 and bios.
        regex r("--plugin +enumivo::mongo_db_plugin");
-       string args = std::regex_replace (eosd_extra_args,r,"");
+       string args = std::regex_replace (enudaemon_extra_args,r,"");
        regex r2("--mongodb-uri +[^ ]+");
        args = std::regex_replace (args,r2,"");
-       eosdcmd += args + " ";
+       enudaemoncmd += args + " ";
     }
     else {
-       eosdcmd += eosd_extra_args + " ";
+       enudaemoncmd += enudaemon_extra_args + " ";
     }
   }
 
   if( add_enable_stale_production ) {
-    eosdcmd += "--enable-stale-production true ";
+    enudaemoncmd += "--enable-stale-production true ";
     add_enable_stale_production = false;
   }
 
-  eosdcmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
+  enudaemoncmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
   if (gts.length()) {
-    eosdcmd += " --genesis-timestamp " + gts;
+    enudaemoncmd += " --genesis-timestamp " + gts;
   }
 
   if (!host->is_local()) {
     string cmdl ("cd ");
-    cmdl += host->enumivo_home + "; nohup " + eosdcmd + " > "
+    cmdl += host->enumivo_home + "; nohup " + enudaemoncmd + " > "
       + reout.string() + " 2> " + reerr.string() + "& echo $! > " + pidf.string()
       + "; rm -f " + reerr_sl.string()
       + "; ln -s " + reerr_base.string() + " " + reerr_sl.string();
@@ -1442,9 +1442,9 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     format_ssh (cmd, host->host_name, info.kill_cmd);
   }
   else {
-    cerr << "spawning child, " << eosdcmd << endl;
+    cerr << "spawning child, " << enudaemoncmd << endl;
 
-    bp::child c(eosdcmd, bp::std_out > reout, bp::std_err > reerr );
+    bp::child c(enudaemoncmd, bp::std_out > reout, bp::std_err > reerr );
     bfs::remove(reerr_sl);
     bfs::create_symlink (reerr_base, reerr_sl);
 
@@ -1456,7 +1456,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     info.kill_cmd = "";
 
     if(!c.running()) {
-      cerr << "child not running after spawn " << eosdcmd << endl;
+      cerr << "child not running after spawn " << enudaemoncmd << endl;
       for (int i = 0; i > 0; i++) {
         if (c.running () ) break;
       }
@@ -1468,7 +1468,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
 
 #if 0
 void
-launcher_def::kill_instance(eosd_def, string sig_opt) {
+launcher_def::kill_instance(enudaemon_def, string sig_opt) {
 }
 #endif
 
@@ -1511,7 +1511,7 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   }
 }
 
-pair<host_def, eosd_def>
+pair<host_def, enudaemon_def>
 launcher_def::find_node(uint16_t node_num) {
    string dex = node_num < 10 ? "0":"";
    dex += boost::lexical_cast<string,uint16_t>(node_num);
@@ -1527,9 +1527,9 @@ launcher_def::find_node(uint16_t node_num) {
    exit (-1);
 }
 
-vector<pair<host_def, eosd_def>>
+vector<pair<host_def, enudaemon_def>>
 launcher_def::get_nodes(const string& node_number_list) {
-   vector<pair<host_def, eosd_def>> node_list;
+   vector<pair<host_def, enudaemon_def>> node_list;
    if (fc::to_lower(node_number_list) == "all") {
       for (auto host: bindings) {
          for (auto node: host.instances) {
@@ -1564,7 +1564,7 @@ launcher_def::bounce (const string& node_numbers) {
    auto node_list = get_nodes(node_numbers);
    for (auto node_pair: node_list) {
       const host_def& host = node_pair.first;
-      const eosd_def& node = node_pair.second;
+      const enudaemon_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
       string cmd = "cd " + host.enumivo_home + "; "
                  + "export ENUMIVO_HOME=" + host.enumivo_home + string("; ")
@@ -1583,7 +1583,7 @@ launcher_def::down (const string& node_numbers) {
    auto node_list = get_nodes(node_numbers);
    for (auto node_pair: node_list) {
       const host_def& host = node_pair.first;
-      const eosd_def& node = node_pair.second;
+      const enudaemon_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
       string cmd = "cd " + host.enumivo_home + "; "
                  + "export ENUMIVO_HOME=" + host.enumivo_home + "; "
@@ -1880,7 +1880,7 @@ FC_REFLECT( host_def,
             (base_p2p_port)(base_http_port)(def_file_size)
             (instances) )
 
-FC_REFLECT( eosd_def,
+FC_REFLECT( enudaemon_def,
             (name)(config_dir_name)(data_dir_name)(has_db)
             (p2p_port)(http_port)(file_size) )
 

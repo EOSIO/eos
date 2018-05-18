@@ -130,10 +130,10 @@ msgstr ""
 msgid "[delete] NULL, [set/update] The permission name require for executing the given action"
 msgstr ""
 
-msgid "the host where eosd is running"
+msgid "the host where enudaemon is running"
 msgstr ""
 
-msgid "the port where eosd is running"
+msgid "the port where enudaemon is running"
 msgstr ""
 
 msgid "the host where enu-walletd is running"
@@ -496,7 +496,7 @@ msgstr ""
 msgid "The JSON array of the transactions to push"
 msgstr ""
 
-msgid "Failed to connect to enu at ${ip}:${port}; is eosd running?"
+msgid "Failed to connect to enu at ${ip}:${port}; is enudaemon running?"
 msgstr ""
 
 msgid "Failed to connect to enu-walletd at ${ip}:${port}; is enu-walletd running?"
