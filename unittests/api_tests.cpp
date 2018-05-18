@@ -1914,4 +1914,52 @@ BOOST_FIXTURE_TEST_CASE(account_creation_time_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+/*************************************************************************************
+ * eosio_assert_code_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
+   produce_block();
+   create_account( N(testapi) );
+   produce_block();
+   set_code(N(testapi), test_api_wast);
+
+   const char* abi_string = R"=====(
+{
+   "version": "eosio::abi/1.0",
+   "types": [],
+   "structs": [],
+   "actions": [],
+   "tables": [],
+   "ricardian_clauses": [],
+   "error_messages": [
+      {"error_code": 1, "error_msg": "standard error message" },
+      {"error_code": 42, "error_msg": "The answer to life, the universe, and everything."}
+   ]
+   "abi_extensions": []
+}
+)=====";
+
+   set_abi( N(testapi), abi_string );
+
+   auto var = fc::json::from_string(abi_string);
+   abi_serializer abis(var.as<abi_def>());
+
+   produce_blocks(10);
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_assert_code", fc::raw::pack((uint64_t)42) ),
+                          eosio_assert_code_exception, eosio_assert_code_is(42)                                        );
+
+   produce_block();
+
+   BOOST_CHECK_EQUAL( abis.get_error_message(1), "standard error message" );
+
+   auto oitr = abis.find_error_message(42);
+   BOOST_REQUIRE_EQUAL( oitr.valid(), true );
+   BOOST_CHECK_EQUAL( (*oitr)->second, "The answer to life, the universe, and everything." );
+
+   produce_block();
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

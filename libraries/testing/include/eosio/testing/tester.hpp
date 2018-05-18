@@ -456,7 +456,7 @@ namespace eosio { namespace testing {
    */
   struct eosio_assert_code_is {
      eosio_assert_code_is( uint64_t error_code )
-           : expected( "assertion failure with error code " ) {
+           : expected( "assertion failure with error code: " ) {
         expected.append( std::to_string(error_code) );
      }
 

@@ -84,19 +84,36 @@ struct clause_pair {
    string body;
 };
 
-struct abi_def {
-   abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses)
-   :version("eosio::abi/1.0"), types(types), structs(structs), actions(actions), tables(tables), ricardian_clauses(clauses)
+struct error_message {
+   error_message() = default;
+   error_message( uint64_t error_code, const string& error_msg )
+   : error_code(error_code), error_msg(error_msg)
    {}
 
-   string               version;
-   vector<type_def>     types;
-   vector<struct_def>   structs;
-   vector<action_def>   actions;
-   vector<table_def>    tables;
-   vector<clause_pair>  ricardian_clauses;
-   extensions_type      abi_extensions;
+   uint64_t error_code;
+   string   error_msg;
+};
+
+struct abi_def {
+   abi_def() = default;
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, vector<error_message>& error_msgs)
+   :version("eosio::abi/1.0")
+   ,types(types)
+   ,structs(structs)
+   ,actions(actions)
+   ,tables(tables)
+   ,ricardian_clauses(clauses)
+   ,error_messages(error_msgs)
+   {}
+
+   string                version;
+   vector<type_def>      types;
+   vector<struct_def>    structs;
+   vector<action_def>    actions;
+   vector<table_def>     tables;
+   vector<clause_pair>   ricardian_clauses;
+   vector<error_message> error_messages;
+   extensions_type       abi_extensions;
 };
 
 abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
@@ -107,6 +124,8 @@ FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(typ
 FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
-FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(tables)(ricardian_clauses)(abi_extensions) )
+FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
+FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )
+FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(tables)
+                                                             (ricardian_clauses)(error_messages)(abi_extensions) )
