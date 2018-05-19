@@ -47,7 +47,8 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     auto db = std::make_unique<database>(uri_str);
 
     if (options.at(RESYNC_OPTION).as<bool>() ||
-         options.at(REPLAY_OPTION).as<bool>())
+         options.at(REPLAY_OPTION).as<bool>() ||
+        !db->is_started())
     {
         ilog("Resync requested: wiping database");
         db->wipe();

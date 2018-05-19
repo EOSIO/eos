@@ -2,7 +2,10 @@
 #define BLOCKS_TABLE_H
 
 #include <memory>
+#include <chrono>
+
 #include <soci/soci.h>
+
 #include <eosio/chain/block_state.hpp>
 
 namespace eosio {
@@ -14,7 +17,7 @@ public:
 
     void drop();
     void create();
-    void add(eosio::chain::block_state_ptr block);
+    void add(chain::block_state_ptr block);
 
 private:
     std::shared_ptr<soci::session> m_session;

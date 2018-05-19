@@ -2,8 +2,16 @@
 #define ACTIONS_TABLE_H
 
 #include <memory>
+
 #include <soci/soci.h>
+
+#include <fc/io/json.hpp>
+#include <fc/variant.hpp>
+
 #include <eosio/chain/block_state.hpp>
+#include <eosio/chain/eosio_contract.hpp>
+#include <eosio/chain/abi_def.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 
 namespace eosio {
 
@@ -14,7 +22,7 @@ public:
 
     void drop();
     void create();
-    void add(eosio::chain::action action);
+    void add(chain::action action);
 
 private:
     std::shared_ptr<soci::session> m_session;

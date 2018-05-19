@@ -32,9 +32,18 @@ void accounts_table::create()
             "updated_at NUMERIC)";
 }
 
-void accounts_table::insert(std::string name)
+void accounts_table::add(string name)
 {
-    *m_session << "INSERT INTO accounts VALUES (:name, 0, 0, 0, '', strftime('%s','now'), strftime('%s','now'))", soci::use(name);
+    *m_session << "INSERT INTO accounts VALUES (:name, 0, 0, 0, '', strftime('%s','now'), strftime('%s','now'))",
+            soci::use(name);
+}
+
+bool accounts_table::exist(string name)
+{
+    int amount;
+    *m_session << "SELECT COUNT(*) FROM accounts WHERE name = :name", soci::into(amount), soci::use(name);
+
+    return amount > 0;
 }
 
 } // namespace

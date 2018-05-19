@@ -6,7 +6,7 @@
 namespace eosio {
 
 transactions_table::transactions_table(std::shared_ptr<soci::session> session):
-        m_session(session)
+    m_session(session)
 {
 
 }
@@ -36,7 +36,7 @@ void transactions_table::create()
             "updated_at DATETIME)";
 }
 
-void transactions_table::add(eosio::chain::transaction_metadata_ptr transaction)
+void transactions_table::add(chain::transaction_metadata_ptr transaction)
 {
     const auto transaction_id_str = transaction->trx.id().str();
     const auto expiration = std::chrono::milliseconds{

@@ -5,10 +5,12 @@
 
 #include <memory>
 #include <mutex>
+
 #include <soci/soci.h>
+
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/name.hpp>
 #include <eosio/chain/block_state.hpp>
+#include <eosio/chain/types.hpp>
 
 #include "accounts_table.h"
 #include "transactions_table.h"
@@ -25,6 +27,7 @@ public:
     void consume(const std::vector<chain::block_state_ptr>& blocks) override;
 
     void wipe();
+    bool is_started();
 
 private:
     std::shared_ptr<soci::session> m_session;
@@ -32,6 +35,7 @@ private:
     std::unique_ptr<actions_table> m_actions_table;
     std::unique_ptr<blocks_table> m_blocks_table;
     std::unique_ptr<transactions_table> m_transactions_table;
+    std::string system_account;
 };
 
 } // namespace

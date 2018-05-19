@@ -28,15 +28,37 @@ void actions_table::create()
             "data TEXT)";
 }
 
-void actions_table::add(eosio::chain::action action){
+void actions_table::add(chain::action action){
 
-    // TODO: we may do different stuff depending of the action and account (ex: sync balance, create account)
-    const auto data = std::string(action.data.begin(),action.data.end());
+    // TODO: move
+    if (action.name.to_string() == "setabi") {
+        auto setabi = action.data_as<chain::setabi>();
+        auto abi = fc::json::to_string(setabi.abi);
+        auto name = setabi.account.to_string();
+        *m_session << "UPDATE accounts SET abi = :abi WHERE name = :name", soci::use(abi), soci::use(name);
+    }
+    /*
+    chain::abi_def abi;
+    std::string abi_def_account;
+    chain::abi_serializer abis;
+
+    *m_session << "SELECT abi FROM accounts WHERE name = :name", soci::into(abi_def_account), soci::use(action.account.to_string());
+    abi = fc::json::from_string(abi_def_account).as<chain::abi_def>();
+
+    if (action.account == chain::config::system_account_name) {
+        abi = chain::eosio_contract_abi(abi);
+    }
+
+    abis.set_abi(abi);
+
+    auto v = abis.binary_to_variant(abis.get_action_type(action.name), action.data);
+    auto json = fc::json::to_string(v); */
+    std::string json = "";
 
     *m_session << "INSERT INTO actions(account, name, data) VALUES (:ac, :na, :da) ",
             soci::use(action.account.to_string()),
             soci::use(action.name.to_string()),
-            soci::use(data);
+            soci::use(json);
 }
 
 } // namespace

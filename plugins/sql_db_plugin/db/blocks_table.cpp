@@ -1,6 +1,5 @@
 #include "blocks_table.h"
 
-#include <chrono>
 #include <fc/log/logger.hpp>
 
 namespace eosio {
@@ -34,7 +33,7 @@ void blocks_table::create()
             "updated_at NUMERIC)";
 }
 
-void blocks_table::add(eosio::chain::block_state_ptr block)
+void blocks_table::add(chain::block_state_ptr block)
 {
     const auto block_id_str = block->block->id().str();
     const auto previous_block_id_str = block->block->previous.str();
@@ -50,7 +49,7 @@ void blocks_table::add(eosio::chain::block_state_ptr block)
             soci::use(previous_block_id_str),
             soci::use(timestamp),
             soci::use(transaction_mroot_str),
-            soci::use(block->header.producer.to_string()),
+            soci::use(block->block->producer.to_string()),
             soci::use(0),
             soci::use(timestamp);
 }
