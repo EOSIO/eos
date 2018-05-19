@@ -35,7 +35,7 @@ class dice : public enumivo::contract {
       //@abi action
       void offerbet(const asset& bet, const account_name player, const checksum256& commitment) {
 
-         enumivo_assert( bet.symbol == S(4,ENU) , "only ENU token allowed" );
+         enumivo_assert( bet.symbol == CORE_SYMBOL, "only core token allowed" );
          enumivo_assert( bet.is_valid(), "invalid bet" );
          enumivo_assert( bet.amount > 0, "must bet positive quantity" );
 

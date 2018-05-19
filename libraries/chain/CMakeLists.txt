@@ -1,3 +1,5 @@
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/enumivo/chain/core_symbol.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/include/enumivo/chain/core_symbol.hpp)
+
 file(GLOB HEADERS "include/enumivo/chain/*.hpp" "include/enumivo/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile

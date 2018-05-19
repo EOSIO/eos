@@ -79,6 +79,17 @@ void resource_limits_manager::set_block_parameters(const elastic_limit_parameter
    });
 }
 
+void resource_limits_manager::update_account_usage(const flat_set<account_name>& accounts, uint32_t time_slot ) {
+   const auto& config = _db.get<resource_limits_config_object>();
+   for( const auto& a : accounts ) {
+      const auto& usage = _db.get<resource_usage_object,by_owner>( a );
+      _db.modify( usage, [&]( auto& bu ){
+          bu.net_usage.add( 0, time_slot, config.account_net_usage_average_window );
+          bu.cpu_usage.add( 0, time_slot, config.account_cpu_usage_average_window );
+      });
+   }
+}
+
 void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
@@ -406,7 +417,7 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    auto max_user_use_in_window = (uint128_t(virtual_cpu_capacity_in_window) * user_weight) / all_user_weight;
    auto cpu_used_in_window  = (usage.cpu_usage.value_ex * window_size) / config::rate_limiting_precision;
 
-   if( max_user_use_in_window <= cpu_used_in_window ) 
+   if( max_user_use_in_window <= cpu_used_in_window )
       arl.available = 0;
    else
       arl.available = max_user_use_in_window - cpu_used_in_window;
@@ -469,7 +480,7 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
    auto net_used_in_window  = (usage.net_usage.value_ex * window_size) / config::rate_limiting_precision;
 
-   if( max_user_use_in_window <= net_used_in_window ) 
+   if( max_user_use_in_window <= net_used_in_window )
       arl.available = 0;
    else
       arl.available = max_user_use_in_window - net_used_in_window;

@@ -36,7 +36,6 @@ namespace enumivosystem {
     */
    void system_contract::regproducer( const account_name producer, const enumivo::public_key& producer_key, const std::string& url, uint16_t location ) { 
       enumivo_assert( url.size() < 512, "url too long" );
-      //enumivo::print("produce_key: ", producer_key.size(), ", sizeof(public_key): ", sizeof(public_key), "\n");
       require_auth( producer );
 
       auto prod = _producers.find( producer );
@@ -122,7 +121,7 @@ namespace enumivosystem {
 
    double stake2vote( int64_t staked ) {
       /// TODO subtract 2080 brings the large numbers closer to this decade
-      double weight = int64_t( (now() / (seconds_per_day * 7)) ) / double( 52 );
+      double weight = int64_t( (now() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7) )  / double( 52 );
       return double(staked) * std::pow( 2, weight );
    }
    /**
@@ -142,6 +141,10 @@ namespace enumivosystem {
     *  If voting for a proxy, the producer votes will not change until the proxy updates their own vote.
     */
    void system_contract::voteproducer( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers ) {
+      update_votes( voter_name, proxy, producers, true );
+   }
+
+   void system_contract::update_votes( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers, bool voting ) {
       require_auth( voter_name );
 
       //validate input
@@ -194,7 +197,8 @@ namespace enumivosystem {
 
       if( proxy ) {
          auto new_proxy = _voters.find( proxy );
-         enumivo_assert( new_proxy != _voters.end() && new_proxy->is_proxy, "invalid proxy specified" );
+         enumivo_assert( new_proxy != _voters.end(), "invalid proxy specified" ); //if ( !voting ) { data corruption } else { wrong vote }
+         enumivo_assert( !voting || new_proxy->is_proxy, "proxy not found" );
          if ( new_vote_weight >= 0 ) {
             _voters.modify( new_proxy, 0, [&]( auto& vp ) {
                   vp.proxied_vote_weight += new_vote_weight;
@@ -214,24 +218,24 @@ namespace enumivosystem {
       for( const auto& pd : producer_deltas ) {
          auto pitr = _producers.find( pd.first );
          if( pitr != _producers.end() ) {
-            enumivo_assert( pitr->active() || !pd.second.second /* not from new set */, "producer is not currently registered" );
+            enumivo_assert( !voting || pitr->active() || !pd.second.second /* not from new set */, "producer is not currently registered" );
             _producers.modify( pitr, 0, [&]( auto& p ) {
                p.total_votes += pd.second.first;
+               if ( p.total_votes < 0 ) { // floating point ariphmetics can give as small negative numbers
+                  p.total_votes = 0;
+               }
                _gstate.total_producer_vote_weight += pd.second.first;
                //enumivo_assert( p.total_votes >= 0, "something bad happened" );
             });
          } else {
-            enumivo_assert( !pd.second.second /* not from new set */, "producer is not registered" );
+            enumivo_assert( !pd.second.second /* not from new set */, "producer is not registered" ); //data corruption
          }
       }
 
       _voters.modify( voter, 0, [&]( auto& av ) {
-         print( "last_vote_weight: ", av.last_vote_weight, "\n" );
-         print( "new_vote_weight: ", new_vote_weight, "\n" );
          av.last_vote_weight = new_vote_weight;
          av.producers = producers;
          av.proxy     = proxy;
-         print( "    vote weight: ", av.last_vote_weight, "\n" );
       });
    }
 
@@ -253,7 +257,6 @@ namespace enumivosystem {
          enumivo_assert( !isproxy || !pitr->proxy, "account that uses a proxy is not allowed to become a proxy" );
          _voters.modify( pitr, 0, [&]( auto& p ) {
                p.is_proxy = isproxy;
-               print( "    vote weight: ", p.last_vote_weight, "\n" );
             });
          propagate_weight_change( *pitr );
       } else {

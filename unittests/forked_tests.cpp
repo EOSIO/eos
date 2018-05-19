@@ -62,14 +62,14 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    auto cr = c.push_action( N(enumivo.coin), N(create), N(enumivo.coin), mutable_variant_object()
               ("issuer",       "enumivo" )
-              ("maximum_supply", "10000000.0000 ENU")
+              ("maximum_supply", core_from_string("10000000.0000"))
       );
 
    wdump((fc::json::to_pretty_string(cr)));
 
    cr = c.push_action( N(enumivo.coin), N(issue), N(enumivo), mutable_variant_object()
               ("to",       "dan" )
-              ("quantity", "100.0000 ENU")
+              ("quantity", core_from_string("100.0000"))
               ("memo", "")
       );
 

@@ -23,7 +23,7 @@ namespace enumivo {
    }
 
    inline void print( const std::string& s) {
-      prints(s.c_str());
+      prints_l( s.c_str(), s.size() );
    }
 
    /**

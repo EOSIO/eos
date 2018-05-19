@@ -229,8 +229,8 @@ BOOST_FIXTURE_TEST_CASE( identity_create, identity_tester ) try {
    BOOST_REQUIRE_EQUAL( "alice", idnt["creator"].as_string());
 
    //attempts to create already existing identity should fail
-   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity already exists"), create_identity("alice", identity_val));
-   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity already exists"), create_identity("bob", identity_val));
+   BOOST_REQUIRE_EQUAL(wasm_assert_msg("identity already exists"), create_identity("alice", identity_val));
+   BOOST_REQUIRE_EQUAL(wasm_assert_msg("identity already exists"), create_identity("bob", identity_val));
 
    //alice can create more identities
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", 2));
@@ -242,7 +242,7 @@ BOOST_FIXTURE_TEST_CASE( identity_create, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), create_identity("bob", 1));
 
    //identity == 0 has special meaning, should be impossible to create
-   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity=0 is not allowed"), create_identity("alice", 0));
+   BOOST_REQUIRE_EQUAL(wasm_assert_msg("identity=0 is not allowed"), create_identity("alice", 0));
 
    //creating adentity without authentication is not allowed
    BOOST_REQUIRE_EQUAL(error("missing authority of alice"), create_identity("alice", 3, false));
@@ -301,7 +301,7 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
 
    //certifying non-existent identity is not allowed
    uint64_t non_existent = 11;
-   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity does not exist"),
+   BOOST_REQUIRE_EQUAL(wasm_assert_msg("identity does not exist"),
                        certify("alice", non_existent, vector<fc::variant>{ mutable_variant_object()
                                 ("property", "name")
                                 ("type", "string")
@@ -312,7 +312,7 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    );
 
    //parameter "type" should be not longer than 32 bytes
-   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: certrow::type should be not longer than 32 bytes"),
+   BOOST_REQUIRE_EQUAL(wasm_assert_msg("certrow::type should be not longer than 32 bytes"),
                        certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                                 ("property", "height")
                                 ("type", "super_long_type_name_wich_is_not_allowed")
