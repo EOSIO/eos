@@ -202,11 +202,11 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(enumivo_coin_acc.privileged == true);
 
 
-        // Create SYS tokens in enumivo.coin, set its manager as enumivo
+        // Create ENU tokens in enumivo.coin, set its manager as enumivo
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
         create_currency(N(enumivo.coin), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion SYS tokens to enumivo.system
+        // Issue the genesis supply of 1 billion ENU tokens to enumivo.system
         issue(N(enumivo.coin), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);

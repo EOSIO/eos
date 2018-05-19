@@ -20,7 +20,7 @@ logFile = open('test.log', 'a')
 with open('accounts.json') as f:
     accounts = json.load(f)
 
-symbol = 'SYS'
+symbol = 'ENU'
 numSysAccounts = 3
 firstRegAccount = numSysAccounts
 numProducers = 30

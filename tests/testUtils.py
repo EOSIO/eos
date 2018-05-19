@@ -789,7 +789,7 @@ class Node(object):
         return servants
 
     def getAccountEnuBalanceStr(self, scope):
-        """Returns ENU currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 SYS". """
+        """Returns ENU currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 ENU". """
         assert isinstance(scope, str)
         if not self.enableMongo:
             amount=self.getNodeAccountBalance("enumivo.coin", scope)

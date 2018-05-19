@@ -275,11 +275,11 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    }
 
    {
-      symbol sys(4, "SYS");
-      BOOST_REQUIRE_EQUAL(SY(4,SYS), sys.value());
-      BOOST_REQUIRE_EQUAL("4,SYS", sys.to_string());
-      BOOST_REQUIRE_EQUAL("SYS", sys.name());
-      BOOST_REQUIRE_EQUAL(4, sys.decimals());
+      symbol enu(4, "ENU");
+      BOOST_REQUIRE_EQUAL(SY(4,ENU), enu.value());
+      BOOST_REQUIRE_EQUAL("4,ENU", enu.to_string());
+      BOOST_REQUIRE_EQUAL("ENU", enu.name());
+      BOOST_REQUIRE_EQUAL(4, enu.decimals());
    }
 
    // default is "4,${CORE_SYMBOL_NAME}"

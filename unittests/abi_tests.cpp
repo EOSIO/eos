@@ -1870,8 +1870,8 @@ BOOST_AUTO_TEST_CASE(general)
     {
       "publickey"     :  "ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "publickey_arr" :  ["ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
-      "asset"         : "100.0000 SYS",
-      "asset_arr"     : ["100.0000 SYS","100.0000 SYS"],
+      "asset"         : "100.0000 ENU",
+      "asset_arr"     : ["100.0000 ENU","100.0000 ENU"],
 
       "string"            : "ola ke ase",
       "string_arr"        : ["ola ke ase","ola ke desi"],

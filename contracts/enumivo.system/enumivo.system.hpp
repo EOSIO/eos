@@ -135,7 +135,7 @@ namespace enumivosystem {
          // functions defined in delegate_bandwidth.cpp
 
          /**
-          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'. 
+          *  Stakes ENU from the balance of 'from' for the benfit of 'receiver'. 
           *  If transfer == true, then 'receiver' can unstake to their account
           *  Else 'from' can unstake at any time.
           */
