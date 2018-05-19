@@ -540,7 +540,7 @@ class Node(object):
     # Create & initialize account and return creation transactions. Return transaction json object
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
         cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 %s" --stake-cpu "100 %s" --buy-ram-ENU "100 %s"' % (
-            Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
+            Utils.EnuClientPath, self.endpointArgs, creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey,
             CORE_SYMBOL, CORE_SYMBOL, CORE_SYMBOL)
 
@@ -788,7 +788,7 @@ class Node(object):
         servants=trans["controlled_accounts"]
         return servants
 
-    def getAccountEosBalanceStr(self, scope):
+    def getAccountEnuBalanceStr(self, scope):
         """Returns ENU currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 SYS". """
         assert isinstance(scope, str)
         if not self.enableMongo:
@@ -1958,7 +1958,7 @@ class Cluster(object):
 
             expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Verify enumivo issue, Expected: %s" % (expectedAmount))
-            actualAmount=biosNode.getAccountEosBalanceStr(enumivoAccount.name)
+            actualAmount=biosNode.getAccountEnuBalanceStr(enumivoAccount.name)
             if expectedAmount != actualAmount:
                 Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
                             (expectedAmount, actualAmount))
