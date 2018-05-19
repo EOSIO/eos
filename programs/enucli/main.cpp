@@ -149,6 +149,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 
 string url = "http://localhost:8888/";
 string wallet_url = "http://localhost:8900/";
+int64_t wallet_unlock_timeout = 0;
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -748,7 +749,14 @@ void ensure_enuwallet_running() {
     if (boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
-        ::boost::process::child enuwallet(binPath, "--http-server-address=127.0.0.1:" + parsed_url.port,
+
+        vector<std::string> pargs;
+        pargs.push_back("--http-server-address=127.0.0.1:" + parsed_url.port);
+        if (wallet_unlock_timeout > 0) {
+            pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
+        }
+
+        ::boost::process::child enuwallet(binPath, pargs,
                                      bp::std_in.close(),
                                      bp::std_out > bp::null,
                                      bp::std_err > bp::null);
@@ -1104,6 +1112,43 @@ struct undelegate_bandwidth_subcommand {
    }
 };
 
+struct list_bw_subcommand {
+   enumivo::name account;
+   bool print_json = false;
+
+   list_bw_subcommand(CLI::App* actionRoot) {
+      auto list_bw = actionRoot->add_subcommand("listbw", localized("List delegated bandwidth"));
+      list_bw->add_option("account", account, localized("The account delegated bandwidth"))->required();
+      list_bw->add_flag("--json,-j", print_json, localized("Output in JSON format") );
+
+      list_bw->set_callback([this] {
+            //get entire table in scope of user account
+            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", account.to_string())
+                               ("table", "delband")
+            );
+            if (!print_json) {
+               auto res = result.as<enumivo::chain_apis::read_only::get_table_rows_result>();
+               if ( !res.rows.empty() ) {
+                  std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "Net bandwidth"
+                            << std::setw(21) << std::left << "CPU bandwidth" << std::endl;
+                  for ( auto& r : res.rows ){
+                     std::cout << std::setw(13) << std::left << r["to"].as_string()
+                               << std::setw(21) << std::left << r["net_weight"].as_string()
+                               << std::setw(21) << std::left << r["cpu_weight"].as_string()
+                               << std::endl;
+                  }
+               } else {
+                  std::cerr << "Delegated bandwidth not found" << std::endl;
+               }
+            } else {
+               std::cout << fc::json::to_pretty_string(result) << std::endl;
+            }
+      });
+   }
+};
+
 struct buyram_subcommand {
    string from_str;
    string receiver_str;
@@ -1171,7 +1216,8 @@ struct regproxy_subcommand {
 
       register_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy);
+                  ("proxy", proxy)
+                  ("isproxy", true);
          send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(regproxy), act_payload)});
       });
    }
@@ -1187,30 +1233,31 @@ struct unregproxy_subcommand {
 
       unregister_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(unregproxy), act_payload)});
+                  ("proxy", proxy)
+                  ("isproxy", false);
+         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(regproxy), act_payload)});
       });
    }
 };
 
 struct canceldelay_subcommand {
-   string cancelling_account;
-   string cancelling_permission;
+   string canceling_account;
+   string canceling_permission;
    string trx_id;
 
    canceldelay_subcommand(CLI::App* actionRoot) {
       auto cancel_delay = actionRoot->add_subcommand("canceldelay", localized("Cancel a delayed transaction"));
-      cancel_delay->add_option("cancelling_account", cancelling_account, localized("Account from authorization on the original delayed transaction"))->required();
-      cancel_delay->add_option("cancelling_permission", cancelling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
+      cancel_delay->add_option("canceling_account", canceling_account, localized("Account from authorization on the original delayed transaction"))->required();
+      cancel_delay->add_option("canceling_permission", canceling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
       cancel_delay->add_option("trx_id", trx_id, localized("The transaction id of the original delayed transaction"))->required();
       add_standard_transaction_options(cancel_delay);
 
       cancel_delay->set_callback([this] {
-         const auto cancelling_auth = permission_level{cancelling_account, cancelling_permission};
+         const auto canceling_auth = permission_level{canceling_account, canceling_permission};
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("cancelling_auth", cancelling_auth)
+                  ("canceling_auth", canceling_auth)
                   ("trx_id", trx_id);
-         send_actions({create_action({cancelling_auth}, config::system_account_name, N(canceldelay), act_payload)});
+         send_actions({create_action({canceling_auth}, config::system_account_name, N(canceldelay), act_payload)});
       });
    }
 };
@@ -1958,6 +2005,7 @@ int main( int argc, char** argv ) {
    auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+   unlockWallet->add_option( "--unlock-timeout", wallet_unlock_timeout, localized("The timeout for unlocked wallet in seconds"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
       if( wallet_pw.size() == 0 ) {
          std::cout << localized("password: ");
@@ -2415,6 +2463,7 @@ int main( int argc, char** argv ) {
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
+   auto listBandWidth = list_bw_subcommand(system);
 
    auto biyram = buyram_subcommand(system);
    auto sellram = sellram_subcommand(system);

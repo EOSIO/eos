@@ -15,6 +15,7 @@ import re
 Print=testUtils.Utils.Print
 errorExit=testUtils.Utils.errorExit
 
+from core_symbol import CORE_SYMBOL
 
 def cmdError(name, cmdCode=0, exitNow=False):
     msg="FAILURE - %s%s" % (name, ("" if cmdCode == 0 else (" returned error code %d" % cmdCode)))
@@ -233,7 +234,7 @@ try:
     if not node.verifyAccount(testeraAccount):
         errorExit("FAILURE - account creation failed.", raw=True)
 
-    transferAmount="97.5321 ENU"
+    transferAmount="97.5321 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
     if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer") is None:
         cmdError("%s transfer" % (ClientName))
@@ -247,7 +248,7 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    transferAmount="0.0100 ENU"
+    transferAmount="0.0100 {0}".format(CORE_SYMBOL)
     Print("Force transfer funds %s from account %s to %s" % (
         transferAmount, defproduceraAccount.name, testeraAccount.name))
     if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True) is None:
@@ -255,7 +256,7 @@ try:
         errorExit("Failed to force transfer funds %d from account %s to %s" % (
             transferAmount, defproduceraAccount.name, testeraAccount.name))
 
-    expectedAmount="97.5421 ENU"
+    expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
     actualAmount=node.getAccountEnuBalanceStr(testeraAccount.name)
     if expectedAmount != actualAmount:
@@ -284,7 +285,7 @@ try:
         cmdError("%s wallet unlock" % (ClientName))
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
-    transferAmount="97.5311 ENU"
+    transferAmount="97.5311 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
     trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
@@ -294,7 +295,7 @@ try:
             transferAmount, testeraAccount.name, currencyAccount.name))
     transId=testUtils.Node.getTransId(trans)
 
-    expectedAmount="98.0311 ENU" # 5000 initial deposit
+    expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
     actualAmount=node.getAccountEnuBalanceStr(currencyAccount.name)
     if expectedAmount != actualAmount:
@@ -582,13 +583,10 @@ try:
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(blockNum, retry=False, silentErrors=True)
+        block=node.getBlock(str(blockNum), retry=False, silentErrors=False)
         if block is None:
-            # TBD: Known issue (Issue 2099) that the block containing setprods isn't retrievable.
-            #  Enable errorExit() once that is resolved.
-            Print("WARNING: Failed to get block %d (probably issue 2099). Report and keep going..." % (blockNum))
-            # cmdError("%s get block" % (ClientName))
-            # errorExit("get block by num %d" % blockNum)
+            cmdError("%s get block" % (ClientName))
+            errorExit("get block by num %d" % blockNum)
 
         if enableMongo:
             blockId=block["block_id"]

@@ -17,6 +17,8 @@ import random
 import json
 import shlex
 
+from core_symbol import CORE_SYMBOL
+
 ###########################################################################################
 class Utils:
     Debug=False
@@ -537,9 +539,10 @@ class Node(object):
 
     # Create & initialize account and return creation transactions. Return transaction json object
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
-        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 ENU" --stake-cpu "100 ENU" --buy-ram-ENU "100 ENU"' % (
+        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 %s" --stake-cpu "100 %s" --buy-ram-ENU "100 %s"' % (
             Utils.EnuClientPath, self.endpointArgs, creatorAccount.name, account.name,
-            account.ownerPublicKey, account.activePublicKey)
+            account.ownerPublicKey, account.activePublicKey,
+            CORE_SYMBOL, CORE_SYMBOL, CORE_SYMBOL)
 
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
@@ -553,7 +556,7 @@ class Node(object):
 
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
-            trans = self.transferFunds(creatorAccount, account, "%0.04f ENU" % (stakedDeposit/10000), "init")
+            trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -580,7 +583,7 @@ class Node(object):
 
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
-            trans = self.transferFunds(creatorAccount, account, "%0.04f ENU" % (stakedDeposit/10000), "init")
+            trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -1927,7 +1930,7 @@ class Cluster(object):
             contract=enumivoTokenAccount.name
             Utils.Print("push create action to %s contract" % (contract))
             action="create"
-            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 ENU\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (enumivoTokenAccount.name)
+            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (enumivoTokenAccount.name, CORE_SYMBOL)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
@@ -1941,7 +1944,7 @@ class Cluster(object):
             contract=enumivoTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))
             action="issue"
-            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 ENU\",\"memo\":\"initial issue\"}" % (enumivoAccount.name)
+            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (enumivoAccount.name, CORE_SYMBOL)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
@@ -1953,7 +1956,7 @@ class Cluster(object):
             transId=Node.getTransId(trans[1])
             biosNode.waitForTransIdOnNode(transId)
 
-            expectedAmount="1000000000.0000 ENU"
+            expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Verify enumivo issue, Expected: %s" % (expectedAmount))
             actualAmount=biosNode.getAccountEnuBalanceStr(enumivoAccount.name)
             if expectedAmount != actualAmount:
@@ -1973,7 +1976,7 @@ class Cluster(object):
 
             Node.validateTransaction(trans)
 
-            initialFunds="1000000.0000 ENU"
+            initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
             trans=None
             contract=enumivoTokenAccount.name

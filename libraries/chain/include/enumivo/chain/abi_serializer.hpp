@@ -29,6 +29,7 @@ struct abi_serializer {
    map<type_name, struct_def> structs;
    map<name,type_name>        actions;
    map<name,type_name>        tables;
+   map<uint64_t, string>      error_messages;
 
    typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
    typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
@@ -53,6 +54,8 @@ struct abi_serializer {
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
+
+   optional<string>  get_error_message( uint64_t error_code )const;
 
    fc::variant binary_to_variant(const type_name& type, const bytes& binary)const;
    bytes       variant_to_binary(const type_name& type, const fc::variant& var)const;
@@ -230,8 +233,12 @@ namespace impl {
          auto abi = resolver(act.account);
          if (abi.valid()) {
             auto type = abi->get_action_type(act.name);
-            mvo("data", abi->binary_to_variant(type, act.data));
-            mvo("hex_data", act.data);
+            if (!type.empty()) {
+               mvo("data", abi->binary_to_variant(type, act.data));
+               mvo("hex_data", act.data);
+            } else {
+               mvo("data", act.data);
+            }
          } else {
             mvo("data", act.data);
          }
@@ -391,7 +398,9 @@ namespace impl {
                auto abi = resolver(act.account);
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
-                  act.data = std::move(abi->variant_to_binary(type, data));
+                  if (!type.empty()) {
+                     act.data = std::move( abi->variant_to_binary( type, data ));
+                  }
                }
             }
          }

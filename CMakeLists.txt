@@ -180,6 +180,18 @@ endif()
 
 add_subdirectory( externals )
 
+if ("${CORE_SYMBOL_NAME}" STREQUAL "")
+  set( CORE_SYMBOL_NAME "ENU" )
+endif()
+string(TOUPPER ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME)
+
+string(LENGTH ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME_LENGTH)
+if (CORE_SYMBOL_NAME_LENGTH GREATER 7)
+  message(FATAL_ERROR "CORE_SYMBOL_NAME lenght must be a between 1 and 7 characters")
+endif()
+
+message( STATUS "Using ${CORE_SYMBOL_NAME} as CORE symbol name")
+
 include(wasm)
 
 add_subdirectory( libraries )

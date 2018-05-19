@@ -7,13 +7,6 @@
 #include <enumivo/chain/types.hpp>
 #include <enumivo/chain/symbol.hpp>
 
-/// enu with 4 digits of precision
-#define ENU_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('N') << 16) | (uint64_t('U') << 24))
-static const enumivo::chain::symbol ENU_SYMBOL(ENU_SYMBOL_VALUE);
-
-/// Defined to be largest power of 10 that fits in 53 bits of precision
-#define ENU_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
-
 namespace enumivo { namespace chain {
 
 /**
@@ -29,7 +22,7 @@ struct asset
 {
    static constexpr int64_t max_amount = (1LL << 62) - 1;
 
-   explicit asset(share_type a = 0, symbol id = ENU_SYMBOL) :amount(a), sym(id) {
+   explicit asset(share_type a = 0, symbol id = symbol(CORE_SYMBOL)) :amount(a), sym(id) {
       ENU_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
       ENU_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
    }

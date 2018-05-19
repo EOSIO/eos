@@ -113,7 +113,7 @@ namespace enumivosystem {
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
-   static constexpr uint64_t     system_token_symbol = S(4,ENU);
+   static constexpr uint64_t     system_token_symbol = CORE_SYMBOL;
 
    class system_contract : public native {
       private:
@@ -135,7 +135,7 @@ namespace enumivosystem {
          // functions defined in delegate_bandwidth.cpp
 
          /**
-          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'. 
+          *  Stakes ENU from the balance of 'from' for the benfit of 'receiver'. 
           *  If transfer == true, then 'receiver' can unstake to their account
           *  Else 'from' can unstake at any time.
           */
@@ -205,8 +205,14 @@ namespace enumivosystem {
 
          // Implementation details:
 
+         //defind in delegate_bandwidth.cpp
+         void changebw( account_name from, account_name receiver,
+                        asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
+
          //defined in voting.hpp
          static enumivo_global_state get_default_parameters();
+
+         void update_votes( const account_name voter, const account_name proxy, const std::vector<account_name>& producers, bool voting );
 
          // defined in voting.cpp
          void propagate_weight_change( const voter_info& voter );

@@ -84,19 +84,36 @@ struct clause_pair {
    string body;
 };
 
-struct abi_def {
-   abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses)
-   :version("enumivo::abi/1.0"), types(types), structs(structs), actions(actions), tables(tables), ricardian_clauses(clauses)
+struct error_message {
+   error_message() = default;
+   error_message( uint64_t error_code, const string& error_msg )
+   : error_code(error_code), error_msg(error_msg)
    {}
 
-   string               version;
-   vector<type_def>     types;
-   vector<struct_def>   structs;
-   vector<action_def>   actions;
-   vector<table_def>    tables;
-   vector<clause_pair>  ricardian_clauses;
-   extensions_type      abi_extensions;
+   uint64_t error_code;
+   string   error_msg;
+};
+
+struct abi_def {
+   abi_def() = default;
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
+   :version("enumivo::abi/1.0")
+   ,types(types)
+   ,structs(structs)
+   ,actions(actions)
+   ,tables(tables)
+   ,ricardian_clauses(clauses)
+   ,error_messages(error_msgs)
+   {}
+
+   string                version;
+   vector<type_def>      types;
+   vector<struct_def>    structs;
+   vector<action_def>    actions;
+   vector<table_def>     tables;
+   vector<clause_pair>   ricardian_clauses;
+   vector<error_message> error_messages;
+   extensions_type       abi_extensions;
 };
 
 abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi);
@@ -107,6 +124,8 @@ FC_REFLECT( enumivo::chain::type_def                         , (new_type_name)(t
 FC_REFLECT( enumivo::chain::field_def                        , (name)(type) )
 FC_REFLECT( enumivo::chain::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( enumivo::chain::action_def                       , (name)(type)(ricardian_contract) )
-FC_REFLECT( enumivo::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( enumivo::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( enumivo::chain::abi_def                          , (version)(types)(structs)(actions)(tables)(ricardian_clauses)(abi_extensions) )
+FC_REFLECT( enumivo::chain::clause_pair                      , (id)(body) )
+FC_REFLECT( enumivo::chain::error_message                    , (error_code)(error_msg) )
+FC_REFLECT( enumivo::chain::abi_def                          , (version)(types)(structs)(actions)(tables)
+                                                             (ricardian_clauses)(error_messages)(abi_extensions) )

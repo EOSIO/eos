@@ -218,3 +218,10 @@ void test_action::test_current_time() {
    enumivo_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
    enumivo_assert( tmp == current_time(), "tmp == current_time()" );
 }
+
+void test_action::test_assert_code() {
+   uint64_t code = 0;
+   uint32_t total = read_action_data(&code, sizeof(uint64_t));
+   enumivo_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   enumivo_assert_code( false, code );
+}
