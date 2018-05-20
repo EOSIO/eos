@@ -25,6 +25,7 @@ void actions_table::create()
 {
     *m_session << "create table actions("
             "account TEXT,"
+            "transaction_id TEXT,"
             "name TEXT,"
             "data TEXT)";
 
@@ -36,12 +37,13 @@ void actions_table::create()
             "staked REAL)";
 }
 
-void actions_table::add(chain::action action)
+void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
 {
 
     chain::abi_def abi;
     std::string abi_def_account;
     chain::abi_serializer abis;
+    const auto transaction_id_str = transaction_id.str();
 
     *m_session << "SELECT abi FROM accounts WHERE name = :name", soci::into(abi_def_account), soci::use(action.account.to_string());
     if (!abi_def_account.empty()) {
@@ -57,10 +59,11 @@ void actions_table::add(chain::action action)
     auto abi_data = abis.binary_to_variant(abis.get_action_type(action.name), action.data);
     string json = fc::json::to_string(abi_data);
 
-    *m_session << "INSERT INTO actions(account, name, data) VALUES (:ac, :na, :da) ",
+    *m_session << "INSERT INTO actions(account, name, data, transaction_id) VALUES (:ac, :na, :da, :ti) ",
             soci::use(action.account.to_string()),
             soci::use(action.name.to_string()),
-            soci::use(json);
+            soci::use(json),
+            soci::use(transaction_id_str);
 
     // TODO: move all
     if (action.name == N(issue)) {

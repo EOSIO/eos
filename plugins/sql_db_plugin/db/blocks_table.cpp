@@ -29,7 +29,7 @@ void blocks_table::create()
             "timestamp NUMERIC,"
             "transaction_merkle_root TEXT,"
             "producer_account_id TEXT,"
-            "pending NUMERIC,"
+            "confirmed NUMERIC,"
             "updated_at NUMERIC)";
 }
 
@@ -43,14 +43,14 @@ void blocks_table::add(chain::signed_block_ptr block)
                 }.count();
 
     *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root,"
-                  "producer_account_id, pending, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
+                  "producer_account_id, confirmed, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
             soci::use(block_id_str),
             soci::use(block->block_num()),
             soci::use(previous_block_id_str),
             soci::use(timestamp),
             soci::use(transaction_mroot_str),
             soci::use(block->producer.to_string()),
-            soci::use(0),
+            soci::use(block->confirmed),
             soci::use(timestamp);
 }
 

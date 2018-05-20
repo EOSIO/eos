@@ -25,15 +25,12 @@ void transactions_table::create()
 {
     *m_session << "CREATE TABLE transactions("
             "id TEXT PRIMARY KEY,"
-            "sequence_num NUMERIC,"
             "block_id TEXT,"
             "ref_block_prefix NUMERIC,"
-            "status TEXT,"
             "expiration NUMERIC,"
             "pending NUMERIC,"
             "created_at NUMERIC,"
-            "type TEXT,"
-            "updated_at DATETIME)";
+            "updated_at NUMERIC)";
 }
 
 void transactions_table::add(chain::transaction transaction)
@@ -43,16 +40,14 @@ void transactions_table::add(chain::transaction transaction)
                     std::chrono::seconds{transaction.expiration.sec_since_epoch()}
                 }.count();
 
-    *m_session << "INSERT INTO transactions(id, sequence_num, block_id, ref_block_prefix, status,"
-            "expiration, pending, created_at, type, updated_at) VALUES (:id, :se, :bi, :rb, :st, :ex, :pe, :ca, :ty, :ua)",
+    *m_session << "INSERT INTO transactions(id, block_id, ref_block_prefix,"
+            "expiration, pending, created_at, updated_at) VALUES (:id, :bi, :rb, :ex, :pe, :ca, :ua)",
             soci::use(transaction_id_str),
-            soci::use(transaction.ref_block_num), // TODO: proper fields
+            soci::use(transaction.ref_block_num),
             soci::use(transaction.ref_block_prefix),
-            soci::use(transaction_id_str),
             soci::use(expiration),
-            soci::use(1),
+            soci::use(0),
             soci::use(expiration),
-            soci::use(transaction_id_str),
             soci::use(expiration);
 }
 
