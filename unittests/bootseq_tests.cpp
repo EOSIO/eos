@@ -143,6 +143,7 @@ public:
        return r;
     }
 
+
     auto undelegate_bandwidth( name from, name receiver, asset net, asset cpu ) {
        auto r = base_tester::push_action(N(eosio), N(undelegatebw), from, mvo()
                     ("from", from )
@@ -155,7 +156,7 @@ public:
     }
 
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(eosio.token), symbol(SY(4,EOS)), act);
+         return get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), act);
     }
 
     void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr) {
@@ -200,11 +201,12 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         const auto& eosio_token_acc = get<account_object, by_name>(N(eosio.token));
         BOOST_TEST(eosio_token_acc.privileged == true);
 
-        // Create EOS tokens in eosio.token, set its manager as eosio
-        auto max_supply = asset::from_string("10000000000.0000 EOS"); /// 1x larger than 1B initial tokens
-        auto initial_supply = asset::from_string("1000000000.0000 EOS"); /// 1x larger than 1B initial tokens
+
+        // Create SYS tokens in eosio.token, set its manager as eosio
+        auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
+        auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
         create_currency(N(eosio.token), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion EOS tokens to eosio.system
+        // Issue the genesis supply of 1 billion SYS tokens to eosio.system
         issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
@@ -269,12 +271,9 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.front().producer_name == "eosio");
 
         // Spend some time so the producer pay pool is filled by the inflation rate
-        // Since the total activated stake is less than 150,000,000, reward should remain zero
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
-        // #warning TODO: now claiming rewards when the pool is empty will throw div by 0 error, fix this as separate issue
-        //   claim_rewards(N(runnerup1));
-        produce_block();
-        BOOST_TEST(get_balance(N(runnerup1)).amount == 0);
+        // Since the total activated stake is less than 150,000,000, it shouldn't be possible to claim rewards
+        BOOST_REQUIRE_THROW(claim_rewards(N(runnerup1)), eosio_assert_message_exception);
 
         // This will increase the total vote stake by (40,000,000 - 1,000)
         votepro( N(whale4), {N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
@@ -310,7 +309,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
         // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
         claim_rewards(N(runnerup1));
-        produce_block();
         BOOST_TEST(get_balance(N(runnerup1)).amount > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
@@ -319,21 +317,20 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS")), assert_exception);
+
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000")), eosio_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
-        // Register back producers after 10 years of inactivity
-        for( auto pro : producer_candidates ) {
-           register_producer(pro);
-        }
+
         // Block one should be able to unstake all his stake now
-        undelegate_bandwidth(N(b1), N(b1), asset::from_string("49999500.0000 EOS"), asset::from_string("49999500.0000 EOS"));
+        undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
 
         return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
         wlog("minow" );
         votepro( N(minow1), {N(p1), N(p2)} );
+
 
 #warning Complete this test
     } FC_LOG_AND_RETHROW()

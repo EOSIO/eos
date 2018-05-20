@@ -217,7 +217,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("memo", "overspend! Alice");
 
       BOOST_CHECK_EXCEPTION( push_action(N(alice), N(transfer), data),
-                             fc::assert_exception, eosio_assert_message_is("overdrawn balance") );
+                             eosio_assert_message_exception, eosio_assert_message_is("overdrawn balance") );
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -275,18 +275,18 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    }
 
    {
-      symbol eos(4, "EOS");
-      BOOST_REQUIRE_EQUAL(EOS_SYMBOL_VALUE, eos.value());
-      BOOST_REQUIRE_EQUAL("4,EOS", eos.to_string());
-      BOOST_REQUIRE_EQUAL("EOS", eos.name());
-      BOOST_REQUIRE_EQUAL(4, eos.decimals());
+      symbol sys(4, "SYS");
+      BOOST_REQUIRE_EQUAL(SY(4,SYS), sys.value());
+      BOOST_REQUIRE_EQUAL("4,SYS", sys.to_string());
+      BOOST_REQUIRE_EQUAL("SYS", sys.name());
+      BOOST_REQUIRE_EQUAL(4, sys.decimals());
    }
 
-   // default is "4,EOS"
+   // default is "4,${CORE_SYMBOL_NAME}"
    {
       symbol def;
       BOOST_REQUIRE_EQUAL(4, def.decimals());
-      BOOST_REQUIRE_EQUAL("EOS", def.name());
+      BOOST_REQUIRE_EQUAL(CORE_SYMBOL_NAME, def.name());
    }
    // from string
    {
@@ -359,6 +359,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "1000000000.00000 CUR");
    }
 
    // Valid asset
@@ -367,6 +368,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "1000000000.00000 CUR");
    }
 
    // Negative asset
@@ -375,6 +377,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, -100000000010);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "-1000000.00010 CUR");
    }
 
    // Negative asset below 1
@@ -383,6 +386,16 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
       BOOST_REQUIRE_EQUAL(a.amount, -100);
       BOOST_REQUIRE_EQUAL(a.decimals(), 5);
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "-0.00100 CUR");
+   }
+
+   // Negative asset below 1
+   {
+      asset a = asset::from_string("-0.0001 PPP");
+      BOOST_REQUIRE_EQUAL(a.amount, -1);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 4);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "PPP");
+      BOOST_REQUIRE_EQUAL(a.to_string(), "-0.0001 PPP");
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol
@@ -568,7 +581,7 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
 
    // transfer using different symbol name fails
    {
-      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), fc::assert_exception);
+      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), eosio_assert_message_exception);
    }
 
    // issue to alice using right precision

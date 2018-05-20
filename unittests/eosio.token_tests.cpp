@@ -114,7 +114,7 @@ BOOST_FIXTURE_TEST_CASE( create_tests, eosio_token_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, eosio_token_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: max-supply must be positive" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "max-supply must be positive" ),
       create( N(alice), asset::from_string("-1000.000 TKN"))
    );
 
@@ -131,7 +131,7 @@ BOOST_FIXTURE_TEST_CASE( symbol_already_exists, eosio_token_tester ) try {
    );
    produce_blocks(1);
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: token with symbol already exists" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "token with symbol already exists" ),
                         create( N(alice), asset::from_string("100 TKN"))
    );
 
@@ -198,11 +198,11 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
       ("balance", "500.000 TKN")
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: quantity exceeds available supply" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "quantity exceeds available supply" ),
       issue( N(alice), N(alice), asset::from_string("500.001 TKN"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must issue positive quantity" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "must issue positive quantity" ),
       issue( N(alice), N(alice), asset::from_string("-1.000 TKN"), "hola" )
    );
 
@@ -248,11 +248,11 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
       ("whitelist", 1)
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: overdrawn balance" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "overdrawn balance" ),
       transfer( N(alice), N(bob), asset::from_string("701 CERO"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: must transfer positive quantity" ),
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "must transfer positive quantity" ),
       transfer( N(alice), N(bob), asset::from_string("-1000 CERO"), "hola" )
    );
 
