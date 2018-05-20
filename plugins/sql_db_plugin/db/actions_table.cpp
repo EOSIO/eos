@@ -31,15 +31,13 @@ void actions_table::create()
 void actions_table::add(chain::action action){
 
     chain::abi_def abi;
-    std::string abi_def_account = "";
+    std::string abi_def_account;
     chain::abi_serializer abis;
 
     *m_session << "SELECT abi FROM accounts WHERE name = :name", soci::into(abi_def_account), soci::use(action.account.to_string());
-    if (abi_def_account != "") {
+    if (!abi_def_account.empty()) {
         abi = fc::json::from_string(abi_def_account).as<chain::abi_def>();
-    }
-
-    if (action.account == chain::config::system_account_name) {
+    } else if (action.account == chain::config::system_account_name) {
         abi = chain::eosio_contract_abi(abi);
     }
 
