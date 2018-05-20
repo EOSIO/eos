@@ -15,6 +15,8 @@
 
 namespace eosio {
 
+using std::string;
+
 class actions_table
 {
 public:
