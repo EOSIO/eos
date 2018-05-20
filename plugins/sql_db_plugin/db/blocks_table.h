@@ -17,7 +17,7 @@ public:
 
     void drop();
     void create();
-    void add(chain::block_state_ptr block);
+    void add(chain::signed_block_ptr block);
 
 private:
     std::shared_ptr<soci::session> m_session;

@@ -36,18 +36,18 @@ void transactions_table::create()
             "updated_at DATETIME)";
 }
 
-void transactions_table::add(chain::transaction_metadata_ptr transaction)
+void transactions_table::add(chain::transaction transaction)
 {
-    const auto transaction_id_str = transaction->trx.id().str();
+    const auto transaction_id_str = transaction.id().str();
     const auto expiration = std::chrono::milliseconds{
-                    std::chrono::seconds{transaction->trx.expiration.sec_since_epoch()}
+                    std::chrono::seconds{transaction.expiration.sec_since_epoch()}
                 }.count();
 
     *m_session << "INSERT INTO transactions(id, sequence_num, block_id, ref_block_prefix, status,"
             "expiration, pending, created_at, type, updated_at) VALUES (:id, :se, :bi, :rb, :st, :ex, :pe, :ca, :ty, :ua)",
             soci::use(transaction_id_str),
-            soci::use(transaction->trx.ref_block_num), // TODO: proper fields
-            soci::use(transaction->trx.ref_block_prefix),
+            soci::use(transaction.ref_block_num), // TODO: proper fields
+            soci::use(transaction.ref_block_prefix),
             soci::use(transaction_id_str),
             soci::use(expiration),
             soci::use(1),

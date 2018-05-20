@@ -28,7 +28,8 @@ void actions_table::create()
             "data TEXT)";
 }
 
-void actions_table::add(chain::action action){
+void actions_table::add(chain::action action)
+{
 
     chain::abi_def abi;
     std::string abi_def_account;
