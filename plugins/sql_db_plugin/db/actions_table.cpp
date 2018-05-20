@@ -98,7 +98,7 @@ void actions_table::add(chain::action action)
                 soci::use(to_name),
                 soci::use(asset_quantity.sym.name());
         if (exist > 0) {
-            *m_session << "UPDATE tokens SET amount = amount + :am WHERE account = :ac AND symbol :sy",
+            *m_session << "UPDATE tokens SET amount = amount + :am WHERE account = :ac AND symbol = :sy",
                     soci::use(asset_quantity.to_real()),
                     soci::use(to_name),
                     soci::use(asset_quantity.sym.name());
@@ -109,7 +109,7 @@ void actions_table::add(chain::action action)
                     soci::use(asset_quantity.sym.name());
         }
 
-        *m_session << "UPDATE tokens SET amount = amount - :am WHERE account = :ac AND symbol :sy",
+        *m_session << "UPDATE tokens SET amount = amount - :am WHERE account = :ac AND symbol = :sy",
                 soci::use(asset_quantity.to_real()),
                 soci::use(from_name),
                 soci::use(asset_quantity.sym.name());
