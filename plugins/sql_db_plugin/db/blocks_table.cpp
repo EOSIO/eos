@@ -13,7 +13,7 @@ blocks_table::blocks_table(std::shared_ptr<soci::session> session):
 void blocks_table::drop()
 {
     try {
-        *m_session << "drop table blocks";
+        *m_session << "DROP TABLE blocks";
     }
     catch(std::exception& e){
         wlog(e.what());

@@ -14,7 +14,7 @@ transactions_table::transactions_table(std::shared_ptr<soci::session> session):
 void transactions_table::drop()
 {
     try {
-        *m_session << "drop table transactions";
+        *m_session << "DROP TABLE transactions";
     }
     catch(std::exception& e){
         wlog(e.what());

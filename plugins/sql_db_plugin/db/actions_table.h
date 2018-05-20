@@ -11,6 +11,7 @@
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/abi_def.hpp>
+#include <eosio/chain/asset.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
 namespace eosio {
