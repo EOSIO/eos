@@ -19,7 +19,7 @@ set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 4)
-set(VERSION_MINOR 0)
+set(VERSION_MINOR 1)
 set(VERSION_PATCH 0)
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
@@ -179,6 +179,18 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 add_subdirectory( externals )
+
+if ("${CORE_SYMBOL_NAME}" STREQUAL "")
+  set( CORE_SYMBOL_NAME "SYS" )
+endif()
+string(TOUPPER ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME)
+
+string(LENGTH ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME_LENGTH)
+if (CORE_SYMBOL_NAME_LENGTH GREATER 7)
+  message(FATAL_ERROR "CORE_SYMBOL_NAME lenght must be a between 1 and 7 characters")
+endif()
+
+message( STATUS "Using ${CORE_SYMBOL_NAME} as CORE symbol name")
 
 include(wasm)
 

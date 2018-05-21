@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['n',['N',['../dispatcher_8hpp.html#af9c1edb0e0da55ec6ba09f32f6839529',1,'N():&#160;dispatcher.hpp'],['../generic__currency_8hpp.html#af9c1edb0e0da55ec6ba09f32f6839529',1,'N():&#160;generic_currency.hpp'],['../exchange_8cpp.html#af9c1edb0e0da55ec6ba09f32f6839529',1,'N():&#160;exchange.cpp'],['../tgamma_8c.html#a0240ac851181b84ac374872dc5434ee4',1,'N():&#160;tgamma.c']]],
+  ['n',['N',['../dispatcher_8hpp.html#af9c1edb0e0da55ec6ba09f32f6839529',1,'N():&#160;dispatcher.hpp'],['../exchange_8cpp.html#af9c1edb0e0da55ec6ba09f32f6839529',1,'N():&#160;exchange.cpp'],['../tgamma_8c.html#a0240ac851181b84ac374872dc5434ee4',1,'N():&#160;tgamma.c']]],
   ['n_5f6pack',['N_6PACK',['../ioctl_8h.html#aba7ae550cb77cdaf84350207f654f3c8',1,'ioctl.h']]],
   ['n_5fax25',['N_AX25',['../ioctl_8h.html#a018f4f7bce02a1fee83d7e0eacf544f2',1,'ioctl.h']]],
   ['n_5fhci',['N_HCI',['../ioctl_8h.html#ac88878acfb3b0c02dcccef5eb84e5730',1,'ioctl.h']]],

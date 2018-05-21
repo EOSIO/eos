@@ -5,7 +5,6 @@
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
-#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
@@ -723,22 +722,22 @@ class crypto_api : public context_aware_api {
 
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
          auto result = fc::sha256::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
          auto result = fc::sha1::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
          auto result = fc::sha512::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
          auto result = fc::ripemd160::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
@@ -903,11 +902,28 @@ public:
       FC_ASSERT( false, "abort() called");
    }
 
-   void eosio_assert(bool condition, null_terminated_ptr str) {
-      if( !condition ) {
-         std::string message( str );
+   // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
+   void eosio_assert( bool condition, null_terminated_ptr msg ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         std::string message( msg );
          edump((message));
-         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+      }
+   }
+
+   void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         std::string message( msg, msg_len );
+         edump((message));
+         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+      }
+   }
+
+   void eosio_assert_code( bool condition, uint64_t error_code ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         edump((error_code));
+         EOS_THROW( eosio_assert_code_exception,
+                    "assertion failure with error code: ${error_code}", ("error_code", error_code) );
       }
    }
 
@@ -946,6 +962,7 @@ class console_api : public context_aware_api {
       console_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
+      // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
       }
@@ -1258,9 +1275,9 @@ class transaction_api : public context_aware_api {
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
-      void cancel_deferred( const unsigned __int128& val ) {
+      bool cancel_deferred( const unsigned __int128& val ) {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
-         context.cancel_deferred_transaction( (unsigned __int128)sender_id );
+         return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
 };
 
@@ -1709,9 +1726,11 @@ REGISTER_INTRINSICS(system_api,
 );
 
 REGISTER_INTRINSICS(context_free_system_api,
-   (abort,        void()         )
-   (eosio_assert, void(int, int) )
-   (eosio_exit,   void(int)      )
+   (abort,                void()              )
+   (eosio_assert,         void(int, int)      )
+   (eosio_assert_message, void(int, int, int) )
+   (eosio_assert_code,    void(int, int64_t)  )
+   (eosio_exit,           void(int)           )
 );
 
 REGISTER_INTRINSICS(action_api,
@@ -1755,7 +1774,7 @@ REGISTER_INTRINSICS(transaction_api,
    (send_inline,               void(int, int)               )
    (send_context_free_inline,  void(int, int)               )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
-   (cancel_deferred,           void(int)                    )
+   (cancel_deferred,           int(int)                     )
 );
 
 REGISTER_INTRINSICS(context_free_api,

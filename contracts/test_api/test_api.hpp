@@ -71,6 +71,7 @@ struct test_action {
   static void test_abort() __attribute__ ((noreturn)) ;
   static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
   static void test_publication_time();
+  static void test_assert_code();
 };
 
 struct test_db {
@@ -169,7 +170,8 @@ struct test_transaction {
   static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_deferred_transaction_replace(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_deferred_tx_with_dtt_action();
-  static void cancel_deferred_transaction();
+  static void cancel_deferred_transaction_success();
+  static void cancel_deferred_transaction_not_found();
   static void send_cf_action();
   static void send_cf_action_fail();
   static void stateful_api();

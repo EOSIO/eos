@@ -63,7 +63,7 @@ var searchData=
   ['default_5fthrows_5fbad_5falloc_2epass_2ecpp',['default_throws_bad_alloc.pass.cpp',['../default__throws__bad__alloc_8pass_8cpp.html',1,'']]],
   ['defaultfloat_2epass_2ecpp',['defaultfloat.pass.cpp',['../defaultfloat_8pass_8cpp.html',1,'']]],
   ['defaultonly_2eh',['DefaultOnly.h',['../_default_only_8h.html',1,'']]],
-  ['delegate_5fbandwidth_2ehpp',['delegate_bandwidth.hpp',['../delegate__bandwidth_8hpp.html',1,'']]],
+  ['delegate_5fbandwidth_2ecpp',['delegate_bandwidth.cpp',['../delegate__bandwidth_8cpp.html',1,'']]],
   ['delete_5falign_5fval_5ft_5freplace_2epass_2ecpp',['delete_align_val_t_replace.pass.cpp',['../new_8delete_8array_2delete__align__val__t__replace_8pass_8cpp.html',1,'(Global Namespace)'],['../new_8delete_8single_2delete__align__val__t__replace_8pass_8cpp.html',1,'(Global Namespace)']]],
   ['deleter_5ftypes_2eh',['deleter_types.h',['../deleter__types_8h.html',1,'']]],
   ['demangle_2eh',['demangle.h',['../demangle_8h.html',1,'']]],
