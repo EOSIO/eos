@@ -7,6 +7,8 @@
 
 #include <fc/io/json.hpp>
 
+#include <boost/algorithm/string.hpp>
+
 namespace eosio { 
    using namespace chain;
 
@@ -117,31 +119,41 @@ namespace eosio {
       }
    }
 
+   struct filter_entry {
+      name receiver;
+      name action;
+      name actor;
+
+      std::tuple<name, name, name> key() const {
+         return {receiver, action, actor};
+      }
+
+      friend bool operator<( const filter_entry& a, const filter_entry& b ) {
+         return a.key() < b.key();
+      }
+   };
+
    class history_plugin_impl {
       public:
-         std::set<account_name> filter_on;
+         std::set<filter_entry> filter_on;
          chain_plugin*          chain_plug = nullptr;
 
-         bool is_filtered( const account_name& n ) {
-            return !filter_on.size() || filter_on.find(n) != filter_on.end();
-         }
          bool filter( const action_trace& act ) {
-            if( filter_on.size() == 0 ) return true;
-            if( is_filtered( act.receipt.receiver ) ) return true;
-            for( const auto& a : act.act.authorization ) {
-               if( is_filtered(  a.actor ) ) return true;
-            }
+            if( filter_on.find({ act.receipt.receiver, act.act.name, 0 }) != filter_on.end() )
+               return true;
+            for( const auto& a : act.act.authorization )
+               if( filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
+                  return true;
             return false;
          }
 
          set<account_name> account_set( const action_trace& act ) {
             set<account_name> result;
 
-            if( is_filtered( act.receipt.receiver ) )
-               result.insert( act.receipt.receiver );
-            for( const auto& a : act.act.authorization ) {
-               if( is_filtered(  a.actor ) ) result.insert( a.actor );
-            }
+            result.insert( act.receipt.receiver );
+            for( const auto& a : act.act.authorization )
+               if( filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
+                  result.insert( a.actor );
             return result;
          }
 
@@ -240,17 +252,23 @@ namespace eosio {
 
    void history_plugin::set_program_options(options_description& cli, options_description& cfg) {
       cfg.add_options()
-            ("filter_on_accounts,f", bpo::value<vector<string>>()->composing(),
-             "Track only transactions whose scopes involve the listed accounts. Default is to track all transactions.")
+            ("filter_on,f", bpo::value<vector<string>>()->composing(),
+             "Track actions which match receiver:action:actor. Actor may be blank to include all. Receiver and Action may not be blank.")
             ;
    }
 
    void history_plugin::plugin_initialize(const variables_map& options) {
-      if(options.count("filter_on_accounts"))
+      if( options.count("filter_on") )
       {
-         auto foa = options.at("filter_on_accounts").as<vector<string>>();
-         for(auto filter_account : foa)
-            my->filter_on.emplace(filter_account);
+         auto fo = options.at("filter_on").as<vector<string>>();
+         for( auto& s : fo ) {
+            std::vector<std::string> v;
+            boost::split(v, s, boost::is_any_of(":"));
+            EOS_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter_on", ("s",s));
+            filter_entry fe{ v[0], v[1], v[2] };
+            EOS_ASSERT(fe.receiver.value && fe.action.value, fc::invalid_arg_exception, "Invalid value ${s} for --filter_on", ("s",s));
+            my->filter_on.insert( fe );
+         }
       }
 
       my->chain_plug = app().find_plugin<chain_plugin>();
