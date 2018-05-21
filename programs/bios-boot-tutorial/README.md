@@ -7,6 +7,8 @@ The script can be run with no arguments directly from the `programs/bios-boot-tu
 ``` 
 cd programs/bios-boot-tutorial
 
+pip3 install numpy
+
 ./bios-boot-tutorial.py
 ```
 
