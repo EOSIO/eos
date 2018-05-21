@@ -2,6 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#pragma once
+
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
@@ -35,7 +37,13 @@ namespace eosio_system {
 class eosio_system_tester : public TESTER {
 public:
 
-   eosio_system_tester() {
+   eosio_system_tester()
+   : eosio_system_tester([](TESTER& ) {}){}
+
+   template<typename Lambda>
+   eosio_system_tester(Lambda setup) {
+      setup(*this);
+
       produce_blocks( 2 );
 
       create_accounts( { N(eosio.token) } );
@@ -83,7 +91,7 @@ public:
       }
    }
 
-   transaction_trace_ptr create_account_with_resources( account_name a, account_name creator ) {
+   transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, uint32_t ram_bytes = 8000 ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -102,7 +110,7 @@ public:
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
-                                            ("bytes", 8000) )
+                                            ("bytes", ram_bytes) )
                               );
       trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
@@ -386,7 +394,7 @@ public:
    abi_serializer token_abi_ser;
 };
 
-fc::mutable_variant_object voter( account_name acct ) {
+inline fc::mutable_variant_object voter( account_name acct ) {
    return mutable_variant_object()
       ("owner", acct)
       ("proxy", name(0).to_string())
@@ -401,15 +409,15 @@ fc::mutable_variant_object voter( account_name acct ) {
       ;
 }
 
-fc::mutable_variant_object voter( account_name acct, const asset& vote_stake ) {
+inline fc::mutable_variant_object voter( account_name acct, const asset& vote_stake ) {
    return voter( acct )( "staked", vote_stake.amount );
 }
 
-fc::mutable_variant_object voter( account_name acct, int64_t vote_stake ) {
+inline fc::mutable_variant_object voter( account_name acct, int64_t vote_stake ) {
    return voter( acct )( "staked", vote_stake );
 }
 
-fc::mutable_variant_object proxy( account_name acct ) {
+inline fc::mutable_variant_object proxy( account_name acct ) {
    return voter( acct )( "is_proxy", 1 );
 }
 
