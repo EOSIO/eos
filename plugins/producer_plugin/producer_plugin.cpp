@@ -656,6 +656,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 }
 
 void producer_plugin_impl::schedule_production_loop() {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    _timer.cancel();
 
    auto result = start_block();
@@ -671,7 +672,6 @@ void producer_plugin_impl::schedule_production_loop() {
          }
       });
    } else if (_pending_block_mode == pending_block_mode::producing) {
-      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
       // we succeeded but block may be exhausted
       if (result == start_block_result::succeeded) {
@@ -708,7 +708,7 @@ void producer_plugin_impl::schedule_production_loop() {
       }
 
       if (wake_up_time) {
-         fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change at ", ("time", wake_up_time));
+         fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
          _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
          _timer.async_wait([&](const boost::system::error_code& ec) {
