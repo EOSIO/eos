@@ -84,6 +84,8 @@ const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overh
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
 const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multiplier on contract size to account for multiple copies and cached compilation
 
+const static uint32_t   hashing_checktime_block_size       = 1024;  /// call checktime from hashing intrinsic once per this number of bytes
+
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::binaryen;
 
 /**

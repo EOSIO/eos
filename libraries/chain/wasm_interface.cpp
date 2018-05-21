@@ -726,10 +726,11 @@ class crypto_api : public context_aware_api {
 
       template<class Encoder> auto encode(char* data, size_t datalen) {
          Encoder e;
-         while ( datalen > 1024 ) {
-            e.write( data, 1024 );
-            data += 1024;
-            datalen -= 1024;
+         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
+         while ( datalen > bs ) {
+            e.write( data, bs );
+            data += bs;
+            datalen -= bs;
             context.trx_context.checktime();
          }
          e.write( data, datalen );
