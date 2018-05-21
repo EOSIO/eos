@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -72,14 +72,13 @@ $(function() {
 <div class="title">tic_tac_toe.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;eosiolib/eos.hpp&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="eosio_8hpp_source.html">eosiolib/eosio.hpp</a>&gt;</code><br />
 </div>
 <p><a href="tic__tac__toe_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtic__tac__toe_1_1game.html">tic_tac_toe::game</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Data structure to hold game information.  <a href="structtic__tac__toe_1_1game.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtic__tac__toe_1_1create.html">tic_tac_toe::create</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Action to create new game.  <a href="structtic__tac__toe_1_1create.html#details">More...</a><br /></td></tr>
@@ -104,9 +103,9 @@ Namespaces</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a3455767150132ad7ccdfe8c0e5a71989"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989">tic_tac_toe::Games</a> = eosio::table&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(tic.tac.toe), <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(tic.tac.toe), <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(games), game, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
-<tr class="memdesc:a3455767150132ad7ccdfe8c0e5a71989"><td class="mdescLeft">&#160;</td><td class="mdescRight">table to store list of games  <a href="namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989">More...</a><br /></td></tr>
-<tr class="separator:a3455767150132ad7ccdfe8c0e5a71989"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a006d13b1b8d7c9d34a554e7be92d742d"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1multi__index.html">eosio::multi_index</a>&lt; games_account, game &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacetic__tac__toe.html#a006d13b1b8d7c9d34a554e7be92d742d">tic_tac_toe::games</a></td></tr>
+<tr class="memdesc:a006d13b1b8d7c9d34a554e7be92d742d"><td class="mdescLeft">&#160;</td><td class="mdescRight">table definition, used to store existing games and their current state  <a href="namespacetic__tac__toe.html#a006d13b1b8d7c9d34a554e7be92d742d">More...</a><br /></td></tr>
+<tr class="separator:a006d13b1b8d7c9d34a554e7be92d742d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>

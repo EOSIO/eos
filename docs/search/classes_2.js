@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['b',['B',['../struct_b.html',1,'B&lt; T &gt;'],['../struct_my_n_s_1_1_b.html',1,'MyNS::B']]],
+  ['b',['B',['../struct_my_n_s_1_1_b.html',1,'MyNS::B'],['../struct_b.html',1,'B&lt; T &gt;']]],
   ['b1',['B1',['../struct_b1.html',1,'']]],
   ['b2',['B2',['../struct_b2.html',1,'']]],
   ['badcomparator',['BadComparator',['../struct_bad_comparator.html',1,'']]],
@@ -31,6 +31,7 @@ var searchData=
   ['bit_5fone',['bit_one',['../structbit__one.html',1,'']]],
   ['bit_5fzero',['bit_zero',['../structbit__zero.html',1,'']]],
   ['block_5fheader',['block_header',['../structeosiosystem_1_1block__header.html',1,'eosiosystem']]],
+  ['block_5ftimestamp',['block_timestamp',['../classeosio_1_1block__timestamp.html',1,'eosio']]],
   ['blockchain_5fparameters',['blockchain_parameters',['../structeosio_1_1blockchain__parameters.html',1,'eosio']]],
   ['blowsuponconstcopy',['BlowsUpOnConstCopy',['../struct_blows_up_on_const_copy.html',1,'']]],
   ['bool',['Bool',['../struct_bool.html',1,'']]],
