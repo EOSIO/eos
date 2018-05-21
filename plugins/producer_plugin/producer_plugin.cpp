@@ -6,6 +6,7 @@
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/transaction_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -232,6 +233,12 @@ class producer_plugin_impl {
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         auto id = trx->id();
+         if( chain.db().find<transaction_object, by_trx_id>(id) ) {
+            return transaction_trace_ptr();
+         }
+
          return publish_results_of(trx, _transaction_ack_channel, [&]() -> transaction_trace_ptr {
             while (true) {
                chain::controller& chain = app().get_plugin<chain_plugin>().chain();
