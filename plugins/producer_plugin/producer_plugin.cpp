@@ -510,19 +510,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       _pending_block_mode = pending_block_mode::speculating;
    } else if( _producers.find(scheduled_producer.producer_name) == _producers.end()) {
       _pending_block_mode = pending_block_mode::speculating;
-   } else if (_pending_block_mode == pending_block_mode::producing) {
-      if (private_key_itr == _private_keys.end()) {
-         ilog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
-         _pending_block_mode = pending_block_mode::speculating;
-      }
-   } else if (_pending_block_mode == pending_block_mode::producing) {
+   } else if (private_key_itr == _private_keys.end()) {
+      ilog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
+      _pending_block_mode = pending_block_mode::speculating;
+   }
+
+   if (_pending_block_mode == pending_block_mode::producing) {
       // determine if our watermark excludes us from producing at this point
       if (currrent_watermark_itr != _producer_watermarks.end()) {
          if (currrent_watermark_itr->second >= hbs->block_num + 1) {
             elog("Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})",
-                 ("producer", scheduled_producer.producer_name)
-                         ("watermark", currrent_watermark_itr->second)
-                         ("head_block_num", hbs->block_num));
+                ("producer", scheduled_producer.producer_name)
+                ("watermark", currrent_watermark_itr->second)
+                ("head_block_num", hbs->block_num));
             _pending_block_mode = pending_block_mode::speculating;
          }
       }
@@ -550,7 +550,14 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       chain.start_block(block_time, blocks_to_confirm);
    } FC_LOG_AND_DROP();
 
-   if (chain.pending_block_state()) {
+   const auto& pbs = chain.pending_block_state();
+   if (pbs) {
+
+      if (_pending_block_mode == pending_block_mode::producing && pbs->block_signing_key != scheduled_producer.block_signing_key) {
+         elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.block_signing_key)("actual", pbs->block_signing_key));
+         _pending_block_mode = pending_block_mode::speculating;
+      }
+
       if (_pending_block_mode == pending_block_mode::producing) {
          bool exhausted = false;
          auto unapplied_trxs = chain.get_unapplied_transactions();
@@ -698,23 +705,30 @@ void producer_plugin_impl::schedule_production_loop() {
 }
 
 bool producer_plugin_impl::maybe_produce_block() {
-   bool result = false;
+   auto reschedule = fc::make_scoped_exit([this]{
+      schedule_production_loop();
+   });
+
    try {
       produce_block();
-      result = true;
+      return true;
    } FC_LOG_AND_DROP();
-   schedule_production_loop();
 
-   return result;
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain.abort_block();
+   return false;
 }
 
 void producer_plugin_impl::produce_block() {
+   FC_ASSERT(_pending_block_mode == pending_block_mode::producing, "called produce_block while not actually producing");
+
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    const auto& pbs = chain.pending_block_state();
    const auto& hbs = chain.head_block_state();
    FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
    auto private_key_itr = _private_keys.find( pbs->block_signing_key );
 
+   FC_ASSERT(private_key_itr != _private_keys.end(), "Attempting to produce a block for which we don't have the private key");
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
