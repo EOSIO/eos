@@ -114,6 +114,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
          ;
    cli.add_options()
+         ("force-all-checks", bpo::bool_switch()->default_value(false),
+          "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
          ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -173,7 +175,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
    }
 
-
    if(options.count("checkpoint"))
    {
       auto cps = options.at("checkpoint").as<vector<string>>();
@@ -198,12 +199,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->chain_config->read_only = my->readonly;
    my->chain_config->shared_memory_size = my->shared_memory_size;
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
-   if (my->genesis_timestamp.sec_since_epoch() > 0) {
+   if( my->genesis_timestamp.sec_since_epoch() > 0 ) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
 
-   if(my->wasm_runtime)
+   if( my->wasm_runtime )
       my->chain_config->wasm_runtime = *my->wasm_runtime;
+
+   if( options.count("force-all-checks") )
+      my->chain_config->force_all_checks = true;
 
    my->chain.emplace(*my->chain_config);
 
