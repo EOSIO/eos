@@ -172,6 +172,8 @@ namespace eosio { namespace chain {
          my->head = b;
          my->head_id = b->id();
 
+         flush();
+
          return pos;
       }
       FC_LOG_AND_RETHROW()
