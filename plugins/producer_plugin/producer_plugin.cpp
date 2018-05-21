@@ -35,6 +35,15 @@ using boost::multi_index_container;
 using std::string;
 using std::vector;
 
+// HACK TO EXPOSE LOGGER MAP
+
+namespace fc {
+   extern std::unordered_map<std::string,logger>& get_logger_map();
+}
+
+const fc::string logger_name("producer_plugin");
+fc::logger _log;
+
 namespace eosio {
 
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
@@ -190,6 +199,7 @@ class producer_plugin_impl {
       };
 
       void on_incoming_block(const signed_block_ptr& block) {
+         fc_dlog(_log, "received incoming block ${id}", ("id", block->id()));
 
          FC_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds(1)), "received a block from the future, ignoring it" );
 
@@ -220,6 +230,7 @@ class producer_plugin_impl {
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
+         fc_dlog(_log, "received incoming transaction ${id}", ("id", trx->id()));
          return publish_results_of(trx, _transaction_ack_channel, [&]() -> transaction_trace_ptr {
             while (true) {
                chain::controller& chain = app().get_plugin<chain_plugin>().chain();
@@ -238,10 +249,14 @@ class producer_plugin_impl {
                   if (failure_is_subjective(*trace->except, deadline_is_subjective) ) {
                      // if we failed because the block was exhausted push the block out and try again if it succeeds
                      if (_pending_block_mode == pending_block_mode::producing ) {
+                        fc_dlog(_log, "flushing block under production");
+
                         if (maybe_produce_block()) {
                            continue;
                         }
                      } else if (_pending_block_mode == pending_block_mode::speculating) {
+                        fc_dlog(_log, "dropping block under speculation");
+
                         chain.abort_block();
                         schedule_production_loop();
                         continue;
@@ -417,6 +432,11 @@ void producer_plugin::plugin_startup()
    my->schedule_production_loop();
 
    ilog("producer plugin:  plugin_startup() end");
+
+   if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {
+      _log = fc::get_logger_map()[logger_name];
+   }
+
 } FC_CAPTURE_AND_RETHROW() }
 
 void producer_plugin::plugin_shutdown() {
@@ -658,17 +678,17 @@ void producer_plugin_impl::schedule_production_loop() {
          // ship this block off no later than its deadline
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
          _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count()));
-         dlog("Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.pending_block_state()->block_num)("time",chain.pending_block_time()));
+         fc_dlog(_log, "Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.pending_block_state()->block_num)("time",chain.pending_block_time()));
       } else {
          // ship this block off immediately
          _timer.expires_from_now( boost::posix_time::microseconds( 0 ));
-         dlog("Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.pending_block_state()->block_num));
+         fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.pending_block_state()->block_num));
       }
 
       _timer.async_wait([&](const boost::system::error_code& ec) {
          if (ec != boost::asio::error::operation_aborted) {
             auto res = maybe_produce_block();
-            dlog("Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)("res", res) );
+            fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)("res", res) );
          }
       });
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty()){
@@ -688,7 +708,7 @@ void producer_plugin_impl::schedule_production_loop() {
       }
 
       if (wake_up_time) {
-         dlog("Specualtive Block Created; Scheduling Speculative/Production Change at ", ("time", wake_up_time));
+         fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change at ", ("time", wake_up_time));
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
          _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
          _timer.async_wait([&](const boost::system::error_code& ec) {
@@ -697,10 +717,10 @@ void producer_plugin_impl::schedule_production_loop() {
             }
          });
       } else {
-         dlog("Specualtive Block Created; Not Scheduling Speculative/Production, no local producers had valid wake up times");
+         fc_dlog(_log, "Specualtive Block Created; Not Scheduling Speculative/Production, no local producers had valid wake up times");
       }
    } else {
-      dlog("Specualtive Block Created");
+      fc_dlog(_log, "Specualtive Block Created");
    }
 }
 
@@ -714,6 +734,7 @@ bool producer_plugin_impl::maybe_produce_block() {
       return true;
    } FC_LOG_AND_DROP();
 
+   fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    chain.abort_block();
    return false;
