@@ -159,7 +159,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    if (options.at("replay-blockchain").as<bool>()) {
-      ilog("Replay requested: wiping database");
+      ilog("Replay requested: wiping database ${db}", 
+           ("db", (app().data_dir()/default_shared_memory_dir).generic_string()) );
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
    }
    if (options.at("resync-blockchain").as<bool>()) {
@@ -199,6 +200,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if(my->wasm_runtime)
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
+   wdump((*my->chain_config));
    my->chain.emplace(*my->chain_config);
 
    // set up method providers

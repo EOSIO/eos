@@ -96,7 +96,7 @@ struct controller_impl {
         cfg.shared_memory_size ),
     unconfirmed_blocks( cfg.block_log_dir/"unconfirmed",
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.unconfirmed_cache_size ), 
+        cfg.unconfirmed_cache_size, true/*allow dirty*/ ), 
     blog( cfg.block_log_dir ),
     fork_db( cfg.shared_memory_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -205,9 +205,11 @@ struct controller_impl {
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
                  ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
 
+      /*
       edump((unconf_blocknum));
       FC_ASSERT( head->block_num == unconf_blocknum, "unconfirmed block database out of sync",
                  ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
+                 */
 
    }
 
