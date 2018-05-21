@@ -42,7 +42,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
    create_account_with_resources(N(testram11111),N(eosio), init_request_bytes);
    create_account_with_resources(N(testram22222),N(eosio), init_request_bytes);
    produce_blocks(10);
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "testram11111", "10.0000 EOS", "5.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {
@@ -108,7 +108,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 10)
                            ("size", 1920)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    wlog("ram_tests 2    %%%%%%");
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage, rlm.get_account_ram_usage(N(testram11111)));
@@ -130,7 +130,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 11)
                            ("size", 1810)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage - 1000, rlm.get_account_ram_usage(N(testram11111)));
 
@@ -142,7 +142,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 11)
                            ("size", 1760)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage - 1000, rlm.get_account_ram_usage(N(testram11111)));
 
@@ -167,7 +167,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 12)
                            ("size", 1900)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
 
    // verify that the new entry is under the allocation bytes limit
@@ -186,7 +186,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 13)
                            ("size", 1720)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
 
    // verify that the new entry is under the allocation bytes limit
@@ -205,7 +205,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 13)
                            ("size", 1900)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
 
    wlog("ram_tests 18    %%%%%%");
@@ -225,7 +225,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 21)
                            ("size", 1930)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram22222 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram22222 has insufficient ram"));
    produce_blocks(1);
 
    // verify that new entries for testram22222 are under the allocation bytes limit
@@ -244,7 +244,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("to", 22)
                            ("size", 1910)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram22222 has insufficient ram bytes"));
+                           fc_exception_message_starts_with("account testram22222 has insufficient ram"));
    produce_blocks(1);
 
    tester->push_action( N(testram11111), N(rmentry), N(testram11111), mvo()
