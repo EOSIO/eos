@@ -1,6 +1,6 @@
-# Ricardian Contract for VOTEPRODUCER
+# Ricardian Contract for *voteproducer*
 
-This Ricardian contract for the system command VOTEPRODUCER is legally binding and can be used in the event of a dispute. Disputes shall be settled in this system's default arbitration forum.
+This Ricardian contract for the system command *voteproducer* is legally binding and can be used in the event of a dispute.
 
 
 ## VOTEPRODUCER (voter; array:producers)
