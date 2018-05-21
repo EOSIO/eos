@@ -242,7 +242,7 @@ class producer_plugin_impl {
                            continue;
                         }
                      } else if (_pending_block_mode == pending_block_mode::speculating) {
-                        abort_block();
+                        chain.abort_block();
                         schedule_production_loop();
                         continue;
                      }
@@ -644,11 +644,12 @@ void producer_plugin_impl::schedule_production_loop() {
          }
       });
    } else if (_pending_block_mode == pending_block_mode::producing) {
+      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
       // we succeeded but block may be exhausted
       if (result == start_block_result::succeeded) {
          // ship this block off no later than its deadline
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
-         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
          _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count()));
          dlog("Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.pending_block_state()->block_num)("time",chain.pending_block_time()));
       } else {
@@ -690,9 +691,9 @@ void producer_plugin_impl::schedule_production_loop() {
          });
       } else {
          dlog("Specualtive Block Created; Not Scheduling Speculative/Production, no local producers had valid wake up times");
-      } else {
-         dlog("Specualtive Block Created");
       }
+   } else {
+      dlog("Specualtive Block Created");
    }
 }
 
