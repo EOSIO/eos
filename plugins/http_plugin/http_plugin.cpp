@@ -146,8 +146,8 @@ namespace enumivo {
                auto resource = con->get_uri()->get_resource();
                auto handler_itr = url_handlers.find(resource);
                if(handler_itr != url_handlers.end()) {
-                  handler_itr->second(resource, body, [con](int code, string body) {
-                     con->set_body(body);
+                  handler_itr->second(resource, body, [con](auto code, auto&& body) {
+                     con->set_body(std::move(body));
                      con->set_status(websocketpp::http::status_code::value(code));
                   });
                } else {
