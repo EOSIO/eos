@@ -166,7 +166,7 @@ namespace eosio {
             //idump((a.account)(a.action_sequence_num)(a.action_sequence_num));
          }
 
-         void on_account_action( const action_trace& at ) {
+         void on_system_action( const action_trace& at ) {
             auto& chain = chain_plug->chain();
             auto& db = chain.db();
             if( at.act.name == N(newaccount) )
@@ -214,10 +214,9 @@ namespace eosio {
                for( auto a : aset ) {
                   record_account_action( a, at );
                }
-
-               if( at.receipt.receiver == chain::config::system_account_name && is_filtered( at.receipt.receiver ) )
-                  on_account_action( at );
             }
+            if( at.receipt.receiver == chain::config::system_account_name )
+               on_system_action( at );
             for( const auto& iline : at.inline_traces ) {
                on_action_trace( iline );
             }
