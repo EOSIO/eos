@@ -55,12 +55,13 @@ namespace eosiosystem {
             auto idx = bids.get_index<N(highbid)>();
             auto highest = idx.begin();
             if( highest != idx.end() &&
-                highest->high_bid > 0 && 
+                highest->high_bid > 0 &&
                 highest->last_bid_time < (current_time() - useconds_per_day) &&
-                (current_time() - _gstate.thresh_activated_stake_time) > 14 * useconds_per_day ){
-               _gstate.last_name_close = timestamp;
-               idx.modify( highest, 0, [&]( auto& b ){
-                  b.high_bid = -b.high_bid;
+                _gstate.thresh_activated_stake_time > 0 &&
+                (current_time() - _gstate.thresh_activated_stake_time) > 14 * useconds_per_day ) {
+                   _gstate.last_name_close = timestamp;
+                   idx.modify( highest, 0, [&]( auto& b ){
+                         b.high_bid = -b.high_bid;
                });
             }
          }
