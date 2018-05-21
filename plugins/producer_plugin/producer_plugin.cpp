@@ -661,13 +661,25 @@ void producer_plugin_impl::schedule_production_loop() {
 
    auto result = start_block();
 
+   /*
+    * HACK ALERT
+    * Boost timers can be in a state where a handler has not yet executed but is not abortable.
+    * As this method needs to mutate state handlers depend on for proper functioning to maintain
+    * invariants for other code (namely accepting incoming transactions in a nearly full block)
+    * the handlers capture a coorelation ID at the time they are set.  When they are executed
+    * they must check that correlation_id against the global ordinal.  If it does not match that
+    * implies that this method has been called with the handler in the state where it should be
+    * cancelled but wasn't able to be.
+    */
+   static uint32_t _coorelation_id = 0;
+
    if (result == start_block_result::failed) {
       elog("Failed to start a pending block, will try again later");
       _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
 
       // we failed to start a block, so try again later?
-      _timer.async_wait([&](const boost::system::error_code& ec) {
-         if (ec != boost::asio::error::operation_aborted) {
+      _timer.async_wait([&,cid=_coorelation_id++](const boost::system::error_code& ec) {
+         if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
             schedule_production_loop();
          }
       });
@@ -685,8 +697,8 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.pending_block_state()->block_num));
       }
 
-      _timer.async_wait([&](const boost::system::error_code& ec) {
-         if (ec != boost::asio::error::operation_aborted) {
+      _timer.async_wait([&,cid=_coorelation_id++](const boost::system::error_code& ec) {
+         if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
             auto res = maybe_produce_block();
             fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)("res", res) );
          }
@@ -711,16 +723,16 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
          _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
-         _timer.async_wait([&](const boost::system::error_code& ec) {
-            if (ec != boost::asio::error::operation_aborted) {
+         _timer.async_wait([&,cid=_coorelation_id++](const boost::system::error_code& ec) {
+            if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
                schedule_production_loop();
             }
          });
       } else {
-         fc_dlog(_log, "Specualtive Block Created; Not Scheduling Speculative/Production, no local producers had valid wake up times");
+         fc_dlog(_log, "Speculative Block Created; Not Scheduling Speculative/Production, no local producers had valid wake up times");
       }
    } else {
-      fc_dlog(_log, "Specualtive Block Created");
+      fc_dlog(_log, "Speculative Block Created");
    }
 }
 
