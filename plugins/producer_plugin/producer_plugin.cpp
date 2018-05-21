@@ -186,6 +186,12 @@ class producer_plugin_impl {
 
 
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+         /* de-dupe here... no point in aborting block if we already know the block */
+         auto id = block->id();
+         auto existing = chain.fetch_block_by_id( id );
+         if( existing ) { return; }
+
          // abort the pending block
          chain.abort_block();
 
@@ -200,7 +206,17 @@ class producer_plugin_impl {
          });
 
          // push the new block
-         chain.push_block(block);
+         bool except = false;
+         try {
+            chain.push_block(block);
+         } catch( const fc::exception& e ) {
+            elog((e.to_detail_string()));
+            except = true;
+         }
+         if( except ) {
+            app().get_channel<channels::rejected_block>().publish( block );
+            return;
+         }
 
          if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
             _production_enabled = true;

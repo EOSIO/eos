@@ -1,3 +1,4 @@
+add_subdirectory(bnet_plugin)
 add_subdirectory(net_plugin)
 add_subdirectory(net_api_plugin)
 add_subdirectory(http_plugin)
