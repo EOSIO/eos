@@ -2,8 +2,9 @@ var searchData=
 [
   ['s',['S',['../struct_s.html',1,'']]],
   ['sd',['SD',['../struct_s_d.html',1,'']]],
-  ['secondary_5findex_5fdb_5ffunctions',['secondary_index_db_functions',['../structeosio_1_1secondary__index__db__functions.html',1,'eosio']]],
-  ['secondary_5findex_5fdb_5ffunctions_3c_20double_20_3e',['secondary_index_db_functions&lt; double &gt;',['../structeosio_1_1secondary__index__db__functions_3_01double_01_4.html',1,'eosio']]],
+  ['secondary_5findex_5fdb_5ffunctions',['secondary_index_db_functions',['../structeosio_1_1__multi__index__detail_1_1secondary__index__db__functions.html',1,'eosio::_multi_index_detail']]],
+  ['secondary_5fkey_5ftraits',['secondary_key_traits',['../structeosio_1_1__multi__index__detail_1_1secondary__key__traits.html',1,'eosio::_multi_index_detail']]],
+  ['secondary_5fkey_5ftraits_3c_20key256_20_3e',['secondary_key_traits&lt; key256 &gt;',['../structeosio_1_1__multi__index__detail_1_1secondary__key__traits_3_01key256_01_4.html',1,'eosio::_multi_index_detail']]],
   ['selectionsampleexpectations',['SelectionSampleExpectations',['../struct_selection_sample_expectations.html',1,'']]],
   ['semid_5fds',['semid_ds',['../structsemid__ds.html',1,'']]],
   ['sequencecontainerchecks',['SequenceContainerChecks',['../struct_sequence_container_checks.html',1,'']]],
@@ -11,7 +12,6 @@ var searchData=
   ['set_3c_20std_3a_3astring_20_3e',['set&lt; std::string &gt;',['../classstd_1_1set.html',1,'std']]],
   ['set_3c_20std_3a_3avector_3c_20int_20_3e_20_3e',['set&lt; std::vector&lt; int &gt; &gt;',['../classstd_1_1set.html',1,'std']]],
   ['set_5fowner',['set_owner',['../structproxy_1_1set__owner.html',1,'proxy']]],
-  ['settrust',['settrust',['../structidentity_1_1contract_1_1settrust.html',1,'identity::contract']]],
   ['sha256',['sha256',['../structsha256.html',1,'']]],
   ['sha512',['sha512',['../structsha512.html',1,'']]],
   ['shm_5finfo',['shm_info',['../structshm__info.html',1,'']]],
@@ -22,6 +22,7 @@ var searchData=
   ['signed_5fint',['signed_int',['../structsigned__int.html',1,'']]],
   ['simpletoken',['simpletoken',['../classsimpletoken.html',1,'']]],
   ['singleton',['singleton',['../classeosio_1_1singleton.html',1,'eosio']]],
+  ['singleton_3c_20n_28global_29_2c_20eosio_5fglobal_5fstate_20_3e',['singleton&lt; N(global), eosio_global_state &gt;',['../classeosio_1_1singleton.html',1,'eosio']]],
   ['small_5fthrows_5fon_5fcopy',['small_throws_on_copy',['../structsmall__throws__on__copy.html',1,'']]],
   ['small_5ftracked_5ft',['small_tracked_t',['../structsmall__tracked__t.html',1,'']]],
   ['small_5ftype',['small_type',['../structsmall__type.html',1,'']]],
@@ -48,5 +49,6 @@ var searchData=
   ['stringcontainerchecks',['StringContainerChecks',['../struct_string_container_checks.html',1,'']]],
   ['stringtype',['StringType',['../struct_string_type.html',1,'']]],
   ['swaptestcase',['SwapTestcase',['../struct_swap_testcase.html',1,'']]],
-  ['symbol_5ftype',['symbol_type',['../structeosio_1_1symbol__type.html',1,'eosio']]]
+  ['symbol_5ftype',['symbol_type',['../structeosio_1_1symbol__type.html',1,'eosio']]],
+  ['system_5fcontract',['system_contract',['../classeosiosystem_1_1system__contract.html',1,'eosiosystem']]]
 ];

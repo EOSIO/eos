@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -65,18 +65,19 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="headertitle">
-<div class="title">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt; Member List</div>  </div>
+<div class="title">eosio::singleton&lt; SingletonName, T &gt; Member List</div>  </div>
 </div><!--header-->
 <div class="contents">
 
-<p>This is the complete list of members for <a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a>, including all inherited members.</p>
+<p>This is the complete list of members for <a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a>, including all inherited members.</p>
 <table class="directory">
-  <tr class="even"><td class="entry"><a class="el" href="classeosio_1_1singleton.html#adff5547b7eaefdb363365cb54b12969c">exists</a>(scope_name scope=Code)</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">static</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classeosio_1_1singleton.html#a60d4f7792c73a693d188170b03ad0fb7">get</a>(scope_name scope=Code)</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">static</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classeosio_1_1singleton.html#a10cef0f3401fb0cd3c6efb8731946121">get_or_create</a>(scope_name scope=Code, const T &amp;def=T())</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">static</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classeosio_1_1singleton.html#ac14a55154c9980e5131962c340441a6c">get_or_default</a>(scope_name scope=Code, const T &amp;def=T())</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">static</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="classeosio_1_1singleton.html#a1fcaf00b7ef2e38d1d83b78188d4d703">remove</a>(scope_name scope=Code)</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">static</span></td></tr>
-  <tr><td class="entry"><a class="el" href="classeosio_1_1singleton.html#ae0bd9ead0bd82a29bfb8cf25b0f65591">set</a>(const T &amp;value=T(), scope_name scope=Code, account_name b=BillToAccount)</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">static</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classeosio_1_1singleton.html#ae6eed2e5197e5b4216450e5940ab9141">exists</a>()</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classeosio_1_1singleton.html#a53b56e4e8ed2fddd61175285afdf44d4">get</a>()</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classeosio_1_1singleton.html#a0af3f71dfd7f8946cf69b3e362cf086d">get_or_create</a>(account_name bill_to_account, const T &amp;def=T())</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classeosio_1_1singleton.html#a6a252d888f4c0b20bb3045a443267951">get_or_default</a>(const T &amp;def=T())</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classeosio_1_1singleton.html#afc70106337f2cec280dfd797a1c7920a">remove</a>()</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="classeosio_1_1singleton.html#ac8d8f06373592ea6c87267796eeda52a">set</a>(const T &amp;value, account_name bill_to_account)</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classeosio_1_1singleton.html#a427908e820e5a87ecc804842ff411a15">singleton</a>(account_name code, scope_name scope)</td><td class="entry"><a class="el" href="classeosio_1_1singleton.html">eosio::singleton&lt; SingletonName, T &gt;</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
 </table></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

@@ -69,7 +69,7 @@ var searchData=
   ['void_5fpointer_2epass_2ecpp',['void_pointer.pass.cpp',['../void__pointer_8pass_8cpp.html',1,'']]],
   ['void_5ft_2epass_2ecpp',['void_t.pass.cpp',['../void__t_8pass_8cpp.html',1,'']]],
   ['void_5ft_5ffeature_5ftest_5fmacro_2epass_2ecpp',['void_t_feature_test_macro.pass.cpp',['../void__t__feature__test__macro_8pass_8cpp.html',1,'']]],
-  ['voting_2ehpp',['voting.hpp',['../voting_8hpp.html',1,'']]],
+  ['voting_2ecpp',['voting.cpp',['../voting_8cpp.html',1,'']]],
   ['vprintf_2ec',['vprintf.c',['../vprintf_8c.html',1,'']]],
   ['vscanf_2ec',['vscanf.c',['../vscanf_8c.html',1,'']]],
   ['vsnprintf_2ec',['vsnprintf.c',['../vsnprintf_8c.html',1,'']]],

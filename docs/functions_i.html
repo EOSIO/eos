@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -96,6 +96,7 @@ $(function() {
 , <a class="el" href="struct__test__multi__index_1_1record__idx256.html#affe6a500a0af844434f84d5b935d619a">_test_multi_index::record_idx256</a>
 , <a class="el" href="struct__test__multi__index_1_1record__idx64.html#aefe1df9a83f5aa47228e1f2c661c83cb">_test_multi_index::record_idx64</a>
 , <a class="el" href="struct__test__multi__index_1_1record__idx__double.html#ae47d0b1dad7940434778ac4ce0d1a1f5">_test_multi_index::record_idx_double</a>
+, <a class="el" href="struct__test__multi__index_1_1record__idx__long__double.html#a6dc48298a464c5a01c642ee0db9adfbb">_test_multi_index::record_idx_long_double</a>
 , <a class="el" href="struct_a.html#a53d2b6419261c4920fc6ec4544dfccca">A&lt; T &gt;</a>
 , <a class="el" href="struct_b.html#a3929f009040932231d121f113e1972dc">B&lt; T &gt;</a>
 </li>
@@ -104,7 +105,7 @@ $(function() {
 </li>
 <li>id
 : <a class="el" href="struct_function_ptr_i_d.html#a69ced0b5430538c99e92ee62f26a3237">FunctionPtrID&lt; T, &gt;</a>
-, <a class="el" href="structidentity_1_1contract_1_1certrow.html#af7c974614e0aef2b1ba621e8d912dbc8">identity::contract&lt; DeployToAccount &gt;::certrow</a>
+, <a class="el" href="structidentity_1_1certrow.html#a1090c98da271f83c3b9144304923e442">identity::certrow</a>
 , <a class="el" href="struct_method_i_d.html#a4c4c3f9d1bab28a42b93daa8fe963a64">MethodID&lt; T &gt;</a>
 , <a class="el" href="structmulti__index__test_1_1limit__order.html#a95a9b8647d5fefd3352f3e01e502035e">multi_index_test::limit_order</a>
 , <a class="el" href="structmulti__index__test_1_1test__k256.html#a7507b0952729b7fce3e185093960c269">multi_index_test::test_k256</a>
@@ -118,20 +119,16 @@ $(function() {
 </li>
 <li>identity()
 : <a class="el" href="struct_foo.html#ac43e2abb3cdad64c094e7c807caa14c8">Foo</a>
-, <a class="el" href="structidentity_1_1contract_1_1certprop.html#a5ec3738256a7ae0b992089134429ddd9">identity::contract&lt; DeployToAccount &gt;::certprop</a>
-, <a class="el" href="structidentity_1_1contract_1_1create.html#ad3eed7947aada76a30a9c9a3fe3b8c81">identity::contract&lt; DeployToAccount &gt;::create</a>
-, <a class="el" href="structidentity_1_1contract_1_1identrow.html#a2714ef93299f2a666b00907f8b02e7da">identity::contract&lt; DeployToAccount &gt;::identrow</a>
-, <a class="el" href="structidentity__test_1_1contract_1_1get__owner__for__identity.html#a2207d4c605f350420f3ff615d4043bc7">identity_test::contract::get_owner_for_identity</a>
+, <a class="el" href="structidentity_1_1identrow.html#a5da9b82b8e45529f2f71b169dd556d0f">identity::identrow</a>
 </li>
-<li>identity_contract
-: <a class="el" href="classidentity__test_1_1contract.html#ab0fe3f206fe5bdf621bb5c779b6edec7">identity_test::contract</a>
+<li>identity_base()
+: <a class="el" href="classidentity_1_1identity__base.html#a3ac77700ec3bdbf0ccef9a8e55e90e13">identity::identity_base</a>
 </li>
 <li>identity_name
-: <a class="el" href="classidentity_1_1contract.html#ab9118d67eda282db96f8119a7f0832ba">identity::contract&lt; DeployToAccount &gt;</a>
-, <a class="el" href="classidentity__test_1_1contract.html#a9abf202e046b6874253249bcd114cefc">identity_test::contract</a>
+: <a class="el" href="structidentity.html#ac1bf721a18343314438ca1994fa09064">identity&lt; _Tp &gt;</a>
 </li>
 <li>idents_table
-: <a class="el" href="classidentity_1_1contract.html#a130d785f225bcd37c9cb50300d821ef7">identity::contract&lt; DeployToAccount &gt;</a>
+: <a class="el" href="structidentity.html#a6e9a028bd082371b3b4926121a889bbe">identity&lt; _Tp &gt;</a>
 </li>
 <li>IDType
 : <a class="el" href="struct_method_i_d.html#aaabddfff39955638916fd060e679efef">MethodID&lt; T &gt;</a>
@@ -224,6 +221,18 @@ $(function() {
 <li>idx_double_general()
 : <a class="el" href="structtest__multi__index.html#a75967c9bbb992286a85cf3afcaaf48a6">test_multi_index</a>
 </li>
+<li>idx_double_nan_create_fail()
+: <a class="el" href="structtest__db.html#a77cb99fccf4b627c544312327855b968">test_db</a>
+</li>
+<li>idx_double_nan_lookup_fail()
+: <a class="el" href="structtest__db.html#ad97d55118dbfe06a1e0b0c07870f6199">test_db</a>
+</li>
+<li>idx_double_nan_modify_fail()
+: <a class="el" href="structtest__db.html#a50ad20026d9ad5c17dae37b55f7bcb6d">test_db</a>
+</li>
+<li>idx_long_double_general()
+: <a class="el" href="structtest__multi__index.html#a9f9669d69541bdadd9c62dfc845d674b">test_multi_index</a>
+</li>
 <li>IllFormedDefault()
 : <a class="el" href="struct_ill_formed_default.html#ae886bb70bccf552ec726fbafb29c76b7">IllFormedDefault</a>
 </li>
@@ -275,11 +284,9 @@ $(function() {
 <li>inAllocatorConstruct()
 : <a class="el" href="struct_allocator_construct_controller.html#a3b1fbe2b91cdca329dac0c167a21d035">AllocatorConstructController</a>
 </li>
-<li>increase_voting_power()
-: <a class="el" href="classeosiosystem_1_1voting.html#a537044cf9254d65a1a2d8f31915827c3">eosiosystem::voting&lt; SystemAccount &gt;</a>
-</li>
 <li>index
 : <a class="el" href="structeosio_1_1multi__index_1_1index_1_1const__iterator.html#a98d9477848d2c563b310010a4f7b8fed">eosio::multi_index&lt; TableName, T, Indices &gt;::index&lt; IndexName, Extractor, Number, IsConst &gt;::const_iterator</a>
+, <a class="el" href="structinvalid__access__action.html#a4aecccb44396772c9e490d6175cb08bd">invalid_access_action</a>
 , <a class="el" href="struct_result.html#a0c86eb0ab6b9701ee2bb3af726dee9d1">Result&lt; T &gt;</a>
 </li>
 <li>index_name
@@ -318,15 +325,11 @@ $(function() {
 <li>InitListArg()
 : <a class="el" href="struct_init_list_arg.html#af4b06dd217737b4432bc123a1ae53bc4">InitListArg</a>
 </li>
-<li>inline_issue()
-: <a class="el" href="classeosio_1_1generic__currency.html#a9ba207578249a1ebdd4db07a669b069d">eosio::generic_currency&lt; Token &gt;</a>
-</li>
 <li>inline_transfer()
 : <a class="el" href="classeosio_1_1currency.html#a38c78c95ff41e2ed4f0ab2573ecfda45">eosio::currency</a>
-, <a class="el" href="classeosio_1_1generic__currency.html#a4b46e79e82a7cb7f26b3ea6058e650a3">eosio::generic_currency&lt; Token &gt;</a>
 </li>
-<li>input_iterator
-: <a class="el" href="classinput__iterator.html#a6c68597cfc9fbfb8dd551087bd57a835">input_iterator&lt; It &gt;</a>
+<li>input_iterator()
+: <a class="el" href="classinput__iterator.html#ad01bbfac5885f95c8aa86783d436add2">input_iterator&lt; It &gt;</a>
 </li>
 <li>insert()
 : <a class="el" href="classnasty__list.html#abeff629ebb3a8ab581472899e8a239ac">nasty_list&lt; T &gt;</a>
@@ -392,6 +395,9 @@ $(function() {
 <li>is_amount_within_range()
 : <a class="el" href="structeosio_1_1asset.html#a815b58378c8849fbb2a68f288edf5f31">eosio::asset</a>
 </li>
+<li>is_empty_cell()
+: <a class="el" href="structtic__tac__toe_1_1impl.html#a0f61b06683cb4e676a5967d9abae9868">tic_tac_toe::impl</a>
+</li>
 <li>is_enum
 : <a class="el" href="structeosio_1_1reflector.html#ab18b93ea4e042a5f12b66dac14122734">eosio::reflector&lt; T &gt;</a>
 </li>
@@ -405,7 +411,7 @@ $(function() {
 : <a class="el" href="classlibcxx_1_1test_1_1target__info_1_1_darwin_local_t_i.html#ab3e856c83ae31b613451c750e523b67e">libcxx.test.target_info.DarwinLocalTI</a>
 </li>
 <li>is_proxy
-: <a class="el" href="structeosiosystem_1_1voting_1_1voter__info.html#a8a9b402a8d3e6d850ca811c8a5b3c5b2">eosiosystem::voting&lt; SystemAccount &gt;::voter_info</a>
+: <a class="el" href="structeosiosystem_1_1voter__info.html#aee50442b79d5561a967486e6b7a61e65">eosiosystem::voter_info</a>
 </li>
 <li>is_reflected
 : <a class="el" href="structeosio_1_1reflector.html#a642bea2f4842299215de8f7505022135">eosio::reflector&lt; T &gt;</a>
@@ -415,14 +421,17 @@ $(function() {
 , <a class="el" href="struct_test_clock.html#a2629db16f53df37417aa7dfb3e17b376">TestClock&lt; Dur &gt;</a>
 </li>
 <li>is_trusted()
-: <a class="el" href="classidentity_1_1contract.html#ad5525997684899c14a5281a7b2aa0db5">identity::contract&lt; DeployToAccount &gt;</a>
+: <a class="el" href="classidentity_1_1identity__base.html#add54887d60e5e480d5d854950ec25667">identity::identity_base</a>
 </li>
 <li>is_trusted_by()
-: <a class="el" href="classidentity_1_1contract.html#a6f4436609a421a613c4376c66e14c5bd">identity::contract&lt; DeployToAccount &gt;</a>
+: <a class="el" href="classidentity_1_1identity__base.html#a4557eadd5884746712e07e50193a1c23">identity::identity_base</a>
 </li>
 <li>is_valid()
 : <a class="el" href="structeosio_1_1asset.html#aa2e8739bf534ea99199d121143ca7a0a">eosio::asset</a>
 , <a class="el" href="structeosio_1_1symbol__type.html#a24f066ce3f7583430b433ddb93e009f2">eosio::symbol_type</a>
+</li>
+<li>is_valid_movement()
+: <a class="el" href="structtic__tac__toe_1_1impl.html#a721d22709d24e5082f4501ac4504c531">tic_tac_toe::impl</a>
 </li>
 <li>is_windows
 : <a class="el" href="classlibcxx_1_1test_1_1config_1_1_configuration.html#ab01d98758cbb1c8c73b8e6064b2c52bc">libcxx.test.config.Configuration</a>
@@ -438,7 +447,7 @@ $(function() {
 : <a class="el" href="class_throwing_mutex.html#abec0bf012007680092d36180dfc2b40b">ThrowingMutex</a>
 </li>
 <li>issue()
-: <a class="el" href="classeosio_1_1token.html#aaea42a49fea2abdb8b8ec2a188170d3f">eosio::token&lt; Code, Symbol, NumberType &gt;</a>
+: <a class="el" href="classeosio_1_1token.html#aef8a69104976ee830d962497e94e7b6e">eosio::token</a>
 , <a class="el" href="classsimpletoken.html#a46f5bf5e50cf4e324a280981bea28d1f">simpletoken</a>
 </li>
 <li>issue_currency()
@@ -461,7 +470,7 @@ $(function() {
 : <a class="el" href="classlibcxx_1_1compiler_1_1_c_x_x_compiler.html#a84c0daf9ac32375b38e03fd1c59cd2ef">libcxx.compiler.CXXCompiler</a>
 </li>
 <li>it
-: <a class="el" href="struct_a.html#a8261ddcf4cc732b26c0d09425cf4f59a">A&lt; T &gt;</a>
+: <a class="el" href="struct_a.html#afdc08c50d1e94761ea76acd43252c658">A&lt; T &gt;</a>
 </li>
 <li>it2
 : <a class="el" href="struct_a.html#ad82757089c1f570c65141446ba2e9004">A&lt; T &gt;</a>
