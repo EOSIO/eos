@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -290,12 +290,6 @@ $(function() {
 <li>check_apply_quals_and_types()
 : <a class="el" href="apply_8pass_8cpp.html#a7a71412fdac6c27fa31987b8f9203ebf">apply.pass.cpp</a>
 </li>
-<li>check_auth()
-: <a class="el" href="group__transactioncapi.html#ga4eb270c6316a15e6f579b4b448bc8a74">transaction.h</a>
-</li>
-<li>check_authorization()
-: <a class="el" href="permission_8h.html#a2d13e6ac573831f0c4a430153702e58e">permission.h</a>
-</li>
 <li>CHECK_DEBUG_THROWS
 : <a class="el" href="debug__mode__helper_8h.html#ad5c55d6576e0ff1e5c55325ff107fc63">debug_mode_helper.h</a>
 </li>
@@ -332,6 +326,9 @@ $(function() {
 <li>CHECK_OP
 : <a class="el" href="comparisons_8pass_8cpp.html#a67bda5a6341820ad2b796123635ba0bf">comparisons.pass.cpp</a>
 </li>
+<li>check_permission_authorization()
+: <a class="el" href="permission_8h.html#ae87940000d5e205bb66bf178655a257a">permission.h</a>
+</li>
 <li>check_random_device_invalid()
 : <a class="el" href="numerics_2rand_2rand_8device_2ctor_8pass_8cpp.html#a725bea15aed87ef197906f5f6efd5d57">ctor.pass.cpp</a>
 </li>
@@ -344,6 +341,9 @@ $(function() {
 </li>
 <li>check_tag()
 : <a class="el" href="inplace_8pass_8cpp.html#ad1e7f7e85ff998a521b54be7b925f9cb">inplace.pass.cpp</a>
+</li>
+<li>check_transaction_authorization()
+: <a class="el" href="permission_8h.html#aee4c28e2f399e43b8d91e57a9024a09d">permission.h</a>
 </li>
 <li>check_type()
 : <a class="el" href="void__handle_8pass_8cpp.html#ae57ba205dfc26421947eb4081bc8354c">void_handle.pass.cpp</a>
@@ -463,15 +463,16 @@ $(function() {
 , <a class="el" href="thread_8lock_8unique_2thread_8lock_8unique_8cons_2mutex__duration_8pass_8cpp.html#acfc0968dc9a49c416d02cc7f519714dc">mutex_duration.pass.cpp</a>
 , <a class="el" href="thread_8lock_8unique_2thread_8lock_8unique_8cons_2mutex__time__point_8pass_8cpp.html#acfc0968dc9a49c416d02cc7f519714dc">mutex_time_point.pass.cpp</a>
 , <a class="el" href="thread_8lock_8unique_2thread_8lock_8unique_8cons_2mutex__try__to__lock_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">mutex_try_to_lock.pass.cpp</a>
-, <a class="el" href="thread_8mutex_8requirements_2thread_8timedmutex_8requirements_2thread_8timedmutex_8recursive_2try__lock__until_8pass_8cpp.html#acfc0968dc9a49c416d02cc7f519714dc">try_lock_until.pass.cpp</a>
 , <a class="el" href="thread_2thread_8mutex_2thread_8lock_2thread_8lock_8unique_2thread_8lock_8unique_8locking_2lock_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">lock.pass.cpp</a>
+, <a class="el" href="thread_8mutex_8requirements_2thread_8timedmutex_8requirements_2thread_8timedmutex_8recursive_2try__lock__until_8pass_8cpp.html#acfc0968dc9a49c416d02cc7f519714dc">try_lock_until.pass.cpp</a>
+, <a class="el" href="thread_2thread_8mutex_2thread_8mutex_8requirements_2thread_8mutex_8requirements_8mutex_2thread_8mutex_8class_2lock_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">lock.pass.cpp</a>
 , <a class="el" href="thread_8mutex_8requirements_2thread_8mutex_8requirements_8mutex_2thread_8mutex_8class_2try__lock_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">try_lock.pass.cpp</a>
 , <a class="el" href="thread_2thread_8mutex_2thread_8mutex_8requirements_2thread_8mutex_8requirements_8mutex_2thread_88e329d2eebb2b83b077e68770a9575cc.html#a0f050ace4b9bcb09af0120f1fcc8df1c">lock.pass.cpp</a>
 , <a class="el" href="thread_8mutex_8requirements_2thread_8mutex_8requirements_8mutex_2thread_8mutex_8recursive_2try__lock_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">try_lock.pass.cpp</a>
 , <a class="el" href="thread_2thread_8mutex_2thread_8mutex_8requirements_2thread_8shared__mutex_8requirements_2thread_024667c5f29dfe8b861b3fd86ba824d1.html#a0f050ace4b9bcb09af0120f1fcc8df1c">lock.pass.cpp</a>
 , <a class="el" href="thread_8shared__mutex_8requirements_2thread_8shared__mutex_8class_2lock__shared_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">lock_shared.pass.cpp</a>
-, <a class="el" href="thread_8mutex_8requirements_2thread_8sharedtimedmutex_8requirements_2thread_8sharedtimedmutex_8ca8463020e5bf381df81e6f5a784dce96.html#acfc0968dc9a49c416d02cc7f519714dc">try_lock_until.pass.cpp</a>
 , <a class="el" href="thread_8mutex_8requirements_2thread_8shared__mutex_8requirements_2thread_8shared__mutex_8class_2try__lock_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">try_lock.pass.cpp</a>
+, <a class="el" href="thread_8mutex_8requirements_2thread_8sharedtimedmutex_8requirements_2thread_8sharedtimedmutex_8ca8463020e5bf381df81e6f5a784dce96.html#acfc0968dc9a49c416d02cc7f519714dc">try_lock_until.pass.cpp</a>
 , <a class="el" href="thread_8shared__mutex_8requirements_2thread_8shared__mutex_8class_2try__lock__shared_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">try_lock_shared.pass.cpp</a>
 , <a class="el" href="thread_2thread_8mutex_2thread_8mutex_8requirements_2thread_8sharedtimedmutex_8requirements_2thre099d9015a103957b42b4ead6214b5e0f.html#a0f050ace4b9bcb09af0120f1fcc8df1c">lock.pass.cpp</a>
 , <a class="el" href="thread_8sharedtimedmutex_8requirements_2thread_8sharedtimedmutex_8class_2lock__shared_8pass_8cpp.html#a0f050ace4b9bcb09af0120f1fcc8df1c">lock_shared.pass.cpp</a>
@@ -652,8 +653,8 @@ $(function() {
 <li>copysign()
 : <a class="el" href="musl_2upstream_2include_2math_8h.html#a8f6b8a9fe1eae8efb583fac459fbfdfe">math.h</a>
 , <a class="el" href="copysign_8c.html#ad8d1296592a3e783acdd0de21ff58e2e">copysign.c</a>
-, <a class="el" href="cmath_8pass_8cpp.html#af6d925aeb98f3dc20c6c2384a96cb2e5">cmath.pass.cpp</a>
 , <a class="el" href="math__h_8pass_8cpp.html#af6d925aeb98f3dc20c6c2384a96cb2e5">math_h.pass.cpp</a>
+, <a class="el" href="cmath_8pass_8cpp.html#af6d925aeb98f3dc20c6c2384a96cb2e5">cmath.pass.cpp</a>
 </li>
 <li>copysignf()
 : <a class="el" href="musl_2upstream_2include_2math_8h.html#ae1c0757b2d165ecf819927b3e569a067">math.h</a>
@@ -662,25 +663,28 @@ $(function() {
 <li>copysignl()
 : <a class="el" href="musl_2upstream_2include_2math_8h.html#a16505c22a4735d1e305dcc897fb44efb">math.h</a>
 </li>
+<li>CORE_SYMBOL
+: <a class="el" href="core__symbol_8hpp.html#a262faad6cca5e806aca4ea84a87e5959">core_symbol.hpp</a>
+</li>
 <li>cos()
-: <a class="el" href="cmath_8pass_8cpp.html#acaaa1b5d709ae27217a16c50be143247">cmath.pass.cpp</a>
-, <a class="el" href="cos_8c.html#a5e7b53a694b3cf0f2d7debd444140fbd">cos.c</a>
+: <a class="el" href="math__h_8pass_8cpp.html#acaaa1b5d709ae27217a16c50be143247">math_h.pass.cpp</a>
 , <a class="el" href="musl_2upstream_2include_2math_8h.html#a75f4e4dd379376514613d7ec27902d07">math.h</a>
-, <a class="el" href="math__h_8pass_8cpp.html#acaaa1b5d709ae27217a16c50be143247">math_h.pass.cpp</a>
+, <a class="el" href="cos_8c.html#a5e7b53a694b3cf0f2d7debd444140fbd">cos.c</a>
+, <a class="el" href="cmath_8pass_8cpp.html#acaaa1b5d709ae27217a16c50be143247">cmath.pass.cpp</a>
 </li>
 <li>cosf()
-: <a class="el" href="cosf_8c.html#a7b126b2344591e649c21c9ab0b8adb40">cosf.c</a>
-, <a class="el" href="musl_2upstream_2include_2math_8h.html#a0546342e76f932239ccd5f92144a311b">math.h</a>
+: <a class="el" href="musl_2upstream_2include_2math_8h.html#a0546342e76f932239ccd5f92144a311b">math.h</a>
+, <a class="el" href="cosf_8c.html#a7b126b2344591e649c21c9ab0b8adb40">cosf.c</a>
 </li>
 <li>cosh()
-: <a class="el" href="cmath_8pass_8cpp.html#a787572cca7f42da2e6a70a724174ad7b">cmath.pass.cpp</a>
-, <a class="el" href="math__h_8pass_8cpp.html#a787572cca7f42da2e6a70a724174ad7b">math_h.pass.cpp</a>
-, <a class="el" href="cosh_8c.html#a3795d3c1f1d30819be56da4e4d67f64b">cosh.c</a>
+: <a class="el" href="math__h_8pass_8cpp.html#a787572cca7f42da2e6a70a724174ad7b">math_h.pass.cpp</a>
 , <a class="el" href="musl_2upstream_2include_2math_8h.html#a1c21389567c4b06af8d1989673204fb1">math.h</a>
+, <a class="el" href="cmath_8pass_8cpp.html#a787572cca7f42da2e6a70a724174ad7b">cmath.pass.cpp</a>
+, <a class="el" href="cosh_8c.html#a3795d3c1f1d30819be56da4e4d67f64b">cosh.c</a>
 </li>
 <li>coshf()
-: <a class="el" href="coshf_8c.html#a498b368486b7ce8677820beeb78d8f66">coshf.c</a>
-, <a class="el" href="musl_2upstream_2include_2math_8h.html#ae37ce4924a4be38a9de85fc81ba79e58">math.h</a>
+: <a class="el" href="musl_2upstream_2include_2math_8h.html#ae37ce4924a4be38a9de85fc81ba79e58">math.h</a>
+, <a class="el" href="coshf_8c.html#a498b368486b7ce8677820beeb78d8f66">coshf.c</a>
 </li>
 <li>coshl()
 : <a class="el" href="musl_2upstream_2include_2math_8h.html#a8f744c6f52766f6a0e9fbabd192f2360">math.h</a>
@@ -688,41 +692,41 @@ $(function() {
 <li>cosl()
 : <a class="el" href="musl_2upstream_2include_2math_8h.html#aa36f72ba7da5167b4784b442c1d2fd97">math.h</a>
 </li>
-<li>count
-: <a class="el" href="std_2experimental_2optional_2optional_8object_2optional_8object_8ctor_2copy_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">copy.pass.cpp</a>
-</li>
-<li>COUNT
-: <a class="el" href="atexit_8c.html#a698c124f1c293f98840449d6c5b9d984">atexit.c</a>
-</li>
-<li>count
-: <a class="el" href="std_2experimental_2optional_2optional_8object_2optional_8object_8ctor_2move_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">move.pass.cpp</a>
-, <a class="el" href="std_2experimental_2utilities_2tuple_2tuple_8apply_2types_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">types.pass.cpp</a>
-, <a class="el" href="invoke__rvalue_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_rvalue.pass.cpp</a>
-, <a class="el" href="apply__extended__types_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">apply_extended_types.pass.cpp</a>
-, <a class="el" href="refwrap_2refwrap_8invoke_2invoke__int__0_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_int_0.pass.cpp</a>
-, <a class="el" href="optional_8object_8ctor_2const__optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">const_optional_U.pass.cpp</a>
-, <a class="el" href="explicit__optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">explicit_optional_U.pass.cpp</a>
-, <a class="el" href="generator_8pass_8cpp.html#af38694d3020b1ed3a7a68d0de395e0b3">generator.pass.cpp</a>
-, <a class="el" href="_p_r31384_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">PR31384.pass.cpp</a>
-, <a class="el" href="optional_8object_8ctor_2optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">optional_U.pass.cpp</a>
-, <a class="el" href="explicit__const__optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">explicit_const_optional_U.pass.cpp</a>
-, <a class="el" href="std_2utilities_2function_8objects_2func_8wrap_2func_8wrap_8func_2func_8wrap_8func_8inv_2invoke_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke.pass.cpp</a>
-, <a class="el" href="extended__types_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">extended_types.pass.cpp</a>
-, <a class="el" href="std_2utilities_2function_8objects_2refwrap_2refwrap_8invoke_2invoke_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke.pass.cpp</a>
-, <a class="el" href="bind_2func_8bind_2func_8bind_8bind_2invoke__void__0_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_void_0.pass.cpp</a>
-, <a class="el" href="invoke__lvalue_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_lvalue.pass.cpp</a>
-, <a class="el" href="experimental_2memory_2memory_8polymorphic_8allocator_8class_2memory_8polymorphic_8allocator_8mem_2destroy_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">destroy.pass.cpp</a>
+<li>count()
+: <a class="el" href="generator_8pass_8cpp.html#af38694d3020b1ed3a7a68d0de395e0b3">generator.pass.cpp</a>
 </li>
 <li>COUNT
 : <a class="el" href="at__quick__exit_8c.html#a698c124f1c293f98840449d6c5b9d984">at_quick_exit.c</a>
 </li>
 <li>count
-: <a class="el" href="refstring_8h.html#a765135c674c03368f3fa7fac9c7ff44a">refstring.h</a>
+: <a class="el" href="std_2experimental_2optional_2optional_8object_2optional_8object_8ctor_2copy_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">copy.pass.cpp</a>
+, <a class="el" href="invoke__lvalue_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_lvalue.pass.cpp</a>
+, <a class="el" href="apply__extended__types_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">apply_extended_types.pass.cpp</a>
+, <a class="el" href="std_2utilities_2function_8objects_2refwrap_2refwrap_8invoke_2invoke_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke.pass.cpp</a>
 , <a class="el" href="refwrap_2refwrap_8invoke_2invoke__void__0_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_void_0.pass.cpp</a>
+, <a class="el" href="std_2experimental_2optional_2optional_8object_2optional_8object_8ctor_2move_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">move.pass.cpp</a>
+, <a class="el" href="_p_r31384_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">PR31384.pass.cpp</a>
+, <a class="el" href="optional_8object_8ctor_2const__optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">const_optional_U.pass.cpp</a>
+, <a class="el" href="optional_8object_8ctor_2optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">optional_U.pass.cpp</a>
+, <a class="el" href="explicit__optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">explicit_optional_U.pass.cpp</a>
+, <a class="el" href="std_2utilities_2function_8objects_2func_8wrap_2func_8wrap_8func_2func_8wrap_8func_8inv_2invoke_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke.pass.cpp</a>
+, <a class="el" href="refwrap_2refwrap_8invoke_2invoke__int__0_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_int_0.pass.cpp</a>
+, <a class="el" href="std_2experimental_2utilities_2tuple_2tuple_8apply_2types_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">types.pass.cpp</a>
+, <a class="el" href="bind_2func_8bind_2func_8bind_8bind_2invoke__void__0_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_void_0.pass.cpp</a>
+, <a class="el" href="invoke__rvalue_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">invoke_rvalue.pass.cpp</a>
+, <a class="el" href="experimental_2memory_2memory_8polymorphic_8allocator_8class_2memory_8polymorphic_8allocator_8mem_2destroy_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">destroy.pass.cpp</a>
+</li>
+<li>COUNT
+: <a class="el" href="atexit_8c.html#a698c124f1c293f98840449d6c5b9d984">atexit.c</a>
+</li>
+<li>count
+: <a class="el" href="refstring_8h.html#a765135c674c03368f3fa7fac9c7ff44a">refstring.h</a>
+, <a class="el" href="extended__types_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">extended_types.pass.cpp</a>
+, <a class="el" href="explicit__const__optional___u_8pass_8cpp.html#ad43c3812e6d13e0518d9f8b8f463ffcf">explicit_const_optional_U.pass.cpp</a>
 </li>
 <li>counting_equals()
-: <a class="el" href="is__permutation__pred_8pass_8cpp.html#a68ee69ad9508fb450376662cb7ad4d0a">is_permutation_pred.pass.cpp</a>
-, <a class="el" href="equal__pred_8pass_8cpp.html#a68ee69ad9508fb450376662cb7ad4d0a">equal_pred.pass.cpp</a>
+: <a class="el" href="equal__pred_8pass_8cpp.html#a68ee69ad9508fb450376662cb7ad4d0a">equal_pred.pass.cpp</a>
+, <a class="el" href="is__permutation__pred_8pass_8cpp.html#a68ee69ad9508fb450376662cb7ad4d0a">is_permutation_pred.pass.cpp</a>
 </li>
 <li>cover()
 : <a class="el" href="test__exchange_8cpp.html#ab5c2659c31a4a359a081a8973be8dcf3">test_exchange.cpp</a>
@@ -765,11 +769,11 @@ $(function() {
 , <a class="el" href="experimental_2filesystem_2class_8rec_8dir_8itr_2rec_8dir_8itr_8members_2move__assign_8pass_8cpp.html#a2c5478188e281b6c5873fa90b67fdefd">move_assign.pass.cpp</a>
 </li>
 <li>createInterestingIterator()
-: <a class="el" href="experimental_2filesystem_2class_8rec_8dir_8itr_2rec_8dir_8itr_8members_2copy__assign_8pass_8cpp.html#ac3bd77f68181313565ee867540521497">copy_assign.pass.cpp</a>
-, <a class="el" href="experimental_2filesystem_2class_8rec_8dir_8itr_2rec_8dir_8itr_8members_2move__assign_8pass_8cpp.html#ac3bd77f68181313565ee867540521497">move_assign.pass.cpp</a>
+: <a class="el" href="experimental_2filesystem_2class_8rec_8dir_8itr_2rec_8dir_8itr_8members_2move__assign_8pass_8cpp.html#ac3bd77f68181313565ee867540521497">move_assign.pass.cpp</a>
+, <a class="el" href="experimental_2filesystem_2class_8rec_8dir_8itr_2rec_8dir_8itr_8members_2copy__assign_8pass_8cpp.html#ac3bd77f68181313565ee867540521497">copy_assign.pass.cpp</a>
 </li>
 <li>cref()
-: <a class="el" href="get__const__rv_8fail_8cpp.html#af5ad6e6c525e1d3fb61aa60cab9f9dc3">get_const_rv.fail.cpp</a>
+: <a class="el" href="get__const__rv_8fail_8cpp.html#ab90aa70e00d1fef85c3df53db0809f7c">get_const_rv.fail.cpp</a>
 </li>
 <li>CRNCYSTR
 : <a class="el" href="langinfo_8h.html#a6307c132e768381e13ea732ec4c93fac">langinfo.h</a>
@@ -798,33 +802,33 @@ $(function() {
 </li>
 <li>csource()
 : <a class="el" href="forward_8pass_8cpp.html#a6232793f29e65b7c149b9c82e7acd257">forward.pass.cpp</a>
-, <a class="el" href="forward_8fail_8cpp.html#aaafbb4c6e46dd53e6d8ec84e31894c51">forward.fail.cpp</a>
-, <a class="el" href="forward__03_8pass_8cpp.html#aaafbb4c6e46dd53e6d8ec84e31894c51">forward_03.pass.cpp</a>
 , <a class="el" href="std_2utilities_2utility_2forward_2move_8pass_8cpp.html#a32eecb5aade006c5d74fe7c8765cbf47">move.pass.cpp</a>
+, <a class="el" href="forward_8fail_8cpp.html#aaafbb4c6e46dd53e6d8ec84e31894c51">forward.fail.cpp</a>
 , <a class="el" href="utility_2forward_2move_8fail_8cpp.html#a32eecb5aade006c5d74fe7c8765cbf47">move.fail.cpp</a>
+, <a class="el" href="forward__03_8pass_8cpp.html#aaafbb4c6e46dd53e6d8ec84e31894c51">forward_03.pass.cpp</a>
 </li>
 <li>CSTOPB
 : <a class="el" href="termios_8h.html#a61e9f563e0f9533dc9cf221f427f6d1a">termios.h</a>
 </li>
 <li>CT_Const
-: <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a2f580e40a180fef4a190ea5fdae8f3e0">not_fn.pass.cpp</a>
-, <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a2f580e40a180fef4a190ea5fdae8f3e0">visit.pass.cpp</a>
+: <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a2f580e40a180fef4a190ea5fdae8f3e0">visit.pass.cpp</a>
+, <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a2f580e40a180fef4a190ea5fdae8f3e0">not_fn.pass.cpp</a>
 </li>
 <li>CT_LValue
-: <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1aa7b954f49335185071b7794cc32eef7b">visit.pass.cpp</a>
-, <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1aa7b954f49335185071b7794cc32eef7b">not_fn.pass.cpp</a>
+: <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1aa7b954f49335185071b7794cc32eef7b">not_fn.pass.cpp</a>
+, <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1aa7b954f49335185071b7794cc32eef7b">visit.pass.cpp</a>
 </li>
 <li>CT_NonConst
-: <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a6782a4727661617adf6c1405652092c3">visit.pass.cpp</a>
-, <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a6782a4727661617adf6c1405652092c3">not_fn.pass.cpp</a>
+: <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a6782a4727661617adf6c1405652092c3">not_fn.pass.cpp</a>
+, <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a6782a4727661617adf6c1405652092c3">visit.pass.cpp</a>
 </li>
 <li>CT_None
 : <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a365c11b5fcf955d07d55c017767c4658">visit.pass.cpp</a>
 , <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1a365c11b5fcf955d07d55c017767c4658">not_fn.pass.cpp</a>
 </li>
 <li>CT_RValue
-: <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1afb9de5f973f34adbc9673141c6be34c1">visit.pass.cpp</a>
-, <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1afb9de5f973f34adbc9673141c6be34c1">not_fn.pass.cpp</a>
+: <a class="el" href="not__fn_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1afb9de5f973f34adbc9673141c6be34c1">not_fn.pass.cpp</a>
+, <a class="el" href="visit_8pass_8cpp.html#ab5b12058594190f644a30642a52167f1afb9de5f973f34adbc9673141c6be34c1">visit.pass.cpp</a>
 </li>
 <li>ctor_called
 : <a class="el" href="fullexpr-dtor_8pass_8cpp.html#a43b623d9c5a38722b8b110f0be885906">fullexpr-dtor.pass.cpp</a>
@@ -841,8 +845,8 @@ $(function() {
 <li>current_receiver()
 : <a class="el" href="group__actioncapi.html#ga5fcca014b53b0f15b9f9636325bae976">action.h</a>
 </li>
-<li>current_sender()
-: <a class="el" href="group__actioncapi.html#gaf531fda07a825ca8b0d90f21446e6a64">action.h</a>
+<li>current_time()
+: <a class="el" href="group__systemcapi.html#gaa95529fd8b200ddbb9ae71ea5c6055a3">system.h</a>
 </li>
 <li>CURRENT_UTF8
 : <a class="el" href="locale__impl_8h.html#a5ca70ee49a7757bec50b2efef34dced4">locale_impl.h</a>
@@ -851,25 +855,25 @@ $(function() {
 : <a class="el" href="options__test_8cc.html#a3c4644954ee091f589d049c1af27b21f">options_test.cc</a>
 </li>
 <li>cv
-: <a class="el" href="ny_2wait__until__pred_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_until_pred.pass.cpp</a>
-, <a class="el" href="destructor_8pass_8cpp.html#a2607c3ae2ab502fae9a8056de6a1c890">destructor.pass.cpp</a>
-, <a class="el" href="wait__for__pred_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait_for_pred.pass.cpp</a>
-, <a class="el" href="thread_8condition_2thread_8condition_8condvar_2wait__for_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait_for.pass.cpp</a>
-, <a class="el" href="wait__terminates_8sh_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_terminates.sh.cpp</a>
-, <a class="el" href="ny_2wait__for__pred_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_for_pred.pass.cpp</a>
+: <a class="el" href="_p_r30202__notify__from__pthread__created__thread_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">PR30202_notify_from_pthread_created_thread.pass.cpp</a>
+, <a class="el" href="notify__one_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">notify_one.pass.cpp</a>
 , <a class="el" href="wait__pred_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait_pred.pass.cpp</a>
-, <a class="el" href="thread_8condition_2thread_8condition_8condvarany_2wait__until_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_until.pass.cpp</a>
-, <a class="el" href="thread_8condition_2thread_8condition_8condvar_2wait_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait.pass.cpp</a>
+, <a class="el" href="wait__terminates_8sh_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_terminates.sh.cpp</a>
 , <a class="el" href="notify__all__at__thread__exit_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">notify_all_at_thread_exit.pass.cpp</a>
 , <a class="el" href="ny_2notify__all_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">notify_all.pass.cpp</a>
+, <a class="el" href="thread_8condition_2thread_8condition_8condvar_2wait__for_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait_for.pass.cpp</a>
+, <a class="el" href="notify__all_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">notify_all.pass.cpp</a>
+, <a class="el" href="ny_2wait__for__pred_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_for_pred.pass.cpp</a>
 , <a class="el" href="thread_8condition_2thread_8condition_8condvarany_2wait__for_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_for.pass.cpp</a>
-, <a class="el" href="_p_r30202__notify__from__pthread__created__thread_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">PR30202_notify_from_pthread_created_thread.pass.cpp</a>
+, <a class="el" href="thread_8condition_2thread_8condition_8condvar_2wait_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait.pass.cpp</a>
+, <a class="el" href="destructor_8pass_8cpp.html#a2607c3ae2ab502fae9a8056de6a1c890">destructor.pass.cpp</a>
+, <a class="el" href="wait__for__pred_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait_for_pred.pass.cpp</a>
 , <a class="el" href="ny_2notify__one_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">notify_one.pass.cpp</a>
 , <a class="el" href="thread_8condition_2thread_8condition_8condvarany_2wait_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait.pass.cpp</a>
-, <a class="el" href="notify__one_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">notify_one.pass.cpp</a>
-, <a class="el" href="ny_2wait__pred_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_pred.pass.cpp</a>
 , <a class="el" href="ny_2destructor_8pass_8cpp.html#a7a1dd58d2e48d7b231a350b44a2daf87">destructor.pass.cpp</a>
-, <a class="el" href="thread_8condition_2thread_8condition_8condvar_2wait__until_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait_until.pass.cpp</a>
+, <a class="el" href="wait__until__pred_8pass_8cpp.html#a0afa02d14fff34c480aabfbc41ad193c">wait_until_pred.pass.cpp</a>
+, <a class="el" href="ny_2wait__pred_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_pred.pass.cpp</a>
+, <a class="el" href="thread_8condition_2thread_8condition_8condvarany_2wait__until_8pass_8cpp.html#a1d949d61fe29fce4b197df12b3158481">wait_until.pass.cpp</a>
 </li>
 <li>CVCaster
 : <a class="el" href="invoke__helpers_8h.html#ab17cdf245047de99d829fa4ebae8973f">invoke_helpers.h</a>

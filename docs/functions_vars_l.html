@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -89,14 +89,14 @@ $(function() {
 <li>last_benchmark_instance
 : <a class="el" href="structbenchmark_1_1internal_1_1_benchmark_1_1_instance.html#aa18a090edea50ffe3df15e41db295502">benchmark::internal::Benchmark::Instance</a>
 </li>
-<li>last_bucket_fill_time
-: <a class="el" href="structeosiosystem_1_1common_1_1eosio__global__state.html#aa3680cef278b9fe821f2ce41712abb51">eosiosystem::common&lt; SystemAccount &gt;::eosio_global_state</a>
-</li>
 <li>last_call_args
 : <a class="el" href="struct_forwarding_call_object.html#aeb896b72ae8d495ecced4830725c059f">ForwardingCallObject</a>
 </li>
 <li>last_call_type
 : <a class="el" href="struct_forwarding_call_object.html#a044204aab704d73ee5fa1c2810b49531">ForwardingCallObject</a>
+</li>
+<li>last_claim_time
+: <a class="el" href="structeosiosystem_1_1producer__info.html#afcb2f0774c7e78750037354c6db2e356">eosiosystem::producer_info</a>
 </li>
 <li>last_construct_alloc
 : <a class="el" href="struct_alloc_controller.html#a9f1b797d1fae3e7e0e80326e15da60a0">AllocController</a>
@@ -134,29 +134,35 @@ $(function() {
 <li>last_new_size
 : <a class="el" href="class_mem_counter.html#a06197bc7e0e7b12f87659f351751467d">MemCounter</a>
 </li>
+<li>last_pervote_bucket_fill
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#a3448c4bbcd1eb200e92947e10cdc2570">eosiosystem::eosio_global_state</a>
+</li>
 <li>last_pointer
 : <a class="el" href="struct_alloc_controller.html#a85621a6cda0d6a474cdbcc852d716a35">AllocController</a>
 </li>
 <li>last_produced_block_time
-: <a class="el" href="structeosiosystem_1_1voting_1_1producer__info.html#ae269f37b59e26d55ac2ede3160d67fdb">eosiosystem::voting&lt; SystemAccount &gt;::producer_info</a>
+: <a class="el" href="structeosiosystem_1_1producer__info.html#a1ca4debeaa1c85f696a7232c70d9ced4">eosiosystem::producer_info</a>
 </li>
-<li>last_rewards_claim
-: <a class="el" href="structeosiosystem_1_1voting_1_1producer__info.html#aaa593a54995da113f59e1e9c417ad800">eosiosystem::voting&lt; SystemAccount &gt;::producer_info</a>
+<li>last_producer_schedule_id
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#a8ff16cef4fa503e6990fd4699f7a61a6">eosiosystem::eosio_global_state</a>
+</li>
+<li>last_producer_schedule_update
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#a00d9962c27103495ffdae8b14ca89fb4">eosiosystem::eosio_global_state</a>
 </li>
 <li>last_size
 : <a class="el" href="struct_alloc_controller.html#a0259ac979e5081f41e9a8c53e070eee0">AllocController</a>
 </li>
 <li>last_unstake_time
-: <a class="el" href="structeosiosystem_1_1voting_1_1voter__info.html#ae20e1770898161d092924346daf81675">eosiosystem::voting&lt; SystemAccount &gt;::voter_info</a>
+: <a class="el" href="structeosiosystem_1_1voter__info.html#ab9b460912932d7dc5cabb3c5a6acc83b">eosiosystem::voter_info</a>
 </li>
-<li>last_unstaking_time
-: <a class="el" href="structeosio_1_1account_1_1account__balance.html#ab7fa42155c36e102dc7d5eb1345fbac7">eosio::account::account_balance</a>
-</li>
-<li>last_update
-: <a class="el" href="structeosiosystem_1_1voting_1_1voter__info.html#ace62f6524dba990cf143547d51bacc00">eosiosystem::voting&lt; SystemAccount &gt;::voter_info</a>
+<li>last_used_time
+: <a class="el" href="structtest__permission__last__used__msg.html#a102ec3e2dd540d1793faf09efca2d43e">test_permission_last_used_msg</a>
 </li>
 <li>last_vote
 : <a class="el" href="structaccount.html#a1b6f555894deefad1820a810dfb5a969">account</a>
+</li>
+<li>last_vote_weight
+: <a class="el" href="structeosiosystem_1_1voter__info.html#aa60bfb8489e47d8514efd230cd18288e">eosiosystem::voter_info</a>
 </li>
 <li>lbf
 : <a class="el" href="struct___i_o___f_i_l_e.html#a40d0e4ff47d49a9bade32f5ab5869d0e">_IO_FILE</a>
@@ -172,8 +178,6 @@ $(function() {
 </li>
 <li>len
 : <a class="el" href="structcookie.html#a4d5231d26db3060629b6e785950b33ac">cookie</a>
-, <a class="el" href="structfixed__string16.html#a8eec9f81e469ac9108eac24ce0bd2c4c">fixed_string16</a>
-, <a class="el" href="structfixed__string32.html#a96c1e739f58582562c539d733d6f18b0">fixed_string32</a>
 , <a class="el" href="structmd5.html#abd4b3ff9f871b13aa26de066ec087b28">md5</a>
 , <a class="el" href="structproducers.html#a68755b19eab5e9f1c229ae898b199c10">producers</a>
 , <a class="el" href="structsha256.html#a41849b8a27e385d7c4525ceb96cf308e">sha256</a>
@@ -226,6 +230,9 @@ $(function() {
 <li>locale
 : <a class="el" href="struct___i_o___f_i_l_e.html#a48bc55c20938971b4ffb40e682e48d12">_IO_FILE</a>
 , <a class="el" href="structpthread.html#a564e1697afb0ae2d8baa2e1d49d0c861">pthread</a>
+</li>
+<li>location
+: <a class="el" href="structeosiosystem_1_1producer__info.html#a5e543ec2f645048f754beca0fafc9daa">eosiosystem::producer_info</a>
 </li>
 <li>lock
 : <a class="el" href="struct___i_o___f_i_l_e.html#ad9b17702a28d4a6313668168d2a13489">_IO_FILE</a>

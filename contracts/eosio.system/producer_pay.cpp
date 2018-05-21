@@ -84,7 +84,7 @@ namespace eosiosystem {
       const asset token_supply   = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
       const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
 
-      if( usecs_since_last_fill > 0 ) {
+      if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0 ) {
          auto new_tokens = static_cast<int64_t>( (continuous_rate * double(token_supply.amount) * double(usecs_since_last_fill)) / double(useconds_per_year) );
 
          auto to_producers       = new_tokens / 5;

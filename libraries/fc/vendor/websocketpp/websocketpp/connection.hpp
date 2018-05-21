@@ -1041,6 +1041,7 @@ public:
      * @see websocketpp::http::response::set_body
      */
     void set_body(std::string const & value);
+    void set_body(std::string && value);
 
     /// Append a header
     /**
