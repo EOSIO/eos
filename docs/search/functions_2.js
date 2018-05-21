@@ -30,6 +30,7 @@ var searchData=
   ['bind_5ftextdomain_5fcodeset',['bind_textdomain_codeset',['../libintl_8h.html#ae7c0cddaa75d380875139f691b96baea',1,'bind_textdomain_codeset(const char *, const char *):&#160;bind_textdomain_codeset.c'],['../bind__textdomain__codeset_8c.html#a8d02d24ade4c4b8a3134591880a195fa',1,'bind_textdomain_codeset(const char *domainname, const char *codeset):&#160;bind_textdomain_codeset.c']]],
   ['bindtextdomain',['bindtextdomain',['../libintl_8h.html#a0ba9cc26887e153a8451e80049bbdc2e',1,'bindtextdomain(const char *, const char *):&#160;dcngettext.c'],['../dcngettext_8c.html#ac852a1476d916526d67ccbf5e0bd15ca',1,'bindtextdomain(const char *domainname, const char *dirname):&#160;dcngettext.c']]],
   ['bios',['bios',['../classeosio_1_1bios.html#adbc79c84e48081f388111437cc68fdf3',1,'eosio::bios']]],
+  ['block_5ftimestamp',['block_timestamp',['../classeosio_1_1block__timestamp.html#aa719feec777894d3612305fcdf579d1e',1,'eosio::block_timestamp::block_timestamp(uint32_t s=0)'],['../classeosio_1_1block__timestamp.html#a72934b4290a476785f852983608263b0',1,'eosio::block_timestamp::block_timestamp(const time_point &amp;t)'],['../classeosio_1_1block__timestamp.html#aae1af00ad48d215fbd72d3e2339655bf',1,'eosio::block_timestamp::block_timestamp(const time_point_sec &amp;t)']]],
   ['blocked_5freader',['blocked_reader',['../try__lock__until__deadlock__bug_8pass_8cpp.html#a6869e53564cb94b866a57a20dd6672d0',1,'try_lock_until_deadlock_bug.pass.cpp']]],
   ['blowsuponconstcopy',['BlowsUpOnConstCopy',['../struct_blows_up_on_const_copy.html#a845a3876a8cd104aecc4547770ae63ba',1,'BlowsUpOnConstCopy::BlowsUpOnConstCopy()=default'],['../struct_blows_up_on_const_copy.html#afd55624aa10ac762fa1c517a7e46b651',1,'BlowsUpOnConstCopy::BlowsUpOnConstCopy(BlowsUpOnConstCopy const &amp;)'],['../struct_blows_up_on_const_copy.html#a7b40051542785bf5bc9669399196d837',1,'BlowsUpOnConstCopy::BlowsUpOnConstCopy(BlowsUpOnConstCopy &amp;)=default']]],
   ['bm_5farg_5fname',['BM_arg_name',['../reporter__output__test_8cc.html#afa442d8b1918a781772364d1cc351958',1,'reporter_output_test.cc']]],
@@ -93,7 +94,9 @@ var searchData=
   ['bullet_5ffive_5ftests',['bullet_five_tests',['../std_2utilities_2function_8objects_2func_8invoke_2invoke_8pass_8cpp.html#a0354c347050863e3c8040a54e524e9c0',1,'invoke.pass.cpp']]],
   ['bullet_5fone_5ftwo_5ftests',['bullet_one_two_tests',['../std_2utilities_2function_8objects_2func_8invoke_2invoke_8pass_8cpp.html#aaaee5261b11567e133e99858aa969898',1,'invoke.pass.cpp']]],
   ['bullet_5fthree_5ffour_5ftests',['bullet_three_four_tests',['../std_2utilities_2function_8objects_2func_8invoke_2invoke_8pass_8cpp.html#af22463b595597bd6c5c45012d15f5d5e',1,'invoke.pass.cpp']]],
-  ['by_5fvotes',['by_votes',['../structeosiosystem_1_1voting_1_1producer__info.html#a4817eab11a44b0f64fb4b9301d66637f',1,'eosiosystem::voting::producer_info']]],
+  ['buyram',['buyram',['../classeosiosystem_1_1system__contract.html#a537e6ee48720141e700ed68b04e9c0aa',1,'eosiosystem::system_contract']]],
+  ['buyrambytes',['buyrambytes',['../classeosiosystem_1_1system__contract.html#ae523af9699f04611c3d17cddcf597c14',1,'eosiosystem::system_contract']]],
+  ['by_5fvotes',['by_votes',['../structeosiosystem_1_1producer__info.html#a2923be76a2e0b28b39b772fc8f5f30aa',1,'eosiosystem::producer_info']]],
   ['bytes_5fprocessed',['bytes_processed',['../classbenchmark_1_1_state.html#a2db1a44415d32e3bc7608dab3fe78399',1,'benchmark::State']]],
   ['bzero',['bzero',['../bzero_8c.html#a59505af7f1c47ff01fdb944801642033',1,'bzero.c']]]
 ];

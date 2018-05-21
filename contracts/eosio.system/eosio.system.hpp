@@ -224,8 +224,14 @@ namespace eosiosystem {
 
          // Implementation details:
 
+         //defind in delegate_bandwidth.cpp
+         void changebw( account_name from, account_name receiver,
+                        asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
+
          //defined in voting.hpp
          static eosio_global_state get_default_parameters();
+
+         void update_votes( const account_name voter, const account_name proxy, const std::vector<account_name>& producers, bool voting );
 
          // defined in voting.cpp
          void propagate_weight_change( const voter_info& voter );

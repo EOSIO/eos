@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -77,137 +77,17 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1transaction.html">eosio::transaction</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1deferred__transaction.html">eosio::deferred_transaction</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1onerror.html">eosio::onerror</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:gac01a00482f2dc95bf4850b2e8213ee90"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structeosio_1_1action.html">action</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#gac01a00482f2dc95bf4850b2e8213ee90">eosio::get_action</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> type, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="index_8c.html#a1d3748ca570dcb09a2fb28e8015107dd">index</a>)</td></tr>
 <tr class="separator:gac01a00482f2dc95bf4850b2e8213ee90"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaae55081c4b4068a5cb2a7dae2b4a051a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#gaae55081c4b4068a5cb2a7dae2b4a051a">eosio::check_auth</a> (const <a class="el" href="namespaceeosio.html#ac34f2f739bdb0c1b0fa78e14fbd8a06d">bytes</a> &amp;trx_packed, const <a class="el" href="classstd_1_1vector.html">vector</a>&lt; <a class="el" href="structeosio_1_1permission__level.html">permission_level</a> &gt; &amp;permissions)</td></tr>
-<tr class="separator:gaae55081c4b4068a5cb2a7dae2b4a051a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga33cd826341c39c6999ecfe6457bd9dd1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#ga33cd826341c39c6999ecfe6457bd9dd1">eosio::check_auth</a> (const char *serialized_transaction, <a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> size, const <a class="el" href="classstd_1_1vector.html">vector</a>&lt; <a class="el" href="structeosio_1_1permission__level.html">permission_level</a> &gt; &amp;permissions)</td></tr>
-<tr class="separator:ga33cd826341c39c6999ecfe6457bd9dd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga422af7cc0363c5993e4eb9a26034b399"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#ga422af7cc0363c5993e4eb9a26034b399">eosio::check_auth</a> (const <a class="el" href="classeosio_1_1transaction.html">transaction</a> &amp;trx, const <a class="el" href="classstd_1_1vector.html">vector</a>&lt; <a class="el" href="structeosio_1_1permission__level.html">permission_level</a> &gt; &amp;permissions)</td></tr>
-<tr class="separator:ga422af7cc0363c5993e4eb9a26034b399"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <dl class="section note"><dt>Note</dt><dd>There are some methods from the <a class="el" href="group__transactioncapi.html">Transaction C API</a> that can be used directly from C++ </dd></dl>
 <h2 class="groupheader">Function Documentation</h2>
-<a id="gaae55081c4b4068a5cb2a7dae2b4a051a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#gaae55081c4b4068a5cb2a7dae2b4a051a">&#9670;&nbsp;</a></span>check_auth() <span class="overload">[1/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void eosio::check_auth </td>
-          <td>(</td>
-          <td class="paramtype">const <a class="el" href="namespaceeosio.html#ac34f2f739bdb0c1b0fa78e14fbd8a06d">bytes</a> &amp;&#160;</td>
-          <td class="paramname"><em>trx_packed</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const <a class="el" href="classstd_1_1vector.html">vector</a>&lt; <a class="el" href="structeosio_1_1permission__level.html">permission_level</a> &gt; &amp;&#160;</td>
-          <td class="paramname"><em>permissions</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ga33cd826341c39c6999ecfe6457bd9dd1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga33cd826341c39c6999ecfe6457bd9dd1">&#9670;&nbsp;</a></span>check_auth() <span class="overload">[2/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void eosio::check_auth </td>
-          <td>(</td>
-          <td class="paramtype">const char *&#160;</td>
-          <td class="paramname"><em>serialized_transaction</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td>
-          <td class="paramname"><em>size</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const <a class="el" href="classstd_1_1vector.html">vector</a>&lt; <a class="el" href="structeosio_1_1permission__level.html">permission_level</a> &gt; &amp;&#160;</td>
-          <td class="paramname"><em>permissions</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ga422af7cc0363c5993e4eb9a26034b399"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga422af7cc0363c5993e4eb9a26034b399">&#9670;&nbsp;</a></span>check_auth() <span class="overload">[3/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void eosio::check_auth </td>
-          <td>(</td>
-          <td class="paramtype">const <a class="el" href="classeosio_1_1transaction.html">transaction</a> &amp;&#160;</td>
-          <td class="paramname"><em>trx</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const <a class="el" href="classstd_1_1vector.html">vector</a>&lt; <a class="el" href="structeosio_1_1permission__level.html">permission_level</a> &gt; &amp;&#160;</td>
-          <td class="paramname"><em>permissions</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="gac01a00482f2dc95bf4850b2e8213ee90"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#gac01a00482f2dc95bf4850b2e8213ee90">&#9670;&nbsp;</a></span>get_action()</h2>
 

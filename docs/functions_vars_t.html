@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -121,7 +121,7 @@ $(function() {
 : <a class="el" href="struct_test_mutex_throws.html#a4d18d86025134233529fd9691942708d">TestMutexThrows</a>
 </li>
 <li>time_became_active
-: <a class="el" href="structeosiosystem_1_1voting_1_1producer__info.html#a48ffded7465922373de842a510dec123">eosiosystem::voting&lt; SystemAccount &gt;::producer_info</a>
+: <a class="el" href="structeosiosystem_1_1producer__info.html#a33c949789bfc1fda864fccd801ad6c52">eosiosystem::producer_info</a>
 </li>
 <li>time_to_throw
 : <a class="el" href="classtest__alloc__base.html#a7f0e8a2cc06cc97f587b73c3b57da7a3">test_alloc_base</a>
@@ -131,7 +131,7 @@ $(function() {
 , <a class="el" href="structbenchmark_1_1internal_1_1_benchmark_1_1_instance.html#a74ceb5ee96f3650f6ed1a46bc602d41b">benchmark::internal::Benchmark::Instance</a>
 </li>
 <li>timestamp
-: <a class="el" href="structeosiosystem_1_1block__header.html#aef48f9c4ada8a7c7bad3d75f7f10f729">eosiosystem::block_header</a>
+: <a class="el" href="structeosiosystem_1_1block__header.html#a9c9c9cbc1cd8ef72b0fce4d6e81002ec">eosiosystem::block_header</a>
 </li>
 <li>tls_align
 : <a class="el" href="struct____libc.html#aacf6b8936ad815b6eec94e0d6d447b42">__libc</a>
@@ -175,8 +175,8 @@ $(function() {
 <li>to
 : <a class="el" href="structeosio_1_1currency_1_1issue.html#a92b8a1d3ae964b8fbcba10ba5004f688">eosio::currency::issue</a>
 , <a class="el" href="structeosio_1_1currency_1_1transfer.html#a72e1712d4bdd2aa78ecc804578fcb531">eosio::currency::transfer</a>
-, <a class="el" href="structeosio_1_1native__currency_1_1transfer.html#a1b24775f879304de541824a3aa0e0b6a">eosio::native_currency::transfer</a>
-, <a class="el" href="structeosiosystem_1_1delegate__bandwidth_1_1delegated__bandwidth.html#a4a96fb5115c5483982975d2e8cf2fe82">eosiosystem::delegate_bandwidth&lt; SystemAccount &gt;::delegated_bandwidth</a>
+, <a class="el" href="structeosio_1_1token_1_1transfer__args.html#a8d0efe51d87131b936f336b82f2683f4">eosio::token::transfer_args</a>
+, <a class="el" href="structeosiosystem_1_1delegated__bandwidth.html#afc364072aa667d2e0b777800eb69145a">eosiosystem::delegated_bandwidth</a>
 , <a class="el" href="struct_poisoned_hash_detail_1_1_convertible_to.html#af83aa985c16e93880b9f81a0eae86a86">PoisonedHashDetail::ConvertibleTo&lt; To &gt;</a>
 , <a class="el" href="structstltest_1_1contract_1_1message.html#a131fd250cf64cb06902ef9fa972f5846">stltest::contract::message</a>
 </li>
@@ -188,6 +188,9 @@ $(function() {
 </li>
 <li>tool
 : <a class="el" href="classlibcxx_1_1sym__check_1_1extract_1_1_read_elf_extractor.html#a36a05a7636836894534c8f6a7c352879">libcxx.sym_check.extract.ReadElfExtractor</a>
+</li>
+<li>total_activated_stake
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#a08c4b026bea40e1d1ee500d289e786ad">eosiosystem::eosio_global_state</a>
 </li>
 <li>total_available_to_lend
 : <a class="el" href="structconnector.html#a8ad5dc29dd0f408f269bf8d3ad5b6237">connector</a>
@@ -202,15 +205,24 @@ $(function() {
 : <a class="el" href="structconnector.html#aacefaaafa13b04d2a738fb9ad707f217">connector</a>
 , <a class="el" href="structeosio_1_1margin__state.html#a0382f3ad235acd53f9d2684cd4ed9e60">eosio::margin_state</a>
 </li>
-<li>total_storage_bytes_reserved
-: <a class="el" href="structeosiosystem_1_1common_1_1eosio__global__state.html#a198a55e352e2e239112fb099d50bb477">eosiosystem::common&lt; SystemAccount &gt;::eosio_global_state</a>
+<li>total_producer_vote_weight
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#a40342aff032242dd2a54723c60587d29">eosiosystem::eosio_global_state</a>
 </li>
-<li>total_storage_stake
-: <a class="el" href="structeosiosystem_1_1common_1_1eosio__global__state.html#a104753f3d48e317dca0766726c619782">eosiosystem::common&lt; SystemAccount &gt;::eosio_global_state</a>
+<li>total_ram_bytes_reserved
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#ab11f6efb709f15f9d31c3e8a20897149">eosiosystem::eosio_global_state</a>
+</li>
+<li>total_ram_stake
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#a491a74bf4176ddd4485941a841fff13a">eosiosystem::eosio_global_state</a>
+</li>
+<li>total_unpaid_blocks
+: <a class="el" href="structeosiosystem_1_1eosio__global__state.html#af7d50c559ad0cfffaa68749e16aed7aa">eosiosystem::eosio_global_state</a>
 </li>
 <li>total_votes
-: <a class="el" href="structeosiosystem_1_1voting_1_1producer__info.html#a165b8af746018a37c0a14999b5b7c997">eosiosystem::voting&lt; SystemAccount &gt;::producer_info</a>
+: <a class="el" href="structeosiosystem_1_1producer__info.html#abc5e3b6f64341d7a4c47dcf7f7303466">eosiosystem::producer_info</a>
 , <a class="el" href="structpost__record.html#a580585c2172c68521e806129bef13814">post_record</a>
+</li>
+<li>transaction_extensions
+: <a class="el" href="classeosio_1_1transaction.html#a445fd87e3465a1ca647c711c1ac0c711">eosio::transaction</a>
 </li>
 <li>transaction_mroot
 : <a class="el" href="structeosiosystem_1_1block__header.html#abdae1afa7aa05897fe48322c0973fe7a">eosiosystem::block_header</a>
@@ -218,17 +230,8 @@ $(function() {
 <li>true
 : <a class="el" href="struct_is_small_object.html#a5707aa2b2028262de117ccdd7676a37d">IsSmallObject&lt; _Tp &gt;</a>
 </li>
-<li>trust
-: <a class="el" href="structidentity_1_1contract_1_1settrust.html#af70d1c9f3d59d3cc2ed32a30b42a7f8c">identity::contract&lt; DeployToAccount &gt;::settrust</a>
-</li>
 <li>trusted
-: <a class="el" href="structidentity_1_1contract_1_1certrow.html#a40d543da5ea5e936fcd6fefec2a17c11">identity::contract&lt; DeployToAccount &gt;::certrow</a>
-</li>
-<li>trusting
-: <a class="el" href="structidentity_1_1contract_1_1settrust.html#a33a14451c19b36acf7ce37db8f8179b7">identity::contract&lt; DeployToAccount &gt;::settrust</a>
-</li>
-<li>trustor
-: <a class="el" href="structidentity_1_1contract_1_1settrust.html#abc4e93d8e7a6a6341889378e15a78538">identity::contract&lt; DeployToAccount &gt;::settrust</a>
+: <a class="el" href="structidentity_1_1certrow.html#a3e76a1541614d39b66389ce0e4b47928">identity::certrow</a>
 </li>
 <li>turn
 : <a class="el" href="structtic__tac__toe_1_1game.html#ae439a991b5232aa182ba7abf6185ba82">tic_tac_toe::game</a>
@@ -248,8 +251,8 @@ $(function() {
 <li>type
 : <a class="el" href="structeosio_1_1public__key.html#aaba0301ecc27240508120958503b2361">eosio::public_key</a>
 , <a class="el" href="struct_has_type_imp.html#a136ab75e8b631b0551ccb6d0c58f88f4">HasTypeImp&lt; Type &gt;</a>
-, <a class="el" href="structidentity_1_1contract_1_1certrow.html#a222d9f3eba96e7b910c5f4654556d8d4">identity::contract&lt; DeployToAccount &gt;::certrow</a>
-, <a class="el" href="structidentity_1_1contract_1_1certvalue.html#af1a8d723edcf8c758356e40893ac97ba">identity::contract&lt; DeployToAccount &gt;::certvalue</a>
+, <a class="el" href="structidentity_1_1certrow.html#a3b36295181dc2b140d1605317a8bae45">identity::certrow</a>
+, <a class="el" href="structidentity_1_1certvalue.html#a9b499d85c358fa56794b0210fb1372aa">identity::certvalue</a>
 , <a class="el" href="classlibcxx_1_1compiler_1_1_c_x_x_compiler.html#a3224d1e17936456ae6555973789e9267">libcxx.compiler.CXXCompiler</a>
 , <a class="el" href="structrapid__cxx__test_1_1test__outcome.html#a4df3fca7c481f864f7e650280a6f1b35">rapid_cxx_test::test_outcome</a>
 </li>

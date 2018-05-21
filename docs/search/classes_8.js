@@ -25,5 +25,6 @@ var searchData=
   ['hastype',['HasType',['../struct_has_type.html',1,'']]],
   ['hastype_3c_20t_2c_20typename_20voider_3c_20typename_20t_3a_3atype_20_3e_3a_3atype_20_3e',['HasType&lt; T, typename Voider&lt; typename T::type &gt;::type &gt;',['../struct_has_type_3_01_t_00_01typename_01_voider_3_01typename_01_t_1_1type_01_4_1_1type_01_4.html',1,'']]],
   ['hastypeimp',['HasTypeImp',['../struct_has_type_imp.html',1,'']]],
+  ['hello',['hello',['../classhello.html',1,'']]],
   ['hexfloat',['hexfloat',['../classhexfloat.html',1,'']]]
 ];
