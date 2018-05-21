@@ -23,11 +23,13 @@ int64_t asset::precision()const {
 string asset::to_string()const {
    string sign = amount < 0 ? "-" : "";
    int64_t abs_amount = std::abs(amount);
-   string result = fc::to_string( static_cast<int64_t>(abs_amount) / precision());
+   auto preci = precision();
+   EOS_ASSERT(preci > 0, asset_type_exception, "Asset's precision should be positive");
+   string result = fc::to_string( static_cast<int64_t>(abs_amount) / preci);
    if( decimals() )
    {
-      auto fract = static_cast<int64_t>(abs_amount) % precision();
-      result += "." + fc::to_string(precision() + fract).erase(0,1);
+      auto fract = static_cast<int64_t>(abs_amount) % preci;
+      result += "." + fc::to_string(preci + fract).erase(0,1);
    }
    return sign + result + " " + symbol_name();
 }
