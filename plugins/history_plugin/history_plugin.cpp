@@ -125,7 +125,7 @@ namespace eosio {
       name actor;
 
       std::tuple<name, name, name> key() const {
-         return {receiver, action, actor};
+         return std::make_tuple(receiver, action, actor);
       }
 
       friend bool operator<( const filter_entry& a, const filter_entry& b ) {
