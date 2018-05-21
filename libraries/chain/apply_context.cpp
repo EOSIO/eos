@@ -287,7 +287,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    trx_context.add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
-   trx_context.checktime();
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
@@ -297,7 +296,6 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
       trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
       generated_transaction_idx.remove(*gto);
    }
-   trx_context.checktime();
    return gto;
 }
 
@@ -343,7 +341,6 @@ void apply_context::reset_console() {
 
 bytes apply_context::get_packed_transaction() {
    auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
-   trx_context.checktime();
    return r;
 }
 
