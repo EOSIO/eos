@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -72,9 +72,8 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;<a class="el" href="proxy_8hpp_source.html">proxy/proxy.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="eosio_8system_8hpp_source.html">eosio.system/eosio.system.hpp</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="transaction_8hpp_source.html">eosiolib/transaction.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="eosiolib_2currency_8hpp_source.html">eosiolib/currency.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="eosio_8token_8hpp_source.html">eosio.token/eosio.token.hpp</a>&gt;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
@@ -94,9 +93,9 @@ Functions</h2></td></tr>
 <tr class="separator:a26fc675efb6d937ea077bc81c62b0dc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa19a078beeccc49305d4444a4a7a2139"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceproxy.html#aa19a078beeccc49305d4444a4a7a2139">proxy::apply_setowner</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> receiver, <a class="el" href="structproxy_1_1set__owner.html">set_owner</a> params)</td></tr>
 <tr class="separator:aa19a078beeccc49305d4444a4a7a2139"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a16b20cf614a8600b0a9026bae5a43057"><td class="memTemplParams" colspan="2">template&lt;size_t ... Args&gt; </td></tr>
-<tr class="memitem:a16b20cf614a8600b0a9026bae5a43057"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceproxy.html#a16b20cf614a8600b0a9026bae5a43057">proxy::apply_onerror</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> receiver, const <a class="el" href="classeosio_1_1deferred__transaction.html">deferred_transaction</a> &amp;failed_dtrx)</td></tr>
-<tr class="separator:a16b20cf614a8600b0a9026bae5a43057"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae5f41de3ebeceda7f799fc0e8e553a51"><td class="memTemplParams" colspan="2">template&lt;size_t ... Args&gt; </td></tr>
+<tr class="memitem:ae5f41de3ebeceda7f799fc0e8e553a51"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceproxy.html#ae5f41de3ebeceda7f799fc0e8e553a51">proxy::apply_onerror</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> receiver, const <a class="el" href="structeosio_1_1onerror.html">onerror</a> &amp;<a class="el" href="structerror.html">error</a>)</td></tr>
+<tr class="separator:ae5f41de3ebeceda7f799fc0e8e553a51"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a569d3d0ca7b56fb8c580faaa3d73179a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proxy_8cpp.html#a569d3d0ca7b56fb8c580faaa3d73179a">apply</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> receiver, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeosio_1_1action.html">action</a>)</td></tr>
 <tr class="memdesc:a569d3d0ca7b56fb8c580faaa3d73179a"><td class="mdescLeft">&#160;</td><td class="mdescRight">The apply method implements the dispatch of events to this contract.  <a href="#a569d3d0ca7b56fb8c580faaa3d73179a">More...</a><br /></td></tr>
 <tr class="separator:a569d3d0ca7b56fb8c580faaa3d73179a"><td class="memSeparator" colspan="2">&#160;</td></tr>

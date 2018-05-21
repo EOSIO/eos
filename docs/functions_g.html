@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -93,8 +93,8 @@ $(function() {
 , <a class="el" href="struct_copy_constructible_from_x.html#acb1e89e332f82acb5f79ac27c8a31fb9">CopyConstructibleFromX</a>
 , <a class="el" href="class_counter.html#a6bd44fca355c5abed458fd5b7a3a03dd">Counter&lt; T &gt;</a>
 , <a class="el" href="classeosio_1_1datastream.html#a001047d70942ab5beb836e498d9f9eab">eosio::datastream&lt; T &gt;</a>
-, <a class="el" href="classeosio_1_1multi__index.html#af5d8ff04881aeb2187973b4ef37f0430">eosio::multi_index&lt; TableName, T, Indices &gt;</a>
-, <a class="el" href="classeosio_1_1singleton.html#a60d4f7792c73a693d188170b03ad0fb7">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a>
+, <a class="el" href="classeosio_1_1multi__index.html#af05dfe7b56cf37179f76632cf619f0d1">eosio::multi_index&lt; TableName, T, Indices &gt;</a>
+, <a class="el" href="classeosio_1_1singleton.html#a53b56e4e8ed2fddd61175285afdf44d4">eosio::singleton&lt; SingletonName, T &gt;</a>
 , <a class="el" href="struct_explicit_copy_constructible_from_x.html#a2b70d67d793c39e12ff21f2d1b623062">ExplicitCopyConstructibleFromX</a>
 , <a class="el" href="struct_explicit_move_constructible_from_x.html#aa90d747a1a031ccb7b60eafb4b187978">ExplicitMoveConstructibleFromX</a>
 , <a class="el" href="struct_explicit_x.html#af778f3b13fbcf2737a286fbf531836b4">ExplicitX</a>
@@ -113,6 +113,7 @@ $(function() {
 </li>
 <li>get_account()
 : <a class="el" href="structcf__action.html#a52038284fa3332402e3ddedb1980639b">cf_action</a>
+, <a class="el" href="structdtt__action.html#a246dfeadef994fb26105d920698620bf">dtt_action</a>
 , <a class="el" href="structdummy__action.html#a9f53759af266b2cae0fa2259762dea5f">dummy_action</a>
 , <a class="el" href="structeosio_1_1action__meta.html#ae16a119b10904e8adce5763b9bcc1906">eosio::action_meta&lt; Account, Name &gt;</a>
 , <a class="el" href="structstltest_1_1contract_1_1message.html#a97cbf3456ff972d0fe6dc1cf8a840955">stltest::contract::message</a>
@@ -129,7 +130,6 @@ $(function() {
 </li>
 <li>get_balance()
 : <a class="el" href="classeosio_1_1currency.html#af66c9daa3eba582a537c2e609aa834b1">eosio::currency</a>
-, <a class="el" href="classeosio_1_1generic__currency.html#a5de588929b2080e247d6e5163193b282">eosio::generic_currency&lt; Token &gt;</a>
 </li>
 <li>get_c()
 : <a class="el" href="struct_a.html#aa3f0b012af83b74a5d72051081607207">A&lt; T &gt;</a>
@@ -141,7 +141,7 @@ $(function() {
 : <a class="el" href="struct_a.html#ade3d82a36a8b396f7ef6587443880300">A&lt; T &gt;</a>
 </li>
 <li>get_claimed_identity()
-: <a class="el" href="classidentity_1_1contract.html#ae0274b72d338a8e60956886c620ca031">identity::contract&lt; DeployToAccount &gt;</a>
+: <a class="el" href="classidentity_1_1interface.html#a8df0c2f01b49540f52d0fdebd527ae29">identity::interface</a>
 </li>
 <li>get_code()
 : <a class="el" href="classeosio_1_1multi__index.html#a578ed7b99087d4231b99dd914cde8e4d">eosio::multi_index&lt; TableName, T, Indices &gt;</a>
@@ -152,9 +152,6 @@ $(function() {
 <li>get_data()
 : <a class="el" href="classtest__allocator.html#aedfeccc76e72148620df444a8e47932c">test_allocator&lt; T &gt;</a>
 , <a class="el" href="classtest__allocator_3_01void_01_4.html#ae089c10ea17aa4d642fb7d4fae72e911">test_allocator&lt; void &gt;</a>
-</li>
-<li>get_default_parameters()
-: <a class="el" href="classeosiosystem_1_1common.html#ad8b0af5d90f075087ac2a50a4e8fe186">eosiosystem::common&lt; SystemAccount &gt;</a>
 </li>
 <li>get_deleter()
 : <a class="el" href="struct_stores_incomplete.html#aab41a097f4fcb333b22e147831b5509f">StoresIncomplete&lt; IncompleteT, Del &gt;</a>
@@ -176,16 +173,16 @@ $(function() {
 , <a class="el" href="classtest__allocator_3_01void_01_4.html#a953e4c5891ce50f38cd5e243d05074e3">test_allocator&lt; void &gt;</a>
 </li>
 <li>get_identity_for_account()
-: <a class="el" href="classidentity_1_1contract.html#a74e0609cf0e4ff01ba9282018a71ad48">identity::contract&lt; DeployToAccount &gt;</a>
+: <a class="el" href="classidentity_1_1interface.html#a57d6e756f855287d3a87adbc2500e709">identity::interface</a>
 </li>
 <li>get_index()
-: <a class="el" href="classeosio_1_1multi__index.html#a98fecc3166ebb3746ee810f7f7d9beac">eosio::multi_index&lt; TableName, T, Indices &gt;</a>
+: <a class="el" href="classeosio_1_1multi__index.html#ae6e01877b9862c8193df27f05c305f2c">eosio::multi_index&lt; TableName, T, Indices &gt;</a>
 </li>
 <li>get_int()
 : <a class="el" href="struct_a.html#a4c4fd1fc1d814b496915829d7285311e">A&lt; T &gt;</a>
 </li>
 <li>get_key()
-: <a class="el" href="structidentity_1_1contract_1_1certrow.html#ae3c45721f0164dcfbeaafa82831e30cf">identity::contract&lt; DeployToAccount &gt;::certrow</a>
+: <a class="el" href="structidentity_1_1certrow.html#ab8261288e3e1a29b3a75259875176ddc">identity::certrow</a>
 </li>
 <li>get_lit_bool()
 : <a class="el" href="classlibcxx_1_1test_1_1config_1_1_configuration.html#a1d5168c34459b85d08842c58605e0e90">libcxx.test.config.Configuration</a>
@@ -201,6 +198,7 @@ $(function() {
 </li>
 <li>get_name()
 : <a class="el" href="structcf__action.html#a27e28c4a00780828baad8ff96a91c07d">cf_action</a>
+, <a class="el" href="structdtt__action.html#af235efce4e58a17eb35ad3b9338c2279">dtt_action</a>
 , <a class="el" href="structdummy__action.html#a0481301a065d703b9bb04a9f0dc09ad2">dummy_action</a>
 , <a class="el" href="structeosio_1_1action__meta.html#a2db7bee8796ed90d1fcec8aa65a72192">eosio::action_meta&lt; Account, Name &gt;</a>
 , <a class="el" href="structstltest_1_1contract_1_1message.html#ac04aa13cafd0fe68b4987c35f924074d">stltest::contract::message</a>
@@ -208,13 +206,13 @@ $(function() {
 , <a class="el" href="structtest__dummy__action.html#acc1ad8fa9abee64ae64bd90f8fb7cfb4">test_dummy_action&lt; ACCOUNT, NAME &gt;</a>
 </li>
 <li>get_or_create()
-: <a class="el" href="classeosio_1_1singleton.html#a10cef0f3401fb0cd3c6efb8731946121">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a>
+: <a class="el" href="classeosio_1_1singleton.html#a0af3f71dfd7f8946cf69b3e362cf086d">eosio::singleton&lt; SingletonName, T &gt;</a>
 </li>
 <li>get_or_default()
-: <a class="el" href="classeosio_1_1singleton.html#ac14a55154c9980e5131962c340441a6c">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a>
+: <a class="el" href="classeosio_1_1singleton.html#a6a252d888f4c0b20bb3045a443267951">eosio::singleton&lt; SingletonName, T &gt;</a>
 </li>
 <li>get_owner_for_identity()
-: <a class="el" href="classidentity_1_1contract.html#a42cd091aa01ebf7788328d091f3efd37">identity::contract&lt; DeployToAccount &gt;</a>
+: <a class="el" href="classidentity_1_1interface.html#a1f8a78920e643d52dad408ce9333ede8">identity::interface</a>
 </li>
 <li>get_platform()
 : <a class="el" href="classlibcxx_1_1test_1_1target__info_1_1_darwin_local_t_i.html#a3cb1dda6751832b2779d611c71df8363">libcxx.test.target_info.DarwinLocalTI</a>
@@ -244,15 +242,16 @@ $(function() {
 , <a class="el" href="struct__test__multi__index_1_1record__idx256.html#a7455a9ab11cb211fa1ebeb5c275a2a5f">_test_multi_index::record_idx256</a>
 , <a class="el" href="struct__test__multi__index_1_1record__idx64.html#a5bb65269c99f40e7aa7e7e41ea236c38">_test_multi_index::record_idx64</a>
 , <a class="el" href="struct__test__multi__index_1_1record__idx__double.html#a14fddce4487244026470ba89c352005c">_test_multi_index::record_idx_double</a>
+, <a class="el" href="struct__test__multi__index_1_1record__idx__long__double.html#a10da9002b716d47d05dcfaa5ff1eb9bf">_test_multi_index::record_idx_long_double</a>
+</li>
+<li>get_self()
+: <a class="el" href="classeosio_1_1contract.html#a74749b739144b8aea2ebd354da750eb4">eosio::contract</a>
 </li>
 <li>get_supply()
 : <a class="el" href="classeosio_1_1currency.html#a0e91761b2826778dc410fd8aa38cb025">eosio::currency</a>
 </li>
 <li>get_test_format()
 : <a class="el" href="classlibcxx_1_1test_1_1config_1_1_configuration.html#aa3bbf069424705c122b87b90a6d03d3d">libcxx.test.config.Configuration</a>
-</li>
-<li>get_total_supply()
-: <a class="el" href="classeosio_1_1generic__currency.html#a37626db605ff2959cc392241aa84431d">eosio::generic_currency&lt; Token &gt;</a>
 </li>
 <li>get_u1()
 : <a class="el" href="struct_b.html#a5914b3d30e42392643cb0eef7bc2a871">B&lt; T &gt;</a>
@@ -262,6 +261,9 @@ $(function() {
 </li>
 <li>get_val()
 : <a class="el" href="structmulti__index__test_1_1test__k256.html#aef7fdd23d4e17150e1c26709bcc9c1d2">multi_index_test::test_k256</a>
+</li>
+<li>get_winner()
+: <a class="el" href="structtic__tac__toe_1_1impl.html#ad657bb5beb115eb761a773daf7cdd684">tic_tac_toe::impl</a>
 </li>
 <li>GetAdjustedCPUTime()
 : <a class="el" href="structbenchmark_1_1_benchmark_reporter_1_1_run.html#a667177d5c68dda14228b6548da4a5da0">benchmark::BenchmarkReporter::Run</a>
@@ -300,6 +302,9 @@ $(function() {
 <li>GetID()
 : <a class="el" href="classdetail_1_1_type_info.html#a4860ee462f7b389abbce9fba7cba0ac8">detail::TypeInfo&lt; T &gt;</a>
 </li>
+<li>getidentity()
+: <a class="el" href="classidentity__test_1_1contract.html#a10f0e45870a7ce6a1a4471430289ada3">identity_test::contract</a>
+</li>
 <li>GetInstance()
 : <a class="el" href="classbenchmark_1_1internal_1_1_benchmark_families.html#adfeb34c10af889264281ea99b9c81433">benchmark::internal::BenchmarkFamilies</a>
 </li>
@@ -315,6 +320,9 @@ $(function() {
 <li>GetOutputStream()
 : <a class="el" href="classbenchmark_1_1_benchmark_reporter.html#a8579c6156afd8a0c5c7569262dcf034d">benchmark::BenchmarkReporter</a>
 </li>
+<li>getowner()
+: <a class="el" href="classidentity__test_1_1contract.html#a760ba98c5957fed57df7041ee04e2580">identity_test::contract</a>
+</li>
 <li>getTestsInDirectory()
 : <a class="el" href="classlibcxx_1_1test_1_1format_1_1_libcxx_test_format.html#aa8d0967468b1faaf978664399b8f7bb7">libcxx.test.format.LibcxxTestFormat</a>
 </li>
@@ -326,12 +334,6 @@ $(function() {
 </li>
 <li>global_locale
 : <a class="el" href="struct____libc.html#a93057c0ff4dfa34684778c40fe8b66df">__libc</a>
-</li>
-<li>global_state_singleton
-: <a class="el" href="classeosiosystem_1_1common.html#a02c10e7e5f471a1a5339c6c05d960bd4">eosiosystem::common&lt; SystemAccount &gt;</a>
-, <a class="el" href="classeosiosystem_1_1contract.html#af4b85bfa238431a43efac70ee1fb21d6">eosiosystem::contract&lt; SystemAccount &gt;</a>
-, <a class="el" href="classeosiosystem_1_1delegate__bandwidth.html#ae5a1e1281447fd36bd22db966955a81d">eosiosystem::delegate_bandwidth&lt; SystemAccount &gt;</a>
-, <a class="el" href="classeosiosystem_1_1voting.html#a55d04159730b273f717eef9b8b66bc61">eosiosystem::voting&lt; SystemAccount &gt;</a>
 </li>
 <li>go()
 : <a class="el" href="structgoroutine.html#a3e6bc0143458522ddb34a74bd24de2f5">goroutine</a>
