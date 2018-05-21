@@ -1,15 +1,15 @@
 /**
  *  @file api_tests.cpp
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
 #pragma GCC diagnostic pop
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/resource_limits.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/exceptions.hpp>
+#include <enumivo/chain/resource_limits.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
@@ -19,7 +19,7 @@
 #include <test_ram_limit/test_ram_limit.abi.hpp>
 #include <test_ram_limit/test_ram_limit.wast.hpp>
 
-#define DISABLE_EOSLIB_SERIALIZE
+#define DISABLE_ENULIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
 
 /*
@@ -32,17 +32,17 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
 /*************************************************************************************
  * ram_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::enumivo_system_tester) { try {
+BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try {
    auto init_request_bytes = 80000;
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
-   buyrambytes(N(eosio), N(eosio), 70000);
+   buyrambytes(N(enumivo), N(enumivo), 70000);
    produce_blocks(10);
-   create_account_with_resources(N(testram11111),N(eosio), init_request_bytes);
-   create_account_with_resources(N(testram22222),N(eosio), init_request_bytes);
+   create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes);
+   create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes);
    produce_blocks(10);
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "enumivo", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {
@@ -51,8 +51,8 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::enumivo_system_tester) { try {
          break;
       } catch (const ram_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
-         buyrambytes(N(eosio), N(testram11111), increment_contract_bytes);
-         buyrambytes(N(eosio), N(testram22222), increment_contract_bytes);
+         buyrambytes(N(enumivo), N(testram11111), increment_contract_bytes);
+         buyrambytes(N(enumivo), N(testram22222), increment_contract_bytes);
       }
    }
    produce_blocks(10);
@@ -63,8 +63,8 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::enumivo_system_tester) { try {
          break;
       } catch (const ram_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
-         buyrambytes(N(eosio), N(testram11111), increment_contract_bytes);
-         buyrambytes(N(eosio), N(testram22222), increment_contract_bytes);
+         buyrambytes(N(enumivo), N(testram11111), increment_contract_bytes);
+         buyrambytes(N(enumivo), N(testram22222), increment_contract_bytes);
       }
    }
    produce_blocks(10);
@@ -82,8 +82,8 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::enumivo_system_tester) { try {
    auto more_ram = table_allocation_bytes + init_bytes - init_request_bytes;
    BOOST_REQUIRE_MESSAGE(more_ram >= 0, "Underlying understanding changed, need to reduce size of init_request_bytes");
    wdump((init_bytes)(initial_ram_usage)(init_request_bytes)(more_ram) );
-   buyrambytes(N(eosio), N(testram11111), more_ram);
-   buyrambytes(N(eosio), N(testram22222), more_ram);
+   buyrambytes(N(enumivo), N(testram11111), more_ram);
+   buyrambytes(N(enumivo), N(testram22222), more_ram);
 
    TESTER* tester = this;
    // allocate just under the allocated bytes

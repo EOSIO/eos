@@ -77,7 +77,7 @@ try:
         if not cluster.waitOnClusterBlockNumSync(3):
             errorExit("Cluster never stabilized")
 
-    Print("Stand up ENU wallet keosd")
+    Print("Stand up enuwallet")
     walletMgr.killall()
     walletMgr.cleanup()
     if walletMgr.launch() is False:

@@ -23,17 +23,10 @@ services:
     volumes:
       - enunode-data-volume:/opt/enumivo/bin/data-dir
 
-<<<<<<< HEAD
   enuwallet:
     image: enumivo/enumivo:latest
-    command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir
+    command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: enuwallet
-=======
-  keosd:
-    image: eosio/eos:latest
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
-    hostname: keosd
->>>>>>> upstream/master
     links:
       - enunoded
     volumes:

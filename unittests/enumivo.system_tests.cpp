@@ -518,7 +518,7 @@ BOOST_FIXTURE_TEST_CASE( stake_from_refund, enumivo_system_tester ) try {
    BOOST_REQUIRE_EQUAL( core_from_string("210.0000"), total["cpu_weight"].as<asset>());
    refund = get_refund_request( "alice1111111" );
    BOOST_TEST_REQUIRE( refund.is_null() );
-   //200 EOS should be taken from alice's account
+   //200 ENU should be taken from alice's account
    BOOST_REQUIRE_EQUAL( core_from_string("500.0000"), get_balance( "alice1111111" ) );
 
 } FC_LOG_AND_RETHROW()

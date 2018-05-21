@@ -773,7 +773,7 @@ class Node(object):
         assert(isinstance(initialBalances, dict))
         assert(isinstance(transferAmount, int))
 
-        currentBalances=self.getEosBalances([source] + accounts)
+        currentBalances=self.getEnuBalances([source] + accounts)
         assert(currentBalances)
         assert(isinstance(currentBalances, dict))
         assert(len(initialBalances) == len(currentBalances))
@@ -794,14 +794,14 @@ class Node(object):
                             (expectedInitialBalance, initialBalance, key.name))
                 return False
 
-    def getEosBalances(self, accounts):
+    def getEnuBalances(self, accounts):
         """Returns a dictionary with account balances keyed by accounts"""
         assert(accounts)
         assert(isinstance(accounts, list))
 
         balances={}
         for account in accounts:
-            balance = self.getAccountEosBalance(account.name)
+            balance = self.getAccountEnuBalance(account.name)
             balances[account]=balance
 
         return balances
@@ -1716,7 +1716,7 @@ class Cluster(object):
         receiving transferAmount*n SYS and forwarding x-transferAmount funds. Transfer actions are spread round-robin across the cluster to vaidate system cohesiveness."""
 
         if Utils.Debug: Utils.Print("Get initial system balances.")
-        initialBalances=self.nodes[0].getEosBalances([self.defproduceraAccount] + self.accounts)
+        initialBalances=self.nodes[0].getEnuBalances([self.defproduceraAccount] + self.accounts)
         assert(initialBalances)
         assert(isinstance(initialBalances, dict))
 

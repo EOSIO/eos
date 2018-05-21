@@ -1,25 +1,25 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
+#include <enumivo/testing/tester.hpp>
+#include <enumivo/chain/abi_serializer.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+#include <enumivo.system/enumivo.system.wast.hpp>
+#include <enumivo.system/enumivo.system.abi.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <enumivo.coin/enumivo.coin.wast.hpp>
+#include <enumivo.coin/enumivo.coin.abi.hpp>
 
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+#include <enumivo.msig/enumivo.msig.wast.hpp>
+#include <enumivo.msig/enumivo.msig.abi.hpp>
 
 #include <fc/variant_object.hpp>
 
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace enumivo::chain;
+using namespace enumivo::testing;
 using namespace fc;
 
 using mvo = fc::mutable_variant_object;
@@ -32,7 +32,7 @@ using mvo = fc::mutable_variant_object;
 #endif
 #endif
 
-namespace eosio_system {
+namespace enumivo_system {
 
 class enumivo_system_tester : public TESTER {
 public:
@@ -46,26 +46,26 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts( { N(eosio.token) } );
+      create_accounts( { N(enumivo.coin) } );
 
       produce_blocks( 100 );
 
-      set_code( N(eosio.token), eosio_token_wast );
-      set_abi( N(eosio.token), eosio_token_abi );
+      set_code( N(enumivo.coin), enumivo_coin_wast );
+      set_abi( N(enumivo.coin), enumivo_coin_abi );
 
       {
-         const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
+         const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.coin) );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          token_abi_ser.set_abi(abi);
       }
 
-      create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
+      create_currency( N(enumivo.coin), config::system_account_name, core_from_string("10000000000.0000") );
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) );
 
-      set_code( config::system_account_name, eosio_system_wast );
-      set_abi( config::system_account_name, eosio_system_abi );
+      set_code( config::system_account_name, enumivo_system_wast );
+      set_abi( config::system_account_name, enumivo_system_abi );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
@@ -76,16 +76,16 @@ public:
 
       produce_blocks();
 
-      create_account_with_resources( N(alice1111111), N(eosio), core_from_string("1.0000"), false );
-      create_account_with_resources( N(bob111111111), N(eosio), core_from_string("0.4500"), false );
-      create_account_with_resources( N(carol1111111), N(eosio), core_from_string("1.0000"), false );
+      create_account_with_resources( N(alice1111111), N(enumivo), core_from_string("1.0000"), false );
+      create_account_with_resources( N(bob111111111), N(enumivo), core_from_string("0.4500"), false );
+      create_account_with_resources( N(carol1111111), N(enumivo), core_from_string("1.0000"), false );
 
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) );
    }
 
 
-   void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(eosio) ) {
+   void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(enumivo) ) {
       for( auto a : accounts ) {
          create_account_with_resources( a, creator );
       }
@@ -106,13 +106,13 @@ public:
                                    .active   = authority( get_public_key( a, "active" ) )
                                 });
 
-      trx.actions.emplace_back( get_action( N(eosio), N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
                                             ("bytes", ram_bytes) )
                               );
-      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
@@ -148,14 +148,14 @@ public:
                                    .active   = authority( get_public_key( a, "active" ) )
                                 });
 
-      trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(buyram), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
                                             ("quant", ramfunds) )
                               );
 
-      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( N(enumivo), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
@@ -171,7 +171,7 @@ public:
    }
 
    transaction_trace_ptr setup_producer_accounts( const std::vector<account_name>& accounts ) {
-      account_name creator(N(eosio));
+      account_name creator(N(enumivo));
       signed_transaction trx;
       set_transaction_headers(trx);
       asset cpu = core_from_string("80.0000");
@@ -188,14 +188,14 @@ public:
                                          .active   = authority( get_public_key( a, "active" ) )
                                          });
 
-         trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{ {creator, config::active_name} },
+         trx.actions.emplace_back( get_action( N(enumivo), N(buyram), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("payer", creator)
                                                ("receiver", a)
                                                ("quant", ram) )
                                    );
 
-         trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{ {creator, config::active_name} },
+         trx.actions.emplace_back( get_action( N(enumivo), N(delegatebw), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("from", creator)
                                                ("receiver", a)
@@ -211,8 +211,8 @@ public:
       return push_transaction( trx );
    }
 
-   action_result buyram( const account_name& payer, account_name receiver, const asset& eosin ) {
-      return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",eosin) );
+   action_result buyram( const account_name& payer, account_name receiver, const asset& enuin ) {
+      return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",enuin) );
    }
    action_result buyrambytes( const account_name& payer, account_name receiver, uint32_t numbytes ) {
       return push_action( payer, N(buyrambytes), mvo()( "payer",payer)("receiver",receiver)("bytes",numbytes) );
@@ -315,7 +315,7 @@ public:
 
    asset get_balance( const account_name& act ) {
 
-      vector<char> data = get_row_by_account( N(eosio.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
+      vector<char> data = get_row_by_account( N(enumivo.coin), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
       return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data)["balance"].as<asset>();
    }
 
@@ -343,14 +343,14 @@ public:
    }
 
    void issue( name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(eosio.token), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.coin), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", amount )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(eosio.token), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.coin), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", amount)
@@ -368,9 +368,9 @@ public:
    }
 
    fc::variant get_stats( const string& symbolname ) {
-      auto symb = eosio::chain::symbol::from_string(symbolname);
+      auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(eosio.token), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(enumivo.coin), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data );
    }
 
@@ -379,14 +379,14 @@ public:
    }
 
    fc::variant get_global_state() {
-      vector<char> data = get_row_by_account( N(eosio), N(eosio), N(global), N(global) );
+      vector<char> data = get_row_by_account( N(enumivo), N(enumivo), N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "enumivo_global_state", data );
 
    }
 
    fc::variant get_refund_request( name account ) {
-      vector<char> data = get_row_by_account( N(eosio), account, N(refunds), account );
+      vector<char> data = get_row_by_account( N(enumivo), account, N(refunds), account );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "refund_request", data );
    }
 
@@ -421,8 +421,8 @@ inline fc::mutable_variant_object proxy( account_name acct ) {
    return voter( acct )( "is_proxy", 1 );
 }
 
-inline uint64_t M( const string& eos_str ) {
-   return core_from_string( eos_str ).amount;
+inline uint64_t M( const string& enu_str ) {
+   return core_from_string( enu_str ).amount;
 }
 
 }

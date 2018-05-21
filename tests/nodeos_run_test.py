@@ -508,8 +508,6 @@ try:
     if actual != expected:
         errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
 
-<<<<<<< HEAD
-=======
     amountStr=node.getCurrencyBalance("currency1111", currencyAccount.name, "CUR")
     try:
         assert(actual)
@@ -561,7 +559,6 @@ try:
         raise
 
 
->>>>>>> upstream/master
     Print("Exchange Contract Tests")
     Print("upload exchange contract")
 
