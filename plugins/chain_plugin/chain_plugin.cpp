@@ -207,7 +207,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
    if( options.count("force-all-checks") )
-      my->chain_config->force_all_checks = true;
+      my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
 
    my->chain.emplace(*my->chain_config);
 
