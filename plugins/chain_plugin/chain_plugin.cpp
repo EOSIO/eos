@@ -49,7 +49,7 @@ public:
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
    ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
    {}
-   
+
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
@@ -116,6 +116,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
+         ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
+          "clear chain database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
          ;
@@ -158,15 +160,19 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
    }
 
-   if (options.at("replay-blockchain").as<bool>()) {
-      ilog("Replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-   }
-   if (options.at("resync-blockchain").as<bool>()) {
+   if( options.at("resync-blockchain").as<bool>() ) {
       ilog("Resync requested: wiping database and blocks");
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       fc::remove_all(my->block_log_dir);
+   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
+      ilog("Hard replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+      block_log::repair_log( my->block_log_dir );
+   } else if( options.at("replay-blockchain").as<bool>() ) {
+      ilog("Replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
    }
+
 
    if(options.count("checkpoint"))
    {
