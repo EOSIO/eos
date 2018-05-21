@@ -207,7 +207,8 @@
       "fields": [
          {"name":"owner", "type":"account_name"},
          {"name":"request_time", "type":"time_point_sec"},
-         {"name":"amount", "type":"uint64"}
+         {"name":"net_amount", "type":"asset"},
+         {"name":"cpu_amount", "type":"asset"}
       ]
     },{
       "name": "blockchain_parameters",
