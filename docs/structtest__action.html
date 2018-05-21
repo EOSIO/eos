@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -92,16 +92,16 @@ Static Public Member Functions</h2></td></tr>
 <tr class="separator:abcec8fa2b81fba66f00f12cc22a27f25"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a51d13f55662c00cd2feeff1d7106a93f"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#a51d13f55662c00cd2feeff1d7106a93f">assert_true_cf</a> ()</td></tr>
 <tr class="separator:a51d13f55662c00cd2feeff1d7106a93f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7148f3ebdeb95b702f7c63651bc5cf0d"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#a7148f3ebdeb95b702f7c63651bc5cf0d">now</a> ()</td></tr>
-<tr class="separator:a7148f3ebdeb95b702f7c63651bc5cf0d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac76a7757ea1bb32e2293263eaa8dfbaa"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#ac76a7757ea1bb32e2293263eaa8dfbaa">test_current_time</a> ()</td></tr>
+<tr class="separator:ac76a7757ea1bb32e2293263eaa8dfbaa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae0dd988eb8b4b9129447ab291b30a1f0"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#ae0dd988eb8b4b9129447ab291b30a1f0">test_abort</a> () <a class="el" href="vis_8h.html#afc79878bb7823420f8320079c39e0ab1">__attribute__</a>((<a class="el" href="stdnoreturn_8h.html#a4a453f3a748e55cbdac6fcc79357cfef">noreturn</a>))</td></tr>
 <tr class="separator:ae0dd988eb8b4b9129447ab291b30a1f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af34e811076f815b47c5307441291b17d"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#af34e811076f815b47c5307441291b17d">test_current_receiver</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> receiver, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> action)</td></tr>
 <tr class="separator:af34e811076f815b47c5307441291b17d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a347039f343b553839adf9a08997f6d23"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#a347039f343b553839adf9a08997f6d23">test_current_sender</a> ()</td></tr>
-<tr class="separator:a347039f343b553839adf9a08997f6d23"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a379e7dfc446c022d209d5faa18e1a1f1"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#a379e7dfc446c022d209d5faa18e1a1f1">test_publication_time</a> ()</td></tr>
 <tr class="separator:a379e7dfc446c022d209d5faa18e1a1f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a334fcf6eb91b865074b7f55676493f4f"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html#a334fcf6eb91b865074b7f55676493f4f">test_assert_code</a> ()</td></tr>
+<tr class="separator:a334fcf6eb91b865074b7f55676493f4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="a24f0b8b86d7688c006f1def35c6594d6"></a>
@@ -165,31 +165,6 @@ Static Public Member Functions</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">void test_action::assert_true_cf </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7148f3ebdeb95b702f7c63651bc5cf0d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7148f3ebdeb95b702f7c63651bc5cf0d">&#9670;&nbsp;</a></span>now()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">void test_action::now </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -371,6 +346,31 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a334fcf6eb91b865074b7f55676493f4f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a334fcf6eb91b865074b7f55676493f4f">&#9670;&nbsp;</a></span>test_assert_code()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void test_action::test_assert_code </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a7357cdb1d96242a72ac39d725b9a3503"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7357cdb1d96242a72ac39d725b9a3503">&#9670;&nbsp;</a></span>test_cf_action()</h2>
 
@@ -438,8 +438,8 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a347039f343b553839adf9a08997f6d23"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a347039f343b553839adf9a08997f6d23">&#9670;&nbsp;</a></span>test_current_sender()</h2>
+<a id="ac76a7757ea1bb32e2293263eaa8dfbaa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac76a7757ea1bb32e2293263eaa8dfbaa">&#9670;&nbsp;</a></span>test_current_time()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -448,7 +448,7 @@ Static Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void test_action::test_current_sender </td>
+          <td class="memname">void test_action::test_current_time </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>

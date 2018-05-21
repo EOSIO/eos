@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -66,29 +66,48 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
-<a href="#namespaces">Namespaces</a>  </div>
+<a href="#namespaces">Namespaces</a> &#124;
+<a href="#typedef-members">Typedefs</a>  </div>
   <div class="headertitle">
 <div class="title">eosio.system.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="delegate__bandwidth_8hpp_source.html">delegate_bandwidth.hpp</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="native_8hpp_source.html">native.hpp</a>&quot;</code><br />
-<code>#include &lt;<a class="el" href="optional_8hpp_source.html">eosiolib/optional.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="generic__currency_8hpp_source.html">eosiolib/generic_currency.hpp</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="native_8hpp_source.html">eosio.system/native.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="asset_8hpp_source.html">eosiolib/asset.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="time_8hpp_source.html">eosiolib/time.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="privileged_8hpp_source.html">eosiolib/privileged.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="singleton_8hpp_source.html">eosiolib/singleton.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="eosio_8system_2exchange__state_8hpp_source.html">eosio.system/exchange_state.hpp</a>&gt;</code><br />
+<code>#include &lt;string&gt;</code><br />
 </div>
 <p><a href="eosio_8system_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosiosystem_1_1block__header.html">eosiosystem::block_header</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosiosystem_1_1eosio__parameters.html">eosiosystem::eosio_parameters</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosiosystem_1_1contract.html">eosiosystem::contract&lt; SystemAccount &gt;</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosiosystem_1_1eosio__global__state.html">eosiosystem::eosio_global_state</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosiosystem_1_1producer__info.html">eosiosystem::producer_info</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosiosystem_1_1voter__info.html">eosiosystem::voter_info</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosiosystem_1_1system__contract.html">eosiosystem::system_contract</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
 <tr class="memitem:namespaceeosiosystem"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosiosystem.html">eosiosystem</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:ad3fa887a88c9f5691909a1b1aec3771d"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1multi__index.html">eosio::multi_index</a>&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(voters), voter_info &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosiosystem.html#ad3fa887a88c9f5691909a1b1aec3771d">eosiosystem::voters_table</a></td></tr>
+<tr class="separator:ad3fa887a88c9f5691909a1b1aec3771d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2a681aaf1cf28cb7ba7fab47034ce3a0"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1multi__index.html">eosio::multi_index</a>&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(<a class="el" href="structproducers.html">producers</a>), producer_info, indexed_by&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(prototalvote), const_mem_fun&lt; producer_info, double, &amp;producer_info::by_votes &gt; &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosiosystem.html#a2a681aaf1cf28cb7ba7fab47034ce3a0">eosiosystem::producers_table</a></td></tr>
+<tr class="separator:a2a681aaf1cf28cb7ba7fab47034ce3a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a406b62f754e04c559a6066061c2f217e"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1singleton.html">eosio::singleton</a>&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(<a class="el" href="race_8pass_8cpp.html#a6cefee6a41481af63c7060a81339edf1">global</a>), eosio_global_state &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosiosystem.html#a406b62f754e04c559a6066061c2f217e">eosiosystem::global_state_singleton</a></td></tr>
+<tr class="separator:a406b62f754e04c559a6066061c2f217e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>

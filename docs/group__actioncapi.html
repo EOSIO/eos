@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -89,6 +89,8 @@ Functions</h2></td></tr>
 <tr class="memitem:gace44cd21e660827634c0529077f9494c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#gace44cd21e660827634c0529077f9494c">require_auth2</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> name, <a class="el" href="group__types.html#ga4a16baef1413dc2ec44666f6cc85adb1">permission_name</a> permission)</td></tr>
 <tr class="memdesc:gace44cd21e660827634c0529077f9494c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verify specified account exists in the set of provided auths.  <a href="#gace44cd21e660827634c0529077f9494c">More...</a><br /></td></tr>
 <tr class="separator:gace44cd21e660827634c0529077f9494c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gaaa8d39c004addde1a18dc710ea4d7e44"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#gaaa8d39c004addde1a18dc710ea4d7e44">is_account</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> name)</td></tr>
+<tr class="separator:gaaa8d39c004addde1a18dc710ea4d7e44"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gada68da99a95a5b25e9f5d43af255c63e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#gada68da99a95a5b25e9f5d43af255c63e">send_inline</a> (char *serialized_action, <a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> size)</td></tr>
 <tr class="separator:gada68da99a95a5b25e9f5d43af255c63e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga30b1cab2d60f843eb2d496e754e41705"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#ga30b1cab2d60f843eb2d496e754e41705">send_context_free_inline</a> (char *serialized_action, <a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> size)</td></tr>
@@ -99,12 +101,9 @@ Functions</h2></td></tr>
 <tr class="memitem:ga4b02a9d9adf71ae49e77e19fefc0cbf4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#ga4b02a9d9adf71ae49e77e19fefc0cbf4">require_read_lock</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> name)</td></tr>
 <tr class="memdesc:ga4b02a9d9adf71ae49e77e19fefc0cbf4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verifies that name exists in the set of read locks held.  <a href="#ga4b02a9d9adf71ae49e77e19fefc0cbf4">More...</a><br /></td></tr>
 <tr class="separator:ga4b02a9d9adf71ae49e77e19fefc0cbf4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga761ba259bec8bbdab79b31b716a5d4d6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga1d2f3c0b7d3e40dcd34ee51b80f9da25">time</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#ga761ba259bec8bbdab79b31b716a5d4d6">publication_time</a> ()</td></tr>
-<tr class="memdesc:ga761ba259bec8bbdab79b31b716a5d4d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the publication time.  <a href="#ga761ba259bec8bbdab79b31b716a5d4d6">More...</a><br /></td></tr>
-<tr class="separator:ga761ba259bec8bbdab79b31b716a5d4d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaf531fda07a825ca8b0d90f21446e6a64"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#gaf531fda07a825ca8b0d90f21446e6a64">current_sender</a> ()</td></tr>
-<tr class="memdesc:gaf531fda07a825ca8b0d90f21446e6a64"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the sender of the action.  <a href="#gaf531fda07a825ca8b0d90f21446e6a64">More...</a><br /></td></tr>
-<tr class="separator:gaf531fda07a825ca8b0d90f21446e6a64"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga6a2e3579fb125d40cc7f04c2a276424e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#ga6a2e3579fb125d40cc7f04c2a276424e">publication_time</a> ()</td></tr>
+<tr class="memdesc:ga6a2e3579fb125d40cc7f04c2a276424e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the publication time.  <a href="#ga6a2e3579fb125d40cc7f04c2a276424e">More...</a><br /></td></tr>
+<tr class="separator:ga6a2e3579fb125d40cc7f04c2a276424e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga5fcca014b53b0f15b9f9636325bae976"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actioncapi.html#ga5fcca014b53b0f15b9f9636325bae976">current_receiver</a> ()</td></tr>
 <tr class="memdesc:ga5fcca014b53b0f15b9f9636325bae976"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the current receiver of the action.  <a href="#ga5fcca014b53b0f15b9f9636325bae976">More...</a><br /></td></tr>
 <tr class="separator:ga5fcca014b53b0f15b9f9636325bae976"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -112,7 +111,7 @@ Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <p><a class="el" href="struct_a.html">A</a> EOS.IO action has the following abstract structure:</p>
 <div class="fragment"><div class="line"><span class="keyword">struct </span>action {</div><div class="line">  <a class="code" href="group__types.html#ga38500bd43c27c05b7f8a566cefe94656">scope_name</a> scope; <span class="comment">// the contract defining the primary code to execute for code/type</span></div><div class="line">  <a class="code" href="group__types.html#gab0390a1836d20bbbb735af2fce1ad3e8">action_name</a> name; <span class="comment">// the action to be taken</span></div><div class="line">  permission_level[] authorization; <span class="comment">// the accounts and permission levels provided</span></div><div class="line">  <a class="code" href="namespaceeosiosystem.html#a65cd920d5425c10ad625a0eeb58767be">bytes</a> data; <span class="comment">// opaque data processed by code</span></div><div class="line">};</div></div><!-- fragment --><p>This API enables your contract to inspect the fields on the current action and act accordingly.</p>
-<p>Example: </p><div class="fragment"><div class="line"><span class="comment">// Assume this action is used for the following examples:</span></div><div class="line"><span class="comment">// {</span></div><div class="line"><span class="comment">//  &quot;code&quot;: &quot;eos&quot;,</span></div><div class="line"><span class="comment">//  &quot;type&quot;: &quot;transfer&quot;,</span></div><div class="line"><span class="comment">//  &quot;authorization&quot;: [{ &quot;account&quot;: &quot;inita&quot;, &quot;permission&quot;: &quot;active&quot; }],</span></div><div class="line"><span class="comment">//  &quot;data&quot;: {</span></div><div class="line"><span class="comment">//    &quot;from&quot;: &quot;inita&quot;,</span></div><div class="line"><span class="comment">//    &quot;to&quot;: &quot;initb&quot;,</span></div><div class="line"><span class="comment">//    &quot;amount&quot;: 1000</span></div><div class="line"><span class="comment">//  }</span></div><div class="line"><span class="comment">// }</span></div><div class="line"></div><div class="line"><span class="keywordtype">char</span> buffer[128];</div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> total = read_action(buffer, 5); <span class="comment">// buffer contains the content of the action up to 5 bytes</span></div><div class="line"><a class="code" href="expected_8pass_8cpp.html#af82f8aed003fd2b1236ac567ac4483ed">print</a>(total); <span class="comment">// Output: 5</span></div><div class="line"></div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> msgsize = action_size();</div><div class="line"><a class="code" href="expected_8pass_8cpp.html#af82f8aed003fd2b1236ac567ac4483ed">print</a>(msgsize); <span class="comment">// Output: size of the above action&#39;s data field</span></div><div class="line"></div><div class="line"><a class="code" href="group__actioncapi.html#gae232893c733f02b94dbb70fae39d19f7">require_recipient</a>(<a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(initc)); <span class="comment">// initc account will be notified for this action</span></div><div class="line"></div><div class="line"><a class="code" href="group__actioncapi.html#gab1e668e93ac1f94421743ed79edffb26">require_auth</a>(<a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(inita)); <span class="comment">// Do nothing since inita exists in the auth list</span></div><div class="line"><a class="code" href="group__actioncapi.html#gab1e668e93ac1f94421743ed79edffb26">require_auth</a>(<a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(initb)); <span class="comment">// Throws an exception</span></div><div class="line"></div><div class="line"><a class="code" href="expected_8pass_8cpp.html#af82f8aed003fd2b1236ac567ac4483ed">print</a>(<a class="code" href="group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe">now</a>()); <span class="comment">// Output: timestamp of last accepted block</span></div></div><!-- fragment --> <h2 class="groupheader">Function Documentation</h2>
+<p>Example: </p><div class="fragment"><div class="line"><span class="comment">// Assume this action is used for the following examples:</span></div><div class="line"><span class="comment">// {</span></div><div class="line"><span class="comment">//  &quot;code&quot;: &quot;eos&quot;,</span></div><div class="line"><span class="comment">//  &quot;type&quot;: &quot;transfer&quot;,</span></div><div class="line"><span class="comment">//  &quot;authorization&quot;: [{ &quot;account&quot;: &quot;inita&quot;, &quot;permission&quot;: &quot;active&quot; }],</span></div><div class="line"><span class="comment">//  &quot;data&quot;: {</span></div><div class="line"><span class="comment">//    &quot;from&quot;: &quot;inita&quot;,</span></div><div class="line"><span class="comment">//    &quot;to&quot;: &quot;initb&quot;,</span></div><div class="line"><span class="comment">//    &quot;amount&quot;: 1000</span></div><div class="line"><span class="comment">//  }</span></div><div class="line"><span class="comment">// }</span></div><div class="line"></div><div class="line"><span class="keywordtype">char</span> buffer[128];</div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> total = read_action(buffer, 5); <span class="comment">// buffer contains the content of the action up to 5 bytes</span></div><div class="line"><a class="code" href="expected_8pass_8cpp.html#af82f8aed003fd2b1236ac567ac4483ed">print</a>(total); <span class="comment">// Output: 5</span></div><div class="line"></div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> msgsize = action_size();</div><div class="line"><a class="code" href="expected_8pass_8cpp.html#af82f8aed003fd2b1236ac567ac4483ed">print</a>(msgsize); <span class="comment">// Output: size of the above action&#39;s data field</span></div><div class="line"></div><div class="line"><a class="code" href="group__actioncapi.html#gae232893c733f02b94dbb70fae39d19f7">require_recipient</a>(<a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(initc)); <span class="comment">// initc account will be notified for this action</span></div><div class="line"></div><div class="line"><a class="code" href="group__actioncapi.html#gab1e668e93ac1f94421743ed79edffb26">require_auth</a>(<a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(inita)); <span class="comment">// Do nothing since inita exists in the auth list</span></div><div class="line"><a class="code" href="group__actioncapi.html#gab1e668e93ac1f94421743ed79edffb26">require_auth</a>(<a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(initb)); <span class="comment">// Throws an exception</span></div><div class="line"></div><div class="line"><a class="code" href="expected_8pass_8cpp.html#af82f8aed003fd2b1236ac567ac4483ed">print</a>(<a class="code" href="group__systemcapi.html#gaa95529fd8b200ddbb9ae71ea5c6055a3">current_time</a>()); <span class="comment">// Output: timestamp (in microseconds since 1970) of current block</span></div></div><!-- fragment --> <h2 class="groupheader">Function Documentation</h2>
 <a id="ga9d5497faab78ecdc03052cf644d72a5e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ga9d5497faab78ecdc03052cf644d72a5e">&#9670;&nbsp;</a></span>action_data_size()</h2>
 
@@ -149,24 +148,6 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="gaf531fda07a825ca8b0d90f21446e6a64"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#gaf531fda07a825ca8b0d90f21446e6a64">&#9670;&nbsp;</a></span>current_sender()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> current_sender </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p>Get the account which specifies the sender of the action </p><dl class="section return"><dt>Returns</dt><dd>the account which specifies the sender of the action </dd></dl>
-
-</div>
-</div>
 <a id="ga38a837d8c12a0cf02b729be1e13b0765"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ga38a837d8c12a0cf02b729be1e13b0765">&#9670;&nbsp;</a></span>has_auth()</h2>
 
@@ -185,21 +166,39 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ga761ba259bec8bbdab79b31b716a5d4d6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga761ba259bec8bbdab79b31b716a5d4d6">&#9670;&nbsp;</a></span>publication_time()</h2>
+<a id="gaaa8d39c004addde1a18dc710ea4d7e44"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gaaa8d39c004addde1a18dc710ea4d7e44">&#9670;&nbsp;</a></span>is_account()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="group__types.html#ga1d2f3c0b7d3e40dcd34ee51b80f9da25">time</a> publication_time </td>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> is_account </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>name</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ga6a2e3579fb125d40cc7f04c2a276424e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga6a2e3579fb125d40cc7f04c2a276424e">&#9670;&nbsp;</a></span>publication_time()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> publication_time </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Returns the time in seconds from 1970 of the publication_time </p><dl class="section return"><dt>Returns</dt><dd>the time in seconds from 1970 of the publication_time </dd></dl>
+<p>Returns the time in microseconds from 1970 of the publication_time </p><dl class="section return"><dt>Returns</dt><dd>the time in microseconds from 1970 of the publication_time </dd></dl>
 
 </div>
 </div>
@@ -231,11 +230,11 @@ Functions</h2></td></tr>
 <p>Copy up to <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a> bytes of current action data to the specified location </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">msg</td><td>- a pointer where up to <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a> bytes of the current action data will be copied </td></tr>
-    <tr><td class="paramname">len</td><td>- len of the current action data to be copied </td></tr>
+    <tr><td class="paramname">len</td><td>- len of the current action data to be copied, 0 to report required size </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>the number of bytes copied to msg </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>the number of bytes copied to msg, or number of bytes that can be copied if len==0 passed </dd></dl>
 
 </div>
 </div>

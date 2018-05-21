@@ -322,10 +322,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
-        // Register back producers after 10 years of inactivity
-        for( auto pro : producer_candidates ) {
-           register_producer(pro);
-        }
+
         // Block one should be able to unstake all his stake now
         undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
 
