@@ -77,3 +77,4 @@ etc/eosio/node_*
 var/lib/node_*
 .vscode
 .DS_Store
+cmake-build-debug
