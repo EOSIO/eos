@@ -2226,4 +2226,47 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( account_names /*_and_parameters*/, eosio_system_tester ) try {
+
+   //create_accounts_with_resources({N(bob111111111)});
+   issue( "bob111111111", core_from_string("1000000.0000"),  config::system_account_name );
+   
+   create_accounts_with_resources({N(111111111111), N(zzzzzzzzzzzz)}, N(bob111111111));
+
+   BOOST_REQUIRE_EXCEPTION( 
+      create_accounts_with_resources({N(111111111111z)}, N(bob111111111)), 
+                           action_validate_exception, [&](const action_validate_exception &ex)->bool {
+                           BOOST_REQUIRE_EQUAL(true, ex.to_detail_string().find("account names can only be 12 chars long") != string::npos);
+                           return true; });
+
+   BOOST_REQUIRE_EXCEPTION( 
+      create_accounts_with_resources({N(11111111111)}, N(bob111111111)), 
+                           action_validate_exception, [&](const action_validate_exception &ex)->bool {
+                           BOOST_REQUIRE_EQUAL(true, ex.to_detail_string().find("account names must be 12 chars long") != string::npos);
+                           return true; });
+   BOOST_REQUIRE_EXCEPTION( 
+      create_accounts_with_resources({N(11111111111.)}, N(bob111111111)), 
+                           action_validate_exception, [&](const action_validate_exception &ex)->bool {
+                           BOOST_REQUIRE_EQUAL(true, ex.to_detail_string().find("account names must be 12 chars long") != string::npos);
+                           return true; });
+
+   account_name names[]={N(.11111111111), N(1.1111111111), N(11.111111111), N(111.11111111), N(1111.1111111), N(11111.111111),
+                       N(111111.11111), N(1111111.1111), N(11111111.111), N(111111111.11), N(1111111111.1), 
+                       N(.zzzzzzzzzzz), N(z.zzzzzzzzzz), N(zzzzz.zzzzzz), N(zzzzzzzzzz.z), 
+                       N(..1111111111), N(111111111..1), N(1.3.5.7.a..z)};
+
+   for (auto n: names) {
+      BOOST_REQUIRE_EXCEPTION( 
+         create_accounts_with_resources({n}, N(bob111111111)), 
+                              action_validate_exception, [&](const action_validate_exception &ex)->bool {
+                              BOOST_REQUIRE_EQUAL(true, ex.to_detail_string().find("account names cannot contain '.' character") != string::npos);
+                              return true; });
+   }
+
+   create_accounts_with_resources({N(12345abcdefg)}, N(bob111111111));
+   create_accounts_with_resources({N(hijklmnopqrs)}, N(bob111111111));
+   create_accounts_with_resources({N(tuvwxyz12345)}, N(bob111111111));
+
+}FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
