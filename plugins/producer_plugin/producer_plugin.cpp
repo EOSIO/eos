@@ -61,7 +61,7 @@ namespace {
    }
 }
 
-struct blacklisted_transaction {
+struct transaction_id_with_expiry {
    transaction_id_type     trx_id;
    fc::time_point          expiry;
 };
@@ -69,13 +69,15 @@ struct blacklisted_transaction {
 struct by_id;
 struct by_expiry;
 
-using blacklisted_transaction_index = multi_index_container<
-   blacklisted_transaction,
+using transaction_id_with_expiry_index = multi_index_container<
+   transaction_id_with_expiry,
    indexed_by<
-      hashed_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(blacklisted_transaction, transaction_id_type, trx_id)>,
-      ordered_non_unique<tag<by_expiry>, BOOST_MULTI_INDEX_MEMBER(blacklisted_transaction, fc::time_point, expiry)>
+      hashed_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_id_with_expiry, transaction_id_type, trx_id)>,
+      ordered_non_unique<tag<by_expiry>, BOOST_MULTI_INDEX_MEMBER(transaction_id_with_expiry, fc::time_point, expiry)>
    >
 >;
+
+
 
 enum class pending_block_mode {
    producing,
@@ -105,6 +107,7 @@ class producer_plugin_impl {
       boost::asio::deadline_timer                               _timer;
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
+      transaction_id_with_expiry_index                          _persistent_transactions;
 
       int32_t                                                   _max_transaction_time_ms;
 
@@ -122,7 +125,7 @@ class producer_plugin_impl {
       incoming::methods::block_sync::method_type::handle       _incoming_block_sync_provider;
       incoming::methods::transaction_sync::method_type::handle _incoming_transaction_sync_provider;
 
-      blacklisted_transaction_index                            _blacklisted_transactions;
+      transaction_id_with_expiry_index                         _blacklisted_transactions;
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -231,7 +234,7 @@ class producer_plugin_impl {
 
       }
 
-      transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx) {
+      transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx, bool persist_until_expired = false) {
          fc_dlog(_log, "received incoming transaction ${id}", ("id", trx->id()));
          return publish_results_of(trx, _transaction_ack_channel, [&]() -> transaction_trace_ptr {
             while (true) {
@@ -270,6 +273,10 @@ class producer_plugin_impl {
                   } else {
                      trace->except->dynamic_rethrow_exception();
                   }
+               } else if (persist_until_expired) {
+                  // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
+                  // ensure its applied to all future speculative blocks as well.
+                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->expiration()});
                }
 
                return trace;
@@ -409,8 +416,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       my->on_incoming_block(block);
    });
 
-   my->_incoming_transaction_sync_provider = app().get_method<incoming::methods::transaction_sync>().register_provider([this](const packed_transaction_ptr& trx) -> transaction_trace_ptr {
-      return my->on_incoming_transaction(trx);
+   my->_incoming_transaction_sync_provider = app().get_method<incoming::methods::transaction_sync>().register_provider([this](const packed_transaction_ptr& trx, bool persist_until_expired) -> transaction_trace_ptr {
+      return my->on_incoming_transaction(trx, persist_until_expired);
    });
 
 } FC_LOG_AND_RETHROW() }
@@ -581,12 +588,47 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          _pending_block_mode = pending_block_mode::speculating;
       }
 
+      // attempt to play persisted transactions first
+      bool exhausted = false;
+      auto unapplied_trxs = chain.get_unapplied_transactions();
+
+      // remove all persisted transactions that have now expired
+      auto& persisted_by_id = _persistent_transactions.get<by_id>();
+      auto& persisted_by_expiry = _persistent_transactions.get<by_expiry>();
+      while(!persisted_by_expiry.empty() && persisted_by_expiry.begin()->expiry <= pbs->header.timestamp.to_time_point()) {
+         persisted_by_expiry.erase(persisted_by_expiry.begin());
+      }
+
+      for (auto itr = unapplied_trxs.begin(); itr != unapplied_trxs.end(); ++itr) {
+         const auto& trx = *itr;
+         if(persisted_by_id.find(trx->id) != persisted_by_id.end()) {
+            // this is a persisted transaction, push it into the block (even if we are speculating) with
+            // no deadline as it has already passed the subjective deadlines once and we want to represent
+            // the state of the chain including this transaction
+            try {
+               chain.push_transaction(trx, fc::time_point::maximum());
+            } FC_LOG_AND_DROP();
+
+            // remove it from further consideration as it is applied
+            *itr = nullptr;
+         }
+      }
+
       if (_pending_block_mode == pending_block_mode::producing) {
-         bool exhausted = false;
-         auto unapplied_trxs = chain.get_unapplied_transactions();
          for (const auto& trx : unapplied_trxs) {
             if (exhausted) {
                break;
+            }
+
+            if (!trx ) {
+               // nulled in the loop above, skip it
+               continue;
+            }
+
+            if (trx->packed_trx.expiration() > pbs->header.timestamp.to_time_point()) {
+               // expired, drop it
+               chain.drop_unapplied_transaction(trx);
+               continue;
             }
 
             try {
@@ -641,18 +683,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   } else {
                      auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
                      // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
-                     _blacklisted_transactions.insert(blacklisted_transaction{trx, expiration});
+                     _blacklisted_transactions.insert(transaction_id_with_expiry{trx, expiration});
                   }
                }
             } FC_LOG_AND_DROP();
          }
 
-         if (exhausted) {
-            return start_block_result::exhausted;
-         }
       }
 
-      return start_block_result::succeeded;
+      if (exhausted) {
+         return start_block_result::exhausted;
+      } else {
+         return start_block_result::succeeded;
+      }
    }
 
    return start_block_result::failed;
