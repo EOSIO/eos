@@ -375,7 +375,7 @@ void print_result( const fc::variant& result ) { try {
             wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
          }
       } else {
-         cerr << fc::json::to_pretty_string( result );
+         cerr << fc::json::to_pretty_string( result ) << endl;
       }
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
@@ -384,7 +384,7 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
    auto result = push_actions( move(actions), extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
       print_result( result );
    }
@@ -394,9 +394,8 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    auto result = push_transaction(trx, extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
-      auto trace = result["processed"].as<eosio::chain::transaction_trace>();
       print_result( result );
    }
 }
