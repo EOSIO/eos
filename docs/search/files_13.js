@@ -367,6 +367,7 @@ var searchData=
   ['sym_5fdiff_2epy',['sym_diff.py',['../sym__diff_8py.html',1,'']]],
   ['sym_5fextract_2epy',['sym_extract.py',['../sym__extract_8py.html',1,'']]],
   ['sym_5fmatch_2epy',['sym_match.py',['../sym__match_8py.html',1,'']]],
+  ['symbol_2ehpp',['symbol.hpp',['../symbol_8hpp.html',1,'']]],
   ['symlink_5fstatus_2epass_2ecpp',['symlink_status.pass.cpp',['../class_8directory__entry_2directory__entry_8obs_2symlink__status_8pass_8cpp.html',1,'(Global Namespace)'],['../fs_8op_8funcs_2fs_8op_8symlink__status_2symlink__status_8pass_8cpp.html',1,'(Global Namespace)']]],
   ['sync_2epass_2ecpp',['sync.pass.cpp',['../sync_8pass_8cpp.html',1,'']]],
   ['sync_5fwith_5fstdio_2epass_2ecpp',['sync_with_stdio.pass.cpp',['../sync__with__stdio_8pass_8cpp.html',1,'']]],

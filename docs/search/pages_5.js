@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['welcome_20to_20the_20eos_2eio_20documentation',['Welcome to the EOS.IO Documentation',['../index.html',1,'']]]
+  ['pegged_20derivative_20currency_20design',['Pegged Derivative Currency Design',['../md_contracts_exchange__pegged__derivative__currency__design.html',1,'']]]
 ];

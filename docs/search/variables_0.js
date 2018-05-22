@@ -80,6 +80,7 @@ var searchData=
   ['_5f_5fvector_5fbase_5fcommon_3c_20true_20_3e',['__vector_base_common&lt; true &gt;',['../vector_8cpp.html#ae435d22d00224ca7f5bb8dd3cf892bc7',1,'vector.cpp']]],
   ['_5f_5fwhat_5fstr_5f',['__what_str_',['../struct____libcpp__debug__exception_1_1____libcpp__debug__exception__imp.html#a6271b868b278f90d1c16257d351ac7b0',1,'__libcpp_debug_exception::__libcpp_debug_exception_imp']]],
   ['_5fcoro',['_Coro',['../structgenerator_1_1iterator.html#a8f89d18a800839a35729060793bd0385',1,'generator::iterator']]],
+  ['_5fcount',['_count',['../classeosio_1_1microseconds.html#af2faf1e08a77aafe6485d0e62813354c',1,'eosio::microseconds']]],
   ['_5fdone',['_Done',['../structgenerator_1_1iterator.html#a2f0d1f03ab2609166d089b6901683cc1',1,'generator::iterator']]],
-  ['_5fself',['_self',['../structeosio_1_1contract.html#a9ba8f5c6e8e17b272d35436f3bdd54f2',1,'eosio::contract']]]
+  ['_5fself',['_self',['../classeosio_1_1contract.html#a9ba8f5c6e8e17b272d35436f3bdd54f2',1,'eosio::contract::_self()'],['../classidentity_1_1identity__base.html#a0a4724fd162ea91cb8b13bea2adf2913',1,'identity::identity_base::_self()']]]
 ];
