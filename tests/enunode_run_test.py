@@ -69,13 +69,13 @@ onlyBios=args.only_bios
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
-cluster=testUtils.Cluster(enuwalletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=testUtils.WalletMgr(True)
 testSuccessful=False
 killEnuInstances=not dontKill
 killWallet=not dontKill
 
-EnuWalletDName="enuwallet"
+WalletdName="enuwallet"
 ClientName="enucli"
 # testUtils.Utils.setMongoSyncTime(50)
 
@@ -102,6 +102,9 @@ try:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEnuInstances=False
 
+    Print("Validating system accounts after bootstrap")
+    cluster.validateAccounts(None)
+
     accounts=testUtils.Cluster.createAccountKeys(3)
     if accounts is None:
         errorExit("FAILURE - create keys")
@@ -125,12 +128,12 @@ try:
     exchangeAccount.ownerPrivateKey=PRV_KEY2
     exchangeAccount.ownerPublicKey=PUB_KEY2
 
-    Print("Stand up enuwalletd")
+    Print("Stand up walletd")
     walletMgr.killall()
     walletMgr.cleanup()
     if walletMgr.launch() is False:
-        cmdError("%s" % (EnuWalletDName))
-        errorExit("Failed to stand up enuwalletd.")
+        cmdError("%s" % (WalletdName))
+        errorExit("Failed to stand up enu walletd.")
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
@@ -224,11 +227,30 @@ try:
     if node is None:
         errorExit("Cluster in bad state, received None node")
 
+    Print("Validating accounts before user accounts creation")
+    cluster.validateAccounts(None)
+
     Print("Create new account %s via %s" % (testeraAccount.name, defproduceraAccount.name))
     transId=node.createInitializeAccount(testeraAccount, defproduceraAccount, stakedDeposit=0, waitForTransBlock=False)
     if transId is None:
-        cmdError("%s create account" % (ClientName))
+        cmdError("%s create account" % (testeraAccount.name))
         errorExit("Failed to create account %s" % (testeraAccount.name))
+
+    Print("Create new account %s via %s" % (currencyAccount.name, defproducerbAccount.name))
+    transId=node.createInitializeAccount(currencyAccount, defproducerbAccount, stakedDeposit=5000)
+    if transId is None:
+        cmdError("%s create account" % (ClientName))
+        errorExit("Failed to create account %s" % (currencyAccount.name))
+
+    Print("Create new account %s via %s" % (exchangeAccount.name, defproduceraAccount.name))
+    transId=node.createInitializeAccount(exchangeAccount, defproduceraAccount, waitForTransBlock=True)
+    if transId is None:
+        cmdError("%s create account" % (ClientName))
+        errorExit("Failed to create account %s" % (exchangeAccount.name))
+
+    Print("Validating accounts after user accounts creation")
+    accounts=[testeraAccount, currencyAccount, exchangeAccount]
+    cluster.validateAccounts(accounts)
 
     Print("Verify account %s" % (testeraAccount))
     if not node.verifyAccount(testeraAccount):
@@ -263,17 +285,9 @@ try:
         cmdError("FAILURE - transfer failed")
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
-    Print("Create new account %s via %s" % (currencyAccount.name, defproducerbAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, defproducerbAccount, stakedDeposit=5000)
-    if transId is None:
-        cmdError("%s create account" % (ClientName))
-        errorExit("Failed to create account %s" % (currencyAccount.name))
-
-    Print("Create new account %s via %s" % (exchangeAccount.name, defproduceraAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, defproduceraAccount, waitForTransBlock=True)
-    if transId is None:
-        cmdError("%s create account" % (ClientName))
-        errorExit("Failed to create account %s" % (exchangeAccount.name))
+    Print("Validating accounts after some user trasactions")
+    accounts=[testeraAccount, currencyAccount, exchangeAccount]
+    cluster.validateAccounts(accounts)
 
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():
@@ -307,7 +321,7 @@ try:
     assert(actions)
     try:
         assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
-    except (AssertionError, KeyError) as e:
+    except (AssertionError, TypeError, KeyError) as _:
         Print("Last action validation failed. Actions: %s" % (actions))
         raise
 
@@ -378,7 +392,7 @@ try:
             typeVal=  transaction["name"]
             amountVal=transaction["data"]["quantity"]
             amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
-    except (AssertionError, KeyError) as e:
+    except (TypeError, KeyError) as e:
         Print("Transaction validation parsing failed. Transaction: %s" % (transaction))
         raise
 
@@ -465,7 +479,7 @@ try:
     expected="100000.0000 CUR"
     actual=amountStr
     if actual != expected:
-        errorExit("FAILURE - get currency1111 balance failed. Recieved response: <%s>" % (res), raw=True)
+        errorExit("FAILURE - currency1111 balance check failed. Expected: %s, Recieved %s" % (expected, actual), raw=True)
 
     Print("Verify currency1111 contract has proper total supply of CUR (via get currency1111 stats)")
     res=node.getCurrencyStats(contract, "CUR")
@@ -646,8 +660,8 @@ try:
             #         errorExit("mongo get messages by transaction id %s" % (transId))
 
 
-    Print("Request invalid block numbered %d. This will generate an extpected error message." % (currentBlockNum+1000))
-    block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
+    Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
+    block=node.getBlock(str(currentBlockNum+1000), silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
     else:
@@ -667,6 +681,10 @@ try:
             #  for now, hopefully the logs will get cleaned up in future.
             Print("WARNING: Asserts in var/lib/node_00/stderr.txt")
             #errorExit("FAILURE - Assert in var/lib/node_00/stderr.txt")
+
+    Print("Validating accounts at end of test")
+    accounts=[testeraAccount, currencyAccount, exchangeAccount]
+    cluster.validateAccounts(accounts)
 
     testSuccessful=True
 finally:
