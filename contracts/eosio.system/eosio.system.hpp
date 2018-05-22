@@ -135,7 +135,7 @@ namespace eosiosystem {
          // functions defined in delegate_bandwidth.cpp
 
          /**
-          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'. 
+          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'.
           *  If transfer == true, then 'receiver' can unstake to their account
           *  Else 'from' can unstake at any time.
           */
@@ -149,7 +149,7 @@ namespace eosiosystem {
           *  left to delegate.
           *
           *  This will cause an immediate reduction in net/cpu bandwidth of the
-          *  receiver. 
+          *  receiver.
           *
           *  A transaction is scheduled to send the tokens back to 'from' after
           *  the staking period has passed. If existing transaction is scheduled, it
@@ -199,6 +199,8 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
          void setpriv( account_name account, uint8_t ispriv );
+
+         void setprods( std::vector<eosio::producer_key> schedule );
 
       private:
          void update_elected_producers( block_timestamp timestamp );
