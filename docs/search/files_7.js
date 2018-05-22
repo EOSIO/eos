@@ -18,7 +18,6 @@ var searchData=
   ['generateinput_2ehpp',['GenerateInput.hpp',['../_generate_input_8hpp.html',1,'']]],
   ['generator_2epass_2ecpp',['generator.pass.cpp',['../generator_8pass_8cpp.html',1,'']]],
   ['generic_5fcategory_2epass_2ecpp',['generic_category.pass.cpp',['../generic__category_8pass_8cpp.html',1,'']]],
-  ['generic_5fcurrency_2ehpp',['generic_currency.hpp',['../generic__currency_8hpp.html',1,'']]],
   ['generic_5fstring_5falloc_2epass_2ecpp',['generic_string_alloc.pass.cpp',['../generic__string__alloc_8pass_8cpp.html',1,'']]],
   ['get_2efail_2ecpp',['get.fail.cpp',['../get_8fail_8cpp.html',1,'']]],
   ['get_2epass_2ecpp',['get.pass.cpp',['../containers_2sequences_2array_2array_8tuple_2get_8pass_8cpp.html',1,'(Global Namespace)'],['../experimental_2utilities_2propagate__const_2propagate__const_8class_2propagate__const_8non-const__observers_2get_8pass_8cpp.html',1,'(Global Namespace)'],['../experimental_2utilities_2propagate__const_2propagate__const_8class_2propagate__const_8observers_2get_8pass_8cpp.html',1,'(Global Namespace)'],['../input_8output_2iostream_8format_2input_8streams_2istream_8unformatted_2get_8pass_8cpp.html',1,'(Global Namespace)'],['../thread_2futures_2futures_8shared__future_2get_8pass_8cpp.html',1,'(Global Namespace)'],['../thread_2futures_2futures_8unique__future_2get_8pass_8cpp.html',1,'(Global Namespace)'],['../utilities_2smartptr_2unique_8ptr_2unique_8ptr_8class_2unique_8ptr_8observers_2get_8pass_8cpp.html',1,'(Global Namespace)']]],

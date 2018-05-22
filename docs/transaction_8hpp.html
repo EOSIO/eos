@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -74,8 +74,8 @@ $(function() {
 <div class="contents">
 <div class="textblock"><code>#include &lt;<a class="el" href="transaction_8h_source.html">eosiolib/transaction.h</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="action_8hpp_source.html">eosiolib/action.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="print_8hpp_source.html">eosiolib/print.hpp</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="types_8hpp_source.html">eosiolib/types.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="time_8hpp_source.html">eosiolib/time.hpp</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="serialize_8hpp_source.html">eosiolib/serialize.hpp</a>&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 </div>
@@ -87,7 +87,7 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1transaction.html">eosio::transaction</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1deferred__transaction.html">eosio::deferred_transaction</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1onerror.html">eosio::onerror</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
@@ -99,12 +99,6 @@ Namespaces</h2></td></tr>
 Functions</h2></td></tr>
 <tr class="memitem:gac01a00482f2dc95bf4850b2e8213ee90"><td class="memItemLeft" align="right" valign="top">action&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#gac01a00482f2dc95bf4850b2e8213ee90">eosio::get_action</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> type, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="index_8c.html#a1d3748ca570dcb09a2fb28e8015107dd">index</a>)</td></tr>
 <tr class="separator:gac01a00482f2dc95bf4850b2e8213ee90"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaae55081c4b4068a5cb2a7dae2b4a051a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#gaae55081c4b4068a5cb2a7dae2b4a051a">eosio::check_auth</a> (const bytes &amp;trx_packed, const vector&lt; permission_level &gt; &amp;permissions)</td></tr>
-<tr class="separator:gaae55081c4b4068a5cb2a7dae2b4a051a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga33cd826341c39c6999ecfe6457bd9dd1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#ga33cd826341c39c6999ecfe6457bd9dd1">eosio::check_auth</a> (const char *serialized_transaction, <a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> size, const vector&lt; permission_level &gt; &amp;permissions)</td></tr>
-<tr class="separator:ga33cd826341c39c6999ecfe6457bd9dd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga422af7cc0363c5993e4eb9a26034b399"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html#ga422af7cc0363c5993e4eb9a26034b399">eosio::check_auth</a> (const transaction &amp;trx, const vector&lt; permission_level &gt; &amp;permissions)</td></tr>
-<tr class="separator:ga422af7cc0363c5993e4eb9a26034b399"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>

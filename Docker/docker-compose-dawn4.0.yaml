@@ -11,7 +11,7 @@ services:
 
   nodeosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/EOS
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --resync #--mongodb-uri mongodb://mongo:27017/EOS
     hostname: nodeosd
     links:
       - mongo
@@ -25,7 +25,7 @@ services:
 
   keosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: keosd
     links:
       - nodeosd

@@ -172,6 +172,8 @@ namespace eosio { namespace chain {
          my->head = b;
          my->head_id = b->id();
 
+         flush();
+
          return pos;
       }
       FC_LOG_AND_RETHROW()
@@ -259,5 +261,114 @@ namespace eosio { namespace chain {
          my->index_stream.write((char*)&pos, sizeof(pos));
       }
    } // construct_index
+
+   void block_log::repair_log( const fc::path& data_dir ) {
+      ilog("Recovering Block Log...");
+      FC_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"),
+                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
+
+      auto now = fc::time_point::now();
+
+      auto blocks_dir = fc::canonical( data_dir );
+      auto backup_dir = blocks_dir.parent_path();
+      auto blocks_dir_name = blocks_dir.filename();
+      if( blocks_dir_name.generic_string() == "." ) {
+         blocks_dir_name = backup_dir.filename();
+         backup_dir = backup_dir.parent_path();
+         FC_ASSERT( blocks_dir_name.generic_string() != ".", "Invalid path to blocks directory" );
+      }
+      backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( now );
+
+      FC_ASSERT( !fc::exists(backup_dir),
+                 "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
+                 ("new_blocks_dir", backup_dir) );
+
+      fc::rename( blocks_dir, backup_dir );
+      ilog( "Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir) );
+
+      fc::create_directories(blocks_dir);
+      auto block_log_path = blocks_dir / "blocks.log";
+
+      ilog( "Reconstructing '${new_block_log}' from backed up block log", ("new_block_log", block_log_path) );
+
+      std::fstream  old_block_stream;
+      std::fstream  new_block_stream;
+
+      old_block_stream.open( (backup_dir / "blocks.log").generic_string().c_str(), LOG_READ );
+      new_block_stream.open( block_log_path.generic_string().c_str(), LOG_WRITE );
+
+      uint64_t pos = 0;
+      uint64_t end_pos = old_block_stream.tellg();
+      old_block_stream.seekg( 0, std::ios::end );
+      end_pos = static_cast<uint64_t>(old_block_stream.tellg()) - end_pos;
+      old_block_stream.seekg( 0 );
+
+      std::exception_ptr     except_ptr;
+      vector<char>           incomplete_block_data;
+      optional<signed_block> bad_block;
+      uint32_t               block_num = 0;
+
+      while( pos < end_pos ) {
+         signed_block tmp;
+
+         try {
+            fc::raw::unpack(old_block_stream, tmp);
+         } catch( ... ) {
+            except_ptr = std::current_exception();
+            incomplete_block_data.resize( end_pos - pos );
+            old_block_stream.read( incomplete_block_data.data(), incomplete_block_data.size() );
+            break;
+         }
+
+         uint64_t tmp_pos = std::numeric_limits<uint64_t>::max();
+         if( (static_cast<uint64_t>(old_block_stream.tellg()) + sizeof(pos)) <= end_pos ) {
+            old_block_stream.read( reinterpret_cast<char*>(&tmp_pos), sizeof(tmp_pos) );
+         }
+         if( pos != tmp_pos ) {
+            bad_block = tmp;
+            break;
+         }
+
+         auto data = fc::raw::pack(tmp);
+         new_block_stream.write( data.data(), data.size() );
+         new_block_stream.write( reinterpret_cast<char*>(&pos), sizeof(pos) );
+         block_num = tmp.block_num();
+         pos = new_block_stream.tellp();
+      }
+
+      if( bad_block.valid() ) {
+         ilog( "Recovered only up to block number ${num}. Last block in block log was not properly committed:\n${last_block}",
+               ("num", block_num)("last_block", *bad_block) );
+      } else if( except_ptr ) {
+         std::string error_msg;
+
+         try {
+            std::rethrow_exception(except_ptr);
+         } catch( const fc::exception& e ) {
+            error_msg = e.what();
+         } catch( const std::exception& e ) {
+            error_msg = e.what();
+         } catch( ... ) {
+            error_msg = "unrecognized exception";
+         }
+
+         ilog( "Recovered only up to block number ${num}. "
+               "The block ${next_num} could not be deserialized from the block log due to error:\n${error_msg}",
+               ("num", block_num)("next_num", block_num+1)("error_msg", error_msg) );
+
+         auto tail_path = blocks_dir / std::string("blocks-bad-tail-").append( now ).append(".log");
+         if( !fc::exists(tail_path) && incomplete_block_data.size() > 0 ) {
+            std::fstream tail_stream;
+            tail_stream.open( tail_path.generic_string().c_str(), LOG_WRITE );
+            tail_stream.write( incomplete_block_data.data(), incomplete_block_data.size() );
+
+            ilog( "Data at tail end of block log which should contain the (incomplete) serialization of block ${num} "
+                  "has been written out to '${tail_path}'.",
+                  ("num", block_num+1)("tail_path", tail_path) );
+         }
+      } else {
+         ilog( "Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.", ("num", block_num) );
+      }
+   }
 
 } } /// eosio::chain
