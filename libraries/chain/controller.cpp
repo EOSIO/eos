@@ -189,39 +189,64 @@ struct controller_impl {
       */
       if( !head ) {
          initialize_fork_db(); // set head to genesis state
-      }
 
-      while( db.revision() > head->block_num ) {
-         wlog( "warning: database revision greater than head block, undoing pending changes" );
-         db.undo();
-      }
+         auto end = blog.read_head();
+         if( end && end->block_num() > 1 ) {
+            replaying = true;
+            replaying_irreversible = true;
+            ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
 
-      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
-                 ("db",db.revision())("head",head->block_num) );
+            auto start = fc::time_point::now();
+            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+               self.push_block( next, true );
+               if( next->block_num() % 100 == 0 ) {
+                  std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
+               }
+            }
+            replaying_irreversible = false;
+
+            int unconf = 0;
+            while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
+               ++unconf;
+               self.push_block( obj->get_block(), true );
+            }
+
+            std::cerr<< "\n";
+            ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
+            auto end = fc::time_point::now();
+            ilog( "replayed blocks in ${n} seconds, ${spb} spb",
+                  ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+            std::cerr<< "\n";
+            replaying = false;
+
+         } else if( !end ) {
+            blog.append( head->block );
+         }
+      }
 
       const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
       auto objitr = ubi.rbegin();
       if( objitr != ubi.rend() ) {
-         if( objitr->blocknum < head->block_num ) {
-            // Remove all unconfirmed blocks since they are all too old
-            auto itr = ubi.begin();
-            wlog( "warning: unconfirmed blocks are older than current head block, clearing all unconfirmed blocks" );
-            while( itr != ubi.end() ) {
-               unconfirmed_blocks.remove( *itr );
-               itr = ubi.begin();
-            }
-         } else if( objitr->blocknum > head->block_num ) {
-            // This branch can only be reached if there was a gap in the unconfirmed blocks (which shouldn't be possible)
-            // or if the existing forkdb.dat was inconsistent with the unconfirmed block database.
-            wlog( "warning: could not replay up to latest blocks in unconfirmed block database, "
-                  "removing blocks from tail end of unconfirmed block database to be consistent with fork database head" );
-            while( objitr != ubi.rend() && objitr->blocknum > head->block_num ) {
-               unconfirmed_blocks.remove( *objitr );
-               objitr = ubi.rbegin();
-            }
-            FC_ASSERT( objitr == ubi.rend() || objitr->blocknum == head->block_num,
-                       "unconfirmed block database has a gap", ("head",head->block_num)("unconfimed", objitr->blocknum) );
-         }
+         FC_ASSERT( objitr->blocknum == head->block_num,
+                    "unconfirmed block database is inconsistent with fork database, replay blockchain",
+                    ("head",head->block_num)("unconfimed", objitr->blocknum)         );
+      } else {
+         auto end = blog.read_head();
+         FC_ASSERT( end && end->block_num() == head->block_num,
+                    "fork database exists but unconfirmed block database does not, replay blockchain",
+                    ("blog_head",end->block_num())("head",head->block_num)  );
+      }
+
+      FC_ASSERT( db.revision() >= head->block_num, "fork database is inconsistent with shared memory",
+                 ("db",db.revision())("head",head->block_num) );
+
+      if( db.revision() > head->block_num ) {
+         wlog( "warning: database revision (${db}) is greater than head block number (${head}), "
+               "attempting to undo pending changes",
+               ("db",db.revision())("head",head->block_num) );
+      }
+      while( db.revision() > head->block_num ) {
+         db.undo();
       }
 
    }
@@ -294,39 +319,6 @@ struct controller_impl {
       db.set_revision( head->block_num );
 
       initialize_database();
-
-      auto end = blog.read_head();
-      if( end && end->block_num() > 1 ) {
-         replaying = true;
-         replaying_irreversible = true;
-         ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
-
-         auto start = fc::time_point::now();
-         while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-            self.push_block( next, true );
-            if( next->block_num() % 100 == 0 ) {
-               std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
-            }
-         }
-         replaying_irreversible = false;
-
-         int unconf = 0;
-         while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
-            ++unconf;
-            self.push_block( obj->get_block(), true );
-         }
-
-         std::cerr<< "\n";
-         ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
-         auto end = fc::time_point::now();
-         ilog( "replayed blocks in ${n} seconds, ${spb} spb",
-               ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
-         std::cerr<< "\n";
-         replaying = false;
-
-      } else if( !end ) {
-         blog.append( head->block );
-      }
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
