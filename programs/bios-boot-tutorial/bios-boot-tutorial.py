@@ -93,6 +93,8 @@ def startProducers(b, e):
             '    --private-key \'["' + account['pub'] + '","' + account['pvt'] + '"]\''
             '    --plugin eosio::http_plugin'
             '    --plugin eosio::chain_api_plugin'
+            '    --plugin eosio::sql_db_plugin'
+            '    --sql_db-uri=sqlite3://test.db'
             '    --plugin eosio::producer_plugin' +
             otherOpts)
         with open(dir + 'stderr', mode='w') as f:
