@@ -2368,6 +2368,9 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefe), N(eve) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
+   // attemp to create account with no bid
+   BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefg), N(alice) ),
+                            fc::exception, fc_assert_exception_message_is( "no active bid for name" ) );
    // changing highest bid pushes auction closing time by 24 hours
    BOOST_REQUIRE_EQUAL( success(),
                         bidname( "eve",  "prefb", core_from_string("2.1880") ) );
@@ -2398,7 +2401,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    // but not others
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefa), N(bob) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
-   
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
