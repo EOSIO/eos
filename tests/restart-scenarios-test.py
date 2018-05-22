@@ -4,7 +4,6 @@ import testUtils
 
 import argparse
 import random
-import signal
 
 ###############################################################
 # Test for different nodes restart scenarios.
@@ -105,14 +104,15 @@ try:
         errorExit("Wallet initialization failed.")
 
     defproduceraAccount=cluster.defproduceraAccount
+    eosioAccount=cluster.eosioAccount
 
     Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, wallet.name))
     if not walletMgr.importKey(defproduceraAccount, wallet):
         errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
     Print("Create accounts.")
-    #if not cluster.createAccounts(wallet):
-    if not cluster.createAccounts(defproduceraAccount):
+    #if not cluster.createAccounts(defproduceraAccount):
+    if not cluster.createAccounts(eosioAccount):
         errorExit("Accounts creation failed.")
 
     Print("Wait on cluster sync.")
@@ -179,6 +179,5 @@ finally:
             Print("Cleanup cluster and wallet data.")
             cluster.cleanup()
             walletMgr.cleanup()
-    pass
 
 exit(0)

@@ -1084,7 +1084,7 @@ class Node(object):
             return False
 
         if not Utils.waitForBool(myFunc):
-            Utils.Print("ERROR: Failed to kill node (%s)." % (self.cmd), ex)
+            Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
         # mark node as killed
