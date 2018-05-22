@@ -45,6 +45,21 @@ struct reflector{
      *     };
      *    @endcode
      *
+     *  If reflection requires a verification (what a constructor might normally assert) then
+     *  derive your Visitor from reflector_verifier_visitor and implement a reflector_verify()
+     *  on your reflected type.
+     *
+     *    @code
+     *     template<typename Class>
+     *     struct functor : reflector_verifier_visitor<Class>  {
+     *        functor(Class& _c)
+     *        : fc::reflector_verifier_visitor<Class>(_c) {}
+     *
+     *        template<typename Member, class Class, Member (Class::*member)>
+     *        void operator()( const char* name )const;
+     *     };
+     *    @endcode
+     *
      *  If T is an enum then the functor has the following form:
      *    @code
      *     struct functor {
@@ -65,6 +80,37 @@ struct reflector{
 
 void throw_bad_enum_cast( int64_t i, const char* e );
 void throw_bad_enum_cast( const char* k, const char* e );
+
+template <typename Class>
+struct reflector_verifier_visitor {
+   explicit reflector_verifier_visitor( Class& c )
+     : obj(c) {}
+
+   ~reflector_verifier_visitor() noexcept(false) {
+      verify( obj );
+   }
+
+ private:
+
+   // int matches 0 if reflector_verify exists SFINAE
+   template<class T>
+   auto verify_imp(const T& t, int) -> decltype(t.reflector_verify(), void()) {
+      t.reflector_verify();
+   }
+
+   // if no reflector_verify method exists (SFINAE), 0 matches long
+   template<class T>
+   auto verify_imp(const T& t, long) -> decltype(t, void()) {}
+
+   template<typename T>
+   auto verify(const T& t) -> decltype(verify_imp(t, 0), void()) {
+      verify_imp(t, 0);
+   }
+
+ protected:
+   Class& obj;
+};
+
 } // namespace fc
 
 
