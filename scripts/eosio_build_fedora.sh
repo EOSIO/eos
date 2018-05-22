@@ -57,7 +57,7 @@
 		exit 1;
 	fi
 	
-	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
+	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake bzip2 libtool make cmake.x86_64 \
 	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
 	python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
 	graphviz.x86_64 doxygen.x86_64 )
