@@ -36,6 +36,7 @@ struct asset
    string      symbol_name()const;
    int64_t     precision()const;
    const symbol& get_symbol() const { return sym; }
+   share_type get_amount()const { return amount; }
 
    static asset from_string(const string& from);
    string       to_string()const;
