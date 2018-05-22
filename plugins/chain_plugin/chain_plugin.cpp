@@ -49,7 +49,7 @@ public:
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
    ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
    {}
-   
+
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
@@ -114,8 +114,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
          ;
    cli.add_options()
+         ("force-all-checks", bpo::bool_switch()->default_value(false),
+          "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
+         ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
+          "clear chain database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
          ;
@@ -158,14 +162,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
    }
 
-   if (options.at("replay-blockchain").as<bool>()) {
-      ilog("Replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-   }
-   if (options.at("resync-blockchain").as<bool>()) {
+   if( options.at("resync-blockchain").as<bool>() ) {
       ilog("Resync requested: wiping database and blocks");
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       fc::remove_all(my->block_log_dir);
+   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
+      ilog("Hard replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+      block_log::repair_log( my->block_log_dir );
+   } else if( options.at("replay-blockchain").as<bool>() ) {
+      ilog("Replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
    }
 
    if(options.count("checkpoint"))
@@ -192,12 +199,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->chain_config->read_only = my->readonly;
    my->chain_config->shared_memory_size = my->shared_memory_size;
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
-   if (my->genesis_timestamp.sec_since_epoch() > 0) {
+   if( my->genesis_timestamp.sec_since_epoch() > 0 ) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
 
-   if(my->wasm_runtime)
+   if( my->wasm_runtime )
       my->chain_config->wasm_runtime = *my->wasm_runtime;
+
+   if( options.count("force-all-checks") )
+      my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
 
    my->chain.emplace(*my->chain_config);
 
