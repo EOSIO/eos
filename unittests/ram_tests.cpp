@@ -33,11 +33,11 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
  * ram_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try {
-   auto init_request_bytes = 180000;
+   auto init_request_bytes = 80000;
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
-   buyrambytes(N(enumivo), N(enumivo), 170000);
+   buyrambytes(N(enumivo), N(enumivo), 70000);
    produce_blocks(10);
    create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes);
    create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes);
