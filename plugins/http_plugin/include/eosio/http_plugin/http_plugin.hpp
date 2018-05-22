@@ -73,6 +73,9 @@ namespace eosio {
               add_handler(call.first, call.second);
         }
 
+        // standard exception handling for api handlers
+        static void handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb );
+
       private:
         std::unique_ptr<class http_plugin_impl> my;
    };
