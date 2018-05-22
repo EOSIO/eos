@@ -107,24 +107,32 @@ namespace eosiosystem {
       require_auth( payer );
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
+      auto fee = quant;
+      fee.amount /= 200; /// .5% fee
+      auto quant_after_fee = quant;
+      quant_after_fee.amount -= fee.amount;
+
       if( payer != N(eosio) ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
-                                                       { payer, N(eosio), quant, std::string("buy ram") } );
+                                                       { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
       }
 
+      if( fee.amount > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+                                                       { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
+      }
 
       int64_t bytes_out;
 
       auto itr = _rammarket.find(S(4,RAMCORE));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
-          bytes_out = es.convert( quant,  S(0,RAM) ).amount;
+          bytes_out = es.convert( quant_after_fee,  S(0,RAM) ).amount;
       });
-
 
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
-      _gstate.total_ram_stake          += quant.amount;
+      _gstate.total_ram_stake          += quant_after_fee.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
@@ -176,7 +184,12 @@ namespace eosiosystem {
 
       if( N(eosio) != account ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                       { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
+                                                       { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
+         auto fee = tokens_out.amount / 200;
+         if( fee > 0 ) {
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                          { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
+         }
       }
    }
 
@@ -317,7 +330,7 @@ namespace eosiosystem {
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
             INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
-               { source_stake_from, N(eosio), asset(transfer_amount), std::string("stake bandwidth") } );
+               { source_stake_from, N(eosio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -380,7 +393,7 @@ namespace eosiosystem {
       // consecutive missed blocks.
 
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                    { N(eosio), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
+                                                    { N(eosio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }

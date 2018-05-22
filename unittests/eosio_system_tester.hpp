@@ -46,7 +46,7 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts( { N(eosio.token) } );
+      create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake) });
 
       produce_blocks( 100 );
 
