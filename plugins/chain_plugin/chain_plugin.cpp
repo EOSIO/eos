@@ -283,8 +283,8 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
+chain::transaction_trace_ptr chain_plugin::accept_transaction(const packed_transaction& trx) {
+   return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx) , false);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -544,7 +544,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
          abi_serializer::from_variant(params, *pretty_input, resolver);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input);
+      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
 
       pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
       //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
