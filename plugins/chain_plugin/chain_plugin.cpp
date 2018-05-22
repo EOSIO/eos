@@ -23,6 +23,7 @@
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
+#include <signal.h>
 
 namespace eosio {
 
@@ -49,7 +50,7 @@ public:
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
    ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
    {}
-   
+
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
@@ -114,8 +115,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
          ;
    cli.add_options()
+         ("force-all-checks", bpo::bool_switch()->default_value(false),
+          "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and replay all blocks")
+         ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
+          "clear chain database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
          ;
@@ -158,14 +163,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
    }
 
-   if (options.at("replay-blockchain").as<bool>()) {
-      ilog("Replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-   }
-   if (options.at("resync-blockchain").as<bool>()) {
+   if( options.at("resync-blockchain").as<bool>() ) {
       ilog("Resync requested: wiping database and blocks");
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       fc::remove_all(my->block_log_dir);
+   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
+      ilog("Hard replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+      block_log::repair_log( my->block_log_dir );
+   } else if( options.at("replay-blockchain").as<bool>() ) {
+      ilog("Replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
    }
 
    if(options.count("checkpoint"))
@@ -192,12 +200,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->chain_config->read_only = my->readonly;
    my->chain_config->shared_memory_size = my->shared_memory_size;
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
-   if (my->genesis_timestamp.sec_since_epoch() > 0) {
+   if( my->genesis_timestamp.sec_since_epoch() > 0 ) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
 
-   if(my->wasm_runtime)
+   if( my->wasm_runtime )
       my->chain_config->wasm_runtime = *my->wasm_runtime;
+
+   if( options.count("force-all-checks") )
+      my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
 
    my->chain.emplace(*my->chain_config);
 
@@ -258,7 +269,6 @@ void chain_plugin::plugin_startup()
         ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
 
    my->chain_config.reset();
-
 } FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
@@ -273,8 +283,8 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
+chain::transaction_trace_ptr chain_plugin::accept_transaction(const packed_transaction& trx) {
+   return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx) , false);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -514,36 +524,56 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
-   db.push_block( std::make_shared<signed_block>(params) );
+   try {
+      db.push_block( std::make_shared<signed_block>(params) );
+   } catch ( boost::interprocess::bad_alloc& ) {
+      raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
+   }
    return read_write::push_block_results();
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   auto pretty_input = std::make_shared<packed_transaction>();
-   auto resolver = make_resolver(this);
+   chain::transaction_id_type id;
+   fc::variant pretty_output;
    try {
-      abi_serializer::from_variant(params, *pretty_input, resolver);
-   } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+      auto pretty_input = std::make_shared<packed_transaction>();
+      auto resolver = make_resolver(this);
+      try {
+         abi_serializer::from_variant(params, *pretty_input, resolver);
+      } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input);
+      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
 
-   fc::variant pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
-   //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
-   return read_write::push_transaction_results{ trx_trace_ptr->id, pretty_output };
+      pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
+      //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
+      id = trx_trace_ptr->id;
+   } catch ( boost::interprocess::bad_alloc& ) {
+      raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
+   }
+   return read_write::push_transaction_results{ id, pretty_output };
 }
 
 read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
    FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
-
    push_transactions_results result;
-   result.reserve(params.size());
-   for( const auto& item : params ) {
-      try {
-        result.emplace_back( push_transaction( item ) );
-      } catch ( const fc::exception& e ) {
-        result.emplace_back( read_write::push_transaction_results{ transaction_id_type(),
-                          fc::mutable_variant_object( "error", e.to_detail_string() ) } );
+   try {
+      result.reserve(params.size());
+      for( const auto& item : params ) {
+         try {
+           result.emplace_back( push_transaction( item ) );
+         } catch ( const fc::exception& e ) {
+           result.emplace_back( read_write::push_transaction_results{ transaction_id_type(),
+                             fc::mutable_variant_object( "error", e.to_detail_string() ) } );
+         }
       }
+   } catch ( boost::interprocess::bad_alloc& ) {
+      raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
    }
    return result;
 }
