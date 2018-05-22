@@ -25,7 +25,7 @@ services:
 
   enuwallet:
     image: enumivo/enumivo:latest
-    command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir
+    command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: enuwallet
     links:
       - enunoded

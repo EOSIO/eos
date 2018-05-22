@@ -97,6 +97,10 @@ int main(int argc, char** argv)
       app().exec();
    } catch (const fc::exception& e) {
       elog("${e}", ("e",e.to_detail_string()));
+   } catch (const boost::interprocess::bad_alloc& e) {
+      elog("bad alloc");
+      //elog("${e}", ("e", boost::diagnostic_information(e)));
+      return 3;
    } catch (const boost::exception& e) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
    } catch (const std::exception& e) {
@@ -104,5 +108,6 @@ int main(int argc, char** argv)
    } catch (...) {
       elog("unknown exception");
    }
+
    return 0;
 }
