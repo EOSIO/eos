@@ -77,8 +77,16 @@ namespace eosiosystem {
       set_privileged( account, ispriv );
    }
 
+   void system_contract::setprods( std::vector<eosio::producer_key> schedule ) {
+      (void)schedule; // schedule argument just forces the deserialization of the action data into vector<producer_key> (necessary check)
+      require_auth( _self );
+      char buffer[action_data_size()];
+      read_action_data( buffer, sizeof(buffer) ); // should be the same data as eosio::pack(schedule)
+      set_active_producers(buffer, sizeof(buffer));
+   }
+
 } /// eosio.system
- 
+
 
 EOSIO_ABI( eosiosystem::system_contract,
      (setram)
@@ -93,5 +101,5 @@ EOSIO_ABI( eosiosystem::system_contract,
      (onblock)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
      //this file
-     (setpriv)
+     (setpriv)(setprods)
 )
