@@ -13,7 +13,7 @@ Create a proposal
 
    Storage changes are billed to 'proposer'
 
-Aprrove a proposal
+Approve a proposal
 ## eosio.msig::approve    proposer proposal_name level
    - **proposer** account proposing a transaction
    - **proposal_name** name of the proposal

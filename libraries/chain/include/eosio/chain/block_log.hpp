@@ -58,6 +58,8 @@ namespace eosio { namespace chain {
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
+         static void repair_log( const fc::path& data_dir );
+
       private:
          void open(const fc::path& data_dir);
          void construct_index();
