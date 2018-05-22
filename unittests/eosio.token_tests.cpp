@@ -150,6 +150,8 @@ BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
 
    asset max(10, symbol(SY(0, NKT)));
    share_type amount = 4611686018427387904;
+   static_assert(sizeof(share_type) <= sizeof(asset), "asset changed so test is no longer valid");
+   static_assert(std::is_trivially_copyable<asset>::value, "asset is not trivially copyable");
    memcpy(&max, &amount, sizeof(share_type)); // hack in an invalid amount
 
    BOOST_CHECK_EXCEPTION( create( N(alice), max) , asset_type_exception, [](const asset_type_exception& e) {
@@ -173,6 +175,8 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
    asset max(10, symbol(SY(0, NKT)));
    //1.0000000000000000000 => 0x8ac7230489e80000L
    share_type amount = 0x8ac7230489e80000L;
+   static_assert(sizeof(share_type) <= sizeof(asset), "asset changed so test is no longer valid");
+   static_assert(std::is_trivially_copyable<asset>::value, "asset is not trivially copyable");
    memcpy(&max, &amount, sizeof(share_type)); // hack in an invalid amount
 
    BOOST_CHECK_EXCEPTION( create( N(alice), max) , asset_type_exception, [](const asset_type_exception& e) {
