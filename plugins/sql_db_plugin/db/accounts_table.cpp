@@ -38,8 +38,13 @@ void accounts_table::add(string name)
 bool accounts_table::exist(string name)
 {
     int amount;
-    *m_session << "SELECT COUNT(*) FROM accounts WHERE name = :name", soci::into(amount), soci::use(name);
-
+    try {
+        *m_session << "SELECT COUNT(*) FROM accounts WHERE name = :name", soci::into(amount), soci::use(name);
+    }
+    catch (std::exception const & e)
+    {
+        amount = 0;
+    }
     return amount > 0;
 }
 
