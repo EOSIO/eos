@@ -526,8 +526,10 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
    try {
       db.push_block( std::make_shared<signed_block>(params) );
-   } catch ( ... ) {
+   } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
    }
    return read_write::push_block_results();
 }
@@ -547,8 +549,10 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
       pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
       //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
       id = trx_trace_ptr->id;
-   } catch ( ... ) {
+   } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
    }
    return read_write::push_transaction_results{ id, pretty_output };
 }
@@ -566,8 +570,10 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
                              fc::mutable_variant_object( "error", e.to_detail_string() ) } );
          }
       }
-   } catch ( ... ) {
+   } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
    }
    return result;
 }
