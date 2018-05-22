@@ -57,6 +57,7 @@ struct controller_impl {
    authorization_manager          authorization;
    controller::config             conf;
    bool                           replaying = false;
+   bool                           replaying_irreversible = false;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -297,6 +298,7 @@ struct controller_impl {
       auto end = blog.read_head();
       if( end && end->block_num() > 1 ) {
          replaying = true;
+         replaying_irreversible = true;
          ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
 
          auto start = fc::time_point::now();
@@ -306,6 +308,7 @@ struct controller_impl {
                std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
             }
          }
+         replaying_irreversible = false;
 
          int unconf = 0;
          while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
@@ -1281,7 +1284,7 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 }
 
 bool controller::skip_auth_check()const {
-   return my->replaying && !my->conf.force_all_checks;
+   return my->replaying_irreversible && !my->conf.force_all_checks;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
