@@ -46,18 +46,6 @@ struct hello {
 FC_REFLECT( hello, (remote_peer)(network_version)(agent)(chain_id)(last_irr_block_num)(pending_block_ids) )
 
 /**
- * This message tells the remote peer where our head block is and is sent
- * every time our head block changes to something other than the last block
- * a peer sent us.
-struct status {
-   block_id_type         head_block_id;
-   block_timestamp_type  head_block_time;
-   block_id_type         lib_block_id;
-};
-FC_REFLECT( status, (head_block_id)(head_block_time)(lib_block_id) )
- */
-
-/**
  * This message is sent upon successful speculative application of a transaction
  * and informs a peer not to send this message.
  */
@@ -181,6 +169,7 @@ namespace eosio {
         uint32_t           _last_sent_block_num   = 0;
         block_id_type      _last_sent_block_id; /// the id of the last block sent
         bool               _recv_remote_hello     = false;
+        bool               _sent_remote_hello     = false;
  
 
         int                                                            _session_num = 0;
@@ -200,7 +189,8 @@ namespace eosio {
         string                                                         _remote_port;
 
         vector<char>                                                   _out_buffer;
-        boost::beast::multi_buffer                                     _in_buffer;
+        //boost::beast::multi_buffer                                     _in_buffer;
+        boost::beast::flat_buffer                                     _in_buffer;
 
         int next_session_id()const {
            static int session_count = 0;
@@ -266,7 +256,6 @@ namespace eosio {
           _remote_host = host;
           _remote_port = port;
 
-          wlog( "resolve ${h}:${p}", ("h",_remote_host)("p",_remote_port) );
           _resolver.async_resolve( _remote_host, _remote_port, 
                                    std::bind( &session::on_resolve,
                                               shared_from_this(),
@@ -278,7 +267,6 @@ namespace eosio {
                          tcp::resolver::results_type results ) {
            if( ec ) return on_fail( ec, "resolve" );
 
-           wlog( "resolve success" );
            boost::asio::async_connect( _ws->next_layer(),
                                        results.begin(), results.end(),
                                        boost::asio::bind_executor( _strand,
@@ -299,9 +287,6 @@ namespace eosio {
 
         void on_handshake( boost::system::error_code ec ) {
            if( ec ) return on_fail( ec, "handshake" );
-
-           wlog( "handshake success" );
-
            do_hello();
            do_read();
         }
@@ -334,6 +319,7 @@ namespace eosio {
          *  the LIB or up to the last block known by the remote peer. 
          */
         void on_new_lib( block_state_ptr s ) {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            _local_lib = s->block_num;
 
            auto purge_to = std::min( _local_lib, _last_sent_block_num );
@@ -349,11 +335,13 @@ namespace eosio {
 
 
         void on_bad_block( signed_block_ptr b ) {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            auto id = b->id();
            auto itr = _block_status.find( id );
            if( itr == _block_status.end() ) return;
            if( itr->received_from_peer ) {
               elog( "peer sent bad block #${b} ${i}, disconnect", ("b", b->block_num())("i",b->id())  );
+              _ws->close( boost::beast::websocket::close_code::protocol_error ); 
               _ws->next_layer().close();
            }
         }
@@ -363,7 +351,10 @@ namespace eosio {
 
            mark_block_known_by_peer( id );
            auto itr = _block_status.find( id );
-
+           if( itr == _block_status.end() ) {
+              itr = _block_status.insert( block_status(id) ).first;
+           }
+           
            _block_status.modify( itr, [&]( auto& item ) {
               item.block_msg = msgdata;
               item.prev = prev;
@@ -376,7 +367,9 @@ namespace eosio {
               if( receipt.trx.which() == 1 ) {
                  auto id = receipt.trx.get<packed_transaction>().id();
                  auto itr = _transaction_status.find( id );
-                 _transaction_status.erase(itr);
+                 if( itr != _transaction_status.end() ) {
+                    _transaction_status.erase(itr);
+                 }
               }
            }
            if( _transaction_status.size() > 1000 ) {
@@ -442,11 +435,13 @@ namespace eosio {
               
                self->_local_lib = lib;
                self->send( hello_msg );
+               self->_sent_remote_hello = true;
            });
         }
 
         void send( const shared_ptr<vector<char> >& buffer ) {
            try {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
           //    wdump((_out_buffer.size())(buffer->size()));
               FC_ASSERT( !_out_buffer.size() );
               _out_buffer.resize(buffer->size());
@@ -467,6 +462,7 @@ namespace eosio {
 
         void send( const bnet_message& msg ) { try {
 
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            FC_ASSERT( !_out_buffer.size() );
 
            auto ps = fc::raw::pack_size(msg);
@@ -501,9 +497,10 @@ namespace eosio {
 
         void do_send_next_message() {
            //wlog("");
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            if( _state == sending_state ) return; /// in process of sending
            if( _out_buffer.size() ) return;
-           if( !_recv_remote_hello ) return;
+           if( !_recv_remote_hello || !_sent_remote_hello ) return;
       //     wlog( "do send next message" );
 
            //wdump((_remote_head_block_num)(_local_lib) );
@@ -596,6 +593,7 @@ namespace eosio {
 
         void on_fail( boost::system::error_code ec, const char* what ) {
            elog( "${w}: ${m}", ("w", what)("m", ec.message() ) );
+           _ws->next_layer().close();
         }
 
         void on_accept( boost::system::error_code ec ) {
@@ -627,22 +625,24 @@ namespace eosio {
               return on_fail( ec, "read" );;
            }
            //wdump((_in_buffer.size()));
-           auto str = boost::beast::buffers_to_string(_in_buffer.data());
+           //auto str = boost::beast::buffers_to_string(_in_buffer.data());
+           //fc::datastream<const char*> ds(str.data(), str.size());
 
-           /*
-           auto bufs = _in_buffer.data();
-           for( auto b : bufs ) {
-              wdump((b.size()));
-              auto tmp = b.data();
-           }
-           */
-           fc::datastream<const char*> ds(str.data(), str.size());
+           //idump((_in_buffer.size()));
+           auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(_in_buffer.data()));
+           auto s = boost::asio::buffer_size(_in_buffer.data());
+           fc::datastream<const char*> ds(d,s);
+
            bnet_message msg;
-           fc::raw::unpack( ds, msg );
+           try {
+              fc::raw::unpack( ds, msg );
+           } catch ( ... ) {
+              _ws->close( boost::beast::websocket::close_code::bad_payload );
+           }
            _in_buffer.consume( ds.tellp() );
 
-           on_message( msg );
-           do_read();
+           on_message( msg ); 
+           //do_read();  this will cause reads to queue up in main thread... we need to wait until main thread catches up
         }
 
         void on_message( const bnet_message& msg ) {
@@ -672,6 +672,7 @@ namespace eosio {
 
            for( const auto& id : hi.pending_block_ids )
               mark_block_known_by_peer( id, true );
+           do_read();
         }
 
         void on( const block_notice& stat ) {
@@ -682,12 +683,10 @@ namespace eosio {
            auto id = b->id();
            mark_block_known_by_peer( id, true, true );
 
-           _app_ios.post( [id,b]{
-              auto& control = app().get_plugin<chain_plugin>().chain();
-              auto existing = control.fetch_block_by_id( id );
-              if( !existing ) {
-                 app().get_channel<incoming::channels::block>().publish(b);
-              }
+           app().get_channel<incoming::channels::block>().publish(b);
+
+           _app_ios.post( [self=shared_from_this()]{
+              self->do_read();
            });
         }
 
@@ -717,13 +716,15 @@ namespace eosio {
               _transaction_status.insert(stat);
            }
 
-           _app_ios.post( [id,p]{
-              app().get_channel<incoming::channels::transaction>().publish(p);
+           app().get_channel<incoming::channels::transaction>().publish(p);
+           _app_ios.post( [self=shared_from_this()]{
+              self->do_read();
            });
         }
 
         void on_write( boost::system::error_code ec, std::size_t bytes_transferred ) {
            boost::ignore_unused(bytes_transferred);
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            if( ec ) {
               _ws->next_layer().close();
               return on_fail( ec, "write" );
@@ -913,26 +914,28 @@ namespace eosio {
          };
 
          void on_reconnect_peers() {
-             wlog( "attempt to connect to missing peers" );
 
              idump((_connect_to_peers)(_sessions.size()));
              for( const auto& peer : _connect_to_peers ) {
                 bool found = false;
+                vector<const session*> closed;
                 for( const auto& con : _sessions ) {
                    auto ses = con.second.lock();
-                   if( ses && (ses->_peer == peer) ) {
+                   if( !ses ) 
+                      closed.push_back(con.first);
+                   else if( (ses->_peer == peer) ) {
                       found = true;
                       break;
                    }
                 }
+                for( const auto item : closed ) 
+                   _sessions.erase(item);
+
                 if( !found ) {
-                   ilog( "reconnecting..." );
+                   wlog( "attempt to connect to ${p}", ("p",peer) );
                    auto s = std::make_shared<session>( *_ioc, std::ref(*this) );
-                   ilog( "reconnecting..." );
                    _sessions[s.get()] = s;
-                   ilog( "reconnecting..." );
                    s->run( peer );
-                   ilog( "reconnecting..." );
                 }
              }
 
