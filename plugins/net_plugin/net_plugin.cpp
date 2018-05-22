@@ -1940,6 +1940,14 @@ namespace eosio {
 
       if (colon == std::string::npos || colon == 0) {
          elog ("Invalid peer address. must be \"host:port\": ${p}", ("p",c->peer_addr));
+         for ( auto itr : connections ) {
+            if((*itr).peer_addr == c->peer_addr) {
+               (*itr).reset();
+               close(itr);
+               connections.erase(itr);
+               break;
+            }
+         }
          return;
       }
 
