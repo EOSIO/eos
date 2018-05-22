@@ -33,11 +33,11 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
  * ram_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try {
-   auto init_request_bytes = 80000;
+   auto init_request_bytes = 180000;
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
-   buyrambytes(N(enumivo), N(enumivo), 70000);
+   buyrambytes(N(enumivo), N(enumivo), 170000);
    produce_blocks(10);
    create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes);
    create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes);
@@ -91,7 +91,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                         ("payer", "testram11111")
                         ("from", 1)
                         ("to", 10)
-                        ("size", 1915));
+                        ("size", 1910));
    produce_blocks(1);
    auto ram_usage = rlm.get_account_ram_usage(N(testram11111));
 
@@ -205,7 +205,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            ("to", 13)
                            ("size", 1900)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("6.account testram11111 has insufficient ram"));
+                           fc_exception_message_starts_with("6. account testram11111 has insufficient ram"));
    produce_blocks(1);
 
    wlog("ram_tests 18    %%%%%%");
