@@ -2398,7 +2398,13 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    produce_block( fc::hours(24) );
    // by now bid for prefe has closed
    create_account_with_resources( N(prefe), N(carl) );
-   // but not others
+   // prefe can now create *.prefe 
+   BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(xyz.prefe), N(carl) ),
+                            fc::exception, fc_assert_exception_message_is("only suffix may create this account") );
+   transfer( config::system_account_name, N(prefe), core_from_string("10000.0000") );
+   create_account_with_resources( N(xyz.prefe), N(prefe) );
+
+   // other auctions haven't closed
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefa), N(bob) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
 
