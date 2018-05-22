@@ -33,6 +33,7 @@ void token::issue( account_name to, asset quantity, string memo )
 {
     auto sym = quantity.symbol;
     eosio_assert( sym.is_valid(), "invalid symbol name" );
+    eosio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
     auto sym_name = sym.name();
     stats statstable( _self, sym_name );
@@ -61,7 +62,7 @@ void token::issue( account_name to, asset quantity, string memo )
 void token::transfer( account_name from,
                       account_name to,
                       asset        quantity,
-                      string       /*memo*/ )
+                      string       memo )
 {
     eosio_assert( from != to, "cannot transfer to self" );
     require_auth( from );
@@ -76,6 +77,7 @@ void token::transfer( account_name from,
     eosio_assert( quantity.is_valid(), "invalid quantity" );
     eosio_assert( quantity.amount > 0, "must transfer positive quantity" );
     eosio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
+    eosio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
     sub_balance( from, quantity, st );
