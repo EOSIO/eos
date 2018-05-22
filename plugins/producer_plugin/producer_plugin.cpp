@@ -87,7 +87,8 @@ class producer_plugin_impl {
       producer_plugin_impl(boost::asio::io_service& io)
       :_timer(io)
       ,_transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
-      {}
+      {
+      }
 
       optional<fc::time_point> calculate_next_block_time(const account_name& producer_name) const;
       void schedule_production_loop();
@@ -205,6 +206,7 @@ class producer_plugin_impl {
 
 
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
          // abort the pending block
          chain.abort_block();
 
