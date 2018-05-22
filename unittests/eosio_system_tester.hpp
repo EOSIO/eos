@@ -274,6 +274,14 @@ public:
       return unstake( acnt, acnt, net, cpu );
    }
 
+   action_result bidname( const account_name& bidder, const account_name& newname, const asset& bid ) {
+      return push_action( name(bidder), N(bidname), mvo()
+                          ("bidder",  bidder)
+                          ("newname", newname)
+                          ("bid", bid)
+                          );
+   }
+
    static fc::variant_object producer_parameters_example( int n ) {
       return mutable_variant_object()
          ("max_block_net_usage", 10000000 + n )
