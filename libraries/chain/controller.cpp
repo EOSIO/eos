@@ -57,6 +57,7 @@ struct controller_impl {
    authorization_manager          authorization;
    controller::config             conf;
    bool                           replaying = false;
+   bool                           replaying_irreversible = false;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -96,7 +97,7 @@ struct controller_impl {
         cfg.shared_memory_size ),
     unconfirmed_blocks( cfg.block_log_dir/"unconfirmed",
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.unconfirmed_cache_size ), 
+        cfg.unconfirmed_cache_size ),
     blog( cfg.block_log_dir ),
     fork_db( cfg.shared_memory_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -142,6 +143,9 @@ struct controller_impl {
    void emit( const Signal& s, Arg&& a ) {
       try {
         s(std::forward<Arg>(a));
+      } catch (boost::interprocess::bad_alloc& e) {
+         wlog( "bad alloc" );
+         throw e;
       } catch ( fc::exception& e ) {
          wlog( "${details}", ("details", e.to_detail_string()) );
       } catch ( ... ) {
@@ -162,7 +166,7 @@ struct controller_impl {
 //         edump((s->block_num)(s->block->previous)(log_head->id()));
          return;
       }
-      
+
       FC_ASSERT( s->block_num - 1  == lh_block_num, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
       FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
       blog.append(s->block);
@@ -171,10 +175,10 @@ struct controller_impl {
       db.commit( s->block_num );
 
       const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
-      auto objitr = ubi.begin(); 
+      auto objitr = ubi.begin();
       while( objitr != ubi.end() && objitr->blocknum <= s->block_num ) {
          unconfirmed_blocks.remove( *objitr );
-         objitr = ubi.begin(); 
+         objitr = ubi.begin();
       }
    }
 
@@ -188,26 +192,65 @@ struct controller_impl {
       */
       if( !head ) {
          initialize_fork_db(); // set head to genesis state
+
+         auto end = blog.read_head();
+         if( end && end->block_num() > 1 ) {
+            replaying = true;
+            replaying_irreversible = true;
+            ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
+
+            auto start = fc::time_point::now();
+            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+               self.push_block( next, true );
+               if( next->block_num() % 100 == 0 ) {
+                  std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
+               }
+            }
+            replaying_irreversible = false;
+
+            int unconf = 0;
+            while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
+               ++unconf;
+               self.push_block( obj->get_block(), true );
+            }
+
+            std::cerr<< "\n";
+            ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
+            auto end = fc::time_point::now();
+            ilog( "replayed blocks in ${n} seconds, ${spb} spb",
+                  ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+            std::cerr<< "\n";
+            replaying = false;
+
+         } else if( !end ) {
+            blog.append( head->block );
+         }
       }
 
-      while( db.revision() > head->block_num ) {
-         wlog( "warning database revision greater than head block, undoing pending changes" );
-         db.undo();
-      }
-
-      uint32_t unconf_blocknum = 1;
       const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
       auto objitr = ubi.rbegin();
       if( objitr != ubi.rend() ) {
-         unconf_blocknum = objitr->blocknum;
+         FC_ASSERT( objitr->blocknum == head->block_num,
+                    "unconfirmed block database is inconsistent with fork database, replay blockchain",
+                    ("head",head->block_num)("unconfimed", objitr->blocknum)         );
+      } else {
+         auto end = blog.read_head();
+         FC_ASSERT( end && end->block_num() == head->block_num,
+                    "fork database exists but unconfirmed block database does not, replay blockchain",
+                    ("blog_head",end->block_num())("head",head->block_num)  );
       }
 
-      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
-                 ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
+      FC_ASSERT( db.revision() >= head->block_num, "fork database is inconsistent with shared memory",
+                 ("db",db.revision())("head",head->block_num) );
 
-      edump((unconf_blocknum));
-      FC_ASSERT( head->block_num == unconf_blocknum, "unconfirmed block database out of sync",
-                 ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum) );
+      if( db.revision() > head->block_num ) {
+         wlog( "warning: database revision (${db}) is greater than head block number (${head}), "
+               "attempting to undo pending changes",
+               ("db",db.revision())("head",head->block_num) );
+      }
+      while( db.revision() > head->block_num ) {
+         db.undo();
+      }
 
    }
 
@@ -222,7 +265,7 @@ struct controller_impl {
    }
 
    void add_indices() {
-      unconfirmed_blocks.add_index<unconfirmed_block_index>(); 
+      unconfirmed_blocks.add_index<unconfirmed_block_index>();
 
       db.add_index<account_index>();
       db.add_index<account_sequence_index>();
@@ -279,37 +322,6 @@ struct controller_impl {
       db.set_revision( head->block_num );
 
       initialize_database();
-
-      auto end = blog.read_head();
-      if( end && end->block_num() > 1 ) {
-         replaying = true;
-         ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
-
-         auto start = fc::time_point::now();
-         while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-            self.push_block( next, true );
-            if( next->block_num() % 100 == 0 ) {
-               std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
-            }
-         }
-        
-         int unconf = 0;
-         while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
-            ++unconf;
-            self.push_block( obj->get_block(), true );
-         }
-
-         std::cerr<< "\n";
-         ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
-         auto end = fc::time_point::now();
-         ilog( "replayed blocks in ${n} seconds, ${spb} spb", 
-               ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
-         std::cerr<< "\n";
-         replaying = false;
-
-      } else if( !end ) {
-         blog.append( head->block );
-      }
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
@@ -628,7 +640,7 @@ struct controller_impl {
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
 
-            if (!implicit) {
+            if( !self.skip_auth_check() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
                        trx->recover_keys(),
@@ -718,10 +730,12 @@ struct controller_impl {
         )
       {
          // Promote proposed schedule to pending schedule.
-         ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-               ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-               ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
-               ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+         if( !replaying ) {
+            ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                  ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
+                  ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
+                  ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+         }
          pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
          db.modify( gpo, [&]( auto& gp ) {
             gp.proposed_schedule_block_num = optional<block_num_type>();
@@ -1071,10 +1085,8 @@ void controller::startup() {
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
-      my->init();
-   } else {
-   //  my->db.set_revision( my->head->block_num );
    }
+   my->init();
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -1266,6 +1278,9 @@ optional<producer_schedule_type> controller::proposed_producers()const {
    return gpo.proposed_schedule;
 }
 
+bool controller::skip_auth_check()const {
+   return my->replaying_irreversible && !my->conf.force_all_checks;
+}
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
 {
