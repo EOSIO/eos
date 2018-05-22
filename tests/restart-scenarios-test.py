@@ -65,8 +65,8 @@ testSuccessful=False
 
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster()
-walletMgr=testUtils.WalletMgr(False)
+cluster=testUtils.Cluster(walletd=True)
+walletMgr=testUtils.WalletMgr(True)
 
 try:
     cluster.setChainStrategy(chainSyncStrategyStr)
@@ -86,6 +86,12 @@ try:
     # wait for cluster to start producing blocks
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
+
+    Print("Stand up EOS wallet keosd")
+    walletMgr.killall()
+    walletMgr.cleanup()
+    if walletMgr.launch() is False:
+        errorExit("Failed to stand up keosd.")
 
     accountsCount=total_nodes
     walletName="MyWallet"
@@ -115,9 +121,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -130,9 +136,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -150,9 +156,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():

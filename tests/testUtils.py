@@ -16,6 +16,7 @@ import sys
 import random
 import json
 import shlex
+from sys import stdout
 
 from core_symbol import CORE_SYMBOL
 
@@ -39,7 +40,7 @@ class Utils:
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
-        sys.stdout.write(s)
+        stdout.write(s)
         print(*args, **kwargs)
 
     SyncStrategy=namedtuple("ChainSyncStrategy", "name id arg")
@@ -47,6 +48,7 @@ class Utils:
     SyncNoneTag="none"
     SyncReplayTag="replay"
     SyncResyncTag="resync"
+    SyncHardReplayTag="hardReplay"
 
     SigKillTag="kill"
     SigTermTag="term"
@@ -78,6 +80,9 @@ class Utils:
         chainSyncStrategy=Utils.SyncStrategy(Utils.SyncResyncTag, 2, "--delete-all-blocks")
         chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
 
+        chainSyncStrategy=Utils.SyncStrategy(Utils.SyncHardReplayTag, 3, "--hard-replay-blockchain")
+        chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
+
         return chainSyncStrategies
 
     @staticmethod
@@ -98,14 +103,24 @@ class Utils:
             timeout=60
 
         endTime=time.time()+timeout
-        while endTime > time.time():
-            ret=lam()
-            if ret is not None:
-                return ret
-            sleepTime=3
-            Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                        (sleepTime, endTime - time.time()))
-            time.sleep(sleepTime)
+        needsNewLine=False
+        try:
+            while endTime > time.time():
+                ret=lam()
+                if ret is not None:
+                    return ret
+                sleepTime=3
+                if Utils.Debug:
+                    Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                                (sleepTime, endTime - time.time()))
+                else:
+                    stdout.write('.')
+                    stdout.flush()
+                    needsNewLine=True
+                time.sleep(sleepTime)
+        finally:
+            if needsNewLine:
+                Utils.Print()
 
         return None
 
@@ -170,16 +185,17 @@ class Node(object):
         assert trans["processed"]["receipt"]["status"] == "executed", printTrans(trans)
 
     @staticmethod
-    def runCmdReturnJson(cmd, trace=False):
+    def runCmdReturnJson(cmd, trace=False, silentErrors=False):
         cmdArr=shlex.split(cmd)
         retStr=Utils.checkOutput(cmdArr)
         jStr=Node.filterJsonObject(retStr)
         if trace: Utils.Print ("RAW > %s"% (retStr))
         if trace: Utils.Print ("JSON> %s"% (jStr))
         if not jStr:
-            msg="Expected JSON response"
-            Utils.Print ("ERROR: "+ msg)
-            Utils.Print ("RAW > %s"% retStr)
+            msg="Received empty JSON response"
+            if not silentErrors:
+                Utils.Print ("ERROR: "+ msg)
+                Utils.Print ("RAW > %s"% retStr)
             raise TypeError(msg)
 
         try:
@@ -448,7 +464,7 @@ class Node(object):
             Utils.Print("transaction parsing failed. Transaction: %s" % (trans))
             raise
 
-        headBlockNum=self.getIrreversibleBlockNum()
+        headBlockNum=self.getHeadBlockNum()
         assert(headBlockNum)
         try:
             headBlockNum=int(headBlockNum)
@@ -1000,7 +1016,7 @@ class Node(object):
         cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Node.runCmdReturnJson(cmd, silentErrors=silentErrors)
             return trans
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
@@ -1077,34 +1093,44 @@ class Node(object):
         return True
 
     # TBD: make nodeId an internal property
-    def relaunch(self, nodeId, chainArg):
+    def relaunch(self, nodeId, chainArg, timeout=Utils.systemWaitTimeout):
 
-        running=True
-        try:
-            os.kill(self.pid, 0) #check if process with pid is running
-        except OSError as _:
-            running=False
+        assert(self.pid is None)
+        assert(self.killed)
 
-        if running:
-            Utils.Print("WARNING: A process with pid (%d) is already running." % (self.pid))
+        if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
+        dataDir="var/lib/node_%02d" % (nodeId)
+        dt = datetime.datetime.now()
+        dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
+        stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
+        with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
+            cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
+            Utils.Print("cmd: %s" % (cmd))
+            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+            self.pid=popen.pid
+
+        def isNodeAlive():
+            """wait for node to be responsive."""
+            try:
+                return True if self.checkPulse() else False
+            except (TypeError) as _:
+                pass
+            return False
+
+        isAlive=Utils.waitForBool(isNodeAlive, timeout)
+        if isAlive:
+            Utils.Print("Node relaunch was successfull.")
         else:
-            if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
-            dataDir="var/lib/node_%02d" % (nodeId)
-            dt = datetime.datetime.now()
-            dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
-                dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-            stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
-            stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
-            with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-                cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
-                Utils.Print("cmd: %s" % (cmd))
-                popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-                self.pid=popen.pid
-
+            Utils.Print("ERROR: Node relaunch Failed.")
+            self.pid=None
+            return False
+            
         self.killed=False
         return True
 
-    
+
 ###########################################################################################
 
 Wallet=namedtuple("Wallet", "name password host port")
@@ -1724,7 +1750,7 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to spread funds across nodes.")
             return False
 
-        Utils.Print("Funds spread across all accounts. Noew validate funds")
+        Utils.Print("Funds spread across all accounts. Now validate funds")
 
         if False == self.validateSpreadFunds(initialBalances, transferAmount, self.defproduceraAccount, self.accounts):
             Utils.Print("ERROR: Failed to validate funds transfer across nodes.")
@@ -2155,7 +2181,7 @@ class Cluster(object):
 
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if not node.relaunch(i, chainArg):
+            if node.killed and not node.relaunch(i, chainArg):
                 return False
 
         return True
