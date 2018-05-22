@@ -108,7 +108,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            ("to", 10)
                            ("size", 1920)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
+                           fc_exception_message_starts_with("1.account testram11111 has insufficient ram"));
    wlog("ram_tests 2    %%%%%%");
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage, rlm.get_account_ram_usage(N(testram11111)));
@@ -130,7 +130,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            ("to", 11)
                            ("size", 1810)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
+                           fc_exception_message_starts_with("2.account testram11111 has insufficient ram"));
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage - 1000, rlm.get_account_ram_usage(N(testram11111)));
 
@@ -142,7 +142,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            ("to", 11)
                            ("size", 1760)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
+                           fc_exception_message_starts_with("3.account testram11111 has insufficient ram"));
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage - 1000, rlm.get_account_ram_usage(N(testram11111)));
 
@@ -167,7 +167,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            ("to", 12)
                            ("size", 1900)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
+                           fc_exception_message_starts_with("4.account testram11111 has insufficient ram"));
    produce_blocks(1);
 
    // verify that the new entry is under the allocation bytes limit
@@ -186,7 +186,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            ("to", 13)
                            ("size", 1720)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
+                           fc_exception_message_starts_with("5.account testram11111 has insufficient ram"));
    produce_blocks(1);
 
    // verify that the new entry is under the allocation bytes limit
@@ -205,7 +205,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            ("to", 13)
                            ("size", 1900)),
                            ram_usage_exceeded,
-                           fc_exception_message_starts_with("account testram11111 has insufficient ram"));
+                           fc_exception_message_starts_with("6.account testram11111 has insufficient ram"));
    produce_blocks(1);
 
    wlog("ram_tests 18    %%%%%%");
