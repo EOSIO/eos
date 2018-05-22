@@ -66,6 +66,29 @@ namespace eosio {
     */
    #define N(X) ::eosio::string_to_name(#X)
 
+
+   static constexpr uint64_t name_suffix( uint64_t tmp ) {
+      uint64_t suffix = 0;
+      bool endsuffix = false;
+      uint32_t offset = 0;
+      for( uint32_t i = 0; i <= 12; ++i, ++offset ) {
+         auto p = tmp >> 59;
+         if( !p ) {
+            endsuffix = true;
+         } else {
+            if( !endsuffix ) {
+               suffix |= uint64_t(p) << (59-(5*offset));
+            }
+         }
+         if( endsuffix && p ) {
+            endsuffix = false;
+            offset = 0;
+            suffix = uint64_t(p) << (59-(5*offset));
+         }
+         tmp <<= 5;
+      }
+      return suffix;
+   }
    /**
     *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
     *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and

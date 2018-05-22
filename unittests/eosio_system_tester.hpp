@@ -274,6 +274,14 @@ public:
       return unstake( acnt, acnt, net, cpu );
    }
 
+   action_result bidname( const account_name& bidder, const account_name& newname, const asset& bid ) {
+      return push_action( name(bidder), N(bidname), mvo()
+                          ("bidder",  bidder)
+                          ("newname", newname)
+                          ("bid", bid)
+                          );
+   }
+
    static fc::variant_object producer_parameters_example( int n ) {
       return mutable_variant_object()
          ("max_block_net_usage", 10000000 + n )
@@ -360,7 +368,7 @@ public:
 
    double stake2votes( asset stake ) {
       auto now = control->pending_block_time().time_since_epoch().count() / 1000000;
-      return stake.amount * pow(2, int64_t((now - (config::block_timestamp_epoch / 1000)) / (86400 * 7))/ double(52) ); // 52 week periods (i.e. ~years)
+      return stake.get_amount() * pow(2, int64_t((now - (config::block_timestamp_epoch / 1000)) / (86400 * 7))/ double(52) ); // 52 week periods (i.e. ~years)
    }
 
    double stake2votes( const string& s ) {
@@ -410,7 +418,7 @@ inline fc::mutable_variant_object voter( account_name acct ) {
 }
 
 inline fc::mutable_variant_object voter( account_name acct, const asset& vote_stake ) {
-   return voter( acct )( "staked", vote_stake.amount );
+   return voter( acct )( "staked", vote_stake.get_amount() );
 }
 
 inline fc::mutable_variant_object voter( account_name acct, int64_t vote_stake ) {
@@ -422,7 +430,7 @@ inline fc::mutable_variant_object proxy( account_name acct ) {
 }
 
 inline uint64_t M( const string& eos_str ) {
-   return core_from_string( eos_str ).amount;
+   return core_from_string( eos_str ).get_amount();
 }
 
 }
