@@ -638,6 +638,32 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(naming)  { try {
+
+   BOOST_CHECK_EQUAL(false, name_contains_dot(0));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(1)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(11)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(111)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(111111111111)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(z)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(zz)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(zzzzzzzzzzzz)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(.)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(1.)));
+   BOOST_CHECK_EQUAL(false, name_contains_dot(N(eosio)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(.1)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(.11)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(1.1)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(11.1)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(111.1)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(1111111111.1)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(zzzzzzzzzz.z)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(111111111..1)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(...........1)));
+   BOOST_CHECK_EQUAL(true, name_contains_dot(N(eosio.system)));
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio
