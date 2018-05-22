@@ -74,7 +74,8 @@ class producer_plugin_impl {
       producer_plugin_impl(boost::asio::io_service& io)
       :_timer(io)
       ,_transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
-      {}
+      {
+      }
 
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
