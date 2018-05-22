@@ -415,16 +415,22 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
 void producer_plugin::plugin_startup()
 { try {
+   if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {
+      _log = fc::get_logger_map()[logger_name];
+   }
+
    ilog("producer plugin:  plugin_startup() begin");
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } );
 
    if (!my->_producers.empty()) {
-      ilog("Launching block production for ${n} producers.", ("n", my->_producers.size()));
+      ilog("Launching block production for ${n} producers at ${time}.", ("n", my->_producers.size())("time",fc::time_point::now()));
+
       if (my->_production_enabled) {
-         if (chain.head_block_num() == 0)
+         if (chain.head_block_num() == 0) {
             new_chain_banner(chain);
+         }
          //_production_skip_flags |= eosio::chain::skip_undo_history_check;
       }
    }
@@ -432,11 +438,6 @@ void producer_plugin::plugin_startup()
    my->schedule_production_loop();
 
    ilog("producer plugin:  plugin_startup() end");
-
-   if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {
-      _log = fc::get_logger_map()[logger_name];
-   }
-
 } FC_CAPTURE_AND_RETHROW() }
 
 void producer_plugin::plugin_shutdown() {
@@ -678,7 +679,7 @@ void producer_plugin_impl::schedule_production_loop() {
       _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
 
       // we failed to start a block, so try again later?
-      _timer.async_wait([&,cid=_coorelation_id++](const boost::system::error_code& ec) {
+      _timer.async_wait([&,cid=++_coorelation_id](const boost::system::error_code& ec) {
          if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
             schedule_production_loop();
          }
@@ -697,7 +698,7 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.pending_block_state()->block_num));
       }
 
-      _timer.async_wait([&,cid=_coorelation_id++](const boost::system::error_code& ec) {
+      _timer.async_wait([&,cid=++_coorelation_id](const boost::system::error_code& ec) {
          if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
             auto res = maybe_produce_block();
             fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)("res", res) );
@@ -723,7 +724,7 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
          _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
-         _timer.async_wait([&,cid=_coorelation_id++](const boost::system::error_code& ec) {
+         _timer.async_wait([&,cid=++_coorelation_id](const boost::system::error_code& ec) {
             if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
                schedule_production_loop();
             }
