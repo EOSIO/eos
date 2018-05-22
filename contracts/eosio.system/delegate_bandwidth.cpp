@@ -269,11 +269,15 @@ namespace eosiosystem {
                   if ( r.net_amount < asset(0) ) {
                      net_balance = -r.net_amount;
                      r.net_amount = asset(0);
+                  } else {
+                     net_balance = asset(0);
                   }
                   r.cpu_amount -= cpu_balance;
                   if ( r.cpu_amount < asset(0) ){
                      cpu_balance = -r.cpu_amount;
                      r.cpu_amount = asset(0);
+                  } else {
+                     cpu_balance = asset(0);
                   }
                });
             eosio_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
