@@ -186,21 +186,20 @@ void apply_context::execute_inline( action&& a ) {
                   ("permission", auth) );
    }
 
-   if ( !privileged ) {
-      if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
-         control.get_authorization_manager()
-                .check_authorization( {a},
-                                      {},
-                                      {{receiver, config::eosio_code_name}},
-                                      control.pending_block_time() - trx_context.published,
-                                      std::bind(&transaction_context::checktime, &this->trx_context),
-                                      false
-                                    );
+   // No need to check authorization if: replaying irreversible blocks; contract is privileged; or, contract is calling itself.
+   if( !control.skip_auth_check() && !privileged && a.account != receiver ) {
+      control.get_authorization_manager()
+             .check_authorization( {a},
+                                   {},
+                                   {{receiver, config::eosio_code_name}},
+                                   control.pending_block_time() - trx_context.published,
+                                   std::bind(&transaction_context::checktime, &this->trx_context),
+                                   false
+                                 );
 
-         //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
-         //          with sending an inline action that requires a delay even though the decision to send that inline
-         //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
-      }
+      //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
+      //          with sending an inline action that requires a delay even though the decision to send that inline
+      //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
    }
 
    _inline_actions.emplace_back( move(a) );
@@ -232,8 +231,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    auto delay = fc::seconds(trx.delay_sec);
 
-   if( !privileged ) {
-      if (payer != receiver) {
+   if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
+      if( payer != receiver ) {
          require_authorization(payer); /// uses payer's storage
       }
 
