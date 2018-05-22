@@ -98,10 +98,16 @@ namespace eosiosystem {
                             /*  no need to parse authorites
                             const authority& owner,
                             const authority& active*/ ) {
-      auto name_str = eosio::name{newact}.to_string();
-
-      eosio_assert( name_str.size() == 12 || creator == N(eosio), "account names must be 12 chars long" );
-      eosio_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(eosio), "account names cannot contain '.' character");
+      if (creator != N(eosio)) {
+         eosio_assert((newact & 0xf) == 0, "account names must be 12 chars long"); // more than 12 chars
+         uint64_t n = (newact >> 4), n1;
+         eosio_assert((n & 0x1f), "account names must be 12 chars long"); // less than 12 chars
+         n1 = (n & 0b011110111101111011110111101111011110111101111011110111101111);
+         n1 +=     0b011110111101111011110111101111011110111101111011110111101111;
+         n1 |=(n & 0b100001000010000100001000010000100001000010000100001000010000);
+         n1 &=     0b100001000010000100001000010000100001000010000100001000010000;
+         eosio_assert(n1 == 0b100001000010000100001000010000100001000010000100001000010000, "account names cannot contain '.' character");
+      }
 
       user_resources_table  userres( _self, newact);
 
