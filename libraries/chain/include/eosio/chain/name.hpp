@@ -36,6 +36,14 @@ namespace eosio { namespace chain {
           name |= char_to_symbol(str[12]) & 0x0F;
       return name;
    }
+   static bool name_contains_dot(uint64_t n) {
+      n >>= 4;
+      for (int i = 0; i < 11; ++i) {
+         if ((n & 0x3ff) - 1 <= 0x1e) return true;
+         n >>= 5;
+      }
+      return false;
+   }
 
 #define N(X) eosio::chain::string_to_name(#X)
 
