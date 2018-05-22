@@ -81,40 +81,6 @@ namespace eosiosystem {
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
 
-   /**
-    *  Called after a new account is created. This code enforces resource-limits rules
-    *  for new accounts as well as new account naming conventions.
-    *
-    *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
-    *  characters long without '.' until a future account auction process is implemented
-    *  which prevents name squatting.
-    *
-    *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
-    *     therefore, this method will execute an inline buyram from receiver for newacnt in
-    *     an amount equal to the current new account creation fee. 
-    */
-   void native::newaccount( account_name     creator,
-                            account_name     newact
-                            /*  no need to parse authorites
-                            const authority& owner,
-                            const authority& active*/ ) {
-      auto name_str = eosio::name{newact}.to_string();
-
-      eosio_assert( name_str.size() == 12 || creator == N(eosio), "account names must be 12 chars long" );
-      eosio_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(eosio), "account names cannot contain '.' character");
-
-      user_resources_table  userres( _self, newact);
-
-      userres.emplace( newact, [&]( auto& res ) {
-        res.owner = newact;
-      });
-
-      set_resource_limits( newact, 
-                          0,//  r->ram_bytes, 
-                           0, 0 );
-                    //       r->net_weight.amount, 
-                    //       r->cpu_weight.amount );
-   }
 
    /**
     *  This action will buy an exact amount of ram and bill the payer the current market price.
