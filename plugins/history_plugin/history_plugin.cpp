@@ -135,10 +135,13 @@ namespace eosio {
 
    class history_plugin_impl {
       public:
+         bool bypass_filter = false;
          std::set<filter_entry> filter_on;
          chain_plugin*          chain_plug = nullptr;
 
          bool filter( const action_trace& act ) {
+            if( bypass_filter )
+               return true;
             if( filter_on.find({ act.receipt.receiver, act.act.name, 0 }) != filter_on.end() )
                return true;
             for( const auto& a : act.act.authorization )
@@ -152,7 +155,7 @@ namespace eosio {
 
             result.insert( act.receipt.receiver );
             for( const auto& a : act.act.authorization )
-               if( filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
+               if( bypass_filter || filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
                   result.insert( a.actor );
             return result;
          }
@@ -252,21 +255,26 @@ namespace eosio {
 
    void history_plugin::set_program_options(options_description& cli, options_description& cfg) {
       cfg.add_options()
-            ("filter_on,f", bpo::value<vector<string>>()->composing(),
+            ("filter-on,f", bpo::value<vector<string>>()->composing(),
              "Track actions which match receiver:action:actor. Actor may be blank to include all. Receiver and Action may not be blank.")
             ;
    }
 
    void history_plugin::plugin_initialize(const variables_map& options) {
-      if( options.count("filter_on") )
+      if( options.count("filter-on") )
       {
-         auto fo = options.at("filter_on").as<vector<string>>();
+         auto fo = options.at("filter-on").as<vector<string>>();
          for( auto& s : fo ) {
+            if( s == "*" ) {
+               my->bypass_filter = true;
+               wlog("--filter-on * enabled. This can fill shared_mem, causing nodeos to stop.");
+               break;
+            }
             std::vector<std::string> v;
             boost::split(v, s, boost::is_any_of(":"));
-            EOS_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter_on", ("s",s));
+            EOS_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
             filter_entry fe{ v[0], v[1], v[2] };
-            EOS_ASSERT(fe.receiver.value && fe.action.value, fc::invalid_arg_exception, "Invalid value ${s} for --filter_on", ("s",s));
+            EOS_ASSERT(fe.receiver.value && fe.action.value, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
             my->filter_on.insert( fe );
          }
       }
