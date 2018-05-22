@@ -107,6 +107,8 @@ class producer_plugin_impl {
       pending_block_mode                                        _pending_block_mode;
 
       int32_t                                                   _max_transaction_time_ms;
+      fc::microseconds                                          _max_irreversible_block_age_us;
+      fc::microseconds                                          _irreversible_block_age_us;
 
       time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
@@ -158,6 +160,11 @@ class producer_plugin_impl {
                }
             }
          } ) );
+      }
+
+      void on_irreversible_block( const signed_block_ptr& lib ) {
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         _irreversible_block_age_us = chain.head_block_time() - lib->timestamp.to_time_point();
       }
 
       template<typename Type, typename Channel, typename F>
@@ -328,6 +335,8 @@ void producer_plugin::set_program_options(
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
+         ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( 30 * 60 ),
+          "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on")
          ("required-participation", boost::program_options::value<uint32_t>()
                                        ->default_value(uint32_t(config::required_producer_participation/config::percent_1))
                                        ->notifier([this](uint32_t e) {
@@ -392,6 +401,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
 
+   my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
@@ -425,6 +435,15 @@ void producer_plugin::plugin_startup()
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } );
+   chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } );
+
+   const auto lib_num = chain.last_irreversible_block_num();
+   const auto lib = chain.fetch_block_by_number(lib_num);
+   if (lib) {
+      my->on_irreversible_block(lib);
+   } else {
+      my->_irreversible_block_age_us = fc::seconds(0);
+   }
 
    if (!my->_producers.empty()) {
       ilog("Launching block production for ${n} producers at ${time}.", ("n", my->_producers.size())("time",fc::time_point::now()));
@@ -534,7 +553,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    } else if( _producers.find(scheduled_producer.producer_name) == _producers.end()) {
       _pending_block_mode = pending_block_mode::speculating;
    } else if (private_key_itr == _private_keys.end()) {
-      ilog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
+      elog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
+      _pending_block_mode = pending_block_mode::speculating;
+   } else if ( _irreversible_block_age_us >= _max_irreversible_block_age_us ) {
+      elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", _irreversible_block_age_us.count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
       _pending_block_mode = pending_block_mode::speculating;
    }
 
@@ -706,7 +728,7 @@ void producer_plugin_impl::schedule_production_loop() {
             fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)("res", res) );
          }
       });
-   } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty()){
+   } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && _irreversible_block_age_us < _max_irreversible_block_age_us){
       // if we have any producers then we should at least set a timer for our next available slot
       optional<fc::time_point> wake_up_time;
       for (const auto&p: _producers) {
