@@ -143,6 +143,9 @@ struct controller_impl {
    void emit( const Signal& s, Arg&& a ) {
       try {
         s(std::forward<Arg>(a));
+      } catch (boost::interprocess::bad_alloc& e) {
+         wlog( "bad alloc" );
+         throw e;
       } catch ( fc::exception& e ) {
          wlog( "${details}", ("details", e.to_detail_string()) );
       } catch ( ... ) {
