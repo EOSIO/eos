@@ -69,7 +69,7 @@ onlyBios=args.only_bios
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+cluster=testUtils.Cluster(enuwalletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=testUtils.WalletMgr(True)
 testSuccessful=False
 killEnuInstances=not dontKill
