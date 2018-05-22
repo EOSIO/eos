@@ -11,7 +11,7 @@ services:
 
   nodeosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/EOS
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --resync #--mongodb-uri mongodb://mongo:27017/EOS
     hostname: nodeosd
     links:
       - mongo
