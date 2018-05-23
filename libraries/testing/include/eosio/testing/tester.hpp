@@ -314,6 +314,7 @@ namespace eosio { namespace testing {
          vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
          vcfg.state_size = 1024*1024*8;
          vcfg.reversible_cache_size = 1024*1024*8;
+         vcfg.contracts_console = false;
 
          vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
          vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
