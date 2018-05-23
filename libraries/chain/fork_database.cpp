@@ -71,6 +71,8 @@ namespace eosio { namespace chain {
          fc::raw::unpack( ds, head_id );
 
          my->head = get_block( head_id );
+
+         fc::remove( fork_db_dat );
       }
    }
 

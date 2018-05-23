@@ -40,7 +40,7 @@ namespace eosio { namespace testing {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
       cfg.shared_memory_size = 1024*1024*8;
-      cfg.unconfirmed_cache_size = 1024*1024*8;
+      cfg.reversible_cache_size = 1024*1024*8;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
