@@ -12,7 +12,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/unconfirmed_block_object.hpp>
+#include <eosio/chain/reversible_block_object.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -116,8 +116,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
          ;
    cli.add_options()
-         ("fix-unconfirmed-blocks", bpo::bool_switch()->default_value(false),
-          "recovers unconfirmed block database if that database is in a bad state")
+         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
+          "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -198,31 +198,31 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ilog("Hard replay requested: wiping database");
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       auto backup_dir = block_log::repair_log( my->block_log_dir );
-      if( !recover_unconfirmed_blocks( backup_dir/"unconfirmed",
-                                       my->chain_config->unconfirmed_cache_size,
-                                       my->chain_config->block_log_dir/"unconfirmed" ) ) {
-         ilog("Unconfirmed blocks database was not corrupted. Copying from backup to blocks directory.");
-         fc::copy( backup_dir/"unconfirmed", my->chain_config->block_log_dir/"unconfirmed" );
-         fc::copy( backup_dir/"unconfirmed/shared_memory.bin", my->chain_config->block_log_dir/"unconfirmed/shared_memory.bin" );
-         fc::copy( backup_dir/"unconfirmed/shared_memory.meta", my->chain_config->block_log_dir/"unconfirmed/shared_memory.meta" );
+      if( !recover_reversible_blocks( backup_dir/"reversible",
+                                       my->chain_config->reversible_cache_size,
+                                       my->chain_config->block_log_dir/"reversible" ) ) {
+         ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
+         fc::copy( backup_dir/"reversible", my->chain_config->block_log_dir/"reversible" );
+         fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->block_log_dir/"reversible/shared_memory.bin" );
+         fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->block_log_dir/"reversible/shared_memory.meta" );
       }
    } else if( options.at("replay-blockchain").as<bool>() ) {
       ilog("Replay requested: wiping database");
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      if( options.at("fix-unconfirmed-blocks").as<bool>() ) {
-         if( !recover_unconfirmed_blocks( my->chain_config->block_log_dir/"unconfirmed",
-                                          my->chain_config->unconfirmed_cache_size ) ) {
-            ilog("Unconfirmed blocks database was not corrupted.");
+      if( options.at("fix-reversible-blocks").as<bool>() ) {
+         if( !recover_reversible_blocks( my->chain_config->block_log_dir/"reversible",
+                                          my->chain_config->reversible_cache_size ) ) {
+            ilog("Reversible blocks database was not corrupted.");
          }
       }
-   } else if( options.at("fix-unconfirmed-blocks").as<bool>() ) {
-      if( !recover_unconfirmed_blocks( my->chain_config->block_log_dir/"unconfirmed",
-                                       my->chain_config->unconfirmed_cache_size ) ) {
-         ilog("Unconfirmed blocks database verified to not be corrupted. Now exiting...");
+   } else if( options.at("fix-reversible-blocks").as<bool>() ) {
+      if( !recover_reversible_blocks( my->chain_config->block_log_dir/"reversible",
+                                       my->chain_config->reversible_cache_size ) ) {
+         ilog("Reversible blocks database verified to not be corrupted. Now exiting...");
       } else {
-         ilog("Exiting after fixing unconfirmed blocks database...");
+         ilog("Exiting after fixing reversible blocks database...");
       }
-      EOS_THROW( fixed_unconfirmed_db_exception, "fixed corrupted unconfirmed blocks database" );
+      EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
    }
 
    if( !fc::exists( my->genesis_file ) ) {
@@ -318,62 +318,62 @@ bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
    return b && b->id() == block_id;
 }
 
-bool chain_plugin::recover_unconfirmed_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir )const {
+bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir )const {
    try {
-      chainbase::database unconfirmed( db_dir, database::read_only); // Test if dirty
-      return false; // If it reaches here, then the unconfirmed database is not dirty
+      chainbase::database reversible( db_dir, database::read_only); // Test if dirty
+      return false; // If it reaches here, then the reversible database is not dirty
    } catch( const std::runtime_error& ) {
    } catch( ... ) {
       throw;
    }
-   // Unconfirmed block database is dirty. So back it up (unless already moved) and then create a new one.
+   // Reversible block database is dirty. So back it up (unless already moved) and then create a new one.
 
-   auto unconfirmed_dir = fc::canonical( db_dir );
-   if( unconfirmed_dir.filename().generic_string() == "." ) {
-      unconfirmed_dir = unconfirmed_dir.parent_path();
+   auto reversible_dir = fc::canonical( db_dir );
+   if( reversible_dir.filename().generic_string() == "." ) {
+      reversible_dir = reversible_dir.parent_path();
    }
    fc::path backup_dir;
 
    if( new_db_dir ) {
-      backup_dir = unconfirmed_dir;
-      unconfirmed_dir = *new_db_dir;
+      backup_dir = reversible_dir;
+      reversible_dir = *new_db_dir;
    } else {
       auto now = fc::time_point::now();
 
-      auto unconfirmed_dir_name = unconfirmed_dir.filename().generic_string();
-      FC_ASSERT( unconfirmed_dir_name != ".", "Invalid path to unconfirmed directory" );
-      backup_dir = unconfirmed_dir.parent_path() / unconfirmed_dir_name.append("-").append( now );
+      auto reversible_dir_name = reversible_dir.filename().generic_string();
+      FC_ASSERT( reversible_dir_name != ".", "Invalid path to reversible directory" );
+      backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
 
       FC_ASSERT( !fc::exists(backup_dir),
-                 "Cannot move existing unconfirmed directory to already existing directory '${backup_dir}'",
+                 "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
                  ("backup_dir", backup_dir) );
 
-      fc::rename( unconfirmed_dir, backup_dir );
-      ilog( "Moved existing unconfirmed directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
+      fc::rename( reversible_dir, backup_dir );
+      ilog( "Moved existing reversible directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
    }
 
-   fc::create_directories( unconfirmed_dir );
+   fc::create_directories( reversible_dir );
 
-   ilog( "Reconstructing '${unconfirmed_dir}' from backed up unconfirmed directory", ("unconfirmed_dir", unconfirmed_dir) );
+   ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
 
-   chainbase::database  old_unconfirmed( backup_dir, database::read_only, 0, true );
-   chainbase::database  new_unconfirmed( unconfirmed_dir, database::read_write, cache_size );
+   chainbase::database  old_reversible( backup_dir, database::read_only, 0, true );
+   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
 
    uint32_t num = 0;
    uint32_t start = 0;
    uint32_t end = 0;
    try {
-      old_unconfirmed.add_index<unconfirmed_block_index>();
-      new_unconfirmed.add_index<unconfirmed_block_index>();
-      const auto& ubi = old_unconfirmed.get_index<unconfirmed_block_index,by_num>();
+      old_reversible.add_index<reversible_block_index>();
+      new_reversible.add_index<reversible_block_index>();
+      const auto& ubi = old_reversible.get_index<reversible_block_index,by_num>();
       auto itr = ubi.begin();
       if( itr != ubi.end() ) {
          start = itr->blocknum;
          end = start - 1;
       }
       for( ; itr != ubi.end(); ++itr ) {
-         FC_ASSERT( itr->blocknum == end + 1, "gap in unconfirmed block database" );
-         new_unconfirmed.create<unconfirmed_block_object>( [&]( auto& ubo ) {
+         FC_ASSERT( itr->blocknum == end + 1, "gap in reversible block database" );
+         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = itr->blocknum;
             ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
          });
@@ -383,11 +383,11 @@ bool chain_plugin::recover_unconfirmed_blocks( const fc::path& db_dir, uint32_t 
    } catch( ... ) {}
 
    if( num == 0 )
-      ilog( "There were no recoverable blocks in the unconfirmed block database" );
+      ilog( "There were no recoverable blocks in the reversible block database" );
    else if( num == 0 )
-      ilog( "Recovered 1 block from unconfirmed block database: block ${start}", ("start", start) );
+      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
    else
-      ilog( "Recovered ${num} blocks from unconfirmed block database: blocks ${start} to ${end}",
+      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
             ("num", num)("start", start)("end", end) );
 
    return true;

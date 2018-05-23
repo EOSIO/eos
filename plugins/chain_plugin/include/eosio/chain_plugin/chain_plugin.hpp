@@ -367,7 +367,7 @@ public:
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
-   bool recover_unconfirmed_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir = optional<fc::path>() )const;
+   bool recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir = optional<fc::path>() )const;
 
    // Only call this in plugin_initialize() to modify controller constructor configuration
    controller::config& chain_config();

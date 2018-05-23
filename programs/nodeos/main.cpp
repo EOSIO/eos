@@ -84,7 +84,7 @@ enum return_codes {
    INITIALIZE_FAIL = -1,
    SUCCESS         = 0,
    BAD_ALLOC       = 1,
-   FIXED_UNCONFIRMED = 2
+   FIXED_REVERSIBLE = 2
 };
 
 int main(int argc, char** argv)
@@ -103,8 +103,8 @@ int main(int argc, char** argv)
       ilog("eosio root is ${root}", ("root", root.string()));
       app().startup();
       app().exec();
-   } catch( const fixed_unconfirmed_db_exception& e ) {
-      return FIXED_UNCONFIRMED;
+   } catch( const fixed_reversible_db_exception& e ) {
+      return FIXED_REVERSIBLE;
    } catch( const fc::exception& e ) {
       elog("${e}", ("e",e.to_detail_string()));
       return OTHER_FAIL;
