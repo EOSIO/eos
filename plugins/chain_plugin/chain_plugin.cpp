@@ -12,6 +12,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/reversible_block_object.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -20,6 +21,8 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <eosio/chain/plugin_interface.hpp>
+
+#include <boost/signals2/connection.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -33,6 +36,8 @@ using namespace eosio::chain::config;
 using namespace eosio::chain::plugin_interface;
 using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
+
+using boost::signals2::scoped_connection;
 
 //using txn_msg_rate_limits = controller::txn_msg_rate_limits;
 
@@ -51,11 +56,10 @@ public:
    ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
    {}
 
-   bfs::path                        block_log_dir;
+   bfs::path                        blocks_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
    bool                             readonly = false;
-   uint64_t                         shared_memory_size;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
@@ -85,6 +89,15 @@ public:
    methods::get_head_block_id::method_type::handle                   get_head_block_id_provider;
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
 
+   // scoped connections for chain controller
+   fc::optional<scoped_connection>                                   accepted_block_header_connection;
+   fc::optional<scoped_connection>                                   accepted_block_connection;
+   fc::optional<scoped_connection>                                   irreversible_block_connection;
+   fc::optional<scoped_connection>                                   accepted_transaction_connection;
+   fc::optional<scoped_connection>                                   applied_transaction_connection;
+   fc::optional<scoped_connection>                                   accepted_confirmation_connection;
+
+
 };
 
 chain_plugin::chain_plugin()
@@ -98,11 +111,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cfg.add_options()
          ("genesis-json", bpo::value<bfs::path>()->default_value("genesis.json"), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
-         ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
-          "the location of the block log (absolute path or relative to application data dir)")
-         ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
+          "the location of the blocks directory (absolute path or relative to application data dir)")
+         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
-         ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Maximum size MB of database shared memory file")
+         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
+         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
+
 
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -115,14 +130,16 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
          ;
    cli.add_options()
+         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
+          "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database and replay all blocks")
+          "clear chain state database and replay all blocks")
          ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database, recover as many blocks as possible from the block log, and then replay those blocks")
-         ("resync-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database and block log")
+          "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
+         ("delete-all-blocks", bpo::bool_switch()->default_value(false),
+          "clear chain state database and block log")
          ;
 }
 
@@ -152,28 +169,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
        my->genesis_timestamp = time_point::from_iso_string (tstr);
      }
    }
-   if (options.count("block-log-dir")) {
-      auto bld = options.at("block-log-dir").as<bfs::path>();
+   if (options.count("blocks-dir")) {
+      auto bld = options.at("blocks-dir").as<bfs::path>();
       if(bld.is_relative())
-         my->block_log_dir = app().data_dir() / bld;
+         my->blocks_dir = app().data_dir() / bld;
       else
-         my->block_log_dir = bld;
-   }
-   if (options.count("shared-memory-size-mb")) {
-      my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
-   }
-
-   if( options.at("resync-blockchain").as<bool>() ) {
-      ilog("Resync requested: wiping database and blocks");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      fc::remove_all(my->block_log_dir);
-   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
-      ilog("Hard replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      block_log::repair_log( my->block_log_dir );
-   } else if( options.at("replay-blockchain").as<bool>() ) {
-      ilog("Replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+         my->blocks_dir = bld;
    }
 
    if(options.count("checkpoint"))
@@ -190,25 +191,69 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
 
+   my->chain_config->blocks_dir = my->blocks_dir;
+   my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
+   my->chain_config->read_only = my->readonly;
+
+   if (options.count("chain-state-db-size-mb"))
+      my->chain_config->state_size = options.at("chain-state-db-size-mb").as<uint64_t>() * 1024 * 1024;
+
+   if (options.count("reversible-blocks-db-size-mb"))
+      my->chain_config->reversible_cache_size = options.at("reversible-blocks-db-size-mb").as<uint64_t>() * 1024 * 1024;
+
+   if( my->wasm_runtime )
+      my->chain_config->wasm_runtime = *my->wasm_runtime;
+
+   my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
+
+   if( options.at("delete-all-blocks").as<bool>() ) {
+      ilog("Deleting state database and blocks");
+      fc::remove_all( my->chain_config->state_dir );
+      fc::remove_all(my->blocks_dir);
+   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
+      ilog("Hard replay requested: deleting state database");
+      fc::remove_all( my->chain_config->state_dir );
+      auto backup_dir = block_log::repair_log( my->blocks_dir );
+      if( fc::exists(backup_dir/config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>() ) {
+         // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
+         if( !recover_reversible_blocks( backup_dir/config::reversible_blocks_dir_name,
+                                          my->chain_config->reversible_cache_size,
+                                          my->chain_config->blocks_dir/config::reversible_blocks_dir_name ) ) {
+            ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
+            fc::copy( backup_dir/config::reversible_blocks_dir_name, my->chain_config->blocks_dir/config::reversible_blocks_dir_name );
+            fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->blocks_dir/"reversible/shared_memory.bin" );
+            fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->blocks_dir/"reversible/shared_memory.meta" );
+         }
+      }
+   } else if( options.at("replay-blockchain").as<bool>() ) {
+      ilog("Replay requested: deleting state database");
+      fc::remove_all( my->chain_config->state_dir );
+      if( options.at("fix-reversible-blocks").as<bool>() ) {
+         if( !recover_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
+                                          my->chain_config->reversible_cache_size ) ) {
+            ilog("Reversible blocks database was not corrupted.");
+         }
+      }
+   } else if( options.at("fix-reversible-blocks").as<bool>() ) {
+      if( !recover_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
+                                       my->chain_config->reversible_cache_size ) ) {
+         ilog("Reversible blocks database verified to not be corrupted. Now exiting...");
+      } else {
+         ilog("Exiting after fixing reversible blocks database...");
+      }
+      EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
+   }
+
    if( !fc::exists( my->genesis_file ) ) {
       wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
       genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, my->genesis_file, true );
    }
-   my->chain_config->block_log_dir = my->block_log_dir;
-   my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
-   my->chain_config->read_only = my->readonly;
-   my->chain_config->shared_memory_size = my->shared_memory_size;
+
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
    if( my->genesis_timestamp.sec_since_epoch() > 0 ) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
-
-   if( my->wasm_runtime )
-      my->chain_config->wasm_runtime = *my->wasm_runtime;
-
-   if( options.count("force-all-checks") )
-      my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
 
    my->chain.emplace(*my->chain_config);
 
@@ -230,27 +275,27 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    });
 
    // relay signals to channels
-   my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
+   my->accepted_block_header_connection = my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
       my->accepted_block_header_channel.publish(blk);
    });
 
-   my->chain->accepted_block.connect([this](const block_state_ptr& blk) {
+   my->accepted_block_connection = my->chain->accepted_block.connect([this](const block_state_ptr& blk) {
       my->accepted_block_channel.publish(blk);
    });
 
-   my->chain->irreversible_block.connect([this](const block_state_ptr& blk) {
+   my->irreversible_block_connection = my->chain->irreversible_block.connect([this](const block_state_ptr& blk) {
       my->irreversible_block_channel.publish(blk);
    });
 
-   my->chain->accepted_transaction.connect([this](const transaction_metadata_ptr& meta){
+   my->accepted_transaction_connection = my->chain->accepted_transaction.connect([this](const transaction_metadata_ptr& meta){
       my->accepted_transaction_channel.publish(meta);
    });
 
-   my->chain->applied_transaction.connect([this](const transaction_trace_ptr& trace){
+   my->applied_transaction_connection = my->chain->applied_transaction.connect([this](const transaction_trace_ptr& trace){
       my->applied_transaction_channel.publish(trace);
    });
 
-   my->chain->accepted_confirmation.connect([this](const header_confirmation& conf){
+   my->accepted_confirmation_connection = my->chain->accepted_confirmation.connect([this](const header_confirmation& conf){
       my->accepted_confirmation_channel.publish(conf);
    });
 
@@ -272,6 +317,12 @@ void chain_plugin::plugin_startup()
 } FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
+   my->accepted_block_header_connection.reset();
+   my->accepted_block_connection.reset();
+   my->irreversible_block_connection.reset();
+   my->accepted_transaction_connection.reset();
+   my->applied_transaction_connection.reset();
+   my->accepted_confirmation_connection.reset();
    my->chain.reset();
 }
 
@@ -283,13 +334,88 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
+chain::transaction_trace_ptr chain_plugin::accept_transaction(const packed_transaction& trx) {
+   return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx) , false);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
    auto b = chain().fetch_block_by_number( block_header::num_from_id(block_id) );
    return b && b->id() == block_id;
+}
+
+bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir )const {
+   try {
+      chainbase::database reversible( db_dir, database::read_only); // Test if dirty
+      return false; // If it reaches here, then the reversible database is not dirty
+   } catch( const std::runtime_error& ) {
+   } catch( ... ) {
+      throw;
+   }
+   // Reversible block database is dirty. So back it up (unless already moved) and then create a new one.
+
+   auto reversible_dir = fc::canonical( db_dir );
+   if( reversible_dir.filename().generic_string() == "." ) {
+      reversible_dir = reversible_dir.parent_path();
+   }
+   fc::path backup_dir;
+
+   if( new_db_dir ) {
+      backup_dir = reversible_dir;
+      reversible_dir = *new_db_dir;
+   } else {
+      auto now = fc::time_point::now();
+
+      auto reversible_dir_name = reversible_dir.filename().generic_string();
+      FC_ASSERT( reversible_dir_name != ".", "Invalid path to reversible directory" );
+      backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
+
+      FC_ASSERT( !fc::exists(backup_dir),
+                 "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
+                 ("backup_dir", backup_dir) );
+
+      fc::rename( reversible_dir, backup_dir );
+      ilog( "Moved existing reversible directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
+   }
+
+   fc::create_directories( reversible_dir );
+
+   ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
+
+   chainbase::database  old_reversible( backup_dir, database::read_only, 0, true );
+   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
+
+   uint32_t num = 0;
+   uint32_t start = 0;
+   uint32_t end = 0;
+   try {
+      old_reversible.add_index<reversible_block_index>();
+      new_reversible.add_index<reversible_block_index>();
+      const auto& ubi = old_reversible.get_index<reversible_block_index,by_num>();
+      auto itr = ubi.begin();
+      if( itr != ubi.end() ) {
+         start = itr->blocknum;
+         end = start - 1;
+      }
+      for( ; itr != ubi.end(); ++itr ) {
+         FC_ASSERT( itr->blocknum == end + 1, "gap in reversible block database" );
+         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
+            ubo.blocknum = itr->blocknum;
+            ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
+         });
+         end = itr->blocknum;
+         ++num;
+      }
+   } catch( ... ) {}
+
+   if( num == 0 )
+      ilog( "There were no recoverable blocks in the reversible block database" );
+   else if( num == 1 )
+      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
+   else
+      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
+            ("num", num)("start", start)("end", end) );
+
+   return true;
 }
 
 controller::config& chain_plugin::chain_config() {
@@ -544,7 +670,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
          abi_serializer::from_variant(params, *pretty_input, resolver);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input);
+      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
 
       pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
       //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);

@@ -343,6 +343,7 @@ namespace eosio {
       bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
       bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
       uint32_t            block_num = 0; ///< the block number the transaction was included in
+      time_point_sec      expires;
       time_point          requested_time; /// in case we fetch large trx
    };
 
@@ -362,10 +363,19 @@ namespace eosio {
       }
    };
 
+   struct update_txn_expiry {
+      time_point_sec new_expiry;
+      update_txn_expiry(time_point_sec e) : new_expiry(e) {}
+      void operator() (transaction_state& ts) {
+         ts.expires = new_expiry;
+      }
+   };
+
    typedef multi_index_container<
       transaction_state,
       indexed_by<
          ordered_unique< tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id > >,
+         ordered_non_unique< tag< by_expiry >, member< transaction_state,fc::time_point_sec,&transaction_state::expires >>,
          ordered_non_unique<
             tag<by_block_num>,
             member< transaction_state,
@@ -1655,6 +1665,8 @@ namespace eosio {
       uint32_t packsiz = 0;
       uint32_t bufsiz = 0;
 
+      time_point_sec trx_expiration = trx.expiration();
+
       net_message msg(trx);
       packsiz = fc::raw::pack_size(msg);
       bufsiz = packsiz + sizeof(packsiz);
@@ -1663,7 +1675,7 @@ namespace eosio {
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
       fc::raw::pack( ds, msg );
       node_transaction_state nts = {id,
-                                    trx.expiration(),
+                                    trx_expiration,
                                     trx,
                                     std::move(buff),
                                     0, 0, 0};
@@ -1671,15 +1683,18 @@ namespace eosio {
 
       if(bufsiz <= just_send_it_max) {
          connection_wptr weak_skip = skip;
-         my_impl->send_all( trx, [weak_skip, id](connection_ptr c) -> bool {
+         my_impl->send_all( trx, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
                if(c == weak_skip.lock() || c->syncing ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
-                  c->trx_state.insert(transaction_state({id,true,true,0,time_point() }));
+                  c->trx_state.insert(transaction_state({id,true,true,0,trx_expiration,time_point() }));
                   fc_dlog(logger, "sending whole trx to ${n}", ("n",c->peer_name() ) );
+               } else {
+                  update_txn_expiry ute(trx_expiration);
+                  c->trx_state.modify(bs, ute);
                }
                return unknown;
             });
@@ -1690,7 +1705,7 @@ namespace eosio {
          pending_notify.known_trx.ids.push_back( id );
          pending_notify.known_blocks.mode = none;
          connection_wptr weak_skip = skip;
-         my_impl->send_all(pending_notify, [weak_skip, id](connection_ptr c) -> bool {
+         my_impl->send_all(pending_notify, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
                if (c == weak_skip.lock() || c->syncing) {
                   return false;
                }
@@ -1698,7 +1713,10 @@ namespace eosio {
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
                   fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
-                  c->trx_state.insert(transaction_state({id,false,true,0, time_point() }));
+                  c->trx_state.insert(transaction_state({id,false,true,0,trx_expiration,time_point() }));
+               } else {
+                  update_txn_expiry ute(trx_expiration);
+                  c->trx_state.modify(bs, ute);
                }
                return unknown;
             });
@@ -1832,7 +1850,10 @@ namespace eosio {
             if( tx == my_impl->local_txns.end( ) ) {
                fc_dlog(logger,"did not find ${id}",("id",t));
 
-               c->trx_state.insert( (transaction_state){t,true,true,0,
+               //At this point the details of the txn are not known, just its id. This
+               //effectively gives 120 seconds to learn of the details of the txn which
+               //will update the expiry in bcast_transaction
+               c->trx_state.insert( (transaction_state){t,true,true,0,time_point_sec(time_point::now()) + 120,
                         time_point()} );
 
                req.req_trx.ids.push_back( t );
@@ -1940,6 +1961,14 @@ namespace eosio {
 
       if (colon == std::string::npos || colon == 0) {
          elog ("Invalid peer address. must be \"host:port\": ${p}", ("p",c->peer_addr));
+         for ( auto itr : connections ) {
+            if((*itr).peer_addr == c->peer_addr) {
+               (*itr).reset();
+               close(itr);
+               connections.erase(itr);
+               break;
+            }
+         }
          return;
       }
 
@@ -2441,10 +2470,17 @@ namespace eosio {
       dispatcher->recv_transaction(c, tid);
       uint64_t code = 0;
       try {
-         chain_plug->accept_transaction( msg);
-         fc_dlog(logger, "chain accepted transaction" );
-         dispatcher->bcast_transaction(msg);
-         return;
+         auto trace = chain_plug->accept_transaction( msg);
+         if (!trace->except) {
+            fc_dlog(logger, "chain accepted transaction");
+            dispatcher->bcast_transaction(msg);
+            return;
+         }
+
+         // if accept didn't throw but there was an exception on the trace
+         // it means that this was non-fatally rejected from the chain.
+         // we will mark it as "rejected" and hope someone sends it to us later
+         // when we are able to accept it.
       }
       catch( const fc::exception &ex) {
          code = ex.code();
@@ -2580,6 +2616,8 @@ namespace eosio {
       for ( auto &c : connections ) {
          auto &stale_txn = c->trx_state.get<by_block_num>();
          stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(bn) );
+         auto &stale_txn_e = c->trx_state.get<by_expiry>();
+         stale_txn_e.erase(stale_txn_e.lower_bound(time_point_sec()), stale_txn_e.upper_bound(time_point::now()));
          auto &stale_blk = c->blk_state.get<by_block_num>();
          stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(bn) );
       }
