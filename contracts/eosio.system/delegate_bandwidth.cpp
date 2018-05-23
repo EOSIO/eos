@@ -196,7 +196,7 @@ namespace eosiosystem {
    void validate_b1_vesting( int64_t stake ) {
       const int64_t seconds_per_year = 60*60*24*365;
       const int64_t base_time = 1527811200; /// 2018-06-01
-      const int64_t max_claimable = 100'000'000'0000ll;
+      const int64_t max_claimable = 100'000'000'0000ll; // '
       const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
 
       eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
@@ -208,6 +208,8 @@ namespace eosiosystem {
       require_auth( from );
       eosio_assert( stake_net_delta != asset(0) || stake_cpu_delta != asset(0), "should stake non-zero amount" );
 
+      print(from, " ", receiver, " ", stake_net_delta, " ", stake_cpu_delta);
+      
       account_name source_stake_from = from;
       if ( transfer ) {
          from = receiver;
@@ -265,7 +267,7 @@ namespace eosiosystem {
       } // tot_itr can be invalid, should go out of scope
 
       // create refund or update from existing refund
-      if ( N(eosio) != source_stake_from ) { //for eosio both transfer and refund make no sense
+      if ( N(eosio.stake) != source_stake_from ) { //for eosio both transfer and refund make no sense
          refunds_table refunds_tbl( _self, from );
          auto req = refunds_tbl.find( from );
 
@@ -392,7 +394,9 @@ namespace eosiosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+      print(req->net_amount, " ", req->cpu_amount);
+      
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.stake),N(active)},
                                                     { N(eosio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
