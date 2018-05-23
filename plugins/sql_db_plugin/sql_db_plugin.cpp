@@ -72,7 +72,7 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
     m_irreversible_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::make_unique<irreversible_block_storage>(db));
 
    // chain.accepted_block.connect([=](const chain::block_state_ptr& b) {m_block_consumer.push(b);});
-    chain.irreversible_block.connect([=](const chain::block_state_ptr& b) {m_irreversible_block_consumer->push(b);});
+    m_irreversible_block_connection.emplace(chain.irreversible_block.connect([=](const chain::block_state_ptr& b) {m_irreversible_block_consumer->push(b);}));
 }
 
 void sql_db_plugin::plugin_startup()
@@ -83,6 +83,7 @@ void sql_db_plugin::plugin_startup()
 void sql_db_plugin::plugin_shutdown()
 {
     ilog("shutdown");
+    m_irreversible_block_connection.reset();
 }
 
 } // namespace eosio

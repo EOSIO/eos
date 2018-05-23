@@ -112,12 +112,11 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
-   //issue( "eosio", core_from_string("1000.0000"), config::system_account_name );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) + get_balance( "eosio.ramfee" ) + get_balance( "eosio.stake" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
    transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
-   //   BOOST_REQUIRE_EQUAL( core_from_string("999999000.0000"), get_balance( "eosio" ) );
+
    BOOST_REQUIRE_EQUAL( core_from_string("1000.0000"), get_balance( "alice1111111" ) );
    BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
@@ -176,11 +175,9 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try 
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //eosio stakes for alice with transfer flag
-   std::cout << "eosio " << get_balance( "eosio" ) << std::endl;
-   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "eosio.stake", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
-   std::cout << "eosio " << get_balance( "eosio" ) << std::endl;
-   std::cout << get_balance( "eosio.stake" ) << std::endl;
-   edump((get_balance( "eosio.stake" )));
+
+   transfer( "eosio", "bob111111111", core_from_string("1000.0000"), "eosio" );
+   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "bob111111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
    //check that alice has both bandwidth and voting power
    auto total = get_total_stake("alice1111111");
@@ -188,7 +185,6 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try 
    BOOST_REQUIRE_EQUAL( core_from_string("110.0000"), total["cpu_weight"].as<asset>());
    REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("300.0000")), get_voter_info( "alice1111111" ) );
 
-   //BOOST_REQUIRE_EQUAL( core_from_string("999999700.0000"), get_balance( "eosio" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //alice stakes for herself
@@ -214,7 +210,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try 
    
    produce_block( fc::hours(1) );
    produce_blocks(1);
-   //   return;
+
    BOOST_REQUIRE_EQUAL( core_from_string("1300.0000"), get_balance( "alice1111111" ) );
 
    //stake should be equal to what was staked in constructor, votring power should be 0
@@ -222,6 +218,10 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try 
    BOOST_REQUIRE_EQUAL( core_from_string("10.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("10.0000"), total["cpu_weight"].as<asset>());
    REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("0.0000")), get_voter_info( "alice1111111" ) );
+
+   // Now alice stakes to bob with transfer flag
+   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "alice1111111", "bob111111111", core_from_string("100.0000"), core_from_string("100.0000") ) );
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
@@ -1772,6 +1772,8 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
    create_account_with_resources( N(producvoterb), config::system_account_name, core_from_string("1.0000"), false, large_asset, large_asset );
    create_account_with_resources( N(producvoterc), config::system_account_name, core_from_string("1.0000"), false, large_asset, large_asset );
 
+
+
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;
    producer_names.reserve('z' - 'a' + 1);
@@ -2261,7 +2263,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), bidname( "sam", "nofail", core_from_string( "2.0000" ) )); // didn't increase bid by 10%
    produce_block( fc::days(1) );
    produce_block();
-   
+
    BOOST_REQUIRE_THROW( create_accounts_with_resources( { N(nofail) }, N(dan) ), fc::exception); // dan shoudn't be able to do this, sam won
    //wlog( "verify sam can create nofail" );
    create_accounts_with_resources( { N(nofail) }, N(sam) ); // sam should be able to do this, he won the bid
@@ -2271,7 +2273,8 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    //wlog( "verify dan cannot create test.fail" );
    BOOST_REQUIRE_THROW( create_accounts_with_resources( { N(test.fail) }, N(dan) ), fc::exception ); // dan shouldn't be able to do this
 
-} FC_LOG_AND_RETHROW() 
+   create_accounts_with_resources( { N(goodgoodgood) }, N(dan) ); /// 12 char names should succeed 
+} FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
 
@@ -2294,12 +2297,12 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
                                                ("voter",  "bob")
                                                ("proxy", name(0).to_string() )
                                                ("producers", vector<account_name>{ N(producer) } )
-                                               ) 
+                                               )
                         );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(carl), N(voteproducer), mvo()
                                                 ("voter",  "carl")
                                                 ("proxy", name(0).to_string() )
-                                                ("producers", vector<account_name>{ N(producer) } ) 
+                                                ("producers", vector<account_name>{ N(producer) } )
                                                 )
                         );
 
@@ -2313,7 +2316,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    bidname( "carl", "prefd", core_from_string("1.0000") );
    bidname( "carl", "prefe", core_from_string("1.0000") );
    BOOST_REQUIRE_EQUAL( core_from_string( "9998.0000" ), get_balance("carl") );
-   
+
    BOOST_REQUIRE_EQUAL( error("assertion failure with message: account is already high bidder"),
                         bidname( "bob", "prefb", core_from_string("1.1001") ) );
    BOOST_REQUIRE_EQUAL( error("assertion failure with message: must increase bid by 10%"),
@@ -2361,7 +2364,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
                                                 ("producers", vector<account_name>{ N(producer) } )
                                                 )
                         );
-   
+
    // need to wait for 14 days after going live
    produce_blocks(10);
    produce_block( fc::days(2) );
@@ -2369,7 +2372,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefd), N(david) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
    // it's been 14 days, auction for prefd has been closed
-   produce_block( fc::days(12) );   
+   produce_block( fc::days(12) );
    create_account_with_resources( N(prefd), N(david) );
    produce_blocks(2);
    produce_block( fc::hours(23) );
@@ -2407,12 +2410,12 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    create_account_with_resources( N(prefb), N(eve) );
 
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefe), N(carl) ),
-                            fc::exception, fc_assert_exception_message_is( not_closed_message ) );   
+                            fc::exception, fc_assert_exception_message_is( not_closed_message ) );
    produce_block();
    produce_block( fc::hours(24) );
    // by now bid for prefe has closed
    create_account_with_resources( N(prefe), N(carl) );
-   // prefe can now create *.prefe 
+   // prefe can now create *.prefe
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(xyz.prefe), N(carl) ),
                             fc::exception, fc_assert_exception_message_is("only suffix may create this account") );
    transfer( config::system_account_name, N(prefe), core_from_string("10000.0000") );

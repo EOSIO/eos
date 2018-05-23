@@ -57,9 +57,8 @@ namespace eosio {
          typedef eosio::multi_index<N(accounts), account> accounts;
          typedef eosio::multi_index<N(stat), currency_stats> stats;
 
-         void sub_balance( account_name owner, asset value, const currency_stats& st );
-         void add_balance( account_name owner, asset value, const currency_stats& st,
-                           account_name ram_payer );
+         void sub_balance( account_name owner, asset value );
+         void add_balance( account_name owner, asset value, account_name ram_payer );
 
       public:
          struct transfer_args {
