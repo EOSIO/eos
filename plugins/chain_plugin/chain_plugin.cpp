@@ -198,13 +198,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ilog("Hard replay requested: wiping database");
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       auto backup_dir = block_log::repair_log( my->block_log_dir );
-      if( !recover_reversible_blocks( backup_dir/"reversible",
-                                       my->chain_config->reversible_cache_size,
-                                       my->chain_config->block_log_dir/"reversible" ) ) {
-         ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
-         fc::copy( backup_dir/"reversible", my->chain_config->block_log_dir/"reversible" );
-         fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->block_log_dir/"reversible/shared_memory.bin" );
-         fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->block_log_dir/"reversible/shared_memory.meta" );
+      if( fc::exists(backup_dir/"reversible") || options.at("fix-reversible-blocks").as<bool>() ) {
+         // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
+         if( !recover_reversible_blocks( backup_dir/"reversible",
+                                          my->chain_config->reversible_cache_size,
+                                          my->chain_config->block_log_dir/"reversible" ) ) {
+            ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
+            fc::copy( backup_dir/"reversible", my->chain_config->block_log_dir/"reversible" );
+            fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->block_log_dir/"reversible/shared_memory.bin" );
+            fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->block_log_dir/"reversible/shared_memory.meta" );
+         }
       }
    } else if( options.at("replay-blockchain").as<bool>() ) {
       ilog("Replay requested: wiping database");
