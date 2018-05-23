@@ -33,6 +33,7 @@ void token::issue( account_name to, asset quantity, string memo )
 {
     auto sym = quantity.symbol;
     enumivo_assert( sym.is_valid(), "invalid symbol name" );
+    enumivo_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
     auto sym_name = sym.name();
     stats statstable( _self, sym_name );
@@ -61,7 +62,7 @@ void token::issue( account_name to, asset quantity, string memo )
 void token::transfer( account_name from,
                       account_name to,
                       asset        quantity,
-                      string       /*memo*/ )
+                      string       memo )
 {
     enumivo_assert( from != to, "cannot transfer to self" );
     require_auth( from );
@@ -76,6 +77,7 @@ void token::transfer( account_name from,
     enumivo_assert( quantity.is_valid(), "invalid quantity" );
     enumivo_assert( quantity.amount > 0, "must transfer positive quantity" );
     enumivo_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
+    enumivo_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
     sub_balance( from, quantity, st );
@@ -85,7 +87,7 @@ void token::transfer( account_name from,
 void token::sub_balance( account_name owner, asset value, const currency_stats& st ) {
    accounts from_acnts( _self, owner );
 
-   const auto& from = from_acnts.get( value.symbol.name() );
+   const auto& from = from_acnts.get( value.symbol.name(), "no balance object found" );
    enumivo_assert( from.balance.amount >= value.amount, "overdrawn balance" );
 
 

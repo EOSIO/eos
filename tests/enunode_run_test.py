@@ -230,20 +230,21 @@ try:
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)
 
-    Print("Create new account %s via %s" % (testeraAccount.name, defproduceraAccount.name))
-    transId=node.createInitializeAccount(testeraAccount, defproduceraAccount, stakedDeposit=0, waitForTransBlock=False)
+    # create accounts via enumivo as otherwise a bid is needed 
+    Print("Create new account %s via %s" % (testeraAccount.name, cluster.enumivoAccount.name))
+    transId=node.createInitializeAccount(testeraAccount, cluster.enumivoAccount, stakedDeposit=0, waitForTransBlock=False)
     if transId is None:
         cmdError("%s create account" % (testeraAccount.name))
         errorExit("Failed to create account %s" % (testeraAccount.name))
 
-    Print("Create new account %s via %s" % (currencyAccount.name, defproducerbAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, defproducerbAccount, stakedDeposit=5000)
+    Print("Create new account %s via %s" % (currencyAccount.name, cluster.enumivoAccount.name))
+    transId=node.createInitializeAccount(currencyAccount, cluster.enumivoAccount, stakedDeposit=5000)
     if transId is None:
         cmdError("%s create account" % (ClientName))
         errorExit("Failed to create account %s" % (currencyAccount.name))
 
-    Print("Create new account %s via %s" % (exchangeAccount.name, defproduceraAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, defproduceraAccount, waitForTransBlock=True)
+    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.enumivoAccount.name))
+    transId=node.createInitializeAccount(exchangeAccount, cluster.enumivoAccount, waitForTransBlock=True)
     if transId is None:
         cmdError("%s create account" % (ClientName))
         errorExit("Failed to create account %s" % (exchangeAccount.name))

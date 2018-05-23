@@ -309,7 +309,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
         // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
         claim_rewards(N(runnerup1));
-        BOOST_TEST(get_balance(N(runnerup1)).amount > 0);
+        BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
         const auto first_june_2028 = fc::seconds(1843430400); // 2028-06-01
