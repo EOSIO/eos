@@ -93,13 +93,13 @@ namespace eosio {
             return t.get(symbol).balance;
          }
 
-         static void inline_transfer( account_name from, account_name to, extended_asset amount, string memo = string(), permission_name perm = N(active) ) {
-            action act( permission_level( from, perm ), amount.contract, N(transfer), transfer{from,to,amount,memo} );
+         static void inline_transfer( account_name from, account_name to, extended_asset amount, string memo = string(), permission_name perm = NAME(active) ) {
+            action act( permission_level( from, perm ), amount.contract, NAME(transfer), transfer{from,to,amount,memo} );
             act.send();
          }
 
-         void inline_transfer( account_name from, account_name to, asset amount, string memo = string(), permission_name perm = N(active) ) {
-            action act( permission_level( from, perm ), _contract, N(transfer), transfer{from,to,amount,memo} );
+         void inline_transfer( account_name from, account_name to, asset amount, string memo = string(), permission_name perm = NAME(active) ) {
+            action act( permission_level( from, perm ), _contract, NAME(transfer), transfer{from,to,amount,memo} );
             act.send();
          }
 

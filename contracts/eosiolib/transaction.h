@@ -58,7 +58,7 @@ extern "C" {
     *
     * @{
     */
-   void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
+   void send_deferred(const uint128_t& sender_id, uint64_t payer, const char* serialized_transaction, size_t size, uint32_t replace_existing = 0);
 
    /**
     * cancel deferred transaction
@@ -73,7 +73,7 @@ extern "C" {
     * @param size - the size of the buffer, 0 to return required size
     * @return the size of the transaction written to the buffer, or number of bytes that can be copied if size==0 passed
     */
-   size_t read_transaction(char *buffer, size_t size);
+   size_t read_transaction(char* buffer, size_t size);
 
    /**
     * get the size of the currently executing transaction
@@ -94,7 +94,7 @@ extern "C" {
    /**
     * get the expiration of the currently executing transaction
     */
-   time expiration();
+   uint32_t expiration();
 
    /**
     * Retrieve the indicated action from the active transaction.

@@ -10,7 +10,16 @@
 
 namespace eosio {
 
-   typedef std::vector<std::tuple<uint16_t,std::vector<char>>> extensions_type;
+   struct name;
+
+   using account_name = name;
+   using permission_name = name;
+   using table_name = name;
+   using scope_name = name;
+   using action_name = name;
+   using weight_type = uint16_t;
+
+   using extensions_type = std::vector<std::tuple<uint16_t,std::vector<char>>>;
 
    /**
     *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
@@ -26,6 +35,46 @@ namespace eosio {
       return 0;
    }
 
+   /**
+    *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
+    *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and
+    *         that no mathematical operations occur.  It also enables specialization of print
+    *         so that it is printed as a base32 string.
+    *
+    *  @ingroup types
+    *  @{
+    */
+   struct name {
+      operator uint64_t()const { return value; }
+
+      // keep in sync with name::operator string() in eosio source code definition for name
+      std::string to_string() const {
+         static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
+
+         std::string str(13,'.');
+
+         uint64_t tmp = value;
+         for( uint32_t i = 0; i <= 12; ++i ) {
+            char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
+            str[12-i] = c;
+            tmp >>= (i == 0 ? 4 : 5);
+         }
+
+         trim_right_dots( str );
+         return str;
+      }
+
+      friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
+      uint64_t value = 0;
+
+   private:
+      static void trim_right_dots(std::string& str ) {
+         const auto last = str.find_last_not_of('.');
+         if (last != std::string::npos)
+            str = str.substr(0, last + 1);
+      }
+   };
+   /// @}
 
    /**
     *  @brief Converts a base32 string to a uint64_t.
@@ -65,6 +114,7 @@ namespace eosio {
     * @ingroup types
     */
    #define N(X) ::eosio::string_to_name(#X)
+   #define NAME(X) eosio::name{N(X)}
 
 
    static constexpr uint64_t name_suffix( uint64_t tmp ) {
@@ -89,46 +139,6 @@ namespace eosio {
       }
       return suffix;
    }
-   /**
-    *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
-    *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and
-    *         that no mathematical operations occur.  It also enables specialization of print
-    *         so that it is printed as a base32 string.
-    *
-    *  @ingroup types
-    *  @{
-    */
-   struct name {
-      operator uint64_t()const { return value; }
-
-      // keep in sync with name::operator string() in eosio source code definition for name
-      std::string to_string() const {
-         static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
-
-         std::string str(13,'.');
-
-         uint64_t tmp = value;
-         for( uint32_t i = 0; i <= 12; ++i ) {
-            char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
-            str[12-i] = c;
-            tmp >>= (i == 0 ? 4 : 5);
-         }
-
-         trim_right_dots( str );
-         return str;
-      }
-
-      friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
-      account_name value = 0;
-
-   private:
-      static void trim_right_dots(std::string& str ) {
-         const auto last = str.find_last_not_of('.');
-         if (last != std::string::npos)
-            str = str.substr(0, last + 1);
-      }
-   };
-   /// @}
 
 } // namespace eosio
 

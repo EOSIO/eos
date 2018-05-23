@@ -206,7 +206,7 @@ namespace eosio {
 
    #define N(X) ::eosio::string_to_name(#X)
 
-   void exchange::apply( account_name contract, account_name act ) {
+   void exchange::apply( account_name contract, action_name act ) {
 
       if( act == N(transfer) ) {
          on( unpack_action_data<currency::transfer>(), contract );
@@ -243,8 +243,8 @@ namespace eosio {
 
 extern "C" {
    [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      eosio::exchange  ex( receiver );
-      ex.apply( code, action );
+      eosio::exchange  ex( eosio::account_name{receiver} );
+      ex.apply( eosio::account_name{code}, eosio::action_name{action} );
       eosio_exit(0);
    }
 }

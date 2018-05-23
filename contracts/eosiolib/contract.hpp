@@ -1,10 +1,12 @@
 #pragma once
 
+#include <eosiolib/types.hpp>
+
 namespace eosio {
 
 class contract {
    public:
-      contract( account_name n ):_self(n){}
+      explicit contract( account_name n ):_self(n){}
       
       inline account_name get_self()const { return _self; }
 

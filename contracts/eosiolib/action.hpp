@@ -68,7 +68,7 @@ namespace eosio {
     *  @endcode
     */
    template<typename... accounts>
-   void require_recipient( account_name name, accounts... remaining_accounts ){
+   void require_recipient( uint64_t name, accounts... remaining_accounts ){
       require_recipient( name );
       require_recipient( remaining_accounts... );
    }
@@ -206,10 +206,10 @@ namespace eosio {
    template<typename T, uint64_t Name, typename... Args>
    struct inline_dispatcher<void(T::*)(Args...), Name> {
       static void call(account_name code, const permission_level& perm, std::tuple<Args...> args) {
-         dispatch_inline(code, Name, vector<permission_level>(1, perm), std::move(args));
+         dispatch_inline(code, account_name{Name}, vector<permission_level>(1, perm), std::move(args));
       }
       static void call(account_name code, vector<permission_level> perms, std::tuple<Args...> args) {
-         dispatch_inline(code, Name, std::move(perms), std::move(args));
+         dispatch_inline(code, account_name{Name}, std::move(perms), std::move(args));
       }
    };
 

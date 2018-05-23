@@ -90,7 +90,7 @@ namespace eosio {
 
    struct extended_symbol : public symbol_type
    {
-      extended_symbol( symbol_name s = 0, account_name c = 0 ):symbol_type{s},contract(c){}
+      extended_symbol( symbol_name s = symbol_name{0}, account_name c = account_name{0} ):symbol_type{s},contract(c){}
 
       account_name contract;
 

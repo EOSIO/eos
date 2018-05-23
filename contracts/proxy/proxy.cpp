@@ -35,7 +35,7 @@ namespace proxy {
    template<typename T>
    void apply_transfer(uint64_t receiver, account_name code, const T& transfer) {
       config code_config;
-      const auto self = receiver;
+      const eosio::account_name self = eosio::account_name{receiver};
       auto get_res = configs::get(code_config, self);
       eosio_assert(get_res, "Attempting to use unconfigured proxy");
       if (transfer.from == self) {
@@ -50,14 +50,14 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(permission_level{self, N(active)}, N(eosio.token), N(transfer), new_transfer);
+         out.actions.emplace_back(permission_level{self, NAME(active)}, NAME(eosio.token), NAME(transfer), new_transfer);
          out.delay_sec = code_config.delay;
          out.send(id, self);
       }
    }
 
    void apply_setowner(uint64_t receiver, set_owner params) {
-      const auto self = receiver;
+      const eosio::account_name self = eosio::account_name{receiver};
       require_auth(params.owner);
       config code_config;
       configs::get(code_config, self);
@@ -70,7 +70,7 @@ namespace proxy {
    template<size_t ...Args>
    void apply_onerror(uint64_t receiver, const onerror& error ) {
       eosio::print("starting onerror\n");
-      const auto self = receiver;
+      const eosio::account_name self = eosio::account_name{receiver};
       config code_config;
       eosio_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
 
@@ -95,7 +95,7 @@ extern "C" {
          apply_onerror( receiver, onerror::from_current_action() );
       } else if( code == N(eosio.token) ) {
          if( action == N(transfer) ) {
-            apply_transfer(receiver, code, unpack_action_data<eosio::token::transfer_args>());
+            apply_transfer(receiver, eosio::account_name{code}, unpack_action_data<eosio::token::transfer_args>());
          }
       } else if( code == receiver ) {
          if( action == N(setowner) ) {

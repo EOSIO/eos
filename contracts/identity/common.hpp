@@ -24,7 +24,7 @@ namespace identity {
       uint64_t            id;
       property_name       property;
       uint64_t            trusted;
-      account_name        certifier;
+      eosio::account_name certifier;
       uint8_t             confidence = 0;
       std::string         type;
       std::vector<char>   data;
@@ -45,8 +45,8 @@ namespace identity {
    };
 
    struct identrow {
-      uint64_t     identity;
-      account_name creator;
+      uint64_t            identity;
+      eosio::account_name creator;
 
       uint64_t primary_key() const { return identity; }
 
@@ -54,7 +54,7 @@ namespace identity {
    };
 
    struct trustrow {
-      account_name account;
+      eosio::account_name account;
 
       uint64_t primary_key() const { return account; }
 
@@ -70,14 +70,14 @@ namespace identity {
 
    class identity_base {
       public:
-         identity_base( account_name acnt) : _self( acnt ) {}
+         identity_base( eosio::account_name acnt) : _self( acnt ) {}
 
-         bool is_trusted_by( account_name trusted, account_name by );
+         bool is_trusted_by( eosio::account_name trusted, eosio::account_name by );
 
-         bool is_trusted( account_name acnt );
+         bool is_trusted( eosio::account_name acnt );
 
       protected:
-         account_name _self;
+         eosio::account_name _self;
    };
 
 }

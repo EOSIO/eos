@@ -78,10 +78,10 @@ struct impl {
             }
          }
          if (is_board_full) {
-            return N(draw);
+            return NAME(draw);
          }
       }
-      return N(none);
+      return NAME(none);
    }
 
    /**

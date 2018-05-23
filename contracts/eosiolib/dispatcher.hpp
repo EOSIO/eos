@@ -80,7 +80,7 @@ extern "C" { \
          eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
       } \
       if( code == self || action == N(onerror) ) { \
-         TYPE thiscontract( self ); \
+         TYPE thiscontract( eosio::account_name{self} ); \
          switch( action ) { \
             EOSIO_API( TYPE, MEMBERS ) \
          } \

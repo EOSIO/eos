@@ -59,13 +59,13 @@ struct limit_order {
                   orders.emplace( payer, [&]( auto& o ) {
                     o.id = 1;
                     o.expiration = 300;
-                    o.owner = N(dan);
+                    o.owner = NAME(dan);
                   });
 
                   auto order2 = orders.emplace( payer, [&]( auto& o ) {
                      o.id = 2;
                      o.expiration = 200;
-                     o.owner = N(alice);
+                     o.owner = NAME(alice);
                   });
 
                   print("Items sorted by primary key:\n");

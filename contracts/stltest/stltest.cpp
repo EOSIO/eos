@@ -252,7 +252,7 @@ namespace stltest {
            //std::cout << "STL test done." << std::endl;
         }
 
-        static void apply( account_name c, action_name act) {
+        static void apply( uint64_t c, uint64_t act) {
             eosio::dispatch<stltest::contract, message>(c,act);
         }
     };

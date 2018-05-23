@@ -53,9 +53,9 @@ namespace identity {
 
         using identity_base::identity_base;
 
-         void settrust( const account_name trustor, ///< the account authorizing the trust
-                        const account_name trusting, ///< the account receiving the trust
-                        const uint8_t      trust = 0 )/// 0 to remove, -1 to mark untrusted, 1 to mark trusted
+         void settrust( const eosio::account_name trustor, ///< the account authorizing the trust
+                        const eosio::account_name trusting, ///< the account receiving the trust
+                        const uint8_t             trust = 0 )/// 0 to remove, -1 to mark untrusted, 1 to mark trusted
          {
             require_auth( trustor );
             require_recipient( trusting );
@@ -90,7 +90,7 @@ namespace identity {
           * A 64 bit identity is used because the key is used frequently and it makes for more
           * effecient tables/scopes/etc.
           */
-         void create( const account_name creator, const uint64_t identity ) {
+         void create( const eosio::account_name creator, const uint64_t identity ) {
             require_auth( creator );
             idents_table t( _self, _self );
             auto itr = t.find( identity );
@@ -102,10 +102,10 @@ namespace identity {
                });
          }
 
-         void certprop( const account_name       bill_storage_to, ///< account which is paying for storage
-                               const account_name       certifier,
-                               const identity_name      identity,
-                               const vector<certvalue>& values )
+         void certprop( const eosio::account_name       bill_storage_to, ///< account which is paying for storage
+                        const eosio::account_name       certifier,
+                        const identity_name             identity,
+                        const vector<certvalue>&        values )
          {
             require_auth( certifier );
             if( bill_storage_to != certifier )
@@ -150,8 +150,8 @@ namespace identity {
 
                   //special handling for owner
                   if (value.property == N(owner)) {
-                     eosio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
-                     account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
+                     eosio_assert(sizeof(eosio::account_name) == value.data.size(), "data size doesn't match account_name size");
+                     eosio::account_name acnt = *reinterpret_cast<const eosio::account_name*>(value.data.data());
                      if (certifier == acnt) { //only self-certitication affects accounts_table
                         accounts_table( _self, acnt ).set( identity, acnt );
                      }
@@ -172,8 +172,8 @@ namespace identity {
                   }
                   //special handling for owner
                   if (value.property == N(owner)) {
-                     eosio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
-                     account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
+                     eosio_assert(sizeof(eosio::account_name) == value.data.size(), "data size doesn't match account_name size");
+                     eosio::account_name acnt = *reinterpret_cast<const eosio::account_name*>(value.data.data());
                      if (certifier == acnt) { //only self-certitication affects accounts_table
                         accounts_table( _self, acnt ).remove();
                      }
