@@ -23,6 +23,7 @@ typedef uint64_t account_name;
 typedef uint64_t permission_name;
 typedef uint64_t table_name;
 typedef uint32_t time;
+typedef uint64_t scope_name;
 typedef uint64_t action_name;
 
 typedef uint16_t weight_type;
