@@ -36,12 +36,12 @@ namespace eosio { namespace chain {
    class controller {
       public:
          struct config {
-            path         block_log_dir           =  chain::config::default_block_log_dir;
-            uint64_t     reversible_cache_size  =  chain::config::default_reversible_cache_size;;
-            path         shared_memory_dir   =  chain::config::default_shared_memory_dir;
-            uint64_t     shared_memory_size  =  chain::config::default_shared_memory_size;
-            bool         read_only           =  false;
-            bool         force_all_checks    =  false;
+            path         blocks_dir             =  chain::config::default_blocks_dir_name;
+            path         state_dir              =  chain::config::default_state_dir_name;
+            uint64_t     state_size             =  chain::config::default_state_size;
+            uint64_t     reversible_cache_size  =  chain::config::default_reversible_cache_size;
+            bool         read_only              =  false;
+            bool         force_all_checks       =  false;
 
             genesis_state                  genesis;
             wasm_interface::vm_type        wasm_runtime = chain::config::default_wasm_runtime;
@@ -202,9 +202,11 @@ namespace eosio { namespace chain {
 } }  /// eosio::chain
 
 FC_REFLECT( eosio::chain::controller::config,
-            (block_log_dir)
+            (blocks_dir)
+            (state_dir)
+            (state_size)
             (reversible_cache_size)
-            (shared_memory_dir)(shared_memory_size)(read_only)
+            (read_only)
             (force_all_checks)
             (genesis)
             (wasm_runtime)
