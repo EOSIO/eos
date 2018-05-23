@@ -12,6 +12,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/unconfirmed_block_object.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -115,6 +116,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
          ;
    cli.add_options()
+         ("fix-unconfirmed-blocks", bpo::bool_switch()->default_value(false),
+          "recovers unconfirmed block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -163,19 +166,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
    }
 
-   if( options.at("resync-blockchain").as<bool>() ) {
-      ilog("Resync requested: wiping database and blocks");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      fc::remove_all(my->block_log_dir);
-   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
-      ilog("Hard replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      block_log::repair_log( my->block_log_dir );
-   } else if( options.at("replay-blockchain").as<bool>() ) {
-      ilog("Replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-   }
-
    if(options.count("checkpoint"))
    {
       auto cps = options.at("checkpoint").as<vector<string>>();
@@ -190,25 +180,61 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
 
+   my->chain_config->block_log_dir = my->block_log_dir;
+   my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
+   my->chain_config->read_only = my->readonly;
+   my->chain_config->shared_memory_size = my->shared_memory_size;
+
+   if( my->wasm_runtime )
+      my->chain_config->wasm_runtime = *my->wasm_runtime;
+
+   my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
+
+   if( options.at("resync-blockchain").as<bool>() ) {
+      ilog("Resync requested: wiping database and blocks");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+      fc::remove_all(my->block_log_dir);
+   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
+      ilog("Hard replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+      auto backup_dir = block_log::repair_log( my->block_log_dir );
+      if( !recover_unconfirmed_blocks( backup_dir/"unconfirmed",
+                                       my->chain_config->unconfirmed_cache_size,
+                                       my->chain_config->block_log_dir/"unconfirmed" ) ) {
+         ilog("Unconfirmed blocks database was not corrupted. Copying from backup to blocks directory.");
+         fc::copy( backup_dir/"unconfirmed", my->chain_config->block_log_dir/"unconfirmed" );
+         fc::copy( backup_dir/"unconfirmed/shared_memory.bin", my->chain_config->block_log_dir/"unconfirmed/shared_memory.bin" );
+         fc::copy( backup_dir/"unconfirmed/shared_memory.meta", my->chain_config->block_log_dir/"unconfirmed/shared_memory.meta" );
+      }
+   } else if( options.at("replay-blockchain").as<bool>() ) {
+      ilog("Replay requested: wiping database");
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+      if( options.at("fix-unconfirmed-blocks").as<bool>() ) {
+         if( !recover_unconfirmed_blocks( my->chain_config->block_log_dir/"unconfirmed",
+                                          my->chain_config->unconfirmed_cache_size ) ) {
+            ilog("Unconfirmed blocks database was not corrupted.");
+         }
+      }
+   } else if( options.at("fix-unconfirmed-blocks").as<bool>() ) {
+      if( !recover_unconfirmed_blocks( my->chain_config->block_log_dir/"unconfirmed",
+                                       my->chain_config->unconfirmed_cache_size ) ) {
+         ilog("Unconfirmed blocks database verified to not be corrupted. Now exiting...");
+      } else {
+         ilog("Exiting after fixing unconfirmed blocks database...");
+      }
+      EOS_THROW( fixed_unconfirmed_db_exception, "fixed corrupted unconfirmed blocks database" );
+   }
+
    if( !fc::exists( my->genesis_file ) ) {
       wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
       genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, my->genesis_file, true );
    }
-   my->chain_config->block_log_dir = my->block_log_dir;
-   my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
-   my->chain_config->read_only = my->readonly;
-   my->chain_config->shared_memory_size = my->shared_memory_size;
+
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
    if( my->genesis_timestamp.sec_since_epoch() > 0 ) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
-
-   if( my->wasm_runtime )
-      my->chain_config->wasm_runtime = *my->wasm_runtime;
-
-   if( options.count("force-all-checks") )
-      my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
 
    my->chain.emplace(*my->chain_config);
 
@@ -290,6 +316,81 @@ void chain_plugin::accept_transaction(const packed_transaction& trx) {
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
    auto b = chain().fetch_block_by_number( block_header::num_from_id(block_id) );
    return b && b->id() == block_id;
+}
+
+bool chain_plugin::recover_unconfirmed_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir )const {
+   try {
+      chainbase::database unconfirmed( db_dir, database::read_only); // Test if dirty
+      return false; // If it reaches here, then the unconfirmed database is not dirty
+   } catch( const std::runtime_error& ) {
+   } catch( ... ) {
+      throw;
+   }
+   // Unconfirmed block database is dirty. So back it up (unless already moved) and then create a new one.
+
+   auto unconfirmed_dir = fc::canonical( db_dir );
+   if( unconfirmed_dir.filename().generic_string() == "." ) {
+      unconfirmed_dir = unconfirmed_dir.parent_path();
+   }
+   fc::path backup_dir;
+
+   if( new_db_dir ) {
+      backup_dir = unconfirmed_dir;
+      unconfirmed_dir = *new_db_dir;
+   } else {
+      auto now = fc::time_point::now();
+
+      auto unconfirmed_dir_name = unconfirmed_dir.filename().generic_string();
+      FC_ASSERT( unconfirmed_dir_name != ".", "Invalid path to unconfirmed directory" );
+      backup_dir = unconfirmed_dir.parent_path() / unconfirmed_dir_name.append("-").append( now );
+
+      FC_ASSERT( !fc::exists(backup_dir),
+                 "Cannot move existing unconfirmed directory to already existing directory '${backup_dir}'",
+                 ("backup_dir", backup_dir) );
+
+      fc::rename( unconfirmed_dir, backup_dir );
+      ilog( "Moved existing unconfirmed directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
+   }
+
+   fc::create_directories( unconfirmed_dir );
+
+   ilog( "Reconstructing '${unconfirmed_dir}' from backed up unconfirmed directory", ("unconfirmed_dir", unconfirmed_dir) );
+
+   chainbase::database  old_unconfirmed( backup_dir, database::read_only, 0, true );
+   chainbase::database  new_unconfirmed( unconfirmed_dir, database::read_write, cache_size );
+
+   uint32_t num = 0;
+   uint32_t start = 0;
+   uint32_t end = 0;
+   try {
+      old_unconfirmed.add_index<unconfirmed_block_index>();
+      new_unconfirmed.add_index<unconfirmed_block_index>();
+      const auto& ubi = old_unconfirmed.get_index<unconfirmed_block_index,by_num>();
+      auto itr = ubi.begin();
+      if( itr != ubi.end() ) {
+         start = itr->blocknum;
+         end = start - 1;
+      }
+      for( ; itr != ubi.end(); ++itr ) {
+         FC_ASSERT( itr->blocknum == end + 1, "gap in unconfirmed block database" );
+         new_unconfirmed.create<unconfirmed_block_object>( [&]( auto& ubo ) {
+            ubo.blocknum = itr->blocknum;
+            ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
+         });
+         end = itr->blocknum;
+         ++num;
+      }
+   } catch( ... ) {}
+
+   if( num == 0 )
+      ilog( "There were no recoverable blocks in the unconfirmed block database" );
+   else if( num == 0 )
+      ilog( "Recovered 1 block from unconfirmed block database: block ${start}", ("start", start) );
+   else
+      ilog( "Recovered ${num} blocks from unconfirmed block database: blocks ${start} to ${end}",
+            ("num", num)("start", start)("end", end) );
+
+   return true;
 }
 
 controller::config& chain_plugin::chain_config() {

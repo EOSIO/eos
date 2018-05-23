@@ -217,8 +217,9 @@ struct controller_impl {
             std::cerr<< "\n";
             ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
             auto end = fc::time_point::now();
-            ilog( "replayed blocks in ${n} seconds, ${spb} spb",
-                  ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+            ilog( "replayed ${n} blocks in seconds, ${mspb} ms/block",
+                  ("n", head->block_num)("duration", (end-start).count()/1000000)
+                  ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
             std::cerr<< "\n";
             replaying = false;
 
