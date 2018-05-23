@@ -166,8 +166,7 @@ class producer_plugin_impl {
       }
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
-         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-         _irreversible_block_age_us = chain.head_block_time() - lib->timestamp.to_time_point();
+         _irreversible_block_age_us = fc::time_point::now() - lib->timestamp.to_time_point();
       }
 
       template<typename Type, typename Channel, typename F>
