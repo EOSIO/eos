@@ -129,8 +129,6 @@ namespace eosio { namespace chain {
       checktime(); // Fail early if deadline has already been exceeded
 
       is_initialized = true;
-
-      //std::cout << "init: transaction_context = " << this << ", _deadline = " << _deadline.time_since_epoch().count() << std::endl;
    }
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
