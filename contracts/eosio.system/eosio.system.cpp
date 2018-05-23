@@ -134,11 +134,12 @@ namespace eosiosystem {
                             const authority& active*/ ) {
 
       if( creator != _self ) {
-         auto tmp = newact;
+         auto tmp = newact >> 4;
          bool has_dot = false;
-         for( uint32_t i = 0; i < 13; ++i ) {
-           has_dot |= (tmp >> 59);
-           tmp <<= 5;
+
+         for( uint32_t i = 0; i < 12; ++i ) {
+           has_dot |= !(tmp & 0x1f);
+           tmp >>= 5;
          }
          auto suffix = eosio::name_suffix(newact);
          if( has_dot ) {

@@ -26,6 +26,10 @@ namespace eosio {
       prints_l( s.c_str(), s.size() );
    }
 
+   inline void print( const char c ) {
+      prints_l( &c, 1 );
+   }
+
    /**
     * Prints signed integer
     * @brief Prints signed integer as a 64 bit signed integer
