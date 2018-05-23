@@ -23,15 +23,15 @@ void accounts_table::drop()
 void accounts_table::create()
 {
     *m_session << "CREATE TABLE accounts("
-            "name TEXT PRIMARY KEY,"
-            "abi TEXT,"
-            "created_at NUMERIC,"
-            "updated_at NUMERIC)";
+            "name VARCHAR(18) PRIMARY KEY,"
+            "abi JSON DEFAULT NULL,"
+            "created_at INT,"
+            "updated_at INT)";
 }
 
 void accounts_table::add(string name)
 {
-    *m_session << "INSERT INTO accounts VALUES (:name,'', strftime('%s','now'), strftime('%s','now'))",
+    *m_session << "INSERT INTO accounts VALUES (:name, NULL, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())",
             soci::use(name);
 }
 

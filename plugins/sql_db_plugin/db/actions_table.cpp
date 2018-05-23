@@ -24,17 +24,17 @@ void actions_table::drop()
 void actions_table::create()
 {
     *m_session << "create table actions("
-            "account TEXT,"
-            "transaction_id TEXT,"
-            "name TEXT,"
-            "data TEXT)";
+            "account VARCHAR(18),"
+            "transaction_id VARCHAR(64),"
+            "name VARCHAR(18),"
+            "data JSON)";
 
     // TODO: move to own class
     *m_session << "create table tokens("
-            "account TEXT,"
-            "symbol TEXT,"
-            "amount REAL,"
-            "staked REAL)";
+            "account VARCHAR(18),"
+            "symbol VARCHAR(10),"
+            "amount FLOAT,"
+            "staked FLOAT)"; // NOT WORKING VERY GOOD float issue
 }
 
 void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
@@ -43,9 +43,11 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
     chain::abi_def abi;
     std::string abi_def_account;
     chain::abi_serializer abis;
+    soci::indicator ind;
     const auto transaction_id_str = transaction_id.str();
 
-    *m_session << "SELECT abi FROM accounts WHERE name = :name", soci::into(abi_def_account), soci::use(action.account.to_string());
+    *m_session << "SELECT abi FROM accounts WHERE name = :name", soci::into(abi_def_account, ind), soci::use(action.account.to_string());
+
     if (!abi_def_account.empty()) {
         abi = fc::json::from_string(abi_def_account).as<chain::abi_def>();
     } else if (action.account == chain::config::system_account_name) {
@@ -128,13 +130,13 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
         chain::abi_serializer::to_abi(action_data.abi, abi_setabi);
         string abi_string = fc::json::to_string(abi_setabi);
 
-        *m_session << "UPDATE accounts SET abi = :abi, updated_at = strftime('%s','now') WHERE name = :name",
+        *m_session << "UPDATE accounts SET abi = :abi, updated_at = UNIX_TIMESTAMP() WHERE name = :name",
                 soci::use(abi_string),
                 soci::use(action_data.account.to_string());
 
     } else if (action.name == chain::newaccount::get_name()) {
         auto action_data = action.data_as<chain::newaccount>();
-        *m_session << "INSERT INTO accounts VALUES (:name,'', strftime('%s','now'), strftime('%s','now'))",
+        *m_session << "INSERT INTO accounts VALUES (:name, NULL, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())",
                 soci::use(action_data.name.to_string());
 
     }
