@@ -476,7 +476,6 @@ BOOST_FIXTURE_TEST_CASE( stake_from_refund, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( core_from_string( "50.0000"), refund["cpu_amount"].as<asset>() );
    //XXX auto request_time = refund["request_time"].as_int64();
 
-   //std::cout << std::endl << std::endl << "Stake from refund" << std::endl;
    //stake less than pending refund, entire amount should be traken from refund
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("50.0000"), core_from_string("25.0000") ) );
    total = get_total_stake( "bob111111111" );
@@ -1577,7 +1576,7 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
    //install multisig contract
    abi_serializer msig_abi_ser;
    {
-      create_account_with_resources( N(eosio.msig), N(eosio) );
+      create_account_with_resources( N(eosio.msig), config::system_account_name );
       BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "eosio.msig", core_from_string("5000.0000") ) );
       produce_block();
 
