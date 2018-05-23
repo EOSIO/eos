@@ -139,6 +139,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
+         ("contracts-console", bpo::bool_switch()->default_value(false),
+          "print contract's output to console")
          ;
 }
 
@@ -201,7 +203,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if( my->wasm_runtime )
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
-   my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
+   my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
+   my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
 
    if( options.at("resync-blockchain").as<bool>() ) {
       ilog("Resync requested: wiping database and blocks");

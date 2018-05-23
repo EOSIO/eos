@@ -42,6 +42,7 @@ namespace eosio { namespace chain {
             uint64_t     shared_memory_size  =  chain::config::default_shared_memory_size;
             bool         read_only           =  false;
             bool         force_all_checks    =  false;
+            bool         contracts_console   =  false;
 
             genesis_state                  genesis;
             wasm_interface::vm_type        wasm_runtime = chain::config::default_wasm_runtime;
@@ -151,6 +152,7 @@ namespace eosio { namespace chain {
 
          bool skip_auth_check()const;
 
+         bool contracts_console()const;
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
@@ -206,6 +208,7 @@ FC_REFLECT( eosio::chain::controller::config,
             (reversible_cache_size)
             (shared_memory_dir)(shared_memory_size)(read_only)
             (force_all_checks)
+            (contracts_console)
             (genesis)
             (wasm_runtime)
           )

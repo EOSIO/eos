@@ -1283,6 +1283,10 @@ bool controller::skip_auth_check()const {
    return my->replaying_irreversible && !my->conf.force_all_checks;
 }
 
+bool controller::contracts_console()const {
+   return my->conf.contracts_console;
+}
+
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
 {
    auto native_handler_scope = my->apply_handlers.find( receiver );
