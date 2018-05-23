@@ -244,7 +244,8 @@ namespace eosio { namespace chain {
                                     3100002, "unknown block" )
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,    misc_exception,
                                     3100003, "unknown transaction" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,    misc_exception,
+                                    3100004, "corrupted reversible block database was fixed" )
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception, chain_exception,
                                  3110000, "missing plugin exception" )
