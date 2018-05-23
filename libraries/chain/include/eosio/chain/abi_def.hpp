@@ -118,6 +118,8 @@ struct abi_def {
 
 abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
 
+vector<type_def> built_in_types();
+
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(type) )

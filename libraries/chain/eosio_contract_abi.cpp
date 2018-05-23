@@ -1,6 +1,26 @@
 #include <eosio/chain/abi_def.hpp>
+#include <fc/utility.hpp>
 
 namespace eosio { namespace chain {
+
+vector<type_def> built_in_types()
+{
+   vector<type_def> types;
+
+   types.push_back( type_def{"account_name",    "name"} );
+   types.push_back( type_def{"permission_name", "name"} );
+   types.push_back( type_def{"action_name",     "name"} );
+   types.push_back( type_def{"scope_name",      "name"} );
+   types.push_back( type_def{"table_name",      "name"} );
+   types.push_back( type_def{"transaction_id_type", "checksum256"} );
+   types.push_back( type_def{"block_id_type",       "checksum256"} );
+   types.push_back( type_def{"share_type",      "int64_t"} );
+   types.push_back( type_def{"time",            "uint32"} );
+   types.push_back( type_def{"weight_type",     "uint16"} );
+
+   return types;
+}
+
 
 abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
 {
@@ -10,13 +30,7 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
       eos_abi.version = "eosio::abi/1.0";
    }
 
-   eos_abi.types.push_back( type_def{"account_name",    "name"} );
-   eos_abi.types.push_back( type_def{"permission_name", "name"} );
-   eos_abi.types.push_back( type_def{"action_name",     "name"} );
-   eos_abi.types.push_back( type_def{"table_name",      "name"} );
-   eos_abi.types.push_back( type_def{"transaction_id_type", "checksum256"} );
-   eos_abi.types.push_back( type_def{"block_id_type",       "checksum256"} );
-   eos_abi.types.push_back( type_def{"weight_type", "uint16"} );
+   fc::move_append(eos_abi.types, built_in_types());
 
    // transaction
    eos_abi.structs.emplace_back( struct_def {
