@@ -30,6 +30,9 @@ numProducersToVoteFor = 20
 numVoters = 10
 maxClients = numProducers + 1
 
+def jsonArg(a):
+    return " '" + json.dumps(a) + "' "
+
 def run(args):
     print('test.py:', args)
     logFile.write(args + '\n')
@@ -171,6 +174,26 @@ def proxyVotes(b, e):
         voter = accounts[i]['name']
         retry(cleos + 'system voteproducer proxy ' + voter + ' ' + proxy)
 
+def updateAuth(account, permission, parent, controller):
+    run(cleos + 'push action eosio updateauth' + jsonArg({
+        'account': account,
+        'permission': permission,
+        'parent': parent,
+        'auth': {
+            'threshold': 1, 'keys': [], 'waits': [],
+            'accounts': [{
+                'weight': 1,
+                'permission': {'actor': controller, 'permission': 'active'}
+            }]
+        }
+    }) + '-p ' + account + '@' + permission)
+
+def resign(account, controller):
+    updateAuth(account, 'owner', '', controller)
+    updateAuth(account, 'active', 'owner', controller)
+    time.sleep(1)
+    run(cleos + 'get account ' + account)
+
 def sendUnstakedFunds(b, e):
     for i in range(b, e):
         a = accounts[i]
@@ -202,6 +225,7 @@ run(cleos + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio'
 time.sleep(1)
 retry(cleos + 'set contract eosio ' + contractsDir + 'eosio.system/')
 time.sleep(1)
+run(cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
 createStakedAccounts(firstRegAccount, len(accounts))
 regProducers(firstProducer, firstProducer + numProducers)
 time.sleep(1)
@@ -214,6 +238,9 @@ listProducers()
 time.sleep(5)
 claimRewards()
 proxyVotes(firstRegAccount, firstRegAccount + numVoters)
+resign('eosio', 'eosio.prods')
+resign('eosio.msig', 'eosio')
+resign('eosio.token', 'eosio')
 run(cleos + 'push action eosio.token issue \'["eosio", "%d.0000 %s", "memo"]\' -p eosio' % ((len(accounts) - firstRegAccount) * 10, symbol))
 sendUnstakedFunds(firstRegAccount, len(accounts))
 randomTransfer(firstRegAccount, len(accounts), 8)
