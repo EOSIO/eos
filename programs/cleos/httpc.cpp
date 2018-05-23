@@ -100,14 +100,16 @@ namespace eosio { namespace client { namespace http {
       return res;
    }
 
-   fc::variant do_http_call( const std::string& server_url,
-                             const std::string& path,
+   fc::variant do_http_call( const connection_param& cp,
                              const fc::variant& postdata ) {
    std::string postjson;
    if( !postdata.is_null() )
       postjson = fc::json::to_string( postdata );
 
    boost::asio::io_service io_service;
+
+   const string& server_url = cp.url;
+   const string& path = cp.path;
 
    auto url = parse_url( server_url );
 
@@ -117,7 +119,13 @@ namespace eosio { namespace client { namespace http {
    request_stream << "Host: " << url.server << "\r\n";
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
-   request_stream << "Connection: close\r\n\r\n";
+   request_stream << "Connection: close\r\n";
+   // append more customized headers
+   std::vector<string>::iterator itr;
+   for (itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
+      request_stream << *itr << "\r\n";
+   }
+   request_stream << "\r\n";
    request_stream << postjson;
 
    unsigned int status_code;
@@ -140,7 +148,8 @@ namespace eosio { namespace client { namespace http {
 #endif
 
       boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(io_service, ssl_context);
-      socket.set_verify_mode(boost::asio::ssl::verify_peer);
+      if(cp.verify_cert)
+         socket.set_verify_mode(boost::asio::ssl::verify_peer);
 
       do_connect(socket.next_layer(), url.server, url.port);
       socket.handshake(boost::asio::ssl::stream_base::client);

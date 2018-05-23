@@ -34,7 +34,7 @@ public:
 
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
-   std::unique_ptr<class producer_plugin_impl> my;
+   std::shared_ptr<class producer_plugin_impl> my;
 };
 
 } //eosiio
