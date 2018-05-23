@@ -45,14 +45,8 @@ using namespace enumivo::chain;
              if (body.empty()) body = "{}"; \
              INVOKE \
              cb(http_response_code, fc::json::to_string(result)); \
-          } catch (fc::eof_exception& e) { \
-             error_results results{400, "Bad Request", e}; \
-             cb(400, fc::json::to_string(results)); \
-             elog("Unable to parse arguments: ${args}", ("args", body)); \
-          } catch (fc::exception& e) { \
-             error_results results{500, "Internal Service Error", e}; \
-             cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
        }}
 
@@ -73,7 +67,7 @@ using namespace enumivo::chain;
 struct txn_test_gen_plugin_impl {
    void push_transaction( signed_transaction& trx ) { try {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
-      return cp.accept_transaction( packed_transaction(trx) );
+      cp.accept_transaction( packed_transaction(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {

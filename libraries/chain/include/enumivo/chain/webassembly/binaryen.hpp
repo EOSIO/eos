@@ -629,6 +629,7 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(interpreter_interface* interface, Params... params, LiteralList&, int) {
+      class_from_wasm<Cls>::value(interface->context).checktime();
       return (class_from_wasm<Cls>::value(interface->context).*Method)(params...);
    }
 
@@ -644,6 +645,7 @@ struct intrinsic_function_invoker<void, MethodSig, Cls, Params...> {
 
    template<MethodSig Method>
    static void_type wrapper(interpreter_interface* interface, Params... params, LiteralList& args, int offset) {
+      class_from_wasm<Cls>::value(interface->context).checktime();
       (class_from_wasm<Cls>::value(interface->context).*Method)(params...);
       return void_type();
    }

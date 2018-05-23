@@ -283,8 +283,8 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx));
+chain::transaction_trace_ptr chain_plugin::accept_transaction(const packed_transaction& trx) {
+   return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx) , false);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -526,8 +526,10 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
    try {
       db.push_block( std::make_shared<signed_block>(params) );
-   } catch ( ... ) {
+   } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
    }
    return read_write::push_block_results();
 }
@@ -542,13 +544,15 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
          abi_serializer::from_variant(params, *pretty_input, resolver);
       } ENU_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input);
+      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
 
       pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
       //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
       id = trx_trace_ptr->id;
-   } catch ( ... ) {
+   } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
    }
    return read_write::push_transaction_results{ id, pretty_output };
 }
@@ -566,8 +570,10 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
                              fc::mutable_variant_object( "error", e.to_detail_string() ) } );
          }
       }
-   } catch ( ... ) {
+   } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
+   } catch ( ... ) {
+      throw;
    }
    return result;
 }

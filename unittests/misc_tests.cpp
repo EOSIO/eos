@@ -59,23 +59,23 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 19, magnitude < 2^61
    BOOST_CHECK_EXCEPTION( asset::from_string("0.1000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-0.1000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("1.0000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-1.0000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
 
    // precision = 18, magnitude < 2^58
    a = asset::from_string("0.100000000000000000 CUR");
-   BOOST_CHECK_EQUAL(a.amount, 100000000000000000L);
+   BOOST_CHECK_EQUAL(a.get_amount(), 100000000000000000L);
    a = asset::from_string("-0.100000000000000000 CUR");
-   BOOST_CHECK_EQUAL(a.amount, -100000000000000000L);
+   BOOST_CHECK_EQUAL(a.get_amount(), -100000000000000000L);
 
    // precision = 18, magnitude = 2^62
    BOOST_CHECK_EXCEPTION( asset::from_string("4.611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
@@ -93,9 +93,9 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 18, magnitude = 2^62-1
    a = asset::from_string("4.611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, 4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), 4611686018427387903L);
    a = asset::from_string("-4.611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, -4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), -4611686018427387903L);
 
    // precision = 0, magnitude = 2^62
    BOOST_CHECK_EXCEPTION( asset::from_string("4611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
@@ -107,9 +107,9 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 0, magnitude = 2^62-1
    a = asset::from_string("4611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, 4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), 4611686018427387903L);
    a = asset::from_string("-4611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, -4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), -4611686018427387903L);
 
    // precision = 18, magnitude = 2^65
    BOOST_CHECK_EXCEPTION( asset::from_string("36.893488147419103232 CUR") , overflow_exception, [](const overflow_exception& e) {
@@ -137,10 +137,10 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 20, magnitude > 2^142
    BOOST_CHECK_EXCEPTION( asset::from_string("100000000000000000000000.00000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 20 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-100000000000000000000000.00000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 20 should be <= 18");
    });
 }
 
@@ -531,6 +531,52 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
   }
 
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( suffix_test ) try {
+   uint64_t com = name( "com" );
+   uint64_t order = com;
+
+   uint64_t name_com = name("name.com");
+   uint64_t name_com_au = name("name.com.au");
+
+   //std::string str(13,'.');
+
+   uint64_t tmp = com;
+   auto print = []( uint64_t tmp ) {
+      static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
+
+      uint64_t suffix = 0;
+      bool endsuffix = false;
+      uint32_t offset = 0;
+      for( uint32_t i = 0; i <= 12; ++i, ++offset ) {
+         auto p = tmp >> 59;
+         char c = charmap[p];
+
+         if( !p ) {
+            endsuffix = true;
+         } else {
+            if( !endsuffix ) {
+               suffix |= uint64_t(p) << (59-(5*offset));
+            }
+         }
+         if( endsuffix && p ) {
+            endsuffix = false;
+            offset = 0;
+            suffix = uint64_t(p) << (59-(5*offset));
+         }
+         std::cerr << c;
+       //  str[12-i] = c;
+         tmp <<= 5;
+      }
+   //   std::cerr << "  suffix: " << name(suffix) <<"\n";
+   };
+
+   print( com );
+   //std::cerr <<"\n";
+   print( name_com );
+   print( name_com_au );
+
+} FC_LOG_AND_RETHROW() 
 
 BOOST_AUTO_TEST_CASE(transaction_test) { try {
 

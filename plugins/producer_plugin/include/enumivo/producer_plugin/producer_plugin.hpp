@@ -11,21 +11,6 @@
 
 namespace enumivo {
 
-namespace block_production_condition {
-   enum block_production_condition_enum
-   {
-      produced = 0,
-      not_synced = 1,
-      not_my_turn = 2,
-      not_time_yet = 3,
-      no_private_key = 4,
-      low_participation = 5,
-      lag = 6,
-      exception_producing_block = 7,
-      fork_below_watermark = 8,
-   };
-}
-
 using boost::signals2::signal;
 
 class producer_plugin : public appbase::plugin<producer_plugin> {

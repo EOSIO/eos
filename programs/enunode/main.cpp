@@ -79,6 +79,13 @@ void initialize_logging()
    logging_conf_loop();
 }
 
+enum return_codes {
+   INITIALIZE_FAIL = -1,
+   SUCCESS         = 0,
+   BAD_ALLOC       = 1,
+   OTHER_FAIL      = 2
+};
+
 int main(int argc, char** argv)
 {
    try {
@@ -89,7 +96,7 @@ int main(int argc, char** argv)
       app().set_default_data_dir(root / "enumivo/enunode/data" );
       app().set_default_config_dir(root / "enumivo/enunode/config" );
       if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
-         return -1;
+         return INITIALIZE_FAIL;
       initialize_logging();
       ilog("enunode version ${ver}", ("ver", enumivo::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
       ilog("enumivo root is ${root}", ("root", root.string()));
@@ -97,17 +104,20 @@ int main(int argc, char** argv)
       app().exec();
    } catch (const fc::exception& e) {
       elog("${e}", ("e",e.to_detail_string()));
+      return OTHER_FAIL;
    } catch (const boost::interprocess::bad_alloc& e) {
       elog("bad alloc");
-      //elog("${e}", ("e", boost::diagnostic_information(e)));
-      return 3;
+      return BAD_ALLOC;
    } catch (const boost::exception& e) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
+      return OTHER_FAIL;
    } catch (const std::exception& e) {
       elog("${e}", ("e",e.what()));
+      return OTHER_FAIL;
    } catch (...) {
       elog("unknown exception");
+      return OTHER_FAIL;
    }
 
-   return 0;
+   return SUCCESS;
 }

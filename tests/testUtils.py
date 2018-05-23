@@ -1376,7 +1376,7 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        enunodeArgs="--max-transaction-time 5000"
+        enunodeArgs="--max-transaction-time 5000 --filter-on *"
         if not self.enuwalletd:
             enunodeArgs += " --plugin enumivo::wallet_api_plugin"
         if self.enableMongo:

@@ -77,6 +77,92 @@ namespace enumivosystem {
       set_privileged( account, ispriv );
    }
 
+   void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
+      require_auth( bidder );
+      enumivo_assert( enumivo::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
+      enumivo_assert( !is_account( newname ), "account already exists" );
+      enumivo_assert( bid.symbol == asset().symbol, "asset must be system token" );
+      enumivo_assert( bid.amount > 0, "insufficient bid" );
+
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {bidder,N(active)},
+                                                    { bidder, N(enumivo), bid, std::string("bid name ")+(name{newname}).to_string()  } );
+
+      name_bid_table bids(_self,_self);
+      print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
+      auto current = bids.find( newname );
+      if( current == bids.end() ) {
+         bids.emplace( bidder, [&]( auto& b ) {
+            b.newname = newname;
+            b.high_bidder = bidder;
+            b.high_bid = bid.amount;
+            b.last_bid_time = current_time();
+         });
+      } else {
+         enumivo_assert( current->high_bid > 0, "this auction has already closed" );
+         enumivo_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
+         enumivo_assert( current->high_bidder != bidder, "account is already high bidder" );
+
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
+                                                       { N(enumivo), current->high_bidder, asset(current->high_bid), 
+                                                       std::string("refund bid on name ")+(name{newname}).to_string()  } );
+
+         bids.modify( current, bidder, [&]( auto& b ) {
+            b.high_bidder = bidder;
+            b.high_bid = bid.amount;
+            b.last_bid_time = current_time();
+         });
+      }
+   }
+
+   /**
+    *  Called after a new account is created. This code enforces resource-limits rules
+    *  for new accounts as well as new account naming conventions.
+    *
+    *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
+    *  characters long without '.' until a future account auction process is implemented
+    *  which prevents name squatting.
+    *
+    *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
+    *     therefore, this method will execute an inline buyram from receiver for newacnt in
+    *     an amount equal to the current new account creation fee. 
+    */
+   void native::newaccount( account_name     creator,
+                            account_name     newact
+                            /*  no need to parse authorites
+                            const authority& owner,
+                            const authority& active*/ ) {
+
+      if( creator != _self ) {
+         auto tmp = newact;
+         bool has_dot = false;
+         for( uint32_t i = 0; i < 13; ++i ) {
+           has_dot |= (tmp >> 59);
+           tmp <<= 5;
+         }
+         auto suffix = enumivo::name_suffix(newact);
+         if( has_dot ) {
+            if( suffix == newact ) {
+               name_bid_table bids(_self,_self);
+               auto current = bids.find( newact );
+               enumivo_assert( current != bids.end(), "no active bid for name" ); 
+               enumivo_assert( current->high_bidder == creator, "only high bidder can claim" );
+               enumivo_assert( current->high_bid < 0, "auction for name is not closed yet" );
+               bids.erase( current );
+            } else {
+               enumivo_assert( creator == suffix, "only suffix may create this account" );
+            }
+         }
+      }
+
+      user_resources_table  userres( _self, newact);
+
+      userres.emplace( newact, [&]( auto& res ) {
+        res.owner = newact;
+      });
+
+      set_resource_limits( newact, 0, 0, 0 );
+   }
+
 } /// enumivo.system
  
 
@@ -93,5 +179,6 @@ ENUMIVO_ABI( enumivosystem::system_contract,
      (onblock)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
      //this file
+     (bidname)
      (setpriv)
 )

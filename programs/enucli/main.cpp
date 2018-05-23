@@ -576,7 +576,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
 asset to_asset( const string& code, const string& s ) {
    static map<enumivo::chain::symbol_code, enumivo::chain::symbol> cache;
    auto a = asset::from_string( s );
-   enumivo::chain::symbol_code sym = a.sym.to_symbol_code();
+   enumivo::chain::symbol_code sym = a.get_symbol().to_symbol_code();
    auto it = cache.find( sym );
    auto sym_str = a.symbol_name();
    if ( it == cache.end() ) {
@@ -588,7 +588,7 @@ asset to_asset( const string& code, const string& s ) {
       auto obj_it = obj.find( sym_str );
       if (obj_it != obj.end()) {
          auto result = obj_it->value().as<enumivo::chain_apis::read_only::get_currency_stats_result>();
-         auto p = cache.insert(make_pair( sym, result.max_supply.sym ));
+         auto p = cache.insert(make_pair( sym, result.max_supply.get_symbol() ));
          it = p.first;
       } else {
          FC_THROW("Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
@@ -598,7 +598,7 @@ asset to_asset( const string& code, const string& s ) {
    if ( a.decimals() < expected_symbol.decimals() ) {
       auto factor = expected_symbol.precision() / a.precision();
       auto a_old = a;
-      a = asset( a.amount * factor, expected_symbol );
+      a = asset( a.get_amount() * factor, expected_symbol );
    } else if ( a.decimals() > expected_symbol.decimals() ) {
       FC_THROW("Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
    } // else precision matches
