@@ -22,6 +22,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
+#include <boost/signals2/connection.hpp>
 
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
@@ -34,6 +35,7 @@ using boost::multi_index_container;
 
 using std::string;
 using std::vector;
+using boost::signals2::scoped_connection;
 
 // HACK TO EXPOSE LOGGER MAP
 
@@ -84,7 +86,7 @@ enum class pending_block_mode {
    speculating
 };
 
-class producer_plugin_impl {
+class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin_impl> {
    public:
       producer_plugin_impl(boost::asio::io_service& io)
       :_timer(io)
@@ -111,7 +113,7 @@ class producer_plugin_impl {
 
       int32_t                                                   _max_transaction_time_ms;
       fc::microseconds                                          _max_irreversible_block_age_us;
-      fc::microseconds                                          _irreversible_block_age_us;
+      fc::time_point                                            _irreversible_block_time;
 
       time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
@@ -128,6 +130,22 @@ class producer_plugin_impl {
       incoming::methods::transaction_sync::method_type::handle _incoming_transaction_sync_provider;
 
       transaction_id_with_expiry_index                         _blacklisted_transactions;
+
+      fc::optional<scoped_connection>                          _accepted_block_connection;
+      fc::optional<scoped_connection>                          _irreversible_block_connection;
+
+      /*
+       * HACK ALERT
+       * Boost timers can be in a state where a handler has not yet executed but is not abortable.
+       * As this method needs to mutate state handlers depend on for proper functioning to maintain
+       * invariants for other code (namely accepting incoming transactions in a nearly full block)
+       * the handlers capture a coorelation ID at the time they are set.  When they are executed
+       * they must check that correlation_id against the global ordinal.  If it does not match that
+       * implies that this method has been called with the handler in the state where it should be
+       * cancelled but wasn't able to be.
+       */
+      uint32_t _timer_coorelation_id = 0;
+
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -166,7 +184,7 @@ class producer_plugin_impl {
       }
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
-         _irreversible_block_age_us = fc::time_point::now() - lib->timestamp.to_time_point();
+         _irreversible_block_time = lib->timestamp.to_time_point();
       }
 
       template<typename Type, typename Channel, typename F>
@@ -288,6 +306,15 @@ class producer_plugin_impl {
                return trace;
             }
          });
+      }
+
+      fc::microseconds get_irreversible_block_age() {
+         auto now = fc::time_point::now();
+         if (now < _irreversible_block_time) {
+            return fc::microseconds(0);
+         } else {
+            return now - _irreversible_block_time;
+         }
       }
 
       enum class start_block_result {
@@ -440,15 +467,15 @@ void producer_plugin::plugin_startup()
    ilog("producer plugin:  plugin_startup() begin");
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } );
-   chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } );
+   my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
+   my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
 
    const auto lib_num = chain.last_irreversible_block_num();
    const auto lib = chain.fetch_block_by_number(lib_num);
    if (lib) {
       my->on_irreversible_block(lib);
    } else {
-      my->_irreversible_block_age_us = fc::seconds(0);
+      my->_irreversible_block_time = fc::time_point::maximum();
    }
 
    if (!my->_producers.empty()) {
@@ -473,6 +500,9 @@ void producer_plugin::plugin_shutdown() {
    } catch(fc::exception& e) {
       edump((e.to_detail_string()));
    }
+
+   my->_accepted_block_connection.reset();
+   my->_irreversible_block_connection.reset();
 }
 
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
@@ -561,8 +591,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    } else if (private_key_itr == _private_keys.end()) {
       elog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
       _pending_block_mode = pending_block_mode::speculating;
-   } else if ( _irreversible_block_age_us >= _max_irreversible_block_age_us ) {
-      elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", _irreversible_block_age_us.count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
+   } else if ( get_irreversible_block_age() >= _max_irreversible_block_age_us ) {
+      elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", (now - _irreversible_block_time).count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
       _pending_block_mode = pending_block_mode::speculating;
    }
 
@@ -725,29 +755,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 void producer_plugin_impl::schedule_production_loop() {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    _timer.cancel();
+   std::weak_ptr<producer_plugin_impl> weak_this = shared_from_this();
 
    auto result = start_block();
-
-   /*
-    * HACK ALERT
-    * Boost timers can be in a state where a handler has not yet executed but is not abortable.
-    * As this method needs to mutate state handlers depend on for proper functioning to maintain
-    * invariants for other code (namely accepting incoming transactions in a nearly full block)
-    * the handlers capture a coorelation ID at the time they are set.  When they are executed
-    * they must check that correlation_id against the global ordinal.  If it does not match that
-    * implies that this method has been called with the handler in the state where it should be
-    * cancelled but wasn't able to be.
-    */
-   static uint32_t _coorelation_id = 0;
 
    if (result == start_block_result::failed) {
       elog("Failed to start a pending block, will try again later");
       _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
 
       // we failed to start a block, so try again later?
-      _timer.async_wait([&,cid=++_coorelation_id](const boost::system::error_code& ec) {
-         if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
-            schedule_production_loop();
+      _timer.async_wait([weak_this,cid=++_timer_coorelation_id](const boost::system::error_code& ec) {
+         auto self = weak_this.lock();
+         if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_coorelation_id) {
+            self->schedule_production_loop();
          }
       });
    } else if (_pending_block_mode == pending_block_mode::producing) {
@@ -764,13 +784,14 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.pending_block_state()->block_num));
       }
 
-      _timer.async_wait([&,cid=++_coorelation_id](const boost::system::error_code& ec) {
-         if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
-            auto res = maybe_produce_block();
+      _timer.async_wait([&chain,weak_this,cid=++_timer_coorelation_id](const boost::system::error_code& ec) {
+         auto self = weak_this.lock();
+         if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_coorelation_id) {
+            auto res = self->maybe_produce_block();
             fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)("res", res) );
          }
       });
-   } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && _irreversible_block_age_us < _max_irreversible_block_age_us){
+   } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && get_irreversible_block_age() < _max_irreversible_block_age_us){
       // if we have any producers then we should at least set a timer for our next available slot
       optional<fc::time_point> wake_up_time;
       for (const auto&p: _producers) {
@@ -790,9 +811,10 @@ void producer_plugin_impl::schedule_production_loop() {
          fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
          _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
-         _timer.async_wait([&,cid=++_coorelation_id](const boost::system::error_code& ec) {
-            if (ec != boost::asio::error::operation_aborted && cid == _coorelation_id) {
-               schedule_production_loop();
+         _timer.async_wait([weak_this,cid=++_timer_coorelation_id](const boost::system::error_code& ec) {
+            auto self = weak_this.lock();
+            if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_coorelation_id) {
+               self->schedule_production_loop();
             }
          });
       } else {
