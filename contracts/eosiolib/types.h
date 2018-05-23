@@ -23,10 +23,8 @@ typedef uint64_t account_name;
 typedef uint64_t permission_name;
 typedef uint64_t table_name;
 typedef uint32_t time;
-typedef uint64_t scope_name;
 typedef uint64_t action_name;
 
-typedef int64_t share_type;
 typedef uint16_t weight_type;
 
 /* macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned */
