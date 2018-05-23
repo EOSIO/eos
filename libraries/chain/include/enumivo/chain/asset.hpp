@@ -85,8 +85,8 @@ struct asset
    friend struct fc::reflector<asset>;
 
    void reflector_verify()const {
-      EOS_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
-      EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
+      ENU_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
+      ENU_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
    }
 
 private:

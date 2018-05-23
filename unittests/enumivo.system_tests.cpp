@@ -2225,7 +2225,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, enumivo_system_tes
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
+BOOST_FIXTURE_TEST_CASE( buyname, enumivo_system_tester ) try {
    create_accounts_with_resources( { N(dan), N(sam) } );
    transfer( config::system_account_name, "dan", core_from_string( "10000.0000" ) );
    transfer( config::system_account_name, "sam", core_from_string( "10000.0000" ) );
@@ -2252,14 +2252,14 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    //wlog( "verify sam can create nofail" );
    create_accounts_with_resources( { N(nofail) }, N(sam) ); // sam should be able to do this, he won the bid
    //wlog( "verify nofail can create test.nofail" );
-   transfer( "eosio", "nofail", core_from_string( "1000.0000" ) );
+   transfer( "enumivo", "nofail", core_from_string( "1000.0000" ) );
    create_accounts_with_resources( { N(test.nofail) }, N(nofail) ); // only nofail can create test.nofail
    //wlog( "verify dan cannot create test.fail" );
    BOOST_REQUIRE_THROW( create_accounts_with_resources( { N(test.fail) }, N(dan) ), fc::exception ); // dan shouldn't be able to do this
 
 } FC_LOG_AND_RETHROW() 
 
-BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
+BOOST_FIXTURE_TEST_CASE( multiple_namebids, enumivo_system_tester ) try {
 
    const std::string not_closed_message("auction for name is not closed yet");
 

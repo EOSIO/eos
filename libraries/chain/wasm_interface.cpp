@@ -726,7 +726,7 @@ class crypto_api : public context_aware_api {
 
       template<class Encoder> auto encode(char* data, size_t datalen) {
          Encoder e;
-         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
+         const size_t bs = enumivo::chain::config::hashing_checktime_block_size;
          while ( datalen > bs ) {
             e.write( data, bs );
             data += bs;
