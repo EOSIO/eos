@@ -10,10 +10,12 @@ namespace eosio { namespace client { namespace http {
        string& url;
        string& path;
        bool verify_cert;
+       std::vector<string>& headers;
 
        connection_param( std::string& u,
                          std::string& p,
-                         bool verify) : url(u), path(p){
+                         bool verify,
+                         std::vector<string>& h) : url(u), path(p), headers(h) {
            verify_cert = verify;
        }
    };
