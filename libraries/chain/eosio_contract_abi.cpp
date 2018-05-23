@@ -14,7 +14,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.types.push_back( type_def{"account_name",    "name"} );
    eos_abi.types.push_back( type_def{"permission_name", "name"} );
    eos_abi.types.push_back( type_def{"action_name",     "name"} );
-   eos_abi.types.push_back( type_def{"scope_name",      "name"} );
    eos_abi.types.push_back( type_def{"table_name",      "name"} );
    eos_abi.types.push_back( type_def{"transaction_id_type", "checksum256"} );
    eos_abi.types.push_back( type_def{"block_id_type",       "checksum256"} );
