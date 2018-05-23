@@ -14,7 +14,7 @@ BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) + get_balance( "eosio.ramfee" ));
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
@@ -1576,7 +1576,6 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
    //install multisig contract
    abi_serializer msig_abi_ser;
    {
-      create_account_with_resources( N(eosio.msig), config::system_account_name );
       BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "eosio.msig", core_from_string("5000.0000") ) );
       produce_block();
 

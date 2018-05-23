@@ -46,7 +46,8 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake) });
+      create_accounts({ N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), 
+               N(eosio.bpay), N(eosio.vpay), N(eosio.saving) });
 
       produce_blocks( 100 );
 
@@ -81,7 +82,7 @@ public:
       create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" )  + get_balance( "eosio.ramfee") );
    }
 
 

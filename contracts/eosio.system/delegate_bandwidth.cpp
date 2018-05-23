@@ -183,11 +183,11 @@ namespace eosiosystem {
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
       if( N(eosio) != account ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
          auto fee = tokens_out.amount / 200;
          if( fee > 0 ) {
-            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
                                                           { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
          }
       }
