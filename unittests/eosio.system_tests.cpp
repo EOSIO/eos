@@ -208,6 +208,10 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try 
    BOOST_REQUIRE_EQUAL( core_from_string("10.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("10.0000"), total["cpu_weight"].as<asset>());
    REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("0.0000")), get_voter_info( "alice1111111" ) );
+
+   // Now alice stakes to bob with transfer flag
+   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "alice1111111", "bob111111111", core_from_string("100.0000"), core_from_string("100.0000") ) );
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
@@ -2247,7 +2251,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), bidname( "sam", "nofail", core_from_string( "2.0000" ) )); // didn't increase bid by 10%
    produce_block( fc::days(1) );
    produce_block();
-   
+
    BOOST_REQUIRE_THROW( create_accounts_with_resources( { N(nofail) }, N(dan) ), fc::exception); // dan shoudn't be able to do this, sam won
    //wlog( "verify sam can create nofail" );
    create_accounts_with_resources( { N(nofail) }, N(sam) ); // sam should be able to do this, he won the bid
@@ -2257,7 +2261,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    //wlog( "verify dan cannot create test.fail" );
    BOOST_REQUIRE_THROW( create_accounts_with_resources( { N(test.fail) }, N(dan) ), fc::exception ); // dan shouldn't be able to do this
 
-} FC_LOG_AND_RETHROW() 
+} FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
 
@@ -2280,12 +2284,12 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
                                                ("voter",  "bob")
                                                ("proxy", name(0).to_string() )
                                                ("producers", vector<account_name>{ N(producer) } )
-                                               ) 
+                                               )
                         );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(carl), N(voteproducer), mvo()
                                                 ("voter",  "carl")
                                                 ("proxy", name(0).to_string() )
-                                                ("producers", vector<account_name>{ N(producer) } ) 
+                                                ("producers", vector<account_name>{ N(producer) } )
                                                 )
                         );
 
@@ -2299,7 +2303,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    bidname( "carl", "prefd", core_from_string("1.0000") );
    bidname( "carl", "prefe", core_from_string("1.0000") );
    BOOST_REQUIRE_EQUAL( core_from_string( "9998.0000" ), get_balance("carl") );
-   
+
    BOOST_REQUIRE_EQUAL( error("assertion failure with message: account is already high bidder"),
                         bidname( "bob", "prefb", core_from_string("1.1001") ) );
    BOOST_REQUIRE_EQUAL( error("assertion failure with message: must increase bid by 10%"),
@@ -2347,7 +2351,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
                                                 ("producers", vector<account_name>{ N(producer) } )
                                                 )
                         );
-   
+
    // need to wait for 14 days after going live
    produce_blocks(10);
    produce_block( fc::days(2) );
@@ -2355,7 +2359,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefd), N(david) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
    // it's been 14 days, auction for prefd has been closed
-   produce_block( fc::days(12) );   
+   produce_block( fc::days(12) );
    create_account_with_resources( N(prefd), N(david) );
    produce_blocks(2);
    produce_block( fc::hours(23) );
@@ -2381,7 +2385,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefb), N(eve) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
    // but changing a bid that is not the highest does not push closing time
-   BOOST_REQUIRE_EQUAL( success(),                                                                                                                                                                                                                                                                                  
+   BOOST_REQUIRE_EQUAL( success(),
                         bidname( "carl", "prefe", core_from_string("2.0980") ) );
    produce_block( fc::hours(2) );
    produce_blocks(2);
@@ -2393,12 +2397,12 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    create_account_with_resources( N(prefb), N(eve) );
 
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefe), N(carl) ),
-                            fc::exception, fc_assert_exception_message_is( not_closed_message ) );   
+                            fc::exception, fc_assert_exception_message_is( not_closed_message ) );
    produce_block();
    produce_block( fc::hours(24) );
    // by now bid for prefe has closed
    create_account_with_resources( N(prefe), N(carl) );
-   // prefe can now create *.prefe 
+   // prefe can now create *.prefe
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(xyz.prefe), N(carl) ),
                             fc::exception, fc_assert_exception_message_is("only suffix may create this account") );
    transfer( config::system_account_name, N(prefe), core_from_string("10000.0000") );
