@@ -16,6 +16,7 @@ nodesDir = './nodes/'
 contractsDir = '../../build/contracts/'
 cleos = '../../build/programs/cleos/cleos --wallet-url http://localhost:6666 --url http://localhost:8000 '
 nodeos = '../../build/programs/nodeos/nodeos'
+fastUnstakeSystem = './fast.refund/eosio.system/eosio.system.wasm'
 logFile = open('test.log', 'a')
 
 with open('accounts.json') as f:
@@ -42,12 +43,12 @@ def run(args):
 
 def retry(args):
     while True:
-        try:
-            run(args)
-            break
-        except:
+        print('test.py:', args)
+        logFile.write(args + '\n')
+        if subprocess.call(args, shell=True):
             print('*** Retry')
-            pass
+        else:
+            break
 
 def background(args):
     print('test.py:', args)
@@ -92,11 +93,12 @@ def startProducers(b, e):
         portOffset = 0 if not i else i - firstProducer + 1
         cmd = (
             nodeos +
+            '    --max-transaction-time 200'
             '    --genesis-json ' + genesis +
-            '    --block-log-dir ' + dir + 'blocks'
-            '    --config-dir ' + dir +
-            '    --data-dir ' + dir +
-            '    --shared-memory-size-mb 1024'
+            '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'
+            '    --config-dir ' + os.path.abspath(dir) +
+            '    --data-dir ' + os.path.abspath(dir) +
+            '    --chain-state-db-size-mb 1024'
             '    --http-server-address 127.0.0.1:' + str(8000 + portOffset) +
             '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + portOffset) +
             '    --max-clients ' + str(maxClients) +
@@ -209,6 +211,33 @@ def randomTransfer(b, e, n):
             run(cleos + 'transfer ' + src + ' ' + dest + ' "0.0001 ' + symbol + '"' + ' || true')
         time.sleep(.25)
 
+def msigProposeReplaceSystem(proposer, proposalName):
+    requestedPermissions = []
+    for i in range(firstProducer, firstProducer + numProducers):
+        requestedPermissions.append({'actor': accounts[i]['name'], 'permission': 'active'})
+    trxPermissions = [{'actor': 'eosio', 'permission': 'active'}]
+    with open(fastUnstakeSystem, mode='rb') as f:
+        setcode = {'account': 'eosio', 'vmtype': 0, 'vmversion': 0, 'code': f.read().hex()}
+    run(cleos + 'multisig propose ' + proposalName + jsonArg(requestedPermissions) + 
+        jsonArg(trxPermissions) + 'eosio setcode' + jsonArg(setcode) + ' -p ' + proposer)
+
+def msigApproveReplaceSystem(proposer, proposalName):
+    for i in range(firstProducer, firstProducer + numProducers):
+        run(cleos + 'multisig approve ' + proposer + ' ' + proposalName +
+            jsonArg({'actor': accounts[i]['name'], 'permission': 'active'}) +
+            '-p ' + accounts[i]['name'])
+
+def msigExecReplaceSystem(proposer, proposalName):
+    retry(cleos + 'multisig exec ' + proposer + ' ' + proposalName + ' -p ' + proposer)
+
+def msigReplaceSystem():
+    run(cleos + 'push action eosio buyrambytes' + jsonArg(['eosio', accounts[firstRegAccount]['name'], 200000]) + '-p eosio')
+    time.sleep(1)
+    msigProposeReplaceSystem(accounts[firstRegAccount]['name'], 'fast.unstake')
+    time.sleep(1)
+    msigApproveReplaceSystem(accounts[firstRegAccount]['name'], 'fast.unstake')
+    msigExecReplaceSystem(accounts[firstRegAccount]['name'], 'fast.unstake')
+
 logFile.write('\n\n' + '*' * 80 + '\n\n\n')
 run('killall keosd nodeos || true')
 time.sleep(1.5)
@@ -241,6 +270,7 @@ proxyVotes(firstRegAccount, firstRegAccount + numVoters)
 resign('eosio', 'eosio.prods')
 resign('eosio.msig', 'eosio')
 resign('eosio.token', 'eosio')
+# msigReplaceSystem()
 run(cleos + 'push action eosio.token issue \'["eosio", "%d.0000 %s", "memo"]\' -p eosio' % ((len(accounts) - firstRegAccount) * 10, symbol))
 sendUnstakedFunds(firstRegAccount, len(accounts))
 randomTransfer(firstRegAccount, len(accounts), 8)
