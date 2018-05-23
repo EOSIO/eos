@@ -409,7 +409,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    if( num == 0 )
       ilog( "There were no recoverable blocks in the reversible block database" );
-   else if( num == 0 )
+   else if( num == 1 )
       ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
    else
       ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
