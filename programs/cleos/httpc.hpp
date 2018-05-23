@@ -5,8 +5,20 @@
 #pragma once
 
 namespace eosio { namespace client { namespace http {
-   fc::variant call( const std::string& server_url,
-                     const std::string& path,
+
+   struct connection_param {
+       string& url;
+       string& path;
+       bool verify_cert;
+
+       connection_param( std::string& u,
+                         std::string& p,
+                         bool verify) : url(u), path(p){
+           verify_cert = verify;
+       }
+   };
+
+   fc::variant call( const connection_param& cp,
                      const fc::variant& postdata = fc::variant() );
 
    const string chain_func_base = "/v1/chain";

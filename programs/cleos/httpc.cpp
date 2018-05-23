@@ -77,8 +77,7 @@ namespace eosio { namespace client { namespace http {
       return re.str();
    }
 
-   fc::variant call( const std::string& server_url,
-                     const std::string& path,
+   fc::variant call( const connection_param& cp,
                      const fc::variant& postdata ) {
    std::string postjson;
    if( !postdata.is_null() )
@@ -87,6 +86,9 @@ namespace eosio { namespace client { namespace http {
    boost::asio::io_service io_service;
 
    string scheme, server, port, path_prefix;
+
+   const string& server_url = cp.url;
+   const string& path = cp.path;
 
    //via rfc3986 and modified a bit to suck out the port number
    //Sadly this doesn't work for ipv6 addresses
@@ -135,7 +137,8 @@ namespace eosio { namespace client { namespace http {
 #endif
 
       boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(io_service, ssl_context);
-      socket.set_verify_mode(boost::asio::ssl::verify_peer);
+      if(cp.verify_cert)
+         socket.set_verify_mode(boost::asio::ssl::verify_peer);
 
       do_connect(socket.next_layer(), server, port);
       socket.handshake(boost::asio::ssl::stream_base::client);

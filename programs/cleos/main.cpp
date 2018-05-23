@@ -26,6 +26,7 @@ Options:
                               the http/https URL where nodeos is running
   --wallet-url TEXT=http://localhost:8888/
                               the http/https URL where keosd is running
+  -n,--no-verify              don't verify peer certificate when using HTTPS
   -v,--verbose                output verbose actions on error
 
 Subcommands:
@@ -137,6 +138,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 
 string url = "http://localhost:8888/";
 string wallet_url = "http://localhost:8888/";
+bool no_verify = false;
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -194,7 +196,9 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return eosio::client::http::call( url, path, fc::variant(v) );
+      eosio::client::http::connection_param *cp = new eosio::client::http::connection_param((std::string&)url, (std::string&)path, no_verify ? false : true);
+
+      return eosio::client::http::call( *cp, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -866,6 +870,8 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+
+   app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
