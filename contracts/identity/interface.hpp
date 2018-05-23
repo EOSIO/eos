@@ -8,11 +8,11 @@ namespace identity {
       public:
          using identity_base::identity_base;
 
-         identity_name get_claimed_identity( eosio::account_name acnt );
+         identity_name get_claimed_identity( account_name acnt );
 
-         eosio::account_name get_owner_for_identity( uint64_t receiver, identity_name ident );
+         account_name get_owner_for_identity( uint64_t receiver, identity_name ident );
 
-         identity_name get_identity_for_account( eosio::account_name receiver, eosio::account_name acnt );
+         identity_name get_identity_for_account( uint64_t receiver, account_name acnt );
    };
 
 }

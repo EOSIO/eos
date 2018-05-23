@@ -12,12 +12,12 @@ class test_ram_limit : public eosio::contract {
    public:
       const uint32_t FIVE_MINUTES = 5*60;
 
-      test_ram_limit(eosio::account_name self)
+      test_ram_limit(account_name self)
       :eosio::contract(self)
       {}
 
       //@abi action
-      void setentry(eosio::account_name payer, uint64_t from, uint64_t to, uint64_t size) {
+      void setentry(account_name payer, uint64_t from, uint64_t to, uint64_t size) {
          const auto self = get_self();
          eosio::print("test_ram_limit::setentry ", eosio::name{self}, "\n");
          test_table table(self, self);

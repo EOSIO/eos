@@ -81,7 +81,7 @@ namespace eosiosystem {
 
       eosio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
-      const asset token_supply   = token( NAME(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
+      const asset token_supply   = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
       const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
 
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0 ) {
@@ -92,8 +92,8 @@ namespace eosiosystem {
          auto to_per_block_pay   = to_producers / 4;
          auto to_per_vote_pay    = to_producers - to_per_block_pay;
 
-         INLINE_ACTION_SENDER(eosio::token, issue)( NAME(eosio.token), {{NAME(eosio),NAME(active)}},
-                                                    {NAME(eosio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
+         INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
+                                                    {N(eosio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
@@ -125,8 +125,8 @@ namespace eosiosystem {
       });
       
       if( total_pay > 0 ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( NAME(eosio.token), {NAME(eosio),NAME(active)},
-                                                       { NAME(eosio), owner, asset(total_pay), std::string("producer pay") } );
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), owner, asset(total_pay), std::string("producer pay") } );
       }
    }
 

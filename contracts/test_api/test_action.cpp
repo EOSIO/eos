@@ -206,8 +206,8 @@ void test_action::test_publication_time() {
 
 void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action) {
    (void)code;(void)action;
-   eosio::account_name cur_rec;
-   read_action_data(&cur_rec, sizeof(eosio::account_name));
+   account_name cur_rec;
+   read_action_data(&cur_rec, sizeof(account_name));
 
    eosio_assert( receiver == cur_rec, "the current receiver does not match" );
 }

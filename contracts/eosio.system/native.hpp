@@ -14,10 +14,8 @@
 #include <eosiolib/contract.hpp>
 
 namespace eosiosystem {
-   using eosio::account_name;
    using eosio::permission_level;
    using eosio::public_key;
-   using eosio::weight_type;
 
    typedef std::vector<char> bytes;
 

@@ -24,7 +24,7 @@ class dice : public eosio::contract {
    public:
       const uint32_t FIVE_MINUTES = 5*60;
 
-      dice(eosio::account_name self)
+      dice(account_name self)
       :eosio::contract(self),
        offers(_self, _self),
        games(_self, _self),
@@ -33,7 +33,7 @@ class dice : public eosio::contract {
       {}
 
       //@abi action
-      void offerbet(const asset& bet, const eosio::account_name player, const checksum256& commitment) {
+      void offerbet(const asset& bet, const account_name player, const checksum256& commitment) {
 
          eosio_assert( bet.symbol == CORE_SYMBOL, "only core token allowed" );
          eosio_assert( bet.is_valid(), "invalid bet" );
@@ -213,7 +213,7 @@ class dice : public eosio::contract {
       }
 
       //@abi action
-      void deposit( const eosio::account_name from, const asset& quantity ) {
+      void deposit( const account_name from, const asset& quantity ) {
          
          eosio_assert( quantity.is_valid(), "invalid quantity" );
          eosio_assert( quantity.amount > 0, "must deposit positive quantity" );
@@ -226,8 +226,8 @@ class dice : public eosio::contract {
          }
 
          action(
-            permission_level{ from, NAME(active) },
-            NAME(eosio.token), NAME(transfer),
+            permission_level{ from, N(active) },
+            N(eosio.token), N(transfer),
             std::make_tuple(from, _self, quantity, std::string(""))
          ).send();
 
@@ -237,7 +237,7 @@ class dice : public eosio::contract {
       }
 
       //@abi action
-      void withdraw( const eosio::account_name to, const asset& quantity ) {
+      void withdraw( const account_name to, const asset& quantity ) {
          require_auth( to );
 
          eosio_assert( quantity.is_valid(), "invalid quantity" );
@@ -252,8 +252,8 @@ class dice : public eosio::contract {
          });
 
          action(
-            permission_level{ _self, NAME(active) },
-            NAME(eosio.token), NAME(transfer),
+            permission_level{ _self, N(active) },
+            N(eosio.token), N(transfer),
             std::make_tuple(_self, to, quantity, std::string(""))
          ).send();
 
@@ -265,11 +265,11 @@ class dice : public eosio::contract {
    private:
       //@abi table offer i64
       struct offer {
-         uint64_t              id;
-         eosio::account_name   owner;
-         asset                 bet;
-         checksum256           commitment;
-         uint64_t              gameid = 0;
+         uint64_t          id;
+         account_name      owner;
+         asset             bet;
+         checksum256       commitment;
+         uint64_t          gameid = 0;
 
          uint64_t primary_key()const { return id; }
 
@@ -326,9 +326,9 @@ class dice : public eosio::contract {
 
       //@abi table account i64
       struct account {
-         account( eosio::account_name o = eosio::account_name{} ):owner(o){}
+         account( account_name o = account_name() ):owner(o){}
 
-         eosio::account_name owner;
+         account_name owner;
          asset        eos_balance;
          uint32_t     open_offers = 0;
          uint32_t     open_games = 0;

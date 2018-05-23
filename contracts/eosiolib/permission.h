@@ -38,8 +38,8 @@ extern "C" {
     *  @return 1 if the permission is authorized, 0 otherwise
     */
    int32_t
-   check_permission_authorization( uint64_t account,
-                                   uint64_t permission,
+   check_permission_authorization( account_name account,
+                                   permission_name permission,
                                    const char* pubkeys_data, uint32_t pubkeys_size,
                                    const char* perms_data,   uint32_t perms_size,
                                    uint64_t delay_us
@@ -53,7 +53,7 @@ extern "C" {
     *
     *  @return the last used time (in microseconds since Unix epoch) of the permission
     */
-   int64_t get_permission_last_used( uint64_t account, uint64_t permission );
+   int64_t get_permission_last_used( account_name account, permission_name permission );
 
 
    /**
@@ -63,6 +63,6 @@ extern "C" {
     *
     *  @return the creation time (in microseconds since Unix epoch) of the account
     */
-   int64_t get_account_creation_time( uint64_t account );
+   int64_t get_account_creation_time( account_name account );
 
 }

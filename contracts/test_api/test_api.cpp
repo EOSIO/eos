@@ -18,7 +18,7 @@
 #include "test_permission.cpp"
 #include "test_datastream.cpp"
 
-eosio::account_name global_receiver;
+account_name global_receiver;
 
 extern "C" {
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {

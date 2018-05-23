@@ -88,15 +88,15 @@ extern "C" {
     *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
-   void require_recipient( uint64_t name );
+   void require_recipient( account_name name );
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     */
-   void require_auth( uint64_t name );
-   bool has_auth( uint64_t name );
+   void require_auth( account_name name );
+   bool has_auth( account_name name );
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found
@@ -104,37 +104,37 @@ extern "C" {
     *  @param name - name of the account to be verified
     *  @param permission - permission level to be verified
     */
-   void require_auth2( uint64_t name, uint64_t permission );
+   void require_auth2( account_name name, permission_name permission );
 
-   bool is_account( uint64_t name );
+   bool is_account( account_name name );
 
    /**
     *  Send an inline action in the context of this action's parent transaction
     * @param serialized_action - serialized action
     * @param size - size of serialized action in bytes
     */
-   void send_inline(char* serialized_action, size_t size);
+   void send_inline(char *serialized_action, size_t size);
 
    /**
     *  Send an inline context free action in the context of this action's parent transaction
     * @param serialized_action - serialized action
     * @param size - size of serialized action in bytes
     */
-   void send_context_free_inline(char* serialized_action, size_t size);
+   void send_context_free_inline(char *serialized_action, size_t size);
 
    /**
     *  Verifies that @ref name exists in the set of write locks held on a action. Throws if not found
     *  @brief Verifies that @ref name exists in the set of write locks held
     *  @param name - name of the account to be verified
     */
-   void require_write_lock( uint64_t name );
+   void require_write_lock( account_name name );
 
    /**
     *  Verifies that @ref name exists in the set of read locks held on a action. Throws if not found
     *  @brief Verifies that @ref name exists in the set of read locks held
     *  @param name - name of the account to be verified
     */
-   void require_read_lock( uint64_t name );
+   void require_read_lock( account_name name );
 
    /**
     *  Returns the time in microseconds from 1970 of the publication_time
@@ -148,6 +148,6 @@ extern "C" {
     *  @brief Get the current receiver of the action
     *  @return the account which specifies the current receiver of the action
     */
-   uint64_t current_receiver();
+   account_name current_receiver();
    ///@ } actioncapi
 }

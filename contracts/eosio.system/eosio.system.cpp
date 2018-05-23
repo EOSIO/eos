@@ -22,7 +22,7 @@ namespace eosiosystem {
       auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
-         auto system_token_supply   = eosio::token(NAME(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+         auto system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
@@ -84,8 +84,8 @@ namespace eosiosystem {
       eosio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       eosio_assert( bid.amount > 0, "insufficient bid" );
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( NAME(eosio.token), {bidder,NAME(active)},
-                                                    { bidder, NAME(eosio), bid, std::string("bid name ")+(name{newname}).to_string()  } );
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {bidder,N(active)},
+                                                    { bidder, N(eosio), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
@@ -102,8 +102,8 @@ namespace eosiosystem {
          eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          eosio_assert( current->high_bidder != bidder, "account is already high bidder" );
 
-         INLINE_ACTION_SENDER(eosio::token, transfer)( NAME(eosio.token), {NAME(eosio),NAME(active)},
-                                                       { NAME(eosio), current->high_bidder, asset(current->high_bid),
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), current->high_bidder, asset(current->high_bid), 
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
          bids.modify( current, bidder, [&]( auto& b ) {
@@ -133,7 +133,7 @@ namespace eosiosystem {
                             const authority& active*/ ) {
 
       if( creator != _self ) {
-         uint64_t tmp = newact;
+         auto tmp = newact;
          bool has_dot = false;
          for( uint32_t i = 0; i < 13; ++i ) {
            has_dot |= (tmp >> 59);

@@ -21,9 +21,9 @@ int tertiary_ub[11]  = {1,2,3,5,3,6,7,8,9,-1,1};
 
 #pragma pack(push, 1)
 struct test_model {
-   eosio::account_name  name;
-   unsigned char        age;
-   uint64_t             phone;
+   account_name  name;
+   unsigned char age;
+   uint64_t      phone;
 };
 
 struct test_model_v2 : test_model {

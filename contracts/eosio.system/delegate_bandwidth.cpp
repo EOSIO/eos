@@ -28,8 +28,8 @@ namespace eosiosystem {
    using std::map;
    using std::pair;
 
-   static constexpr uint32_t refund_delay = 3*24*3600;
-   static constexpr uint32_t refund_expiration_time = 3600;
+   static constexpr time refund_delay = 3*24*3600;
+   static constexpr time refund_expiration_time = 3600;
 
    struct user_resources {
       account_name  owner;
@@ -62,7 +62,7 @@ namespace eosiosystem {
 
    struct refund_request {
       account_name  owner;
-      uint32_t      request_time;
+      time          request_time;
       eosio::asset  net_amount;
       eosio::asset  cpu_amount;
 
@@ -108,8 +108,8 @@ namespace eosiosystem {
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
       if( payer != N(eosio) ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( NAME(eosio.token), {payer,NAME(active)},
-                                                       { payer, NAME(eosio), quant, std::string("buy ram") } );
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+                                                       { payer, N(eosio), quant, std::string("buy ram") } );
       }
 
 
@@ -175,8 +175,8 @@ namespace eosiosystem {
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
       if( N(eosio) != account ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( NAME(eosio.token), {NAME(eosio),NAME(active)},
-                                                       { NAME(eosio), account, asset(tokens_out), std::string("sell ram") } );
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
       }
    }
 
@@ -307,7 +307,7 @@ namespace eosiosystem {
 
          if ( need_deferred_trx ) {
             eosio::transaction out;
-            out.actions.emplace_back( permission_level{ from, NAME(active) }, _self, NAME(refund), from );
+            out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
             out.delay_sec = refund_delay;
             out.send( from, receiver, true );
          } else {
@@ -316,8 +316,8 @@ namespace eosiosystem {
 
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
-            INLINE_ACTION_SENDER(eosio::token, transfer)( NAME(eosio.token), {from,NAME(active)},
-               { source_stake_from, NAME(eosio), asset(transfer_amount), std::string("stake bandwidth") } );
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
+               { source_stake_from, N(eosio), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -379,8 +379,8 @@ namespace eosiosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( NAME(eosio.token), {NAME(eosio),NAME(active)},
-                                                    { NAME(eosio), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                    { N(eosio), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }

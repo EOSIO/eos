@@ -43,8 +43,8 @@
  */
 
 namespace tic_tac_toe {
-   static const uint64_t games_account = N(games);
-   static const uint64_t code_account = N(tic.tac.toe);
+   static const account_name games_account = N(games);
+   static const account_name code_account = N(tic.tac.toe);
 
    /**
     * @brief Data structure to hold game information
@@ -52,16 +52,16 @@ namespace tic_tac_toe {
    static const uint32_t board_len = 9;
    struct game {
       game() { initialize_board(); }
-      game(eosio::account_name challenger_account, eosio::account_name host_account)
+      game(account_name challenger_account, account_name host_account)
             : challenger(challenger_account), host(host_account), turn(host_account) {
          // Initialize board
          initialize_board();
       }
-      eosio::account_name     challenger;
-      eosio::account_name     host;
-      eosio::account_name     turn; // = account name of host/ challenger
-      eosio::account_name     winner = NAME(none); // = none/ draw/ account name of host/ challenger
-      uint8_t                 board[board_len];
+      account_name     challenger;
+      account_name     host;
+      account_name     turn; // = account name of host/ challenger
+      account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
+      uint8_t          board[board_len];
 
       // Initialize board with empty cell
       void initialize_board() {
@@ -74,7 +74,7 @@ namespace tic_tac_toe {
       void reset_game() {
          initialize_board();
          turn = host;
-         winner = NAME(none);
+         winner = N(none);
       }
 
       auto primary_key() const { return challenger; }
@@ -86,8 +86,8 @@ namespace tic_tac_toe {
     * @brief Action to create new game
     */
    struct create {
-      eosio::account_name   challenger;
-      eosio::account_name   host;
+      account_name   challenger;
+      account_name   host;
 
       EOSLIB_SERIALIZE( create, (challenger)(host) )
    };
@@ -96,9 +96,9 @@ namespace tic_tac_toe {
     * @brief Action to restart new game
     */
    struct restart {
-      eosio::account_name   challenger;
-      eosio::account_name   host;
-      eosio::account_name   by; // the account who wants to restart the game
+      account_name   challenger;
+      account_name   host;
+      account_name   by; // the account who wants to restart the game
 
       EOSLIB_SERIALIZE( restart, (challenger)(host)(by) )
    };
@@ -107,8 +107,8 @@ namespace tic_tac_toe {
     * @brief Action to close new game
     */
    struct close {
-      eosio::account_name   challenger;
-      eosio::account_name   host;
+      account_name   challenger;
+      account_name   host;
 
       EOSLIB_SERIALIZE( close, (challenger)(host) )
    };
@@ -127,10 +127,10 @@ namespace tic_tac_toe {
     * @brief Action to make movement
     */
    struct move {
-      eosio::account_name   challenger;
-      eosio::account_name   host;
-      eosio::account_name   by; // the account who wants to make the move
-      movement              mvt;
+      account_name   challenger;
+      account_name   host;
+      account_name   by; // the account who wants to make the move
+      movement       mvt;
 
       EOSLIB_SERIALIZE( move, (challenger)(host)(by)(mvt) )
    };

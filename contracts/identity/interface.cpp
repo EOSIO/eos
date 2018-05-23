@@ -2,21 +2,21 @@
 
 namespace identity {
 
-identity_name interface::get_claimed_identity( eosio::account_name acnt ) {
+identity_name interface::get_claimed_identity( account_name acnt ) {
    return accounts_table( _self, acnt ).get_or_default(0);
 }
 
-eosio::account_name interface::get_owner_for_identity( uint64_t receiver, identity_name ident ) {
+account_name interface::get_owner_for_identity( uint64_t receiver, identity_name ident ) {
    // for each trusted owner certification
    //   check to see if the certification is still trusted
    //   check to see if the account has claimed it
    certs_table certs( _self, ident );
    auto idx = certs.template get_index<N(bytuple)>();
    auto itr = idx.lower_bound(certrow::key(N(owner), 1, 0));
-   eosio::account_name owner = {};
+   account_name owner = 0;
    while (itr != idx.end() && itr->property == N(owner) && itr->trusted) {
-      if (sizeof(eosio::account_name) == itr->data.size()) {
-         eosio::account_name account = *reinterpret_cast<const eosio::account_name*>(itr->data.data());
+      if (sizeof(account_name) == itr->data.size()) {
+         account_name account = *reinterpret_cast<const account_name*>(itr->data.data());
          if (ident == get_claimed_identity(account)) {
             if (is_trusted(itr->certifier) ) {
                // the certifier is still trusted
@@ -24,7 +24,7 @@ eosio::account_name interface::get_owner_for_identity( uint64_t receiver, identi
                   owner = account;
                } else {
                   //contradiction found: different owners certified for the same identity
-                  return eosio::account_name{0};
+                  return 0;
                }
             } else if (_self == receiver){
                //the certifier is no longer trusted, need to unset the flag
@@ -48,8 +48,8 @@ eosio::account_name interface::get_owner_for_identity( uint64_t receiver, identi
    // let's see if any untrusted certifications became trusted
    itr = idx.lower_bound(certrow::key(N(owner), 0, 0));
    while (itr != idx.end() && itr->property == N(owner) && !itr->trusted) {
-      if (sizeof(eosio::account_name) == itr->data.size()) {
-         eosio::account_name account = *reinterpret_cast<const eosio::account_name*>(itr->data.data());
+      if (sizeof(account_name) == itr->data.size()) {
+         account_name account = *reinterpret_cast<const account_name*>(itr->data.data());
          if (ident == get_claimed_identity(account) && is_trusted(itr->certifier)) {
             if (_self == receiver) {
                // the certifier became trusted and we have permissions to update the flag
@@ -61,7 +61,7 @@ eosio::account_name interface::get_owner_for_identity( uint64_t receiver, identi
                owner = account;
             } else {
                //contradiction found: different owners certified for the same identity
-               return eosio::account_name{0};
+               return 0;
             }
          }
       } else {
@@ -72,7 +72,7 @@ eosio::account_name interface::get_owner_for_identity( uint64_t receiver, identi
    return owner;
 }
 
-identity_name interface::get_identity_for_account( eosio::account_name receiver, eosio::account_name acnt ) {
+identity_name interface::get_identity_for_account( uint64_t receiver, account_name acnt ) {
    //  check what identity the account has self certified owner
    //  verify that a trusted certifier has confirmed owner
    auto identity = get_claimed_identity(acnt);

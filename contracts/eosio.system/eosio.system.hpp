@@ -15,7 +15,6 @@
 
 namespace eosiosystem {
 
-   using eosio::account_name;
    using eosio::asset;
    using eosio::indexed_by;
    using eosio::const_mem_fun;
@@ -93,8 +92,8 @@ namespace eosiosystem {
    };
 
    struct voter_info {
-      account_name                owner = {}; /// the voter
-      account_name                proxy = {}; /// the proxy set by the voter, if any
+      account_name                owner = 0; /// the voter
+      account_name                proxy = 0; /// the proxy set by the voter, if any
       std::vector<account_name>   producers; /// the producers approved by this voter if no proxy set
       int64_t                     staked = 0;
 
@@ -114,7 +113,7 @@ namespace eosiosystem {
 
 
       uint32_t                    deferred_trx_id = 0; /// the ID of the 3-day delay deferred transaction
-      uint32_t                    last_unstake_time = 0; /// the time when the deferred_trx_id was sent
+      time                        last_unstake_time = 0; /// the time when the deferred_trx_id was sent
       eosio::asset                unstaking; /// the total unstaking (pending 3 day delay)
 
       uint64_t primary_key()const { return owner; }
