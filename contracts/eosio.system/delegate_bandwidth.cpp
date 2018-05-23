@@ -73,7 +73,7 @@ namespace eosiosystem {
    };
 
    /**
-    *  These tables are designed to be constructed in the scope of the relevant user, this 
+    *  These tables are designed to be constructed in the scope of the relevant user, this
     *  facilitates simpler API for per-user queries
     */
    typedef eosio::multi_index< N(userres), user_resources>      user_resources_table;
@@ -100,9 +100,9 @@ namespace eosiosystem {
     *  storage of all database records associated with this action.
     *
     *  RAM is a scarce resource whose supply is defined by global properties max_ram_size. RAM is
-    *  priced using the bancor algorithm such that price-per-byte with a constant reserve ratio of 100:1. 
+    *  priced using the bancor algorithm such that price-per-byte with a constant reserve ratio of 100:1.
     */
-   void system_contract::buyram( account_name payer, account_name receiver, asset quant ) 
+   void system_contract::buyram( account_name payer, account_name receiver, asset quant )
    {
       require_auth( payer );
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
@@ -329,7 +329,7 @@ namespace eosiosystem {
 
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
-            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {source_stake_from, N(active)},
                { source_stake_from, N(eosio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
