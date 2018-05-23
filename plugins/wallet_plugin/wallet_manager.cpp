@@ -4,6 +4,7 @@
  */
 #include <eosio/wallet_plugin/wallet_manager.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <boost/algorithm/string.hpp>
 namespace eosio {
 namespace wallet {
 
@@ -24,7 +25,7 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
 void wallet_manager::check_timeout() {
    if (timeout_time != timepoint_t::max()) {
       const auto& now = std::chrono::system_clock::now();
-      if (now >= timeout_time + timeout) {
+      if (now >= timeout_time) {
          lock_all();
       }
       timeout_time = now + timeout;
@@ -46,7 +47,8 @@ std::string wallet_manager::create(const std::string& name) {
    wallet->set_password(password);
    wallet->set_wallet_filename(wallet_filename.string());
    wallet->unlock(password);
-   wallet->import_key(eosio_key);
+   if(eosio_key.size())
+      wallet->import_key(eosio_key);
    wallet->lock();
    wallet->unlock(password);
    
@@ -154,6 +156,7 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
    }
    auto& w = wallets.at(name);
    if (!w->is_locked()) {
+      EOS_THROW(chain::wallet_unlocked_exception, "Wallet is already unlocked: ${w}", ("w", name));
       return;
    }
    w->unlock(password);
@@ -169,6 +172,20 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
       EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
    w->import_key(wif_key);
+}
+
+string wallet_manager::create_key(const std::string& name, const std::string& key_type) {
+   check_timeout();
+   if (wallets.count(name) == 0) {
+      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+   }
+   auto& w = wallets.at(name);
+   if (w->is_locked()) {
+      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+   }
+
+   string upper_key_type = boost::to_upper_copy<std::string>(key_type);
+   return w->create_key(upper_key_type);
 }
 
 chain::signed_transaction

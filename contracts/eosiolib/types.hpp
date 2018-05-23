@@ -6,8 +6,11 @@
 #include <eosiolib/types.h>
 #include <functional>
 #include <tuple>
+#include <string>
 
 namespace eosio {
+
+   typedef std::vector<std::tuple<uint16_t,std::vector<char>>> extensions_type;
 
    /**
     *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
@@ -63,6 +66,29 @@ namespace eosio {
     */
    #define N(X) ::eosio::string_to_name(#X)
 
+
+   static constexpr uint64_t name_suffix( uint64_t tmp ) {
+      uint64_t suffix = 0;
+      bool endsuffix = false;
+      uint32_t offset = 0;
+      for( uint32_t i = 0; i <= 12; ++i, ++offset ) {
+         auto p = tmp >> 59;
+         if( !p ) {
+            endsuffix = true;
+         } else {
+            if( !endsuffix ) {
+               suffix |= uint64_t(p) << (59-(5*offset));
+            }
+         }
+         if( endsuffix && p ) {
+            endsuffix = false;
+            offset = 0;
+            suffix = uint64_t(p) << (59-(5*offset));
+         }
+         tmp <<= 5;
+      }
+      return suffix;
+   }
    /**
     *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
     *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and
@@ -75,8 +101,32 @@ namespace eosio {
    struct name {
       operator uint64_t()const { return value; }
 
+      // keep in sync with name::operator string() in eosio source code definition for name
+      std::string to_string() const {
+         static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
+
+         std::string str(13,'.');
+
+         uint64_t tmp = value;
+         for( uint32_t i = 0; i <= 12; ++i ) {
+            char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
+            str[12-i] = c;
+            tmp >>= (i == 0 ? 4 : 5);
+         }
+
+         trim_right_dots( str );
+         return str;
+      }
+
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
+
+   private:
+      static void trim_right_dots(std::string& str ) {
+         const auto last = str.find_last_not_of('.');
+         if (last != std::string::npos)
+            str = str.substr(0, last + 1);
+      }
    };
    /// @}
 
@@ -100,4 +150,10 @@ namespace std {
  */
 bool operator==(const checksum256& lhs, const checksum256& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
+}
+bool operator==(const checksum160& lhs, const checksum160& rhs) {
+   return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
+}
+bool operator!=(const checksum160& lhs, const checksum160& rhs) {
+   return memcmp(&lhs, &rhs, sizeof(lhs)) != 0;
 }

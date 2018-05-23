@@ -6,8 +6,10 @@
 #include "localize.hpp"
 #include <regex>
 #include <fc/io/json.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 using namespace eosio::client::localize;
+using namespace eosio::chain;
 
 const char* transaction_help_text_header = _("An error occurred while submitting the transaction for this command!");
 
@@ -97,78 +99,15 @@ auto smatch_to_variant(const std::smatch& smatch) {
    return result;
 };
 
-const char* error_advice_3010001 =  "Most likely, the given account/ permission doesn't exist in the blockchain.";
-const char* error_advice_3010002 =  "Most likely, the given account doesn't exist in the blockchain.";
-const char* error_advice_3010003 =  "Most likely, the given table doesnt' exist in the blockchain.";
-const char* error_advice_3010004 =  "Most likely, the given contract doesnt' exist in the blockchain.";
-
-const char* error_advice_3030000 =  "Ensure that your transaction satisfy the contract's constraint!";
-const char* error_advice_3030001 =  R"=====(Ensure that you have the related authority inside your transaction!;
-If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.)=====";
-const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and your wallet is unlocked.";
-const char* error_advice_3030003 =  "Please remove the unnecessary authority from your action!";
-const char* error_advice_3030004 =  "Please remove the unnecessary signature from your transaction!";
-const char* error_advice_3030011 =  "You can try embedding eosio nonce action inside your transaction to ensure uniqueness.";
-const char* error_advice_3030022 =  "Please increase the expiration time of your transaction!";
-const char* error_advice_3030023 =  "Please decrease the expiration time of your transaction!";
-const char* error_advice_3030024 =  "Ensure that the reference block exist in the blockchain!";
-
-const char* error_advice_3040002 = R"=====(Ensure that your arguments follow the contract abi!
-You can check the contract's abi by using 'cleos get code' command.)=====";
-
-const char* error_advice_3120001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
-const char* error_advice_3120002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
-const char* error_advice_3120003 = R"=====(Private key should be encoded in base58 WIF)=====";
-const char* error_advice_3120004 = R"=====(Ensure that your authority JSON follows the following format!
-{
-  "threshold":"uint32_t",
-  "keys":[{ "key":"public_key", "weight":"uint16_t" }],
-  "accounts":[{
-    "permission":{ "actor":"account_name", "permission":"permission_name" },
-    "weight":"uint16_t"
-  }]
-}
-e.g.
-{
-  "threshold":"1",
-  "keys":[{ "key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"1" }],
-  "accounts":[{
-    "permission":{ "actor":"initb", "permission":"social" },
-    "weight":"1
-  }]
-})=====";
-const char* error_advice_3120005 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
-const char* error_advice_3120006 = R"=====(Ensure that your transaction JSON follows the following format!\n"
-{
-  "ref_block_num":"uint16_t",
-  "ref_block_prefix":"uint32_t",
-  "expiration":"YYYY-MM-DDThh:mm",
-  "region": "uint16_t",
-  "read_scope":[ "account_name" ],
-  "write_scope":[ "account_name" ],
-  "actions":[{
-    "account":"account_name",
-    "name":"action_name",
-    "authorization":[{ "actor":"account_name","permission":"permission_name" }],
-    "data":"bytes"
-  }]
-}"
-e.g.
-{
-  "ref_block_num":"1000",
-  "ref_block_prefix":"3463702842",
-  "expiration":"2018-01-23T01:51:05",
-  "region": "0",
-  "read_scope":[ "initb", "initc" ],
-  "write_scope":[ "initb", "initc" ],
-  "actions":[{
-    "account":"eosio",
-    "name":"transfer",
-    "authorization":[{ "actor":"initb","permission":"active" }],
-    "data":"000000008093dd74000000000094dd74e80300000000000000"
-  }]
-})=====";
-const char* error_advice_3120007 =  R"=====(Ensure that your abi JSON follows the following format!
+const char* error_advice_name_type_exception = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
+const char* error_advice_public_key_type_exception = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
+const char* error_advice_private_key_type_exception = R"=====(Private key should be encoded in base58 WIF)=====";
+const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON follows the right authority structure!
+You can refer to contracts/eosiolib/native.hpp for reference)=====";
+const char* error_advice_action_type_exception = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
+const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!
+You can refer to contracts/eosiolib/transaction.hpp for reference)=====";
+const char* error_advice_abi_type_exception =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
   "structs" : [{ "name":"type_name", "base":"type_name", "fields": [{ "name":"field_name", "type": "type_name" }] }],
@@ -179,13 +118,14 @@ const char* error_advice_3120007 =  R"=====(Ensure that your abi JSON follows th
     "key_names":[ "field_name" ],
     "key_types":[ "type_name" ],
     "type":"type_name" "
-  }]
+  }],
+  "ricardian_clauses": [{ "id": "string", "body": "string" }]
 }
 e.g.
 {
   "types" : [{ "new_type_name":"account_name", "type":"name" }],
   "structs" : [
-    { "name":"foo", "base":"", "fields": [{ "name":"by", "type": "account_name" }] },\n "
+    { "name":"foo", "base":"", "fields": [{ "name":"by", "type": "account_name" }] },
     { "name":"foobar", "base":"", "fields": [{ "name":"by", "type": "account_name" }] }
   ],
   "actions" : [{ "name":"foo","type":"foo"}],
@@ -194,87 +134,109 @@ e.g.
     "index_type":"i64",
     "key_names":[ "by" ],
     "key_types":[ "account_name" ],
-    "type":"foobar" "
-  }]
+    "type":"foobar"
+  }],
+  "ricardian_clauses": [{ "id": "foo", "body": "bar" }]
 })=====";
-const char* error_advice_3120008 =  "Ensure that the block ID is a SHA-256 hexadecimal string!";
-const char* error_advice_3120009 =  "Ensure that the transaction ID is a SHA-256 hexadecimal string!";
-const char* error_advice_3120010 =  R"=====(Ensure that your packed transaction JSON follows the following format!
+const char* error_advice_block_id_type_exception =  "Ensure that the block ID is a SHA-256 hexadecimal string!";
+const char* error_advice_transaction_id_type_exception =  "Ensure that the transaction ID is a SHA-256 hexadecimal string!";
+const char* error_advice_packed_transaction_type_exception =  R"=====(Ensure that your packed transaction JSON follows the following format!
 {
   "signatures" : [ "signature" ],
   "compression" : enum("none", "zlib"),
-  "hex_transaction" : "bytes"
+  "packed_context_free_data" : "bytes",
+  "packed_trx" : "bytes";
 }
 e.g.
 {
   "signatures" : [ "SIG_K1_Jze4m1ZHQ4UjuHpBcX6uHPN4Xyggv52raQMTBZJghzDLepaPcSGCNYTxaP2NiaF4yRF5RaYwqsQYAwBwFtfuTJr34Z5GJX" ],
   "compression" : "none",
-  "hex_transaction" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
+  "packed_context_free_data" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000",
+  "packed_trx" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
 })=====";
 
-const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
-const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
-                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet-port\033[0m\033[32m arguments!";
-const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration!";
-const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_transaction_exception =  "Ensure that your transaction satisfy the contract's constraint!";
+const char* error_advice_expired_tx_exception =  "Please increase the expiration time of your transaction!";
+const char* error_advice_tx_exp_too_far_exception =  "Please decrease the expiration time of your transaction!";
+const char* error_advice_invalid_ref_block_exception =  "Ensure that the reference block exist in the blockchain!";
+const char* error_advice_tx_duplicate =  "You can try embedding eosio nonce action inside your transaction to ensure uniqueness.";
 
-const char* error_advice_3140001 =  "Try to use different wallet name.";
-const char* error_advice_3140002 =  "Are you sure you typed the wallet name correctly?";
-const char* error_advice_3140003 =  "Ensure that your wallet is unlocked before using it!";
-const char* error_advice_3140004 =  "Ensure that you have the relevant private key imported!";
-const char* error_advice_3140005 =  "Are you sure you are using the right password?";
-const char* error_advice_3140006 =  "Ensure that you have created a wallet and have it open";
+const char* error_advice_invalid_action_args_exception = R"=====(Ensure that your arguments follow the contract abi!
+You can check the contract's abi by using 'cleos get code' command.)=====";
 
+const char* error_advice_permission_query_exception =  "Most likely, the given account/ permission doesn't exist in the blockchain.";
+const char* error_advice_account_query_exception =  "Most likely, the given account doesn't exist in the blockchain.";
+const char* error_advice_contract_table_query_exception =  "Most likely, the given table doesnt' exist in the blockchain.";
+const char* error_advice_contract_query_exception =  "Most likely, the given contract doesnt' exist in the blockchain.";
+
+const char* error_advice_tx_irrelevant_sig =  "Please remove the unnecessary signature from your transaction!";
+const char* error_advice_unsatisfied_authorization =  "Ensure that you have the related private keys inside your wallet and your wallet is unlocked.";
+const char* error_advice_missing_auth_exception =  R"=====(Ensure that you have the related authority inside your transaction!;
+If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.)=====";
+const char* error_advice_irrelevant_auth_exception =  "Please remove the unnecessary authority from your action!";
+
+const char* error_advice_missing_chain_api_plugin_exception =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_wallet_api_plugin_exception =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
+                                    "Otherwise specify your wallet location with \033[2m--wallet-url\033[0m\033[32m argument!";
+const char* error_advice_missing_history_api_plugin_exception =  "Ensure that you have \033[2meosio::history_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_net_api_plugin_exception =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
+
+const char* error_advice_wallet_exist_exception =  "Try to use different wallet name.";
+const char* error_advice_wallet_nonexistent_exception =  "Are you sure you typed the wallet name correctly?";
+const char* error_advice_wallet_locked_exception =  "Ensure that your wallet is unlocked before using it!";
+const char* error_advice_wallet_missing_pub_key_exception =  "Ensure that you have the relevant private key imported!";
+const char* error_advice_wallet_invalid_password_exception =  "Are you sure you are using the right password?";
+const char* error_advice_wallet_not_available_exception =  "Ensure that you have created a wallet and have it open";
 
 const std::map<int64_t, std::string> error_advice = {
-   { 3010001, error_advice_3010001 },
-   { 3010002, error_advice_3010002 },
-   { 3010003, error_advice_3010003 },
-   { 3010004, error_advice_3010004 },
+   { name_type_exception::code_value, error_advice_name_type_exception },
+   { public_key_type_exception::code_value, error_advice_public_key_type_exception },
+   { private_key_type_exception::code_value, error_advice_private_key_type_exception },
+   { authority_type_exception::code_value, error_advice_authority_type_exception },
+   { action_type_exception::code_value, error_advice_action_type_exception },
+   { transaction_type_exception::code_value, error_advice_transaction_type_exception },
+   { abi_type_exception::code_value, error_advice_abi_type_exception },
+   { block_id_type_exception::code_value, error_advice_block_id_type_exception },
+   { transaction_id_type_exception::code_value, error_advice_transaction_id_type_exception },
+   { packed_transaction_type_exception::code_value, error_advice_packed_transaction_type_exception },
 
-   { 3030000, error_advice_3030000 },
-   { 3030001, error_advice_3030001 },
-   { 3030002, error_advice_3030002 },
-   { 3030003, error_advice_3030003 },
-   { 3030004, error_advice_3030004 },
-   { 3030011, error_advice_3030011 },
-   { 3030022, error_advice_3030022 },
-   { 3030023, error_advice_3030023 },
-   { 3030024, error_advice_3030024 },
+   { transaction_exception::code_value, error_advice_transaction_exception },
+   { expired_tx_exception::code_value, error_advice_expired_tx_exception },
+   { tx_exp_too_far_exception::code_value, error_advice_tx_exp_too_far_exception },
+   { invalid_ref_block_exception::code_value, error_advice_invalid_ref_block_exception },
+   { tx_duplicate::code_value, error_advice_tx_duplicate },
 
+   { invalid_action_args_exception::code_value, error_advice_invalid_action_args_exception },
 
-   { 3040002, error_advice_3040002 },
+   { permission_query_exception::code_value, error_advice_permission_query_exception },
+   { account_query_exception::code_value, error_advice_account_query_exception },
+   { contract_table_query_exception::code_value, error_advice_contract_table_query_exception },
+   { contract_query_exception::code_value, error_advice_contract_query_exception },
+   
+   { tx_irrelevant_sig::code_value, error_advice_tx_irrelevant_sig },
+   { unsatisfied_authorization::code_value, error_advice_unsatisfied_authorization },
+   { missing_auth_exception::code_value, error_advice_missing_auth_exception },
+   { irrelevant_auth_exception::code_value, error_advice_irrelevant_auth_exception },
+   
+   { missing_chain_api_plugin_exception::code_value, error_advice_missing_chain_api_plugin_exception },
+   { missing_wallet_api_plugin_exception::code_value, error_advice_missing_wallet_api_plugin_exception },
+   { missing_history_api_plugin_exception::code_value, error_advice_missing_history_api_plugin_exception },
+   { missing_net_api_plugin_exception::code_value, error_advice_missing_net_api_plugin_exception },
 
-   { 3120001, error_advice_3120001 },
-   { 3120002, error_advice_3120002 },
-   { 3120003, error_advice_3120003 },
-   { 3120004, error_advice_3120004 },
-   { 3120005, error_advice_3120005 },
-   { 3120006, error_advice_3120006 },
-   { 3120007, error_advice_3120007 },
-   { 3120008, error_advice_3120008 },
-   { 3120009, error_advice_3120009 },
-   { 3120010, error_advice_3120010 },
-
-   { 3130001, error_advice_3130001 },
-   { 3130002, error_advice_3130002 },
-   { 3130003, error_advice_3130003 },
-   { 3130004, error_advice_3130004 },
-
-   { 3140001, error_advice_3140001 },
-   { 3140002, error_advice_3140002 },
-   { 3140003, error_advice_3140003 },
-   { 3140004, error_advice_3140004 },
-   { 3140005, error_advice_3140005 },
-   { 3140006, error_advice_3140006 }
+   { wallet_exist_exception::code_value, error_advice_wallet_exist_exception },
+   { wallet_nonexistent_exception::code_value, error_advice_wallet_nonexistent_exception },
+   { wallet_locked_exception::code_value, error_advice_wallet_locked_exception },
+   { wallet_missing_pub_key_exception::code_value, error_advice_wallet_missing_pub_key_exception },
+   { wallet_invalid_password_exception::code_value, error_advice_wallet_invalid_password_exception },
+   { wallet_not_available_exception::code_value, error_advice_wallet_not_available_exception }
 };
 
-
 namespace eosio { namespace client { namespace help {
+
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
-   // eos recognized error code is from 3000000 to 3999999
+   // eos recognized error code is from 3000000 
    // refer to libraries/chain/include/eosio/chain/exceptions.hpp
-   if (e.code() >= 3000000 && e.code() <= 3999999) {
+   if (e.code() >= chain_exception::code_value) {
       std::string advice, explanation, stack_trace;
 
       // Get advice, if any
@@ -334,7 +296,7 @@ bool print_help_text(const fc::exception& e) {
          }
       }
    } catch (const std::regex_error& e ) {
-      std::cerr << localized(help_regex_error, ("code", e.code())("what", e.what())) << std::endl;
+      std::cerr << localized(help_regex_error, ("code", (int64_t)e.code())("what", e.what())) << std::endl;
    }
 
    return result;

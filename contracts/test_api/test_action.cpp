@@ -49,6 +49,8 @@ void test_action::test_dummy_action() {
    total = get_action( 1, 0, buffer, static_cast<size_t>(total) );
    eosio_assert( total > 0, "get_action failed" );
    eosio::action act = eosio::get_action( 1, 0 );
+   eosio_assert( act.authorization.back().actor == N(testapi), "incorrect permission actor" );
+   eosio_assert( act.authorization.back().permission == N(active), "incorrect permission name" );
    eosio_assert( eosio::pack_size(act) == static_cast<size_t>(total), "pack_size does not match get_action size" );
    eosio_assert( act.account == N(testapi), "expected testapi account" );
 
@@ -101,6 +103,16 @@ void test_action::test_cf_action() {
       memccpy(&v, &i, sizeof(i), sizeof(i));
       // verify transaction api access
       eosio_assert(transaction_size() > 0, "transaction_size failed");
+      // verify softfloat api access
+      float f1 = 1.0f, f2 = 2.0f;
+      float f3 = f1 + f2;
+      eosio_assert( f3 >  2.0f, "Unable to add float.");
+      // verify compiler builtin api access
+      __int128 ret;
+      __divti3(ret, 2, 2, 2, 2);
+      // verify context_free_system_api
+      eosio_assert( true, "verify eosio_assert can be called" );
+
 
    } else if ( cfa.payload == 200 ) {
       // attempt to access non context free api, privileged_api
@@ -120,10 +132,31 @@ void test_action::test_cf_action() {
       db_idx64_store( N(testapi), N(testapi), N(testapi), 0, &i );
       eosio_assert( false, "db_api should not be allowed" );
    } else if ( cfa.payload == 204 ) {
+      db_find_i64( N(testapi), N(testapi), N(testapi), 1);
+      eosio_assert( false, "db_api should not be allowed" );
+   } else if ( cfa.payload == 205 ) {
       // attempt to access non context free api, send action
       eosio::action dum_act;
       dum_act.send();
       eosio_assert( false, "action send should not be allowed" );
+   } else if ( cfa.payload == 206 ) {
+      eosio::require_auth(N(test));
+      eosio_assert( false, "authorization_api should not be allowed" );
+   } else if ( cfa.payload == 207 ) {
+      now();
+      eosio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 208 ) {
+      current_time();
+      eosio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 209 ) {
+      publication_time();
+      eosio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 210 ) {
+      send_inline( "hello", 6 );
+      eosio_assert( false, "transaction_api should not be allowed" );
+   } else if ( cfa.payload == 211 ) {
+      send_deferred( N(testapi), N(testapi), "hello", 6 );
+      eosio_assert( false, "transaction_api should not be allowed" );
    }
 
 }
@@ -165,8 +198,9 @@ void test_action::test_abort() {
 }
 
 void test_action::test_publication_time() {
-   uint32_t pub_time = 0;
-   read_action_data(&pub_time, sizeof(uint32_t));
+   uint64_t pub_time = 0;
+   uint32_t total = read_action_data(&pub_time, sizeof(uint64_t));
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
    eosio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
 }
 
@@ -178,15 +212,16 @@ void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64
    eosio_assert( receiver == cur_rec, "the current receiver does not match" );
 }
 
-void test_action::test_current_sender() {
-   account_name cur_send;
-   read_action_data(&cur_send, sizeof(account_name));
-   eosio_assert( current_sender() == cur_send, "the current sender does not match" );
+void test_action::test_current_time() {
+   uint64_t tmp = 0;
+   uint32_t total = read_action_data(&tmp, sizeof(uint64_t));
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   eosio_assert( tmp == current_time(), "tmp == current_time()" );
 }
 
-void test_action::now() {
-   uint32_t tmp = 0;
-   uint32_t total = read_action_data(&tmp, sizeof(uint32_t));
-   eosio_assert( total == sizeof(uint32_t), "total == sizeof(uint32_t)");
-   eosio_assert( tmp == ::now(), "tmp == now()" );
+void test_action::test_assert_code() {
+   uint64_t code = 0;
+   uint32_t total = read_action_data(&code, sizeof(uint64_t));
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   eosio_assert_code( false, code );
 }

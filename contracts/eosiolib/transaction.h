@@ -58,10 +58,13 @@ extern "C" {
     *
     * @{
     */
+   void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
 
-   void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size);
-
-   void cancel_deferred(const uint128_t& sender_id);
+   /**
+    * cancel deferred transaction
+    * @return 1 if transaction was canceled, 0 if transaction was not found
+    */
+   int cancel_deferred(const uint128_t& sender_id);
 
    /**
     * access a copy of the currently executing transaction
@@ -111,11 +114,6 @@ extern "C" {
     * @return size copied, or context_free_data[index].size() if 0 passed for size, or -1 if index not valid
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
-
-   /**
-    * Check that prodived authorizations is enough to execute the transaction
-    */
-   void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
 
    ///@ } transactioncapi
 }

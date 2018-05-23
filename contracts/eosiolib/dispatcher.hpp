@@ -66,7 +66,7 @@ namespace eosio {
 #define EOSIO_API_CALL( r, OP, elem ) \
    case ::eosio::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
       eosio::execute_action( &thiscontract, &OP::elem ); \
-      return;
+      break;
 
 #define EOSIO_API( TYPE,  MEMBERS ) \
    BOOST_PP_SEQ_FOR_EACH( EOSIO_API_CALL, TYPE, MEMBERS )
@@ -75,12 +75,16 @@ namespace eosio {
 extern "C" { \
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
       auto self = receiver; \
-      if( code == self ) { \
+      if( action == N(onerror)) { \
+         /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ \
+         eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
+      } \
+      if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \
          switch( action ) { \
             EOSIO_API( TYPE, MEMBERS ) \
          } \
-         eosio_exit(0); \
+         /* does not allow destructor of thiscontract to run: eosio_exit(0); */ \
       } \
    } \
 } \

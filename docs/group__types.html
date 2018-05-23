@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -64,7 +64,8 @@ $(function() {
 <a href="#groups">Modules</a> &#124;
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#define-members">Macros</a> &#124;
-<a href="#typedef-members">Typedefs</a>  </div>
+<a href="#typedef-members">Typedefs</a> &#124;
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">Builtin Types<div class="ingroups"><a class="el" href="group__contractdev.html">Smart Contract API Reference</a></div></div>  </div>
 </div><!--header-->
@@ -86,16 +87,6 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsignature.html">signature</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchecksum256.html">checksum256</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchecksum160.html">checksum160</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchecksum512.html">checksum512</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structfixed__string16.html">fixed_string16</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structfixed__string32.html">fixed_string32</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structaccount__permission.html">account_permission</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1name.html">eosio::name</a></td></tr>
@@ -104,8 +95,8 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:ga50d5ac027323a8c324137fc14c46ec7a"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga50d5ac027323a8c324137fc14c46ec7a">PACKED</a>(<a class="el" href="class_x.html">X</a>)&#160;&#160;&#160;__attribute((packed)) <a class="el" href="class_x.html">X</a></td></tr>
-<tr class="separator:ga50d5ac027323a8c324137fc14c46ec7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga9763e79ee25e85ca02c0d05e3aee7135"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga9763e79ee25e85ca02c0d05e3aee7135">ALIGNED</a>(<a class="el" href="class_x.html">X</a>)&#160;&#160;&#160;<a class="el" href="vis_8h.html#afc79878bb7823420f8320079c39e0ab1">__attribute__</a> ((aligned (16))) <a class="el" href="class_x.html">X</a></td></tr>
+<tr class="separator:ga9763e79ee25e85ca02c0d05e3aee7135"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaf9c1edb0e0da55ec6ba09f32f6839529"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(<a class="el" href="class_x.html">X</a>)&#160;&#160;&#160;::eosio::string_to_name(#<a class="el" href="class_x.html">X</a>)</td></tr>
 <tr class="memdesc:gaf9c1edb0e0da55ec6ba09f32f6839529"><td class="mdescLeft">&#160;</td><td class="mdescRight">used to generate a compile time uint64_t from the base32 encoded string interpretation of <a class="el" href="class_x.html">X</a>  <a href="#gaf9c1edb0e0da55ec6ba09f32f6839529">More...</a><br /></td></tr>
 <tr class="separator:gaf9c1edb0e0da55ec6ba09f32f6839529"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -126,23 +117,46 @@ Typedefs</h2></td></tr>
 <tr class="separator:ga38500bd43c27c05b7f8a566cefe94656"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gab0390a1836d20bbbb735af2fce1ad3e8"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gab0390a1836d20bbbb735af2fce1ad3e8">action_name</a></td></tr>
 <tr class="separator:gab0390a1836d20bbbb735af2fce1ad3e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga9ff8565896a4a57d1ff8c7c4533a451a"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a273cf69d639a59973b6019625df33e30">uint16_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga9ff8565896a4a57d1ff8c7c4533a451a">region_id</a></td></tr>
-<tr class="separator:ga9ff8565896a4a57d1ff8c7c4533a451a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga020a456ef8f905c10ca9b2a8685b261c"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga020a456ef8f905c10ca9b2a8685b261c">asset_symbol</a></td></tr>
 <tr class="separator:ga020a456ef8f905c10ca9b2a8685b261c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaa8106cfd71d324f4c43f180bac7d6bc9"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a996e72f71b11a5bb8b3b7b6936b1516d">int64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gaa8106cfd71d324f4c43f180bac7d6bc9">share_type</a></td></tr>
 <tr class="separator:gaa8106cfd71d324f4c43f180bac7d6bc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga54e6b5cf7b2043097848630225d92bd1"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a273cf69d639a59973b6019625df33e30">uint16_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga54e6b5cf7b2043097848630225d92bd1">weight_type</a></td></tr>
 <tr class="separator:ga54e6b5cf7b2043097848630225d92bd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gad40ea1265225083da2ae1a96d42f1a41"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structchecksum256.html">checksum256</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gad40ea1265225083da2ae1a96d42f1a41">transaction_id_type</a></td></tr>
+<tr class="memitem:gad40ea1265225083da2ae1a96d42f1a41"><td class="memItemLeft" align="right" valign="top">typedef struct checksum256&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gad40ea1265225083da2ae1a96d42f1a41">transaction_id_type</a></td></tr>
 <tr class="separator:gad40ea1265225083da2ae1a96d42f1a41"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga8f1158e196e3e075955b5d2784b5e84a"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structfixed__string16.html">fixed_string16</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga8f1158e196e3e075955b5d2784b5e84a">field_name</a></td></tr>
-<tr class="separator:ga8f1158e196e3e075955b5d2784b5e84a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga0cd9ef7832cfdc4b69f91d2ce286de4c"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structfixed__string32.html">fixed_string32</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga0cd9ef7832cfdc4b69f91d2ce286de4c">type_name</a></td></tr>
-<tr class="separator:ga0cd9ef7832cfdc4b69f91d2ce286de4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gac8e909fadd9540825720898531bcdcbb"><td class="memItemLeft" align="right" valign="top">typedef struct checksum256&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gac8e909fadd9540825720898531bcdcbb">block_id_type</a></td></tr>
+<tr class="separator:gac8e909fadd9540825720898531bcdcbb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:gaf42929a1e9844ade2ab9f3c22b96f5c7"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gaf42929a1e9844ade2ab9f3c22b96f5c7">ALIGNED</a> (checksum256)</td></tr>
+<tr class="separator:gaf42929a1e9844ade2ab9f3c22b96f5c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gae47ddfdc644493830873a3b13b3e07cf"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#gae47ddfdc644493830873a3b13b3e07cf">ALIGNED</a> (checksum160)</td></tr>
+<tr class="separator:gae47ddfdc644493830873a3b13b3e07cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga912c991df8af9097e516f6a2d5cf9925"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__types.html#ga912c991df8af9097e516f6a2d5cf9925">ALIGNED</a> (checksum512)</td></tr>
+<tr class="separator:ga912c991df8af9097e516f6a2d5cf9925"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <h2 class="groupheader">Macro Definition Documentation</h2>
+<a id="ga9763e79ee25e85ca02c0d05e3aee7135"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga9763e79ee25e85ca02c0d05e3aee7135">&#9670;&nbsp;</a></span>ALIGNED</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ALIGNED</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><a class="el" href="class_x.html">X</a></td><td>)</td>
+          <td>&#160;&#160;&#160;<a class="el" href="vis_8h.html#afc79878bb7823420f8320079c39e0ab1">__attribute__</a> ((aligned (16))) <a class="el" href="class_x.html">X</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="gaf9c1edb0e0da55ec6ba09f32f6839529"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#gaf9c1edb0e0da55ec6ba09f32f6839529">&#9670;&nbsp;</a></span>N</h2>
 
@@ -155,24 +169,6 @@ Typedefs</h2></td></tr>
           <td class="paramtype">&#160;</td>
           <td class="paramname"><a class="el" href="class_x.html">X</a></td><td>)</td>
           <td>&#160;&#160;&#160;::eosio::string_to_name(#<a class="el" href="class_x.html">X</a>)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ga50d5ac027323a8c324137fc14c46ec7a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga50d5ac027323a8c324137fc14c46ec7a">&#9670;&nbsp;</a></span>PACKED</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define PACKED</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname"><a class="el" href="class_x.html">X</a></td><td>)</td>
-          <td>&#160;&#160;&#160;__attribute((packed)) <a class="el" href="class_x.html">X</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -222,14 +218,14 @@ Typedefs</h2></td></tr>
 
 </div>
 </div>
-<a id="ga8f1158e196e3e075955b5d2784b5e84a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga8f1158e196e3e075955b5d2784b5e84a">&#9670;&nbsp;</a></span>field_name</h2>
+<a id="gac8e909fadd9540825720898531bcdcbb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gac8e909fadd9540825720898531bcdcbb">&#9670;&nbsp;</a></span>block_id_type</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef struct <a class="el" href="structfixed__string16.html">fixed_string16</a> <a class="el" href="group__types.html#ga8f1158e196e3e075955b5d2784b5e84a">field_name</a></td>
+          <td class="memname">typedef struct checksum256 <a class="el" href="group__types.html#gac8e909fadd9540825720898531bcdcbb">block_id_type</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -244,20 +240,6 @@ Typedefs</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="group__types.html#ga4a16baef1413dc2ec44666f6cc85adb1">permission_name</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ga9ff8565896a4a57d1ff8c7c4533a451a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga9ff8565896a4a57d1ff8c7c4533a451a">&#9670;&nbsp;</a></span>region_id</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a273cf69d639a59973b6019625df33e30">uint16_t</a> <a class="el" href="group__types.html#ga9ff8565896a4a57d1ff8c7c4533a451a">region_id</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -341,21 +323,7 @@ Typedefs</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef struct <a class="el" href="structchecksum256.html">checksum256</a> <a class="el" href="group__types.html#gad40ea1265225083da2ae1a96d42f1a41">transaction_id_type</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ga0cd9ef7832cfdc4b69f91d2ce286de4c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga0cd9ef7832cfdc4b69f91d2ce286de4c">&#9670;&nbsp;</a></span>type_name</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">typedef struct <a class="el" href="structfixed__string32.html">fixed_string32</a> <a class="el" href="group__types.html#ga0cd9ef7832cfdc4b69f91d2ce286de4c">type_name</a></td>
+          <td class="memname">typedef struct checksum256 <a class="el" href="group__types.html#gad40ea1265225083da2ae1a96d42f1a41">transaction_id_type</a></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -370,6 +338,61 @@ Typedefs</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a273cf69d639a59973b6019625df33e30">uint16_t</a> <a class="el" href="group__types.html#ga54e6b5cf7b2043097848630225d92bd1">weight_type</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Function Documentation</h2>
+<a id="gaf42929a1e9844ade2ab9f3c22b96f5c7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gaf42929a1e9844ade2ab9f3c22b96f5c7">&#9670;&nbsp;</a></span>ALIGNED() <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">struct ALIGNED </td>
+          <td>(</td>
+          <td class="paramtype">checksum256&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="gae47ddfdc644493830873a3b13b3e07cf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gae47ddfdc644493830873a3b13b3e07cf">&#9670;&nbsp;</a></span>ALIGNED() <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">struct ALIGNED </td>
+          <td>(</td>
+          <td class="paramtype">checksum160&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ga912c991df8af9097e516f6a2d5cf9925"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga912c991df8af9097e516f6a2d5cf9925">&#9670;&nbsp;</a></span>ALIGNED() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">struct ALIGNED </td>
+          <td>(</td>
+          <td class="paramtype">checksum512&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
         </tr>
       </table>
 </div><div class="memdoc">

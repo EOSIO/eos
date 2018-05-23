@@ -6,6 +6,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
+#include <eosio/history_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/utilities/common.hpp>
@@ -78,15 +79,24 @@ void initialize_logging()
    logging_conf_loop();
 }
 
+enum return_codes {
+   INITIALIZE_FAIL = -1,
+   SUCCESS         = 0,
+   BAD_ALLOC       = 1,
+   OTHER_FAIL      = 2
+};
+
 int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::nodeos::config::version);
-      auto root = fc::app_path(); 
+      app().register_plugin<history_plugin>();
+
+      auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio/nodeos/data" );
       app().set_default_config_dir(root / "eosio/nodeos/config" );
       if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
-         return -1;
+         return INITIALIZE_FAIL;
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", eosio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
       ilog("eosio root is ${root}", ("root", root.string()));
@@ -94,12 +104,20 @@ int main(int argc, char** argv)
       app().exec();
    } catch (const fc::exception& e) {
       elog("${e}", ("e",e.to_detail_string()));
+      return OTHER_FAIL;
+   } catch (const boost::interprocess::bad_alloc& e) {
+      elog("bad alloc");
+      return BAD_ALLOC;
    } catch (const boost::exception& e) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
+      return OTHER_FAIL;
    } catch (const std::exception& e) {
       elog("${e}", ("e",e.what()));
+      return OTHER_FAIL;
    } catch (...) {
       elog("unknown exception");
+      return OTHER_FAIL;
    }
-   return 0;
+
+   return SUCCESS;
 }

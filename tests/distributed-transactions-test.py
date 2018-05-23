@@ -62,6 +62,8 @@ try:
     else:
         cluster.killall()
         cluster.cleanup()
+        walletMgr.killall()
+        walletMgr.cleanup()
 
         Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
                (pnodes, total_nodes-pnodes, topo, delay))
@@ -76,6 +78,8 @@ try:
             errorExit("Cluster never stabilized")
 
     Print("Stand up EOS wallet keosd")
+    walletMgr.killall()
+    walletMgr.cleanup()
     if walletMgr.launch() is False:
         errorExit("Failed to stand up keosd.")
 
@@ -90,24 +94,19 @@ try:
     if not cluster.populateWallet(accountsCount, wallet):
         errorExit("Wallet initialization failed.")
 
-    initaAccount=cluster.initaAccount
-    initbAccount=cluster.initbAccount
-
-    Print("Importing keys for account %s into wallet %s." % (initaAccount.name, wallet.name))
-    if not walletMgr.importKey(initaAccount, wallet):
-        errorExit("Failed to import key for account %s" % (initaAccount.name))
+    defproduceraAccount=cluster.defproduceraAccount
+    defproducerbAccount=cluster.defproducerbAccount
+    eosioAccount=cluster.eosioAccount
 
     Print("Create accounts.")
-    if not cluster.createAccounts(initaAccount):
+    if not cluster.createAccounts(eosioAccount):
         errorExit("Accounts creation failed.")
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
-    # print("Funds spread validated")
+    print("Funds spread validated")
     
     testSuccessful=True
 finally:
@@ -123,6 +122,5 @@ finally:
         Print("Shut down the wallet and cleanup.")
         walletMgr.killall()
         walletMgr.cleanup()
-    pass
 
 exit(0)

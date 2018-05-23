@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/http_plugin/http_plugin.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
@@ -130,50 +131,66 @@ namespace eosio {
          }
 
          template<class T>
+         static void handle_exception(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+            string err = "Internal Service error, http: ";
+            try {
+               con->set_status( websocketpp::http::status_code::internal_server_error );
+               try {
+                  throw;
+               } catch (const fc::exception& e) {
+                  err += e.to_detail_string();
+                  elog( "${e}", ("e", err));
+                  error_results results{websocketpp::http::status_code::internal_server_error,
+                                        "Internal Service Error", e};
+                  con->set_body( fc::json::to_string( results ));
+               } catch (const std::exception& e) {
+                  err += e.what();
+                  elog( "${e}", ("e", err));
+                  error_results results{websocketpp::http::status_code::internal_server_error,
+                                        "Internal Service Error", fc::exception( FC_LOG_MESSAGE( error, e.what()))};
+               } catch (...) {
+                  err += "Unknown Exception";
+                  error_results results{websocketpp::http::status_code::internal_server_error,
+                                        "Internal Service Error",
+                                        fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" ))};
+                  con->set_body( fc::json::to_string( results ));
+               }
+            } catch (...) {
+               con->set_body( R"xxx({"message": "Internal Server Error"})xxx" );
+               std::cerr << "Exception attempting to handle exception: " << err << std::endl;
+            }
+         }
+
+         template<class T>
          void handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
             try {
-               if (!access_control_allow_origin.empty()) {
-                  con->append_header("Access-Control-Allow-Origin", access_control_allow_origin);
+               if( !access_control_allow_origin.empty()) {
+                  con->append_header( "Access-Control-Allow-Origin", access_control_allow_origin );
                }
-               if (!access_control_allow_headers.empty()) {
-                  con->append_header("Access-Control-Allow-Headers", access_control_allow_headers);
+               if( !access_control_allow_headers.empty()) {
+                  con->append_header( "Access-Control-Allow-Headers", access_control_allow_headers );
                }
-               if (access_control_allow_credentials) {
-                  con->append_header("Access-Control-Allow-Credentials", "true");
+               if( access_control_allow_credentials ) {
+                  con->append_header( "Access-Control-Allow-Credentials", "true" );
                }
-               con->append_header("Content-type", "application/json");
+               con->append_header( "Content-type", "application/json" );
                auto body = con->get_request_body();
                auto resource = con->get_uri()->get_resource();
-               auto handler_itr = url_handlers.find(resource);
-               if(handler_itr != url_handlers.end()) {
-                  handler_itr->second(resource, body, [con](int code, string body) {
-                     con->set_body(body);
-                     con->set_status(websocketpp::http::status_code::value(code));
-                  });
+               auto handler_itr = url_handlers.find( resource );
+               if( handler_itr != url_handlers.end()) {
+                  handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
+                     con->set_body( std::move( body ));
+                     con->set_status( websocketpp::http::status_code::value( code ));
+                  } );
                } else {
-                  wlog("404 - not found: ${ep}", ("ep",resource));
+                  wlog( "404 - not found: ${ep}", ("ep", resource));
                   error_results results{websocketpp::http::status_code::not_found,
-                                          "Not Found", fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint"))};
-                  con->set_body(fc::json::to_string(results));
-                  con->set_status(websocketpp::http::status_code::not_found);
+                                        "Not Found", fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" ))};
+                  con->set_body( fc::json::to_string( results ));
+                  con->set_status( websocketpp::http::status_code::not_found );
                }
-            } catch( const fc::exception& e ) {
-               elog( "http: ${e}", ("e",e.to_detail_string()));
-               error_results results{websocketpp::http::status_code::internal_server_error,
-                                       "Internal Service Error", e};
-               con->set_body(fc::json::to_string(results));
-               con->set_status(websocketpp::http::status_code::internal_server_error);
-            } catch( const std::exception& e ) {
-               elog( "http: ${e}", ("e",e.what()));
-               error_results results{websocketpp::http::status_code::internal_server_error,
-                                       "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, e.what()))};
-               con->set_body(fc::json::to_string(results));
-               con->set_status(websocketpp::http::status_code::internal_server_error);
             } catch( ... ) {
-               error_results results{websocketpp::http::status_code::internal_server_error,
-                                       "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, "Unknown Exception"))};
-               con->set_body(fc::json::to_string(results));
-               con->set_status(websocketpp::http::status_code::internal_server_error);
+               handle_exception<T>( con );
             }
          }
 
@@ -327,4 +344,44 @@ namespace eosio {
         my->url_handlers.insert(std::make_pair(url,handler));
       });
    }
+
+   void http_plugin::handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb ) {
+      try {
+         try {
+            throw;
+         } catch (chain::unsatisfied_authorization& e) {
+            error_results results{401, "UnAuthorized", e};
+            cb( 401, fc::json::to_string( results ));
+         } catch (chain::tx_duplicate& e) {
+            error_results results{409, "Conflict", e};
+            cb( 409, fc::json::to_string( results ));
+         } catch (chain::transaction_exception& e) {
+            error_results results{400, "Bad Request", e};
+            cb( 400, fc::json::to_string( results ));
+         } catch (fc::eof_exception& e) {
+            error_results results{400, "Bad Request", e};
+            cb( 400, fc::json::to_string( results ));
+            elog( "Unable to parse arguments: ${args}", ("args", body));
+         } catch (fc::exception& e) {
+            error_results results{500, "Internal Service Error", e};
+            cb( 500, fc::json::to_string( results ));
+            elog( "FC Exception encountered while processing ${api}.${call}: ${e}",
+                  ("api", api_name)( "call", call_name )( "e", e.to_detail_string()));
+         } catch (std::exception& e) {
+            error_results results{500, "Internal Service Error", fc::exception( FC_LOG_MESSAGE( error, e.what()))};
+            cb( 500, fc::json::to_string( results ));
+            elog( "STD Exception encountered while processing ${api}.${call}: ${e}",
+                  ("api", api_name)( "call", call_name )( "e", e.what()));
+         } catch (...) {
+            error_results results{500, "Internal Service Error",
+                                  fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" ))};
+            cb( 500, fc::json::to_string( results ));
+            elog( "Unknown Exception encountered while processing ${api}.${call}",
+                  ("api", api_name)( "call", call_name ));
+         }
+      } catch (...) {
+         std::cerr << "Exception attempting to handle exception for " << api_name << "." << call_name << std::endl;
+      }
+   }
+
 }

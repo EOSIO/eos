@@ -88,7 +88,7 @@ public:
    /// The wallet remains unlocked until ::lock is called or program exit.
    /// @param name the name of the wallet to lock.
    /// @param password the plaintext password returned from ::create.
-   /// @throws fc::exception if wallet not found or invalid password.
+   /// @throws fc::exception if wallet not found or invalid password or already unlocked.
    void unlock(const std::string& name, const std::string& password);
 
    /// Import private key into specified wallet.
@@ -98,6 +98,14 @@ public:
    /// @param wif_key the WIF Private Key to import, e.g. 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
    /// @throws fc::exception if wallet not found or locked.
    void import_key(const std::string& name, const std::string& wif_key);
+
+   /// Creates a key within the specified wallet.
+   /// Wallet must be opened and unlocked
+   /// @param name of the wallet to create key in
+   /// @param type of key to create
+   /// @throws fc::exception if wallet not found or locked, or if the wallet cannot create said type of key
+   /// @return The public key of the created key
+   string create_key(const std::string& name, const std::string& key_type);
 
 private:
    /// Verify timeout has not occurred and reset timeout if not.
