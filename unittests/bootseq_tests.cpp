@@ -92,7 +92,7 @@ public:
 
     auto delegate_bandwidth( name from, name receiver, asset net, asset cpu, uint8_t transfer = 1) {
        auto r = base_tester::push_action(N(eosio), N(delegatebw), from, mvo()
-                    ("from", "eosio" )
+                    ("from", from )
                     ("receiver", receiver)
                     ("stake_net_quantity", net)
                     ("stake_cpu_quantity", cpu)
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(N(eosio), a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(eosio), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth(N(eosio.stake), a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 
