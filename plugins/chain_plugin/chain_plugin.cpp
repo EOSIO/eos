@@ -21,6 +21,8 @@
 
 #include <eosio/chain/plugin_interface.hpp>
 
+#include <boost/signals2/connection.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <signal.h>
@@ -33,6 +35,8 @@ using namespace eosio::chain::config;
 using namespace eosio::chain::plugin_interface;
 using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
+
+using boost::signals2::scoped_connection;
 
 //using txn_msg_rate_limits = controller::txn_msg_rate_limits;
 
@@ -84,6 +88,15 @@ public:
    methods::get_block_by_id::method_type::handle                     get_block_by_id_provider;
    methods::get_head_block_id::method_type::handle                   get_head_block_id_provider;
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
+   
+   // scoped connections for chain controller
+   fc::optional<scoped_connection>                                   accepted_block_header_connection;
+   fc::optional<scoped_connection>                                   accepted_block_connection;
+   fc::optional<scoped_connection>                                   irreversible_block_connection;
+   fc::optional<scoped_connection>                                   accepted_transaction_connection;
+   fc::optional<scoped_connection>                                   applied_transaction_connection;
+   fc::optional<scoped_connection>                                   accepted_confirmation_connection;
+
 
 };
 
@@ -230,27 +243,27 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    });
 
    // relay signals to channels
-   my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
+   my->accepted_block_header_connection = my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
       my->accepted_block_header_channel.publish(blk);
    });
 
-   my->chain->accepted_block.connect([this](const block_state_ptr& blk) {
+   my->accepted_block_connection = my->chain->accepted_block.connect([this](const block_state_ptr& blk) {
       my->accepted_block_channel.publish(blk);
    });
 
-   my->chain->irreversible_block.connect([this](const block_state_ptr& blk) {
+   my->irreversible_block_connection = my->chain->irreversible_block.connect([this](const block_state_ptr& blk) {
       my->irreversible_block_channel.publish(blk);
    });
 
-   my->chain->accepted_transaction.connect([this](const transaction_metadata_ptr& meta){
+   my->accepted_transaction_connection = my->chain->accepted_transaction.connect([this](const transaction_metadata_ptr& meta){
       my->accepted_transaction_channel.publish(meta);
    });
 
-   my->chain->applied_transaction.connect([this](const transaction_trace_ptr& trace){
+   my->applied_transaction_connection = my->chain->applied_transaction.connect([this](const transaction_trace_ptr& trace){
       my->applied_transaction_channel.publish(trace);
    });
 
-   my->chain->accepted_confirmation.connect([this](const header_confirmation& conf){
+   my->accepted_confirmation_connection = my->chain->accepted_confirmation.connect([this](const header_confirmation& conf){
       my->accepted_confirmation_channel.publish(conf);
    });
 
@@ -272,6 +285,12 @@ void chain_plugin::plugin_startup()
 } FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
+   my->accepted_block_header_connection.reset();
+   my->accepted_block_connection.reset();
+   my->irreversible_block_connection.reset();
+   my->accepted_transaction_connection.reset();
+   my->applied_transaction_connection.reset();
+   my->accepted_confirmation_connection.reset();
    my->chain.reset();
 }
 
