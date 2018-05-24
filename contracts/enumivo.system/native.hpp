@@ -73,7 +73,7 @@ namespace enumivosystem {
           *  Called after a new account is created. This code enforces resource-limits rules
           *  for new accounts as well as new account naming conventions.
           *
-          *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
+          *  1. accounts cannot contain '.' symbols which forces all acccounts to be 14
           *  characters long without '.' until a future account auction process is implemented
           *  which prevents name squatting.
           *
