@@ -106,7 +106,7 @@ struct abi_def {
    ,error_messages(error_msgs)
    {}
 
-   string                version;
+   string                version = "enumivo::abi/1.0";
    vector<type_def>      types;
    vector<struct_def>    structs;
    vector<action_def>    actions;
@@ -117,6 +117,7 @@ struct abi_def {
 };
 
 abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi);
+vector<type_def> common_type_defs();
 
 } } /// namespace enumivo::chain
 

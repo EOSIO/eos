@@ -1,6 +1,21 @@
 #include <enumivo/chain/abi_def.hpp>
+#include <fc/utility.hpp>
 
 namespace enumivo { namespace chain {
+
+vector<type_def> common_type_defs() {
+   vector<type_def> types;
+
+   types.push_back( type_def{"account_name", "name"} );
+   types.push_back( type_def{"permission_name", "name"} );
+   types.push_back( type_def{"action_name", "name"} );
+   types.push_back( type_def{"table_name", "name"} );
+   types.push_back( type_def{"transaction_id_type", "checksum256"} );
+   types.push_back( type_def{"block_id_type", "checksum256"} );
+   types.push_back( type_def{"weight_type", "uint16"} );
+
+   return types;
+}
 
 abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
 {
@@ -10,13 +25,7 @@ abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
       enu_abi.version = "enumivo::abi/1.0";
    }
 
-   enu_abi.types.push_back( type_def{"account_name",    "name"} );
-   enu_abi.types.push_back( type_def{"permission_name", "name"} );
-   enu_abi.types.push_back( type_def{"action_name",     "name"} );
-   enu_abi.types.push_back( type_def{"table_name",      "name"} );
-   enu_abi.types.push_back( type_def{"transaction_id_type", "checksum256"} );
-   enu_abi.types.push_back( type_def{"block_id_type",       "checksum256"} );
-   enu_abi.types.push_back( type_def{"weight_type", "uint16"} );
+   fc::move_append(enu_abi.types, common_type_defs());
 
    // transaction
    enu_abi.structs.emplace_back( struct_def {

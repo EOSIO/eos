@@ -17,7 +17,6 @@ void test_types::types_size() {
    enumivo_assert( sizeof(uint8_t) ==  1, "uint8_t size != 1");
 
    enumivo_assert( sizeof(account_name) ==  8, "account_name size !=  8");
-   enumivo_assert( sizeof(token_name) ==  8, "token_name size !=  8");
    enumivo_assert( sizeof(table_name) ==  8, "table_name size !=  8");
    enumivo_assert( sizeof(time) ==  4, "time size !=  4");
    enumivo_assert( sizeof(enumivo::key256) == 32, "key256 size != 32" );
