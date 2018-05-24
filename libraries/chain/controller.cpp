@@ -11,7 +11,7 @@
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/unconfirmed_block_object.hpp>
+#include <eosio/chain/reversible_block_object.hpp>
 
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
@@ -47,7 +47,7 @@ struct pending_state {
 struct controller_impl {
    controller&                    self;
    chainbase::database            db;
-   chainbase::database            unconfirmed_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
+   chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
    optional<pending_state>        pending;
    block_state_ptr                head;
@@ -73,9 +73,9 @@ struct controller_impl {
       auto prev = fork_db.get_block( head->header.previous );
       FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
 
-      if( const auto* b = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num) )
+      if( const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num) )
       {
-         unconfirmed_blocks.remove( *b );
+         reversible_blocks.remove( *b );
       }
 
       for( const auto& t : head->trxs )
@@ -92,14 +92,14 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
-    db( cfg.shared_memory_dir,
+    db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.shared_memory_size ),
-    unconfirmed_blocks( cfg.block_log_dir/"unconfirmed",
+        cfg.state_size ),
+    reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.unconfirmed_cache_size, true/*allow dirty*/ ), 
-    blog( cfg.block_log_dir ),
-    fork_db( cfg.shared_memory_dir ),
+        cfg.reversible_cache_size ),
+    blog( cfg.blocks_dir ),
+    fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
@@ -174,10 +174,10 @@ struct controller_impl {
       emit( self.irreversible_block, s );
       db.commit( s->block_num );
 
-      const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
+      const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.begin();
       while( objitr != ubi.end() && objitr->blocknum <= s->block_num ) {
-         unconfirmed_blocks.remove( *objitr );
+         reversible_blocks.remove( *objitr );
          objitr = ubi.begin();
       }
    }
@@ -209,16 +209,17 @@ struct controller_impl {
             replaying_irreversible = false;
 
             int unconf = 0;
-            while( auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1) ) {
+            while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
                ++unconf;
                self.push_block( obj->get_block(), true );
             }
 
             std::cerr<< "\n";
-            ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
+            ilog( "${n} reversible blocks replayed", ("n",unconf) );
             auto end = fc::time_point::now();
-            ilog( "replayed blocks in ${n} seconds, ${spb} spb",
-                  ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
+            ilog( "replayed ${n} blocks in seconds, ${mspb} ms/block",
+                  ("n", head->block_num)("duration", (end-start).count()/1000000)
+                  ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
             std::cerr<< "\n";
             replaying = false;
 
@@ -227,16 +228,16 @@ struct controller_impl {
          }
       }
 
-      const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
+      const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.rbegin();
       if( objitr != ubi.rend() ) {
          FC_ASSERT( objitr->blocknum == head->block_num,
-                    "unconfirmed block database is inconsistent with fork database, replay blockchain",
+                    "reversible block database is inconsistent with fork database, replay blockchain",
                     ("head",head->block_num)("unconfimed", objitr->blocknum)         );
       } else {
          auto end = blog.read_head();
          FC_ASSERT( end && end->block_num() == head->block_num,
-                    "fork database exists but unconfirmed block database does not, replay blockchain",
+                    "fork database exists but reversible block database does not, replay blockchain",
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
 
@@ -261,11 +262,11 @@ struct controller_impl {
       edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
-      unconfirmed_blocks.flush();
+      reversible_blocks.flush();
    }
 
    void add_indices() {
-      unconfirmed_blocks.add_index<unconfirmed_block_index>();
+      reversible_blocks.add_index<reversible_block_index>();
 
       db.add_index<account_index>();
       db.add_index<account_sequence_index>();
@@ -410,7 +411,7 @@ struct controller_impl {
       emit( self.accepted_block, pending->_pending_block_state );
 
       if( !replaying ) {
-         unconfirmed_blocks.create<unconfirmed_block_object>( [&]( auto& ubo ) {
+         reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = pending->_pending_block_state->block_num;
             ubo.set_block( pending->_pending_block_state->block );
          });
@@ -1280,6 +1281,10 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 
 bool controller::skip_auth_check()const {
    return my->replaying_irreversible && !my->conf.force_all_checks;
+}
+
+bool controller::contracts_console()const {
+   return my->conf.contracts_console;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

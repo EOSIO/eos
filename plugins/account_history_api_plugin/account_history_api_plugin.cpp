@@ -27,14 +27,8 @@ void account_history_api_plugin::plugin_initialize(const variables_map&) {}
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
              cb(200, fc::json::to_string(result)); \
-          } catch (fc::eof_exception& e) { \
-             error_results results{400, "Bad Request", e}; \
-             cb(400, fc::json::to_string(results)); \
-             elog("Unable to parse arguments: ${args}", ("args", body)); \
-          } catch (fc::exception& e) { \
-             error_results results{500, "Internal Service Error", e}; \
-             cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
        }}
 

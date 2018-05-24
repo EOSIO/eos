@@ -343,6 +343,7 @@ namespace eosio {
       bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
       bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
       uint32_t            block_num = 0; ///< the block number the transaction was included in
+      time_point_sec      expires;
       time_point          requested_time; /// in case we fetch large trx
    };
 
@@ -362,10 +363,19 @@ namespace eosio {
       }
    };
 
+   struct update_txn_expiry {
+      time_point_sec new_expiry;
+      update_txn_expiry(time_point_sec e) : new_expiry(e) {}
+      void operator() (transaction_state& ts) {
+         ts.expires = new_expiry;
+      }
+   };
+
    typedef multi_index_container<
       transaction_state,
       indexed_by<
          ordered_unique< tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id > >,
+         ordered_non_unique< tag< by_expiry >, member< transaction_state,fc::time_point_sec,&transaction_state::expires >>,
          ordered_non_unique<
             tag<by_block_num>,
             member< transaction_state,
@@ -589,7 +599,6 @@ namespace eosio {
       uint32_t       sync_last_requested_num;
       uint32_t       sync_next_expected_num;
       uint32_t       sync_req_span;
-      uint32_t       last_repeated;
       connection_ptr source;
       stages         state;
 
@@ -601,18 +610,18 @@ namespace eosio {
    public:
       sync_manager(uint32_t span);
       void set_state(stages s);
+      bool sync_required();
+      void send_handshakes();
       bool is_active(connection_ptr conn);
       void reset_lib_num(connection_ptr conn);
-      bool sync_required();
       void request_next_chunk(connection_ptr conn = connection_ptr() );
       void start_sync(connection_ptr c, uint32_t target);
-      void send_handshakes();
       void reassign_fetch(connection_ptr c, go_away_reason reason);
       void verify_catchup(connection_ptr c, uint32_t num, block_id_type id);
-      void recv_block(connection_ptr c, const block_id_type &blk_id, uint32_t blk_num, bool accepted);
+      void rejected_block(connection_ptr c, uint32_t blk_num);
+      void recv_block(connection_ptr c, const block_id_type &blk_id, uint32_t blk_num);
       void recv_handshake(connection_ptr c, const handshake_message& msg);
       void recv_notice(connection_ptr c, const notice_message& msg);
-
    };
 
    class dispatch_manager {
@@ -1197,7 +1206,6 @@ namespace eosio {
       ,sync_last_requested_num( 0 )
       ,sync_next_expected_num( 1 )
       ,sync_req_span( req_span )
-      ,last_repeated( 0 )
       ,source()
       ,state(in_sync)
    {
@@ -1256,58 +1264,67 @@ namespace eosio {
    void sync_manager::request_next_chunk( connection_ptr conn ) {
       uint32_t head_block = chain_plug->chain().head_block_num();
 
-      if (head_block < sync_last_requested_num) {
-         fc_ilog (logger, "ignoring request, head is ${h} last req = ${r}",
-                  ("h",head_block)("r",sync_last_requested_num));
+      if (head_block < sync_last_requested_num && source && source->current()) {
+         fc_ilog (logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
+                  ("h",head_block)("r",sync_last_requested_num)("p",source->peer_name()));
          return;
       }
 
       /* ----------
        * next chunk provider selection criteria
-       * 1. a provider is supplied, use it.
-       * 2. we only have 1 peer so use that.
-       * 3. we have multiple peers, select the next available from the list
+       * a provider is supplied and able to be used, use it.
+       * otherwise select the next available from the list, round-robin style.
        */
 
       if (conn && conn->current() ) {
          source = conn;
       }
-      else if (my_impl->connections.size() == 1) {
-         if (!source) {
-            source = *my_impl->connections.begin();
-         }
-         if (!source->current()) {
-            source.reset();
-         }
-      }
       else {
-         auto cptr = my_impl->connections.begin();
-         auto cend = my_impl->connections.end();
-         if (source) {
-            cptr = my_impl->connections.find(source);
-            cend = cptr;
-            if (cptr == my_impl->connections.end()) {
-               elog ("unable to find previous source connection in connections list");
-               source.reset();
-               cptr = my_impl->connections.begin();
-            } else {
-               if (++cptr == my_impl->connections.end())
-                  cptr = my_impl->connections.begin();
+         if (my_impl->connections.size() == 1) {
+            if (!source) {
+               source = *my_impl->connections.begin();
             }
          }
-         while (cptr != cend) {
-            if ((*cptr)->current()) {
-               source = *cptr;
-               break;
-            }
-            else {
-               if (++cptr == my_impl->connections.end()) {
+         else {
+            // init to a linear array search
+            auto cptr = my_impl->connections.begin();
+            auto cend = my_impl->connections.end();
+            // do we remember the previous source?
+            if (source) {
+               //try to find it in the list
+               cptr = my_impl->connections.find(source);
+               cend = cptr;
+               if (cptr == my_impl->connections.end()) {
+                  //not there - must have been closed! cend is now connections.end, so just flatten the ring.
+                  source.reset();
                   cptr = my_impl->connections.begin();
+               } else {
+                  //was found - advance the start to the next. cend is the old source.
+                  if (++cptr == my_impl->connections.end() && cend != my_impl->connections.end() ) {
+                     cptr = my_impl->connections.begin();
+                  }
                }
             }
+
+            //scan the list of peers looking for another able to provide sync blocks.
+            while (cptr != cend) {
+               //select the first one which is current and break out.
+               if ((*cptr)->current()) {
+                  source = *cptr;
+                  break;
+               }
+               else {
+                  // advance the iterator in a round robin fashion.
+                  if (++cptr == my_impl->connections.end()) {
+                     cptr = my_impl->connections.begin();
+                  }
+               }
+            }
+            // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
          }
       }
 
+      // verify there is an available source
       if (!source || !source->current() ) {
          elog("Unable to continue syncing at this time");
          sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
@@ -1322,7 +1339,7 @@ namespace eosio {
          if( end > sync_known_lib_num )
             end = sync_known_lib_num;
          if( end > 0 && end >= start ) {
-            fc_dlog(logger, "conn ${n} requesting range ${s} to ${e}, calling sync_wait",
+            fc_ilog(logger, "requesting range ${s} to ${e}, from ${n}",
                     ("n",source->peer_name())("s",start)("e",end));
             source->request_sync_blocks(start, end);
             sync_last_requested_num = end;
@@ -1490,29 +1507,22 @@ namespace eosio {
       }
    }
 
-   void sync_manager::recv_block (connection_ptr c, const block_id_type &blk_id, uint32_t blk_num, bool accepted) {
-      fc_dlog(logger," got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
-      if (!accepted) {
-         uint32_t head_num = chain_plug->chain().head_block_num();
-         if (head_num != last_repeated) {
-            ilog ("block not accepted, try requesting one more time");
-            last_repeated = head_num;
-            send_handshakes();
-         }
-         else {
-            ilog ("second attempt to retrive block ${n} failed",
-                  ("n", head_num + 1));
-            last_repeated = 0;
-            sync_last_requested_num = 0;
-            my_impl->close(c);
-         }
-         return;
+   void sync_manager::rejected_block (connection_ptr c, uint32_t blk_num) {
+      if (state != in_sync ) {
+         fc_ilog (logger, "block ${bn} not accepted from ${p}",("bn",blk_num)("p",c->peer_name()));
+         sync_last_requested_num = 0;
+         source.reset();
+         my_impl->close(c);
+         set_state(in_sync);
+         send_handshakes();
       }
-      last_repeated = 0;
+   }
+   void sync_manager::recv_block (connection_ptr c, const block_id_type &blk_id, uint32_t blk_num) {
+      fc_dlog(logger," got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
       if (state == lib_catchup) {
          if (blk_num != sync_next_expected_num) {
             fc_ilog (logger, "expected block ${ne} but got ${bn}",("ne",sync_next_expected_num)("bn",blk_num));
-            c->close();
+            my_impl->close(c);
             return;
          }
          sync_next_expected_num = blk_num + 1;
@@ -1655,6 +1665,8 @@ namespace eosio {
       uint32_t packsiz = 0;
       uint32_t bufsiz = 0;
 
+      time_point_sec trx_expiration = trx.expiration();
+
       net_message msg(trx);
       packsiz = fc::raw::pack_size(msg);
       bufsiz = packsiz + sizeof(packsiz);
@@ -1663,7 +1675,7 @@ namespace eosio {
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
       fc::raw::pack( ds, msg );
       node_transaction_state nts = {id,
-                                    trx.expiration(),
+                                    trx_expiration,
                                     trx,
                                     std::move(buff),
                                     0, 0, 0};
@@ -1671,15 +1683,18 @@ namespace eosio {
 
       if(bufsiz <= just_send_it_max) {
          connection_wptr weak_skip = skip;
-         my_impl->send_all( trx, [weak_skip, id](connection_ptr c) -> bool {
+         my_impl->send_all( trx, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
                if(c == weak_skip.lock() || c->syncing ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
-                  c->trx_state.insert(transaction_state({id,true,true,0,time_point() }));
+                  c->trx_state.insert(transaction_state({id,true,true,0,trx_expiration,time_point() }));
                   fc_dlog(logger, "sending whole trx to ${n}", ("n",c->peer_name() ) );
+               } else {
+                  update_txn_expiry ute(trx_expiration);
+                  c->trx_state.modify(bs, ute);
                }
                return unknown;
             });
@@ -1690,7 +1705,7 @@ namespace eosio {
          pending_notify.known_trx.ids.push_back( id );
          pending_notify.known_blocks.mode = none;
          connection_wptr weak_skip = skip;
-         my_impl->send_all(pending_notify, [weak_skip, id](connection_ptr c) -> bool {
+         my_impl->send_all(pending_notify, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
                if (c == weak_skip.lock() || c->syncing) {
                   return false;
                }
@@ -1698,7 +1713,10 @@ namespace eosio {
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
                   fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
-                  c->trx_state.insert(transaction_state({id,false,true,0, time_point() }));
+                  c->trx_state.insert(transaction_state({id,false,true,0,trx_expiration,time_point() }));
+               } else {
+                  update_txn_expiry ute(trx_expiration);
+                  c->trx_state.modify(bs, ute);
                }
                return unknown;
             });
@@ -1832,7 +1850,10 @@ namespace eosio {
             if( tx == my_impl->local_txns.end( ) ) {
                fc_dlog(logger,"did not find ${id}",("id",t));
 
-               c->trx_state.insert( (transaction_state){t,true,true,0,
+               //At this point the details of the txn are not known, just its id. This
+               //effectively gives 120 seconds to learn of the details of the txn which
+               //will update the expiry in bcast_transaction
+               c->trx_state.insert( (transaction_state){t,true,true,0,time_point_sec(time_point::now()) + 120,
                         time_point()} );
 
                req.req_trx.ids.push_back( t );
@@ -1940,6 +1961,14 @@ namespace eosio {
 
       if (colon == std::string::npos || colon == 0) {
          elog ("Invalid peer address. must be \"host:port\": ${p}", ("p",c->peer_addr));
+         for ( auto itr : connections ) {
+            if((*itr).peer_addr == c->peer_addr) {
+               (*itr).reset();
+               close(itr);
+               connections.erase(itr);
+               break;
+            }
+         }
          return;
       }
 
@@ -2441,10 +2470,17 @@ namespace eosio {
       dispatcher->recv_transaction(c, tid);
       uint64_t code = 0;
       try {
-         chain_plug->accept_transaction( msg);
-         fc_dlog(logger, "chain accepted transaction" );
-         dispatcher->bcast_transaction(msg);
-         return;
+         auto trace = chain_plug->accept_transaction( msg);
+         if (!trace->except) {
+            fc_dlog(logger, "chain accepted transaction");
+            dispatcher->bcast_transaction(msg);
+            return;
+         }
+
+         // if accept didn't throw but there was an exception on the trace
+         // it means that this was non-fatally rejected from the chain.
+         // we will mark it as "rejected" and hope someone sends it to us later
+         // when we are able to accept it.
       }
       catch( const fc::exception &ex) {
          code = ex.code();
@@ -2466,7 +2502,7 @@ namespace eosio {
 
       try {
          if( cc.fetch_block_by_id(blk_id)) {
-            sync_master->recv_block(c, blk_id, blk_num, true);
+            sync_master->recv_block(c, blk_id, blk_num);
             return;
          }
       } catch( ...) {
@@ -2485,7 +2521,6 @@ namespace eosio {
          chain_plug->accept_block(sbp); //, sync_master->is_active(c));
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
-         elog( "unlinkable_block_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
          reason = unlinkable;
       } catch( const block_validate_exception &ex) {
          elog( "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
@@ -2512,8 +2547,11 @@ namespace eosio {
                c->trx_state.modify( ctx, ubn );
             }
          }
+         sync_master->recv_block(c, blk_id, blk_num);
       }
-      sync_master->recv_block(c, blk_id, blk_num, reason == no_reason);
+      else {
+         sync_master->rejected_block(c, blk_num);
+      }
    }
 
    void net_plugin_impl::start_conn_timer( ) {
@@ -2578,6 +2616,8 @@ namespace eosio {
       for ( auto &c : connections ) {
          auto &stale_txn = c->trx_state.get<by_block_num>();
          stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(bn) );
+         auto &stale_txn_e = c->trx_state.get<by_expiry>();
+         stale_txn_e.erase(stale_txn_e.lower_bound(time_point_sec()), stale_txn_e.upper_bound(time_point::now()));
          auto &stale_blk = c->blk_state.get<by_block_num>();
          stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(bn) );
       }

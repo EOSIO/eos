@@ -55,7 +55,7 @@ namespace eosio { namespace chain {
       if (!fc::is_directory(my->datadir))
          fc::create_directories(my->datadir);
 
-      auto fork_db_dat = my->datadir / "forkdb.dat";
+      auto fork_db_dat = my->datadir / config::forkdb_filename;
       if( fc::exists( fork_db_dat ) ) {
          string content;
          fc::read_file_contents( fork_db_dat, content );
@@ -71,6 +71,8 @@ namespace eosio { namespace chain {
          fc::raw::unpack( ds, head_id );
 
          my->head = get_block( head_id );
+
+         fc::remove( fork_db_dat );
       }
    }
 
@@ -84,7 +86,7 @@ namespace eosio { namespace chain {
          states.push_back( *s );
       }
 
-      auto fork_db_dat = my->datadir / "forkdb.dat";
+      auto fork_db_dat = my->datadir / config::forkdb_filename;
       std::ofstream out( fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
       fc::raw::pack( out, states );
       if( my->head )
@@ -217,7 +219,7 @@ namespace eosio { namespace chain {
             previtr = previdx.find(id);
          }
       }
-      wdump((my->index.size()));
+      //wdump((my->index.size()));
    }
 
    void fork_database::set_validity( const block_state_ptr& h, bool valid ) {

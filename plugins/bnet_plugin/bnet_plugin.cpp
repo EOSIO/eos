@@ -40,10 +40,12 @@ struct hello {
    string                        network_version;
    string                        agent;
    chain_id_type                 chain_id;
+   bool                          request_transactions = false;
    uint32_t                      last_irr_block_num = 0;
    vector<block_id_type>         pending_block_ids;
 };
-FC_REFLECT( hello, (remote_peer)(network_version)(agent)(chain_id)(last_irr_block_num)(pending_block_ids) )
+FC_REFLECT( hello, (remote_peer)(network_version)(agent)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
+
 
 /**
  * This message is sent upon successful speculative application of a transaction
@@ -71,7 +73,8 @@ using bnet_message = fc::static_variant<hello,
                                         trx_notice,
                                         block_notice,
                                         signed_block_ptr,
-                                        packed_transaction_ptr >;
+                                        packed_transaction_ptr
+                                        >;
 
 
 struct by_id;
@@ -83,9 +86,6 @@ namespace eosio {
   using namespace chain::plugin_interface;
 
   class bnet_plugin_impl;
-
-
-
 
   /**
    *  Each session is presumed to operate in its own strand so that
@@ -101,23 +101,15 @@ namespace eosio {
         };
 
         struct block_status {
-           block_status( block_id_type i, 
-                         bool kby_peer = false, 
-                         bool nto_peer = false,
-                         bool rfrom_peer = false,
-                         bool nfrom_peer = false)
+           block_status( block_id_type i, bool kby_peer, bool rfrom_peer)
            {
               known_by_peer      = kby_peer;
-              notice_to_peer     = nto_peer;
               received_from_peer = rfrom_peer;
-              notice_from_peer   = nfrom_peer;
               id = i;
            }
 
            bool known_by_peer  = false;         ///< we sent block to peer or peer sent us notice
-           bool notice_to_peer = false;         ///< we sent peer notice that we consider header valid
            bool received_from_peer = false;     ///< peer sent us this block and considers full block valid
-           bool notice_from_peer = false;       ///< peer sent us a notice that they have this block and consider header valid
            block_id_type id;                    ///< the block id;
            block_id_type prev;                  ///< the prev block id
 
@@ -138,12 +130,13 @@ namespace eosio {
 
 
         struct transaction_status {
-           bool                       known_by_peer = false; 
-           bool                       notice_to_peer = false;
            time_point                 received;
-           time_point                 expired;
+           time_point                 expired; /// 5 seconds from last accepted
            transaction_id_type        id;
            transaction_metadata_ptr   trx;
+
+           void mark_known_by_peer() { received = fc::time_point::maximum();  }
+           bool known_by_peer()const { return received == fc::time_point::maximum(); }
         };
 
         typedef boost::multi_index_container<transaction_status,
@@ -162,9 +155,11 @@ namespace eosio {
         transaction_status_index  _transaction_status; 
 
         uint32_t           _local_lib             = 0;
+        block_id_type      _local_lib_id;
         uint32_t           _local_head_block_num  = 0;
         block_id_type      _local_head_block_id; /// the last block id received on local channel
 
+        bool               _remote_request_trx    = false;
         uint32_t           _remote_lib            = 0;
         uint32_t           _last_sent_block_num   = 0;
         block_id_type      _last_sent_block_id; /// the id of the last block sent
@@ -234,10 +229,7 @@ namespace eosio {
            wlog( "open session ${n}",("n",_session_num) );
         }
 
-
-        ~session() {
-           wlog( "close session ${n}",("n",_session_num) );
-        }
+        ~session();
 
         void run() {
            _ws->async_accept( boost::asio::bind_executor( 
@@ -291,26 +283,52 @@ namespace eosio {
            do_read();
         }
 
+        /**
+         *  This will be called "every time" a the transaction is accepted which happens
+         *  on the speculative block (potentially several such blocks) and when a block 
+         *  that contains the transaction is applied and/or when switching forks. 
+         *
+         *  We will add it to the transaction status table as "received now" to be the
+         *  basis of sending it to the peer. When we send it to the peer "received now"
+         *  will be set to the infinite future to mark it as sent so we don't resend it
+         *  when it is accepted again. 
+         *
+         *  Each time the transaction is "accepted" we extend the time we cache it by
+         *  5 seconds from now.  Every time a block is applied we purge all accepted 
+         *  transactions that have reached 5 seconds without a new "acceptance". 
+         */
         void on_accepted_transaction( transaction_metadata_ptr t ) {
+           //ilog( "accepted ${t}", ("t",t->id) );
            auto itr = _transaction_status.find( t->id );
            if( itr != _transaction_status.end() ) {
-              return; /// this peer obviously knows this trx
-           }
-           
-           //idump((t->id));
-           transaction_status stat;
-           stat.id  = t->id;
-           stat.trx = t;
-           stat.received = fc::time_point::now();
-           stat.expired  = std::min<fc::time_point>( t->trx.expiration, fc::time_point::now()+fc::seconds(30) );
+              if( !itr->known_by_peer() ) { 
+                 _transaction_status.modify( itr, [&]( auto& stat ) {
+                    stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->trx.expiration );
+                 });
+              }
+              return;
+           } 
 
+           transaction_status stat;
+           stat.received = fc::time_point::now();
+           stat.expired  = stat.received + fc::seconds(5);
+           stat.trx      = t;
+           stat.id       = t->id;
            _transaction_status.insert( stat );
 
+           do_send_next_message(); 
+        }
+
+        /**
+         * Remove all transactions that expired from cache prior to now
+         */
+        void purge_transaction_cache() {
            auto& idx = _transaction_status.get<by_expired>();
-           auto start = idx.begin();
-           if( start != idx.end() && start->expired < fc::time_point::now() ) {
-              idx.erase(start);
-              start = idx.begin();
+           auto itr = idx.begin();
+           auto now = fc::time_point::now();
+           while( itr != idx.end() && itr->expired < now ) {
+              idx.erase(itr);
+              itr = idx.begin();
            }
         }
 
@@ -321,6 +339,7 @@ namespace eosio {
         void on_new_lib( block_state_ptr s ) {
            if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            _local_lib = s->block_num;
+           _local_lib_id = s->id;
 
            auto purge_to = std::min( _local_lib, _last_sent_block_num );
 
@@ -336,23 +355,26 @@ namespace eosio {
 
         void on_bad_block( signed_block_ptr b ) {
            if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
-           auto id = b->id();
-           auto itr = _block_status.find( id );
-           if( itr == _block_status.end() ) return;
-           if( itr->received_from_peer ) {
-              elog( "peer sent bad block #${b} ${i}, disconnect", ("b", b->block_num())("i",b->id())  );
-              _ws->close( boost::beast::websocket::close_code::protocol_error ); 
-              _ws->next_layer().close();
+           try {
+              auto id = b->id();
+              auto itr = _block_status.find( id );
+              if( itr == _block_status.end() ) return;
+              if( itr->received_from_peer ) {
+                 elog( "peer sent bad block #${b} ${i}, disconnect", ("b", b->block_num())("i",b->id())  );
+                 _ws->next_layer().close();
+              }
+           } catch ( ... ) {
+              elog( "uncaught exception" );
            }
         }
 
         void on_accepted_block( block_id_type id, block_id_type prev, shared_ptr<vector<char>> msgdata, block_state_ptr s ) {
+           //ilog( "accepted block ${n}", ("n",s->block_num) );
            if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
 
-           mark_block_known_by_peer( id );
            auto itr = _block_status.find( id );
            if( itr == _block_status.end() ) {
-              itr = _block_status.insert( block_status(id) ).first;
+              itr = _block_status.insert( block_status(id, false, false) ).first;
            }
            
            _block_status.modify( itr, [&]( auto& item ) {
@@ -363,20 +385,21 @@ namespace eosio {
            _local_head_block_id = id;
            _local_head_block_num = block_header::num_from_id(id);
 
-           for( const auto& receipt: s->block->transactions ) {
+           purge_transaction_cache();
+
+           /** purge all transactions from cache, I will send them as part of a block
+            * in the future unless peer tells me they already have block.
+            */
+           for( const auto& receipt : s->block->transactions ) {
               if( receipt.trx.which() == 1 ) {
                  auto id = receipt.trx.get<packed_transaction>().id();
                  auto itr = _transaction_status.find( id );
-                 if( itr != _transaction_status.end() ) {
+                 if( itr != _transaction_status.end() )
                     _transaction_status.erase(itr);
-                 }
               }
            }
-           if( _transaction_status.size() > 1000 ) {
-              idump((_transaction_status.size()));
-           }
 
-           do_send_next_message();
+           do_send_next_message(); /// attempt to send if we are idle
         }
 
 
@@ -427,17 +450,7 @@ namespace eosio {
            });
         }
 
-        void do_hello() {
-           async_get_pending_block_ids( [self = shared_from_this() ]( const vector<block_id_type>& ids, uint32_t lib ){
-               hello hello_msg;
-               hello_msg.last_irr_block_num = lib;
-               hello_msg.pending_block_ids  = ids;
-              
-               self->_local_lib = lib;
-               self->send( hello_msg );
-               self->_sent_remote_hello = true;
-           });
-        }
+        void do_hello();
 
         void send( const shared_ptr<vector<char> >& buffer ) {
            try {
@@ -448,7 +461,7 @@ namespace eosio {
               memcpy( _out_buffer.data(), buffer->data(), _out_buffer.size() );
 
               _state = sending_state;
-           //    wlog( "state = sending" );
+              // wlog( "state = sending" );
               _ws->async_write( boost::asio::buffer(_out_buffer), 
                                 boost::asio::bind_executor( 
                                    _strand,
@@ -482,47 +495,38 @@ namespace eosio {
                                           std::placeholders::_2 ) ) );
         } FC_LOG_AND_RETHROW() }
 
-        void mark_block_known_by_peer( block_id_type id, bool noticed_by_peer = false, bool recv_from_peer = false ) {
+        void mark_block_known_by_peer( block_id_type id) {
             auto itr = _block_status.find(id);
             if( itr == _block_status.end() ) {
-              itr = _block_status.insert( block_status(id) ).first;
-            } 
-
-            _block_status.modify( itr, [&]( auto& item ) {
-              item.known_by_peer = true;
-              item.notice_from_peer   |= noticed_by_peer;
-              item.received_from_peer |= recv_from_peer;
-            });
+               _block_status.insert( block_status(id, true, false) );
+            } else {
+               _block_status.modify( itr, [&]( auto& item ) {
+                 item.known_by_peer = true;
+               });
+            }
+        }
+        void mark_block_recv_from_peer( block_id_type id ) {
+            auto itr = _block_status.find(id);
+            if( itr == _block_status.end() ) {
+               _block_status.insert( block_status(id, true, true) );
+            } else {
+               _block_status.modify( itr, [&]( auto& item ) {
+                 item.known_by_peer = true;
+                 item.received_from_peer = true;
+               });
+            }
         }
 
         void do_send_next_message() {
-           //wlog("");
            if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            if( _state == sending_state ) return; /// in process of sending
            if( _out_buffer.size() ) return;
            if( !_recv_remote_hello || !_sent_remote_hello ) return;
-      //     wlog( "do send next message" );
 
-           //wdump((_remote_head_block_num)(_local_lib) );
+           clear_expired_trx();
 
-           /// until we get caught up with last irreversible block we 
-           /// will simply fetch blocks from the block log and send
-           if( _last_sent_block_num <= _local_lib ) {
-              _state = sending_state;
-            //  wlog( "state = sending" );
-              async_get_block_num( _last_sent_block_num + 1, 
-                   [self=shared_from_this()]( auto sblockptr ) {
-                     self->_last_sent_block_num++;
-                     self->_last_sent_block_id = sblockptr->id();
-                     self->send( sblockptr );
-                   }
-              );
-              return;
-           } 
-           if( _last_sent_block_num < _local_head_block_num ) 
-              send_next_block();
-           else
-              send_next_trx();
+           if( send_next_block() ) return;
+           else if( send_next_trx() ) return;
         }
 
         bool is_known_by_peer( block_id_type id ) {
@@ -531,64 +535,82 @@ namespace eosio {
            return itr->known_by_peer;
         }
 
-        void send_next_trx() { try {
-           //wlog( "send next trx" );
+        void clear_expired_trx() {
+           auto& idx = _transaction_status.get<by_expired>();
+           auto itr = idx.begin();
+           while( itr != idx.end() && itr->expired < fc::time_point::now() ) {
+              idx.erase(itr);
+              itr = idx.begin();
+           }
+        }
+
+        bool send_next_trx() { try {
+           if( !_remote_request_trx  ) return false;
+
            auto& idx = _transaction_status.get<by_received>();
            auto start = idx.begin();
-           while( start != idx.end() && start->expired < fc::time_point::now() ) {
-              idx.erase( start );
-              start = idx.begin();
-           }
-           if( idx.size() > 2000 ) {
-              idump((idx.size()));
-           }
+           if( start == idx.end() || start->known_by_peer() )
+              return false;
 
-           while( start != idx.end() && start->received < fc::time_point::maximum() ) {
-              if( !start->known_by_peer ) {
-                 idx.modify( start, [&]( auto& stat ) {
-                     stat.received = fc::time_point::maximum();
-                     stat.known_by_peer = true;
-                 });
-                 auto ptrx_ptr = std::make_shared<packed_transaction>( start->trx->packed_trx );
-             //    wlog("sending trx ${id}", ("id",start->id) );
-                 send(ptrx_ptr);
-                 return;
-              }
-              ++start;
-           }
+           idx.modify( start, [&]( auto& stat ) {
+              stat.mark_known_by_peer();
+           });
+
+           auto ptrx_ptr = std::make_shared<packed_transaction>( start->trx->packed_trx );
+           // wlog("sending trx ${id}", ("id",start->id) );
+           send(ptrx_ptr);
+
+           return true;
+
         } FC_LOG_AND_RETHROW() }
 
-        void send_next_block() {
-           //wlog( "send next trx" );
-           try {
-              _state = sending_state;
-            //  wlog( "state = sending " );
-              async_get_block_num( _last_sent_block_num + 1, 
-                   [self=shared_from_this()]( auto sblockptr ) {
-                     auto prev = sblockptr->previous;
+        bool send_next_block() {
+           if( _last_sent_block_num == _local_head_block_num ) 
+              return false;
 
-                     bool peer_knows_prev = self->_last_sent_block_id == prev; /// shortcut
-                     if( !peer_knows_prev ) 
-                        peer_knows_prev = self->is_known_by_peer( prev );
+           _state = sending_state;
+           async_get_block_num( _last_sent_block_num + 1, 
+                [self=shared_from_this()]( auto sblockptr ) {
+                  if( !sblockptr )  {
+                     self->_state = idle_state;
+                     self->do_send_next_message();
+                     return;
+                  }
 
-                     if( peer_knows_prev ) {
-                        self->_last_sent_block_id  = sblockptr->id();
-                        self->_last_sent_block_num = block_header::num_from_id(self->_last_sent_block_id);
-                        self->mark_block_known_by_peer( self->_last_sent_block_id );
-                        //ilog( "sending pending........... ${n}", ("n", sblockptr->block_num())  );
+                  auto prev = sblockptr->previous;
+                  auto next = sblockptr->id();
+
+                  bool peer_knows_prev = self->_last_sent_block_id == prev; /// shortcut
+                  if( !peer_knows_prev ) 
+                     peer_knows_prev = self->is_known_by_peer( prev );
+
+                  if( peer_knows_prev ) {
+                     self->_last_sent_block_id  = next;
+                     self->_last_sent_block_num = block_header::num_from_id(next);
+
+                     if( !self->is_known_by_peer( next ) ) {
+                        self->mark_block_known_by_peer( next );
+                        self->mark_block_transactions_known_by_peer( sblockptr );
+
+                        //ilog( "send block ${n}", ("n", sblockptr->block_num()) );
                         self->send( sblockptr );
-                     } else { 
-                        wlog( "looks like we had a fork... see if peer knows previous block num" );
+                        return;
+                     } else {
                         self->_state = idle_state;
-                        wlog( "state = idle" );
-                        /// we must have forked... peer doesn't know about previous,
-                        /// we need to find the most recent block the peer does know about
-                        self->_last_sent_block_num--;
-                        self->send_next_block();
+                        self->do_send_next_message();
                      }
-                   }
-              );
-           } FC_LOG_AND_RETHROW() 
+                  } else { 
+                     wlog( "looks like we had a fork... see if peer knows previous block num" );
+                     self->_state = idle_state;
+                     /// we must have forked... peer doesn't know about previous,
+                     /// we need to find the most recent block the peer does know about
+                     self->_last_sent_block_num = self->_local_lib;
+                     self->_last_sent_block_id  = self->_local_lib_id;
+                     self->send_next_block();
+                  }
+                }
+           );
+           return true;
         }
 
         void on_fail( boost::system::error_code ec, const char* what ) {
@@ -629,20 +651,33 @@ namespace eosio {
            //fc::datastream<const char*> ds(str.data(), str.size());
 
            //idump((_in_buffer.size()));
-           auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(_in_buffer.data()));
-           auto s = boost::asio::buffer_size(_in_buffer.data());
-           fc::datastream<const char*> ds(d,s);
-
-           bnet_message msg;
            try {
+              auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(_in_buffer.data()));
+              auto s = boost::asio::buffer_size(_in_buffer.data());
+              fc::datastream<const char*> ds(d,s);
+
+              bnet_message msg;
               fc::raw::unpack( ds, msg );
+              _in_buffer.consume( ds.tellp() );
+              on_message( msg ); 
+
+              wait_on_app();
+
            } catch ( ... ) {
+              wlog( "close bad payload" );
               _ws->close( boost::beast::websocket::close_code::bad_payload );
            }
-           _in_buffer.consume( ds.tellp() );
+        }
 
-           on_message( msg ); 
-           //do_read();  this will cause reads to queue up in main thread... we need to wait until main thread catches up
+        /** if we just call do_read here then this thread might run ahead of
+         * the main thread, instead we post an event to main which will then 
+         * post a new read event when ready.
+         *
+         * This also keeps the "shared pointer" alive in the callback preventing
+         * the connection from being closed.
+         */
+        void wait_on_app() {
+            app().get_io_service().post( [self=shared_from_this()]{ self->do_read(); });
         }
 
         void on_message( const bnet_message& msg ) {
@@ -657,69 +692,83 @@ namespace eosio {
                  case bnet_message::tag<packed_transaction_ptr>::value:
                     on( msg.get<packed_transaction_ptr>() );
                     break;
+                 default:
+                    wlog( "bad message received" );
+                    _ws->close( boost::beast::websocket::close_code::bad_payload );
+                    return;
               }
-              do_send_next_message();
            } catch( const fc::exception& e ) {
               elog( "${e}", ("e",e.to_detail_string()));
+              _ws->close( boost::beast::websocket::close_code::bad_payload );
            }
         }
 
         void on( const hello& hi ) {
-           idump((hi));
+           if( hi.chain_id != chain_id_type() ) {
+              _ws->next_layer().close();
+              return;
+           }
+
            _recv_remote_hello     = true;
            _last_sent_block_num   = hi.last_irr_block_num;
-         //  _last_sent_block_id    = hi.lib_block_id;
+           _remote_request_trx    = hi.request_transactions;
 
            for( const auto& id : hi.pending_block_ids )
-              mark_block_known_by_peer( id, true );
-           do_read();
+              mark_block_known_by_peer( id );
         }
 
         void on( const block_notice& stat ) {
-           mark_block_known_by_peer( stat.block_id, true );
+           mark_block_known_by_peer( stat.block_id );
         }
 
         void on( const signed_block_ptr& b ) {
+           //ilog( "recv block ${n}", ("n", b->block_num()) );
            auto id = b->id();
-           mark_block_known_by_peer( id, true, true );
+           mark_block_recv_from_peer( id );
 
            app().get_channel<incoming::channels::block>().publish(b);
 
-           _app_ios.post( [self=shared_from_this()]{
-              self->do_read();
-           });
+           mark_block_transactions_known_by_peer( b );
+        }
+
+        void mark_block_transactions_known_by_peer( const signed_block_ptr& b ) {
+           for( const auto& receipt : b->transactions ) {
+              if( receipt.trx.which() == 1 ) {
+                 auto id = receipt.trx.get<packed_transaction>().id();
+                 mark_transaction_known_by_peer(id);
+              }
+           }
+        }
+
+        /**
+         * @return true if trx is known by local host, false if new to this host
+         */
+        bool mark_transaction_known_by_peer( const transaction_id_type& id ) {
+           auto itr = _transaction_status.find( id );
+           if( itr != _transaction_status.end() ) {
+              _transaction_status.modify( itr, [&]( auto& stat ) {
+                 stat.mark_known_by_peer();
+              });
+              return true;
+           } else {
+              transaction_status stat;
+              stat.id = id;
+              stat.mark_known_by_peer();
+              stat.expired = fc::time_point::now()+fc::seconds(5);
+              _transaction_status.insert(stat);
+           }
+           return false;
         }
 
         void on( const packed_transaction_ptr& p ) {
            auto id = p->id();
-           //wlog( "received trx ${id}", ("id",id) );
-           auto itr = _transaction_status.find( id );
-           if( itr != _transaction_status.end() ) {
-              _transaction_status.modify( itr, [&]( auto& stat ) {
-                 stat.known_by_peer = true;
-                 stat.received      = fc::time_point::maximum(); /// don't send it back
-                 stat.expired       = std::min<fc::time_point>(stat.trx->trx.expiration, stat.trx->trx.expiration + fc::seconds(30) );
-              });
-              if( itr->trx ) return; /// we already know it
-           }
-           else 
-           {
-              transaction_status stat;
-              stat.id       = id;
-              stat.trx      = std::make_shared<transaction_metadata>( *p );
+          // ilog( "recv trx ${n}", ("n", id) );
+           if( p->expiration() < fc::time_point::now() ) return;
 
-              if( stat.trx->trx.expiration < fc::time_point::now() ) 
-                 return; /// nothing to do here
-              
-              stat.received = fc::time_point::maximum(); /// don't send it back
-              stat.expired  = std::min<fc::time_point>(stat.trx->trx.expiration, stat.trx->trx.expiration + fc::seconds(30) );
-              _transaction_status.insert(stat);
-           }
+           if( mark_transaction_known_by_peer( id ) )
+              return;
 
            app().get_channel<incoming::channels::transaction>().publish(p);
-           _app_ios.post( [self=shared_from_this()]{
-              self->do_read();
-           });
         }
 
         void on_write( boost::system::error_code ec, std::size_t bytes_transferred ) {
@@ -730,7 +779,6 @@ namespace eosio {
               return on_fail( ec, "write" );
            }
            _state = idle_state;
-           //wlog( "state = idle" );
            _out_buffer.resize(0);
            do_send_next_message();
         }
@@ -753,20 +801,15 @@ namespace eosio {
            boost::system::error_code ec;
 
            _acceptor.open( endpoint.protocol(), ec );
-           if( ec ) {
-              return;
-           }
+           if( ec ) { on_fail( ec, "open" ); return; }
 
            _acceptor.set_option( boost::asio::socket_base::reuse_address(true) );
 
            _acceptor.bind( endpoint, ec );
-           if( ec ) {
-              return;
-           }
+           if( ec ) { on_fail( ec, "bind" ); return; }
 
            _acceptor.listen( boost::asio::socket_base::max_listen_connections, ec );
-           if( ec ) {
-           }
+           if( ec ) on_fail( ec, "listen" );
         }
 
         void run() {
@@ -778,6 +821,10 @@ namespace eosio {
            _acceptor.async_accept( _socket, [self=shared_from_this()]( auto ec ){ self->on_accept(ec); } );
         }
 
+        void on_fail( boost::system::error_code ec, const char* what ) {
+           elog( "${w}: ${m}", ("w", what)("m", ec.message() ) );
+        }
+
         void on_accept( boost::system::error_code ec );
   };
 
@@ -786,6 +833,7 @@ namespace eosio {
       public:
          string                                         _bnet_endpoint_address = "0.0.0.0";
          uint16_t                                       _bnet_endpoint_port = 4321;
+         bool                                           _request_trx = true;
                                                         
          std::vector<std::string>                       _connect_to_peers; /// list of peers to connect to
          std::vector<std::thread>                       _socket_threads;
@@ -810,22 +858,27 @@ namespace eosio {
             });
          }
 
-         void on_accepted_transaction( transaction_metadata_ptr trx ) {
-            if( trx->trx.signatures.size() == 0 ) return;
+         void on_session_close( const session* s ) {
+            auto itr = _sessions.find(s);
+            if( _sessions.end() != itr ) 
+               _sessions.erase(itr);
+         }
 
+         template<typename Call>
+         void for_each_session( Call callback ) {
             for( const auto& item : _sessions ) {
-               auto ses = item.second.lock();
-               if( ses ) {
-                  //ses->_local_lib = s->block_num;
-                  //wdump((ses->_local_lib));
+               if( auto ses = item.second.lock() ) {
                   ses->_ios.post( boost::asio::bind_executor(
                                         ses->_strand,
-                                        [ses,trx](){
-                                           ses->on_accepted_transaction(trx);
-                                        }
+                                        [ses,cb=callback](){ cb(ses); }
                                     ));
                } 
             }
+         }
+
+         void on_accepted_transaction( transaction_metadata_ptr trx ) {
+            if( trx->trx.signatures.size() == 0 ) return;
+            for_each_session( [trx]( auto ses ){ ses->on_accepted_transaction( trx ); } );
          }
 
          /**
@@ -833,26 +886,7 @@ namespace eosio {
           * can purge their block cache
           */
          void on_irreversible_block( block_state_ptr s ) {
-           // wlog("on irb" );
-            vector<const session*> removed;
-            for( const auto& item : _sessions ) {
-               auto ses = item.second.lock();
-               if( ses ) {
-                  //ses->_local_lib = s->block_num;
-                  //wdump((ses->_local_lib));
-                  ses->_ios.post( boost::asio::bind_executor(
-                                        ses->_strand,
-                                        [ses,s](){
-                                           ses->on_new_lib(s);
-                                        }
-                                    ));
-               } else {
-                  removed.push_back(item.first);
-               }
-            }
-            for( auto r : removed ) {
-               _sessions.erase( _sessions.find(r) );
-            }
+            for_each_session( [s]( auto ses ){ ses->on_new_lib( s ); } );
          }
 
          /**
@@ -862,32 +896,12 @@ namespace eosio {
           * it on.
           */
          void on_accepted_block( block_state_ptr s ) {
-            bnet_message msg(s->block);
-            auto id = s->id;
-            auto prev = s->header.previous;
-
-            auto msgdata = std::make_shared<vector<char>>( fc::raw::pack(msg) );
-
-            vector<const session*> removed;
-            for( const auto& item : _sessions ) {
-               shared_ptr<session> ses = item.second.lock();
-               if( ses ) {
-                  ses->_ios.post( boost::asio::bind_executor(
-                                        ses->_strand,
-                                        [ses,id,prev,msgdata,s](){
-                                           ses->on_accepted_block(id,prev,msgdata,s);
-                                        }
-                                    ));
-               } else {
-                  removed.push_back(item.first);
-               }
-            }
-
-            for( auto r : removed ) {
-               _sessions.erase( _sessions.find(r) );
-            }
+            _ioc->post( [s,this] { /// post this to the thread pool because packing can be intensive
+               bnet_message msg(s->block);
+               auto msgdata = std::make_shared<vector<char>>( fc::raw::pack(msg) );
+               for_each_session( [msgdata,s]( auto ses ){ ses->on_accepted_block( s->id, s->header.previous, msgdata, s ); } );
+            });
          }
-
 
          /**
           * We received a bad block which either
@@ -898,38 +912,19 @@ namespace eosio {
           * should be disconnected as they are objectively bad
           */
          void on_bad_block( signed_block_ptr s ) {
-            wdump(( s->id() ) );
-            for( const auto& item : _sessions ) {
-               auto ses = item.second.lock();
-               if( ses ) {
-                  wdump((ses->_local_lib));
-                  ses->_ios.post( boost::asio::bind_executor(
-                                        ses->_strand,
-                                        [ses,s](){
-                                           ses->on_bad_block(s);
-                                        }
-                                    ));
-               }
-            }
+            for_each_session( [s]( auto ses ) { ses->on_bad_block(s); } );
          };
 
          void on_reconnect_peers() {
-
-             idump((_connect_to_peers)(_sessions.size()));
              for( const auto& peer : _connect_to_peers ) {
                 bool found = false;
-                vector<const session*> closed;
                 for( const auto& con : _sessions ) {
                    auto ses = con.second.lock();
-                   if( !ses ) 
-                      closed.push_back(con.first);
-                   else if( (ses->_peer == peer) ) {
+                   if( ses && (ses->_peer == peer) ) {
                       found = true;
                       break;
                    }
                 }
-                for( const auto item : closed ) 
-                   _sessions.erase(item);
 
                 if( !found ) {
                    wlog( "attempt to connect to ${p}", ("p",peer) );
@@ -941,15 +936,14 @@ namespace eosio {
 
              start_reconnect_timer();
          }
+
+
          void start_reconnect_timer() {
             /// add some random delay so that all my peers don't attempt to reconnect to me 
-            /// at the same time after shutting down.. TODO: verify srand is called
+            /// at the same time after shutting down.. 
             _timer->expires_from_now( boost::posix_time::microseconds( 1000000*(10+rand()%5) ) );
             _timer->async_wait([=](const boost::system::error_code& ec) {
-                if( ec ) {
-                    elog( "reconnect timer error" );
-                    return;
-                }
+                if( ec ) { return; }
                 on_reconnect_peers();
             });
          }
@@ -979,33 +973,12 @@ namespace eosio {
          ("bnet_endpoint", bpo::value<string>()->default_value("0.0.0.0:4321"), "the endpoint upon which to listen for incoming connections" )
          ("bnet_threads", bpo::value<uint32_t>(), "the number of threads to use to process network messages" )
          ("bnet_connect", bpo::value<vector<string>>()->composing(), "the endpoint upon which to listen for incoming connections" )
+         ("bnet_no_trx", bpo::bool_switch()->default_value(false), "this peer will request no pending transactions from other nodes" )
          ;
    }
 
    void bnet_plugin::plugin_initialize(const variables_map& options) {
       ilog( "Initialize bnet plugin" );
-
-      my->_on_appled_trx_handle = app().get_channel<channels::accepted_transaction>()
-                                .subscribe( [this]( transaction_metadata_ptr t ){
-                                       my->on_accepted_transaction(t);
-                                });
-
-      my->_on_irb_handle = app().get_channel<channels::irreversible_block>()
-                                .subscribe( [this]( block_state_ptr s ){
-                                       my->on_irreversible_block(s);
-                                });
-
-      my->_on_accepted_block_handle = app().get_channel<channels::accepted_block>()
-                                         .subscribe( [this]( block_state_ptr s ){
-                                                my->on_accepted_block(s);
-                                         });
-
-      my->_on_bad_block_handle = app().get_channel<channels::rejected_block>()
-                                .subscribe( [this]( signed_block_ptr b ){
-                                       wdump(("on bad block"));
-                                       my->on_bad_block(b);
-                                });
-
 
       if( options.count( "bnet_endpoint" ) ) {
          auto ip_port = options.at("bnet_endpoint").as< string >();
@@ -1026,10 +999,33 @@ namespace eosio {
          if( my->_num_threads > 8 ) 
             my->_num_threads = 8;
       }
+      my->_request_trx = !options.at( "bnet_no_trx" ).as<bool>();
    }
 
    void bnet_plugin::plugin_startup() {
       wlog( "bnet startup " );
+
+      my->_on_appled_trx_handle = app().get_channel<channels::accepted_transaction>()
+                                .subscribe( [this]( transaction_metadata_ptr t ){
+                                       my->on_accepted_transaction(t);
+                                });
+
+      my->_on_irb_handle = app().get_channel<channels::irreversible_block>()
+                                .subscribe( [this]( block_state_ptr s ){
+                                       my->on_irreversible_block(s);
+                                });
+
+      my->_on_accepted_block_handle = app().get_channel<channels::accepted_block>()
+                                         .subscribe( [this]( block_state_ptr s ){
+                                                my->on_accepted_block(s);
+                                         });
+
+      my->_on_bad_block_handle = app().get_channel<channels::rejected_block>()
+                                .subscribe( [this]( signed_block_ptr b ){
+                                       my->on_bad_block(b);
+                                });
+
+
       const auto address = boost::asio::ip::make_address( my->_bnet_endpoint_address );
       my->_ioc.reset( new boost::asio::io_context{my->_num_threads} );
 
@@ -1072,8 +1068,29 @@ namespace eosio {
          t.join();
       }
       wlog( "done joining threads" );
+      my->_ioc.reset();
       /// shut down all threads and close all connections
    }
 
+
+   session::~session() {
+     wlog( "close session ${n}",("n",_session_num) );
+     _app_ios.post( [net=&_net_plugin,ses=this]{
+        net->on_session_close(ses);
+     });
+   }
+
+   void session::do_hello() {
+      async_get_pending_block_ids( [self = shared_from_this() ]( const vector<block_id_type>& ids, uint32_t lib ){
+          hello hello_msg;
+          hello_msg.last_irr_block_num = lib;
+          hello_msg.pending_block_ids  = ids;
+          hello_msg.request_transactions = self->_net_plugin._request_trx;
+         
+          self->_local_lib = lib;
+          self->send( hello_msg );
+          self->_sent_remote_hello = true;
+      });
+   }
 
 } /// namespace eosio

@@ -6,6 +6,20 @@
 
 namespace eosio { namespace client { namespace http {
 
+   struct connection_param {
+       string& url;
+       string& path;
+       bool verify_cert;
+       std::vector<string>& headers;
+
+       connection_param( std::string& u,
+                         std::string& p,
+                         bool verify,
+                         std::vector<string>& h) : url(u), path(p), headers(h) {
+           verify_cert = verify;
+       }
+   };
+
    struct parsed_url {
       string scheme;
       string server;
@@ -15,8 +29,7 @@ namespace eosio { namespace client { namespace http {
 
    parsed_url parse_url( const string& server_url );
 
-   fc::variant do_http_call( const std::string& server_url,
-                             const std::string& path,
+   fc::variant do_http_call( const connection_param& cp,
                              const fc::variant& postdata = fc::variant() );
 
    const string chain_func_base = "/v1/chain";
@@ -37,11 +50,11 @@ namespace eosio { namespace client { namespace http {
    const string history_func_base = "/v1/history";
    const string get_actions_func = history_func_base + "/get_actions";
    const string get_transaction_func = history_func_base + "/get_transaction";
+   const string get_key_accounts_func = history_func_base + "/get_key_accounts";
+   const string get_controlled_accounts_func = history_func_base + "/get_controlled_accounts";
 
    const string account_history_func_base = "/v1/account_history";
    const string get_transactions_func = account_history_func_base + "/get_transactions";
-   const string get_key_accounts_func = account_history_func_base + "/get_key_accounts";
-   const string get_controlled_accounts_func = account_history_func_base + "/get_controlled_accounts";
 
    const string net_func_base = "/v1/net";
    const string net_connect = net_func_base + "/connect";
