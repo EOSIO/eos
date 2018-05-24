@@ -4,7 +4,6 @@
  */
 #pragma once
 #include <eosio/chain/name.hpp>
-#include <eosio/chain/chain_id.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -90,8 +89,8 @@ namespace eosio { namespace chain {
    struct void_t{};
 
    struct chain_id_type {
-      chain_id_type(const fc::string& s) : id(s){}
-      chain_id_type() : id(config::chain_id_str) {}
+      chain_id_type(const fc::string& s);
+      chain_id_type();
       operator fc::sha256() { return id; }
       fc::sha256 id;
    };
