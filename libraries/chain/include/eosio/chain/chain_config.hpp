@@ -38,6 +38,8 @@ struct chain_config {
    uint16_t   max_authority_depth;                 ///< recursion depth limit for checking if an authority is satisfied
    uint32_t   max_generated_transaction_count;     ///< the number of generated transactions per action (TODO: implement?)
 
+   void validate()const;
+
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config& c ) {
       return out << "Max Block Net Usage: " << c.max_block_net_usage << ", "
