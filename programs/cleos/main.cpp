@@ -340,45 +340,49 @@ void print_action_tree( const fc::variant& action ) {
 }
 
 void print_result( const fc::variant& result ) { try {
-      const auto& processed = result["processed"];
-      const auto& transaction_id = processed["id"].as_string();
-      string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
-      int64_t net = -1;
-      int64_t cpu = -1;
-      if (processed.get_object().contains("receipt")) {
-         const auto& receipt = processed["receipt"];
-         if (receipt.is_object()) {
-            net = receipt["net_usage_words"].as_int64() * 8;
-            cpu = receipt["cpu_usage_us"].as_int64();
+      if (result.is_object() && result.get_object().contains("processed")) {
+         const auto& processed = result["processed"];
+         const auto& transaction_id = processed["id"].as_string();
+         string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+         int64_t net = -1;
+         int64_t cpu = -1;
+         if( processed.get_object().contains( "receipt" )) {
+            const auto& receipt = processed["receipt"];
+            if( receipt.is_object()) {
+               net = receipt["net_usage_words"].as_int64() * 8;
+               cpu = receipt["cpu_usage_us"].as_int64();
+            }
          }
-      }
 
-      cerr << status << " transaction: " << transaction_id << "  ";
-      if (net < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << net;
-      }
-      cerr << " bytes  ";
-      if (cpu < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << cpu;
-      }
+         cerr << status << " transaction: " << transaction_id << "  ";
+         if( net < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << net;
+         }
+         cerr << " bytes  ";
+         if( cpu < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << cpu;
+         }
 
-      cerr << " us\n";
+         cerr << " us\n";
 
-      if( status == "failed" ) {
-         auto soft_except = processed["except"].as<optional<fc::exception>>();
-         if( soft_except ) {
-            edump((soft_except->to_detail_string()));
+         if( status == "failed" ) {
+            auto soft_except = processed["except"].as<optional<fc::exception>>();
+            if( soft_except ) {
+               edump((soft_except->to_detail_string()));
+            }
+         } else {
+            const auto& actions = processed["action_traces"].get_array();
+            for( const auto& a : actions ) {
+               print_action_tree( a );
+            }
+            wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
          }
       } else {
-         const auto& actions = processed["action_traces"].get_array();
-         for( const auto& a : actions ) {
-            print_action_tree( a );
-         }
-         wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
+         cerr << fc::json::to_pretty_string( result ) << endl;
       }
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
@@ -387,7 +391,7 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
    auto result = push_actions( move(actions), extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
       print_result( result );
    }
@@ -397,9 +401,8 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    auto result = push_transaction(trx, extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
-      auto trace = result["processed"].as<eosio::chain::transaction_trace>();
       print_result( result );
    }
 }
@@ -477,7 +480,6 @@ fc::variant regproducer_variant(const account_name& producer,
          ("max_inline_action_size", config::default_max_inline_action_size)
          ("max_inline_depth", config::default_max_inline_action_depth)
          ("max_authority_depth", config::default_max_auth_depth)
-         ("max_generated_transaction_count", config::default_max_gen_trx_count)
          ("max_storage_size", max_storage_size)
          ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
          ("storage_reserve_ratio", storage_reserve_ratio);
@@ -1051,7 +1053,7 @@ struct list_producers_subcommand {
             weight = 1;
          printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
          for ( auto& row : result.rows )
-            printf("%-13.13s %-54.54s %-59.59s %1.4f\n", 
+            printf("%-13.13s %-54.54s %-59.59s %1.4f\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
@@ -1523,18 +1525,27 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
+   bool code_as_wasm = false;
    auto getCode = get->add_subcommand("code", localized("Retrieve the code and ABI for an account"), false);
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
-   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
+   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast/wasm to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
+   getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
 
       if( codeFilename.size() ){
-         std::cout << localized("saving wast to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
-         auto code = result["wast"].as_string();
+         std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
+         string code;
+
+         if(code_as_wasm) {
+            code = result["wasm"].as_string();
+         } else {
+            code = result["wast"].as_string();
+         }
+
          std::ofstream out( codeFilename.c_str() );
          out << code;
       }
@@ -1543,6 +1554,24 @@ int main( int argc, char** argv ) {
          auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
+      }
+   });
+
+   // get abi
+   string filename;
+   auto getAbi = get->add_subcommand("abi", localized("Retrieve the ABI for an account"), false);
+   getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
+   getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
+   getAbi->set_callback([&] {
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+
+      auto abi  = fc::json::to_pretty_string( result["abi"] );
+      if( filename.size() ) {
+         std::cout << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+         std::ofstream abiout( filename.c_str() );
+         abiout << abi;
+      } else {
+         std::cout << abi << "\n";
       }
    });
 

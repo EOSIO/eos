@@ -14,7 +14,7 @@
 namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
 const char* SQL_DB_URI_OPTION = "sql_db-uri";
-const char* RESYNC_OPTION = "resync-blockchain";
+const char* RESYNC_OPTION = "delete-all-blocks";
 const char* REPLAY_OPTION = "replay-blockchain";
 }
 
