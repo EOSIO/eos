@@ -101,6 +101,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
+      bool     _pause_production                   = false;
       uint32_t _required_producer_participation    = uint32_t(config::required_producer_participation);
       uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
@@ -317,6 +318,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
+      bool production_disabled_by_policy() {
+         return !_production_enabled || _pause_production || get_irreversible_block_age() >= _max_irreversible_block_age_us;
+      }
+
       enum class start_block_result {
          succeeded,
          failed,
@@ -366,6 +371,7 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( 30 * 60 ),
@@ -505,11 +511,32 @@ void producer_plugin::plugin_shutdown() {
    my->_irreversible_block_connection.reset();
 }
 
+void producer_plugin::pause() {
+   my->_pause_production = true;
+}
+
+void producer_plugin::resume() {
+   my->_pause_production = false;
+   // it is possible that we are only speculating because of this policy which we have now changed
+   // re-evaluate that now
+   //
+   if (my->_pending_block_mode == pending_block_mode::speculating) {
+      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      chain.abort_block();
+      my->schedule_production_loop();
+   }
+}
+
+bool producer_plugin::paused() const {
+   return my->_pause_production;
+}
+
+
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   const auto& hbs = chain.head_block_state();
-   const auto& active_schedule = hbs->active_schedule.producers;
-   const auto& hbt = hbs->header.timestamp;
+   const auto& pbs = chain.pending_block_state();
+   const auto& active_schedule = pbs->active_schedule.producers;
+   const auto& hbt = pbs->header.timestamp;
 
    // determine if this producer is in the active schedule and if so, where
    auto itr = std::find_if(active_schedule.begin(), active_schedule.end(), [&](const auto& asp){ return asp.producer_name == producer_name; });
@@ -529,9 +556,9 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    auto current_watermark_itr = _producer_watermarks.find(producer_name);
    if (current_watermark_itr != _producer_watermarks.end()) {
       auto watermark = current_watermark_itr->second;
-      if (watermark > hbs->block_num) {
+      if (watermark > pbs->block_num) {
          // if I have a watermark then I need to wait until after that watermark
-         minimum_offset = watermark - hbs->block_num + 1;
+         minimum_offset = watermark - pbs->block_num + 1;
       }
    }
 
@@ -591,6 +618,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       _pending_block_mode = pending_block_mode::speculating;
    } else if (private_key_itr == _private_keys.end()) {
       elog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
+      _pending_block_mode = pending_block_mode::speculating;
+   } else if ( _pause_production ) {
+      elog("Not producing block because production is explicitly paused");
       _pending_block_mode = pending_block_mode::speculating;
    } else if ( irreversible_block_age >= _max_irreversible_block_age_us ) {
       elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", irreversible_block_age.count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
@@ -792,7 +822,7 @@ void producer_plugin_impl::schedule_production_loop() {
             fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)("res", res) );
          }
       });
-   } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && get_irreversible_block_age() < _max_irreversible_block_age_us){
+   } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
       // if we have any producers then we should at least set a timer for our next available slot
       optional<fc::time_point> wake_up_time;
       for (const auto&p: _producers) {

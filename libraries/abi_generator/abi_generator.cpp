@@ -1,4 +1,5 @@
 #include <eosio/abi_generator/abi_generator.hpp>
+#include <eosio/chain/abi_def.hpp>
 
 namespace eosio {
 
@@ -82,6 +83,14 @@ string abi_generator::translate_type(const string& type_name) {
   else if (type_name == "long"               || type_name == "int32_t")  built_in_type = "int32";
   else if (type_name == "short"              || type_name == "int16_t")  built_in_type = "int16";
   else if (type_name == "char"               || type_name == "int8_t")   built_in_type = "int8";
+  else {
+     static auto types = eosio::chain::common_type_defs();
+     auto itr = std::find_if( types.begin(), types.end(),
+                              [&type_name]( const eosio::chain::type_def& t ) { return t.new_type_name == type_name; } );
+     if( itr != types.end()) {
+        built_in_type = itr->type;
+     }
+  }
 
   return built_in_type;
 }

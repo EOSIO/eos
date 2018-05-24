@@ -56,11 +56,10 @@ public:
    ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
    {}
 
-   bfs::path                        block_log_dir;
+   bfs::path                        blocks_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
    bool                             readonly = false;
-   uint64_t                         shared_memory_size;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
@@ -89,7 +88,7 @@ public:
    methods::get_block_by_id::method_type::handle                     get_block_by_id_provider;
    methods::get_head_block_id::method_type::handle                   get_head_block_id_provider;
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
-   
+
    // scoped connections for chain controller
    fc::optional<scoped_connection>                                   accepted_block_header_connection;
    fc::optional<scoped_connection>                                   accepted_block_connection;
@@ -112,11 +111,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cfg.add_options()
          ("genesis-json", bpo::value<bfs::path>()->default_value("genesis.json"), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
-         ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
-          "the location of the block log (absolute path or relative to application data dir)")
-         ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
+          "the location of the blocks directory (absolute path or relative to application data dir)")
+         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
-         ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024  * 1024)), "Maximum size MB of database shared memory file")
+         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
+         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
+
 
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -134,11 +135,13 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database and replay all blocks")
+          "clear chain state database and replay all blocks")
          ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database, recover as many blocks as possible from the block log, and then replay those blocks")
-         ("resync-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database and block log")
+          "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
+         ("delete-all-blocks", bpo::bool_switch()->default_value(false),
+          "clear chain state database and block log")
+         ("contracts-console", bpo::bool_switch()->default_value(false),
+          "print contract's output to console")
          ;
 }
 
@@ -168,15 +171,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
        my->genesis_timestamp = time_point::from_iso_string (tstr);
      }
    }
-   if (options.count("block-log-dir")) {
-      auto bld = options.at("block-log-dir").as<bfs::path>();
+   if (options.count("blocks-dir")) {
+      auto bld = options.at("blocks-dir").as<bfs::path>();
       if(bld.is_relative())
-         my->block_log_dir = app().data_dir() / bld;
+         my->blocks_dir = app().data_dir() / bld;
       else
-         my->block_log_dir = bld;
-   }
-   if (options.count("shared-memory-size-mb")) {
-      my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
+         my->blocks_dir = bld;
    }
 
    if(options.count("checkpoint"))
@@ -193,46 +193,52 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
 
-   my->chain_config->block_log_dir = my->block_log_dir;
-   my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
+   my->chain_config->blocks_dir = my->blocks_dir;
+   my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
    my->chain_config->read_only = my->readonly;
-   my->chain_config->shared_memory_size = my->shared_memory_size;
+
+   if (options.count("chain-state-db-size-mb"))
+      my->chain_config->state_size = options.at("chain-state-db-size-mb").as<uint64_t>() * 1024 * 1024;
+
+   if (options.count("reversible-blocks-db-size-mb"))
+      my->chain_config->reversible_cache_size = options.at("reversible-blocks-db-size-mb").as<uint64_t>() * 1024 * 1024;
 
    if( my->wasm_runtime )
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
-   my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
+   my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
+   my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
 
-   if( options.at("resync-blockchain").as<bool>() ) {
-      ilog("Resync requested: wiping database and blocks");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      fc::remove_all(my->block_log_dir);
+   if( options.at("delete-all-blocks").as<bool>() ) {
+      ilog("Deleting state database and blocks");
+      fc::remove_all( my->chain_config->state_dir );
+      fc::remove_all(my->blocks_dir);
    } else if( options.at("hard-replay-blockchain").as<bool>() ) {
-      ilog("Hard replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      auto backup_dir = block_log::repair_log( my->block_log_dir );
-      if( fc::exists(backup_dir/"reversible") || options.at("fix-reversible-blocks").as<bool>() ) {
+      ilog("Hard replay requested: deleting state database");
+      fc::remove_all( my->chain_config->state_dir );
+      auto backup_dir = block_log::repair_log( my->blocks_dir );
+      if( fc::exists(backup_dir/config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>() ) {
          // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-         if( !recover_reversible_blocks( backup_dir/"reversible",
+         if( !recover_reversible_blocks( backup_dir/config::reversible_blocks_dir_name,
                                           my->chain_config->reversible_cache_size,
-                                          my->chain_config->block_log_dir/"reversible" ) ) {
+                                          my->chain_config->blocks_dir/config::reversible_blocks_dir_name ) ) {
             ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
-            fc::copy( backup_dir/"reversible", my->chain_config->block_log_dir/"reversible" );
-            fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->block_log_dir/"reversible/shared_memory.bin" );
-            fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->block_log_dir/"reversible/shared_memory.meta" );
+            fc::copy( backup_dir/config::reversible_blocks_dir_name, my->chain_config->blocks_dir/config::reversible_blocks_dir_name );
+            fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->blocks_dir/"reversible/shared_memory.bin" );
+            fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->blocks_dir/"reversible/shared_memory.meta" );
          }
       }
    } else if( options.at("replay-blockchain").as<bool>() ) {
-      ilog("Replay requested: wiping database");
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
+      ilog("Replay requested: deleting state database");
+      fc::remove_all( my->chain_config->state_dir );
       if( options.at("fix-reversible-blocks").as<bool>() ) {
-         if( !recover_reversible_blocks( my->chain_config->block_log_dir/"reversible",
+         if( !recover_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
                                           my->chain_config->reversible_cache_size ) ) {
             ilog("Reversible blocks database was not corrupted.");
          }
       }
    } else if( options.at("fix-reversible-blocks").as<bool>() ) {
-      if( !recover_reversible_blocks( my->chain_config->block_log_dir/"reversible",
+      if( !recover_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
                                        my->chain_config->reversible_cache_size ) ) {
          ilog("Reversible blocks database verified to not be corrupted. Now exiting...");
       } else {
@@ -406,7 +412,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    if( num == 0 )
       ilog( "There were no recoverable blocks in the reversible block database" );
-   else if( num == 0 )
+   else if( num == 1 )
       ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
    else
       ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",

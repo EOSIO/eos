@@ -92,14 +92,14 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
-    db( cfg.shared_memory_dir,
+    db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.shared_memory_size ),
-    reversible_blocks( cfg.block_log_dir/"reversible",
+        cfg.state_size ),
+    reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size ),
-    blog( cfg.block_log_dir ),
-    fork_db( cfg.shared_memory_dir ),
+    blog( cfg.blocks_dir ),
+    fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
@@ -1281,6 +1281,10 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 
 bool controller::skip_auth_check()const {
    return my->replaying_irreversible && !my->conf.force_all_checks;
+}
+
+bool controller::contracts_console()const {
+   return my->conf.contracts_console;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
