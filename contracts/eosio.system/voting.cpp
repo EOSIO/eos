@@ -84,7 +84,7 @@ namespace eosiosystem {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.time_became_active = block_time;
                });
-         } else if ( block_time.slot > 2 * 21 * 12 + it->time_became_active.slot &&
+         } else if ( block_time.slot > (2 * 21 * 12 * 100) + it->time_became_active.slot &&
                      block_time.slot > it->last_produced_block_time.slot + blocks_per_day ) {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.producer_key = public_key();

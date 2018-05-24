@@ -46,7 +46,8 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts( { N(eosio.token) } );
+      create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), 
+               N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
 
       produce_blocks( 100 );
 
@@ -81,7 +82,7 @@ public:
       create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio")  + get_balance("eosio.ramfee") + get_balance("eosio.stake"));
    }
 
 
@@ -322,7 +323,6 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-
       vector<char> data = get_row_by_account( N(eosio.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
       return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data)["balance"].as<asset>();
    }
