@@ -632,6 +632,7 @@ namespace eosio {
                   auto next = sblockptr->id();
 
                   bool peer_knows_prev = self->_last_sent_block_id == prev; /// shortcut
+                  peer_knows_prev |= self->_last_sent_block_num <= self->_local_lib;
                   if( !peer_knows_prev ) 
                      peer_knows_prev = self->is_known_by_peer( prev );
 
@@ -651,7 +652,7 @@ namespace eosio {
                         self->do_send_next_message();
                      }
                   } else { 
-                     wlog( "looks like we had a fork... see if peer knows previous block num" );
+                     wlog( "looks like we had a fork... " );
                      self->_state = idle_state;
                      /// we must have forked... peer doesn't know about previous,
                      /// we need to find the most recent block the peer does know about
