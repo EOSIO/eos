@@ -294,9 +294,7 @@ namespace eosio { namespace testing {
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto c = packed_transaction::none;
 
-      if( fc::raw::pack_size(trx) > 1000 )
-      {
-         wdump((fc::raw::pack_size(trx)));
+      if( fc::raw::pack_size(trx) > 1000 ) {
          c = packed_transaction::zlib;
       }
 
