@@ -1292,7 +1292,6 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
    const double  usecs_per_year = secs_per_year * 1000000;
    const double  cont_rate      = 4.879/100.;
 
-
    const asset net = core_from_string("80.0000");
    const asset cpu = core_from_string("80.0000");
    create_account_with_resources( N(producvotera), config::system_account_name, core_from_string("1.0000"), false, net, cpu );
@@ -1543,7 +1542,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
    // wait two more hours, now most producers haven't produced in a day and will
    // be deactivated
-   produce_block(fc::seconds(2 * 3600));
+   produce_block(fc::seconds(9 * 3600));
    produce_blocks(8 * 21 * 12);
 
    {
@@ -1771,8 +1770,6 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
    create_account_with_resources( N(producvotera), config::system_account_name, core_from_string("1.0000"), false, large_asset, large_asset );
    create_account_with_resources( N(producvoterb), config::system_account_name, core_from_string("1.0000"), false, large_asset, large_asset );
    create_account_with_resources( N(producvoterc), config::system_account_name, core_from_string("1.0000"), false, large_asset, large_asset );
-
-
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;
@@ -2424,6 +2421,113 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    // other auctions haven't closed
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefa), N(bob) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
+
+   const asset net = core_from_string("80.0000");
+   const asset cpu = core_from_string("80.0000");
+   std::vector<account_name> voters = { N(producvotera), N(producvoterb), N(producvoterc), N(producvoterd) };
+   for (const auto& v: voters) {
+      create_account_with_resources(v, config::system_account_name, core_from_string("1.0000"), false, net, cpu);
+   }
+
+   // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
+   std::vector<account_name> producer_names;
+   {
+      producer_names.reserve('z' - 'a' + 1);
+      const std::string root("defproducer");
+      for ( char c = 'a'; c <= 'z'; ++c ) {
+         producer_names.emplace_back(root + std::string(1, c));
+      }
+      setup_producer_accounts(producer_names);
+      for (const auto& p: producer_names) {
+         BOOST_REQUIRE_EQUAL( success(), regproducer(p) );
+         produce_blocks(1);
+         ilog( "------ get pro----------" );
+         wdump((p));
+         BOOST_TEST(0 == get_producer_info(p)["total_votes"].as<double>());
+      }
+   }
+
+   for (const auto& v: voters) {
+      transfer( config::system_account_name, v, core_from_string("200000000.0000"), config::system_account_name );
+      BOOST_REQUIRE_EQUAL(success(), stake(v, core_from_string("30000000.0000"), core_from_string("30000000.0000")) );
+   }
+
+   {
+      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
+                                                 ("voter",     "producvotera")
+                                                 ("proxy",     name(0).to_string())
+                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+20))
+                                                 )
+                          );
+
+      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterb), N(voteproducer), mvo()
+                                                 ("voter",     "producvoterb")
+                                                 ("proxy",     name(0).to_string())
+                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
+                                                 )
+                          );
+
+      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterc), N(voteproducer), mvo()
+                                                 ("voter",     "producvoterc")
+                                                 ("proxy",     name(0).to_string())
+                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.end()))
+                                                 )
+                          );
+   }
+
+   // give a chance for everyone to produce blocks
+   {
+      produce_blocks(23 * 12 + 20);
+      bool all_21_produced = true;
+      for (uint32_t i = 0; i < 21; ++i) {
+         if (0 == get_producer_info(producer_names[i])["unpaid_blocks"].as<uint32_t>()) {
+            all_21_produced = false;
+         }
+      }
+      bool rest_didnt_produce = true;
+      for (uint32_t i = 21; i < producer_names.size(); ++i) {
+         if (0 < get_producer_info(producer_names[i])["unpaid_blocks"].as<uint32_t>()) {
+            rest_didnt_produce = false;
+         }
+      }
+      BOOST_REQUIRE(all_21_produced && rest_didnt_produce);
+   }
+
+   produce_block(fc::hours(7));
+
+   {
+      const uint32_t voted_out_index = 20;
+      const uint32_t new_prod_index  = 23;
+      BOOST_REQUIRE_EQUAL(success(), stake("producvoterd", core_from_string("40000000.0000"), core_from_string("40000000.0000")));
+      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterd), N(voteproducer), mvo()
+                                                 ("voter",     "producvoterd")
+                                                 ("proxy",     name(0).to_string())
+                                                 ("producers", vector<account_name>{ producer_names[new_prod_index] })
+                                                 )
+                          );
+      BOOST_REQUIRE_EQUAL(0, get_producer_info(producer_names[new_prod_index])["unpaid_blocks"].as<uint32_t>());
+      produce_blocks(4 * 12 * 21);
+      BOOST_REQUIRE(0 < get_producer_info(producer_names[new_prod_index])["unpaid_blocks"]);
+      const uint32_t initial_unpaid_blocks = get_producer_info(producer_names[voted_out_index])["unpaid_blocks"].as<uint32_t>();
+      produce_blocks(2 * 12 * 21);
+      BOOST_REQUIRE_EQUAL(initial_unpaid_blocks, get_producer_info(producer_names[voted_out_index])["unpaid_blocks"].as<uint32_t>());
+      produce_blocks(2 * 12 * 21);
+      produce_block(fc::hours(12));
+      produce_blocks(2 * 12 * 21);
+      produce_block(fc::hours(12));
+      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterd), N(voteproducer), mvo()
+                                                 ("voter",     "producvoterd")
+                                                 ("proxy",     name(0).to_string())
+                                                 ("producers", vector<account_name>{ producer_names[voted_out_index] })
+                                                 )
+                          );
+      produce_blocks(2 * 12 * 21);
+      BOOST_REQUIRE_EQUAL(fc::crypto::public_key(), fc::crypto::public_key(get_producer_info(producer_names[voted_out_index])["producer_key"].as_string()));
+   }
 
 } FC_LOG_AND_RETHROW()
 

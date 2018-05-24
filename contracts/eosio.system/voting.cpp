@@ -79,7 +79,7 @@ namespace eosiosystem {
 
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes; ++it ) {
          if( !it->active() ) continue;
-
+#if 0
          if ( it->time_became_active.slot == 0 ) {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.time_became_active = block_time;
@@ -93,7 +93,22 @@ namespace eosiosystem {
 
             continue;
          }
+#else
+         if ( it->time_became_active.slot > 0 && 
+              block_time.slot > (2 * 21 * 12 * 100) + it->time_became_active.slot &&
+              block_time.slot > it->last_produced_block_time.slot + blocks_per_day ) {
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.producer_key = public_key();
+                  p.time_became_active.slot = 0;
+               });
 
+            continue;
+         } else {
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.time_became_active = block_time;
+               });
+         }
+#endif
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
       }
       
