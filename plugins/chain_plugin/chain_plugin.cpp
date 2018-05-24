@@ -140,6 +140,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("delete-all-blocks", bpo::bool_switch()->default_value(false),
           "clear chain state database and block log")
+         ("contracts-console", bpo::bool_switch()->default_value(false),
+          "print contract's output to console")
          ;
 }
 
@@ -204,7 +206,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    if( my->wasm_runtime )
       my->chain_config->wasm_runtime = *my->wasm_runtime;
 
-   my->chain_config->force_all_checks = options.at("force-all-checks").as<bool>();
+   my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
+   my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
 
    if( options.at("delete-all-blocks").as<bool>() ) {
       ilog("Deleting state database and blocks");
