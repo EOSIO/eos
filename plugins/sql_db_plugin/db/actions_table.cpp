@@ -26,15 +26,15 @@ void actions_table::create()
 {
     *m_session << "CREATE TABLE actions("
             "id VARCHAR(36) PRIMARY KEY,"
-            "account VARCHAR(13),"
+            "account VARCHAR(12),"
             "transaction_id VARCHAR(64),"
-            "name VARCHAR(13),"
+            "name VARCHAR(12),"
             "data JSON, FOREIGN KEY (transaction_id) REFERENCES transactions(id),"
             "FOREIGN KEY (account) REFERENCES accounts(name))";
 
     *m_session << "CREATE TABLE actions_accounts("
-            "actor VARCHAR(13),"
-            "permission VARCHAR(13),"
+            "actor VARCHAR(12),"
+            "permission VARCHAR(12),"
             "action_id VARCHAR(36), FOREIGN KEY (action_id) REFERENCES actions(id),"
             "FOREIGN KEY (actor) REFERENCES accounts(name))";
 

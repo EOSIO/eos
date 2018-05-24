@@ -29,7 +29,7 @@ void blocks_table::create()
             "irreversible TINYINT(1) DEFAULT 0,"
             "timestamp DATETIME DEFAULT NOW(),"
             "transaction_merkle_root VARCHAR(64),"
-            "producer VARCHAR(13),"
+            "producer VARCHAR(12),"
             "confirmed INT, FOREIGN KEY (producer) REFERENCES accounts(name), UNIQUE KEY block_number (block_number))";
 }
 

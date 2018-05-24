@@ -24,15 +24,15 @@ void accounts_table::drop()
 void accounts_table::create()
 {
     *m_session << "CREATE TABLE accounts("
-            "name VARCHAR(13) PRIMARY KEY,"
+            "name VARCHAR(12) PRIMARY KEY,"
             "abi JSON DEFAULT NULL,"
             "created_at DATETIME DEFAULT NOW(),"
             "updated_at DATETIME DEFAULT NOW())";
 
     *m_session << "CREATE TABLE accounts_keys("
-            "account VARCHAR(13),"
-            "public_key VARCHAR(255),"
-            "permission VARCHAR(13), FOREIGN KEY (account) REFERENCES accounts(name))";
+            "account VARCHAR(12),"
+            "public_key VARCHAR(53),"
+            "permission VARCHAR(12), FOREIGN KEY (account) REFERENCES accounts(name))";
 }
 
 void accounts_table::add(string name)
