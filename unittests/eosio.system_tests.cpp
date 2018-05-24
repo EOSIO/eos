@@ -40,8 +40,8 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
 
    transfer( "eosio", "alice1111111", core_from_string("100000000.0000"), "eosio" );
    BOOST_REQUIRE_EQUAL( core_from_string("100000998.0050"), get_balance( "alice1111111" ) );
-   // alice buys ram for 10000000.0000, 0.5% = 50000.0000 got to ramfee
-   // after fee 9950000.0000 got to bought bytes
+   // alice buys ram for 10000000.0000, 0.5% = 50000.0000 go to ramfee
+   // after fee 9950000.0000 go to bought bytes
    // when selling back bought bytes, pay 0.5% fee and get back 99.5% of 9950000.0000 = 9900250.0000
    // expected account after that is 90000998.0050 + 9900250.0000 = 99901248.0050 with a difference 
    // of order 0.0001 due to rounding errors
@@ -2351,7 +2351,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    produce_block( fc::days(14) );
    produce_block();
 
-   // highest bid is from david for prefd but not bids can be closed yet
+   // highest bid is from david for prefd but no bids can be closed yet
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefd), N(david) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
 
