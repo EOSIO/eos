@@ -480,7 +480,6 @@ fc::variant regproducer_variant(const account_name& producer,
          ("max_inline_action_size", config::default_max_inline_action_size)
          ("max_inline_depth", config::default_max_inline_action_depth)
          ("max_authority_depth", config::default_max_auth_depth)
-         ("max_generated_transaction_count", config::default_max_gen_trx_count)
          ("max_storage_size", max_storage_size)
          ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
          ("storage_reserve_ratio", storage_reserve_ratio);
@@ -1054,7 +1053,7 @@ struct list_producers_subcommand {
             weight = 1;
          printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
          for ( auto& row : result.rows )
-            printf("%-13.13s %-54.54s %-59.59s %1.4f\n", 
+            printf("%-13.13s %-54.54s %-59.59s %1.4f\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
