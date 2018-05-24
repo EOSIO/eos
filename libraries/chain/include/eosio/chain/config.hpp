@@ -12,10 +12,14 @@ namespace eosio { namespace chain { namespace config {
 
 typedef __uint128_t uint128_t;
 
-const static auto default_block_log_dir     = "block_log";
-const static auto default_shared_memory_dir = "shared_mem";
-const static auto default_shared_memory_size = 1*1024*1024*1024ll;
-const static auto default_unconfirmed_cache_size = 320*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
+const static auto default_blocks_dir_name    = "blocks";
+const static auto reversible_blocks_dir_name = "reversible";
+const static auto default_reversible_cache_size = 340*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
+
+const static auto default_state_dir_name     = "state";
+const static auto forkdb_filename            = "forkdb.dat";
+const static auto default_state_size            = 1*1024*1024*1024ll;
+
 
 const static uint64_t system_account_name    = N(eosio);
 const static uint64_t null_account_name      = N(eosio.null);
@@ -75,7 +79,10 @@ const static uint32_t   default_max_trx_delay                  = 45*24*3600; // 
 const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 4 KB
 const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
-const static uint32_t   default_max_gen_trx_count              = 16;
+
+const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
+// Should be large enough to allow recovery from badly set blockchain parameters without a hard fork
+// (unless net_usage_leeway is set to 0 and so are the net limits of all accounts that can help with resetting blockchain parameters).
 
 const static uint32_t   fixed_net_overhead_of_packed_trx = 16; // TODO: is this reasonable?
 
@@ -83,6 +90,8 @@ const static uint32_t   fixed_overhead_shared_vector_ram_bytes = 16; ///< overhe
 const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
 const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multiplier on contract size to account for multiple copies and cached compilation
+
+const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call checktime from hashing intrinsic once per this number of bytes
 
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::binaryen;
 

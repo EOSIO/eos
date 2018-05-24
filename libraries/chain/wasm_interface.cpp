@@ -72,6 +72,10 @@ class context_aware_api {
          context.used_context_free_api |= !context_free;
       }
 
+      void checktime() {
+         context.trx_context.checktime();
+      }
+
    protected:
       apply_context&             context;
 
@@ -175,6 +179,7 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_blockchain_parameters, datalen );
          chain::chain_config cfg;
          fc::raw::unpack(ds, cfg);
+         cfg.validate();
          context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.configuration = cfg;
@@ -720,40 +725,53 @@ class crypto_api : public context_aware_api {
          return pubds.tellp();
       }
 
+      template<class Encoder> auto encode(char* data, size_t datalen) {
+         Encoder e;
+         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
+         while ( datalen > bs ) {
+            e.write( data, bs );
+            data += bs;
+            datalen -= bs;
+            context.trx_context.checktime();
+         }
+         e.write( data, datalen );
+         return e.result();
+      }
+
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
-         auto result = fc::sha256::hash( data, datalen );
+         auto result = encode<fc::sha256::encoder>( data, datalen );
          FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
-         auto result = fc::sha1::hash( data, datalen );
+         auto result = encode<fc::sha1::encoder>( data, datalen );
          FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
-         auto result = fc::sha512::hash( data, datalen );
+         auto result = encode<fc::sha512::encoder>( data, datalen );
          FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
-         auto result = fc::ripemd160::hash( data, datalen );
+         auto result = encode<fc::ripemd160::encoder>( data, datalen );
          FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
-         hash_val = fc::sha1::hash( data, datalen );
+         hash_val = encode<fc::sha1::encoder>( data, datalen );
       }
 
       void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
-         hash_val = fc::sha256::hash( data, datalen );
+         hash_val = encode<fc::sha256::encoder>( data, datalen );
       }
 
       void sha512(array_ptr<char> data, size_t datalen, fc::sha512& hash_val) {
-         hash_val = fc::sha512::hash( data, datalen );
+         hash_val = encode<fc::sha512::encoder>( data, datalen );
       }
 
       void ripemd160(array_ptr<char> data, size_t datalen, fc::ripemd160& hash_val) {
-         hash_val = fc::ripemd160::hash( data, datalen );
+         hash_val = encode<fc::ripemd160::encoder>( data, datalen );
       }
 };
 
@@ -960,68 +978,85 @@ class action_api : public context_aware_api {
 class console_api : public context_aware_api {
    public:
       console_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+      : context_aware_api(ctx,true)
+      , ignore(!ctx.control.contracts_console()) {}
 
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
-         context.console_append<const char*>(str);
+         if ( !ignore ) {
+            context.console_append<const char*>(str);
+         }
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
-         context.console_append(string(str, str_len));
+         if ( !ignore ) {
+            context.console_append(string(str, str_len));
+         }
       }
 
       void printi(int64_t val) {
-         context.console_append(val);
+         if ( !ignore ) {
+            context.console_append(val);
+         }
       }
 
       void printui(uint64_t val) {
-         context.console_append(val);
+         if ( !ignore ) {
+            context.console_append(val);
+         }
       }
 
       void printi128(const __int128& val) {
-         bool is_negative = (val < 0);
-         unsigned __int128 val_magnitude;
+         if ( !ignore ) {
+            bool is_negative = (val < 0);
+            unsigned __int128 val_magnitude;
 
-         if( is_negative )
-            val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
-         else
-            val_magnitude = static_cast<unsigned __int128>(val);
+            if( is_negative )
+               val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
+            else
+               val_magnitude = static_cast<unsigned __int128>(val);
 
-         fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
+            fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
 
-         if( is_negative ) {
-            context.console_append("-");
+            if( is_negative ) {
+               context.console_append("-");
+            }
+
+            context.console_append(fc::variant(v).get_string());
          }
-
-         context.console_append(fc::variant(v).get_string());
       }
 
       void printui128(const unsigned __int128& val) {
-         fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
-         context.console_append(fc::variant(v).get_string());
+         if ( !ignore ) {
+            fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
+            context.console_append(fc::variant(v).get_string());
+         }
       }
 
       void printsf( float val ) {
-         // Assumes float representation on native side is the same as on the WASM side
-         auto& console = context.get_console_stream();
-         auto orig_prec = console.precision();
+         if ( !ignore ) {
+            // Assumes float representation on native side is the same as on the WASM side
+            auto& console = context.get_console_stream();
+            auto orig_prec = console.precision();
 
-         console.precision( std::numeric_limits<float>::digits10 );
-         context.console_append(val);
+            console.precision( std::numeric_limits<float>::digits10 );
+            context.console_append(val);
 
-         console.precision( orig_prec );
+            console.precision( orig_prec );
+         }
       }
 
       void printdf( double val ) {
-         // Assumes double representation on native side is the same as on the WASM side
-         auto& console = context.get_console_stream();
-         auto orig_prec = console.precision();
+         if ( !ignore ) {
+            // Assumes double representation on native side is the same as on the WASM side
+            auto& console = context.get_console_stream();
+            auto orig_prec = console.precision();
 
-         console.precision( std::numeric_limits<double>::digits10 );
-         context.console_append(val);
+            console.precision( std::numeric_limits<double>::digits10 );
+            context.console_append(val);
 
-         console.precision( orig_prec );
+            console.precision( orig_prec );
+         }
       }
 
       void printqf( const float128_t& val ) {
@@ -1037,25 +1072,34 @@ class console_api : public context_aware_api {
           * having to deal with long doubles at all.
           */
 
-         auto& console = context.get_console_stream();
-         auto orig_prec = console.precision();
+         if ( !ignore ) {
+            auto& console = context.get_console_stream();
+            auto orig_prec = console.precision();
 
-         console.precision( std::numeric_limits<long double>::digits10 );
+            console.precision( std::numeric_limits<long double>::digits10 );
 
-         extFloat80_t val_approx;
-         f128M_to_extF80M(&val, &val_approx);
-         context.console_append( *(long double*)(&val_approx) );
+            extFloat80_t val_approx;
+            f128M_to_extF80M(&val, &val_approx);
+            context.console_append( *(long double*)(&val_approx) );
 
-         console.precision( orig_prec );
+            console.precision( orig_prec );
+         }
       }
 
       void printn(const name& value) {
-         context.console_append(value.to_string());
+         if ( !ignore ) {
+            context.console_append(value.to_string());
+         }
       }
 
       void printhex(array_ptr<const char> data, size_t data_len ) {
-         context.console_append(fc::to_hex(data, data_len));
+         if ( !ignore ) {
+            context.console_append(fc::to_hex(data, data_len));
+         }
       }
+
+   private:
+      bool ignore;
 };
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
