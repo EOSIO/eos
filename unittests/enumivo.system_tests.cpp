@@ -201,7 +201,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, enumivo_system_tester ) tr
    BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "alice1111111", core_from_string("400.0000"), core_from_string("200.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
 
-   edump((get_balance( "eosio.stake" )));
+   edump((get_balance( "enumivo.stake" )));
    
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);

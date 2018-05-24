@@ -1,17 +1,17 @@
 
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/block_timestamp.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <enumivo/chain/types.hpp>
+#include <enumivo/chain/authority.hpp>
+#include <enumivo/chain/block_timestamp.hpp>
+#include <enumivo/chain/contract_types.hpp>
 
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace enumivo { namespace chain {
 
    class reversible_block_object : public chainbase::object<reversible_block_object_type, reversible_block_object> {
       OBJECT_CTOR(reversible_block_object,(packedblock) )
@@ -43,6 +43,6 @@ namespace eosio { namespace chain {
       >
    >;
 
-} } // eosio::chain
+} } // enumivo::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::reversible_block_object, eosio::chain::reversible_block_index)
+CHAINBASE_SET_INDEX_TYPE(enumivo::chain::reversible_block_object, enumivo::chain::reversible_block_index)

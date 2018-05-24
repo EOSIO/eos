@@ -244,7 +244,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       } else {
          ilog("Exiting after fixing reversible blocks database...");
       }
-      EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
+      ENU_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
    }
 
    if( !fc::exists( my->genesis_file ) ) {

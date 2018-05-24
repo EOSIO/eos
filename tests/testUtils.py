@@ -1976,25 +1976,25 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoTokenAccount.name))
                 return False
             
-            eosioRamAccount=copy.deepcopy(eosioAccount)
-            eosioRamAccount.name="eosio.ram"
-            trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
+            enumivoRamAccount=copy.deepcopy(enumivoAccount)
+            enumivoRamAccount.name="enumivo.ram"
+            trans=biosNode.createAccount(enumivoRamAccount, enumivoAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
+                Utils.Print("ERROR: Failed to create account %s" % (enumivoRamAccount.name))
                 return False
 
-            eosioRamfeeAccount=copy.deepcopy(eosioAccount)
-            eosioRamfeeAccount.name="eosio.ramfee"
-            trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
+            enumivoRamfeeAccount=copy.deepcopy(enumivoAccount)
+            enumivoRamfeeAccount.name="enumivo.ramfee"
+            trans=biosNode.createAccount(enumivoRamfeeAccount, enumivoAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
+                Utils.Print("ERROR: Failed to create account %s" % (enumivoRamfeeAccount.name))
                 return False
 
-            eosioStakeAccount=copy.deepcopy(eosioAccount)
-            eosioStakeAccount.name="eosio.stake"
-            trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
+            enumivoStakeAccount=copy.deepcopy(enumivoAccount)
+            enumivoStakeAccount.name="enumivo.stake"
+            trans=biosNode.createAccount(enumivoStakeAccount, enumivoAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
+                Utils.Print("ERROR: Failed to create account %s" % (enumivoStakeAccount.name))
                 return False
 
             Node.validateTransaction(trans)

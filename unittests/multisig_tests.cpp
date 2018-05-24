@@ -32,7 +32,7 @@ using mvo = fc::mutable_variant_object;
 class enumivo_msig_tester : public tester {
 public:
 
-   eosio_msig_tester() {
+   enumivo_msig_tester() {
       create_accounts( { N(enumivo.msig), N(enumivo.stake), N(enumivo.ram), N(enumivo.ramfee), N(alice), N(bob), N(carol) } );
       produce_block();
 

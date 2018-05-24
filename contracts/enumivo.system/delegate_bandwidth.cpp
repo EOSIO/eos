@@ -112,14 +112,14 @@ namespace enumivosystem {
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
 
-      if( payer != N(eosio) ) {
+      if( payer != N(enumivo) ) {
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {payer,N(active)},
                                                        { payer, N(enumivo.ram), quant_after_fee, std::string("buy ram") } );
       }
 
       if( fee.amount > 0 ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
-                                                       { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {payer,N(active)},
+                                                       { payer, N(enumivo.ramfee), fee, std::string("ram fee") } );
       }
 
       int64_t bytes_out;

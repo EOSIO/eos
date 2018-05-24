@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
-        // Create eosio.msig and eosio.token
+        // Create enumivo.msig and enumivo.coin
         create_accounts({N(enumivo.msig), N(enumivo.coin), N(enumivo.ram), N(enumivo.ramfee), N(enumivo.stake), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.saving) });
 
         // Set code for the following accounts:
