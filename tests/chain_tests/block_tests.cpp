@@ -869,8 +869,8 @@ BOOST_FIXTURE_TEST_CASE(reindex, validating_tester)
       // Create shared configuration, so the new chain can be recreated from existing block log
       chain_controller::controller_config cfg;
       fc::temp_directory tempdir;
-      cfg.block_log_dir      = tempdir.path() / "blocklog";
-      cfg.shared_memory_dir  = tempdir.path() / "shared";
+      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
+      cfg.shared_memory_dir  = tempdir.path() / config::default_state_dir_name;
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 

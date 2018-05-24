@@ -262,7 +262,7 @@ namespace enumivo { namespace chain {
       }
    } // construct_index
 
-   void block_log::repair_log( const fc::path& data_dir ) {
+   fc::path block_log::repair_log( const fc::path& data_dir ) {
       ilog("Recovering Block Log...");
       FC_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"),
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
@@ -270,13 +270,12 @@ namespace enumivo { namespace chain {
       auto now = fc::time_point::now();
 
       auto blocks_dir = fc::canonical( data_dir );
+      if( blocks_dir.filename().generic_string() == "." ) {
+         blocks_dir = blocks_dir.parent_path();
+      }
       auto backup_dir = blocks_dir.parent_path();
       auto blocks_dir_name = blocks_dir.filename();
-      if( blocks_dir_name.generic_string() == "." ) {
-         blocks_dir_name = backup_dir.filename();
-         backup_dir = backup_dir.parent_path();
-         FC_ASSERT( blocks_dir_name.generic_string() != ".", "Invalid path to blocks directory" );
-      }
+      FC_ASSERT( blocks_dir_name.generic_string() != ".", "Invalid path to blocks directory" );
       backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( now );
 
       FC_ASSERT( !fc::exists(backup_dir),
@@ -369,6 +368,8 @@ namespace enumivo { namespace chain {
       } else {
          ilog( "Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.", ("num", block_num) );
       }
+
+      return backup_dir;
    }
 
 } } /// enumivo::chain

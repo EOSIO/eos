@@ -54,6 +54,7 @@ namespace enumivosystem {
    void system_contract::setram( uint64_t max_ram_size ) {
       require_auth( _self );
 
+      enumivo_assert( _gstate.max_ram_size < max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
       enumivo_assert( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
       enumivo_assert( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
 
@@ -133,11 +134,12 @@ namespace enumivosystem {
                             const authority& active*/ ) {
 
       if( creator != _self ) {
-         auto tmp = newact;
+         auto tmp = newact >> 4;
          bool has_dot = false;
-         for( uint32_t i = 0; i < 13; ++i ) {
-           has_dot |= (tmp >> 59);
-           tmp <<= 5;
+
+         for( uint32_t i = 0; i < 12; ++i ) {
+           has_dot |= !(tmp & 0x1f);
+           tmp >>= 5;
          }
          auto suffix = enumivo::name_suffix(newact);
          if( has_dot ) {

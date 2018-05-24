@@ -92,7 +92,7 @@ public:
 
     auto delegate_bandwidth( name from, name receiver, asset net, asset cpu, uint8_t transfer = 1) {
        auto r = base_tester::push_action(N(enumivo), N(delegatebw), from, mvo()
-                    ("from", "enumivo" )
+                    ("from", from )
                     ("receiver", receiver)
                     ("stake_net_quantity", net)
                     ("stake_cpu_quantity", cpu)
@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create enumivo.msig and enumivo.coin
-        create_accounts({N(enumivo.msig), N(enumivo.coin)});
+        create_accounts({N(enumivo.msig), N(enumivo.coin), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
 
         // Set code for the following accounts:
         //  - enumivo (code: enumivo.bios) (already set by tester constructor)
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(N(enumivo), a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(enumivo), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth(N(enumivo.stk), a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 

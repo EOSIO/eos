@@ -1975,6 +1975,27 @@ class Cluster(object):
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoTokenAccount.name))
                 return False
+            
+            enumivoRamAccount=copy.deepcopy(enumivoAccount)
+            enumivoRamAccount.name="enumivo.ram"
+            trans=biosNode.createAccount(enumivoRamAccount, enumivoAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (enumivoRamAccount.name))
+                return False
+
+            enumivoRamfeeAccount=copy.deepcopy(enumivoAccount)
+            enumivoRamfeeAccount.name="enumivo.rfee"
+            trans=biosNode.createAccount(enumivoRamfeeAccount, enumivoAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (enumivoRamfeeAccount.name))
+                return False
+
+            enumivoStakeAccount=copy.deepcopy(enumivoAccount)
+            enumivoStakeAccount.name="enumivo.stk"
+            trans=biosNode.createAccount(enumivoStakeAccount, enumivoAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (enumivoStakeAccount.name))
+                return False
 
             Node.validateTransaction(trans)
             transId=Node.getTransId(trans)

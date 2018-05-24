@@ -26,6 +26,8 @@ Options:
                               the http/https URL where enunode is running
   --wallet-url TEXT=http://localhost:8888/
                               the http/https URL where enuwallet is running
+  -r,--header                 pass specific HTTP header, repeat this option to pass multiple headers
+  -n,--no-verify              don't verify peer certificate when using HTTPS
   -v,--verbose                output verbose actions on error
 
 Subcommands:
@@ -150,6 +152,8 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 string url = "http://localhost:8888/";
 string wallet_url = "http://localhost:8900/";
 int64_t wallet_unlock_timeout = 0;
+bool no_verify = false;
+vector<string> headers;
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -207,7 +211,10 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return enumivo::client::http::do_http_call( url, path, fc::variant(v) );
+      enumivo::client::http::connection_param *cp = new enumivo::client::http::connection_param((std::string&)url, (std::string&)path,
+              no_verify ? false : true, headers);
+
+      return enumivo::client::http::do_http_call( *cp, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -1432,6 +1439,16 @@ void get_account( const string& accountName, bool json_format ) {
    }
 }
 
+CLI::callback_t header_opt_callback = [](CLI::results_t res) {
+   vector<string>::iterator itr;
+
+   for (itr = res.begin(); itr != res.end(); itr++) {
+       headers.push_back(*itr);
+   }
+
+   return true;
+};
+
 int main( int argc, char** argv ) {
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
@@ -1447,6 +1464,8 @@ int main( int argc, char** argv ) {
    app.add_option( "-u,--url", url, localized("the http/https URL where enunode is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where enuwallet is running"), true );
 
+   app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
+   app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
    app.set_callback([] { ensure_enuwallet_running();});
 
    bool verbose_errors = false;

@@ -32,9 +32,13 @@ public:
    virtual void plugin_startup();
    virtual void plugin_shutdown();
 
+   void pause();
+   void resume();
+   bool paused() const;
+
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
-   std::unique_ptr<class producer_plugin_impl> my;
+   std::shared_ptr<class producer_plugin_impl> my;
 };
 
 } //enumivo
