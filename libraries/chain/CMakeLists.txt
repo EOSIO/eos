@@ -19,6 +19,7 @@ add_library( enumivo_chain
              transaction_context.cpp
              enumivo_contract.cpp
              enumivo_contract_abi.cpp
+             chain_config.cpp
 
 #             chain_config.cpp
 #             block_trace.cpp

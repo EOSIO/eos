@@ -46,8 +46,9 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts({ N(enumivo.coin), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), 
+      create_accounts({ N(enumivo.coin), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk),
                N(enumivo.bpay), N(enumivo.vpay), N(enumivo.save), N(enumivo.name) });
+
 
       produce_blocks( 100 );
 
@@ -302,7 +303,6 @@ public:
          ("max_inline_action_size", 4096 + n)
          ("max_inline_action_depth", 4 + n)
          ("max_authority_depth", 6 + n)
-         ("max_generated_transaction_count", 10 + n)
          ("max_ram_size", (n % 10 + 1) * 1024 * 1024)
          ("ram_reserve_ratio", 100 + n);
    }

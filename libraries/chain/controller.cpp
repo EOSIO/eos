@@ -365,6 +365,7 @@ struct controller_impl {
         bs.block_id = head->id;
       });
 
+      conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
       });
