@@ -76,7 +76,7 @@ void apply_enumivo_newaccount(apply_context& context) {
    auto name_str = name(create.name).to_string();
 
    ENU_ASSERT( !create.name.empty(), action_validate_exception, "account name cannot be empty" );
-   ENU_ASSERT( name_str.size() <= 14, action_validate_exception, "account names can only be 14 chars long" );
+   ENU_ASSERT( name_str.size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
 
    // Check if the creator is privileged
    const auto &creator = db.get<account_object, by_name>(create.creator);

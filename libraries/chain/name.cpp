@@ -7,8 +7,8 @@
 namespace enumivo { namespace chain { 
 
    void name::set( const char* str ) {
-      const auto len = strnlen(str, 15);
-      ENU_ASSERT(len <= 14, name_type_exception, "Name is longer than 14 characters (${name}) ", ("name", string(str)));
+      const auto len = strnlen(str, 14);
+      ENU_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
       value = string_to_name(str);
       ENU_ASSERT(to_string() == string(str), name_type_exception,
                  "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
@@ -19,7 +19,7 @@ namespace enumivo { namespace chain {
    name::operator string()const {
      static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
-      string str(15,'.');
+      string str(13,'.');
 
       uint64_t tmp = value;
       for( uint32_t i = 0; i <= 12; ++i ) {
