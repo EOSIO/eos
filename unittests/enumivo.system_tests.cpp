@@ -43,7 +43,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
    // alice buys ram for 10000000.0000, 0.5% = 50000.0000 got to ramfee
    // after fee 9950000.0000 got to bought bytes
    // when selling back bought bytes, pay 0.5% fee and get back 99.5% of 9950000.0000 = 9900250.0000
-   // expected account after that is 90000998.0050 + 9900250.0000 = 99901248.0050 with a difference 
+   // expected account after that is 90000998.0050 + 9900250.0000 = 99901248.0050 with a difference
    // of order 0.0001 due to rounding errors
    BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", core_from_string("10000000.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("90000998.0050"), get_balance( "alice1111111" ) );
@@ -202,12 +202,12 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, enumivo_system_tester ) tr
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
 
    edump((get_balance( "enumivo.stk" )));
-   
+
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
    //after 3 days funds should be released
-   
+
    produce_block( fc::hours(1) );
    produce_blocks(1);
 
@@ -2155,8 +2155,7 @@ fc::mutable_variant_object config_to_variant( const enumivo::chain::chain_config
       ( "max_transaction_delay", config.max_transaction_delay )
       ( "max_inline_action_size", config.max_inline_action_size )
       ( "max_inline_action_depth", config.max_inline_action_depth )
-      ( "max_authority_depth", config.max_authority_depth )
-      ( "max_generated_transaction_count", config.max_generated_transaction_count );
+      ( "max_authority_depth", config.max_authority_depth );
 }
 
 BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, enumivo_system_tester ) try {
@@ -2273,7 +2272,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, enumivo_system_tester ) try {
    //wlog( "verify dan cannot create test.fail" );
    BOOST_REQUIRE_THROW( create_accounts_with_resources( { N(test.fail) }, N(dan) ), fc::exception ); // dan shouldn't be able to do this
 
-   create_accounts_with_resources( { N(goodgoodgood) }, N(dan) ); /// 12 char names should succeed 
+   create_accounts_with_resources( { N(goodgoodgood) }, N(dan) ); /// 12 char names should succeed
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( multiple_namebids, enumivo_system_tester ) try {
