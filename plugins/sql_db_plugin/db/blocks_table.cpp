@@ -26,11 +26,10 @@ void blocks_table::create()
             "id VARCHAR(64) PRIMARY KEY,"
             "block_number INT,"
             "prev_block_id VARCHAR(64),"
-            "timestamp INT,"
+            "timestamp DATETIME DEFAULT NOW(),"
             "transaction_merkle_root VARCHAR(64),"
             "producer VARCHAR(18),"
-            "confirmed INT,"
-            "updated_at INT)";
+            "confirmed INT)";
 }
 
 void blocks_table::add(chain::signed_block_ptr block)
@@ -41,15 +40,14 @@ void blocks_table::add(chain::signed_block_ptr block)
     const auto timestamp = std::chrono::seconds{block->timestamp.operator fc::time_point().sec_since_epoch()}.count();
 
     *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root,"
-                  "producer, confirmed, updated_at) VALUES (:id, :in, :pb, :ti, :tr, :pa, :pe, :ua)",
+                  "producer, confirmed) VALUES (:id, :in, :pb, FROM_UNIXTIME(:ti), :tr, :pa, :pe)",
             soci::use(block_id_str),
             soci::use(block->block_num()),
             soci::use(previous_block_id_str),
             soci::use(timestamp),
             soci::use(transaction_mroot_str),
             soci::use(block->producer.to_string()),
-            soci::use(block->confirmed),
-            soci::use(timestamp);
+            soci::use(block->confirmed);
 }
 
 } // namespace

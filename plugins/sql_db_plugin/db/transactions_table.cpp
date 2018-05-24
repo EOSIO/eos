@@ -27,10 +27,10 @@ void transactions_table::create()
             "id VARCHAR(64) PRIMARY KEY,"
             "block_id VARCHAR(64),"
             "ref_block_prefix INT,"
-            "expiration INT,"
+            "expiration DATETIME DEFAULT NOW(),"
             "pending INT,"
-            "created_at INT,"
-            "updated_at INT)";
+            "created_at DATETIME DEFAULT NOW(),"
+            "updated_at DATETIME DEFAULT NOW())";
 }
 
 void transactions_table::add(chain::transaction transaction)
@@ -39,7 +39,7 @@ void transactions_table::add(chain::transaction transaction)
     const auto expiration = std::chrono::seconds{transaction.expiration.sec_since_epoch()}.count();
 
     *m_session << "INSERT INTO transactions(id, block_id, ref_block_prefix,"
-            "expiration, pending, created_at, updated_at) VALUES (:id, :bi, :rb, :ex, :pe, :ca, :ua)",
+            "expiration, pending, created_at, updated_at) VALUES (:id, :bi, :rb, FROM_UNIXTIME(:ex), :pe, FROM_UNIXTIME(:ca), FROM_UNIXTIME(:ua))",
             soci::use(transaction_id_str),
             soci::use(transaction.ref_block_num),
             soci::use(transaction.ref_block_prefix),
