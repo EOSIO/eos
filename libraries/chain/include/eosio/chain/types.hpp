@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/name.hpp>
+#include <eosio/chain/chain_id.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -88,14 +89,19 @@ namespace eosio { namespace chain {
 
    struct void_t{};
 
+   struct chain_id_type {
+      chain_id_type(const fc::string& s) : _id(s){}
+      chain_id_type() : _id(config::chain_id_str) {}
+      operator fc::sha256() { return _id; }
+      fc::sha256 _id;
+   };
+
    using chainbase::allocator;
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
    template<typename T>
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
-
-   using chain_id_type = fc::sha256;
 
    using action_name      = name;
    using scope_name       = name;
@@ -181,7 +187,6 @@ namespace eosio { namespace chain {
 
 } }  // eosio::chain
 
-
 FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)
                 (account_object_type)
@@ -224,3 +229,4 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )
+FC_REFLECT(eosio::chain::chain_id_type, (_id) )

@@ -1,0 +1,5 @@
+#pragma once
+
+namespace eosio { namespace chain { namespace config {
+const static char chain_id_str[] = "${eosio_CHAIN_ID}";
+}} // namespace eosio, config

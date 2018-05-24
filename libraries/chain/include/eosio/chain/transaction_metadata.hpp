@@ -39,7 +39,7 @@ class transaction_metadata {
       const flat_set<public_key_type>& recover_keys() {
          // TODO: Update caching logic below when we use a proper chain id setup for the particular blockchain rather than just chain_id_type()
          if( !signing_keys )
-            signing_keys = trx.get_signature_keys( chain_id_type() );
+            signing_keys = trx.get_signature_keys( config::chain_id );
          return *signing_keys;
       }
 

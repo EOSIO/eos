@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/chain_id.hpp>
 #include <fc/time.hpp>
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -112,7 +113,7 @@ const static int irreversible_threshold_percent= 70 * percent_1;
 
 const static uint64_t billable_alignment = 16;
 
-const static chain_id_type chain_id = fc::sha256("144B6AB7924EA47BAE7A5846B4494A35563AE816E2ED5AFFA7A9C990C2B3CFB3");
+const static chain_id_type chain_id = {config::chain_id_str};
 
 template<typename T>
 struct billable_size;
