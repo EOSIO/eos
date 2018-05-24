@@ -663,7 +663,10 @@ namespace eosio {
                      /// we need to find the most recent block the peer does know about
                      self->_last_sent_block_num = self->_local_lib;
                      self->_last_sent_block_id  = self->_local_lib_id;
-                     self->send_next_block();
+                     if( self->is_known_by_peer( self->_local_lib_id ) )
+                        self->send_next_block();
+                     else
+                        self->do_goodbye( "I don't know that you know my lib, please reconnect" );
                   }
                 }
            );
