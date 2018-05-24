@@ -19,7 +19,7 @@ namespace enumivo { namespace chain {
    name::operator string()const {
      static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
-      string str(13,'.');
+      string str(15,'.');
 
       uint64_t tmp = value;
       for( uint32_t i = 0; i <= 12; ++i ) {
