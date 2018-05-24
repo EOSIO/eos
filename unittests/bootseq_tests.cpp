@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create enumivo.msig and enumivo.coin
-        create_accounts({N(enumivo.msig), N(enumivo.coin), N(enumivo.ram), N(enumivo.ramfee), N(enumivo.stake), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.saving) });
+        create_accounts({N(enumivo.msig), N(enumivo.coin), N(enumivo.ram), N(enumivo.ramfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.saving) });
 
         // Set code for the following accounts:
         //  - enumivo (code: enumivo.bios) (already set by tester constructor)
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(N(enumivo), a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(enumivo.stake), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth(N(enumivo.stk), a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 

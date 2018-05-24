@@ -14,7 +14,7 @@ BOOST_AUTO_TEST_SUITE(enumivo_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.ramfee" ) + get_balance( "enumivo.stake" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.ramfee" ) + get_balance( "enumivo.stk" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    transfer( "enumivo", "alice1111111", core_from_string("1000.0000"), "enumivo" );
@@ -113,7 +113,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, enumivo_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.ramfee" ) + get_balance( "enumivo.stake" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.ramfee" ) + get_balance( "enumivo.stk" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
    transfer( "enumivo", "alice1111111", core_from_string("1000.0000"), "enumivo" );
 
@@ -171,7 +171,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, enumivo_system_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, enumivo_system_tester ) try {
    issue( "enumivo", core_from_string("1000.0000"), config::system_account_name );
-   issue( "enumivo.stake", core_from_string("1000.0000"), config::system_account_name );
+   issue( "enumivo.stk", core_from_string("1000.0000"), config::system_account_name );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //enumivo stakes for alice with transfer flag
@@ -201,7 +201,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, enumivo_system_tester ) tr
    BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "alice1111111", core_from_string("400.0000"), core_from_string("200.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
 
-   edump((get_balance( "enumivo.stake" )));
+   edump((get_balance( "enumivo.stk" )));
    
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);

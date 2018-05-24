@@ -42,7 +42,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
    create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes);
    create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes);
    produce_blocks(10);
-   BOOST_REQUIRE_EQUAL( success(), stake( "enumivo.stake", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "enumivo.stk", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {
