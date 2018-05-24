@@ -47,7 +47,7 @@ public:
       produce_blocks( 2 );
 
       create_accounts({ N(enumivo.coin), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), 
-               N(enumivo.bpay), N(enumivo.vpay), N(enumivo.saving) });
+               N(enumivo.bpay), N(enumivo.vpay), N(enumivo.save) });
 
       produce_blocks( 100 );
 

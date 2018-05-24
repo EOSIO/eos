@@ -96,7 +96,7 @@ namespace enumivosystem {
                                                     {N(enumivo), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
-                                                       { N(enumivo), N(enumivo.saving), asset(to_savings), "unallocated inflation" } );
+                                                       { N(enumivo), N(enumivo.save), asset(to_savings), "unallocated inflation" } );
 
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
                                                        { N(enumivo), N(enumivo.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
