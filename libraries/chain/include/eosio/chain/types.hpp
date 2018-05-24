@@ -90,10 +90,10 @@ namespace eosio { namespace chain {
    struct void_t{};
 
    struct chain_id_type {
-      chain_id_type(const fc::string& s) : _id(s){}
-      chain_id_type() : _id(config::chain_id_str) {}
-      operator fc::sha256() { return _id; }
-      fc::sha256 _id;
+      chain_id_type(const fc::string& s) : id(s){}
+      chain_id_type() : id(config::chain_id_str) {}
+      operator fc::sha256() { return id; }
+      fc::sha256 id;
    };
 
    using chainbase::allocator;
@@ -229,4 +229,4 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )
-FC_REFLECT(eosio::chain::chain_id_type, (_id) )
+FC_REFLECT(eosio::chain::chain_id_type, (id) )

@@ -427,7 +427,7 @@ controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
 void chain_plugin::get_chain_id(chain_id_type &cid)const {
-   memcpy(cid.data(), my->chain_id.data(), cid.data_size());
+   memcpy(cid.id.data(), my->chain_id.id.data(), cid.id.data_size());
 }
 
 namespace chain_apis {

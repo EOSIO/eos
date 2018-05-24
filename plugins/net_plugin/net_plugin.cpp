@@ -2244,7 +2244,7 @@ namespace eosio {
             fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
          }
 
-         if( msg.chain_id != chain_id) {
+         if( msg.chain_id.id != chain_id.id) {
             elog( "Peer on a different chain. Closing connection");
             c->enqueue( go_away_message(go_away_reason::wrong_chain) );
             return;
