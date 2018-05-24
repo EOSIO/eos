@@ -49,7 +49,7 @@ def waitForBool(lam, timeout=None):
     return False if ret is None else ret
 
 ########################################################################
-cmd='programs/eosio-launcher/eosio-launcher -p 1 -n 1 -s mesh -d 1 -f'
+cmd='programs/eosio-launcher/eosio-launcher -p 1 -n 1 -s mesh -d 1 -f  --nodeos \'--max-transaction-time 5000 --filter-on *\''
 print("cmd: %s" % (cmd))
 cmdArr=cmd.split()
 if 0 != subprocess.call(cmdArr):
@@ -58,10 +58,21 @@ if 0 != subprocess.call(cmdArr):
 
 time.sleep(1)
 
-cmd="pgrep -a nodeos"
+pgrepOpts="-fl"
+# pylint: disable=deprecated-method
+if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
+    pgrepOpts="-a"
+
+cmd="pgrep %s %s" % (pgrepOpts, EosServerName)
+
 sOut=None
 print("cmd: %s" % (cmd))
-psOut=subprocess.check_output(cmd.split()).decode("utf-8")
+psOut=None
+try:
+    psOut=subprocess.check_output(cmd.split()).decode("utf-8")
+except (subprocess.CalledProcessError) as _:
+    print("ERROR: No nodeos process found.")
+    exit(1)
 
 pattern=r"[\n]?(\d+) (.* --data-dir var/lib/node_00)"
 m=re.search(pattern, psOut, re.MULTILINE)
