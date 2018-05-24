@@ -150,7 +150,7 @@ namespace enumivo { namespace chain {
       resource_limits_config_object_type,
       account_history_object_type,
       action_history_object_type,
-      unconfirmed_block_object_type,
+      reversible_block_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -220,7 +220,7 @@ FC_REFLECT_ENUM(enumivo::chain::object_type,
                 (resource_limits_config_object_type)
                 (account_history_object_type)
                 (action_history_object_type)
-                (unconfirmed_block_object_type)
+                (reversible_block_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( enumivo::chain::void_t, )

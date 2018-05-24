@@ -900,7 +900,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, TESTER ) try {
    //1028 should fail
    BOOST_CHECK_THROW(set_code(N(globals),
       string(ss.str() + "(global $z (mut i64) (i64.const -12)))")
-   .c_str()), enumivo::chain::wasm_execution_error);;
+   .c_str()), enumivo::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 

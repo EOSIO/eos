@@ -8,9 +8,11 @@
 #include <fc/io/json.hpp>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/signals2/connection.hpp>
 
 namespace enumivo { 
    using namespace chain;
+   using boost::signals2::scoped_connection;
 
    static appbase::abstract_plugin& _history_plugin = app().register_plugin<history_plugin>();
 
@@ -138,6 +140,7 @@ namespace enumivo {
          bool bypass_filter = false;
          std::set<filter_entry> filter_on;
          chain_plugin*          chain_plug = nullptr;
+         fc::optional<scoped_connection> applied_transaction_connection;
 
          bool filter( const action_trace& act ) {
             if( bypass_filter )
@@ -287,9 +290,9 @@ namespace enumivo {
       chain.db().add_index<account_control_history_multi_index>();
       chain.db().add_index<public_key_history_multi_index>();
 
-      chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
+      my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
             my->on_applied_transaction(p);
-      });
+      }));
 
    }
 
@@ -297,6 +300,7 @@ namespace enumivo {
    }
 
    void history_plugin::plugin_shutdown() {
+      my->applied_transaction_connection.reset();
    }
 
 

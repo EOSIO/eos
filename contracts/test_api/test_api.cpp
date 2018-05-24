@@ -162,6 +162,14 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha1_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha1_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha256_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha256_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha512_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha512_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_ripemd160_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_ripemd160_failure);
 
       // test datastream
       WASM_TEST_HANDLER(test_datastream, test_basic);

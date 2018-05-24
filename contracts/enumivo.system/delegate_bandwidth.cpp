@@ -107,24 +107,32 @@ namespace enumivosystem {
       require_auth( payer );
       enumivo_assert( quant.amount > 0, "must purchase a positive amount" );
 
-      if( payer != N(enumivo) ) {
+      auto fee = quant;
+      fee.amount /= 200; /// .5% fee
+      auto quant_after_fee = quant;
+      quant_after_fee.amount -= fee.amount;
+
+      if( payer != N(eosio) ) {
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {payer,N(active)},
-                                                       { payer, N(enumivo), quant, std::string("buy ram") } );
+                                                       { payer, N(enumivo.ram), quant_after_fee, std::string("buy ram") } );
       }
 
+      if( fee.amount > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+                                                       { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
+      }
 
       int64_t bytes_out;
 
       auto itr = _rammarket.find(S(4,RAMCORE));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
-          bytes_out = es.convert( quant,  S(0,RAM) ).amount;
+          bytes_out = es.convert( quant_after_fee,  S(0,RAM) ).amount;
       });
-
 
       enumivo_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
-      _gstate.total_ram_stake          += quant.amount;
+      _gstate.total_ram_stake          += quant_after_fee.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
@@ -175,8 +183,13 @@ namespace enumivosystem {
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
       if( N(enumivo) != account ) {
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
-                                                       { N(enumivo), account, asset(tokens_out), std::string("sell ram") } );
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo.ram),N(active)},
+                                                       { N(enumivo.ram), account, asset(tokens_out), std::string("sell ram") } );
+         auto fee = tokens_out.amount / 200;
+         if( fee > 0 ) {
+            INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {account,N(active)},
+                                                          { account, N(enumivo.ramfee), asset(fee), std::string("sell ram fee") } );
+         }
       }
    }
 
@@ -252,7 +265,7 @@ namespace enumivosystem {
       } // tot_itr can be invalid, should go out of scope
 
       // create refund or update from existing refund
-      if ( N(enumivo) != source_stake_from ) { //for enumivo both transfer and refund make no sense
+      if ( N(enumivo.stake) != source_stake_from ) { //for enumivo both transfer and refund make no sense
          refunds_table refunds_tbl( _self, from );
          auto req = refunds_tbl.find( from );
 
@@ -317,7 +330,7 @@ namespace enumivosystem {
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
             INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {source_stake_from, N(active)},
-               { source_stake_from, N(enumivo), asset(transfer_amount), std::string("stake bandwidth") } );
+               { source_stake_from, N(enumivo.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -379,8 +392,8 @@ namespace enumivosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo),N(active)},
-                                                    { N(enumivo), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {N(enumivo.stake),N(active)},
+                                                    { N(enumivo.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }
