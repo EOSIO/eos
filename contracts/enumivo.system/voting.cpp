@@ -34,7 +34,7 @@ namespace enumivosystem {
     *  @pre authority of producer to register
     *
     */
-   void system_contract::regproducer( const account_name producer, const enumivo::public_key& producer_key, const std::string& url, uint16_t location ) { 
+   void system_contract::regproducer( const account_name producer, const enumivo::public_key& producer_key, const std::string& url, uint16_t location ) {
       enumivo_assert( url.size() < 512, "url too long" );
       require_auth( producer );
 
@@ -96,7 +96,7 @@ namespace enumivosystem {
 
          top_producers.emplace_back( std::pair<enumivo::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
       }
-      
+
 
 
       /// sort by producer name
@@ -114,7 +114,7 @@ namespace enumivosystem {
 
       if( new_id != _gstate.last_producer_schedule_id ) {
          _gstate.last_producer_schedule_id = new_id;
-         set_active_producers( packed_schedule.data(),  packed_schedule.size() );
+         set_proposed_producers( packed_schedule.data(),  packed_schedule.size() );
       }
       _gstate.last_producer_schedule_update = block_time;
    }
@@ -133,7 +133,7 @@ namespace enumivosystem {
     *  @pre voter must have previously staked some ENU for voting
     *  @pre voter->staked must be up to date
     *
-    *  @post every producer previously voted for will have vote reduced by previous vote weight 
+    *  @post every producer previously voted for will have vote reduced by previous vote weight
     *  @post every producer newly voted for will have vote increased by new vote amount
     *  @post prior proxy will proxied_vote_weight decremented by previous vote weight
     *  @post new proxy will proxied_vote_weight incremented by new vote weight
@@ -245,7 +245,7 @@ namespace enumivosystem {
    /**
     *  An account marked as a proxy can vote with the weight of other accounts which
     *  have selected it as a proxy. Other accounts must refresh their voteproducer to
-    *  update the proxy's weight.    
+    *  update the proxy's weight.
     *
     *  @param isproxy - true if proxy wishes to vote on behalf of others, false otherwise
     *  @pre proxy must have something staked (existing row in voters table)

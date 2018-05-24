@@ -28,7 +28,7 @@ namespace enumivo {
             require_auth( _self );
             char buffer[action_data_size()];
             read_action_data( buffer, sizeof(buffer) ); // should be the same data as enumivo::pack(schedule)
-            set_active_producers(buffer, sizeof(buffer));
+            set_proposed_producers(buffer, sizeof(buffer));
          }
 
          void reqauth( action_name from ) {

@@ -48,7 +48,7 @@ using public_key_type = fc::crypto::public_key;
 using private_key_type = fc::crypto::private_key;
 
 const string block_dir = "blocks";
-const string shared_mem_dir = "shared_mem";
+const string shared_mem_dir = "state";
 
 struct local_identity {
   vector <fc::ip::address> addrs;
@@ -958,7 +958,7 @@ launcher_def::write_config_file (tn_node_def &node) {
    }
 
    cfg << "genesis-json = " << host->genesis << "\n";
-   cfg << "block-log-dir = " << block_dir << "\n";
+   cfg << "blocks-dir = " << block_dir << "\n";
    cfg << "readonly = 0\n";
    cfg << "send-whole-blocks = true\n";
    cfg << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n";
