@@ -36,15 +36,17 @@ using eosio::packed_transaction_ptr;
 using std::vector;
 
 struct hello {
-   public_key_type               remote_peer;
+   public_key_type               peer_id;
    string                        network_version;
    string                        agent;
+   string                        user;
+   string                        password;
    chain_id_type                 chain_id;
    bool                          request_transactions = false;
    uint32_t                      last_irr_block_num = 0;
    vector<block_id_type>         pending_block_ids;
 };
-FC_REFLECT( hello, (remote_peer)(network_version)(agent)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
+FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
 
 
 /**
@@ -68,12 +70,24 @@ struct block_notice {
 
 FC_REFLECT( block_notice, (block_id) );
 
+struct ping {
+   fc::time_point sent;
+   fc::sha256     code;
+};
+FC_REFLECT( ping, (sent)(code) )
+
+struct pong {
+   fc::time_point sent;
+   fc::sha256     code;
+};
+FC_REFLECT( pong, (sent)(code) )
 
 using bnet_message = fc::static_variant<hello,
                                         trx_notice,
                                         block_notice,
                                         signed_block_ptr,
-                                        packed_transaction_ptr
+                                        packed_transaction_ptr,
+                                        ping, pong
                                         >;
 
 
@@ -154,6 +168,8 @@ namespace eosio {
         block_status_index        _block_status; 
         transaction_status_index  _transaction_status; 
 
+        public_key_type    _peer_id;
+        public_key_type    _remote_peer_id;
         uint32_t           _local_lib             = 0;
         block_id_type      _local_lib_id;
         uint32_t           _local_head_block_num  = 0;
@@ -165,6 +181,11 @@ namespace eosio {
         block_id_type      _last_sent_block_id; /// the id of the last block sent
         bool               _recv_remote_hello     = false;
         bool               _sent_remote_hello     = false;
+
+
+        fc::sha256         _current_code;
+        ping               _last_recv_ping;
+        ping               _last_sent_ping;
  
 
         int                                                            _session_num = 0;
@@ -525,8 +546,38 @@ namespace eosio {
 
            clear_expired_trx();
 
+           if( send_pong() ) return;
+           if( send_ping() ) return;
            if( send_next_block() ) return;
-           else if( send_next_trx() ) return;
+           if( send_next_trx() ) return;
+        }
+
+        bool send_pong() {
+           if( _last_recv_ping.code == fc::sha256() ) 
+              return false;
+
+           send( pong{ fc::time_point::now(), _last_recv_ping.code } );
+           _last_recv_ping.code = fc::sha256();
+           return true;
+        }
+
+        bool send_ping() {
+
+           if( fc::time_point::now() - _last_sent_ping.sent > fc::seconds(6) ) {
+
+              if( _last_sent_ping.code != fc::sha256() ) {
+                 do_goodbye( "attempt to send another ping before receiving pong" );
+                 return true;
+              }
+
+              _last_sent_ping.sent = fc::time_point::now();
+              _last_sent_ping.code = fc::sha256::hash(_last_sent_ping.sent); /// TODO: make this more random
+              send( _last_sent_ping );
+              return true;
+           } 
+
+
+           return false;
         }
 
         bool is_known_by_peer( block_id_type id ) {
@@ -692,6 +743,12 @@ namespace eosio {
                  case bnet_message::tag<packed_transaction_ptr>::value:
                     on( msg.get<packed_transaction_ptr>() );
                     break;
+                 case bnet_message::tag<ping>::value:
+                    on( msg.get<ping>() );
+                    break;
+                 case bnet_message::tag<pong>::value:
+                    on( msg.get<pong>() );
+                    break;
                  default:
                     wlog( "bad message received" );
                     _ws->close( boost::beast::websocket::close_code::bad_payload );
@@ -703,19 +760,47 @@ namespace eosio {
            }
         }
 
+
+        void on( const ping& p ) {
+           _last_recv_ping = p;
+        }
+
+        void on( const pong& p ) {
+           if( p.code != _last_sent_ping.code ) {
+              return do_goodbye( "invalid pong code" );
+           }
+           if( fc::time_point::now() - _last_sent_ping.sent > fc::seconds(3) ) {
+              return do_goodbye( "pong response too slow" );
+           }
+           _last_sent_ping.code = fc::sha256();
+        }
+
+        void do_goodbye( const string& reason ) {
+           wlog( "${reason}", ("reason",reason) );
+           _ws->next_layer().close();
+        }
+
         void on( const hello& hi ) {
+           _recv_remote_hello     = true;
+
            if( hi.chain_id != chain_id_type() ) {
-              _ws->next_layer().close();
-              return;
+              return do_goodbye( "disconnecting due to wrong chain id" );
            }
 
-           _recv_remote_hello     = true;
+           if( hi.peer_id == _peer_id ) {
+              return do_goodbye( "connected to self" );
+           }
+
            _last_sent_block_num   = hi.last_irr_block_num;
            _remote_request_trx    = hi.request_transactions;
-
+           _remote_peer_id        = hi.peer_id;
+           
            for( const auto& id : hi.pending_block_ids )
               mark_block_known_by_peer( id );
+
+           check_for_redundant_connection();
         }
+        void check_for_redundant_connection();
 
         void on( const block_notice& stat ) {
            mark_block_known_by_peer( stat.block_id );
@@ -831,10 +916,18 @@ namespace eosio {
 
    class bnet_plugin_impl {
       public:
+         bnet_plugin_impl() {
+            _peer_pk = fc::crypto::private_key::generate();
+            _peer_id = _peer_pk.get_public_key();
+         }
+
          string                                         _bnet_endpoint_address = "0.0.0.0";
          uint16_t                                       _bnet_endpoint_port = 4321;
          bool                                           _request_trx = true;
+         public_key_type                                _peer_id;
+         private_key_type                               _peer_pk; /// one time random key to identify this process
                                                         
+
          std::vector<std::string>                       _connect_to_peers; /// list of peers to connect to
          std::vector<std::thread>                       _socket_threads;
          int32_t                                        _num_threads = 1;
@@ -929,6 +1022,7 @@ namespace eosio {
                 if( !found ) {
                    wlog( "attempt to connect to ${p}", ("p",peer) );
                    auto s = std::make_shared<session>( *_ioc, std::ref(*this) );
+                   s->_peer_id = _peer_id;
                    _sessions[s.get()] = s;
                    s->run( peer );
                 }
@@ -956,6 +1050,7 @@ namespace eosio {
      }
      auto newsession = std::make_shared<session>( move( _socket ), std::ref(_net_plugin) );
      _net_plugin.async_add_session( newsession );
+     newsession->_peer_id = _net_plugin._peer_id;
      newsession->run();
      do_accept();
    }
@@ -1047,6 +1142,7 @@ namespace eosio {
 
       for( const auto& peer : my->_connect_to_peers ) {
          auto s = std::make_shared<session>( ioc, std::ref(*my) );
+         s->_peer_id = my->_peer_id;
          my->_sessions[s.get()] = s;
          s->run( peer );
       }
@@ -1083,6 +1179,7 @@ namespace eosio {
    void session::do_hello() {
       async_get_pending_block_ids( [self = shared_from_this() ]( const vector<block_id_type>& ids, uint32_t lib ){
           hello hello_msg;
+          hello_msg.peer_id = self->_peer_id;
           hello_msg.last_irr_block_num = lib;
           hello_msg.pending_block_ids  = ids;
           hello_msg.request_transactions = self->_net_plugin._request_trx;
@@ -1091,6 +1188,16 @@ namespace eosio {
           self->send( hello_msg );
           self->_sent_remote_hello = true;
       });
+   }
+
+   void session::check_for_redundant_connection() {
+     app().get_io_service().post( [self=shared_from_this()]{
+       self->_net_plugin.for_each_session( [self]( auto ses ){
+         if( ses != self && ses->_remote_peer_id == self->_remote_peer_id ) {
+           self->do_goodbye( "redundant connection" ); 
+         }
+       });
+     });
    }
 
 } /// namespace eosio
