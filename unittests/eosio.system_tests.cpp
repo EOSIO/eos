@@ -1576,7 +1576,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       // re-register deactivated producer and let him produce blocks again
       const uint32_t initial_unpaid_blocks = inactive_prod_info["unpaid_blocks"].as<uint32_t>();
       regproducer(producer_names[one_inactive_index]);
-      produce_blocks(21 * 12);
+      produce_blocks(21 * 12*100);
       auto reactivated_prod_info   = get_producer_info(producer_names[one_inactive_index]);
       const uint32_t unpaid_blocks = reactivated_prod_info["unpaid_blocks"].as<uint32_t>();
       BOOST_REQUIRE(initial_unpaid_blocks + 12 <= unpaid_blocks);
