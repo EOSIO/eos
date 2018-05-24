@@ -19,6 +19,7 @@ add_library( eosio_chain
              transaction_context.cpp
              eosio_contract.cpp
              eosio_contract_abi.cpp
+             chain_config.cpp
 
 #             chain_config.cpp
 #             block_trace.cpp

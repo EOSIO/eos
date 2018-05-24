@@ -75,7 +75,7 @@ class Utils:
         chainSyncStrategy=Utils.SyncStrategy(Utils.SyncReplayTag, 1, "--replay-blockchain")
         chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
 
-        chainSyncStrategy=Utils.SyncStrategy(Utils.SyncResyncTag, 2, "--resync-blockchain")
+        chainSyncStrategy=Utils.SyncStrategy(Utils.SyncResyncTag, 2, "--delete-all-blocks")
         chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
 
         return chainSyncStrategies
@@ -1380,7 +1380,7 @@ class Cluster(object):
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
-            nodeosArgs += " --plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
+            nodeosArgs += " --plugin eosio::mongo_db_plugin --delete-all-blocks --mongodb-uri %s" % self.mongoUri
 
         if nodeosArgs:
             cmdArr.append("--nodeos")
@@ -1974,6 +1974,27 @@ class Cluster(object):
             trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
+                return False
+            
+            eosioRamAccount=copy.deepcopy(eosioAccount)
+            eosioRamAccount.name="eosio.ram"
+            trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
+                return False
+
+            eosioRamfeeAccount=copy.deepcopy(eosioAccount)
+            eosioRamfeeAccount.name="eosio.ramfee"
+            trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
+                return False
+
+            eosioStakeAccount=copy.deepcopy(eosioAccount)
+            eosioStakeAccount.name="eosio.stake"
+            trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
                 return False
 
             Node.validateTransaction(trans)

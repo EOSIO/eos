@@ -16,18 +16,16 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
-   if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
-      if (!ar.console.empty()) {
-         auto prefix = fc::format_string(
-                                         "\n[(${a},${n})->${r}]",
-                                         fc::mutable_variant_object()
-                                         ("a", ar.act.account)
-                                         ("n", ar.act.name)
-                                         ("r", receiver));
-         dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
-              + ar.console
-              + prefix + ": CONSOLE OUTPUT END   =====================" );
-      }
+   if (!ar.console.empty()) {
+      auto prefix = fc::format_string(
+                                      "\n[(${a},${n})->${r}]",
+                                      fc::mutable_variant_object()
+                                      ("a", ar.act.account)
+                                      ("n", ar.act.name)
+                                      ("r", receiver));
+      dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+           + ar.console
+           + prefix + ": CONSOLE OUTPUT END   =====================" );
    }
 }
 
@@ -75,7 +73,9 @@ action_trace apply_context::exec_one()
 
    trx_context.executed.emplace_back( move(r) );
 
-   print_debug(receiver, t);
+   if ( control.contracts_console() ) {
+      print_debug(receiver, t);
+   }
 
    reset_console();
 
