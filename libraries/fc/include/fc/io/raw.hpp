@@ -350,17 +350,17 @@ namespace fc {
       };
 
       template<typename Stream, typename Class>
-      struct unpack_object_visitor {
+      struct unpack_object_visitor : fc::reflector_verifier_visitor<Class> {
         unpack_object_visitor(Class& _c, Stream& _s)
-        :c(_c),s(_s){}
+        : fc::reflector_verifier_visitor<Class>(_c), s(_s){}
 
         template<typename T, typename C, T(C::*p)>
         inline void operator()( const char* name )const
         { try {
-          fc::raw::unpack( s, c.*p );
+          fc::raw::unpack( s, this->obj.*p );
         } FC_RETHROW_EXCEPTIONS( warn, "Error unpacking field ${field}", ("field",name) ) }
+
         private:
-          Class&  c;
           Stream& s;
       };
 

@@ -4,7 +4,7 @@
 # Go into cmd loop: sudo ./cleos.sh
 # Run single cmd:  sudo ./cleos.sh <cleos paramers>
 
-PREFIX="docker exec docker_nodeos_1 cleos"
+PREFIX="docker-compose exec nodeosd cleos"
 if [ -z $1 ] ; then
   while :
   do

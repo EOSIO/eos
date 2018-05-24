@@ -85,17 +85,17 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
         *m_session << "SELECT COUNT(*) FROM tokens WHERE account = :ac AND symbol = :sy",
                 soci::into(exist),
                 soci::use(to_name),
-                soci::use(asset_quantity.sym.name());
+                soci::use(asset_quantity.get_symbol().name());
         if (exist > 0) {
             *m_session << "UPDATE tokens SET amount = amount + :am WHERE account = :ac AND symbol :sy",
                     soci::use(asset_quantity.to_real()),
                     soci::use(to_name),
-                    soci::use(asset_quantity.sym.name());
+                    soci::use(asset_quantity.get_symbol().name());
         } else {
             *m_session << "INSERT INTO tokens(account, amount, staked, symbol) VALUES (:ac, :am, 0, :as) ",
                     soci::use(to_name),
                     soci::use(asset_quantity.to_real()),
-                    soci::use(asset_quantity.sym.name());
+                    soci::use(asset_quantity.get_symbol().name());
         }
     }
 
@@ -109,23 +109,23 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
         *m_session << "SELECT COUNT(*) FROM tokens WHERE account = :ac AND symbol = :sy",
                 soci::into(exist),
                 soci::use(to_name),
-                soci::use(asset_quantity.sym.name());
+                soci::use(asset_quantity.get_symbol().name());
         if (exist > 0) {
             *m_session << "UPDATE tokens SET amount = amount + :am WHERE account = :ac AND symbol = :sy",
                     soci::use(asset_quantity.to_real()),
                     soci::use(to_name),
-                    soci::use(asset_quantity.sym.name());
+                    soci::use(asset_quantity.get_symbol().name());
         } else {
             *m_session << "INSERT INTO tokens(account, amount, staked, symbol) VALUES (:ac, :am, 0, :as) ",
                     soci::use(to_name),
                     soci::use(asset_quantity.to_real()),
-                    soci::use(asset_quantity.sym.name());
+                    soci::use(asset_quantity.get_symbol().name());
         }
 
         *m_session << "UPDATE tokens SET amount = amount - :am WHERE account = :ac AND symbol = :sy",
                 soci::use(asset_quantity.to_real()),
                 soci::use(from_name),
-                soci::use(asset_quantity.sym.name());
+                soci::use(asset_quantity.get_symbol().name());
     }
 
     if (action.account != chain::name(chain::config::system_account_name)) {

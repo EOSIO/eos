@@ -26,6 +26,8 @@ Options:
                               the http/https URL where nodeos is running
   --wallet-url TEXT=http://localhost:8888/
                               the http/https URL where keosd is running
+  -r,--header                 pass specific HTTP header, repeat this option to pass multiple headers
+  -n,--no-verify              don't verify peer certificate when using HTTPS
   -v,--verbose                output verbose actions on error
 
 Subcommands:
@@ -150,6 +152,8 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 string url = "http://localhost:8888/";
 string wallet_url = "http://localhost:8900/";
 int64_t wallet_unlock_timeout = 0;
+bool no_verify = false;
+vector<string> headers;
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -207,7 +211,10 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return eosio::client::http::do_http_call( url, path, fc::variant(v) );
+      eosio::client::http::connection_param *cp = new eosio::client::http::connection_param((std::string&)url, (std::string&)path,
+              no_verify ? false : true, headers);
+
+      return eosio::client::http::do_http_call( *cp, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -333,45 +340,49 @@ void print_action_tree( const fc::variant& action ) {
 }
 
 void print_result( const fc::variant& result ) { try {
-      const auto& processed = result["processed"];
-      const auto& transaction_id = processed["id"].as_string();
-      string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
-      int64_t net = -1;
-      int64_t cpu = -1;
-      if (processed.get_object().contains("receipt")) {
-         const auto& receipt = processed["receipt"];
-         if (receipt.is_object()) {
-            net = receipt["net_usage_words"].as_int64() * 8;
-            cpu = receipt["cpu_usage_us"].as_int64();
+      if (result.is_object() && result.get_object().contains("processed")) {
+         const auto& processed = result["processed"];
+         const auto& transaction_id = processed["id"].as_string();
+         string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+         int64_t net = -1;
+         int64_t cpu = -1;
+         if( processed.get_object().contains( "receipt" )) {
+            const auto& receipt = processed["receipt"];
+            if( receipt.is_object()) {
+               net = receipt["net_usage_words"].as_int64() * 8;
+               cpu = receipt["cpu_usage_us"].as_int64();
+            }
          }
-      }
 
-      cerr << status << " transaction: " << transaction_id << "  ";
-      if (net < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << net;
-      }
-      cerr << " bytes  ";
-      if (cpu < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << cpu;
-      }
+         cerr << status << " transaction: " << transaction_id << "  ";
+         if( net < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << net;
+         }
+         cerr << " bytes  ";
+         if( cpu < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << cpu;
+         }
 
-      cerr << " us\n";
+         cerr << " us\n";
 
-      if( status == "failed" ) {
-         auto soft_except = processed["except"].as<optional<fc::exception>>();
-         if( soft_except ) {
-            edump((soft_except->to_detail_string()));
+         if( status == "failed" ) {
+            auto soft_except = processed["except"].as<optional<fc::exception>>();
+            if( soft_except ) {
+               edump((soft_except->to_detail_string()));
+            }
+         } else {
+            const auto& actions = processed["action_traces"].get_array();
+            for( const auto& a : actions ) {
+               print_action_tree( a );
+            }
+            wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
          }
       } else {
-         const auto& actions = processed["action_traces"].get_array();
-         for( const auto& a : actions ) {
-            print_action_tree( a );
-         }
-         wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
+         cerr << fc::json::to_pretty_string( result ) << endl;
       }
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
@@ -380,7 +391,7 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
    auto result = push_actions( move(actions), extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
       print_result( result );
    }
@@ -390,9 +401,8 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    auto result = push_transaction(trx, extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
-      auto trace = result["processed"].as<eosio::chain::transaction_trace>();
       print_result( result );
    }
 }
@@ -576,7 +586,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
 asset to_asset( const string& code, const string& s ) {
    static map<eosio::chain::symbol_code, eosio::chain::symbol> cache;
    auto a = asset::from_string( s );
-   eosio::chain::symbol_code sym = a.sym.to_symbol_code();
+   eosio::chain::symbol_code sym = a.get_symbol().to_symbol_code();
    auto it = cache.find( sym );
    auto sym_str = a.symbol_name();
    if ( it == cache.end() ) {
@@ -588,7 +598,7 @@ asset to_asset( const string& code, const string& s ) {
       auto obj_it = obj.find( sym_str );
       if (obj_it != obj.end()) {
          auto result = obj_it->value().as<eosio::chain_apis::read_only::get_currency_stats_result>();
-         auto p = cache.insert(make_pair( sym, result.max_supply.sym ));
+         auto p = cache.insert(make_pair( sym, result.max_supply.get_symbol() ));
          it = p.first;
       } else {
          FC_THROW("Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
@@ -598,7 +608,7 @@ asset to_asset( const string& code, const string& s ) {
    if ( a.decimals() < expected_symbol.decimals() ) {
       auto factor = expected_symbol.precision() / a.precision();
       auto a_old = a;
-      a = asset( a.amount * factor, expected_symbol );
+      a = asset( a.get_amount() * factor, expected_symbol );
    } else if ( a.decimals() > expected_symbol.decimals() ) {
       FC_THROW("Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
    } // else precision matches
@@ -1432,6 +1442,16 @@ void get_account( const string& accountName, bool json_format ) {
    }
 }
 
+CLI::callback_t header_opt_callback = [](CLI::results_t res) {
+   vector<string>::iterator itr;
+
+   for (itr = res.begin(); itr != res.end(); itr++) {
+       headers.push_back(*itr);
+   }
+
+   return true;
+};
+
 int main( int argc, char** argv ) {
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
@@ -1447,6 +1467,8 @@ int main( int argc, char** argv ) {
    app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
 
+   app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
+   app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
    app.set_callback([] { ensure_keosd_running();});
 
    bool verbose_errors = false;

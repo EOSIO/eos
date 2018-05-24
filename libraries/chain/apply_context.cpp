@@ -16,18 +16,16 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
-   if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
-      if (!ar.console.empty()) {
-         auto prefix = fc::format_string(
-                                         "\n[(${a},${n})->${r}]",
-                                         fc::mutable_variant_object()
-                                         ("a", ar.act.account)
-                                         ("n", ar.act.name)
-                                         ("r", receiver));
-         dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
-              + ar.console
-              + prefix + ": CONSOLE OUTPUT END   =====================" );
-      }
+   if (!ar.console.empty()) {
+      auto prefix = fc::format_string(
+                                      "\n[(${a},${n})->${r}]",
+                                      fc::mutable_variant_object()
+                                      ("a", ar.act.account)
+                                      ("n", ar.act.name)
+                                      ("r", receiver));
+      dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+           + ar.console
+           + prefix + ": CONSOLE OUTPUT END   =====================" );
    }
 }
 
@@ -75,7 +73,9 @@ action_trace apply_context::exec_one()
 
    trx_context.executed.emplace_back( move(r) );
 
-   print_debug(receiver, t);
+   if ( control.contracts_console() ) {
+      print_debug(receiver, t);
+   }
 
    reset_console();
 
@@ -286,7 +286,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    trx_context.add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
-   trx_context.checktime();
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
@@ -296,7 +295,6 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
       trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
       generated_transaction_idx.remove(*gto);
    }
-   trx_context.checktime();
    return gto;
 }
 
@@ -342,7 +340,6 @@ void apply_context::reset_console() {
 
 bytes apply_context::get_packed_transaction() {
    auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
-   trx_context.checktime();
    return r;
 }
 
