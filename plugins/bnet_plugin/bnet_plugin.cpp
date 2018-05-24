@@ -616,7 +616,12 @@ namespace eosio {
         } FC_LOG_AND_RETHROW() }
 
         bool send_next_block() {
-           if( _last_sent_block_num == _local_head_block_num ) 
+           if( _last_sent_block_num > _local_head_block_num ) {
+              _last_sent_block_num  = _local_lib;
+              _last_sent_block_id  = _local_lib_id;
+           }
+
+           if( _last_sent_block_num == _local_head_block_num )
               return false;
 
            _state = sending_state;
