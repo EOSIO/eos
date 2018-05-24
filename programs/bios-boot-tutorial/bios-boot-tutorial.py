@@ -14,22 +14,42 @@ walletDir = os.path.abspath('./wallet/')
 unlockTimeout = 99999999999
 nodesDir = './nodes/'
 contractsDir = '../../build/contracts/'
-cleos = '../../build/programs/cleos/cleos --wallet-url http://localhost:6666 --url http://localhost:8000 '
-nodeos = '../../build/programs/nodeos/nodeos'
+cleos = 'cleos --wallet-url http://localhost:6666 --url http://localhost:8000 '
+nodeos = 'nodeos'
 fastUnstakeSystem = './fast.refund/eosio.system/eosio.system.wasm'
 logFile = open('test.log', 'a')
 
-with open('accounts.json') as f:
-    accounts = json.load(f)
-
-symbol = 'SYS'
-numSysAccounts = 3
-firstRegAccount = numSysAccounts
-numProducers = 30
-firstProducer = len(accounts) - numProducers
+limitUsers = 0
+limitProducers = 0
 numProducersToVoteFor = 20
 numVoters = 10
-maxClients = numProducers + 1
+symbol = 'SYS'
+
+eosioPub = 'EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr'
+eosioPvt = '5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p'
+systemAccounts = [
+    'eosio.bpay',
+    'eosio.msig',
+    'eosio.names',
+    'eosio.ram',
+    'eosio.ramfee',
+    'eosio.saving',
+    'eosio.stake',
+    'eosio.token',
+    'eosio.vpay',
+]
+
+with open('accounts.json') as f:
+    a = json.load(f)
+    if limitUsers:
+        del a['users'][limitUsers:]
+    if limitProducers:
+        del a['producers'][limitProducers:]
+    firstProducer = len(a['users'])
+    numProducers = len(a['producers'])
+    accounts = a['users'] + a['producers']
+
+maxClients = numProducers + 10
 
 def jsonArg(a):
     return " '" + json.dumps(a) + "' "
@@ -69,54 +89,53 @@ def startWallet():
     run(cleos + 'wallet create')
 
 def importKeys():
+    run(cleos + 'wallet import ' + eosioPvt)
     keys = {}
-    for i in range(2, len(accounts)):
-        key = accounts[i]['pvt']
+    for a in accounts:
+        key = a['pvt']
         if not key in keys:
             keys[key] = True
             run(cleos + 'wallet import ' + key)
 
+def startNode(nodeIndex, account):
+    dir = nodesDir + ('%02d-' % nodeIndex) + account['name'] + '/'
+    run('rm -rf ' + dir)
+    run('mkdir -p ' + dir)
+    otherOpts = ''.join(list(map(lambda i: '    --p2p-peer-address localhost:' + str(9000 + i), range(nodeIndex))))
+    if not nodeIndex: otherOpts += (
+        '    --plugin eosio::history_plugin'
+        '    --plugin eosio::history_api_plugin'
+    )
+    cmd = (
+        nodeos +
+        '    --max-transaction-time 200'
+        '    --contracts-console'
+        '    --genesis-json ' + genesis +
+        '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'
+        '    --config-dir ' + os.path.abspath(dir) +
+        '    --data-dir ' + os.path.abspath(dir) +
+        '    --chain-state-db-size-mb 1024'
+        '    --http-server-address 127.0.0.1:' + str(8000 + nodeIndex) +
+        '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + nodeIndex) +
+        '    --max-clients ' + str(maxClients) +
+        '    --enable-stale-production'
+        '    --producer-name ' + account['name'] +
+        '    --private-key \'["' + account['pub'] + '","' + account['pvt'] + '"]\''
+        '    --plugin eosio::http_plugin'
+        '    --plugin eosio::chain_api_plugin'
+        '    --plugin eosio::producer_plugin' +
+        otherOpts)
+    with open(dir + 'stderr', mode='w') as f:
+        f.write(cmd + '\n\n')
+    background(cmd + '    2>>' + dir + 'stderr')
+
 def startProducers(b, e):
     for i in range(b, e):
-        account = accounts[i]
-        dir = nodesDir + account['name'] + '/'
-        run('rm -rf ' + dir)
-        run('mkdir -p ' + dir)
-        otherProds = [j for j in range(firstProducer, firstProducer + numProducers) if j < i]
-        if i:
-            otherProds.append(0)
-        otherOpts = ''.join(list(map(lambda i: '    --p2p-peer-address localhost:' + str(9000 + i), otherProds)))
-        if not i: otherOpts += (
-            '    --plugin eosio::history_plugin'
-            '    --plugin eosio::history_api_plugin'
-        )
-        portOffset = 0 if not i else i - firstProducer + 1
-        cmd = (
-            nodeos +
-            '    --max-transaction-time 200'
-            '    --genesis-json ' + genesis +
-            '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'
-            '    --config-dir ' + os.path.abspath(dir) +
-            '    --data-dir ' + os.path.abspath(dir) +
-            '    --chain-state-db-size-mb 1024'
-            '    --http-server-address 127.0.0.1:' + str(8000 + portOffset) +
-            '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + portOffset) +
-            '    --max-clients ' + str(maxClients) +
-            '    --enable-stale-production'
-            '    --producer-name ' + account['name'] +
-            '    --private-key \'["' + account['pub'] + '","' + account['pvt'] + '"]\''
-            '    --plugin eosio::http_plugin'
-            '    --plugin eosio::chain_api_plugin'
-            '    --plugin eosio::producer_plugin' +
-            otherOpts)
-        with open(dir + 'stderr', mode='w') as f:
-            f.write(cmd + '\n\n')
-        background(cmd + '    2>>' + dir + 'stderr')
+        startNode(i - b + 1, accounts[i])
 
-def createAccounts(b, e):
-    for i in range(b, e):
-        a = accounts[i]
-        run(cleos + 'create account eosio ' + a['name'] + ' ' + a['pub'] + ' ' + a['pub'])
+def createSystemAccounts():
+    for a in systemAccounts:
+        run(cleos + 'create account eosio ' + a + ' ' + eosioPub)
 
 def intToCurrency(i):
     return '%d.%04d %s' % (i // 1000, i % 1000, symbol)
@@ -231,47 +250,47 @@ def msigExecReplaceSystem(proposer, proposalName):
     retry(cleos + 'multisig exec ' + proposer + ' ' + proposalName + ' -p ' + proposer)
 
 def msigReplaceSystem():
-    run(cleos + 'push action eosio buyrambytes' + jsonArg(['eosio', accounts[firstRegAccount]['name'], 200000]) + '-p eosio')
+    run(cleos + 'push action eosio buyrambytes' + jsonArg(['eosio', accounts[0]['name'], 200000]) + '-p eosio')
     time.sleep(1)
-    msigProposeReplaceSystem(accounts[firstRegAccount]['name'], 'fast.unstake')
+    msigProposeReplaceSystem(accounts[0]['name'], 'fast.unstake')
     time.sleep(1)
-    msigApproveReplaceSystem(accounts[firstRegAccount]['name'], 'fast.unstake')
-    msigExecReplaceSystem(accounts[firstRegAccount]['name'], 'fast.unstake')
+    msigApproveReplaceSystem(accounts[0]['name'], 'fast.unstake')
+    msigExecReplaceSystem(accounts[0]['name'], 'fast.unstake')
 
 logFile.write('\n\n' + '*' * 80 + '\n\n\n')
 run('killall keosd nodeos || true')
 time.sleep(1.5)
 startWallet()
 importKeys()
-startProducers(0, 1)
+startNode(0, {'name': 'eosio', 'pvt': eosioPvt, 'pub': eosioPub})
 time.sleep(1.5)
-createAccounts(1, numSysAccounts)
+createSystemAccounts()
 run(cleos + 'set contract eosio.token ' + contractsDir + 'eosio.token/')
 run(cleos + 'set contract eosio.msig ' + contractsDir + 'eosio.msig/')
 run(cleos + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (symbol))
-totalAllocation = fillStake(firstRegAccount, len(accounts))
+totalAllocation = fillStake(0, len(accounts))
 run(cleos + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
 time.sleep(1)
 retry(cleos + 'set contract eosio ' + contractsDir + 'eosio.system/')
 time.sleep(1)
 run(cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
-createStakedAccounts(firstRegAccount, len(accounts))
+createStakedAccounts(0, len(accounts))
 regProducers(firstProducer, firstProducer + numProducers)
 time.sleep(1)
 listProducers()
 startProducers(firstProducer, firstProducer + numProducers)
 time.sleep(2)
-vote(firstRegAccount, firstRegAccount + numVoters)
+vote(0, 0 + numVoters)
 time.sleep(1)
 listProducers()
 time.sleep(5)
 claimRewards()
-proxyVotes(firstRegAccount, firstRegAccount + numVoters)
+proxyVotes(0, 0 + numVoters)
 resign('eosio', 'eosio.prods')
-resign('eosio.msig', 'eosio')
-resign('eosio.token', 'eosio')
+for a in systemAccounts:
+    resign('eosio.msig', 'eosio')
 # msigReplaceSystem()
-run(cleos + 'push action eosio.token issue \'["eosio", "%d.0000 %s", "memo"]\' -p eosio' % ((len(accounts) - firstRegAccount) * 10, symbol))
-sendUnstakedFunds(firstRegAccount, len(accounts))
-randomTransfer(firstRegAccount, len(accounts), 8)
-run('tail -n 60 ' + nodesDir + 'eosio/stderr')
+run(cleos + 'push action eosio.token issue \'["eosio", "%d.0000 %s", "memo"]\' -p eosio' % ((len(accounts)) * 10, symbol))
+sendUnstakedFunds(0, len(accounts))
+randomTransfer(0, len(accounts), 8)
+run('tail -n 60 ' + nodesDir + '00-eosio/stderr')
