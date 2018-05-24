@@ -340,45 +340,49 @@ void print_action_tree( const fc::variant& action ) {
 }
 
 void print_result( const fc::variant& result ) { try {
-      const auto& processed = result["processed"];
-      const auto& transaction_id = processed["id"].as_string();
-      string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
-      int64_t net = -1;
-      int64_t cpu = -1;
-      if (processed.get_object().contains("receipt")) {
-         const auto& receipt = processed["receipt"];
-         if (receipt.is_object()) {
-            net = receipt["net_usage_words"].as_int64() * 8;
-            cpu = receipt["cpu_usage_us"].as_int64();
+      if (result.is_object() && result.get_object().contains("processed")) {
+         const auto& processed = result["processed"];
+         const auto& transaction_id = processed["id"].as_string();
+         string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+         int64_t net = -1;
+         int64_t cpu = -1;
+         if( processed.get_object().contains( "receipt" )) {
+            const auto& receipt = processed["receipt"];
+            if( receipt.is_object()) {
+               net = receipt["net_usage_words"].as_int64() * 8;
+               cpu = receipt["cpu_usage_us"].as_int64();
+            }
          }
-      }
 
-      cerr << status << " transaction: " << transaction_id << "  ";
-      if (net < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << net;
-      }
-      cerr << " bytes  ";
-      if (cpu < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << cpu;
-      }
+         cerr << status << " transaction: " << transaction_id << "  ";
+         if( net < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << net;
+         }
+         cerr << " bytes  ";
+         if( cpu < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << cpu;
+         }
 
-      cerr << " us\n";
+         cerr << " us\n";
 
-      if( status == "failed" ) {
-         auto soft_except = processed["except"].as<optional<fc::exception>>();
-         if( soft_except ) {
-            edump((soft_except->to_detail_string()));
+         if( status == "failed" ) {
+            auto soft_except = processed["except"].as<optional<fc::exception>>();
+            if( soft_except ) {
+               edump((soft_except->to_detail_string()));
+            }
+         } else {
+            const auto& actions = processed["action_traces"].get_array();
+            for( const auto& a : actions ) {
+               print_action_tree( a );
+            }
+            wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
          }
       } else {
-         const auto& actions = processed["action_traces"].get_array();
-         for( const auto& a : actions ) {
-            print_action_tree( a );
-         }
-         wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
+         cerr << fc::json::to_pretty_string( result ) << endl;
       }
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
@@ -387,7 +391,7 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
    auto result = push_actions( move(actions), extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
       print_result( result );
    }
@@ -397,9 +401,8 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    auto result = push_transaction(trx, extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
-      auto trace = result["processed"].as<eosio::chain::transaction_trace>();
       print_result( result );
    }
 }
