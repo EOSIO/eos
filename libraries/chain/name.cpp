@@ -22,9 +22,9 @@ namespace enumivo { namespace chain {
       string str(15,'.');
 
       uint64_t tmp = value;
-      for( uint32_t i = 0; i <= 14; ++i ) {
+      for( uint32_t i = 0; i <= 12; ++i ) {
          char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
-         str[14-i] = c;
+         str[12-i] = c;
          tmp >>= (i == 0 ? 4 : 5);
       }
 
