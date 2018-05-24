@@ -188,7 +188,7 @@
 						if brew list | grep "boost"
 						then 
 							printf "\\tUnlinking Boost Version %s.\\n" "${BVERSION}"
-							printff "\\tunlinking boost %s\\n" "${BVERSION}"				
+							printf "\\tunlinking boost %s\\n" "${BVERSION}"
 							if ! "${BREW}" unlink boost
 							then
 								printf "\\tUnable to remove boost libraries at this time. 0\\n"
