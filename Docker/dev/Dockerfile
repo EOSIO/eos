@@ -10,6 +10,7 @@ RUN git clone -b $branch https://github.com/EOSIO/eos.git --recursive \
     && rm -rf /eos
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl vim psmisc python3-pip && rm -rf /var/lib/apt/lists/*
+RUN pip3 install numpy
 ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/nodeosd.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
