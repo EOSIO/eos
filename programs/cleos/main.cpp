@@ -1525,18 +1525,27 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
+   bool code_as_wasm = false;
    auto getCode = get->add_subcommand("code", localized("Retrieve the code and ABI for an account"), false);
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
-   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
+   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast/wasm to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
+   getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
 
       if( codeFilename.size() ){
-         std::cout << localized("saving wast to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
-         auto code = result["wast"].as_string();
+         std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
+         string code;
+
+         if(code_as_wasm) {
+            code = result["wasm"].as_string();
+         } else {
+            code = result["wast"].as_string();
+         }
+
          std::ofstream out( codeFilename.c_str() );
          out << code;
       }
@@ -1545,6 +1554,24 @@ int main( int argc, char** argv ) {
          auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
+      }
+   });
+
+   // get abi
+   string filename;
+   auto getAbi = get->add_subcommand("abi", localized("Retrieve the ABI for an account"), false);
+   getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
+   getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
+   getAbi->set_callback([&] {
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+
+      auto abi  = fc::json::to_pretty_string( result["abi"] );
+      if( filename.size() ) {
+         std::cout << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+         std::ofstream abiout( filename.c_str() );
+         abiout << abi;
+      } else {
+         std::cout << abi << "\n";
       }
    });
 
