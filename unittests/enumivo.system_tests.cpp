@@ -14,7 +14,7 @@ BOOST_AUTO_TEST_SUITE(enumivo_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.ramfee" ) + get_balance( "enumivo.stk" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.rfee" ) + get_balance( "enumivo.stk" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    transfer( "enumivo", "alice1111111", core_from_string("1000.0000"), "enumivo" );
@@ -113,7 +113,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, enumivo_system_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, enumivo_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.ramfee" ) + get_balance( "enumivo.stk" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) + get_balance( "enumivo.rfee" ) + get_balance( "enumivo.stk" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
    transfer( "enumivo", "alice1111111", core_from_string("1000.0000"), "enumivo" );
 

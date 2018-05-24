@@ -119,7 +119,7 @@ namespace enumivosystem {
 
       if( fee.amount > 0 ) {
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {payer,N(active)},
-                                                       { payer, N(enumivo.ramfee), fee, std::string("ram fee") } );
+                                                       { payer, N(enumivo.rfee), fee, std::string("ram fee") } );
       }
 
       int64_t bytes_out;
@@ -188,7 +188,7 @@ namespace enumivosystem {
          auto fee = tokens_out.amount / 200;
          if( fee > 0 ) {
             INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.coin), {account,N(active)},
-                                                          { account, N(enumivo.ramfee), asset(fee), std::string("sell ram fee") } );
+                                                          { account, N(enumivo.rfee), asset(fee), std::string("sell ram fee") } );
          }
       }
    }

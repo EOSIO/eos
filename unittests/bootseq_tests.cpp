@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create enumivo.msig and enumivo.coin
-        create_accounts({N(enumivo.msig), N(enumivo.coin), N(enumivo.ram), N(enumivo.ramfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.saving) });
+        create_accounts({N(enumivo.msig), N(enumivo.coin), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.saving) });
 
         // Set code for the following accounts:
         //  - enumivo (code: enumivo.bios) (already set by tester constructor)
