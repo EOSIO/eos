@@ -51,7 +51,7 @@ def waitForBool(lam, timeout=None):
 ########################################################################
 cmd='programs/eosio-launcher/eosio-launcher -p 1 -n 1 -s mesh -d 1 -f  --nodeos \'--max-transaction-time 5000 --filter-on *\''
 print("cmd: %s" % (cmd))
-cmdArr=cmd.split()
+cmdArr=shlex.split(cmd)
 if 0 != subprocess.call(cmdArr):
     print("ERROR: Launcher failed to launch.")
     exit(1)
