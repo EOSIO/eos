@@ -8,6 +8,10 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/abi_def.hpp>

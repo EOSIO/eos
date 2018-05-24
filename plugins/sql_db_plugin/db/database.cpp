@@ -6,9 +6,9 @@ database::database(const std::string &uri)
 {
     m_session = std::make_shared<soci::session>(uri);
     m_accounts_table = std::make_unique<accounts_table>(m_session);
+    m_blocks_table = std::make_unique<blocks_table>(m_session);
     m_transactions_table = std::make_unique<transactions_table>(m_session);
     m_actions_table = std::make_unique<actions_table>(m_session);
-    m_blocks_table = std::make_unique<blocks_table>(m_session);
 
     system_account = chain::name(chain::config::system_account_name).to_string();
 }
@@ -29,10 +29,14 @@ void database::consume(const std::vector<chain::block_state_ptr> &blocks)
 
 void database::wipe()
 {
+    *m_session << "SET foreign_key_checks = 0;";
+
     m_actions_table->drop();
     m_transactions_table->drop();
     m_blocks_table->drop();
     m_accounts_table->drop();
+
+    *m_session << "SET foreign_key_checks = 1;";
 
     m_accounts_table->create();
     m_blocks_table->create();

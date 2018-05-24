@@ -13,7 +13,8 @@ accounts_table::accounts_table(std::shared_ptr<soci::session> session):
 void accounts_table::drop()
 {
     try {
-        *m_session << "DROP TABLE accounts";
+        *m_session << "DROP TABLE IF EXISTS accounts_keys";
+        *m_session << "DROP TABLE IF EXISTS accounts";
     }
     catch(std::exception& e){
         wlog(e.what());
@@ -27,6 +28,11 @@ void accounts_table::create()
             "abi JSON DEFAULT NULL,"
             "created_at DATETIME DEFAULT NOW(),"
             "updated_at DATETIME DEFAULT NOW())";
+
+    *m_session << "CREATE TABLE accounts_keys("
+            "account VARCHAR(13),"
+            "public_key VARCHAR(255),"
+            "permission VARCHAR(13), FOREIGN KEY (account) REFERENCES accounts(name))";
 }
 
 void accounts_table::add(string name)

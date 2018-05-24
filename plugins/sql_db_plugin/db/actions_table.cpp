@@ -13,9 +13,9 @@ actions_table::actions_table(std::shared_ptr<soci::session> session):
 void actions_table::drop()
 {
     try {
-        *m_session << "drop table actions";
-        *m_session << "drop table tokens";
-        *m_session << "drop table actions_accounts";
+        *m_session << "drop table IF EXISTS actions_accounts";
+        *m_session << "drop table IF EXISTS tokens";
+        *m_session << "drop table IF EXISTS actions";
     }
     catch(std::exception& e){
         wlog(e.what());
@@ -25,22 +25,25 @@ void actions_table::drop()
 void actions_table::create()
 {
     *m_session << "CREATE TABLE actions("
-            "id INT NOT NULL AUTO_INCREMENT,"
+            "id VARCHAR(36) PRIMARY KEY,"
             "account VARCHAR(13),"
             "transaction_id VARCHAR(64),"
-            "name VARCHAR(18),"
-            "data JSON, PRIMARY KEY (id))";
+            "name VARCHAR(13),"
+            "data JSON, FOREIGN KEY (transaction_id) REFERENCES transactions(id),"
+            "FOREIGN KEY (account) REFERENCES accounts(name))";
 
     *m_session << "CREATE TABLE actions_accounts("
-            "account VARCHAR(13),"
-            "action_id INT)";
+            "actor VARCHAR(13),"
+            "permission VARCHAR(13),"
+            "action_id VARCHAR(36), FOREIGN KEY (action_id) REFERENCES actions(id),"
+            "FOREIGN KEY (actor) REFERENCES accounts(name))";
 
     // TODO: move to own class
     *m_session << "CREATE TABLE tokens("
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
             "amount FLOAT,"
-            "staked FLOAT)"; // NOT WORKING VERY GOOD float issue
+            "staked FLOAT, FOREIGN KEY (account) REFERENCES accounts(name))"; // NOT WORKING VERY GOOD float issue
 }
 
 void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
@@ -67,13 +70,23 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
     auto abi_data = abis.binary_to_variant(abis.get_action_type(action.name), action.data);
     string json = fc::json::to_string(abi_data);
 
-    // TODO: insert actions_accounts
+    boost::uuids::random_generator gen;
+    boost::uuids::uuid id = gen();
+    std::string action_id = boost::uuids::to_string(id);
 
-    *m_session << "INSERT INTO actions(account, name, data, transaction_id) VALUES (:ac, :na, :da, :ti) ",
+    *m_session << "INSERT INTO actions(id, account, name, data, transaction_id) VALUES (:id, :ac, :na, :da, :ti) ",
+            soci::use(action_id),
             soci::use(action.account.to_string()),
             soci::use(action.name.to_string()),
             soci::use(json),
             soci::use(transaction_id_str);
+
+    for (const auto& auth : action.authorization) {
+        *m_session << "INSERT INTO actions_accounts(action_id, actor, permission) VALUES (:id, :ac, :pe) ",
+                soci::use(action_id),
+                soci::use(auth.actor.to_string()),
+                soci::use(auth.permission.to_string());
+    }
 
     // TODO: move all
     if (action.name == N(issue)) {
@@ -143,14 +156,31 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
                 soci::use(action_data.account.to_string());
 
     } else if (action.name == chain::newaccount::get_name()) {
-        // TODO: store public keys
         auto action_data = action.data_as<chain::newaccount>();
         *m_session << "INSERT INTO accounts (name) VALUES (:name)",
                 soci::use(action_data.name.to_string());
 
+        for (const auto& key_owner : action_data.owner.keys) {
+            string permission_owner = "owner";
+            string public_key_owner = static_cast<string>(key_owner.key);
+            *m_session << "INSERT INTO accounts_keys(account, public_key, permission) VALUES (:ac, :ke, :pe) ",
+                    soci::use(action_data.name.to_string()),
+                    soci::use(public_key_owner),
+                    soci::use(permission_owner);
+        }
+
+        for (const auto& key_active : action_data.active.keys) {
+            string permission_active = "active";
+            string public_key_active = static_cast<string>(key_active.key);
+            *m_session << "INSERT INTO accounts_keys(account, public_key, permission) VALUES (:ac, :ke, :pe) ",
+                    soci::use(action_data.name.to_string()),
+                    soci::use(public_key_active),
+                    soci::use(permission_active);
+        }
+
     }
 
-    // TODO: catch issue (tokens) // public keys creation
+    // TODO: catch issue (tokens) // public keys update // stake / voting
 }
 
 } // namespace

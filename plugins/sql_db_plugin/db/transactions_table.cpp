@@ -14,7 +14,7 @@ transactions_table::transactions_table(std::shared_ptr<soci::session> session):
 void transactions_table::drop()
 {
     try {
-        *m_session << "DROP TABLE transactions";
+        *m_session << "DROP TABLE IF EXISTS transactions";
     }
     catch(std::exception& e){
         wlog(e.what());
@@ -25,12 +25,12 @@ void transactions_table::create()
 {
     *m_session << "CREATE TABLE transactions("
             "id VARCHAR(64) PRIMARY KEY,"
-            "block_id VARCHAR(64),"
+            "block_id INT NOT NULL,"
             "ref_block_prefix INT,"
             "expiration DATETIME DEFAULT NOW(),"
-            "pending INT,"
+            "pending TINYINT(1),"
             "created_at DATETIME DEFAULT NOW(),"
-            "updated_at DATETIME DEFAULT NOW())";
+            "updated_at DATETIME DEFAULT NOW(), FOREIGN KEY (block_id) REFERENCES blocks(block_number))";
 }
 
 void transactions_table::add(chain::transaction transaction)
