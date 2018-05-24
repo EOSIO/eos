@@ -25,7 +25,7 @@ extern "C" {
     * @param producer_data - packed data of produce_keys in the appropriate producer schedule order
     * @param producer_data_size - size of the data buffer
     *
-    * @return -1 if setting proposing a new producer schedule was unsuccessful, other returns the version of the new proposed schedule
+    * @return -1 if proposing a new producer schedule was unsuccessful, otherwise returns the version of the new proposed schedule
     */
    int64_t set_proposed_producers( char *producer_data, uint32_t producer_data_size );
 
