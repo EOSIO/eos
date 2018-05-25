@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
 import numpy
 import os
@@ -14,14 +15,14 @@ walletDir = os.path.abspath('./wallet/')
 unlockTimeout = 99999999999
 nodesDir = './nodes/'
 contractsDir = '../../build/contracts/'
-cleos = 'cleos --wallet-url http://localhost:6666 --url http://localhost:8000 '
+cleos = 'cleos --wallet-url http://localhost:6666 '
 nodeos = 'nodeos'
 fastUnstakeSystem = './fast.refund/eosio.system/eosio.system.wasm'
 logFile = open('test.log', 'a')
 
 symbol = 'SYS'
 maxUserKeys = 10            # Maximum user keys to import into wallet
-minProducerStake = 20.0000  # Minimum producer CPU and BW stake
+minProducerStake = 200.0000 # Minimum producer CPU and BW stake
 extraIssue = 10.0000        # Extra amount to issue to cover buying ram
 limitUsers = 0              # Limit number of users if >0
 limitProducers = 0          # Limit number of producers if >0
@@ -60,15 +61,15 @@ def jsonArg(a):
     return " '" + json.dumps(a) + "' "
 
 def run(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     if subprocess.call(args, shell=True):
-        print('test.py: exiting because of error')
+        print('bios-boot-tutorial.py: exiting because of error')
         sys.exit(1)
 
 def retry(args):
     while True:
-        print('test.py:', args)
+        print('bios-boot-tutorial.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
             print('*** Retry')
@@ -76,18 +77,18 @@ def retry(args):
             break
 
 def background(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     return subprocess.Popen(args, shell=True)
 
 def getOutput(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
     return proc.communicate()[0].decode('utf-8')
 
 def getJsonOutput(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
     return json.loads(proc.communicate()[0])
@@ -201,9 +202,11 @@ def vote(b, e):
 
 def claimRewards():
     table = getJsonOutput(cleos + 'get table eosio eosio producers -l 100')
+    times = []
     for row in table['rows']:
         if row['unpaid_blocks'] and not row['last_claim_time']:
-            run(cleos + 'system claimrewards ' + row['owner'])
+            times.append(getJsonOutput(cleos + 'system claimrewards -j ' + row['owner'])['processed']['elapsed'])
+    print('Elapsed time for claimrewards:', times)
 
 def vote(b, e):
     for i in range(b, e):
@@ -246,15 +249,13 @@ def sendUnstakedFunds(b, e):
         a = accounts[i]
         run(cleos + 'transfer eosio ' + a['name'] + ' "10.0000 ' + symbol + '"')
 
-def randomTransfer(b, e, n):
-    for i in range(n):
-        for j in range(20):
-            src = accounts[random.randint(b, e - 1)]['name']
-            dest = src
-            while dest == src:
-                dest = accounts[random.randint(b, e - 1)]['name']
-            run(cleos + 'transfer -f ' + src + ' ' + dest + ' "0.0001 ' + symbol + '"' + ' || true')
-        sleep(.25)
+def randomTransfer(b, e):
+    for j in range(20):
+        src = accounts[random.randint(b, e - 1)]['name']
+        dest = src
+        while dest == src:
+            dest = accounts[random.randint(b, e - 1)]['name']
+        run(cleos + 'transfer -f ' + src + ' ' + dest + ' "0.0001 ' + symbol + '"' + ' || true')
 
 def msigProposeReplaceSystem(proposer, proposalName):
     requestedPermissions = []
@@ -295,39 +296,98 @@ def produceNewAccounts():
             f.write('        {"name":"%s", "pvt":"%s", "pub":"%s"},\n' % (name, r[1], r[2]))
 
 logFile.write('\n\n' + '*' * 80 + '\n\n\n')
-run('killall keosd nodeos || true')
-sleep(1.5)
-startWallet()
-importKeys()
-startNode(0, {'name': 'eosio', 'pvt': eosioPvt, 'pub': eosioPub})
-sleep(1.5)
-createSystemAccounts()
-run(cleos + 'set contract eosio.token ' + contractsDir + 'eosio.token/')
-run(cleos + 'set contract eosio.msig ' + contractsDir + 'eosio.msig/')
-run(cleos + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (symbol))
-totalAllocation = fillStake(0, len(accounts))
-run(cleos + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
-sleep(1)
-retry(cleos + 'set contract eosio ' + contractsDir + 'eosio.system/')
-sleep(1)
-run(cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
-createStakedAccounts(0, len(accounts))
-regProducers(firstProducer, firstProducer + numProducers)
-sleep(1)
-listProducers()
-startProducers(firstProducer, firstProducer + numProducers)
-sleep(producerSyncDelay)
-vote(0, 0 + numVoters)
-sleep(1)
-listProducers()
-sleep(5)
-claimRewards()
-proxyVotes(0, 0 + numVoters)
-resign('eosio', 'eosio.prods')
-for a in systemAccounts:
-    resign(a, 'eosio')
-# msigReplaceSystem()
-run(cleos + 'push action eosio.token issue \'["eosio", "%d.0000 %s", "memo"]\' -p eosio' % ((len(accounts)) * 10, symbol))
-sendUnstakedFunds(0, numSenders)
-randomTransfer(0, numSenders, 8)
-run('tail -n 60 ' + nodesDir + '00-eosio/stderr')
+
+def stepKillAll():
+    run('killall keosd nodeos || true')
+    sleep(1.5)
+def stepStartWallet():
+    startWallet()
+    importKeys()
+def stepStartBoot():
+    startNode(0, {'name': 'eosio', 'pvt': eosioPvt, 'pub': eosioPub})
+    sleep(1.5)
+def stepInstallSystemContracts():
+    run(cleos + 'set contract eosio.token ' + contractsDir + 'eosio.token/')
+    run(cleos + 'set contract eosio.msig ' + contractsDir + 'eosio.msig/')
+def stepCreateTokens():
+    run(cleos + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (symbol))
+    totalAllocation = fillStake(0, len(accounts))
+    run(cleos + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
+    sleep(1)
+def stepSetSystemContract():
+    retry(cleos + 'set contract eosio ' + contractsDir + 'eosio.system/')
+    sleep(1)
+    run(cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
+def stepCreateStakedAccounts():
+    createStakedAccounts(0, len(accounts))
+def stepRegProducers():
+    regProducers(firstProducer, firstProducer + numProducers)
+    sleep(1)
+    listProducers()
+def stepStartProducers():
+    startProducers(firstProducer, firstProducer + numProducers)
+    sleep(producerSyncDelay)
+def stepVote():
+    vote(0, 0 + numVoters)
+    sleep(1)
+    listProducers()
+    sleep(5)
+def stepProxyVotes():
+    proxyVotes(0, 0 + numVoters)
+def stepResign():
+    resign('eosio', 'eosio.prods')
+    for a in systemAccounts:
+        resign(a, 'eosio')
+def stepIssueUnstaked():
+    run(cleos + 'push action eosio.token issue \'["eosio", "%d.0000 %s", "memo"]\' -p eosio' % ((len(accounts)) * 10, symbol))
+    sendUnstakedFunds(0, numSenders)
+def stepTransfer():
+    while True:
+        randomTransfer(0, numSenders)
+def stepLog():
+    run('tail -n 60 ' + nodesDir + '00-eosio/stderr')
+
+commands = [
+    ('k', 'kill',           stepKillAll,                True,    "Kill all nodeos and keosd processes"),
+    ('w', 'wallet',         stepStartWallet,            True,    "Start keosd, create wallet, fill with keys"),
+    ('b', 'boot',           stepStartBoot,              True,    "Start boot node"),
+    ('s', 'sys',            createSystemAccounts,       True,    "Create system accounts (eosio.*)"),
+    ('c', 'contracts',      stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
+    ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
+    ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
+    ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
+    ('p', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
+    ('P', 'start-prod',     stepStartProducers,         True,    "Start producers"),
+    ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
+    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
+    ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
+    ('q', 'resign',         stepResign,                 True,    "Resign eosio"),
+    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
+    ('u', 'issue',          stepIssueUnstaked,          True,    "Issue unstaked tokens"),
+    ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
+    ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
+]
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
+parser.add_argument('-H', '--http-port', type=int, default=8000, help='Http port for cleos')
+for (flag, command, function, inAll, help) in commands:
+    prefix = ''
+    if inAll: prefix += '*'
+    if prefix: help = '(' + prefix + ') ' + help
+    if flag:
+        parser.add_argument('-' + flag, '--' + command, action='store_true', help=help, dest=command)
+    else:
+        parser.add_argument('--' + command, action='store_true', help=help, dest=command)
+args = parser.parse_args()
+
+cleos += '--url http://localhost:%d ' % args.http_port
+
+haveCommand = False
+for (flag, command, function, inAll, help) in commands:
+    if getattr(args, command) or inAll and args.all:
+        if function:
+            haveCommand = True
+            function()
+if not haveCommand:
+    print('bios-boot-tutorial.py: Tell me what to do. -a does almost everything. -h shows options.')
