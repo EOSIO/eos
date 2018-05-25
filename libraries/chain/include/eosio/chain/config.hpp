@@ -115,6 +115,8 @@ const static int irreversible_threshold_percent= 70 * percent_1;
 
 const static uint64_t billable_alignment = 16;
 
+const static chain_id_type chain_id = chain_id_type();
+
 template<typename T>
 struct billable_size;
 

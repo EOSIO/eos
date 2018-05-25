@@ -1,5 +1,15 @@
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/eosio/chain/core_symbol.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/include/eosio/chain/core_symbol.hpp)
 
+# set the chain id
+if (NOT "${CHAIN_ID}" STREQUAL "")
+   set(eosio_CHAIN_ID "${CHAIN_ID}")
+else()
+   ## sha256("eosio::chain version 1.0")
+   set(eosio_CHAIN_ID "144B6AB7924EA47BAE7A5846B4494A35563AE816E2ED5AFFA7A9C990C2B3CFB3")
+endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/chain_id.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/chain_id.cpp)
+
 file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
@@ -20,6 +30,7 @@ add_library( eosio_chain
              eosio_contract.cpp
              eosio_contract_abi.cpp
              chain_config.cpp
+             chain_id.cpp
 
 #             chain_config.cpp
 #             block_trace.cpp
