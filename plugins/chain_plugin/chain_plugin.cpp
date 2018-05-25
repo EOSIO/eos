@@ -117,7 +117,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
-
+         ("contracts-console", bpo::bool_switch()->default_value(false),
+          "print contract's output to console")
+         ;
 
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -128,8 +130,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
           ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(default_per_code_account),
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
-         ;
+
    cli.add_options()
+         ("print-genesis-json", bpo::bool_switch()->default_value(false),
+           "extract genesis_state from blocks.log as JSON, print to console, and exit")
+         ("extract-genesis-json", bpo::value<bfs::path>(),
+           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
          ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
@@ -140,8 +146,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("delete-all-blocks", bpo::bool_switch()->default_value(false),
           "clear chain state database and block log")
-         ("contracts-console", bpo::bool_switch()->default_value(false),
-          "print contract's output to console")
          ;
 }
 
@@ -208,6 +212,27 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
    my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
+
+   if( options.count("extract-genesis-json") ||  options.at("print-genesis-json").as<bool>() ) {
+      auto gs = block_log::extract_genesis_state( my->blocks_dir );
+
+      if( options.at("print-genesis-json").as<bool>() ) {
+         ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string(gs)) );
+      }
+
+      if( options.count("extract-genesis-json") ) {
+         auto p = options.at("extract-genesis-json").as<bfs::path>();
+
+         if( p.is_relative() ) {
+            p = bfs::current_path() / p;
+         }
+
+         fc::json::save_to_file( gs, p, true );
+         ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
+      }
+
+      EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
+   }
 
    if( options.at("delete-all-blocks").as<bool>() ) {
       ilog("Deleting state database and blocks");
