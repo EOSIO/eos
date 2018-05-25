@@ -117,6 +117,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
+         ("contracts-console", bpo::bool_switch()->default_value(false),
+          "print contract's output to console")
 
 
 #warning TODO: rate limiting
@@ -140,8 +142,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("delete-all-blocks", bpo::bool_switch()->default_value(false),
           "clear chain state database and block log")
-         ("contracts-console", bpo::bool_switch()->default_value(false),
-          "print contract's output to console")
          ;
 }
 
@@ -430,7 +430,7 @@ controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
 void chain_plugin::get_chain_id(chain_id_type &cid)const {
-   memcpy(cid.data(), my->chain_id.data(), cid.data_size());
+   memcpy(cid.id.data(), my->chain_id.id.data(), cid.id.data_size());
 }
 
 namespace chain_apis {
@@ -714,7 +714,11 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
-      result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
+      if (params.code_as_wasm) {
+         result.wasm = string(accnt.code.begin(), accnt.code.end());
+      } else {
+         result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
+      }
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
 
