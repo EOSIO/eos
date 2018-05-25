@@ -46,7 +46,9 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts( { N(eosio.token) } );
+      create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake),
+               N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
+
 
       produce_blocks( 100 );
 
@@ -76,16 +78,16 @@ public:
 
       produce_blocks();
 
-      create_account_with_resources( N(alice1111111), N(eosio), core_from_string("1.0000"), false );
-      create_account_with_resources( N(bob111111111), N(eosio), core_from_string("0.4500"), false );
-      create_account_with_resources( N(carol1111111), N(eosio), core_from_string("1.0000"), false );
+      create_account_with_resources( N(alice1111111), config::system_account_name, core_from_string("1.0000"), false );
+      create_account_with_resources( N(bob111111111), config::system_account_name, core_from_string("0.4500"), false );
+      create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio")  + get_balance("eosio.ramfee") + get_balance("eosio.stake"));
    }
 
 
-   void create_accounts_with_resources( vector<account_name> accounts, account_name creator = N(eosio) ) {
+   void create_accounts_with_resources( vector<account_name> accounts, account_name creator = config::system_account_name ) {
       for( auto a : accounts ) {
          create_account_with_resources( a, creator );
       }
@@ -106,13 +108,13 @@ public:
                                    .active   = authority( get_public_key( a, "active" ) )
                                 });
 
-      trx.actions.emplace_back( get_action( N(eosio), N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( config::system_account_name, N(buyrambytes), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
                                             ("bytes", ram_bytes) )
                               );
-      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( config::system_account_name, N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
@@ -148,14 +150,14 @@ public:
                                    .active   = authority( get_public_key( a, "active" ) )
                                 });
 
-      trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( config::system_account_name, N(buyram), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("payer", creator)
                                             ("receiver", a)
                                             ("quant", ramfunds) )
                               );
 
-      trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{{creator,config::active_name}},
+      trx.actions.emplace_back( get_action( config::system_account_name, N(delegatebw), vector<permission_level>{{creator,config::active_name}},
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
@@ -171,7 +173,7 @@ public:
    }
 
    transaction_trace_ptr setup_producer_accounts( const std::vector<account_name>& accounts ) {
-      account_name creator(N(eosio));
+      account_name creator(config::system_account_name);
       signed_transaction trx;
       set_transaction_headers(trx);
       asset cpu = core_from_string("80.0000");
@@ -188,14 +190,14 @@ public:
                                          .active   = authority( get_public_key( a, "active" ) )
                                          });
 
-         trx.actions.emplace_back( get_action( N(eosio), N(buyram), vector<permission_level>{ {creator, config::active_name} },
+         trx.actions.emplace_back( get_action( config::system_account_name, N(buyram), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("payer", creator)
                                                ("receiver", a)
                                                ("quant", ram) )
                                    );
 
-         trx.actions.emplace_back( get_action( N(eosio), N(delegatebw), vector<permission_level>{ {creator, config::active_name} },
+         trx.actions.emplace_back( get_action( config::system_account_name, N(delegatebw), vector<permission_level>{ {creator, config::active_name} },
                                                mvo()
                                                ("from", creator)
                                                ("receiver", a)
@@ -274,6 +276,14 @@ public:
       return unstake( acnt, acnt, net, cpu );
    }
 
+   action_result bidname( const account_name& bidder, const account_name& newname, const asset& bid ) {
+      return push_action( name(bidder), N(bidname), mvo()
+                          ("bidder",  bidder)
+                          ("newname", newname)
+                          ("bid", bid)
+                          );
+   }
+
    static fc::variant_object producer_parameters_example( int n ) {
       return mutable_variant_object()
          ("max_block_net_usage", 10000000 + n )
@@ -293,7 +303,6 @@ public:
          ("max_inline_action_size", 4096 + n)
          ("max_inline_action_depth", 4 + n)
          ("max_authority_depth", 6 + n)
-         ("max_generated_transaction_count", 10 + n)
          ("max_ram_size", (n % 10 + 1) * 1024 * 1024)
          ("ram_reserve_ratio", 100 + n);
    }
@@ -314,7 +323,6 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-
       vector<char> data = get_row_by_account( N(eosio.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
       return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data)["balance"].as<asset>();
    }
@@ -360,7 +368,7 @@ public:
 
    double stake2votes( asset stake ) {
       auto now = control->pending_block_time().time_since_epoch().count() / 1000000;
-      return stake.amount * pow(2, int64_t((now - (config::block_timestamp_epoch / 1000)) / (86400 * 7))/ double(52) ); // 52 week periods (i.e. ~years)
+      return stake.get_amount() * pow(2, int64_t((now - (config::block_timestamp_epoch / 1000)) / (86400 * 7))/ double(52) ); // 52 week periods (i.e. ~years)
    }
 
    double stake2votes( const string& s ) {
@@ -379,15 +387,108 @@ public:
    }
 
    fc::variant get_global_state() {
-      vector<char> data = get_row_by_account( N(eosio), N(eosio), N(global), N(global) );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data );
 
    }
 
    fc::variant get_refund_request( name account ) {
-      vector<char> data = get_row_by_account( N(eosio), account, N(refunds), account );
+      vector<char> data = get_row_by_account( config::system_account_name, account, N(refunds), account );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "refund_request", data );
+   }
+
+   abi_serializer initialize_multisig() {
+      abi_serializer msig_abi_ser;
+      {
+         create_account_with_resources( N(eosio.msig), config::system_account_name );
+         BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "eosio.msig", core_from_string("5000.0000") ) );
+         produce_block();
+
+         auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
+                                               config::system_account_name,  mutable_variant_object()
+                                               ("account", "eosio.msig")
+                                               ("is_priv", 1)
+         );
+
+         set_code( N(eosio.msig), eosio_msig_wast );
+         set_abi( N(eosio.msig), eosio_msig_abi );
+
+         produce_blocks();
+         const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
+         abi_def msig_abi;
+         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
+         msig_abi_ser.set_abi(msig_abi);
+      }
+      return msig_abi_ser;
+   }
+
+   //helper function
+   /*
+   action_result push_action_msig( const account_name& signer, const action_name &name, const variant_object &data ) {
+      string action_type_name = msig_abi_ser.get_action_type(name);
+
+      action act;
+      act.account = N(eosio.msig);
+      act.name = name;
+      act.data = msig_abi_ser.variant_to_binary( action_type_name, data );
+
+      return base_tester::push_action( std::move(act), signer );
+   };
+   */
+
+   vector<name> active_and_vote_producers() {
+      //stake more than 15% of total EOS supply to activate chain
+      transfer( "eosio", "alice1111111", core_from_string("650000000.0000"), "eosio" );
+      BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
+
+      // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
+      std::vector<account_name> producer_names;
+      {
+         producer_names.reserve('z' - 'a' + 1);
+         const std::string root("defproducer");
+         for ( char c = 'a'; c < 'a'+21; ++c ) {
+            producer_names.emplace_back(root + std::string(1, c));
+         }
+         setup_producer_accounts(producer_names);
+         for (const auto& p: producer_names) {
+
+            BOOST_REQUIRE_EQUAL( success(), regproducer(p) );
+         }
+      }
+      produce_blocks( 250);
+
+      auto trace_auth = TESTER::push_action(config::system_account_name, updateauth::get_name(), config::system_account_name, mvo()
+                                            ("account", name(config::system_account_name).to_string())
+                                            ("permission", name(config::active_name).to_string())
+                                            ("parent", name(config::owner_name).to_string())
+                                            ("auth",  authority(1, {key_weight{get_public_key( config::system_account_name, "active" ), 1}}, {
+                                                  permission_level_weight{{config::system_account_name, config::eosio_code_name}, 1},
+                                                     permission_level_weight{{config::producers_account_name,  config::active_name}, 1}
+                                               }
+                                            ))
+      );
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace_auth->receipt->status);
+
+      //vote for producers
+      {
+         transfer( config::system_account_name, "alice1111111", core_from_string("100000000.0000"), config::system_account_name );
+         BOOST_REQUIRE_EQUAL(success(), stake( "alice1111111", core_from_string("30000000.0000"), core_from_string("30000000.0000") ) );
+         BOOST_REQUIRE_EQUAL(success(), buyram( "alice1111111", "alice1111111", core_from_string("30000000.0000") ) );
+         BOOST_REQUIRE_EQUAL(success(), push_action(N(alice1111111), N(voteproducer), mvo()
+                                                    ("voter",  "alice1111111")
+                                                    ("proxy", name(0).to_string())
+                                                    ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
+                             )
+         );
+      }
+      produce_blocks( 250 );
+
+      auto producer_keys = control->head_block_state()->active_schedule.producers;
+      BOOST_REQUIRE_EQUAL( 21, producer_keys.size() );
+      BOOST_REQUIRE_EQUAL( name("defproducera"), producer_keys[0].producer_name );
+
+      return producer_names;
    }
 
    abi_serializer abi_ser;
@@ -410,7 +511,7 @@ inline fc::mutable_variant_object voter( account_name acct ) {
 }
 
 inline fc::mutable_variant_object voter( account_name acct, const asset& vote_stake ) {
-   return voter( acct )( "staked", vote_stake.amount );
+   return voter( acct )( "staked", vote_stake.get_amount() );
 }
 
 inline fc::mutable_variant_object voter( account_name acct, int64_t vote_stake ) {
@@ -422,7 +523,7 @@ inline fc::mutable_variant_object proxy( account_name acct ) {
 }
 
 inline uint64_t M( const string& eos_str ) {
-   return core_from_string( eos_str ).amount;
+   return core_from_string( eos_str ).get_amount();
 }
 
 }

@@ -262,7 +262,7 @@ namespace eosio { namespace chain {
       }
    } // construct_index
 
-   void block_log::repair_log( const fc::path& data_dir ) {
+   fc::path block_log::repair_log( const fc::path& data_dir ) {
       ilog("Recovering Block Log...");
       FC_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"),
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
@@ -270,13 +270,12 @@ namespace eosio { namespace chain {
       auto now = fc::time_point::now();
 
       auto blocks_dir = fc::canonical( data_dir );
+      if( blocks_dir.filename().generic_string() == "." ) {
+         blocks_dir = blocks_dir.parent_path();
+      }
       auto backup_dir = blocks_dir.parent_path();
       auto blocks_dir_name = blocks_dir.filename();
-      if( blocks_dir_name.generic_string() == "." ) {
-         blocks_dir_name = backup_dir.filename();
-         backup_dir = backup_dir.parent_path();
-         FC_ASSERT( blocks_dir_name.generic_string() != ".", "Invalid path to blocks directory" );
-      }
+      FC_ASSERT( blocks_dir_name.generic_string() != ".", "Invalid path to blocks directory" );
       backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( now );
 
       FC_ASSERT( !fc::exists(backup_dir),
@@ -308,6 +307,8 @@ namespace eosio { namespace chain {
       optional<signed_block> bad_block;
       uint32_t               block_num = 0;
 
+      block_id_type previous;
+
       while( pos < end_pos ) {
          signed_block tmp;
 
@@ -319,6 +320,19 @@ namespace eosio { namespace chain {
             old_block_stream.read( incomplete_block_data.data(), incomplete_block_data.size() );
             break;
          }
+
+         auto id = tmp.id();
+         if( block_header::num_from_id(previous) + 1 != block_header::num_from_id(id) ) {
+            elog( "Block ${num} (${id}) skips blocks. Previous block in block log is block ${prev_num} (${previous})",
+                  ("num", block_header::num_from_id(id))("id", id)
+                  ("prev_num", block_header::num_from_id(previous))("previous", previous) );
+         }
+         if( previous != tmp.previous ) {
+            elog( "Block ${num} (${id}) does not link back to previous block. "
+                  "Expected previous: ${expected}. Actual previous: ${actual}.",
+                  ("num", block_header::num_from_id(id))("id", id)("expected", previous)("actual", tmp.previous) );
+         }
+         previous = id;
 
          uint64_t tmp_pos = std::numeric_limits<uint64_t>::max();
          if( (static_cast<uint64_t>(old_block_stream.tellg()) + sizeof(pos)) <= end_pos ) {
@@ -369,6 +383,8 @@ namespace eosio { namespace chain {
       } else {
          ilog( "Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.", ("num", block_num) );
       }
+
+      return backup_dir;
    }
 
 } } /// eosio::chain

@@ -37,7 +37,6 @@ struct abi_serializer {
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
 
-   bool has_cycle(const vector<pair<string, string>>& sedges)const;
    void validate()const;
 
    type_name resolve_type(const type_name& t)const;
@@ -461,12 +460,12 @@ namespace impl {
     * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
     */
    template<typename T, typename Resolver>
-   class abi_from_variant_visitor
+   class abi_from_variant_visitor : reflector_verifier_visitor<T>
    {
       public:
          abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver )
-         :_vo(_vo)
-         ,_val(v)
+         : reflector_verifier_visitor<T>(v)
+         ,_vo(_vo)
          ,_resolver(_resolver)
          {}
 
@@ -482,12 +481,11 @@ namespace impl {
          {
             auto itr = _vo.find(name);
             if( itr != _vo.end() )
-               abi_from_variant::extract( itr->value(), _val.*member, _resolver );
+               abi_from_variant::extract( itr->value(), this->obj.*member, _resolver );
          }
 
       private:
          const variant_object& _vo;
-         T& _val;
          Resolver _resolver;
    };
 
