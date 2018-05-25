@@ -228,7 +228,7 @@ namespace eosio { namespace chain {
    type_name abi_serializer::resolve_type(const type_name& type)const {
       auto itr = typedefs.find(type);
       if( itr != typedefs.end() ) {
-         for( auto i = typedefs.size(); i > 0; --i ) { // avoid infinit recursion
+         for( auto i = typedefs.size(); i > 0; --i ) { // avoid infinite recursion
             const type_name& t = itr->second;
             itr = typedefs.find( t );
             if( itr == typedefs.end() ) return t;
