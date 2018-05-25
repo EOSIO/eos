@@ -20,7 +20,6 @@ BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) + get_balance( "eosio.ramfee" ) + get_balance( "eosio.stake" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
@@ -119,7 +118,6 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) + get_balance( "eosio.ramfee" ) + get_balance( "eosio.stake" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
    transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
 
