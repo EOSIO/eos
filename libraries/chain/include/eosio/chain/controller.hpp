@@ -148,7 +148,7 @@ namespace eosio { namespace chain {
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
 
-         bool set_proposed_producers( vector<producer_key> producers );
+         int64_t set_proposed_producers( vector<producer_key> producers );
 
          bool skip_auth_check()const;
 

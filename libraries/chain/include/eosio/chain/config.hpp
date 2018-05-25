@@ -68,9 +68,9 @@ const static uint32_t   default_context_free_discount_net_usage_num  = 20; // TO
 const static uint32_t   default_context_free_discount_net_usage_den  = 100;
 const static uint32_t   transaction_id_net_usage                     = 32; // 32 bytes for the size of a transaction id
 
-const static uint32_t   default_max_block_cpu_usage                 = 100'000; /// max block cpu usage in microseconds
-const static uint32_t   default_target_block_cpu_usage_pct          = 5 * percent_1; /// target 1000 TPS
-const static uint32_t   default_max_transaction_cpu_usage           = default_max_block_cpu_usage / 2; /// max trx cpu usage in microseconds
+const static uint32_t   default_max_block_cpu_usage                 = 200'000; /// max block cpu usage in microseconds
+const static uint32_t   default_target_block_cpu_usage_pct          = percent_1; /// target 1000 TPS
+const static uint32_t   default_max_transaction_cpu_usage           = 3*default_max_block_cpu_usage/4; /// max trx cpu usage in microseconds
 const static uint32_t   default_min_transaction_cpu_usage           = 100; /// min trx cpu usage in microseconds (10000 TPS equiv)
 
 const static uint32_t   default_max_trx_lifetime               = 60*60; // 1 hour
@@ -79,7 +79,10 @@ const static uint32_t   default_max_trx_delay                  = 45*24*3600; // 
 const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 4 KB
 const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
-const static uint32_t   default_max_gen_trx_count              = 16;
+
+const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
+// Should be large enough to allow recovery from badly set blockchain parameters without a hard fork
+// (unless net_usage_leeway is set to 0 and so are the net limits of all accounts that can help with resetting blockchain parameters).
 
 const static uint32_t   fixed_net_overhead_of_packed_trx = 16; // TODO: is this reasonable?
 
@@ -111,6 +114,8 @@ static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1
 const static int irreversible_threshold_percent= 70 * percent_1;
 
 const static uint64_t billable_alignment = 16;
+
+const static chain_id_type chain_id = chain_id_type();
 
 template<typename T>
 struct billable_size;

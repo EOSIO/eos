@@ -11,6 +11,7 @@ namespace {
 const char* BUFFER_SIZE_OPTION = "sql_db-queue-size";
 const char* SQL_DB_URI_OPTION = "sql_db-uri";
 const char* HARD_REPLAY_OPTION = "hard-replay-blockchain";
+const char* RESYNC_OPTION = "delete-all-blocks";
 const char* REPLAY_OPTION = "replay-blockchain";
 }
 
@@ -48,6 +49,7 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
 
     if (options.at(HARD_REPLAY_OPTION).as<bool>() ||
          options.at(REPLAY_OPTION).as<bool>() ||
+         options.at(RESYNC_OPTION).as<bool>() ||
         !db->is_started())
     {
         ilog("Resync requested: wiping database");

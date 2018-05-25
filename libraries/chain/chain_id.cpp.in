@@ -1,0 +1,6 @@
+#include <eosio/chain/types.hpp>
+
+namespace eosio { namespace chain {
+   chain_id_type::chain_id_type( const fc::string& s ) { id = fc::sha256(s); }
+   chain_id_type::chain_id_type() { id = fc::sha256("${eosio_CHAIN_ID}"); }
+}} // namespace eosio::chain

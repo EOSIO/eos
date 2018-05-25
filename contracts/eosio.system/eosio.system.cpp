@@ -165,6 +165,13 @@ namespace eosiosystem {
       set_resource_limits( newact, 0, 0, 0 );
    }
 
+   void system_contract::setparams( const eosio_parameters& params ) {
+      require_auth( N(eosio) );
+      (eosiosystem::eosio_parameters&)(_gstate) = params;
+      eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
+      set_blockchain_parameters( params );
+   }
+
 } /// eosio.system
  
 
@@ -183,4 +190,5 @@ EOSIO_ABI( eosiosystem::system_contract,
      //this file
      (bidname)
      (setpriv)
+     (setparams)
 )
