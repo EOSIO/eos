@@ -153,7 +153,7 @@
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_66_0"
+				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"elementary OS")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
