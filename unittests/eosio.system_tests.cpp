@@ -1542,7 +1542,14 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
    // wait two more hours, now most producers haven't produced in a day and will
    // be deactivated
-   produce_block(fc::seconds(9 * 3600));
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
+                                              ("voter",  "producvotera")
+                                              ("proxy", name(0).to_string())
+                                              ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
+                                              )
+                       );
+   
+   produce_block(fc::hours(9));
    produce_blocks(8 * 21 * 12);
 
    {
@@ -2497,9 +2504,8 @@ BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
       BOOST_REQUIRE(all_21_produced && rest_didnt_produce);
    }
 
-   produce_block(fc::hours(7));
-
    {
+      produce_block(fc::hours(7));
       const uint32_t voted_out_index = 20;
       const uint32_t new_prod_index  = 23;
       BOOST_REQUIRE_EQUAL(success(), stake("producvoterd", core_from_string("40000000.0000"), core_from_string("40000000.0000")));
@@ -2515,10 +2521,7 @@ BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
       const uint32_t initial_unpaid_blocks = get_producer_info(producer_names[voted_out_index])["unpaid_blocks"].as<uint32_t>();
       produce_blocks(2 * 12 * 21);
       BOOST_REQUIRE_EQUAL(initial_unpaid_blocks, get_producer_info(producer_names[voted_out_index])["unpaid_blocks"].as<uint32_t>());
-      produce_blocks(2 * 12 * 21);
-      produce_block(fc::hours(12));
-      produce_blocks(2 * 12 * 21);
-      produce_block(fc::hours(12));
+      produce_block(fc::hours(24));
       BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterd), N(voteproducer), mvo()
                                                  ("voter",     "producvoterd")
                                                  ("proxy",     name(0).to_string())
@@ -2526,7 +2529,8 @@ BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
                                                  )
                           );
       produce_blocks(2 * 12 * 21);
-      BOOST_REQUIRE_EQUAL(fc::crypto::public_key(), fc::crypto::public_key(get_producer_info(producer_names[voted_out_index])["producer_key"].as_string()));
+      BOOST_REQUIRE(fc::crypto::public_key() != fc::crypto::public_key(get_producer_info(producer_names[voted_out_index])["producer_key"].as_string()));
+      BOOST_REQUIRE_EQUAL(success(), push_action(producer_names[voted_out_index], N(claimrewards), mvo()("owner", producer_names[voted_out_index])));
    }
 
 } FC_LOG_AND_RETHROW()
