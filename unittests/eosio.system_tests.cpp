@@ -2466,6 +2466,8 @@ BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
       BOOST_REQUIRE_EQUAL(success(), push_action(producer_names[voted_out_index], N(claimrewards), mvo()("owner", producer_names[voted_out_index])));
    }
 
+} FC_LOG_AND_RETHROW()
+
 BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
    //install multisig contract
    abi_serializer msig_abi_ser = initialize_multisig();
