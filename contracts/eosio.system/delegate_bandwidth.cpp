@@ -117,7 +117,7 @@ namespace eosiosystem {
                                                        { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
       }
 
-      if( fee.amount > 0 ) {
+      if( payer != N(eosio) && fee.amount > 0 ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
                                                        { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
       }
