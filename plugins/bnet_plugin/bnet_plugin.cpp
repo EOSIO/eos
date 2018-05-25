@@ -1042,7 +1042,7 @@ namespace eosio {
   };
 
 
-   class bnet_plugin_impl {
+   class bnet_plugin_impl : public std::enable_shared_from_this<bnet_plugin_impl> {
       public:
          bnet_plugin_impl() {
             _peer_pk = fc::crypto::private_key::generate();
@@ -1310,8 +1310,10 @@ namespace eosio {
 
    session::~session() {
      wlog( "close session ${n}",("n",_session_num) );
-     _app_ios.post( [net=&_net_plugin,ses=this]{
-        net->on_session_close(ses);
+     std::weak_ptr<bnet_plugin_impl> netp = _net_plugin.shared_from_this();
+     _app_ios.post( [netp,ses=this]{
+        if( auto net = netp.lock() )
+           net->on_session_close(ses);
      });
    }
 
