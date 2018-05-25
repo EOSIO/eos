@@ -295,6 +295,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
         }
         ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", my->chain_config->genesis.initial_timestamp) );
       }
+
+      wlog( "Starting up fresh blockchain with provided genesis state." );
+   } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
+      my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+   } else {
+      wlog( "Starting up fresh blockchain with default genesis state." );
    }
 
    my->chain.emplace(*my->chain_config);
