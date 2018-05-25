@@ -259,7 +259,7 @@ namespace eosiosystem {
 
          set_resource_limits( receiver, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
-         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0) ) {
+         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0)  && tot_itr->ram_bytes == 0 ) {
             totals_tbl.erase( tot_itr );
          }
       } // tot_itr can be invalid, should go out of scope
