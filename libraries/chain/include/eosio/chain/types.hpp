@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/name.hpp>
+#include <eosio/chain/chain_id_type.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -87,19 +88,6 @@ namespace eosio { namespace chain {
    using signature_type   = fc::crypto::signature;
 
    struct void_t{};
-
-   using chain_id_type = fc::sha256;
-   /*
-   struct genesis_state;
-
-   struct chain_id_type {
-      chain_id_type(const fc::string& s);
-      //chain_id_type( const genesis_state& gs );
-      chain_id_type();
-      operator fc::sha256() { return id; }
-      fc::sha256 id;
-   };
-   */
 
 
    using chainbase::allocator;

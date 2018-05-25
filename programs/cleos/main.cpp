@@ -2149,7 +2149,8 @@ int main( int argc, char** argv ) {
 
    sign->set_callback([&] {
       signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
-      chain_id_type chain_id;
+
+      fc::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
          ilog( "grabbing chain_id from nodeos" );
@@ -2167,7 +2168,7 @@ int main( int argc, char** argv ) {
       }
 
       auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
-      trx.sign(priv_key, chain_id);
+      trx.sign(priv_key, *chain_id);
 
       if(push_trx) {
          auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));

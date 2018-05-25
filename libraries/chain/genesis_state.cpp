@@ -18,7 +18,7 @@ genesis_state::genesis_state() {
 chain::chain_id_type genesis_state::compute_chain_id() const {
    digest_type::encoder enc;
    fc::raw::pack( enc, *this );
-   return enc.result();
+   return chain_id_type{enc.result()};
 }
 
 } } // namespace eosio::chain

@@ -22,6 +22,7 @@ add_library( eosio_chain
              eosio_contract.cpp
              eosio_contract_abi.cpp
              chain_config.cpp
+             chain_id_type.cpp
              genesis_state.cpp
              ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp
 

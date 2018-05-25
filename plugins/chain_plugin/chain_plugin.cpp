@@ -64,7 +64,7 @@ public:
    fc::optional<block_log>          block_logger;
    fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
-   chain_id_type                    chain_id;
+   fc::optional<chain_id_type>      chain_id;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
 
@@ -304,7 +304,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    my->chain.emplace(*my->chain_config);
-   my->chain_id = my->chain->get_chain_id();
+   my->chain_id.emplace(my->chain->get_chain_id());
 
    // set up method providers
    my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider([this](uint32_t block_num) -> signed_block_ptr {
@@ -476,7 +476,8 @@ controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
 chain::chain_id_type chain_plugin::get_chain_id()const {
-   return my->chain_id;
+   FC_ASSERT( my->chain_id.valid(), "chain ID has not been initialized yet" );
+   return *my->chain_id;
 }
 
 namespace chain_apis {
