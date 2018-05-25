@@ -38,6 +38,9 @@ namespace enumivo { namespace chain {
                   "min transaction cpu usage cannot exceed max transaction cpu usage" );
       ENU_ASSERT( max_transaction_cpu_usage < (max_block_cpu_usage - min_transaction_cpu_usage), action_validate_exception,
                   "max transaction cpu usage must be at less than the difference between the max block cpu usage and the min transaction cpu usage" );
-   }
+
+      EOS_ASSERT( 1 <= max_authority_depth, action_validate_exception,
+                  "max authority depth should be at least 1" );
+}
 
 } } // namespace enumivo::chain

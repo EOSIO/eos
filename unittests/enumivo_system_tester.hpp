@@ -398,6 +398,99 @@ public:
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "refund_request", data );
    }
 
+   abi_serializer initialize_multisig() {
+      abi_serializer msig_abi_ser;
+      {
+         create_account_with_resources( N(enumivo.msig), config::system_account_name );
+         BOOST_REQUIRE_EQUAL( success(), buyram( "enumivo", "enumivo.msig", core_from_string("5000.0000") ) );
+         produce_block();
+
+         auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
+                                               config::system_account_name,  mutable_variant_object()
+                                               ("account", "enumivo.msig")
+                                               ("is_priv", 1)
+         );
+
+         set_code( N(enumivo.msig), enumivo_msig_wast );
+         set_abi( N(enumivo.msig), enumivo_msig_abi );
+
+         produce_blocks();
+         const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.msig) );
+         abi_def msig_abi;
+         BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
+         msig_abi_ser.set_abi(msig_abi);
+      }
+      return msig_abi_ser;
+   }
+
+   //helper function
+   /*
+   action_result push_action_msig( const account_name& signer, const action_name &name, const variant_object &data ) {
+      string action_type_name = msig_abi_ser.get_action_type(name);
+
+      action act;
+      act.account = N(enumivo.msig);
+      act.name = name;
+      act.data = msig_abi_ser.variant_to_binary( action_type_name, data );
+
+      return base_tester::push_action( std::move(act), signer );
+   };
+   */
+
+   vector<name> active_and_vote_producers() {
+      //stake more than 15% of total ENU supply to activate chain
+      transfer( "enumivo", "alice1111111", core_from_string("650000000.0000"), "enumivo" );
+      BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
+
+      // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
+      std::vector<account_name> producer_names;
+      {
+         producer_names.reserve('z' - 'a' + 1);
+         const std::string root("defproducer");
+         for ( char c = 'a'; c < 'a'+21; ++c ) {
+            producer_names.emplace_back(root + std::string(1, c));
+         }
+         setup_producer_accounts(producer_names);
+         for (const auto& p: producer_names) {
+
+            BOOST_REQUIRE_EQUAL( success(), regproducer(p) );
+         }
+      }
+      produce_blocks( 250);
+
+      auto trace_auth = TESTER::push_action(config::system_account_name, updateauth::get_name(), config::system_account_name, mvo()
+                                            ("account", name(config::system_account_name).to_string())
+                                            ("permission", name(config::active_name).to_string())
+                                            ("parent", name(config::owner_name).to_string())
+                                            ("auth",  authority(1, {key_weight{get_public_key( config::system_account_name, "active" ), 1}}, {
+                                                  permission_level_weight{{config::system_account_name, config::enumivo_code_name}, 1},
+                                                     permission_level_weight{{config::producers_account_name,  config::active_name}, 1}
+                                               }
+                                            ))
+      );
+      BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace_auth->receipt->status);
+
+      //vote for producers
+      {
+         transfer( config::system_account_name, "alice1111111", core_from_string("100000000.0000"), config::system_account_name );
+         BOOST_REQUIRE_EQUAL(success(), stake( "alice1111111", core_from_string("30000000.0000"), core_from_string("30000000.0000") ) );
+         BOOST_REQUIRE_EQUAL(success(), buyram( "alice1111111", "alice1111111", core_from_string("30000000.0000") ) );
+         BOOST_REQUIRE_EQUAL(success(), push_action(N(alice1111111), N(voteproducer), mvo()
+                                                    ("voter",  "alice1111111")
+                                                    ("proxy", name(0).to_string())
+                                                    ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
+                             )
+         );
+      }
+      produce_blocks( 250 );
+
+      auto producer_keys = control->head_block_state()->active_schedule.producers;
+      BOOST_REQUIRE_EQUAL( 21, producer_keys.size() );
+      BOOST_REQUIRE_EQUAL( name("defproducera"), producer_keys[0].producer_name );
+
+      return producer_names;
+   }
+
    abi_serializer abi_ser;
    abi_serializer token_abi_ser;
 };
