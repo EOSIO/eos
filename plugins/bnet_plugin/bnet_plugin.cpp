@@ -454,20 +454,20 @@ namespace eosio {
         void async_get_block_num( uint32_t blocknum, L&& callback ) {
            _app_ios.post( [self = shared_from_this(), blocknum, callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
+              signed_block_ptr sblockptr;
               try {
                  //ilog( "fetch block ${n}", ("n",blocknum) );
-                 auto sblockptr = control.fetch_block_by_number( blocknum );
-
-                 self->_ios.post( boost::asio::bind_executor(
-                                       self->_strand,
-                                       [callback,sblockptr](){
-                                          callback(sblockptr);
-                                       }
-                                   ));
-
+                 sblockptr = control.fetch_block_by_number( blocknum );
               } catch ( const fc::exception& e ) {
                  edump((e.to_detail_string()));
               }
+
+              self->_ios.post( boost::asio::bind_executor(
+                    self->_strand,
+                    [callback,sblockptr](){
+                       callback(sblockptr);
+                    }
+              ));
            });
         }
 
