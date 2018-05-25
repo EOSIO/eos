@@ -365,6 +365,7 @@ struct controller_impl {
         bs.block_id = head->id;
       });
 
+      conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
       });
@@ -1217,17 +1218,17 @@ void controller::pop_block() {
    my->pop_block();
 }
 
-bool controller::set_proposed_producers( vector<producer_key> producers ) {
+int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
    const auto& gpo = get_global_properties();
    auto cur_block_num = head_block_num() + 1;
 
    if( gpo.proposed_schedule_block_num.valid() ) {
       if( *gpo.proposed_schedule_block_num != cur_block_num )
-         return false; // there is already a proposed schedule set in a previous block, wait for it to become pending
+         return -1; // there is already a proposed schedule set in a previous block, wait for it to become pending
 
       if( std::equal( producers.begin(), producers.end(),
                       gpo.proposed_schedule.producers.begin(), gpo.proposed_schedule.producers.end() ) )
-         return false; // the proposed producer schedule does not change
+         return -1; // the proposed producer schedule does not change
    }
 
    producer_schedule_type sch;
@@ -1248,15 +1249,17 @@ bool controller::set_proposed_producers( vector<producer_key> producers ) {
    }
 
    if( std::equal( producers.begin(), producers.end(), begin, end ) )
-      return false; // the producer schedule would not change
+      return -1; // the producer schedule would not change
 
    sch.producers = std::move(producers);
+
+   int64_t version = sch.version;
 
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;
       gp.proposed_schedule = std::move(sch);
    });
-   return true;
+   return version;
 }
 
 const producer_schedule_type&    controller::active_producers()const {
