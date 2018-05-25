@@ -202,7 +202,7 @@
 								printf "\\tExiting now.\\n\\n"
 								exit 1;
 							fi
-							if ! sudo rm -rf "/usr/local/lib/libboost*"
+							if ! sudo rm -rf /usr/local/lib/libboost*
 							then
 								printf "\\tUnable to remove boost libraries at this time. 2\\n"
 								printf "\\tExiting now.\\n\\n"
