@@ -1201,7 +1201,7 @@ namespace eosio {
       cfg.add_options()
          ("bnet-endpoint", bpo::value<string>()->default_value("0.0.0.0:4321"), "the endpoint upon which to listen for incoming connections" )
          ("bnet-threads", bpo::value<uint32_t>(), "the number of threads to use to process network messages" )
-         ("bnet-connect", bpo::value<vector<string>>()->composing(), "the endpoint upon which to listen for incoming connections" )
+         ("bnet-connect", bpo::value<vector<string>>()->composing(), "remote endpoint of other node to connect to; Use multiple bnet-connect options as needed to compose a network" )
          ("bnet-no-trx", bpo::bool_switch()->default_value(false), "this peer will request no pending transactions from other nodes" )
          ;
    }
