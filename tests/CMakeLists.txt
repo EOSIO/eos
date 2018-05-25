@@ -35,12 +35,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_run_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_run_remote_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_run_remote_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensus-validation-malicious-producers.py ${CMAKE_CURRENT_BINARY_DIR}/consensus-validation-malicious-producers.py COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/kite.py ${CMAKE_CURRENT_BINARY_DIR}/kite.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/build_kite.sh ${CMAKE_CURRENT_BINARY_DIR}/build_kite.sh COPYONLY)
 
 #To run plugin_test with all log from blockchain displayed, put --verbose after --, i.e. plugin_test -- --verbose
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
 
-add_test(NAME kite_test COMMAND tests/kite.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME build_kite_test COMMAND tests/build-kite-test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
