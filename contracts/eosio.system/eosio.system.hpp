@@ -215,6 +215,8 @@ namespace eosiosystem {
 
          void regproxy( const account_name proxy, bool isproxy );
 
+         void setparams( const eosio_parameters& params );
+
          // functions defined in producer_pay.cpp
          void claimrewards( const account_name& owner );
 
