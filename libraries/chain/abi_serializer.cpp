@@ -225,10 +225,15 @@ namespace eosio { namespace chain {
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
-   type_name abi_serializer::resolve_type(const type_name& type)const  {
+   type_name abi_serializer::resolve_type(const type_name& type)const {
       auto itr = typedefs.find(type);
-      if( itr != typedefs.end() )
-         return resolve_type(itr->second);
+      if( itr != typedefs.end() ) {
+         for( auto i = typedefs.size(); i > 0; --i ) { // avoid infinit recursion
+            const type_name& t = itr->second;
+            itr = typedefs.find( t );
+            if( itr == typedefs.end() ) return t;
+         }
+      }
       return type;
    }
 
