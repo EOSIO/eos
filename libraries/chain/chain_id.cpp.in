@@ -1,0 +1,6 @@
+#include <enumivo/chain/types.hpp>
+
+namespace enumivo { namespace chain {
+   chain_id_type::chain_id_type( const fc::string& s ) { id = fc::sha256(s); }
+   chain_id_type::chain_id_type() { id = fc::sha256("${enumivo_CHAIN_ID}"); }
+}} // namespace enumivo::chain
