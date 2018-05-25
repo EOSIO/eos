@@ -303,6 +303,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
 
                if (trace->except) {
+                  // edump((trace->except->to_detail_string()));
                   if (failure_is_subjective(*trace->except, deadline_is_subjective) ) {
                      // if we failed because the block was exhausted push the block out and try again if it succeeds
                      if (_pending_block_mode == pending_block_mode::producing ) {
