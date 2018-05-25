@@ -462,7 +462,7 @@ class Node(object):
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction parsing failed. Transaction: %s" % (trans))
-            raise
+            return None
 
         headBlockNum=self.getHeadBlockNum()
         assert(headBlockNum)
