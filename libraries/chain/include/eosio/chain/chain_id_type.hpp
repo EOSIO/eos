@@ -37,12 +37,12 @@ namespace chain {
       private:
          chain_id_type() = default;
 
+         // Some exceptions are unfortunately necessary:
          template<typename T>
          friend T fc::variant::as()const;
 
          friend class eosio::chain_apis::read_only;
 
-         // Eventually net_plugin should be updated to not default construct chain_id. Then these two lines can be removed.
          friend class eosio::net_plugin_impl;
          friend struct eosio::handshake_message;
    };
