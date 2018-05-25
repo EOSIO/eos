@@ -107,6 +107,7 @@ namespace enumivo { namespace chain {
 
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
+         FC_ASSERT(!is_type(td.new_type_name), "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
 
@@ -128,6 +129,8 @@ namespace enumivo { namespace chain {
       FC_ASSERT( actions.size() == abi.actions.size() );
       FC_ASSERT( tables.size() == abi.tables.size() );
       FC_ASSERT( error_messages.size() == abi.error_messages.size() );
+
+      validate();
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
@@ -222,10 +225,15 @@ namespace enumivo { namespace chain {
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
-   type_name abi_serializer::resolve_type(const type_name& type)const  {
+   type_name abi_serializer::resolve_type(const type_name& type)const {
       auto itr = typedefs.find(type);
-      if( itr != typedefs.end() )
-         return resolve_type(itr->second);
+      if( itr != typedefs.end() ) {
+         for( auto i = typedefs.size(); i > 0; --i ) { // avoid infinite recursion
+            const type_name& t = itr->second;
+            itr = typedefs.find( t );
+            if( itr == typedefs.end() ) return t;
+         }
+      }
       return type;
    }
 
