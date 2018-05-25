@@ -57,8 +57,6 @@ public:
    {}
 
    bfs::path                        blocks_dir;
-   bfs::path                        genesis_file;
-   time_point                       genesis_timestamp;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -109,8 +107,6 @@ chain_plugin::~chain_plugin(){}
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
-         ("genesis-json", bpo::value<bfs::path>()->default_value("genesis.json"), "File to read Genesis State from")
-         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -132,6 +128,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
 
    cli.add_options()
+         ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
+         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
            "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
@@ -152,29 +150,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
-   if(options.count("genesis-json")) {
-      auto genesis = options.at("genesis-json").as<bfs::path>();
-      if(genesis.is_relative())
-         my->genesis_file = app().config_dir() / genesis;
-      else
-         my->genesis_file = genesis;
-   }
-   if(options.count("genesis-timestamp")) {
-     string tstr = options.at("genesis-timestamp").as<string>();
-     if (strcasecmp (tstr.c_str(), "now") == 0) {
-       my->genesis_timestamp = fc::time_point::now();
-       auto epoch_ms = my->genesis_timestamp.time_since_epoch().count() / 1000;
-       auto diff_ms = epoch_ms % block_interval_ms;
-       if (diff_ms > 0) {
-         auto delay_ms =  (block_interval_ms - diff_ms);
-         my->genesis_timestamp += fc::microseconds(delay_ms * 10000);
-         dlog ("pausing ${ms} milliseconds to the next interval",("ms",delay_ms));
-       }
-     }
-     else {
-       my->genesis_timestamp = time_point::from_iso_string (tstr);
-     }
-   }
    if (options.count("blocks-dir")) {
       auto bld = options.at("blocks-dir").as<bfs::path>();
       if(bld.is_relative())
@@ -272,15 +247,38 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
    }
 
-   if( !fc::exists( my->genesis_file ) ) {
-      wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
-      genesis_state default_genesis;
-      fc::json::save_to_file( default_genesis, my->genesis_file, true );
-   }
+   if( options.count("genesis-json") ) {
+      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis State can only be specified on a fresh blockchain." );
 
-   my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
-   if( my->genesis_timestamp.sec_since_epoch() > 0 ) {
-      my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
+      auto genesis_file = options.at("genesis-json").as<bfs::path>();
+      if( genesis_file.is_relative() ) {
+         genesis_file = bfs::current_path() / genesis_file;
+      }
+
+      FC_ASSERT( fc::is_regular_file( genesis_file ),
+                 "Specified genesis file '${genesis}' does not exist.",
+                 ("genesis", genesis_file.generic_string()) );
+
+      my->chain_config->genesis = fc::json::from_file(genesis_file).as<genesis_state>();
+
+      ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()) );
+
+      if( options.count("genesis-timestamp") ) {
+         string tstr = options.at("genesis-timestamp").as<string>();
+         if( strcasecmp (tstr.c_str(), "now") == 0 ) {
+            my->chain_config->genesis.initial_timestamp = fc::time_point::now();
+            auto epoch_us = my->chain_config->genesis.initial_timestamp.time_since_epoch().count();
+            auto diff_us = epoch_us % config::block_interval_us;
+            if (diff_us > 0) {
+               auto delay_us = (config::block_interval_us - diff_us);
+               my->chain_config->genesis.initial_timestamp += fc::microseconds(delay_us);
+               dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
+            }
+        } else {
+          my->chain_config->genesis.initial_timestamp = time_point::from_iso_string( tstr );
+        }
+        ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", my->chain_config->genesis.initial_timestamp) );
+      }
    }
 
    my->chain.emplace(*my->chain_config);
@@ -342,7 +340,7 @@ void chain_plugin::plugin_startup()
         ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
 
    my->chain_config.reset();
-} FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
+} FC_CAPTURE_AND_RETHROW() }
 
 void chain_plugin::plugin_shutdown() {
    my->accepted_block_header_connection.reset();
