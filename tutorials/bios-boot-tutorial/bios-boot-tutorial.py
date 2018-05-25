@@ -8,30 +8,56 @@ import re
 import subprocess
 import sys
 import time
+import argparse
 
-genesis = './genesis.json'
-walletDir = os.path.abspath('./wallet/')
+# Handle command line arguments
+ap = argparse.ArgumentParser()
+ap.add_argument("--publicKey", help="EOSIO Public Key", default='EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest='publicKey')
+ap.add_argument("--privateKey", help="EOSIO Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest='privateKey')
+ap.add_argument("--cleos", help="Cleos command", default='../../build/programs/cleos/cleos --wallet-url http://localhost:6666 --url http://localhost:8000 ', dest='cleos')
+ap.add_argument("--nodeos", help="Path to nodeos binary", default='../../build/programs/nodeos/nodeos', dest='nodeos')
+ap.add_argument("--keosd", help="Path to keosd binary", default='../../build/programs/keosd/keosd', dest='keosd')
+ap.add_argument("--contractsDir", help="Path to contracts directory", default='../../build/contracts/', dest='contractsDir')
+ap.add_argument("--nodesDir", help="Path to nodes directory", default='./nodes/', dest='nodesDir')
+ap.add_argument("--genesis", help="Path to genesis.json", default='./genesis.json', dest='genesis')
+ap.add_argument("--walletDir", help="Path to wallet directory", default='./wallet/', dest='walletDir')
+ap.add_argument("--logPath", help="Path to log file", default='./bios-boot-tutorial.log', dest='logPath')
+ap.add_argument("--symbol", help="The eosio.system symbol", default='SYS', dest='symbol')
+ap.add_argument("--userLimit", help="Number of users (0 = no limit)", default=0, dest='userLimit', type=int)
+ap.add_argument("--maxUserKeys", help="Maximum user keys to import into wallet", default=10, dest='maxUserKeys', type=int)
+ap.add_argument("--extraIssue", help="Extra amount to issue to cover buying ram", default=10.0000, dest='extraIssue', type=float)
+ap.add_argument("--producerLimit", help="Number of producers (0 = no limit)", default=0, dest='producerLimit', type=int)
+ap.add_argument("--minProducerStake", help="Minimum producer CPU and BW stake", default=20.0000, dest='minProducerStake', type=float)
+ap.add_argument("--numProducersVote", help="Number of producers for which each user votes", default=20, dest='numProducersVote', type=int)
+ap.add_argument("--numVoters", help="Number of voters", default=10, dest='numVoters', type=int)
+ap.add_argument("--numSenders", help="Number of users to transfer funds randomly", default=10, dest='numSenders', type=int)
+ap.add_argument("--producerSyncDelay", help="Time (s) to sleep to allow producers to sync", default=80, dest='producerSyncDelay', type=int)
+args = ap.parse_args()
+
+genesis = os.path.abspath(args.genesis)
+walletDir = os.path.abspath(args.walletDir)
 unlockTimeout = 99999999999
-nodesDir = './nodes/'
-contractsDir = '../../build/contracts/'
-cleos = 'cleos --wallet-url http://localhost:6666 --url http://localhost:8000 '
-nodeos = 'nodeos'
+nodesDir = args.nodesDir
+contractsDir = args.contractsDir
+cleos = args.cleos
+nodeos = args.nodeos
+keosd = args.keosd
 fastUnstakeSystem = './fast.refund/eosio.system/eosio.system.wasm'
-logFile = open('test.log', 'a')
+logFile = open(os.path.abspath(args.logPath), 'a')
 
-symbol = 'SYS'
-maxUserKeys = 10            # Maximum user keys to import into wallet
-minProducerStake = 20.0000  # Minimum producer CPU and BW stake
-extraIssue = 10.0000        # Extra amount to issue to cover buying ram
-limitUsers = 0              # Limit number of users if >0
-limitProducers = 0          # Limit number of producers if >0
-numVoters = 10              # Number of users which cast votes
-numProducersToVoteFor = 20  # Number of producers each user votes for
-numSenders = 10             # Number of users to transfer funds randomly
-producerSyncDelay = 80      # Time (s) to sleep to allow producers to sync
+symbol = args.symbol
+maxUserKeys = 10                                # Maximum user keys to import into wallet
+minProducerStake = args.minProducerStake        # Minimum producer CPU and BW stake
+extraIssue = args.extraIssue                    # Extra amount to issue to cover buying ram
+limitUsers = args.userLimit                     # Limit number of users if >0
+limitProducers = args.producerLimit             # Limit number of producers if >0
+numVoters = args.numVoters                      # Number of users which cast votes
+numProducersToVoteFor = args.numProducersVote   # Number of producers each user votes for
+numSenders = args.numSenders                    # Number of users to transfer funds randomly
+producerSyncDelay = args.producerSyncDelay      # Time (s) to sleep to allow producers to sync
 
-eosioPub = 'EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr'
-eosioPvt = '5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p'
+eosioPub = args.publicKey
+eosioPvt = args.privateKey
 systemAccounts = [
     'eosio.bpay',
     'eosio.msig',
@@ -60,15 +86,15 @@ def jsonArg(a):
     return " '" + json.dumps(a) + "' "
 
 def run(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     if subprocess.call(args, shell=True):
-        print('test.py: exiting because of error')
+        print('bios-boot-tutorial.py: exiting because of error')
         sys.exit(1)
 
 def retry(args):
     while True:
-        print('test.py:', args)
+        print('bios-boot-tutorial.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
             print('*** Retry')
@@ -76,18 +102,18 @@ def retry(args):
             break
 
 def background(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     return subprocess.Popen(args, shell=True)
 
 def getOutput(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
     return proc.communicate()[0].decode('utf-8')
 
 def getJsonOutput(args):
-    print('test.py:', args)
+    print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
     return json.loads(proc.communicate()[0])
@@ -100,7 +126,7 @@ def sleep(t):
 def startWallet():
     run('rm -rf ' + walletDir)
     run('mkdir -p ' + walletDir)
-    background('keosd --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (unlockTimeout, walletDir))
+    background(keosd + ' --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (unlockTimeout, walletDir))
     sleep(.4)
     run(cleos + 'wallet create')
 
