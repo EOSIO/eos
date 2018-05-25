@@ -107,6 +107,7 @@ namespace eosio { namespace chain {
 
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
+         FC_ASSERT(!is_type(td.new_type_name), "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
 
@@ -128,6 +129,8 @@ namespace eosio { namespace chain {
       FC_ASSERT( actions.size() == abi.actions.size() );
       FC_ASSERT( tables.size() == abi.tables.size() );
       FC_ASSERT( error_messages.size() == abi.error_messages.size() );
+
+      validate();
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
