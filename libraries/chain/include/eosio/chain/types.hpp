@@ -93,6 +93,8 @@ namespace eosio { namespace chain {
       chain_id_type();
       operator fc::sha256() { return id; }
       fc::sha256 id;
+      friend bool operator != ( const chain_id_type& a, const chain_id_type& b ) { return a.id != b.id; }
+      friend bool operator == ( const chain_id_type& a, const chain_id_type& b ) { return a.id == b.id; }
    };
 
    using chainbase::allocator;
