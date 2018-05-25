@@ -172,9 +172,9 @@ namespace eosio {
            bool known_by_peer  = false;         ///< we sent block to peer or peer sent us notice
            bool received_from_peer = false;     ///< peer sent us this block and considers full block valid
            block_id_type id;                    ///< the block id;
-           block_id_type prev;                  ///< the prev block id
+       //    block_id_type prev;                  ///< the prev block id
 
-           shared_ptr< vector<char> >  block_msg; ///< packed bnet_message for this block
+       //    shared_ptr< vector<char> >  block_msg; ///< packed bnet_message for this block
 
            uint32_t block_num()const { return block_header::num_from_id(id); }
         };
@@ -193,7 +193,7 @@ namespace eosio {
            transaction_id_type        id;
            transaction_metadata_ptr   trx;
 
-           void mark_known_by_peer() { received = fc::time_point::maximum();  }
+           void mark_known_by_peer() { received = fc::time_point::maximum(); trx.reset();  }
            bool known_by_peer()const { return received == fc::time_point::maximum(); }
         };
 
@@ -398,8 +398,8 @@ namespace eosio {
            transaction_status stat;
            stat.received = fc::time_point::now();
            stat.expired  = stat.received + fc::seconds(5);
-           stat.trx      = t;
            stat.id       = t->id;
+           stat.trx      = t;
            _transaction_status.insert( stat );
 
            do_send_next_message(); 
@@ -464,7 +464,9 @@ namespace eosio {
            }
         }
 
-        void on_accepted_block( block_id_type id, block_id_type prev, const shared_ptr<vector<char>>& msgdata, const block_state_ptr& s ) {
+        void on_accepted_block( const block_state_ptr& s ) {
+           //idump((_block_status.size())(_transaction_status.size()));
+           auto id = s->id;
            //ilog( "accepted block ${n}", ("n",s->block_num) );
 
            auto itr = _block_status.find( id );
@@ -472,11 +474,6 @@ namespace eosio {
               itr = _block_status.insert( block_status(id, false, false) ).first;
            }
            
-           _block_status.modify( itr, [&]( auto& item ) {
-              item.block_msg = msgdata;
-              item.prev = prev;
-           });
-
            _local_head_block_id = id;
            _local_head_block_num = block_header::num_from_id(id);
 
@@ -552,34 +549,16 @@ namespace eosio {
 
         void do_hello();
 
-        void send( const shared_ptr<vector<char> >& buffer ) {
-
-           FC_ASSERT( !_out_buffer.size() );
-           _out_buffer.resize(buffer->size());
-           memcpy( _out_buffer.data(), buffer->data(), _out_buffer.size() );
-
-           _state = sending_state;
-           _ws->async_write( boost::asio::buffer(_out_buffer), 
-                             boost::asio::bind_executor( 
-                                _strand,
-                                std::bind( &session::on_write,
-                                          shared_from_this(),
-                                          std::placeholders::_1,
-                                          std::placeholders::_2 ) ) );
-        }
-
 
         void send( const bnet_message& msg ) { try {
            FC_ASSERT( !_out_buffer.size() );
 
            auto ps = fc::raw::pack_size(msg);
            _out_buffer.resize(ps);
-       //    wdump((_out_buffer.size()));
            fc::datastream<char*> ds(_out_buffer.data(), ps);
            fc::raw::pack(ds, msg);
 
            _state = sending_state;
-     //      wlog( "state = sending" );
            _ws->async_write( boost::asio::buffer(_out_buffer), 
                              boost::asio::bind_executor( 
                                 _strand,
@@ -705,11 +684,13 @@ namespace eosio {
            if( start == idx.end() || start->known_by_peer() )
               return false;
 
+
+           auto ptrx_ptr = std::make_shared<packed_transaction>( start->trx->packed_trx );
+
            idx.modify( start, [&]( auto& stat ) {
               stat.mark_known_by_peer();
            });
 
-           auto ptrx_ptr = std::make_shared<packed_transaction>( start->trx->packed_trx );
            // wlog("sending trx ${id}", ("id",start->id) );
            send(ptrx_ptr);
 
@@ -752,10 +733,14 @@ namespace eosio {
             }
 
             mark_block_known_by_peer( next_id );
+
+            _last_sent_block_id  = next_id;
+            _last_sent_block_num = nextblock->block_num();
+
             send( nextblock );
             status( "sending block " + std::to_string( block_header::num_from_id(next_id) ) );
 
-            if( nextblock->timestamp > fc::time_point::now() - fc::seconds(5) ) {
+            if( nextblock->timestamp > (fc::time_point::now() - fc::seconds(5)) ) {
                mark_block_transactions_known_by_peer( nextblock );
             }
         }
@@ -812,11 +797,7 @@ namespace eosio {
            if( ec ) {
               return on_fail( ec, "read" );;
            }
-           //wdump((_in_buffer.size()));
-           //auto str = boost::beast::buffers_to_string(_in_buffer.data());
-           //fc::datastream<const char*> ds(str.data(), str.size());
 
-           //idump((_in_buffer.size()));
            try {
               auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(_in_buffer.data()));
               auto s = boost::asio::buffer_size(_in_buffer.data());
@@ -1118,9 +1099,7 @@ namespace eosio {
           */
          void on_accepted_block( block_state_ptr s ) {
             _ioc->post( [s,this] { /// post this to the thread pool because packing can be intensive
-               bnet_message msg(s->block);
-               auto msgdata = std::make_shared<vector<char>>( fc::raw::pack(msg) );
-               for_each_session( [msgdata,s]( auto ses ){ ses->on_accepted_block( s->id, s->header.previous, msgdata, s ); } );
+               for_each_session( [s]( auto ses ){ ses->on_accepted_block( s ); } );
             });
          }
 
