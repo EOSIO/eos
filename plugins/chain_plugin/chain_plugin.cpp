@@ -117,6 +117,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
+         ("contracts-console", bpo::bool_switch()->default_value(false),
+          "print contract's output to console")
 
 
 #warning TODO: rate limiting
@@ -140,8 +142,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("delete-all-blocks", bpo::bool_switch()->default_value(false),
           "clear chain state database and block log")
-         ("contracts-console", bpo::bool_switch()->default_value(false),
-          "print contract's output to console")
          ;
 }
 
