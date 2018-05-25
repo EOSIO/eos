@@ -165,6 +165,13 @@ namespace enumivosystem {
       set_resource_limits( newact, 0, 0, 0 );
    }
 
+   void system_contract::setparams( const enumivo_parameters& params ) {
+      require_auth( N(enumivo) );
+      (enumivosystem::enumivo_parameters&)(_gstate) = params;
+      enumivo_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
+      set_blockchain_parameters( params );
+   }
+
 } /// enumivo.system
  
 
@@ -183,4 +190,5 @@ ENUMIVO_ABI( enumivosystem::system_contract,
      //this file
      (bidname)
      (setpriv)
+     (setparams)
 )

@@ -307,6 +307,8 @@ namespace enumivo { namespace chain {
       optional<signed_block> bad_block;
       uint32_t               block_num = 0;
 
+      block_id_type previous;
+
       while( pos < end_pos ) {
          signed_block tmp;
 
@@ -318,6 +320,19 @@ namespace enumivo { namespace chain {
             old_block_stream.read( incomplete_block_data.data(), incomplete_block_data.size() );
             break;
          }
+
+         auto id = tmp.id();
+         if( block_header::num_from_id(previous) + 1 != block_header::num_from_id(id) ) {
+            elog( "Block ${num} (${id}) skips blocks. Previous block in block log is block ${prev_num} (${previous})",
+                  ("num", block_header::num_from_id(id))("id", id)
+                  ("prev_num", block_header::num_from_id(previous))("previous", previous) );
+         }
+         if( previous != tmp.previous ) {
+            elog( "Block ${num} (${id}) does not link back to previous block. "
+                  "Expected previous: ${expected}. Actual previous: ${actual}.",
+                  ("num", block_header::num_from_id(id))("id", id)("expected", previous)("actual", tmp.previous) );
+         }
+         previous = id;
 
          uint64_t tmp_pos = std::numeric_limits<uint64_t>::max();
          if( (static_cast<uint64_t>(old_block_stream.tellg()) + sizeof(pos)) <= end_pos ) {

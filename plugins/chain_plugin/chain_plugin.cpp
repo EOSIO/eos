@@ -714,7 +714,11 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
-      result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
+      if (params.code_as_wasm) {
+         result.wasm = string(accnt.code.begin(), accnt.code.end());
+      } else {
+         result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
+      }
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
 

@@ -109,9 +109,9 @@
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep BOOST_LIB_VERSION "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI')
-	if [ "${BVERSION}" != "1_66" ]; then
+	if [ "${BVERSION}" != "1_67" ]; then
 		printf "\\tRemoving existing boost libraries in %s/opt/boost* .\\n" "${HOME}"
-		if ! rm -rf "${HOME}/opt/boost*"
+		if ! rm -rf "${HOME}"/opt/boost*
 		then
 			printf "\\n\\tUnable to remove deprecated boost libraries at this time.\\n"
 			printf "\\n\\tExiting now.\\n\\n"
@@ -124,27 +124,27 @@
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2)
+		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2)
 		if [ "${STATUS}" -ne 200 ]; then
 			printf "\\tUnable to download Boost libraries at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		if ! tar xf "${TEMP_DIR}/boost_1_67_0.tar.bz2"
 		then
-			printf "\\n\\tUnable to unarchive file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to unarchive file %s/boost_1_67_0.tar.bz2.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		if ! rm -f "${TEMP_DIR}/boost_1_67_0.tar.bz2"
 		then
-			printf "\\n\\tUnable to remove file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to remove file %s/boost_1_67_0.tar.bz2.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}/boost_1_66_0/"
+		if ! cd "${TEMP_DIR}/boost_1_67_0/"
 		then
-			printf "\\n\\tUnable to enter directory %s/boost_1_66_0.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to enter directory %s/boost_1_67_0.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -160,15 +160,15 @@
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1
 		fi
-		if ! rm -rf "${TEMP_DIR}/boost_1_66_0"
+		if ! rm -rf "${TEMP_DIR}"/boost_1_67_0
 		then
-			printf "\\n\\tUnable to remove %s/boost_1_66_0.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to remove %s/boost_1_67_0.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1
 		fi
-		printf "\\tBoost 1.66.0 successfully installed @ %s/opt/boost_1_66_0.\\n" "${HOME}"
+		printf "\\tBoost 1.67.0 successfully installed @ %s/opt/boost_1_67_0.\\n" "${HOME}"
 	else
-		printf "\\tBoost 1.66.0 found at %s/opt/boost_1_66_0.\\n\\n" "${HOME}"
+		printf "\\tBoost 1.67.0 found at %s/opt/boost_1_67_0.\\n\\n" "${HOME}"
 	fi
 
 	printf "\\n\\tChecking MongoDB installation.\\n"

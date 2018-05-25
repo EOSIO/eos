@@ -215,6 +215,8 @@ namespace enumivosystem {
 
          void regproxy( const account_name proxy, bool isproxy );
 
+         void setparams( const enumivo_parameters& params );
+
          // functions defined in producer_pay.cpp
          void claimrewards( const account_name& owner );
 
