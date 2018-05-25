@@ -79,8 +79,7 @@ struct txn_test_gen_plugin_impl {
       abi_def currency_abi_def = fc::json::from_string(eosio_token_abi).as<abi_def>();
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
-      chain::chain_id_type chainid;
-      app().get_plugin<chain_plugin>().get_chain_id(chainid);
+      auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
       fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
@@ -233,8 +232,7 @@ struct txn_test_gen_plugin_impl {
 
    void send_transaction() {
       controller& cc = app().get_plugin<chain_plugin>().chain();
-      chain::chain_id_type chainid;
-      app().get_plugin<chain_plugin>().get_chain_id(chainid);
+      auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
       name sender("txn.test.a");
       name recipient("txn.test.b");
