@@ -2109,16 +2109,15 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
-   abi_serializer abis(abi);
 
    auto is_assert_exception = [](fc::assert_exception const & e) -> bool {
       wlog(e.to_string()); return true;
    };
-   BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_assert_exception );
 
    abi = fc::json::from_string(struct_cycle_abi).as<abi_def>();
-   abis.set_abi(abi);
-   BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
+   abi_serializer abis;
+   BOOST_CHECK_EXCEPTION( abis.set_abi(abi), fc::assert_exception, is_assert_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2958,7 +2957,7 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("types.size") != std::string::npos; };
+   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
@@ -3141,5 +3140,202 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(abi_type_def)
+{ try {
+   // inifinite loop in types
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "new_type_name": "account_name",
+         "type": "name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
+       }
+     ],
+     "actions": [{
+         "name": "transfer",
+         "type": "transfer",
+         "ricardian_contract": "transfer contract"
+       }
+     ],
+     "tables": []
+   }
+   )=====";
+
+   abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>());
+   BOOST_CHECK(abis.is_type("name"));
+   BOOST_CHECK(abis.is_type("account_name"));
+
+   const char* test_data = R"=====(
+   {
+     "from" : "kevin",
+     "to" : "dan",
+     "amount" : 16
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+   verify_byte_round_trip_conversion(abis, "transfer", var);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(abi_type_loop)
+{ try {
+   // inifinite loop in types
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "new_type_name": "account_name",
+         "type": "name"
+       },{
+         "new_type_name": "name",
+         "type": "account_name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
+       }
+     ],
+     "actions": [{
+         "name": "transfer",
+         "type": "transfer",
+         "ricardian_contract": "transfer contract"
+       }
+     ],
+     "tables": []
+   }
+   )=====";
+
+   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::assert_exception, is_type_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(abi_type_redefine)
+{ try {
+   // inifinite loop in types
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "new_type_name": "account_name",
+         "type": "account_name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
+       }
+     ],
+     "actions": [{
+         "name": "transfer",
+         "type": "transfer",
+         "ricardian_contract": "transfer contract"
+       }
+     ],
+     "tables": []
+   }
+   )=====";
+
+   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("invalid type") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::assert_exception, is_type_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(abi_type_redefine_to_name)
+{ try {
+      // inifinite loop in types
+      const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "new_type_name": "name",
+         "type": "name"
+       }
+     ],
+     "structs": [],
+     "actions": [],
+     "tables": []
+   }
+   )=====";
+
+   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::assert_exception, is_type_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
+{ try {
+   // inifinite loop in types
+   const char* repeat_abi = R"=====(
+   {
+     "types": [{
+         "new_type_name": "account_name",
+         "type": "name"
+       }
+     ],
+     "structs": [{
+         "name": "transfer",
+         "base": "",
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
+       }
+     ],
+     "actions": [{
+         "name": "transfer",
+         "type": "transfer",
+         "ricardian_contract": "transfer contract"
+       }
+     ],
+     "tables": []
+   }
+   )=====";
+
+   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("abi.types.size") != std::string::npos; };
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()
