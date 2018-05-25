@@ -652,18 +652,33 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
            ("ref_block_prefix", ref_block_prefix);
 }
 
-read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
+#define CATCH_AND_CALL(NEXT)\
+   catch ( const fc::exception& err ) {\
+      NEXT(err.dynamic_copy_exception());\
+   } catch ( const std::exception& e ) {\
+      fc::exception fce( \
+         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
+         fc::std_exception_code,\
+         BOOST_CORE_TYPEID(e).name(),\
+         e.what() ) ;\
+      NEXT(fce.dynamic_copy_exception());\
+   } catch( ... ) {\
+      fc::unhandled_exception e(\
+         FC_LOG_MESSAGE(warn, "rethrow"),\
+         std::current_exception());\
+      NEXT(e.dynamic_copy_exception());\
+   }
+
+void read_write::push_block(const read_write::push_block_params& params, read_write::next_function<read_write::push_block_results> next) {
    try {
       db.push_block( std::make_shared<signed_block>(params) );
+      next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
-   } catch ( ... ) {
-      throw;
-   }
-   return read_write::push_block_results();
+   } CATCH_AND_CALL(next);
 }
 
-read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
+void read_write::push_transaction(const read_write::push_transaction_params& params, read_write::next_function<read_write::push_transaction_results> next) {
    chain::transaction_id_type id;
    fc::variant pretty_output;
    try {
@@ -678,33 +693,44 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
       pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
       //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
       id = trx_trace_ptr->id;
+
+      next(read_write::push_transaction_results{ id, pretty_output });
    } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
-   } catch ( ... ) {
-      throw;
-   }
-   return read_write::push_transaction_results{ id, pretty_output };
+   } CATCH_AND_CALL(next);
 }
 
-read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
-   FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
-   push_transactions_results result;
-   try {
-      result.reserve(params.size());
-      for( const auto& item : params ) {
-         try {
-           result.emplace_back( push_transaction( item ) );
-         } catch ( const fc::exception& e ) {
-           result.emplace_back( read_write::push_transaction_results{ transaction_id_type(),
-                             fc::mutable_variant_object( "error", e.to_detail_string() ) } );
-         }
+static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const read_write::next_function<read_write::push_transactions_results>& next) {
+   auto wrapped_next = [=](fc::static_variant<fc::exception_ptr, read_write::push_transaction_results> result) {
+      if (result.contains<fc::exception_ptr>()) {
+         const auto& e = result.get<fc::exception_ptr>();
+         results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
+      } else {
+         const auto& r = result.get<read_write::push_transaction_results>();
+         results->emplace_back( r );
       }
-   } catch ( boost::interprocess::bad_alloc& ) {
-      raise(SIGUSR1);
-   } catch ( ... ) {
-      throw;
-   }
-   return result;
+
+      int next_index = index + 1;
+      if (next_index < params->size()) {
+         push_recurse(rw, next_index, params, results, next );
+      } else {
+         next(*results);
+      }
+   };
+
+   rw->push_transaction(params->at(index), wrapped_next);
+}
+
+void read_write::push_transactions(const read_write::push_transactions_params& params, read_write::next_function<read_write::push_transactions_results> next) {
+   try {
+      FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
+      auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
+      auto result = std::make_shared<read_write::push_transactions_results>();
+      result->reserve(params.size());
+
+      push_recurse(this, 0, params_copy, result, next);
+
+   } CATCH_AND_CALL(next);
 }
 
 read_only::get_code_results read_only::get_code( const get_code_params& params )const {

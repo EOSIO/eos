@@ -18,6 +18,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <fc/static_variant.hpp>
+
 namespace fc { class variant; }
 
 namespace eosio {
@@ -328,21 +330,24 @@ class read_write {
 public:
    read_write(controller& db) : db(db) {}
 
+   template<typename T>
+   using next_function = std::function<void(fc::static_variant<fc::exception_ptr, T>)>;
+
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
-   push_block_results push_block(const push_block_params& params);
+   void push_block(const push_block_params& params, next_function<push_block_results> next);
 
    using push_transaction_params = fc::variant_object;
    struct push_transaction_results {
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
-   push_transaction_results push_transaction(const push_transaction_params& params);
+   void push_transaction(const push_transaction_params& params, next_function<push_transaction_results> next);
 
 
    using push_transactions_params  = vector<push_transaction_params>;
    using push_transactions_results = vector<push_transaction_results>;
-   push_transactions_results push_transactions(const push_transactions_params& params);
+   void push_transactions(const push_transactions_params& params, next_function<push_transactions_results> next);
 
    friend resolver_factory<read_write>;
 };
