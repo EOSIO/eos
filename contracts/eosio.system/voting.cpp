@@ -34,7 +34,7 @@ namespace eosiosystem {
     *  @pre authority of producer to register
     *
     */
-   void system_contract::regproducer( const account_name producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) { 
+   void system_contract::regproducer( const account_name producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) {
       eosio_assert( url.size() < 512, "url too long" );
       require_auth( producer );
 
@@ -80,11 +80,17 @@ namespace eosiosystem {
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes; ++it ) {
          if( !it->active() ) continue;
 
-         if ( it->time_became_active.slot == 0 ) {
+         /**
+            If it's the first time or it's been over a day since a producer was last voted in, 
+            update his info. Otherwise, a producer gets a grace period of 7 hours after which
+            he gets deactivated if he hasn't produced in 24 hours.
+          */
+         if ( it->time_became_active.slot == 0 ||
+              block_time.slot > it->time_became_active.slot + blocks_per_day ) {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.time_became_active = block_time;
                });
-         } else if ( block_time.slot > 2 * 21 * 12 + it->time_became_active.slot &&
+         } else if ( block_time.slot > (2 * 21 * 12 * 100) + it->time_became_active.slot &&
                      block_time.slot > it->last_produced_block_time.slot + blocks_per_day ) {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.producer_key = public_key();
@@ -92,11 +98,15 @@ namespace eosiosystem {
                });
 
             continue;
+         } else {
+            _producers.modify( *it, 0, [&](auto& p) {
+                  p.time_became_active = block_time;
+               });
          }
 
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
       }
-      
+
 
 
       /// sort by producer name
@@ -114,7 +124,7 @@ namespace eosiosystem {
 
       if( new_id != _gstate.last_producer_schedule_id ) {
          _gstate.last_producer_schedule_id = new_id;
-         set_active_producers( packed_schedule.data(),  packed_schedule.size() );
+         set_proposed_producers( packed_schedule.data(),  packed_schedule.size() );
       }
       _gstate.last_producer_schedule_update = block_time;
    }
@@ -133,7 +143,7 @@ namespace eosiosystem {
     *  @pre voter must have previously staked some EOS for voting
     *  @pre voter->staked must be up to date
     *
-    *  @post every producer previously voted for will have vote reduced by previous vote weight 
+    *  @post every producer previously voted for will have vote reduced by previous vote weight
     *  @post every producer newly voted for will have vote increased by new vote amount
     *  @post prior proxy will proxied_vote_weight decremented by previous vote weight
     *  @post new proxy will proxied_vote_weight incremented by new vote weight
@@ -170,6 +180,9 @@ namespace eosiosystem {
        */
       if( voter->last_vote_weight <= 0.0 ) {
          _gstate.total_activated_stake += voter->staked;
+         if( _gstate.total_activated_stake >= min_activated_stake ) {
+            _gstate.thresh_activated_stake_time = current_time();
+         }
       }
 
       auto new_vote_weight = stake2vote( voter->staked );
@@ -242,7 +255,7 @@ namespace eosiosystem {
    /**
     *  An account marked as a proxy can vote with the weight of other accounts which
     *  have selected it as a proxy. Other accounts must refresh their voteproducer to
-    *  update the proxy's weight.    
+    *  update the proxy's weight.
     *
     *  @param isproxy - true if proxy wishes to vote on behalf of others, false otherwise
     *  @pre proxy must have something staked (existing row in voters table)

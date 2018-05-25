@@ -32,6 +32,14 @@
         {"name":"weight", "type":"weight_type"}
       ]
     },{
+      "name": "bidname",
+      "base": "",
+      "fields": [
+        {"name":"bidder",  "type":"account_name"},
+        {"name":"newname", "type":"account_name"},
+        {"name":"bid", "type":"asset"}
+      ]
+    },{
       "name": "permission_level_weight",
       "base": "",
       "fields": [
@@ -207,7 +215,8 @@
       "fields": [
          {"name":"owner", "type":"account_name"},
          {"name":"request_time", "type":"time_point_sec"},
-         {"name":"amount", "type":"uint64"}
+         {"name":"net_amount", "type":"asset"},
+         {"name":"cpu_amount", "type":"asset"}
       ]
     },{
       "name": "blockchain_parameters",
@@ -230,8 +239,7 @@
          {"name":"max_transaction_delay",               "type":"uint32"},
          {"name":"max_inline_action_size",              "type":"uint32"},
          {"name":"max_inline_action_depth",             "type":"uint16"},
-         {"name":"max_authority_depth",                 "type":"uint16"},
-         {"name":"max_generated_transaction_count",     "type":"uint32"}
+         {"name":"max_authority_depth",                 "type":"uint16"}
 
       ]
     },{
@@ -253,8 +261,10 @@
          {"name":"savings",                       "type":"int64"},
          {"name":"total_unpaid_blocks",           "type":"uint32"},
          {"name":"total_activated_stake",         "type":"int64"},
+         {"name":"thresh_activated_stake_time",   "type":"uint64"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
-         {"name":"total_producer_vote_weight",    "type":"float64"}
+         {"name":"total_producer_vote_weight",    "type":"float64"},
+         {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
     },{
       "name": "producer_info",
@@ -368,6 +378,12 @@
       "fields": [
         {"name":"from", "type":"account_name"}
       ]
+    },{
+      "name": "setparams",
+      "base": "",
+      "fields": [
+        {"name":"params", "type":"eosio_parameters"}
+      ]
     }
    ],
    "actions": [{
@@ -439,6 +455,10 @@
       "type": "setram",
       "ricardian_contract": ""
    },{
+      "name": "bidname",
+      "type": "bidname",
+      "ricardian_contract": ""
+   },{
       "name": "unregprod",
       "type": "unregprod",
       "ricardian_contract": ""
@@ -473,6 +493,10 @@
     },{
       "name": "reqauth",
       "type": "require_auth",
+      "ricardian_contract": ""
+    },{
+      "name": "setparams",
+      "type": "setparams",
       "ricardian_contract": ""
     }],
    "tables": [{

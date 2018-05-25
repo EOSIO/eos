@@ -72,15 +72,14 @@ try:
         if cluster.launch(pnodes, total_nodes, topo=topo, delay=delay) is False:
             errorExit("Failed to stand up eos cluster.")
 
-        #exit(0)
         Print ("Wait for Cluster stabilization")
         # wait for cluster to start producing blocks
         if not cluster.waitOnClusterBlockNumSync(3):
             errorExit("Cluster never stabilized")
 
-    #exit(0)
-
     Print("Stand up EOS wallet keosd")
+    walletMgr.killall()
+    walletMgr.cleanup()
     if walletMgr.launch() is False:
         errorExit("Failed to stand up keosd.")
 
@@ -99,18 +98,15 @@ try:
     defproducerbAccount=cluster.defproducerbAccount
     eosioAccount=cluster.eosioAccount
 
-    # TBD: get account is currently failing. Enable when ready
-    # Print("Create accounts.")
-    # if not cluster.createAccounts(eosioAccount):
-    #     errorExit("Accounts creation failed.")
+    Print("Create accounts.")
+    if not cluster.createAccounts(eosioAccount):
+        errorExit("Accounts creation failed.")
 
-    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
-    # print("Funds spread validated")
+    print("Funds spread validated")
     
     testSuccessful=True
 finally:
@@ -126,6 +122,5 @@ finally:
         Print("Shut down the wallet and cleanup.")
         walletMgr.killall()
         walletMgr.cleanup()
-    pass
 
 exit(0)

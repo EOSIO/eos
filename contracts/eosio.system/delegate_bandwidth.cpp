@@ -73,7 +73,7 @@ namespace eosiosystem {
    };
 
    /**
-    *  These tables are designed to be constructed in the scope of the relevant user, this 
+    *  These tables are designed to be constructed in the scope of the relevant user, this
     *  facilitates simpler API for per-user queries
     */
    typedef eosio::multi_index< N(userres), user_resources>      user_resources_table;
@@ -81,40 +81,6 @@ namespace eosiosystem {
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
 
-   /**
-    *  Called after a new account is created. This code enforces resource-limits rules
-    *  for new accounts as well as new account naming conventions.
-    *
-    *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
-    *  characters long without '.' until a future account auction process is implemented
-    *  which prevents name squatting.
-    *
-    *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
-    *     therefore, this method will execute an inline buyram from receiver for newacnt in
-    *     an amount equal to the current new account creation fee. 
-    */
-   void native::newaccount( account_name     creator,
-                            account_name     newact
-                            /*  no need to parse authorites
-                            const authority& owner,
-                            const authority& active*/ ) {
-      auto name_str = eosio::name{newact}.to_string();
-
-      eosio_assert( name_str.size() == 12 || creator == N(eosio), "account names must be 12 chars long" );
-      eosio_assert( name_str.find_first_of('.') == std::string::npos  || creator == N(eosio), "account names cannot contain '.' character");
-
-      user_resources_table  userres( _self, newact);
-
-      userres.emplace( newact, [&]( auto& res ) {
-        res.owner = newact;
-      });
-
-      set_resource_limits( newact, 
-                          0,//  r->ram_bytes, 
-                           0, 0 );
-                    //       r->net_weight.amount, 
-                    //       r->cpu_weight.amount );
-   }
 
    /**
     *  This action will buy an exact amount of ram and bill the payer the current market price.
@@ -134,31 +100,39 @@ namespace eosiosystem {
     *  storage of all database records associated with this action.
     *
     *  RAM is a scarce resource whose supply is defined by global properties max_ram_size. RAM is
-    *  priced using the bancor algorithm such that price-per-byte with a constant reserve ratio of 100:1. 
+    *  priced using the bancor algorithm such that price-per-byte with a constant reserve ratio of 100:1.
     */
-   void system_contract::buyram( account_name payer, account_name receiver, asset quant ) 
+   void system_contract::buyram( account_name payer, account_name receiver, asset quant )
    {
       require_auth( payer );
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
+      auto fee = quant;
+      fee.amount /= 200; /// .5% fee
+      auto quant_after_fee = quant;
+      quant_after_fee.amount -= fee.amount;
+
       if( payer != N(eosio) ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
-                                                       { payer, N(eosio), quant, std::string("buy ram") } );
+                                                       { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
       }
 
+      if( payer != N(eosio) && fee.amount > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+                                                       { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
+      }
 
       int64_t bytes_out;
 
       auto itr = _rammarket.find(S(4,RAMCORE));
       _rammarket.modify( itr, 0, [&]( auto& es ) {
-          bytes_out = es.convert( quant,  S(0,RAM) ).amount;
+          bytes_out = es.convert( quant_after_fee,  S(0,RAM) ).amount;
       });
-
 
       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
-      _gstate.total_ram_stake          += quant.amount;
+      _gstate.total_ram_stake          += quant_after_fee.amount;
 
       user_resources_table  userres( _self, receiver );
       auto res_itr = userres.find( receiver );
@@ -209,8 +183,13 @@ namespace eosiosystem {
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
       if( N(eosio) != account ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                       { N(eosio), account, asset(tokens_out), std::string("sell ram") } );
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
+                                                       { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
+         auto fee = tokens_out.amount / 200;
+         if( fee > 0 ) {
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
+                                                          { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
+         }
       }
    }
 
@@ -280,13 +259,13 @@ namespace eosiosystem {
 
          set_resource_limits( receiver, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
-         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0) ) {
+         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0)  && tot_itr->ram_bytes == 0 ) {
             totals_tbl.erase( tot_itr );
          }
       } // tot_itr can be invalid, should go out of scope
 
       // create refund or update from existing refund
-      if ( N(eosio) != source_stake_from ) { //for eosio both transfer and refund make no sense
+      if ( N(eosio.stake) != source_stake_from ) { //for eosio both transfer and refund make no sense
          refunds_table refunds_tbl( _self, from );
          auto req = refunds_tbl.find( from );
 
@@ -303,11 +282,15 @@ namespace eosiosystem {
                   if ( r.net_amount < asset(0) ) {
                      net_balance = -r.net_amount;
                      r.net_amount = asset(0);
+                  } else {
+                     net_balance = asset(0);
                   }
                   r.cpu_amount -= cpu_balance;
                   if ( r.cpu_amount < asset(0) ){
                      cpu_balance = -r.cpu_amount;
                      r.cpu_amount = asset(0);
+                  } else {
+                     cpu_balance = asset(0);
                   }
                });
             eosio_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
@@ -346,8 +329,8 @@ namespace eosiosystem {
 
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
-            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {from,N(active)},
-               { source_stake_from, N(eosio), asset(transfer_amount), std::string("stake bandwidth") } );
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {source_stake_from, N(active)},
+               { source_stake_from, N(eosio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -409,8 +392,8 @@ namespace eosiosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                    { N(eosio), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.stake),N(active)},
+                                                    { N(eosio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }

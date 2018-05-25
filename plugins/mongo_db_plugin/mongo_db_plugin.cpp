@@ -807,7 +807,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          ilog("Replay requested: wiping mongo database on startup");
          my->wipe_database_on_startup = true;
       }
-      if (options.at("resync-blockchain").as<bool>()) {
+      if (options.at("delete-all-blocks").as<bool>()) {
          ilog("Resync requested: wiping mongo database on startup");
          my->wipe_database_on_startup = true;
       }

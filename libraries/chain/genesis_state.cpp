@@ -12,7 +12,7 @@ namespace eosio { namespace chain {
 
 
 chain::chain_id_type genesis_state::compute_chain_id() const {
-   return initial_chain_id;
+   return config::chain_id;
 }
 
 } } // namespace eosio::chain

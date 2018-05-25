@@ -192,7 +192,7 @@ int64_t resource_limits_manager::get_account_ram_usage( const account_name& name
 
 
 bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-   const auto& usage = _db.get<resource_usage_object,by_owner>( account );
+   //const auto& usage = _db.get<resource_usage_object,by_owner>( account );
    /*
     * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
     * state or adjusted in an existing "pending" state.  The chain controller will collapse "pending" state into
@@ -396,9 +396,8 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
 
-   int64_t x;
-   int64_t cpu_weight;
-   get_account_limits( name, x, x, cpu_weight );
+   int64_t cpu_weight, x, y;
+   get_account_limits( name, x, y, cpu_weight );
 
    if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
       return { -1, -1, -1 };
@@ -411,8 +410,6 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    auto virtual_cpu_capacity_in_window = state.virtual_cpu_limit * window_size;
    uint128_t user_weight     = cpu_weight;
    uint128_t all_user_weight = state.total_cpu_weight;
-
-   wdump((cpu_weight));
 
    auto max_user_use_in_window = (uint128_t(virtual_cpu_capacity_in_window) * user_weight) / all_user_weight;
    auto cpu_used_in_window  = (usage.cpu_usage.value_ex * window_size) / config::rate_limiting_precision;
@@ -460,9 +457,8 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
 
-   int64_t x;
-   int64_t net_weight;
-   get_account_limits( name, x, net_weight, x );
+   int64_t net_weight, x, y;
+   get_account_limits( name, x, net_weight, y );
 
    if( net_weight < 0 || state.total_net_weight == 0) {
       return { -1, -1, -1 };

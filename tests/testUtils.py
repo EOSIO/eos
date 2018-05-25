@@ -75,7 +75,7 @@ class Utils:
         chainSyncStrategy=Utils.SyncStrategy(Utils.SyncReplayTag, 1, "--replay-blockchain")
         chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
 
-        chainSyncStrategy=Utils.SyncStrategy(Utils.SyncResyncTag, 2, "--resync-blockchain")
+        chainSyncStrategy=Utils.SyncStrategy(Utils.SyncResyncTag, 2, "--delete-all-blocks")
         chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
 
         return chainSyncStrategies
@@ -122,7 +122,6 @@ class Account(object):
 
     def __init__(self, name):
         self.name=name
-        self.balance=0
 
         self.ownerPrivateKey=None
         self.ownerPublicKey=None
@@ -469,29 +468,28 @@ class Node(object):
         blockId=self.getBlockIdByTransId(transId)
         return True if blockId else None
 
-    def getTransByBlockId(self, blockId, retry=True, silentErrors=False):
-        for _ in range(2):
-            cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-            subcommand='db.Transactions.find( { "block_id": "%s" } )' % (blockId)
-            if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
-            try:
-                trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, True)
-                if trans is not None:
-                    return trans
-            except subprocess.CalledProcessError as ex:
-                if not silentErrors:
-                    msg=ex.output.decode("utf-8")
-                    Utils.Print("ERROR: Exception during db get trans by blockId. %s" % (msg))
-                return None
-            if not retry:
-                break
-            if self.mongoSyncTime is not None:
-                if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
-                time.sleep(self.mongoSyncTime)
+    # Disabling MongodDB funbction
+    # def getTransByBlockId(self, blockId, retry=True, silentErrors=False):
+    #     for _ in range(2):
+    #         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
+    #         subcommand='db.Transactions.find( { "block_id": "%s" } )' % (blockId)
+    #         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
+    #         try:
+    #             trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, True)
+    #             if trans is not None:
+    #                 return trans
+    #         except subprocess.CalledProcessError as ex:
+    #             if not silentErrors:
+    #                 msg=ex.output.decode("utf-8")
+    #                 Utils.Print("ERROR: Exception during db get trans by blockId. %s" % (msg))
+    #             return None
+    #         if not retry:
+    #             break
+    #         if self.mongoSyncTime is not None:
+    #             if Utils.Debug: Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
+    #             time.sleep(self.mongoSyncTime)
 
-        return None
-
-
+    #     return None
 
     def getActionFromDb(self, transId, retry=True, silentErrors=False):
         for _ in range(2):
@@ -556,7 +554,7 @@ class Node(object):
 
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
-            trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
+            trans = self.transferFunds(creatorAccount, account, Node.currencyIntToStr(stakedDeposit, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -626,8 +624,7 @@ class Node(object):
             Utils.Print("ERROR: Exception during table retrieval. %s" % (msg))
             return None
 
-    #def getNodeAccountEosBalance(self, scope):
-    def getNodeAccountBalance(self, contract, scope):
+    def getTableAccountBalance(self, contract, scope):
         assert(isinstance(contract, str))
         assert(isinstance(scope, str))
         table="accounts"
@@ -639,15 +636,38 @@ class Node(object):
             print("Transaction parsing failed. Transaction: %s" % (trans))
             raise
 
-    def getCurrencyStats(self, contract, symbol=""):
-        cmd="%s %s get currency0000 stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
+    def getCurrencyBalance(self, contract, account, symbol=CORE_SYMBOL):
+        """returns raw output from get currency balance e.g. '99999.9950 CUR'"""
+        assert(contract)
+        assert(isinstance(contract, str))
+        assert(account)
+        assert(isinstance(account, str))
+        assert(symbol)
+        assert(isinstance(symbol, str))
+        cmd="%s %s get currency balance %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, account, symbol)
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        try:
+            trans=Node.runCmdReturnStr(cmd)
+            return trans
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during get currency stats. %s" % (msg))
+            return None
+
+    def getCurrencyStats(self, contract, symbol=CORE_SYMBOL):
+        """returns Json output from get currency stats."""
+        assert(contract)
+        assert(isinstance(contract, str))
+        assert(symbol)
+        assert(isinstance(symbol, str))
+        cmd="%s %s get currency stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get currency0000 stats. %s" % (msg))
+            Utils.Print("ERROR: Exception during get currency stats. %s" % (msg))
             return None
 
     # Verifies account. Returns "get account" json return object
@@ -692,13 +712,17 @@ class Node(object):
         return ret
 
     # Trasfer funds. Returns "transfer" json return object
-    def transferFunds(self, source, destination, amount, memo="memo", force=False):
-        assert isinstance(amount, str)
+    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False):
+        assert isinstance(amountStr, str)
+        assert(source)
+        assert(isinstance(source, Account))
+        assert(destination)
+        assert(isinstance(destination, Account))
 
         cmd="%s %s -v transfer -j %s %s" % (
             Utils.EosClientPath, self.endpointArgs, source.name, destination.name)
         cmdArr=cmd.split()
-        cmdArr.append(amount)
+        cmdArr.append(amountStr)
         cmdArr.append(memo)
         if force:
             cmdArr.append("-f")
@@ -707,34 +731,80 @@ class Node(object):
         trans=None
         try:
             trans=Node.__runCmdArrReturnJson(cmdArr)
-            return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
             return None
 
-    def validateSpreadFundsOnNode(self, adminAccount, accounts, expectedTotal):
-        actualTotal=self.getAccountEosBalance(adminAccount.name)
-        for account in accounts:
-            fund = self.getAccountEosBalance(account.name)
-            if fund != account.balance:
-                Utils.Print("ERROR: validateSpreadFunds> Expected: %d, actual: %d for account %s" %
-                        (account.balance, fund, account.name))
-                return False
-            actualTotal += fund
+        assert(trans)
+        transId=Node.getTransId(trans)
+        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+            return None
 
-        if actualTotal != expectedTotal:
-            Utils.Print("ERROR: validateSpreadFunds> Expected total: %d , actual: %d" % (
-                expectedTotal, actualTotal))
+        return trans
+
+    @staticmethod
+    def currencyStrToInt(balanceStr):
+        """Converts currency string of form "12.3456 SYS" to int 123456"""
+        assert(isinstance(balanceStr, str))
+        balanceStr=balanceStr.split()[0]
+        #balance=int(decimal.Decimal(balanceStr[1:])*10000)
+        balance=int(decimal.Decimal(balanceStr)*10000)
+
+        return balance
+
+    @staticmethod
+    def currencyIntToStr(balance, symbol):
+        """Converts currency int of form 123456 to string "12.3456 SYS" where SYS is symbol string"""
+        assert(isinstance(balance, int))
+        assert(isinstance(symbol, str))
+        balanceStr="%.04f %s" % (balance/10000.0, symbol)
+
+        return balanceStr
+
+    def validateFunds(self, initialBalances, transferAmount, source, accounts):
+        """Validate each account has the expected SYS balance. Validate cumulative balance matches expectedTotal."""
+        assert(source)
+        assert(isinstance(source, Account))
+        assert(accounts)
+        assert(isinstance(accounts, list))
+        assert(len(accounts) > 0)
+        assert(initialBalances)
+        assert(isinstance(initialBalances, dict))
+        assert(isinstance(transferAmount, int))
+
+        currentBalances=self.getEosBalances([source] + accounts)
+        assert(currentBalances)
+        assert(isinstance(currentBalances, dict))
+        assert(len(initialBalances) == len(currentBalances))
+
+        if len(currentBalances) != len(initialBalances):
+            Utils.Print("ERROR: validateFunds> accounts length mismatch. Initial: %d, current: %d" % (len(initialBalances), len(currentBalances)))
             return False
 
-        return True
+        for key, value in currentBalances.items():
+            initialBalance = initialBalances[key]
+            assert(initialBalances)
+            expectedInitialBalance = value - transferAmount
+            if key is source:
+                expectedInitialBalance = value + (transferAmount*len(accounts))
 
-    def getSystemBalance(self, adminAccount, accounts):
-        balance=self.getAccountEosBalance(adminAccount.name)
+            if (initialBalance != expectedInitialBalance):
+                Utils.Print("ERROR: validateFunds> Expected: %d, actual: %d for account %s" %
+                            (expectedInitialBalance, initialBalance, key.name))
+                return False
+
+    def getEosBalances(self, accounts):
+        """Returns a dictionary with account balances keyed by accounts"""
+        assert(accounts)
+        assert(isinstance(accounts, list))
+
+        balances={}
         for account in accounts:
-            balance += self.getAccountEosBalance(account.name)
-        return balance
+            balance = self.getAccountEosBalance(account.name)
+            balances[account]=balance
+
+        return balances
 
     # Gets accounts mapped to key. Returns json object
     def getAccountsByKey(self, key):
@@ -789,10 +859,10 @@ class Node(object):
         return servants
 
     def getAccountEosBalanceStr(self, scope):
-        """Returns EOS currency0000 account balance from cleos get table command. Returned balance is string following syntax "98.0311 SYS". """
+        """Returns SYS currency0000 account balance from cleos get table command. Returned balance is string following syntax "98.0311 SYS". """
         assert isinstance(scope, str)
         if not self.enableMongo:
-            amount=self.getNodeAccountBalance("eosio.token", scope)
+            amount=self.getTableAccountBalance("eosio.token", scope)
             if Utils.Debug: Utils.Print("getNodeAccountEosBalance %s %s" % (scope, amount))
             assert isinstance(amount, str)
             return amount
@@ -809,33 +879,10 @@ class Node(object):
         return None
 
     def getAccountEosBalance(self, scope):
-        """Returns EOS currency0000 account balance from cleos get table command. Returned balance is an integer e.g. 980311. """
+        """Returns SYS currency0000 account balance from cleos get table command. Returned balance is an integer e.g. 980311. """
         balanceStr=self.getAccountEosBalanceStr(scope)
-        balanceStr=balanceStr.split()[0]
-        balance=int(decimal.Decimal(balanceStr[1:])*10000)
+        balance=Node.currencyStrToInt(balanceStr)
         return balance
-
-    # transactions lookup by id. Returns json object
-    def getTransactionsByAccount(self, name):
-        cmd="%s %s get transactions -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Node.runCmdReturnJson(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during transactions by account retrieval. %s" % (msg))
-            return None
-
-    # transactions lookup by id. Returns list of transaction ids
-    def getTransactionsArrByAccount(self, name):
-        trans=self.getTransactionsByAccount(name)
-        transactions=trans["transactions"]
-        transArr=[]
-        for transaction in transactions:
-            transId=transaction["transaction_id"]
-            transArr.append(transId)
-        return transArr
 
     def getAccountCodeHash(self, account):
         cmd="%s %s get code %s" % (Utils.EosClientPath, self.endpointArgs, account)
@@ -1242,7 +1289,6 @@ class Cluster(object):
     __chainSyncStrategy=None
     __WalletName="MyWallet"
     __localHost="localhost"
-    __lastTrans=None
     __BiosHost="localhost"
     __BiosPort=8788
     
@@ -1330,11 +1376,11 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 5000"
+        nodeosArgs="--max-transaction-time 5000 --filter-on *"
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
-            nodeosArgs += " --plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
+            nodeosArgs += " --plugin eosio::mongo_db_plugin --delete-all-blocks --mongodb-uri %s" % self.mongoUri
 
         if nodeosArgs:
             cmdArr.append("--nodeos")
@@ -1570,29 +1616,33 @@ class Cluster(object):
 
     # Spread funds across accounts with transactions spread through cluster nodes.
     #  Validate transactions are synchronized on root node
-    def spreadFunds(self, amount=1):
-        Utils.Print("len(self.accounts): %d" % (len(self.accounts)))
-        if len(self.accounts) == 0:
-            return True
+    def spreadFunds(self, source, accounts, amount=1):
+        assert(source)
+        assert(isinstance(source, Account))
+        assert(accounts)
+        assert(isinstance(accounts, list))
+        assert(len(accounts) > 0)
+        Utils.Print("len(accounts): %d" % (len(accounts)))
 
-        count=len(self.accounts)
+        count=len(accounts)
         transferAmount=(count*amount)+amount
+        transferAmountStr=Node.currencyIntToStr(transferAmount, CORE_SYMBOL)
         node=self.nodes[0]
-        fromm=self.defproduceraAccount
-        to=self.accounts[0]
-        Utils.Print("Transfer %d units from account %s to %s on eos server port %d" % (
-            transferAmount, fromm.name, to.name, node.port))
-        trans=node.transferFunds(fromm, to, transferAmount)
+        fromm=source
+        to=accounts[0]
+        Utils.Print("Transfer %s units from account %s to %s on eos server port %d" % (
+            transferAmountStr, fromm.name, to.name, node.port))
+        trans=node.transferFunds(fromm, to, transferAmountStr)
+        assert(trans)
         transId=Node.getTransId(trans)
         if transId is None:
             return False
-        self.__lastTrans=transId
+
         if Utils.Debug: Utils.Print("Funds transfered on transaction id %s." % (transId))
-        self.accounts[0].balance += transferAmount
 
         nextEosIdx=-1
         for i in range(0, count):
-            account=self.accounts[i]
+            account=accounts[i]
             nextInstanceFound=False
             for _ in range(0, count):
                 #Utils.Print("nextEosIdx: %d, n: %d" % (nextEosIdx, n))
@@ -1614,21 +1664,18 @@ class Cluster(object):
                 return False
 
             transferAmount -= amount
+            transferAmountStr=Node.currencyIntToStr(transferAmount, CORE_SYMBOL)
             fromm=account
-            to=self.accounts[i+1] if i < (count-1) else self.defproduceraAccount
-            Utils.Print("Transfer %d units from account %s to %s on eos server port %d." %
-                    (transferAmount, fromm.name, to.name, node.port))
+            to=accounts[i+1] if i < (count-1) else source
+            Utils.Print("Transfer %s units from account %s to %s on eos server port %d." %
+                    (transferAmountStr, fromm.name, to.name, node.port))
 
-            trans=node.transferFunds(fromm, to, transferAmount)
+            trans=node.transferFunds(fromm, to, transferAmountStr)
             transId=Node.getTransId(trans)
             if transId is None:
                 return False
-            self.__lastTrans=transId
-            if Utils.Debug: Utils.Print("Funds transfered on block num %s." % (transId))
 
-            self.accounts[i].balance -= transferAmount
-            if i < (count-1):
-                self.accounts[i+1].balance += transferAmount
+            if Utils.Debug: Utils.Print("Funds transfered on block num %s." % (transId))
 
         # As an extra step wait for last transaction on the root node
         node=self.nodes[0]
@@ -1639,30 +1686,47 @@ class Cluster(object):
 
         return True
 
-    def validateSpreadFunds(self, expectedTotal):
+    def validateSpreadFunds(self, initialBalances, transferAmount, source, accounts):
+        """Given initial Balances, will validate each account has the expected balance based upon transferAmount.
+        This validation is repeated against every node in the cluster."""
+        assert(source)
+        assert(isinstance(source, Account))
+        assert(accounts)
+        assert(isinstance(accounts, list))
+        assert(len(accounts) > 0)
+        assert(initialBalances)
+        assert(isinstance(initialBalances, dict))
+        assert(isinstance(transferAmount, int))
+
         for node in self.nodes:
-            if not node.killed:
-                if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
-                                            (Utils.EosServerName, node.port))
-                if node.validateSpreadFundsOnNode(self.defproduceraAccount, self.accounts, expectedTotal) is False:
-                    Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
-                    return False
+            if node.killed:
+                continue
+
+            if Utils.Debug: Utils.Print("Validate funds on %s server port %d." %
+                                        (Utils.EosServerName, node.port))
+
+            if node.validateFunds(initialBalances, transferAmount, source, accounts) is False:
+                Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
+                return False
 
         return True
 
-    def spreadFundsAndValidate(self, amount=1):
-        if Utils.Debug: Utils.Print("Get system balance.")
-        initialFunds=self.nodes[0].getSystemBalance(self.defproduceraAccount, self.accounts)
-        if Utils.Debug: Utils.Print("Initial system balance: %d" % (initialFunds))
+    def spreadFundsAndValidate(self, transferAmount=1):
+        """Sprays 'transferAmount' funds across configured accounts and validates action. The spray is done in a trickle down fashion with account 1
+        receiving transferAmount*n SYS and forwarding x-transferAmount funds. Transfer actions are spread round-robin across the cluster to vaidate system cohesiveness."""
 
-        if False == self.spreadFunds(amount):
+        if Utils.Debug: Utils.Print("Get initial system balances.")
+        initialBalances=self.nodes[0].getEosBalances([self.defproduceraAccount] + self.accounts)
+        assert(initialBalances)
+        assert(isinstance(initialBalances, dict))
+
+        if False == self.spreadFunds(self.defproduceraAccount, self.accounts, transferAmount):
             Utils.Print("ERROR: Failed to spread funds across nodes.")
             return False
 
-        Utils.Print("Funds spread across all accounts")
+        Utils.Print("Funds spread across all accounts. Noew validate funds")
 
-        Utils.Print("Validate funds.")
-        if False == self.validateSpreadFunds(initialFunds):
+        if False == self.validateSpreadFunds(initialBalances, transferAmount, self.defproduceraAccount, self.accounts):
             Utils.Print("ERROR: Failed to validate funds transfer across nodes.")
             return False
 
@@ -1681,8 +1745,8 @@ class Cluster(object):
 
         node.validateAccounts(myAccounts)
 
-    # create account, verify account and return transaction id
     def createAccountAndVerify(self, account, creator, stakedDeposit=1000):
+        """create account, verify account and return transaction id"""
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
         trans=node.createInitializeAccount(account, creator, stakedDeposit)
@@ -1776,7 +1840,7 @@ class Cluster(object):
 
     @staticmethod
     def bootstrap(totalNodes, prodCount, biosHost, biosPort, dontKill=False, onlyBios=False):
-        """Create 'prodCount' init accounts and deposits 10000000000 EOS in each. If prodCount is -1 will initialize all possible producers.
+        """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
         Utils.Print("Starting cluster bootstrap.")
@@ -1910,6 +1974,27 @@ class Cluster(object):
             trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
+                return False
+            
+            eosioRamAccount=copy.deepcopy(eosioAccount)
+            eosioRamAccount.name="eosio.ram"
+            trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
+                return False
+
+            eosioRamfeeAccount=copy.deepcopy(eosioAccount)
+            eosioRamfeeAccount.name="eosio.ramfee"
+            trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
+                return False
+
+            eosioStakeAccount=copy.deepcopy(eosioAccount)
+            eosioStakeAccount.name="eosio.stake"
+            trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
                 return False
 
             Node.validateTransaction(trans)

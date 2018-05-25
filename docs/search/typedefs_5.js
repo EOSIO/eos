@@ -7,11 +7,10 @@ var searchData=
   ['enableifspecialization',['EnableIfSpecialization',['../unique_8ptr_8asgn_2move__convert_8pass_8cpp.html#a08bce4daeeba033ef8673e0757c1d3c2',1,'EnableIfSpecialization():&#160;move_convert.pass.cpp'],['../unique_8ptr_8ctor_2move__convert_8pass_8cpp.html#a08bce4daeeba033ef8673e0757c1d3c2',1,'EnableIfSpecialization():&#160;move_convert.pass.cpp']]],
   ['endltype',['EndLType',['../namespacebenchmark_1_1internal.html#a2bd1d8bca7726ceb6d7c9733f8c971b9',1,'benchmark::internal']]],
   ['entry',['ENTRY',['../search_8h.html#ae3b629acc3926f12f1a6be845dfcc731',1,'search.h']]],
-  ['eos_5fcurrency',['eos_currency',['../dice_8cpp.html#af20941bfbdd944bf24ced67c1d05c707',1,'dice.cpp']]],
-  ['eosio_5fparameters',['eosio_parameters',['../classeosiosystem_1_1delegate__bandwidth.html#ae607da962c6c42662fbeafaa96d5908f',1,'eosiosystem::delegate_bandwidth::eosio_parameters()'],['../classeosiosystem_1_1voting.html#ad455462d425f273102f96f8a266e47ba',1,'eosiosystem::voting::eosio_parameters()']]],
   ['exaccounts',['exaccounts',['../namespaceeosio.html#a3b7dce1471f04120121d0f83c0a6eae7',1,'eosio']]],
   ['example_5fconverter',['example_converter',['../namespacebancor.html#a4c0d9a6bc63a6ab849f69a82b5f20a2f',1,'bancor']]],
   ['expectedclock',['ExpectedClock',['../file__time__type_8pass_8cpp.html#a705167ed321bedbdfa9d41b001f21cf4',1,'file_time_type.pass.cpp']]],
   ['expectedtimepoint',['ExpectedTimePoint',['../file__time__type_8pass_8cpp.html#a3c48847935209f3b3ac1ad4ba9a11cb4',1,'file_time_type.pass.cpp']]],
-  ['explicittup',['ExplicitTup',['../disable__reduced__arity__initialization__extension_8pass_8cpp.html#a0b8a83cb92f6fa16cdc6d128e2cfb1fa',1,'disable_reduced_arity_initialization_extension.pass.cpp']]]
+  ['explicittup',['ExplicitTup',['../disable__reduced__arity__initialization__extension_8pass_8cpp.html#a0b8a83cb92f6fa16cdc6d128e2cfb1fa',1,'disable_reduced_arity_initialization_extension.pass.cpp']]],
+  ['extensions_5ftype',['extensions_type',['../namespaceeosio.html#ab8c8a5bf898da8fc26c5c8c99aeb22de',1,'eosio']]]
 ];

@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -72,9 +72,6 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="groups"></a>
 Modules</h2></td></tr>
-<tr class="memitem:group__accountapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__accountapi.html">Account API</a></td></tr>
-<tr class="memdesc:group__accountapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for querying account data. <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__actionapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__actionapi.html">Action API</a></td></tr>
 <tr class="memdesc:group__actionapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for querying action properties. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -84,17 +81,11 @@ Modules</h2></td></tr>
 <tr class="memitem:group__database"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__database.html">Database API</a></td></tr>
 <tr class="memdesc:group__database"><td class="mdescLeft">&#160;</td><td class="mdescRight">APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following broad structure: <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__mathapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__mathapi.html">Math API</a></td></tr>
-<tr class="memdesc:group__mathapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Defines common math functions. <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__consoleapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consoleapi.html">Console API</a></td></tr>
 <tr class="memdesc:group__consoleapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enables applications to log/print text messages. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__systemapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemapi.html">System API</a></td></tr>
 <tr class="memdesc:group__systemapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for interacting with system level intrinsics. <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__tokens"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__tokens.html">Token API</a></td></tr>
-<tr class="memdesc:group__tokens"><td class="mdescLeft">&#160;</td><td class="mdescRight">Defines the ABI for interfacing with standard-compatible token messages and database tables. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__transactionapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactionapi.html">transaction API</a></td></tr>
 <tr class="memdesc:group__transactionapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for sending transactions and inline messages. <br /></td></tr>
@@ -118,7 +109,7 @@ Entry Points</h2>
 <p><code>init</code> is another entry point that is called once immediately after loading the code. It is where you should perform one-time initialization of state.</p>
 <h3>Example Apply Entry Handler</h3>
 <p>Generally speaking, you should use your entry handler to dispatch events to functions that implement the majority of your logic and optionally reject events that your contract is unable or unwilling to accept.</p>
-<div class="fragment"><div class="line"><span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div><div class="line">   <span class="keywordtype">void</span> <a class="code" href="asserter_8cpp.html#a569d3d0ca7b56fb8c580faaa3d73179a">apply</a>( <a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code, <a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> action ) {</div><div class="line">      <span class="keywordflow">if</span>( code == <a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(currency) ) {</div><div class="line">         <span class="keywordflow">if</span>( action == <a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(transfer) ) </div><div class="line">            currency::apply_currency_transfer( current_action&lt; currency::transfer &gt;() );</div><div class="line">      } <span class="keywordflow">else</span> {</div><div class="line">         <a class="code" href="group__systemcapi.html#ga8566f3999bfc932b2190d05e97abbe1f">eosio_assert</a>( <span class="keyword">false</span>, <span class="stringliteral">&quot;rejecting unexpected event&quot;</span> );</div><div class="line">      }</div><div class="line">   }</div><div class="line">}</div></div><!-- fragment --><dl class="section note"><dt>Note</dt><dd>When defining your entry points it is required that they are placed in an <code>extern "C"</code> code block so that c++ name mangling does not get applied to the function. </dd></dl>
+<div class="fragment"><div class="line"><span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div><div class="line">   <span class="keywordtype">void</span> <a class="code" href="asserter_8cpp.html#a569d3d0ca7b56fb8c580faaa3d73179a">apply</a>( <a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code, <a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> action ) {</div><div class="line">      <span class="keywordflow">if</span>( code == <a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(currency) ) {</div><div class="line">         <span class="keywordflow">if</span>( action == <a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(transfer) ) </div><div class="line">            currency::apply_currency_transfer( current_action&lt; currency::transfer &gt;() );</div><div class="line">      } <span class="keywordflow">else</span> {</div><div class="line">         <a class="code" href="group__systemcapi.html#ga63ddae51c80531b721b4c86595bad1ad">eosio_assert</a>( <span class="keyword">false</span>, <span class="stringliteral">&quot;rejecting unexpected event&quot;</span> );</div><div class="line">      }</div><div class="line">   }</div><div class="line">}</div></div><!-- fragment --><dl class="section note"><dt>Note</dt><dd>When defining your entry points it is required that they are placed in an <code>extern "C"</code> code block so that c++ name mangling does not get applied to the function. </dd></dl>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

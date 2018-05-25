@@ -55,22 +55,24 @@ namespace eosio { namespace chain {
       if (!fc::is_directory(my->datadir))
          fc::create_directories(my->datadir);
 
-      auto fork_db_dat = my->datadir / "forkdb.dat";
+      auto fork_db_dat = my->datadir / config::forkdb_filename;
       if( fc::exists( fork_db_dat ) ) {
          string content;
          fc::read_file_contents( fork_db_dat, content );
 
          fc::datastream<const char*> ds( content.data(), content.size() );
-         vector<block_state>  states;
-         fc::raw::unpack( ds, states );
-
-         for( auto& s : states ) {
+         unsigned_int size; fc::raw::unpack( ds, size );
+         for( uint32_t i = 0, n = size.value; i < n; ++i ) {
+            block_state s;
+            fc::raw::unpack( ds, s );
             set( std::make_shared<block_state>( move( s ) ) );
          }
          block_id_type head_id;
          fc::raw::unpack( ds, head_id );
 
          my->head = get_block( head_id );
+
+         fc::remove( fork_db_dat );
       }
    }
 
@@ -78,20 +80,19 @@ namespace eosio { namespace chain {
       if( my->index.size() == 0 ) return;
 
       fc::datastream<size_t> ps;
-      vector<block_state>  states;
-      states.reserve( my->index.size() );
-      for( const auto& s : my->index ) {
-         states.push_back( *s );
-      }
 
-      auto fork_db_dat = my->datadir / "forkdb.dat";
+      auto fork_db_dat = my->datadir / config::forkdb_filename;
       std::ofstream out( fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
-      fc::raw::pack( out, states );
+      uint32_t num_blocks_in_fork_db = my->index.size();
+      fc::raw::pack( out, unsigned_int{num_blocks_in_fork_db} );
+      for( const auto& s : my->index ) {
+         fc::raw::pack( out, *s );
+      }
       if( my->head )
          fc::raw::pack( out, my->head->id );
       else
          fc::raw::pack( out, block_id_type() );
-      idump((states.size()));
+      idump((num_blocks_in_fork_db));
 
 
       /// we don't normally indicate the head block as irreversible

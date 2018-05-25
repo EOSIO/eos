@@ -25,7 +25,6 @@ namespace eosio {
       uint32_t max_inline_action_size;
       uint16_t max_inline_action_depth;
       uint16_t max_authority_depth;
-      uint32_t max_generated_transaction_count;
 
       EOSLIB_SERIALIZE( blockchain_parameters,
                         (max_block_net_usage)(target_block_net_usage_pct)
@@ -36,8 +35,7 @@ namespace eosio {
                         (max_transaction_cpu_usage)(min_transaction_cpu_usage)
 
                         (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
-                        (max_inline_action_size)(max_inline_action_depth)
-                        (max_authority_depth)(max_generated_transaction_count)
+                        (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
       )
    };
 

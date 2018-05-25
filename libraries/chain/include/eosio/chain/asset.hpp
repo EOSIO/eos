@@ -27,9 +27,6 @@ struct asset
       EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
    }
 
-   share_type amount;
-   symbol     sym;
-
    bool is_amount_within_range()const { return -max_amount <= amount && amount <= max_amount; }
    bool is_valid()const               { return is_amount_within_range() && sym.valid(); }
 
@@ -39,6 +36,7 @@ struct asset
    string      symbol_name()const;
    int64_t     precision()const;
    const symbol& get_symbol() const { return sym; }
+   share_type get_amount()const { return amount; }
 
    static asset from_string(const string& from);
    string       to_string()const;
@@ -83,6 +81,17 @@ struct asset
    }
 
    friend std::ostream& operator << (std::ostream& out, const asset& a) { return out << a.to_string(); }
+
+   friend struct fc::reflector<asset>;
+
+   void reflector_verify()const {
+      EOS_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
+      EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
+   }
+
+private:
+   share_type amount;
+   symbol     sym;
 
 };
 

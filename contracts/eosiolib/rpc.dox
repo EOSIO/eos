@@ -358,6 +358,22 @@ This command will return the password that can be used to unlock the wallet in t
 PW5KFWYKqvt63d4iNvedfDEPVZL227D3RQ1zpVFzuUwhMAJmRAYyX
 ```
 
+@subsection v1walletcreatekey wallet_create_key
+
+Creates a key within the specified wallet, wallet must be opened and unlocked.
+Param are: 1.name of the wallet to create key in; 2. type of key to create, currently we support two values: K1 and R1
+
+@subsubsection examplewalletcreatekey Example wallet_create_key Usage
+```
+$ curl http://localhost:8888/v1/wallet/create_key -X POST -d '["default","K1"]'
+```
+
+@subsubsection examplewalletcreatekeyresult  Example wallet_create_key Result
+This command will return the public key of the created key
+```
+EOS6GZE1xeo6jX2AtP2Z6WTcxawQMH7cyYMNpG6Q3q7s514zyRhgo
+```
+
 @subsection v1walletopen wallet_open
 
 Open an existing wallet of the given name

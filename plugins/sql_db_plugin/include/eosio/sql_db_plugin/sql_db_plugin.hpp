@@ -7,6 +7,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <appbase/application.hpp>
+#include <boost/signals2/connection.hpp>
 #include <memory>
 
 #include "consumer.h"
@@ -46,6 +47,7 @@ public:
 
 private:
     std::unique_ptr<consumer<chain::block_state_ptr>> m_irreversible_block_consumer;
+    fc::optional<boost::signals2::scoped_connection> m_irreversible_block_connection;
     consumer<chain::block_state_ptr> m_block_consumer;
 };
 

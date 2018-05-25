@@ -45,14 +45,8 @@ using namespace eosio::chain;
              if (body.empty()) body = "{}"; \
              INVOKE \
              cb(http_response_code, fc::json::to_string(result)); \
-          } catch (fc::eof_exception& e) { \
-             error_results results{400, "Bad Request", e}; \
-             cb(400, fc::json::to_string(results)); \
-             elog("Unable to parse arguments: ${args}", ("args", body)); \
-          } catch (fc::exception& e) { \
-             error_results results{500, "Internal Service Error", e}; \
-             cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
        }}
 
@@ -73,13 +67,13 @@ using namespace eosio::chain;
 struct txn_test_gen_plugin_impl {
    void push_transaction( signed_transaction& trx ) { try {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
-      return cp.accept_transaction( packed_transaction(trx) );
+      cp.accept_transaction( packed_transaction(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key) {
       name newaccountA("txn.test.a");
       name newaccountB("txn.test.b");
-      name newaccountC("eosio.token");
+      name newaccountC("txn.test.t");
       name creator(init_name);
 
       abi_def currency_abi_def = fc::json::from_string(eosio_token_abi).as<abi_def>();
@@ -115,7 +109,7 @@ struct txn_test_gen_plugin_impl {
 
          trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
          }
-         //create "eosio.token" account
+         //create "txn.test.t" account
          {
          auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
          auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
@@ -129,7 +123,7 @@ struct txn_test_gen_plugin_impl {
          push_transaction(trx);
       }
 
-      //set eosio.token contract & initialize it
+      //set txn.test.t contract to eosio.token & initialize it
       {
          signed_transaction trx;
 
@@ -150,34 +144,34 @@ struct txn_test_gen_plugin_impl {
 
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(txn.test.t);
             act.name = N(create);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"eosio.token\",\"maximum_supply\":\"1000000000.0000 CUR\"}}"));
+            act.data = eosio_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"txn.test.t\",\"maximum_supply\":\"1000000000.0000 CUR\"}}"));
             trx.actions.push_back(act);
          }
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(txn.test.t);
             act.name = N(issue);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"eosio.token\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
+            act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"txn.test.t\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(txn.test.t);
             act.name = N(transfer);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"eosio.token\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
          {
             action act;
-            act.account = N(eosio.token);
+            act.account = N(txn.test.t);
             act.name = N(transfer);
             act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-            act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"eosio.token\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
             trx.actions.push_back(act);
          }
 
@@ -202,12 +196,12 @@ struct txn_test_gen_plugin_impl {
       running = true;
 
       //create the actions here
-      act_a_to_b.account = N(eosio.token);
+      act_a_to_b.account = N(txn.test.t);
       act_a_to_b.name = N(transfer);
       act_a_to_b.authorization = vector<permission_level>{{name("txn.test.a"),config::active_name}};
       act_a_to_b.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
 
-      act_b_to_a.account = N(eosio.token);
+      act_b_to_a.account = N(txn.test.t);
       act_b_to_a.name = N(transfer);
       act_b_to_a.authorization = vector<permission_level>{{name("txn.test.b"),config::active_name}};
       act_b_to_a.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));

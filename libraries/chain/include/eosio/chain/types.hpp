@@ -88,14 +88,19 @@ namespace eosio { namespace chain {
 
    struct void_t{};
 
+   struct chain_id_type {
+      chain_id_type(const fc::string& s);
+      chain_id_type();
+      operator fc::sha256() { return id; }
+      fc::sha256 id;
+   };
+
    using chainbase::allocator;
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
    template<typename T>
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
-
-   using chain_id_type = fc::sha256;
 
    using action_name      = name;
    using scope_name       = name;
@@ -150,7 +155,7 @@ namespace eosio { namespace chain {
       resource_limits_config_object_type,
       account_history_object_type,
       action_history_object_type,
-      unconfirmed_block_object_type,
+      reversible_block_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -180,7 +185,6 @@ namespace eosio { namespace chain {
 
 
 } }  // eosio::chain
-
 
 FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)
@@ -220,7 +224,8 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (resource_limits_config_object_type)
                 (account_history_object_type)
                 (action_history_object_type)
-                (unconfirmed_block_object_type)
+                (reversible_block_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )
+FC_REFLECT(eosio::chain::chain_id_type, (id) )
