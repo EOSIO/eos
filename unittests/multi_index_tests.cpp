@@ -44,7 +44,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
       );
       trx.actions.emplace_back(std::move(trigger_act));
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(multitest), "active"), chain_id_type());
+      trx.sign(get_private_key(N(multitest), "active"), control->get_chain_id());
       push_transaction(trx);
    }
 
@@ -61,7 +61,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
       );
       trx.actions.emplace_back(std::move(trigger_act));
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(multitest), "active"), chain_id_type());
+      trx.sign(get_private_key(N(multitest), "active"), control->get_chain_id());
       push_transaction(trx);
    }
 

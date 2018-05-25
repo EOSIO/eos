@@ -154,6 +154,8 @@ namespace eosio { namespace chain {
 
          bool contracts_console()const;
 
+         chain_id_type get_chain_id()const;
+
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;

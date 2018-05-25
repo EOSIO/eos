@@ -70,7 +70,7 @@ class exchange_tester : public TESTER {
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
          set_transaction_headers(trx);
-         trx.sign(get_private_key(signer, "active"), chain_id_type());
+         trx.sign(get_private_key(signer, "active"), control->get_chain_id());
          return push_transaction(trx);
       }
 
@@ -153,7 +153,7 @@ class exchange_tester : public TESTER {
                  ("maximum_supply", maxsupply )
                  ("can_freeze", 0)
                  ("can_recall", 0)
-                 ("can_whitelist", 0)                 
+                 ("can_whitelist", 0)
          );
       }
 

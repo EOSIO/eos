@@ -124,7 +124,7 @@ public:
                                 );
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -167,7 +167,7 @@ public:
                                 );
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -208,7 +208,7 @@ public:
       }
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
