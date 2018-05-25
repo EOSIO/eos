@@ -180,7 +180,7 @@
 	if [ "${BVERSION}" != "106700" ]; then
 		if [ ! -z "${BVERSION}" ]; then
 			printf "\\tFound Boost Version %s.\\n" "${BVERSION}"
-			printf "\\tEOS.IO requires Boost version 1.67.\\n"
+			printf "\\tEOS.IO requires Boost version 1.66.\\n"
 			printf "\\tWould you like to uninstall version %s and install Boost version 1.67.\\n" "${BVERSION}"
 			select yn in "Yes" "No"; do
 				case $yn in
