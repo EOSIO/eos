@@ -1,20 +1,20 @@
 /**
- *  The purpose of this protocol is to synchronize (and keep synchronized) two 
+ *  The purpose of this protocol is to synchronize (and keep synchronized) two
  *  blockchains using a very simple algorithm:
  *
  *  1. find the last block id on our local chain that the remote peer knows about
- *  2. if we have the next block send it to them 
+ *  2. if we have the next block send it to them
  *  3. if we don't have the next block send them a the oldest unexpired transaction
  *
  *  There are several input events:
  *
  *  1. new block accepted by local chain
- *  2. block deemed irreversible by local chain 
+ *  2. block deemed irreversible by local chain
  *  3. new block header accepted by local chain
  *  4. transaction accepted by local chain
  *  5. block received from remote peer
  *  6. transaction received from remote peer
- *  7. socket ready for next write 
+ *  7. socket ready for next write
  *
  *  Each session is responsible for maintaining the following
  *
@@ -26,13 +26,13 @@
  *      - a block which the peer has sent us
  *  2. the block IDs we have received from the remote peer so that
  *     we can disconnect peer if one of those blocks is deemed invalid
- *      - we can clear these IDs once the block becomes reversible 
+ *      - we can clear these IDs once the block becomes reversible
  *  3. the transactions we have received from the remote peer so that
- *     we do not send them something that they already know.  
+ *     we do not send them something that they already know.
  *       - this includes transactions sent as part of blocks
  *       - we clear this cache after we have applied a block that
  *         includes the transactions because we know the controller
- *         should not notify us again (they would be dupe) 
+ *         should not notify us again (they would be dupe)
  *
  *  Assumptions:
  *  1. all blocks we send the peer are valid and will be held in the
@@ -41,7 +41,7 @@
  *  2. we don't care what fork the peer is on, so long as we know they have
  *     the block prior to the one we want to send. The peer will sort it out
  *     with its fork database and hopfully come to our conclusion.
- *  3. the peer will send us blocks on the same basis 
+ *  3. the peer will send us blocks on the same basis
  *
  */
 
@@ -64,7 +64,7 @@
 using tcp = boost::asio::ip::tcp;
 namespace ws  = boost::beast::websocket;
 
-namespace eosio { 
+namespace eosio {
    using namespace chain;
 
    static appbase::abstract_plugin& _bnet_plugin = app().register_plugin<bnet_plugin>();
@@ -99,18 +99,18 @@ FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(chain_id)(r
  * This message is sent upon successful speculative application of a transaction
  * and informs a peer not to send this message.
  */
-struct trx_notice { 
-   sha256                signed_trx_id; ///< hash of trx + sigs 
+struct trx_notice {
+   sha256                signed_trx_id; ///< hash of trx + sigs
    fc::time_point_sec    expiration; ///< expiration of trx
 };
 
 FC_REFLECT( trx_notice, (signed_trx_id)(expiration) )
 
 /**
- *  This message is sent upon successfully adding a transaction to the fork database 
+ *  This message is sent upon successfully adding a transaction to the fork database
  *  and informs the remote peer that there is no need to send this block.
  */
-struct block_notice { 
+struct block_notice {
    vector<block_id_type> block_ids;
 };
 
@@ -150,7 +150,7 @@ namespace eosio {
 
   /**
    *  Each session is presumed to operate in its own strand so that
-   *  operations can execute in parallel. 
+   *  operations can execute in parallel.
    */
   class session : public std::enable_shared_from_this<session>
   {
@@ -209,8 +209,8 @@ namespace eosio {
            return _block_status.find( id );
         }
 
-        block_status_index        _block_status; 
-        transaction_status_index  _transaction_status; 
+        block_status_index        _block_status;
+        transaction_status_index  _transaction_status;
 
         public_key_type    _local_peer_id;
         uint32_t           _local_lib             = 0;
@@ -234,7 +234,7 @@ namespace eosio {
         fc::time_point     _last_recv_ping_time = fc::time_point::now();
         ping               _last_recv_ping;
         ping               _last_sent_ping;
- 
+
 
         int                                                            _session_num = 0;
         session_state                                                  _state = hello_state;
@@ -244,7 +244,7 @@ namespace eosio {
         unique_ptr<ws::stream<tcp::socket>>                            _ws;
         boost::asio::strand< boost::asio::io_context::executor_type>   _strand;
         boost::asio::io_service&                                       _app_ios;
-       
+
         methods::get_block_by_number::method_type& _get_block_by_number;
 
 
@@ -269,11 +269,11 @@ namespace eosio {
         :_resolver(socket.get_io_service()),
          _net_plugin( net_plug ),
          _ios(socket.get_io_service()),
-         _ws( new ws::stream<tcp::socket>(move(socket)) ), 
+         _ws( new ws::stream<tcp::socket>(move(socket)) ),
          _strand(_ws->get_executor() ),
          _app_ios( app().get_io_service() ),
          _get_block_by_number( app().get_method<methods::get_block_by_number>() )
-        { 
+        {
             _session_num = next_session_id();
             set_socket_options();
             _ws->binary(true);
@@ -288,11 +288,11 @@ namespace eosio {
         :_resolver(ioc),
          _net_plugin( net_plug ),
          _ios(ioc),
-         _ws( new ws::stream<tcp::socket>(ioc) ), 
+         _ws( new ws::stream<tcp::socket>(ioc) ),
          _strand( _ws->get_executor() ),
          _app_ios( app().get_io_service() ),
          _get_block_by_number( app().get_method<methods::get_block_by_number>() )
-        { 
+        {
            _session_num = next_session_id();
            _ws->binary(true);
            wlog( "open session ${n}",("n",_session_num) );
@@ -314,7 +314,7 @@ namespace eosio {
         }
 
         void run() {
-           _ws->async_accept( boost::asio::bind_executor( 
+           _ws->async_accept( boost::asio::bind_executor(
                              _strand,
                              std::bind( &session::on_accept,
                                         shared_from_this(),
@@ -330,7 +330,7 @@ namespace eosio {
           _remote_host = host;
           _remote_port = port;
 
-          _resolver.async_resolve( _remote_host, _remote_port, 
+          _resolver.async_resolve( _remote_host, _remote_port,
                                    boost::asio::bind_executor( _strand,
                                    std::bind( &session::on_resolve,
                                               shared_from_this(),
@@ -371,29 +371,29 @@ namespace eosio {
 
         /**
          *  This will be called "every time" a the transaction is accepted which happens
-         *  on the speculative block (potentially several such blocks) and when a block 
-         *  that contains the transaction is applied and/or when switching forks. 
+         *  on the speculative block (potentially several such blocks) and when a block
+         *  that contains the transaction is applied and/or when switching forks.
          *
          *  We will add it to the transaction status table as "received now" to be the
          *  basis of sending it to the peer. When we send it to the peer "received now"
          *  will be set to the infinite future to mark it as sent so we don't resend it
-         *  when it is accepted again. 
+         *  when it is accepted again.
          *
          *  Each time the transaction is "accepted" we extend the time we cache it by
-         *  5 seconds from now.  Every time a block is applied we purge all accepted 
-         *  transactions that have reached 5 seconds without a new "acceptance". 
+         *  5 seconds from now.  Every time a block is applied we purge all accepted
+         *  transactions that have reached 5 seconds without a new "acceptance".
          */
         void on_accepted_transaction( transaction_metadata_ptr t ) {
            //ilog( "accepted ${t}", ("t",t->id) );
            auto itr = _transaction_status.find( t->id );
            if( itr != _transaction_status.end() ) {
-              if( !itr->known_by_peer() ) { 
+              if( !itr->known_by_peer() ) {
                  _transaction_status.modify( itr, [&]( auto& stat ) {
                     stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->trx.expiration );
                  });
               }
               return;
-           } 
+           }
 
            transaction_status stat;
            stat.received = fc::time_point::now();
@@ -402,7 +402,7 @@ namespace eosio {
            stat.trx      = t;
            _transaction_status.insert( stat );
 
-           do_send_next_message(); 
+           do_send_next_message();
         }
 
         /**
@@ -420,7 +420,7 @@ namespace eosio {
 
         /**
          *  When our local LIB advances we can purge our known history up to
-         *  the LIB or up to the last block known by the remote peer. 
+         *  the LIB or up to the last block known by the remote peer.
          */
         void on_new_lib( block_state_ptr s ) {
            if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
@@ -473,7 +473,7 @@ namespace eosio {
            if( itr == _block_status.end() ) {
               itr = _block_status.insert( block_status(id, false, false) ).first;
            }
-           
+
            _local_head_block_id = id;
            _local_head_block_num = block_header::num_from_id(id);
 
@@ -559,8 +559,8 @@ namespace eosio {
            fc::raw::pack(ds, msg);
 
            _state = sending_state;
-           _ws->async_write( boost::asio::buffer(_out_buffer), 
-                             boost::asio::bind_executor( 
+           _ws->async_write( boost::asio::buffer(_out_buffer),
+                             boost::asio::bind_executor(
                                 _strand,
                                std::bind( &session::on_write,
                                           shared_from_this(),
@@ -612,7 +612,7 @@ namespace eosio {
         }
 
         bool send_block_notice() {
-           if( _block_header_notices.size() == 0 ) 
+           if( _block_header_notices.size() == 0 )
               return false;
 
            block_notice notice;
@@ -625,7 +625,7 @@ namespace eosio {
         }
 
         bool send_pong() {
-           if( _last_recv_ping.code == fc::sha256() ) 
+           if( _last_recv_ping.code == fc::sha256() )
               return false;
 
            send( pong{ fc::time_point::now(), _last_recv_ping.code } );
@@ -642,7 +642,7 @@ namespace eosio {
               _last_sent_ping.code = fc::sha256::hash(_last_sent_ping.sent); /// TODO: make this more random
               _last_sent_ping.lib  = _local_lib;
               send( _last_sent_ping );
-           } 
+           }
 
            /// we expect the peer to send us a ping every 3 seconds, so if we haven't gotten one
            /// in the past 6 seconds then the connection is likely hung. Unfortunately, we cannot
@@ -704,7 +704,7 @@ namespace eosio {
                do_send_next_message();
                return;
             }
-            
+
             /// if something changed, the next block doesn't link to the last
             /// block we sent, local chain must have switched forks
             if( nextblock->previous != _last_sent_block_id ) {
@@ -716,7 +716,7 @@ namespace eosio {
                   return;
                 }
             }
-            
+
             /// at this point we know the peer can link this block
 
             auto next_id = nextblock->id();
@@ -747,7 +747,7 @@ namespace eosio {
 
         /**
          *  Send the next block after the last block in our current fork that
-         *  we know the remote peer knows. 
+         *  we know the remote peer knows.
          */
         bool send_next_block() {
 
@@ -755,8 +755,8 @@ namespace eosio {
               return false;
 
            ///< set sending state because this callback may result in sending a message
-           _state = sending_state; 
-           async_get_block_num( _last_sent_block_num + 1, 
+           _state = sending_state;
+           async_get_block_num( _last_sent_block_num + 1,
                 [self=shared_from_this()]( auto sblockptr ) {
                       self->on_async_get_block( sblockptr );
            });
@@ -779,8 +779,8 @@ namespace eosio {
         }
 
         void do_read() {
-           _ws->async_read( _in_buffer, 
-                           boost::asio::bind_executor( 
+           _ws->async_read( _in_buffer,
+                           boost::asio::bind_executor(
                               _strand,
                               std::bind( &session::on_read,
                                          shared_from_this(),
@@ -791,7 +791,7 @@ namespace eosio {
         void on_read( boost::system::error_code ec, std::size_t bytes_transferred ) {
            boost::ignore_unused(bytes_transferred);
 
-           if( ec == ws::error::closed ) 
+           if( ec == ws::error::closed )
               return on_fail( ec, "close on read" );
 
            if( ec ) {
@@ -806,7 +806,7 @@ namespace eosio {
               bnet_message msg;
               fc::raw::unpack( ds, msg );
               _in_buffer.consume( ds.tellp() );
-              on_message( msg ); 
+              on_message( msg );
 
               wait_on_app();
 
@@ -817,7 +817,7 @@ namespace eosio {
         }
 
         /** if we just call do_read here then this thread might run ahead of
-         * the main thread, instead we post an event to main which will then 
+         * the main thread, instead we post an event to main which will then
          * post a new read event when ready.
          *
          * This also keeps the "shared pointer" alive in the callback preventing
@@ -870,7 +870,7 @@ namespace eosio {
         void on( const hello& hi ) {
            _recv_remote_hello     = true;
 
-           if( hi.chain_id != chain_id_type() ) {
+           if( hi.chain_id != app().get_plugin<chain_plugin>().get_chain_id() ) { // TODO: Quick fix in a rush. Maybe a better solution is needed.
               return do_goodbye( "disconnecting due to wrong chain id" );
            }
 
@@ -882,7 +882,7 @@ namespace eosio {
            _remote_request_trx    = hi.request_transactions;
            _remote_peer_id        = hi.peer_id;
            _remote_lib            = hi.last_irr_block_num;
-           
+
            for( const auto& id : hi.pending_block_ids )
               mark_block_known_by_peer( id );
 
@@ -1035,7 +1035,7 @@ namespace eosio {
          bool                                           _request_trx = true;
          public_key_type                                _peer_id;
          private_key_type                               _peer_pk; /// one time random key to identify this process
-                                                        
+
 
          std::vector<std::string>                       _connect_to_peers; /// list of peers to connect to
          std::vector<std::thread>                       _socket_threads;
@@ -1062,7 +1062,7 @@ namespace eosio {
 
          void on_session_close( const session* s ) {
             auto itr = _sessions.find(s);
-            if( _sessions.end() != itr ) 
+            if( _sessions.end() != itr )
                _sessions.erase(itr);
          }
 
@@ -1074,7 +1074,7 @@ namespace eosio {
                                         ses->_strand,
                                         [ses,cb=callback](){ cb(ses); }
                                     ));
-               } 
+               }
             }
          }
 
@@ -1114,7 +1114,7 @@ namespace eosio {
           * 1. didn't link to known chain
           * 2. violated the consensus rules
           *
-          * Any peer which sent us this block (not noticed) 
+          * Any peer which sent us this block (not noticed)
           * should be disconnected as they are objectively bad
           */
          void on_bad_block( signed_block_ptr s ) {
@@ -1146,8 +1146,8 @@ namespace eosio {
 
 
          void start_reconnect_timer() {
-            /// add some random delay so that all my peers don't attempt to reconnect to me 
-            /// at the same time after shutting down.. 
+            /// add some random delay so that all my peers don't attempt to reconnect to me
+            /// at the same time after shutting down..
             _timer->expires_from_now( boost::posix_time::microseconds( 1000000*(10+rand()%5) ) );
             _timer->async_wait([=](const boost::system::error_code& ec) {
                 if( ec ) { return; }
@@ -1204,7 +1204,7 @@ namespace eosio {
       }
       if( options.count( "bnet-threads" ) ) {
          my->_num_threads = options.at("bnet-threads").as<uint32_t>();
-         if( my->_num_threads > 8 ) 
+         if( my->_num_threads > 8 )
             my->_num_threads = 8;
       }
       my->_request_trx = !options.at( "bnet-no-trx" ).as<bool>();
@@ -1248,8 +1248,8 @@ namespace eosio {
 
       my->start_reconnect_timer();
 
-      my->_listener = std::make_shared<listener>( ioc, 
-                                                  tcp::endpoint{ address, my->_bnet_endpoint_port }, 
+      my->_listener = std::make_shared<listener>( ioc,
+                                                  tcp::endpoint{ address, my->_bnet_endpoint_port },
                                                   std::ref(*my) );
       my->_listener->run();
 
@@ -1304,7 +1304,8 @@ namespace eosio {
           hello_msg.last_irr_block_num = lib;
           hello_msg.pending_block_ids  = ids;
           hello_msg.request_transactions = self->_net_plugin._request_trx;
-         
+          hello_msg.chain_id = app().get_plugin<chain_plugin>().get_chain_id(); // TODO: Quick fix in a rush. Maybe a better solution is needed.
+
           self->_local_lib = lib;
           self->send( hello_msg );
           self->_sent_remote_hello = true;
@@ -1315,7 +1316,7 @@ namespace eosio {
      app().get_io_service().post( [self=shared_from_this()]{
        self->_net_plugin.for_each_session( [self]( auto ses ){
          if( ses != self && ses->_remote_peer_id == self->_remote_peer_id ) {
-           self->do_goodbye( "redundant connection" ); 
+           self->do_goodbye( "redundant connection" );
          }
        });
      });

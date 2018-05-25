@@ -58,8 +58,8 @@
 	fi
 	
 	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
-	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
-	python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
+	bzip2.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
+	python2-devel.x86_64 python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
 	graphviz.x86_64 doxygen.x86_64 )
 	COUNT=1
 	DISPLAY=""
@@ -160,7 +160,7 @@
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI' )
 	if [ "${BVERSION}" != "1_67" ]; then
 		printf "\\tRemoving existing boost libraries in %s/opt/boost* .\\n" "${HOME}"
-		if ! rm -rf "${HOME}/opt/boost*"
+		if ! rm -rf "${HOME}"/opt/boost*
 		then
 			printf "\\n\\tUnable to remove deprecated boost libraries at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
@@ -197,13 +197,13 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! "${TEMP_DIR}/boost_1_67_0/bootstrap.sh" "--prefix=$BOOST_ROOT"
+		if ! "${TEMP_DIR}"/boost_1_67_0/bootstrap.sh "--prefix=${BOOST_ROOT}"
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 0\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! "${TEMP_DIR}/boost_1_67_0/b2" install
+		if ! "${TEMP_DIR}"/boost_1_67_0/b2 install
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 1\\n"
 			printf "\\tExiting now.\\n\\n"
