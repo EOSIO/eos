@@ -15,12 +15,12 @@ namespace eosio { namespace chain {
  */
 class transaction_metadata {
    public:
-      transaction_id_type                   id;
-      transaction_id_type                   signed_id;
-      signed_transaction                    trx;
-      packed_transaction                    packed_trx;
-      optional<flat_set<public_key_type>>   signing_keys;
-      bool                                  accepted = false;
+      transaction_id_type                                        id;
+      transaction_id_type                                        signed_id;
+      signed_transaction                                         trx;
+      packed_transaction                                         packed_trx;
+      optional<pair<chain_id_type, flat_set<public_key_type>>>   signing_keys;
+      bool                                                       accepted = false;
 
       transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
       :trx(t),packed_trx(t, c) {
@@ -36,11 +36,10 @@ class transaction_metadata {
          signed_id = digest_type::hash(packed_trx);
       }
 
-      const flat_set<public_key_type>& recover_keys() {
-         // TODO: Update caching logic below when we use a proper chain id setup for the particular blockchain rather than just chain_id_type()
-         if( !signing_keys )
-            signing_keys = trx.get_signature_keys( chain_id_type() );
-         return *signing_keys;
+      const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id ) {
+         if( !signing_keys || signing_keys->first != chain_id ) // Unlikely for more than one chain_id to be used in one nodeos instance
+            signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id ) );
+         return signing_keys->second;
       }
 
       uint32_t total_actions()const { return trx.context_free_actions.size() + trx.actions.size(); }

@@ -56,6 +56,7 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
+   chain_id_type                  chain_id;
    bool                           replaying = false;
    bool                           replaying_irreversible = false;
 
@@ -103,7 +104,8 @@ struct controller_impl {
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
-    conf( cfg )
+    conf( cfg ),
+    chain_id( cfg.genesis.compute_chain_id() )
    {
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -645,7 +647,7 @@ struct controller_impl {
             if( !self.skip_auth_check() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
-                       trx->recover_keys(),
+                       trx->recover_keys( chain_id ),
                        {},
                        trx_context.delay,
                        [](){}
@@ -1288,6 +1290,10 @@ bool controller::skip_auth_check()const {
 
 bool controller::contracts_console()const {
    return my->conf.contracts_console;
+}
+
+chain_id_type controller::get_chain_id()const {
+   return my->chain_id;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

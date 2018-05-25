@@ -256,9 +256,8 @@ fc::variant determine_required_keys(const signed_transaction& trx) {
    return required_keys["required_keys"];
 }
 
-void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
-   // TODO determine chain id
-   fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id_type{})};
+void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const chain_id_type& chain_id) {
+   fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id)};
    const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
    trx = signed_trx.as<signed_transaction>();
 }
@@ -289,7 +288,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
-      sign_transaction(trx, required_keys);
+      sign_transaction(trx, required_keys, info.chain_id);
    }
 
    if (!tx_dont_broadcast) {
@@ -2138,16 +2137,27 @@ int main( int argc, char** argv ) {
    // sign subcommand
    string trx_json_to_sign;
    string str_private_key;
+   string str_chain_id;
    bool push_trx = false;
 
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
    sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
    sign->set_callback([&] {
       signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
+      chain_id_type chain_id;
+
+      if( str_chain_id.size() == 0 ) {
+         ilog( "grabbing chain_id from nodeos" );
+         auto info = get_info();
+         chain_id = info.chain_id;
+      } else {
+         chain_id = chain_id_type(str_chain_id);
+      }
 
       if( str_private_key.size() == 0 ) {
          std::cerr << localized("private key: ");
@@ -2157,7 +2167,7 @@ int main( int argc, char** argv ) {
       }
 
       auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
-      trx.sign(priv_key, chain_id_type{});
+      trx.sign(priv_key, chain_id);
 
       if(push_trx) {
          auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));

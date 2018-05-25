@@ -40,7 +40,7 @@ struct cancel_offer_t {
    checksum256_type commitment;
 
    static account_name get_account() { return N(dice); }
-   static action_name get_name() {return N(canceloffer); } 
+   static action_name get_name() {return N(canceloffer); }
 };
 FC_REFLECT(cancel_offer_t, (commitment));
 
@@ -49,7 +49,7 @@ struct reveal_t {
    checksum256_type source;
 
    static account_name get_account() { return N(dice); }
-   static action_name get_name() {return N(reveal); } 
+   static action_name get_name() {return N(reveal); }
 };
 FC_REFLECT(reveal_t, (commitment)(source));
 
@@ -58,7 +58,7 @@ struct deposit_t {
    asset        amount;
 
    static account_name get_account() { return N(dice); }
-   static action_name get_name() {return N(deposit); } 
+   static action_name get_name() {return N(deposit); }
 };
 FC_REFLECT( deposit_t, (from)(amount) );
 
@@ -67,7 +67,7 @@ struct withdraw_t {
    asset        amount;
 
    static account_name get_account() { return N(dice); }
-   static action_name get_name() {return N(withdraw); } 
+   static action_name get_name() {return N(withdraw); }
 };
 FC_REFLECT( withdraw_t, (to)(amount) );
 
@@ -107,7 +107,7 @@ struct dice_tester : TESTER {
          offer_bet_t{amount, account, commitment} );
       trx.actions.push_back(act);
       set_transaction_headers(trx);
-      trx.sign(get_private_key( account, "active" ), chain_id_type());
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
       auto ptrx = packed_transaction(trx,packed_transaction::none);
       push_transaction(ptrx);
    }
@@ -118,7 +118,7 @@ struct dice_tester : TESTER {
          cancel_offer_t{commitment} );
       trx.actions.push_back(act);
       set_transaction_headers(trx);
-      trx.sign(get_private_key( account, "active" ), chain_id_type());
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
       auto ptrx = packed_transaction(trx,packed_transaction::none);
       push_transaction(ptrx);
    }
@@ -129,7 +129,7 @@ struct dice_tester : TESTER {
          deposit_t{account, amount} );
       trx.actions.push_back(act);
       set_transaction_headers(trx);
-      trx.sign(get_private_key( account, "active" ), chain_id_type());
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
       auto ptrx = packed_transaction(trx,packed_transaction::none);
       push_transaction(ptrx);
    }
@@ -140,7 +140,7 @@ struct dice_tester : TESTER {
          withdraw_t{account, amount} );
       trx.actions.push_back(act);
       set_transaction_headers(trx);
-      trx.sign(get_private_key( account, "active" ), chain_id_type());
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
       auto ptrx = packed_transaction(trx,packed_transaction::none);
       push_transaction(ptrx);
    }
@@ -151,7 +151,7 @@ struct dice_tester : TESTER {
          reveal_t{commitment, source} );
       trx.actions.push_back(act);
       set_transaction_headers(trx);
-      trx.sign(get_private_key( account, "active" ), chain_id_type());
+      trx.sign(get_private_key( account, "active" ), control->get_chain_id());
       auto ptrx = packed_transaction(trx,packed_transaction::none);
       push_transaction(ptrx);
    }
@@ -225,12 +225,12 @@ BOOST_AUTO_TEST_SUITE(dice_tests)
 BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    create_accounts( {N(eosio.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
-   
+
    set_code(N(eosio.token), eosio_token_wast);
    set_abi(N(eosio.token), eosio_token_abi);
 
    produce_block();
-   
+
    add_dice_authority(N(alice));
    add_dice_authority(N(bob));
    add_dice_authority(N(carol));
@@ -258,7 +258,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    produce_block();
 
    // Alice deposits 1000
-   deposit( N(alice), core_from_string("1000.0000")); 
+   deposit( N(alice), core_from_string("1000.0000"));
    produce_block();
 
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1000.0000"));
@@ -266,13 +266,13 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    // Alice tries to bet 0 (fail)
    // secret : 9b886346e1351d4144d0b8392a975612eb0f8b6de7eae1cc9bcc55eb52be343c
-   BOOST_CHECK_THROW( offer_bet( N(alice), core_from_string("0.0000"), 
+   BOOST_CHECK_THROW( offer_bet( N(alice), core_from_string("0.0000"),
       commitment_for("9b886346e1351d4144d0b8392a975612eb0f8b6de7eae1cc9bcc55eb52be343c")
    ), fc::exception);
-   
+
    // Alice bets 10 (success)
    // secret : 0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46
-   offer_bet( N(alice), core_from_string("10.0000"), 
+   offer_bet( N(alice), core_from_string("10.0000"),
       commitment_for("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46")
    );
    produce_block();
@@ -286,14 +286,14 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    // Alice tries to bet 1000 (fail)
    // secret : a512f6b1b589a8906d574e9de74a529e504a5c53a760f0991a3e00256c027971
-   BOOST_CHECK_THROW( offer_bet( N(alice), core_from_string("1000.0000"), 
+   BOOST_CHECK_THROW( offer_bet( N(alice), core_from_string("1000.0000"),
       commitment_for("a512f6b1b589a8906d574e9de74a529e504a5c53a760f0991a3e00256c027971")
    ), fc::exception);
    produce_block();
 
    // Bob tries to bet 90 without deposit
    // secret : 4facfc98932dde46fdc4403125a16337f6879a842a7ff8b0dc8e1ecddd59f3c8
-   BOOST_CHECK_THROW( offer_bet( N(bob), core_from_string("90.0000"), 
+   BOOST_CHECK_THROW( offer_bet( N(bob), core_from_string("90.0000"),
       commitment_for("4facfc98932dde46fdc4403125a16337f6879a842a7ff8b0dc8e1ecddd59f3c8")
    ), fc::exception);
    produce_block();
@@ -304,7 +304,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    // Bob bets 11 (success)
    // secret : eec3272712d974c474a3e7b4028b53081344a5f50008e9ccf918ba0725a8d784
-   offer_bet( N(bob), core_from_string("11.0000"), 
+   offer_bet( N(bob), core_from_string("11.0000"),
       commitment_for("eec3272712d974c474a3e7b4028b53081344a5f50008e9ccf918ba0725a8d784")
    );
    produce_block();
@@ -319,14 +319,14 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    // Carol bets 10 (success)
    // secret : 3efb4bd5e19b780f4980c919330c0306f8157f93db1fc72c7cefec63e0e7f37a
-   offer_bet( N(carol), core_from_string("10.0000"), 
+   offer_bet( N(carol), core_from_string("10.0000"),
       commitment_for("3efb4bd5e19b780f4980c919330c0306f8157f93db1fc72c7cefec63e0e7f37a")
    );
    produce_block();
 
    BOOST_REQUIRE_EQUAL( open_games(N(alice)), 1);
    BOOST_REQUIRE_EQUAL( open_offers(N(alice)), 0);
-   
+
    BOOST_REQUIRE_EQUAL( open_games(N(carol)), 1);
    BOOST_REQUIRE_EQUAL( open_offers(N(carol)), 0);
 
@@ -334,42 +334,42 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
 
    // Alice tries to cancel a nonexistent bet (fail)
-   BOOST_CHECK_THROW( cancel_offer( N(alice), 
+   BOOST_CHECK_THROW( cancel_offer( N(alice),
       commitment_for("00000000000000000000000000000000000000000000000000000000abb03c46")
    ), fc::exception);
 
    // Alice tries to cancel an in-game bet (fail)
-   BOOST_CHECK_THROW( cancel_offer( N(alice), 
+   BOOST_CHECK_THROW( cancel_offer( N(alice),
       commitment_for("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46")
    ), fc::exception);
 
    // Alice reveals secret (success)
-   reveal( N(alice), 
+   reveal( N(alice),
       commitment_for("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46"),
       checksum_type("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46")
    );
    produce_block();
 
    // Alice tries to reveal again (fail)
-   BOOST_CHECK_THROW( reveal( N(alice), 
+   BOOST_CHECK_THROW( reveal( N(alice),
       commitment_for("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46"),
       checksum_type("0ba044d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46")
    ), fc::exception);
 
    // Bob tries to reveal an invalid (secret,commitment) pair (fail)
-   BOOST_CHECK_THROW( reveal( N(bob), 
+   BOOST_CHECK_THROW( reveal( N(bob),
       commitment_for("121344d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46"),
       checksum_type("141544d2833758ee2c8f24d8a3f70c82c334abe6ce13219a4cf3b862abb03c46")
    ), fc::exception);
 
    // Bob tries to reveal a valid (secret,commitment) pair that has no offer/game (fail)
-   BOOST_CHECK_THROW( reveal( N(bob), 
+   BOOST_CHECK_THROW( reveal( N(bob),
       commitment_for("e48c6884bb97ac5f5951df6012ce79f63bb8549ad0111315ad9ecbaf4c9b1eb8"),
       checksum_type("e48c6884bb97ac5f5951df6012ce79f63bb8549ad0111315ad9ecbaf4c9b1eb8")
    ), fc::exception);
 
    // Bob reveals Carol's secret (success)
-   reveal( N(bob), 
+   reveal( N(bob),
       commitment_for("3efb4bd5e19b780f4980c919330c0306f8157f93db1fc72c7cefec63e0e7f37a"),
       checksum_type("3efb4bd5e19b780f4980c919330c0306f8157f93db1fc72c7cefec63e0e7f37a")
    );
@@ -377,7 +377,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( open_games(N(alice)), 0);
    BOOST_REQUIRE_EQUAL( open_offers(N(alice)), 0);
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1010.0000"));
-   
+
    BOOST_REQUIRE_EQUAL( open_games(N(carol)), 0);
    BOOST_REQUIRE_EQUAL( open_offers(N(carol)), 0);
    BOOST_REQUIRE_EQUAL( balance_of(N(carol)), core_from_string("290.0000"));
@@ -386,19 +386,19 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    withdraw( N(alice), core_from_string("1009.0000"));
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1.0000"));
 
-   BOOST_REQUIRE_EQUAL( 
+   BOOST_REQUIRE_EQUAL(
       get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10009.0000")
    );
 
    // Alice withdraw 2 (fail)
-   BOOST_CHECK_THROW( withdraw( N(alice), core_from_string("2.0000")), 
+   BOOST_CHECK_THROW( withdraw( N(alice), core_from_string("2.0000")),
       fc::exception);
 
    // Alice withdraw 1 (success)
    withdraw( N(alice), core_from_string("1.0000"));
 
-   BOOST_REQUIRE_EQUAL( 
+   BOOST_REQUIRE_EQUAL(
       get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10010.0000")
    );

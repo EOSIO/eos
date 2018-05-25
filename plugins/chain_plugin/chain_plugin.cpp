@@ -62,7 +62,7 @@ public:
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
-   fc::optional<controller::config> chain_config = controller::config();
+   fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
    chain_id_type                    chain_id;
    //txn_msg_rate_limits              rate_limits;
@@ -150,6 +150,16 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
+   try {
+      genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
+   } catch( const fc::exception& ) {
+      elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
+            ("root_key", genesis_state::eosio_root_key) );
+      throw;
+   }
+
+   my->chain_config = controller::config();
+
    if (options.count("blocks-dir")) {
       auto bld = options.at("blocks-dir").as<bfs::path>();
       if(bld.is_relative())
@@ -189,7 +199,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
 
    if( options.count("extract-genesis-json") ||  options.at("print-genesis-json").as<bool>() ) {
-      auto gs = block_log::extract_genesis_state( my->blocks_dir );
+      genesis_state gs;
+
+      if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
+         gs = block_log::extract_genesis_state( my->blocks_dir );
+      } else {
+         wlog( "No blocks.log found at '${p}'. Using default genesis state.", ("p", (my->blocks_dir / "blocks.log").generic_string()) );
+      }
 
       if( options.at("print-genesis-json").as<bool>() ) {
          ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string(gs)) );
@@ -452,8 +468,8 @@ controller::config& chain_plugin::chain_config() {
 controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
-void chain_plugin::get_chain_id(chain_id_type &cid)const {
-   memcpy(cid.id.data(), my->chain_id.id.data(), cid.id.data_size());
+chain::chain_id_type chain_plugin::get_chain_id()const {
+   return my->chain_id;
 }
 
 namespace chain_apis {
@@ -464,6 +480,7 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    const auto& rm = db.get_resource_limits_manager();
    return {
       eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
+      db.get_chain_id(),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
