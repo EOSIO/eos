@@ -181,7 +181,11 @@ endif()
 add_subdirectory( externals )
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
-  set( CORE_SYMBOL_NAME "SYS" )
+  if (NOT "$ENV{CORE_SYMBOL_NAME}" STREQUAL "")
+    set( CORE_SYMBOL_NAME $ENV{CORE_SYMBOL_NAME} )
+  else()
+    set( CORE_SYMBOL_NAME "SYS" )
+  endif()
 endif()
 string(TOUPPER ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME)
 
