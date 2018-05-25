@@ -282,10 +282,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto id = trx->id();
          if( chain.db().find<transaction_object, by_trx_id>(id) ) {
             auto r = std::make_shared<transaction_trace>();
-            r->except = fc::exception();
+            r->except = tx_duplicate( FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", id)) );
             return r;
-        //    EOS_ASSERT( false, tx_duplicate,
-        //                "duplicate transaction ${id}", ("id", id ) );
          }
 
          return publish_results_of(trx, _transaction_ack_channel, [&]() -> transaction_trace_ptr {
