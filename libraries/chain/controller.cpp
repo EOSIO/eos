@@ -224,7 +224,7 @@ struct controller_impl {
             replaying = false;
 
          } else if( !end ) {
-            blog.append( head->block );
+            blog.reset_to_genesis( conf.genesis, head->block );
          }
       }
 
