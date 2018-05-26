@@ -1,0 +1,12 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
+#include <enumivo/chain/genesis_state.hpp>
+
+namespace enumivo { namespace chain {
+
+const string genesis_state::enumivo_root_key = "${ENUMIVO_ROOT_KEY}";
+
+} } // namespace enumivo::chain

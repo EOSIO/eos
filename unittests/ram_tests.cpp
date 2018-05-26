@@ -40,7 +40,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
    buyrambytes(N(enumivo), N(enumivo), 70000);
    produce_blocks(10);
    create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes);
-   create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes);
+   create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes + 1150);
    produce_blocks(10);
    BOOST_REQUIRE_EQUAL( success(), stake( "enumivo.stk", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
@@ -189,7 +189,6 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                            fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
 
-#if 0
    // verify that the new entry is under the allocation bytes limit
    tester->push_action( N(testram11111), N(setentry), {N(testram11111),N(testram22222)}, mvo()
                         ("payer", "testram22222")
@@ -215,7 +214,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                         ("payer", "testram11111")
                         ("from", 13)
                         ("to", 13)
-                        ("size", 1720));
+                        ("size", 1673));
    produce_blocks(1);
 
    // verify that new entries for testram22222 exceed the allocation bytes limit
@@ -234,7 +233,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                         ("payer", "testram22222")
                         ("from", 12)
                         ("to", 21)
-                        ("size", 1910));
+                        ("size", 1855));
    produce_blocks(1);
 
    // verify that new entry for testram22222 exceed the allocation bytes limit
@@ -260,7 +259,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                         ("to", 22)
                         ("size", 1910));
    produce_blocks(1);
-#endif
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

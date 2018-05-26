@@ -58,8 +58,8 @@
 	fi
 	
 	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
-	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
-	python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
+	bzip2.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
+	python2-devel.x86_64 python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
 	graphviz.x86_64 doxygen.x86_64 )
 	COUNT=1
 	DISPLAY=""
@@ -158,9 +158,9 @@
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep "BOOST_LIB_VERSION" "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI' )
-	if [ "${BVERSION}" != "1_66" ]; then
+	if [ "${BVERSION}" != "1_67" ]; then
 		printf "\\tRemoving existing boost libraries in %s/opt/boost* .\\n" "${HOME}"
-		if ! rm -rf "${HOME}/opt/boost*"
+		if ! rm -rf "${HOME}"/opt/boost*
 		then
 			printf "\\n\\tUnable to remove deprecated boost libraries at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
@@ -173,51 +173,51 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 )
+		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2 )
 		if [ "${STATUS}" -ne 200 ]; then
 			printf "\\tUnable to download Boost libraries at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		if ! tar xf "${TEMP_DIR}/boost_1_67_0.tar.bz2"
 		then
-			printf "\\n\\tUnable to unarchive file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to unarchive file %s/boost_1_67_0.tar.bz2.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f  "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		if ! rm -f  "${TEMP_DIR}/boost_1_67_0.tar.bz2"
 		then
-			printf "\\n\\tUnable to remove file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to remove file %s/boost_1_67_0.tar.bz2.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}/boost_1_66_0/"
+		if ! cd "${TEMP_DIR}/boost_1_67_0/"
 		then
-			printf "\\n\\tUnable to enter directory %s/boost_1_66_0.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to enter directory %s/boost_1_67_0.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! "${TEMP_DIR}/boost_1_66_0/bootstrap.sh" "--prefix=$BOOST_ROOT"
+		if ! "${TEMP_DIR}"/boost_1_67_0/bootstrap.sh "--prefix=${BOOST_ROOT}"
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 0\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! "${TEMP_DIR}/boost_1_66_0/b2" install
+		if ! "${TEMP_DIR}"/boost_1_67_0/b2 install
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 1\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -rf "${TEMP_DIR}/boost_1_66_0"
+		if ! rm -rf "${TEMP_DIR}/boost_1_67_0"
 		then
-			printf "\\n\\tUnable to remove directory %s/boost_1_66_0. 1\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to remove directory %s/boost_1_67_0. 1\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		printf "\\n\\tBoost 1.66.0 successfully installed at %s/opt/boost_1_66_0.\\n\\n" "${HOME}"
+		printf "\\n\\tBoost 1.67.0 successfully installed at %s/opt/boost_1_67_0.\\n\\n" "${HOME}"
 	else
-		printf "\\tBoost 1.66.0 found at %s/opt/boost_1_66_0.\\n" "${HOME}"
+		printf "\\tBoost 1.67.0 found at %s/opt/boost_1_67_0.\\n" "${HOME}"
 	fi
 
 	printf "\\n\\tChecking MongoDB C++ driver installation.\\n"
