@@ -11,7 +11,7 @@ services:
 
   enunoded:
     image: enumivo/enumivo:latest
-    command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir --resync #--mongodb-uri mongodb://mongo:27017/ENU
+    command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir --delete-all-blocks #--mongodb-uri mongodb://mongo:27017/ENU
     hostname: enunoded
     links:
       - mongo
