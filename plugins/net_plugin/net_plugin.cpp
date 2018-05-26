@@ -2469,28 +2469,20 @@ namespace eosio {
       }
       dispatcher->recv_transaction(c, tid);
       uint64_t code = 0;
-      try {
-         auto trace = chain_plug->accept_transaction( msg);
-         if (!trace->except) {
-            fc_dlog(logger, "chain accepted transaction");
-            dispatcher->bcast_transaction(msg);
-            return;
+      chain_plug->accept_transaction(msg, [=](static_variant<fc::exception_ptr, transaction_trace_ptr> result) {
+         if (result.contains<fc::exception_ptr>()) {
+            elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
+         } else {
+            auto trace = result.get<transaction_trace_ptr>();
+            if (!trace->except) {
+               fc_dlog(logger, "chain accepted transaction");
+               dispatcher->bcast_transaction(msg);
+               return;
+            }
          }
 
-         // if accept didn't throw but there was an exception on the trace
-         // it means that this was non-fatally rejected from the chain.
-         // we will mark it as "rejected" and hope someone sends it to us later
-         // when we are able to accept it.
-      }
-      catch( const fc::exception &ex) {
-         code = ex.code();
-         elog( "accept txn threw  ${m}",("m",ex.to_detail_string()));
-      }
-      catch( ...) {
-         elog( " caught something attempting to accept transaction");
-      }
-
-      dispatcher->rejected_transaction(tid);
+         dispatcher->rejected_transaction(tid);
+      });
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {

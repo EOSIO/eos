@@ -41,6 +41,23 @@ using boost::signals2::scoped_connection;
 
 //using txn_msg_rate_limits = controller::txn_msg_rate_limits;
 
+#define CATCH_AND_CALL(NEXT)\
+   catch ( const fc::exception& err ) {\
+      NEXT(err.dynamic_copy_exception());\
+   } catch ( const std::exception& e ) {\
+      fc::exception fce( \
+         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
+         fc::std_exception_code,\
+         BOOST_CORE_TYPEID(e).name(),\
+         e.what() ) ;\
+      NEXT(fce.dynamic_copy_exception());\
+   } catch( ... ) {\
+      fc::unhandled_exception e(\
+         FC_LOG_MESSAGE(warn, "rethrow"),\
+         std::current_exception());\
+      NEXT(e.dynamic_copy_exception());\
+   }
+
 
 class chain_plugin_impl {
 public:
@@ -337,8 +354,11 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-chain::transaction_trace_ptr chain_plugin::accept_transaction(const packed_transaction& trx) {
-   return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx) , false);
+void chain_plugin::accept_transaction(const chain::packed_transaction& trx, chain_apis::next_function<chain::transaction_trace_ptr> next) {
+   try {
+      auto trace = my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx), false);
+      next(trace);
+   } CATCH_AND_CALL(next);
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -652,24 +672,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
            ("ref_block_prefix", ref_block_prefix);
 }
 
-#define CATCH_AND_CALL(NEXT)\
-   catch ( const fc::exception& err ) {\
-      NEXT(err.dynamic_copy_exception());\
-   } catch ( const std::exception& e ) {\
-      fc::exception fce( \
-         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
-         fc::std_exception_code,\
-         BOOST_CORE_TYPEID(e).name(),\
-         e.what() ) ;\
-      NEXT(fce.dynamic_copy_exception());\
-   } catch( ... ) {\
-      fc::unhandled_exception e(\
-         FC_LOG_MESSAGE(warn, "rethrow"),\
-         std::current_exception());\
-      NEXT(e.dynamic_copy_exception());\
-   }
-
-void read_write::push_block(const read_write::push_block_params& params, read_write::next_function<read_write::push_block_results> next) {
+void read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
    try {
       db.push_block( std::make_shared<signed_block>(params) );
       next(read_write::push_block_results{});
@@ -678,7 +681,7 @@ void read_write::push_block(const read_write::push_block_params& params, read_wr
    } CATCH_AND_CALL(next);
 }
 
-void read_write::push_transaction(const read_write::push_transaction_params& params, read_write::next_function<read_write::push_transaction_results> next) {
+void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
    chain::transaction_id_type id;
    fc::variant pretty_output;
    try {
@@ -700,7 +703,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
    } CATCH_AND_CALL(next);
 }
 
-static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const read_write::next_function<read_write::push_transactions_results>& next) {
+static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
    auto wrapped_next = [=](fc::static_variant<fc::exception_ptr, read_write::push_transaction_results> result) {
       if (result.contains<fc::exception_ptr>()) {
          const auto& e = result.get<fc::exception_ptr>();
@@ -721,7 +724,7 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
    rw->push_transaction(params->at(index), wrapped_next);
 }
 
-void read_write::push_transactions(const read_write::push_transactions_params& params, read_write::next_function<read_write::push_transactions_results> next) {
+void read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
    try {
       FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
       auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());

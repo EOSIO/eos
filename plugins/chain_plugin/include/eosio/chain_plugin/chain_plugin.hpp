@@ -325,13 +325,13 @@ public:
    friend struct resolver_factory<read_only>;
 };
 
+template<typename T>
+using next_function = std::function<void(fc::static_variant<fc::exception_ptr, T>)>;
+
 class read_write {
    controller& db;
 public:
    read_write(controller& db) : db(db) {}
-
-   template<typename T>
-   using next_function = std::function<void(fc::static_variant<fc::exception_ptr, T>)>;
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -370,7 +370,7 @@ public:
    chain_apis::read_write get_read_write_api();
 
    void accept_block( const chain::signed_block_ptr& block );
-   chain::transaction_trace_ptr accept_transaction(const chain::packed_transaction& trx);
+   void accept_transaction(const chain::packed_transaction& trx, chain_apis::next_function<chain::transaction_trace_ptr> next);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
