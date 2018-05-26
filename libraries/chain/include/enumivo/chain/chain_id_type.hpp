@@ -6,7 +6,7 @@
 
 #include <fc/crypto/sha256.hpp>
 
-namespace eosio {
+namespace enumivo {
 
    class net_plugin_impl;
    struct handshake_message;
@@ -41,16 +41,16 @@ namespace chain {
          template<typename T>
          friend T fc::variant::as()const;
 
-         friend class eosio::chain_apis::read_only;
+         friend class enumivo::chain_apis::read_only;
 
-         friend class eosio::net_plugin_impl;
-         friend struct eosio::handshake_message;
+         friend class enumivo::net_plugin_impl;
+         friend struct enumivo::handshake_message;
    };
 
-} }  // namespace eosio::chain
+} }  // namespace enumivo::chain
 
 namespace fc {
   class variant;
-  void to_variant(const eosio::chain::chain_id_type& cid, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::chain_id_type& cid);
+  void to_variant(const enumivo::chain::chain_id_type& cid, fc::variant& v);
+  void from_variant(const fc::variant& v, enumivo::chain::chain_id_type& cid);
 } // fc

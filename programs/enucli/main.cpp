@@ -2153,7 +2153,7 @@ int main( int argc, char** argv ) {
       fc::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
-         ilog( "grabbing chain_id from nodeos" );
+         ilog( "grabbing chain_id from enunode" );
          auto info = get_info();
          chain_id = info.chain_id;
       } else {

@@ -151,10 +151,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
    try {
-      genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
+      genesis_state gs; // Check if ENUMIVO_ROOT_KEY is bad
    } catch( const fc::exception& ) {
-      elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
-            ("root_key", genesis_state::eosio_root_key) );
+      elog( "ENUMIVO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
+            ("root_key", genesis_state::enumivo_root_key) );
       throw;
    }
 
@@ -222,7 +222,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
       }
 
-      EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
+      ENU_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
    }
 
    if( options.at("delete-all-blocks").as<bool>() ) {

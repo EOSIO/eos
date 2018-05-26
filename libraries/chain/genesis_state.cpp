@@ -12,7 +12,7 @@ namespace enumivo { namespace chain {
 
 genesis_state::genesis_state() {
    initial_timestamp = fc::time_point::from_iso_string( "2018-03-02T12:00:00" );
-   initial_key = fc::variant(eosio_root_key).as<public_key_type>();
+   initial_key = fc::variant(enumivo_root_key).as<public_key_type>();
 }
 
 chain::chain_id_type genesis_state::compute_chain_id() const {
