@@ -52,7 +52,7 @@ namespace enumivo {
    namespace bip = boost::interprocess;
 
    class connection;
-   
+
    class sync_manager;
    class dispatch_manager;
 
@@ -409,7 +409,7 @@ namespace enumivo {
       }
    } set_is_known;
 
-   
+
    struct update_block_num {
       uint32_t new_bnum;
       update_block_num(uint32_t bnum) : new_bnum(bnum) {}
@@ -579,7 +579,7 @@ namespace enumivo {
        * encountered unpacking or processing the message.
        */
       bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
-      
+
       bool add_peer_block(const peer_block_state &pbs);
    };
 
@@ -1607,7 +1607,7 @@ namespace enumivo {
       pending_notify.known_blocks.mode = normal;
       pending_notify.known_blocks.ids.push_back( bid );
       pending_notify.known_trx.mode = none;
-      
+
       peer_block_state pbstate = {bid, bnum, false,true,time_point()};
       // skip will be empty if our producer emitted this block so just send it
       if (( large_msg_notify && msgsiz > just_send_it_max) && skip) {
@@ -1644,11 +1644,11 @@ namespace enumivo {
          c->last_req.reset();
       }
       c->add_peer_block({id, bnum, false,true,time_point()});
-      
+
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
    }
-   
+
    void dispatch_manager::rejected_block (const block_id_type& id) {
       fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
       for (auto org = received_blocks.begin(); org != received_blocks.end(); org++) {
@@ -1743,7 +1743,7 @@ namespace enumivo {
       }
 
    }
-   
+
    void dispatch_manager::recv_transaction (connection_ptr c, const transaction_id_type& id) {
       received_transactions.emplace_back((transaction_origin){id, c});
       if (c &&
@@ -1766,7 +1766,7 @@ namespace enumivo {
          }
       }
    }
-   
+
    void dispatch_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
       request_message req;
       req.req_trx.mode = none;
@@ -2180,7 +2180,7 @@ namespace enumivo {
             fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
          }
 
-         if( msg.chain_id.id != chain_id.id) {
+         if( msg.chain_id != chain_id) {
             elog( "Peer on a different chain. Closing connection");
             c->enqueue( go_away_message(go_away_reason::wrong_chain) );
             return;
@@ -2886,7 +2886,7 @@ namespace enumivo {
          }
 
       my->chain_plug = app().find_plugin<chain_plugin>();
-      my->chain_plug->get_chain_id(my->chain_id);
+      my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
       fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
       ilog("my node_id is ${id}",("id",my->node_id));
 

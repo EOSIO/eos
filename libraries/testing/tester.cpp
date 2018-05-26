@@ -268,7 +268,7 @@ namespace enumivo { namespace testing {
                                 });
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -312,7 +312,7 @@ namespace enumivo { namespace testing {
       trx.actions.emplace_back(std::move(act));
       set_transaction_headers(trx);
       if (authorizer) {
-         trx.sign(get_private_key(authorizer, "active"), chain_id_type());
+         trx.sign(get_private_key(authorizer, "active"), control->get_chain_id());
       }
       try {
          push_transaction(trx);
@@ -369,7 +369,7 @@ namespace enumivo { namespace testing {
       trx.actions.emplace_back( get_action( code, acttype, auths, data ) );
       set_transaction_headers( trx, expiration, delay_sec );
       for (const auto& auth : auths) {
-         trx.sign( get_private_key( auth.actor, auth.permission.to_string() ), chain_id_type() );
+         trx.sign( get_private_key( auth.actor, auth.permission.to_string() ), control->get_chain_id() );
       }
 
       return push_transaction( trx );
@@ -411,7 +411,7 @@ namespace enumivo { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
-         trx.sign( *iter, chain_id_type() );
+         trx.sign( *iter, control->get_chain_id() );
       return push_transaction( trx );
    }
 
@@ -457,7 +457,7 @@ namespace enumivo { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
 
-      trx.sign( get_private_key( from, "active" ), chain_id_type() );
+      trx.sign( get_private_key( from, "active" ), control->get_chain_id() );
       return push_transaction( trx, fc::time_point::maximum(), billed_cpu_time_us );
    }
 
@@ -491,7 +491,7 @@ namespace enumivo { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
 
-      trx.sign( get_private_key( from, name(config::active_name).to_string() ), chain_id_type()  );
+      trx.sign( get_private_key( from, name(config::active_name).to_string() ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -518,7 +518,7 @@ namespace enumivo { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
 
-      trx.sign( get_private_key( currency, name(config::active_name).to_string() ), chain_id_type()  );
+      trx.sign( get_private_key( currency, name(config::active_name).to_string() ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -529,7 +529,7 @@ namespace enumivo { namespace testing {
       trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
                                 linkauth(account, code, type, req));
       set_transaction_headers(trx);
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
 
       push_transaction( trx );
    }
@@ -541,7 +541,7 @@ namespace enumivo { namespace testing {
       trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
                                 unlinkauth(account, code, type ));
       set_transaction_headers(trx);
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
 
       push_transaction( trx );
    }
@@ -565,7 +565,7 @@ namespace enumivo { namespace testing {
 
          set_transaction_headers(trx);
       for (const auto& key: keys) {
-         trx.sign( key, chain_id_type()  );
+         trx.sign( key, control->get_chain_id()  );
       }
 
       push_transaction( trx );
@@ -591,7 +591,7 @@ namespace enumivo { namespace testing {
 
          set_transaction_headers(trx);
          for (const auto& key: keys) {
-            trx.sign( key, chain_id_type()  );
+            trx.sign( key, control->get_chain_id()  );
          }
 
          push_transaction( trx );
@@ -621,9 +621,9 @@ namespace enumivo { namespace testing {
 
       set_transaction_headers(trx);
       if( signer ) {
-         trx.sign( *signer, chain_id_type()  );
+         trx.sign( *signer, control->get_chain_id()  );
       } else {
-         trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+         trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
       }
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account) )
@@ -640,9 +640,9 @@ namespace enumivo { namespace testing {
 
       set_transaction_headers(trx);
       if( signer ) {
-         trx.sign( *signer, chain_id_type()  );
+         trx.sign( *signer, control->get_chain_id()  );
       } else {
-         trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+         trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
       }
       push_transaction( trx );
    }
