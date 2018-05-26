@@ -233,7 +233,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
                         ("payer", "testram22222")
                         ("from", 12)
                         ("to", 21)
-                        ("size", 1910));
+                        ("size", 1855));
    produce_blocks(1);
 
    // verify that new entry for testram22222 exceed the allocation bytes limit
