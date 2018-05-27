@@ -1011,6 +1011,7 @@ namespace eosio {
         tcp::acceptor         _acceptor;
         tcp::socket           _socket;
         bnet_plugin_impl&     _net_plugin;
+        bool                  _is_accepting = false;
 
      public:
         listener( boost::asio::io_context& ioc, tcp::endpoint endpoint, bnet_plugin_impl& np  )
@@ -1036,6 +1037,8 @@ namespace eosio {
         }
 
         void do_accept() {
+           if( _is_accepting ) return;
+           _is_accepting = true;
            _acceptor.async_accept( _socket, [self=shared_from_this()]( auto ec ){ self->on_accept(ec); } );
         }
 
@@ -1063,6 +1066,8 @@ namespace eosio {
 
          std::vector<std::string>                       _connect_to_peers; /// list of peers to connect to
          std::vector<std::thread>                       _socket_threads;
+         int32_t                                        _max_connections = 64;
+         int32_t                                        _desired_connections = 8;
          int32_t                                        _num_threads = 1;
          std::unique_ptr<boost::asio::io_context>       _ioc;
          std::shared_ptr<listener>                      _listener;
@@ -1146,6 +1151,11 @@ namespace eosio {
          };
 
          void on_reconnect_peers() {
+             if( _sessions.size() >= _max_connections ) 
+                return;
+             if( _sessions.size() >= _desired_connections ) 
+                return;
+
              for( const auto& peer : _connect_to_peers ) {
                 bool found = false;
                 for( const auto& con : _sessions ) {
@@ -1182,6 +1192,7 @@ namespace eosio {
 
 
    void listener::on_accept( boost::system::error_code ec ) {
+      _is_accepting = false;
      if( ec ) {
         return;
      }
@@ -1204,6 +1215,8 @@ namespace eosio {
       cfg.add_options()
          ("bnet-endpoint", bpo::value<string>()->default_value("0.0.0.0:4321"), "the endpoint upon which to listen for incoming connections" )
          ("bnet-threads", bpo::value<uint32_t>(), "the number of threads to use to process network messages" )
+         ("bnet-max-connections", bpo::value<uint32_t>(), "the number of connections to accept before rejecting peers" )
+         ("bnet-desired-connections", bpo::value<uint32_t>(), "the number of connection this node will atempt to establish and maintain" )
          ("bnet-connect", bpo::value<vector<string>>()->composing(), "remote endpoint of other node to connect to; Use multiple bnet-connect options as needed to compose a network" )
          ("bnet-no-trx", bpo::bool_switch()->default_value(false), "this peer will request no pending transactions from other nodes" )
          ;
@@ -1231,6 +1244,13 @@ namespace eosio {
          if( my->_num_threads > 8 )
             my->_num_threads = 8;
       }
+      if( options.count( "bnet-max-connections" ) ) {
+         my->_max_connections = options.at("bnet-max-connections").as<uint32_t>();
+      }
+      if( options.count( "bnet-desired-connections" ) ) {
+         my->_max_connections = options.at("bnet-desired-connections").as<uint32_t>();
+      }
+
       my->_request_trx = !options.at( "bnet-no-trx" ).as<bool>();
    }
 
