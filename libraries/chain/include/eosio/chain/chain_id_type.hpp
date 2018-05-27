@@ -6,6 +6,8 @@
 
 #include <fc/crypto/sha256.hpp>
 
+struct hello;
+
 namespace eosio {
 
    class net_plugin_impl;
@@ -45,6 +47,8 @@ namespace chain {
 
          friend class eosio::net_plugin_impl;
          friend struct eosio::handshake_message;
+
+         friend struct ::hello; // TODO: Rushed hack to support bnet_plugin. Need a better solution.
    };
 
 } }  // namespace eosio::chain
