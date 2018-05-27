@@ -302,6 +302,7 @@ namespace eosio {
 
 
         void set_socket_options() {
+           try {
             /** to minimize latency when sending short messages */
             _ws->next_layer().set_option( boost::asio::ip::tcp::no_delay(true) );
 
@@ -311,6 +312,9 @@ namespace eosio {
              */
             _ws->next_layer().set_option( boost::asio::socket_base::send_buffer_size( 1024*1024 ) );
             _ws->next_layer().set_option( boost::asio::socket_base::receive_buffer_size( 1024*1024 ) );
+           } catch ( ... ) {
+              elog( "uncaught exception on set socket options" );
+           }
         }
 
         void run() {
@@ -555,7 +559,6 @@ namespace eosio {
 
         void send( const bnet_message& msg ) { try {
            if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
-           FC_ASSERT( !_out_buffer.size() );
 
            auto ps = fc::raw::pack_size(msg);
            _out_buffer.resize(ps);
@@ -770,9 +773,13 @@ namespace eosio {
         }
 
         void on_fail( boost::system::error_code ec, const char* what ) {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
-           elog( "${w}: ${m}", ("w", what)("m", ec.message() ) );
-           _ws->next_layer().close();
+           try {
+              if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+              elog( "${w}: ${m}", ("w", what)("m", ec.message() ) );
+              _ws->next_layer().close();
+           } catch ( ... ) {
+              elog( "uncaught exception on close" );
+           }
         }
 
         void on_accept( boost::system::error_code ec ) {
@@ -815,10 +822,15 @@ namespace eosio {
               on_message( msg );
 
               wait_on_app();
+              return;
 
            } catch ( ... ) {
               wlog( "close bad payload" );
+           }
+           try {
               _ws->close( boost::beast::websocket::close_code::bad_payload );
+           } catch ( ... ) {
+              elog( "uncaught exception on close" );
            }
         }
 
@@ -912,8 +924,12 @@ namespace eosio {
         }
 
         void do_goodbye( const string& reason ) {
-           status( "goodbye - " + reason );
-           _ws->next_layer().close();
+           try {
+              status( "goodbye - " + reason );
+              _ws->next_layer().close();
+           } catch ( ... ) {
+              elog( "uncaught exception on close" );
+           }
         }
 
         void check_for_redundant_connection();
