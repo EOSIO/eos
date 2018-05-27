@@ -402,7 +402,7 @@ namespace eosio {
            stat.trx      = t;
            _transaction_status.insert( stat );
 
-           do_send_next_message();
+           maybe_send_next_message();
         }
 
         /**
@@ -435,11 +435,12 @@ namespace eosio {
               idx.erase(itr);
               itr = idx.begin();
            }
-           do_send_next_message();
+           maybe_send_next_message();
         }
 
 
         void on_bad_block( signed_block_ptr b ) {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            try {
               auto id = b->id();
               auto itr = _block_status.find( id );
@@ -454,6 +455,7 @@ namespace eosio {
         }
 
         void on_accepted_block_header( const block_state_ptr& s ) {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
           // ilog( "accepted block header ${n}", ("n",s->block_num) );
            if( fc::time_point::now() - s->block->timestamp  < fc::seconds(6) ) {
            //   ilog( "queue notice to peer that we have this block so hopefully they don't send it to us" );
@@ -465,6 +467,7 @@ namespace eosio {
         }
 
         void on_accepted_block( const block_state_ptr& s ) {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            //idump((_block_status.size())(_transaction_status.size()));
            auto id = s->id;
            //ilog( "accepted block ${n}", ("n",s->block_num) );
@@ -496,7 +499,7 @@ namespace eosio {
               }
            }
 
-           do_send_next_message(); /// attempt to send if we are idle
+           maybe_send_next_message(); /// attempt to send if we are idle
         }
 
 
@@ -551,6 +554,7 @@ namespace eosio {
 
 
         void send( const bnet_message& msg ) { try {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            FC_ASSERT( !_out_buffer.size() );
 
            auto ps = fc::raw::pack_size(msg);
@@ -596,7 +600,7 @@ namespace eosio {
          *  out queue, if so it returns. Otherwise it determines the best
          *  message to send.
          */
-        void do_send_next_message() {
+        void maybe_send_next_message() {
            if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            if( _state == sending_state ) return; /// in process of sending
            if( _out_buffer.size() ) return; /// in process of sending
@@ -699,9 +703,10 @@ namespace eosio {
         } FC_LOG_AND_RETHROW() }
 
         void on_async_get_block( const signed_block_ptr& nextblock ) {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
             if( !nextblock)  {
                _state = idle_state;
-               do_send_next_message();
+               maybe_send_next_message();
                return;
             }
 
@@ -712,7 +717,7 @@ namespace eosio {
                   _last_sent_block_id  = _local_lib_id;
                   _last_sent_block_num = _local_lib;
                   _state = idle_state;
-                  do_send_next_message();
+                  maybe_send_next_message();
                   return;
                 }
             }
@@ -728,7 +733,7 @@ namespace eosio {
                _last_sent_block_num = nextblock->block_num();
 
                _state = idle_state;
-               do_send_next_message();
+               maybe_send_next_message();
                return;
             }
 
@@ -765,6 +770,7 @@ namespace eosio {
         }
 
         void on_fail( boost::system::error_code ec, const char* what ) {
+           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
            elog( "${w}: ${m}", ("w", what)("m", ec.message() ) );
            _ws->next_layer().close();
         }
@@ -824,7 +830,9 @@ namespace eosio {
          * the connection from being closed.
          */
         void wait_on_app() {
-            app().get_io_service().post( [self=shared_from_this()]{ self->do_read(); });
+            app().get_io_service().post( 
+                boost::asio::bind_executor( _strand, [self=shared_from_this()]{ self->do_read(); } )
+            );
         }
 
         void on_message( const bnet_message& msg ) {
@@ -853,7 +861,7 @@ namespace eosio {
                     _ws->close( boost::beast::websocket::close_code::bad_payload );
                     return;
               }
-              do_send_next_message();
+              maybe_send_next_message();
            } catch( const fc::exception& e ) {
               elog( "${e}", ("e",e.to_detail_string()));
               _ws->close( boost::beast::websocket::close_code::bad_payload );
@@ -970,7 +978,7 @@ namespace eosio {
            }
            _state = idle_state;
            _out_buffer.resize(0);
-           do_send_next_message();
+           maybe_send_next_message();
         }
 
         void status( const string& msg ) {
