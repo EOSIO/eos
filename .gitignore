@@ -78,4 +78,6 @@ build-debug/*
 etc/eosio/node_*
 var/lib/node_*
 .vscode
+.idea/
+*.iws
 .DS_Store
