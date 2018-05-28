@@ -68,7 +68,7 @@ public:
    ,accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
    ,incoming_block_channel(app().get_channel<incoming::channels::block>())
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
-   ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
+   ,incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>())
    {}
 
    bfs::path                        blocks_dir;
@@ -95,8 +95,8 @@ public:
    incoming::channels::block::channel_type&         incoming_block_channel;
 
    // retained references to methods for easy calling
-   incoming::methods::block_sync::method_type&       incoming_block_sync_method;
-   incoming::methods::transaction_sync::method_type& incoming_transaction_sync_method;
+   incoming::methods::block_sync::method_type&        incoming_block_sync_method;
+   incoming::methods::transaction_async::method_type& incoming_transaction_async_method;
 
    // method provider handles
    methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
@@ -353,10 +353,7 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
 }
 
 void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
-   try {
-      auto trace = my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx), false);
-      next(trace);
-   } CATCH_AND_CALL(next);
+   my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -672,7 +669,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
 void read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
    try {
-      db.push_block( std::make_shared<signed_block>(params) );
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
@@ -680,8 +677,7 @@ void read_write::push_block(const read_write::push_block_params& params, next_fu
 }
 
 void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
-   chain::transaction_id_type id;
-   fc::variant pretty_output;
+
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this);
@@ -689,20 +685,31 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
          abi_serializer::from_variant(params, *pretty_input, resolver);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
+      app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+         if (result.contains<fc::exception_ptr>()) {
+            next(result.get<fc::exception_ptr>());
+         } else {
+            auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
-      pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
-      //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
-      id = trx_trace_ptr->id;
+            try {
+               fc::variant pretty_output;
+               pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
+               //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
 
-      next(read_write::push_transaction_results{ id, pretty_output });
+               chain::transaction_id_type id = trx_trace_ptr->id;
+               next(read_write::push_transaction_results{id, pretty_output});
+            } CATCH_AND_CALL(next);
+         }
+      });
+
+
    } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
    } CATCH_AND_CALL(next);
 }
 
 static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
-   auto wrapped_next = [=](fc::static_variant<fc::exception_ptr, read_write::push_transaction_results> result) {
+   auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
       if (result.contains<fc::exception_ptr>()) {
          const auto& e = result.get<fc::exception_ptr>();
          results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );

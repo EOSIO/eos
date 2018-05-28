@@ -2469,9 +2469,11 @@ namespace eosio {
       }
       dispatcher->recv_transaction(c, tid);
       uint64_t code = 0;
-      chain_plug->accept_transaction(msg, [=](static_variant<fc::exception_ptr, transaction_trace_ptr> result) {
+      chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
-            elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
+            auto e_ptr = result.get<fc::exception_ptr>();
+            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+               elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
@@ -2683,6 +2685,7 @@ namespace eosio {
       transaction_id_type id = results.second->id();
       if (results.first) {
          fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
+         dispatcher->rejected_transaction(id);
       } else {
          fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
          dispatcher->bcast_transaction(*results.second);

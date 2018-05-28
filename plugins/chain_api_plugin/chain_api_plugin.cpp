@@ -52,7 +52,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
    [this, api_handle](string, string body, url_response_callback cb) mutable { \
       if (body.empty()) body = "{}"; \
       api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>(),\
-         [cb, body](fc::static_variant<fc::exception_ptr, call_result> result){\
+         [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
             if (result.contains<fc::exception_ptr>()) {\
                try {\
                   result.get<fc::exception_ptr>()->dynamic_rethrow_exception();\
