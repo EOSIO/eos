@@ -32,6 +32,8 @@
 #include <array>
 #include <utility>
 
+#include "incbin.h"
+
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -1473,168 +1475,6 @@ BOOST_FIXTURE_TEST_CASE( trigger_serialization_errors, TESTER) try {
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
-
-   produce_blocks(2);
-
-   create_accounts( {N(bad)} );
-   for( auto file : { "fuzz5.wsam", "fuzz1.wasm", "fuzz2.wasm", "fuzz6.wasm" } ) {
-      idump((file));
-      produce_blocks(2);
-      try {
-         string wasm;
-         fc::read_file_contents( file, wasm );
-         wdump((wasm.size()));
-         vector<uint8_t> data(wasm.size());
-         memcpy( data.data(), wasm.data(), wasm.size() );
-         set_code(N(bad), data );
-      } catch ( const std::bad_alloc& a ) {
-         elog( "bad alloc" );
-         throw;
-      } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string())(file));
-      } catch ( ... ) {
-         elog( "unhandled exception: ${file}", ("file",file) );
-      }
-   }
-
-} FC_LOG_AND_RETHROW() 
-
-/**
- * This test currently results in this error from time to time
- *
- * unit_test(63031,0x7fffdb27d3c0) malloc: *** mach_vm_map(size=140734729523200) failed (error code=3)
- * *** error: can't allocate region
- * *** set a breakpoint in malloc_error_break to debug
- */
-BOOST_FIXTURE_TEST_CASE( fuzz3, TESTER ) try {
-
-   produce_blocks(2);
-
-   create_accounts( {N(bad)} );
-   for( auto file : {  "fuzz3.wasm"  } ) {
-      idump((file));
-      produce_blocks(2);
-      try {
-         string wasm;
-         fc::read_file_contents( file, wasm );
-         wdump((wasm.size()));
-         vector<uint8_t> data(wasm.size());
-         memcpy( data.data(), wasm.data(), wasm.size() );
-         set_code(N(bad), data );
-      produce_blocks(2);
-      } catch ( const std::bad_alloc& a ) {
-         elog( "bad alloc" );
-         throw;
-      } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string())(file));
-      } catch ( ... ) {
-         elog( "unhandled exception: ${file}", ("file",file) );
-      }
-   }
-
-} FC_LOG_AND_RETHROW() 
-
-BOOST_FIXTURE_TEST_CASE( fuzz4, TESTER ) try {
-
-   produce_blocks(2);
-
-   create_accounts( {N(bad)} );
-   for( auto file : { "fuzz4.wasm"  } ) {
-      idump((file));
-      produce_blocks(2);
-      try {
-         string wasm;
-         fc::read_file_contents( file, wasm );
-         wdump((wasm.size()));
-         vector<uint8_t> data(wasm.size());
-         memcpy( data.data(), wasm.data(), wasm.size() );
-         set_code(N(bad), data );
-      } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string())(file));
-      } catch ( ... ) {
-         elog( "unhandled exception: ${file}", ("file",file) );
-      }
-   }
-
-} FC_LOG_AND_RETHROW() 
-
-
-BOOST_FIXTURE_TEST_CASE( fuzz2, TESTER ) try {
-
-   produce_blocks(2);
-
-   create_accounts( {N(bad)} );
-   for( auto file : { "fuzz7.wsam", "fuzz8.wasm", "fuzz9.wasm", "fuzz10.wasm", "fuzz11.wasm", "fuzz12.wasm" } ) {
-      idump((file));
-      produce_blocks(2);
-      try {
-         string wasm;
-         fc::read_file_contents( file, wasm );
-         wdump((wasm.size()));
-         vector<uint8_t> data(wasm.size());
-         memcpy( data.data(), wasm.data(), wasm.size() );
-         set_code(N(bad), data );
-      } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string())(file));
-      } catch ( ... ) {
-         elog( "unhandled exception: ${file}", ("file",file) );
-      }
-   }
-
-} FC_LOG_AND_RETHROW() 
-
-BOOST_FIXTURE_TEST_CASE( fuzz8, TESTER ) try {
-
-   produce_blocks(2);
-
-   create_accounts( {N(bad)} );
-   for( auto file : { "fuzz8.wasm"  } ) {
-      idump((file));
-      produce_blocks(2);
-      try {
-         string wasm;
-         fc::read_file_contents( file, wasm );
-         wdump((wasm.size()));
-         vector<uint8_t> data(wasm.size());
-         memcpy( data.data(), wasm.data(), wasm.size() );
-         set_code(N(bad), data );
-      } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string())(file));
-      } catch ( ... ) {
-         elog( "unhandled exception: ${file}", ("file",file) );
-      }
-   }
-
-} FC_LOG_AND_RETHROW() 
-
-
-BOOST_FIXTURE_TEST_CASE( fuzz9, TESTER ) try {
-
-   produce_blocks(2);
-
-   create_accounts( {N(bad)} );
-   for( auto file : { "fuzz9.wasm"  } ) {
-      idump((file));
-      produce_blocks(2);
-      try {
-         string wasm;
-         fc::read_file_contents( file, wasm );
-         wdump((wasm.size()));
-         vector<uint8_t> data(wasm.size());
-         memcpy( data.data(), wasm.data(), wasm.size() );
-         set_code(N(bad), data );
-      } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string())(file));
-      } catch ( ... ) {
-         elog( "unhandled exception: ${file}", ("file",file) );
-      }
-   }
-
-} FC_LOG_AND_RETHROW() 
-
-
-
 BOOST_FIXTURE_TEST_CASE( protect_injected, TESTER ) try {
    produce_blocks(2);
 
@@ -1642,6 +1482,77 @@ BOOST_FIXTURE_TEST_CASE( protect_injected, TESTER ) try {
    produce_block();
 
    BOOST_CHECK_THROW(set_code(N(inj), import_injected_wast), fc::exception);
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
+INCBIN(fuzz1, "fuzz1.wasm");
+INCBIN(fuzz2, "fuzz2.wasm");
+INCBIN(fuzz3, "fuzz3.wasm");
+INCBIN(fuzz4, "fuzz4.wasm");
+INCBIN(fuzz5, "fuzz5.wasm");
+INCBIN(fuzz6, "fuzz6.wasm");
+INCBIN(fuzz7, "fuzz7.wasm");
+INCBIN(fuzz8, "fuzz8.wasm");
+INCBIN(fuzz9, "fuzz9.wasm");
+INCBIN(fuzz10, "fuzz10.wasm");
+INCBIN(fuzz11, "fuzz11.wasm");
+INCBIN(fuzz12, "fuzz12.wasm");
+
+BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(fuzzy)} );
+   produce_block();
+
+   {
+      vector<uint8_t> wasm(gfuzz1Data, gfuzz1Data + gfuzz1Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz2Data, gfuzz2Data + gfuzz2Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz3Data, gfuzz3Data + gfuzz3Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz4Data, gfuzz4Data + gfuzz4Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz5Data, gfuzz5Data + gfuzz5Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz6Data, gfuzz6Data + gfuzz6Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz7Data, gfuzz7Data + gfuzz7Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz8Data, gfuzz8Data + gfuzz8Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz9Data, gfuzz9Data + gfuzz9Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz10Data, gfuzz10Data + gfuzz10Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz11Data, gfuzz11Data + gfuzz11Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz12Data, gfuzz12Data + gfuzz12Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
