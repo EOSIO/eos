@@ -36,6 +36,7 @@ namespace eosiosystem {
     */
    void system_contract::regproducer( const account_name producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) {
       eosio_assert( url.size() < 512, "url too long" );
+      eosio_assert( producer_key != eosio::public_key(), "public key should not be the default value" );
       require_auth( producer );
 
       auto prod = _producers.find( producer );
@@ -44,6 +45,7 @@ namespace eosiosystem {
          if( producer_key != prod->producer_key ) {
              _producers.modify( prod, producer, [&]( producer_info& info ){
                   info.producer_key = producer_key;
+                  info.is_active    = true;
                   info.url          = url;
                   info.location     = location;
              });
@@ -53,6 +55,7 @@ namespace eosiosystem {
                info.owner         = producer;
                info.total_votes   = 0;
                info.producer_key  = producer_key;
+               info.is_active     = true;
                info.url           = url;
                info.location      = location;
          });
@@ -65,7 +68,7 @@ namespace eosiosystem {
       const auto& prod = _producers.get( producer, "producer not found" );
 
       _producers.modify( prod, 0, [&]( producer_info& info ){
-         info.producer_key = eosio::public_key();
+            info.deactivate();
       });
    }
 
@@ -77,8 +80,8 @@ namespace eosiosystem {
       std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
       top_producers.reserve(21);
 
-      for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes; ++it ) {
-         if( !it->active() ) continue;
+      std::vector<decltype(idx.cbegin())> inactive_iters;
+      for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
 
          /**
             If it's the first time or it's been over a day since a producer was last voted in, 
@@ -92,11 +95,8 @@ namespace eosiosystem {
                });
          } else if ( block_time.slot > (2 * 21 * 12 * 100) + it->time_became_active.slot &&
                      block_time.slot > it->last_produced_block_time.slot + blocks_per_day ) {
-            _producers.modify( *it, 0, [&](auto& p) {
-                  p.producer_key = public_key();
-                  p.time_became_active.slot = 0;
-               });
-
+            // save producers that will be deactivated
+            inactive_iters.push_back(it);
             continue;
          } else {
             _producers.modify( *it, 0, [&](auto& p) {
@@ -107,7 +107,12 @@ namespace eosiosystem {
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
       }
 
-
+      for (const auto& it: inactive_iters) {
+         _producers.modify( *it, 0, [&](auto& p) {
+               p.deactivate();
+               p.time_became_active.slot = 0;
+            });
+      }
 
       /// sort by producer name
       std::sort( top_producers.begin(), top_producers.end() );
@@ -234,7 +239,7 @@ namespace eosiosystem {
             eosio_assert( !voting || pitr->active() || !pd.second.second /* not from new set */, "producer is not currently registered" );
             _producers.modify( pitr, 0, [&]( auto& p ) {
                p.total_votes += pd.second.first;
-               if ( p.total_votes < 0 ) { // floating point ariphmetics can give as small negative numbers
+               if ( p.total_votes < 0 ) { // floating point arithmetics can give small negative numbers
                   p.total_votes = 0;
                }
                _gstate.total_producer_vote_weight += pd.second.first;

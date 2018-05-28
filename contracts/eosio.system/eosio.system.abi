@@ -273,6 +273,7 @@
          {"name":"owner",                    "type":"account_name"},
          {"name":"total_votes",              "type":"float64"},
          {"name":"producer_key",             "type":"public_key"},
+         {"name":"is_active",                "type":"bool"},
          {"name":"url",                      "type":"string"},
          {"name":"unpaid_blocks",            "type":"uint32"},
          {"name":"last_claim_time",          "type":"uint64"},

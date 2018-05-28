@@ -74,6 +74,7 @@ namespace eosiosystem {
       account_name          owner;
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
+      bool                  is_active = true;
       std::string           url;
       uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
@@ -81,12 +82,13 @@ namespace eosiosystem {
       block_timestamp       time_became_active;
       block_timestamp       last_produced_block_time;
 
-      uint64_t    primary_key()const { return owner;                        }
-      double      by_votes()const    { return -total_votes;                 }
-      bool        active() const     { return producer_key != public_key(); }
+      uint64_t primary_key()const { return owner;                                   }
+      double   by_votes()const    { return is_active ? -total_votes : total_votes;   }
+      bool     active()const      { return is_active;                               }
+      void     deactivate()       { producer_key = public_key(); is_active = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(url)
+      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
                         (unpaid_blocks)(last_claim_time)(location)
                         (time_became_active)(last_produced_block_time) )
    };
