@@ -304,10 +304,13 @@ namespace eosio {
             my->server.start_accept();
          } catch ( const fc::exception& e ){
             elog( "http: ${e}", ("e",e.to_detail_string()));
+            throw;
          } catch ( const std::exception& e ){
             elog( "http: ${e}", ("e",e.what()));
+            throw;
          } catch (...) {
             elog("error thrown from http io service");
+            throw;
          }
       }
 
