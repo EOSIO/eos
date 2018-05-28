@@ -501,7 +501,10 @@ namespace IR
 		
 		ValueType popOperand()
 		{
-			if(stack.size() > controlStack.back().outerStackSize)
+         if(controlStack.empty()) {
+            throw ValidationException("control stack empty");
+         }
+			else if(stack.size() > controlStack.back().outerStackSize)
 			{
 				const ValueType result = stack.back();
 				stack.pop_back();
