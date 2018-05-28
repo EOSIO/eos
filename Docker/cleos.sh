@@ -13,5 +13,5 @@ if [ -z $1 ] ; then
     $PREFIX $cmd
   done
 else
-  $PREFIX $@
+  $PREFIX "$@"
 fi
