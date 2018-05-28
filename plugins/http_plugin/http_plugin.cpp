@@ -85,6 +85,7 @@ namespace eosio {
          optional<tcp::endpoint>  listen_endpoint;
          string                   access_control_allow_origin;
          string                   access_control_allow_headers;
+         string                   access_control_max_age;
          bool                     access_control_allow_credentials = false;
 
          websocket_server_type    server;
@@ -170,9 +171,19 @@ namespace eosio {
                if( !access_control_allow_headers.empty()) {
                   con->append_header( "Access-Control-Allow-Headers", access_control_allow_headers );
                }
+               if( !access_control_max_age.empty()) {
+                  con->append_header( "Access-Control-Max-Age", access_control_max_age );
+               }
                if( access_control_allow_credentials ) {
                   con->append_header( "Access-Control-Allow-Credentials", "true" );
                }
+               
+               auto& req = con->get_request();
+               if(req.get_method() == "OPTIONS") {
+                  con->set_status(websocketpp::http::status_code::ok);
+                  return;
+               }
+
                con->append_header( "Content-type", "application/json" );
                auto body = con->get_request_body();
                auto resource = con->get_uri()->get_resource();
@@ -242,6 +253,12 @@ namespace eosio {
                 ilog("configured http with Access-Control-Allow-Headers : ${o}", ("o", my->access_control_allow_headers));
              }),
              "Specify the Access-Control-Allow-Headers to be returned on each request.")
+
+            ("access-control-max-age", bpo::value<string>()->notifier([this](const string& v) {
+                my->access_control_max_age = v;
+                ilog("configured http with Access-Control-Max-Age : ${o}", ("o", my->access_control_max_age));
+             }),
+             "Specify the Access-Control-Max-Age to be returned on each request.")
 
             ("access-control-allow-credentials",
              bpo::bool_switch()->notifier([this](bool v) {
