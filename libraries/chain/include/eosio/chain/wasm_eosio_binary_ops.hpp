@@ -11,6 +11,7 @@
 #include <iterator>
 #include <memory>
 #include <fc/optional.hpp>
+#include <fc/exception/exception.hpp>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -662,14 +663,14 @@ struct EOSIO_OperatorDecoderStream
    operator bool() const { return nextByte < end; }
 
    instr* decodeOp() {
-      assert(nextByte + sizeof(IR::Opcode) <= end);
+      FC_ASSERT(nextByte + sizeof(IR::Opcode) <= end);
       IR::Opcode opcode = *(IR::Opcode*)nextByte;  
       switch(opcode)
       {
       #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
          case IR::Opcode::name: \
          { \
-            assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
+            FC_ASSERT(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
             IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
             nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
             auto op = _cached_ops->at(BOOST_PP_CAT(name, _code)); \
