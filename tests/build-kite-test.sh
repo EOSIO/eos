@@ -1,9 +1,13 @@
 #!/bin/bash
 
-OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
+ARCH=$( uname )
 pgrep_opts="-fl"
-if [[ $OS_NAME == "Ubuntu" || $OS_NAME == "Linux Mint" || $OS_NAME == "Fedora" || $OS_NAME == "CentOS Linux" || $OS_NAME == "arch" ]]; then
-   pgrep_opts="-a"
+if [ "$ARCH" == "Linux" ]; then
+    OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
+
+    if [[ $OS_NAME == "Ubuntu" || $OS_NAME == "Linux Mint" || $OS_NAME == "Fedora" || $OS_NAME == "CentOS Linux" || $OS_NAME == "arch" ]]; then
+        pgrep_opts="-a"
+    fi
 fi
 
 fun_ret=0
