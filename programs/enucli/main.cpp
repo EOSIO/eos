@@ -281,13 +281,11 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       trx.context_free_actions.emplace_back( generate_nonce_action() );
    }
 
-   auto required_keys = determine_required_keys(trx);
-   size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
-
    trx.max_cpu_usage_ms = tx_max_net_usage;
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
+      auto required_keys = determine_required_keys(trx);
       sign_transaction(trx, required_keys, info.chain_id);
    }
 
@@ -731,8 +729,10 @@ void try_port( uint16_t port, uint32_t duration ) {
 }
 
 void ensure_enuwallet_running() {
+    if (tx_skip_sign)
+        return;
     auto parsed_url = parse_url(wallet_url);
-    if (parsed_url.server != "localhost" && parsed_url.server == "127.0.0.1")
+    if (parsed_url.server != "localhost" && parsed_url.server != "127.0.0.1")
         return;
 
     auto wallet_port = std::stoi(parsed_url.port);

@@ -10,7 +10,7 @@ services:
       - mongo-data-volume:/data/db
 
   enunoded:
-    image: enumivo/enumivo:latest
+    image: enumivo/enumivo:20180528
     command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir --delete-all-blocks #--mongodb-uri mongodb://mongo:27017/ENU
     hostname: enunoded
     links:
@@ -24,7 +24,7 @@ services:
       - enunode-data-volume:/opt/enumivo/bin/data-dir
 
   enuwallet:
-    image: enumivo/enumivo:latest
+    image: enumivo/enumivo:20180528
     command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: enuwallet
     links:
