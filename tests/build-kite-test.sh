@@ -1,16 +1,10 @@
 #!/bin/bash
 
-#trap 'kill $(jobs -p)' EXIT
-
 OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 pgrep_opts="-fl"
-#if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
 if [[ $OS_NAME == "Ubuntu" || $OS_NAME == "Linux Mint" || $OS_NAME == "Fedora" || $OS_NAME == "CentOS Linux" || $OS_NAME == "arch" ]]; then
    pgrep_opts="-a"
 fi
-
-# echo OS_NAME: $OS_NAME
-# echo pgrep_opts: $pgrep_opts
 
 fun_ret=0
 
@@ -21,17 +15,8 @@ getChildCount () {
     cmd="pgrep $pgrep_opts $name | grep '\-s' | wc -l"
     echo CMD: $cmd
     count=`pgrep $pgrep_opts $name | grep '\-s' | wc -l`
+    # pgrep $pgrep_opts $name | grep '\-s'
     fun_ret=$count
-}
-
-getLastChildPid() {
-    name=$1
-
-    #echo child name: $name
-    cmd="pgrep $pgrep_opts $name | grep '\-s' | tail -n 1 | cut -f 1 -d ' '"
-    echo CMD: $cmd
-    pid=`pgrep $pgrep_opts $name | grep '\-s' | tail -n 1 | cut -f 1 -d ' '`
-    fun_ret=$pid
 }
 
 sleep_on=0
@@ -59,10 +44,6 @@ cmd="nohup $0 -s"
 echo CMD: $cmd
 nohup $0 -s&
 
-getLastChildPid $name
-cPid=$fun_ret
-echo Child pid: $cPid
-
 getChildCount $name
 count=$fun_ret
 echo child count 1: $count
@@ -79,14 +60,12 @@ getChildCount $name
 count=$fun_ret
 echo child count 3: $count
 
-date
-cmd="kill -9 $pid"
+cmd="pkill sleep"
 echo CMD: $cmd
-kill -9 $pid
+pkill sleep
 
 sleep 1
 
-date
 getChildCount $name
 count=$fun_ret
 echo child count 4: $count
@@ -102,13 +81,10 @@ if [[ $count != 0 ]]; then
     exit 1
 fi
 
-date
-echo Child process is termniated. Test successful
+echo Child process is terminated. Test successful
 
 cmd="jobs -p"
 echo CMD: $cmd
 jobs -p
 
-sleep 100000
-date
-exit 1
+exit 0
