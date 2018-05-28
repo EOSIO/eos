@@ -181,7 +181,7 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 
 ```
 # pull images
-docker pull eosio/eos:latest
+docker pull eosio/eos:20180528
 docker pull mongo:latest
 # create volume
 docker volume create --name=nodeos-data-volume
@@ -192,7 +192,7 @@ docker-compose -f docker-compose-dawn4.2.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
-docker-compose logs nodeosd
+docker-compose logs -f nodeosd
 # stop containers
 docker-compose -f docker-compose-dawn4.2.yaml down
 ```
