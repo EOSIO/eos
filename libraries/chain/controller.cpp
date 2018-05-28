@@ -630,13 +630,18 @@ struct controller_impl {
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
-            if (implicit) {
+            if( implicit ) {
                trx_context.init_for_implicit_trx();
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
                                                trx->trx.signatures.size() );
             }
+
+            if( !implicit && pending->_block_status == controller::block_status::incomplete ) {
+               check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
+            }
+
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
 
@@ -1019,6 +1024,46 @@ struct controller_impl {
       }
    }
 
+
+   void check_actor_list( const flat_set<account_name>& actors )const {
+      if( conf.actor_whitelist.size() > 0 ) {
+         vector<account_name> excluded;
+         excluded.reserve( actors.size() );
+         set_difference( actors.begin(), actors.end(),
+                         conf.actor_whitelist.begin(), conf.actor_whitelist.end(),
+                         std::back_inserter(excluded) );
+         EOS_ASSERT( excluded.size() == 0, actor_whitelist_exception,
+                     "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
+                     ("actors", excluded)
+                   );
+      } else if( conf.actor_blacklist.size() > 0 ) {
+         vector<account_name> blacklisted;
+         blacklisted.reserve( actors.size() );
+         set_intersection( actors.begin(), actors.end(),
+                           conf.actor_blacklist.begin(), conf.actor_whitelist.end(),
+                           std::back_inserter(blacklisted)
+                         );
+         EOS_ASSERT( blacklisted.size() == 0, actor_blacklist_exception,
+                     "authorizing actor(s) in transaction are on the actor blacklist: ${actors}",
+                     ("actors", blacklisted)
+                   );
+      }
+   }
+
+   void check_contract_list( account_name code )const {
+      if( conf.contract_whitelist.size() > 0 ) {
+         EOS_ASSERT( conf.contract_whitelist.find( code ) != conf.contract_whitelist.end(),
+                     contract_whitelist_exception,
+                     "account '${code}' is not on the contract whitelist", ("code", code)
+                   );
+      } else if( conf.contract_blacklist.size() > 0 ) {
+         EOS_ASSERT( conf.contract_blacklist.find( code ) == conf.contract_blacklist.end(),
+                     contract_blacklist_exception,
+                     "account '${code}' is on the contract blacklist", ("code", code)
+                   );
+      }
+   }
+
    /*
    bool should_check_tapos()const { return true; }
 
@@ -1345,6 +1390,16 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
       ++itr;
    }
    return result;
+}
+
+void controller::check_contract_list( account_name code )const {
+   my->check_contract_list( code );
+}
+
+bool controller::is_producing_block()const {
+   if( !my->pending ) return false;
+
+   return (my->pending->_block_status == block_status::incomplete);
 }
 
 void controller::validate_referenced_accounts( const transaction& trx )const {

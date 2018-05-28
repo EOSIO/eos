@@ -36,16 +36,20 @@ namespace eosio { namespace chain {
    class controller {
       public:
          struct config {
-            path         blocks_dir             =  chain::config::default_blocks_dir_name;
-            path         state_dir              =  chain::config::default_state_dir_name;
-            uint64_t     state_size             =  chain::config::default_state_size;
-            uint64_t     reversible_cache_size  =  chain::config::default_reversible_cache_size;
-            bool         read_only              =  false;
-            bool         force_all_checks       =  false;
-            bool         contracts_console      =  false;
+            flat_set<account_name>   actor_whitelist;
+            flat_set<account_name>   actor_blacklist;
+            flat_set<account_name>   contract_whitelist;
+            flat_set<account_name>   contract_blacklist;
+            path                     blocks_dir             =  chain::config::default_blocks_dir_name;
+            path                     state_dir              =  chain::config::default_state_dir_name;
+            uint64_t                 state_size             =  chain::config::default_state_size;
+            uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
+            bool                     read_only              =  false;
+            bool                     force_all_checks       =  false;
+            bool                     contracts_console      =  false;
 
-            genesis_state                  genesis;
-            wasm_interface::vm_type        wasm_runtime = chain::config::default_wasm_runtime;
+            genesis_state            genesis;
+            wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
          };
 
          enum class block_status {
@@ -150,6 +154,11 @@ namespace eosio { namespace chain {
 
          block_id_type get_block_id_for_num( uint32_t block_num )const;
 
+         void check_contract_list( account_name code )const;
+         bool is_producing_block()const;
+
+
+
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
@@ -212,6 +221,10 @@ namespace eosio { namespace chain {
 } }  /// eosio::chain
 
 FC_REFLECT( eosio::chain::controller::config,
+            (actor_whitelist)
+            (actor_blacklist)
+            (contract_whitelist)
+            (contract_blacklist)
             (blocks_dir)
             (state_dir)
             (state_size)

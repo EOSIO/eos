@@ -280,5 +280,16 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( wallet_unlocked_exception,         wallet_exception,
                                     3120007, "Already unlocked" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
+                                 3130000, "actor or contract whitelist/blacklist exception" )
+
+      FC_DECLARE_DERIVED_EXCEPTION( actor_whitelist_exception,    chain_exception,
+                                    3130001, "Authorizing actor of transaction is not on the whitelist" )
+      FC_DECLARE_DERIVED_EXCEPTION( actor_blacklist_exception,    chain_exception,
+                                    3130002, "Authorizing actor of transaction is on the blacklist" )
+      FC_DECLARE_DERIVED_EXCEPTION( contract_whitelist_exception, chain_exception,
+                                    3130003, "Contract to execute is not on the whitelist" )
+      FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, chain_exception,
+                                    3130004, "Contract to execute is on the blacklist" )
 
 } } // eosio::chain
