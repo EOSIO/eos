@@ -2,10 +2,10 @@
 
 ARCH=$( uname )
 pgrep_opts="-fl"
-if [ "$ARCH" == "Linux" ]; then
+if [ "$ARCH" -eq "Linux" ]; then
     OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 
-    if [[ $OS_NAME == "Ubuntu" || $OS_NAME == "Linux Mint" || $OS_NAME == "Fedora" || $OS_NAME == "CentOS Linux" || $OS_NAME == "arch" ]]; then
+    if [[ $OS_NAME -eq "Ubuntu" || $OS_NAME -eq "Linux Mint" || $OS_NAME -eq "Fedora" || $OS_NAME -eq "CentOS Linux" || $OS_NAME -eq "arch" ]]; then
         pgrep_opts="-a"
     fi
 fi
@@ -34,14 +34,16 @@ while getopts ":s" opt; do
   esac
 done
 
-if [[ $sleep_on == 1 ]]; then
+if [[ $sleep_on -eq 1 ]]; then
     echo Child is heading to sleep...
     sleep 2000000
     exit 0
 fi
 
-me=`basename "$0"`
-name=${me:0:-3}
+# me=`basename "$0"`
+# name=${me:0:-3}
+name="build-kite-test"
+# exit 0
 
 # spawn child process
 cmd="nohup $0 -s"
@@ -80,15 +82,11 @@ getChildCount $name
 count=$fun_ret
 echo child count 5: $count
 
-if [[ $count != 0 ]]; then
+if [[ $count -ne 0 ]]; then
     echo ERROR: child process is still alive.
     exit 1
 fi
 
 echo Child process is terminated. Test successful
-
-cmd="jobs -p"
-echo CMD: $cmd
-jobs -p
 
 exit 0
