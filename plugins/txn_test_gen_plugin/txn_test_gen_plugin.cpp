@@ -284,7 +284,6 @@ struct txn_test_gen_plugin_impl {
       try {
          controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
-         app().get_plugin<chain_plugin>().get_chain_id(chainid);
 
          name sender("txn.test.a");
          name recipient("txn.test.b");
