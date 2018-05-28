@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#trap 'kill $(jobs -p)' EXIT
+
 OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 pgrep_opts="-fl"
 #if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
@@ -45,7 +47,7 @@ done
 
 if [[ $sleep_on == 1 ]]; then
     echo Child is heading to sleep...
-    sleep 100000
+    sleep 2000000
     exit 0
 fi
 
@@ -77,12 +79,14 @@ getChildCount $name
 count=$fun_ret
 echo child count 3: $count
 
+date
 cmd="kill -9 $pid"
 echo CMD: $cmd
 kill -9 $pid
 
 sleep 1
 
+date
 getChildCount $name
 count=$fun_ret
 echo child count 4: $count
@@ -98,5 +102,13 @@ if [[ $count != 0 ]]; then
     exit 1
 fi
 
-echo Child process is termniated.
-exit 0
+date
+echo Child process is termniated. Test successful
+
+cmd="jobs -p"
+echo CMD: $cmd
+jobs -p
+
+sleep 100000
+date
+exit 1
