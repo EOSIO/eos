@@ -63,6 +63,7 @@ public:
 
    struct get_info_results {
       string                  server_version;
+      chain::chain_id_type    chain_id;
       uint32_t                head_block_num = 0;
       uint32_t                last_irreversible_block_num = 0;
       chain::block_id_type    last_irreversible_block_id;
@@ -381,7 +382,7 @@ public:
    // Only call this after plugin_startup()!
    const controller& chain() const;
 
-   void get_chain_id(chain::chain_id_type& cid) const;
+   chain::chain_id_type get_chain_id() const;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
@@ -392,7 +393,7 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-(server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
+(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )

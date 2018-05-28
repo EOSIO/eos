@@ -16,6 +16,10 @@
 namespace eosio { namespace chain {
 
 struct genesis_state {
+   genesis_state();
+
+   static const string eosio_root_key;
+
    chain_config   initial_configuration = {
       .max_block_net_usage                  = config::default_max_block_net_usage,
       .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
@@ -38,13 +42,8 @@ struct genesis_state {
       .max_authority_depth                  = config::default_max_auth_depth,
    };
 
-   time_point                               initial_timestamp = fc::time_point::from_iso_string( "2018-03-02T12:00:00" );
-   public_key_type                          initial_key = fc::variant("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV").as<public_key_type>();
-
-   /**
-    * Temporary, will be moved elsewhere.
-    */
-   chain_id_type initial_chain_id;
+   time_point                               initial_timestamp;
+   public_key_type                          initial_key;
 
    /**
     * Get the chain_id corresponding to this genesis state.
@@ -58,4 +57,4 @@ struct genesis_state {
 
 
 FC_REFLECT(eosio::chain::genesis_state,
-           (initial_timestamp)(initial_key)(initial_configuration)(initial_chain_id))
+           (initial_timestamp)(initial_key)(initial_configuration))

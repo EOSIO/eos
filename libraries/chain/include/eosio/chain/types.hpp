@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/name.hpp>
+#include <eosio/chain/chain_id_type.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -95,8 +96,6 @@ namespace eosio { namespace chain {
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
-   using chain_id_type = fc::sha256;
-
    using action_name      = name;
    using scope_name       = name;
    using account_name     = name;
@@ -180,7 +179,6 @@ namespace eosio { namespace chain {
 
 
 } }  // eosio::chain
-
 
 FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)

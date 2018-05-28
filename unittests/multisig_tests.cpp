@@ -91,7 +91,7 @@ public:
                                 );
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
       return push_transaction( trx );
    }
    void create_currency( name contract, name manager, asset maxsupply ) {
@@ -420,7 +420,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
 
    create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
+                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
 
    set_code( config::system_account_name, eosio_system_wast );
    set_abi( config::system_account_name, eosio_system_abi );
@@ -431,7 +432,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    create_account_with_resources( N(bob111111111), N(eosio), core_from_string("0.4500"), false );
    create_account_with_resources( N(carol1111111), N(eosio), core_from_string("1.0000"), false );
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
+                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
@@ -541,7 +543,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    create_account_with_resources( N(bob111111111), N(eosio), core_from_string("0.4500"), false );
    create_account_with_resources( N(carol1111111), N(eosio), core_from_string("1.0000"), false );
 
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
+                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};

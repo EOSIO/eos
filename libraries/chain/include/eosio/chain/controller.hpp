@@ -150,11 +150,13 @@ namespace eosio { namespace chain {
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
-         bool set_proposed_producers( vector<producer_key> producers );
+         int64_t set_proposed_producers( vector<producer_key> producers );
 
          bool skip_auth_check()const;
 
          bool contracts_console()const;
+
+         chain_id_type get_chain_id()const;
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
