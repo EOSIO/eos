@@ -459,8 +459,12 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       const std::vector<std::string> key_id_to_wif_pair_strings = options["private-key"].as<std::vector<std::string>>();
       for (const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
       {
-         auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
-         my->_private_keys[key_id_to_wif_pair.first] = key_id_to_wif_pair.second;
+         try {
+            auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
+            my->_private_keys[key_id_to_wif_pair.first] = key_id_to_wif_pair.second;
+         } catch ( fc::exception& e ) {
+            elog("Malformed private key pair");
+         }
       }
    }
 
