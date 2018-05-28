@@ -2,6 +2,8 @@
 
 #include "Platform/Platform.h"
 
+#include <boost/config.hpp>
+#include "../../../chain/include/eosio/chain/wasm_eosio_constraints.hpp"
 #include <string>
 #include <vector>
 #include <string.h>
@@ -128,7 +130,12 @@ namespace Serialization
 	FORCEINLINE void serializeBytes(OutputStream& stream,const U8* bytes,Uptr numBytes)
 	{ memcpy(stream.advance(numBytes),bytes,numBytes); }
 	FORCEINLINE void serializeBytes(InputStream& stream,U8* bytes,Uptr numBytes)
-	{ memcpy(bytes,stream.advance(numBytes),numBytes); }
+	{ 
+      if ( numBytes < eosio::chain::wasm_constraints::wasm_page_size )
+         memcpy(bytes,stream.advance(numBytes),numBytes); 
+      else
+         throw FatalSerializationException(std::string("Trying to deserialize bytes of size : " + std::to_string((uint64_t)numBytes)));
+   }
 	
 	// Serialize basic C++ types.
 	template<typename Stream,typename Value>
@@ -253,6 +260,7 @@ namespace Serialization
 	template<typename Stream>
 	void serialize(Stream& stream,std::string& string)
 	{
+      constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_func_local_bytes;
 		Uptr size = string.size();
 		serializeVarUInt32(stream,size);
 		if(Stream::isInput)
@@ -260,6 +268,8 @@ namespace Serialization
 			// Advance the stream before resizing the string:
 			// try to get a serialization exception before making a huge allocation for malformed input.
 			const U8* inputBytes = stream.advance(size);
+         if (BOOST_UNLIKELY(size >= max_size))
+            throw FatalSerializationException(std::string("Trying to deserialize string of size : " + std::to_string((uint64_t)size) + ", which is over by "+std::to_string(size - max_size )+" bytes"));
 			string.resize(size);
 			memcpy(const_cast<char*>(string.data()),inputBytes,size);
 			string.shrink_to_fit();
@@ -270,6 +280,7 @@ namespace Serialization
 	template<typename Stream,typename Element,typename Allocator,typename SerializeElement>
 	void serializeArray(Stream& stream,std::vector<Element,Allocator>& vector,SerializeElement serializeElement)
 	{
+      constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_func_local_bytes;
 		Uptr size = vector.size();
 		serializeVarUInt32(stream,size);
 		if(Stream::isInput)
@@ -277,12 +288,14 @@ namespace Serialization
 			// Grow the vector one element at a time:
 			// try to get a serialization exception before making a huge allocation for malformed input.
 			vector.clear();
+         if (BOOST_UNLIKELY(size >= max_size))
+            throw FatalSerializationException(std::string("Trying to deserialize array of size : " + std::to_string((uint64_t)size) + ", which is over by "+std::to_string(size - max_size )+" bytes"));
 			for(Uptr index = 0;index < size;++index)
 			{
 				vector.push_back(Element());
 				serializeElement(stream,vector.back());
 			}
-			vector.shrink_to_fit();
+         vector.shrink_to_fit();
 		}
 		else
 		{
