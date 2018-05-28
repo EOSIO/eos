@@ -31,7 +31,7 @@ namespace Serialization
 		inline U8* advance(Uptr numBytes)
 		{
 			if(next + numBytes > end) { extendBuffer(numBytes); }
-			assert(next + numBytes <= end);
+			WAVM_ASSERT_THROW(next + numBytes <= end);
 
 			U8* data = next;
 			next += numBytes;
