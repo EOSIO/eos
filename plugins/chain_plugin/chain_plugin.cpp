@@ -20,8 +20,6 @@
 #include <eosio/utilities/common.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
-#include <eosio/chain/plugin_interface.hpp>
-
 #include <boost/signals2/connection.hpp>
 
 #include <fc/io/json.hpp>
@@ -354,7 +352,7 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const chain::packed_transaction& trx, chain_apis::next_function<chain::transaction_trace_ptr> next) {
+void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
    try {
       auto trace = my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx), false);
       next(trace);

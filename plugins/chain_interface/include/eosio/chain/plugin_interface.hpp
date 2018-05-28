@@ -16,6 +16,9 @@ namespace eosio { namespace chain { namespace plugin_interface {
    using namespace eosio::chain;
    using namespace appbase;
 
+   template<typename T>
+   using next_function = std::function<void(fc::static_variant<fc::exception_ptr, T>)>;
+
    struct chain_plugin_interface;
    
    namespace channels {
@@ -46,6 +49,7 @@ namespace eosio { namespace chain { namespace plugin_interface {
          // synchronously push a block/trx to a single provider
          using block_sync            = method_decl<chain_plugin_interface, void(const signed_block_ptr&), first_provider_policy>;
          using transaction_sync      = method_decl<chain_plugin_interface, transaction_trace_ptr(const packed_transaction_ptr&, bool), first_provider_policy>;
+         using transaction_async     = method_decl<chain_plugin_interface, void(const packed_transaction_ptr&, bool, next_function<transaction_trace_ptr>)>;
       }
    }
 
