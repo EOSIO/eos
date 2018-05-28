@@ -163,6 +163,9 @@ struct controller_impl {
       FC_ASSERT( log_head );
       auto lh_block_num = log_head->block_num();
 
+      emit( self.irreversible_block, s );
+      db.commit( s->block_num );
+
       if( s->block_num <= lh_block_num ) {
 //         edump((s->block_num)("double call to on_irr"));
 //         edump((s->block_num)(s->block->previous)(log_head->id()));
@@ -172,9 +175,6 @@ struct controller_impl {
       FC_ASSERT( s->block_num - 1  == lh_block_num, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
       FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
       blog.append(s->block);
-
-      emit( self.irreversible_block, s );
-      db.commit( s->block_num );
 
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.begin();
@@ -750,8 +750,10 @@ struct controller_impl {
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
          push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string()));
       } catch ( ... ) {
-         ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+         wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
       }
 
       clear_expired_input_transactions();
