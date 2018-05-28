@@ -84,7 +84,7 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
 { try {
    using boost::adaptors::transformed;
 
-   constexpr size_t recovery_cache_size = 100000;
+   constexpr size_t recovery_cache_size = 1000;
    static recovery_cache_type recovery_cache;
    const digest_type digest = sig_digest(chain_id, cfd);
 
