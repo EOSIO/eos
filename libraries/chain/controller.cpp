@@ -1398,5 +1398,9 @@ void controller::validate_tapos( const transaction& trx )const { try {
               ("tapos_summary", tapos_block_summary));
 } FC_CAPTURE_AND_RETHROW() }
 
+bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
+   return db().find<transaction_object, by_trx_id>(id);
+}
+
 
 } } /// eosio::chain
