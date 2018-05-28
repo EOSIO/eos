@@ -186,7 +186,7 @@
 				exit 1
 		esac
 
-		export BOOST_ROOT="${HOME}/opt/boost_1_66_0"
+		export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 		OPENSSL_ROOT_DIR=/usr/include/openssl
 		WASM_ROOT="${HOME}/opt/wasm"
 	fi

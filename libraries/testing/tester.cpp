@@ -37,10 +37,11 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::init(bool push_genesis) {
-      cfg.block_log_dir      = tempdir.path() / "blocklog";
-      cfg.shared_memory_dir  = tempdir.path() / "shared";
-      cfg.shared_memory_size = 1024*1024*8;
+      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
+      cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
+      cfg.state_size = 1024*1024*8;
       cfg.reversible_cache_size = 1024*1024*8;
+      cfg.contracts_console = true;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
@@ -267,7 +268,7 @@ namespace eosio { namespace testing {
                                 });
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -293,9 +294,7 @@ namespace eosio { namespace testing {
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto c = packed_transaction::none;
 
-      if( fc::raw::pack_size(trx) > 1000 )
-      {
-         wdump((fc::raw::pack_size(trx)));
+      if( fc::raw::pack_size(trx) > 1000 ) {
          c = packed_transaction::zlib;
       }
 
@@ -313,7 +312,7 @@ namespace eosio { namespace testing {
       trx.actions.emplace_back(std::move(act));
       set_transaction_headers(trx);
       if (authorizer) {
-         trx.sign(get_private_key(authorizer, "active"), chain_id_type());
+         trx.sign(get_private_key(authorizer, "active"), control->get_chain_id());
       }
       try {
          push_transaction(trx);
@@ -370,7 +369,7 @@ namespace eosio { namespace testing {
       trx.actions.emplace_back( get_action( code, acttype, auths, data ) );
       set_transaction_headers( trx, expiration, delay_sec );
       for (const auto& auth : auths) {
-         trx.sign( get_private_key( auth.actor, auth.permission.to_string() ), chain_id_type() );
+         trx.sign( get_private_key( auth.actor, auth.permission.to_string() ), control->get_chain_id() );
       }
 
       return push_transaction( trx );
@@ -412,7 +411,7 @@ namespace eosio { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
-         trx.sign( *iter, chain_id_type() );
+         trx.sign( *iter, control->get_chain_id() );
       return push_transaction( trx );
    }
 
@@ -458,7 +457,7 @@ namespace eosio { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
 
-      trx.sign( get_private_key( from, "active" ), chain_id_type() );
+      trx.sign( get_private_key( from, "active" ), control->get_chain_id() );
       return push_transaction( trx, fc::time_point::maximum(), billed_cpu_time_us );
    }
 
@@ -492,7 +491,7 @@ namespace eosio { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
 
-      trx.sign( get_private_key( from, name(config::active_name).to_string() ), chain_id_type()  );
+      trx.sign( get_private_key( from, name(config::active_name).to_string() ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -519,7 +518,7 @@ namespace eosio { namespace testing {
       abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
 
-      trx.sign( get_private_key( currency, name(config::active_name).to_string() ), chain_id_type()  );
+      trx.sign( get_private_key( currency, name(config::active_name).to_string() ), control->get_chain_id()  );
       return push_transaction( trx );
    }
 
@@ -530,7 +529,7 @@ namespace eosio { namespace testing {
       trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
                                 linkauth(account, code, type, req));
       set_transaction_headers(trx);
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
 
       push_transaction( trx );
    }
@@ -542,7 +541,7 @@ namespace eosio { namespace testing {
       trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
                                 unlinkauth(account, code, type ));
       set_transaction_headers(trx);
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
 
       push_transaction( trx );
    }
@@ -566,7 +565,7 @@ namespace eosio { namespace testing {
 
          set_transaction_headers(trx);
       for (const auto& key: keys) {
-         trx.sign( key, chain_id_type()  );
+         trx.sign( key, control->get_chain_id()  );
       }
 
       push_transaction( trx );
@@ -592,7 +591,7 @@ namespace eosio { namespace testing {
 
          set_transaction_headers(trx);
          for (const auto& key: keys) {
-            trx.sign( key, chain_id_type()  );
+            trx.sign( key, control->get_chain_id()  );
          }
 
          push_transaction( trx );
@@ -622,9 +621,9 @@ namespace eosio { namespace testing {
 
       set_transaction_headers(trx);
       if( signer ) {
-         trx.sign( *signer, chain_id_type()  );
+         trx.sign( *signer, control->get_chain_id()  );
       } else {
-         trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+         trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
       }
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account) )
@@ -641,9 +640,9 @@ namespace eosio { namespace testing {
 
       set_transaction_headers(trx);
       if( signer ) {
-         trx.sign( *signer, chain_id_type()  );
+         trx.sign( *signer, control->get_chain_id()  );
       } else {
-         trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+         trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
       }
       push_transaction( trx );
    }

@@ -56,6 +56,7 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
+   chain_id_type                  chain_id;
    bool                           replaying = false;
    bool                           replaying_irreversible = false;
 
@@ -92,18 +93,19 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
-    db( cfg.shared_memory_dir,
+    db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.shared_memory_size ),
-    reversible_blocks( cfg.block_log_dir/"reversible",
+        cfg.state_size ),
+    reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size ),
-    blog( cfg.block_log_dir ),
-    fork_db( cfg.shared_memory_dir ),
+    blog( cfg.blocks_dir ),
+    fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
-    conf( cfg )
+    conf( cfg ),
+    chain_id( cfg.genesis.compute_chain_id() )
    {
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -224,7 +226,7 @@ struct controller_impl {
             replaying = false;
 
          } else if( !end ) {
-            blog.append( head->block );
+            blog.reset_to_genesis( conf.genesis, head->block );
          }
       }
 
@@ -365,6 +367,7 @@ struct controller_impl {
         bs.block_id = head->id;
       });
 
+      conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
       });
@@ -644,7 +647,7 @@ struct controller_impl {
             if( !self.skip_auth_check() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
-                       trx->recover_keys(),
+                       trx->recover_keys( chain_id ),
                        {},
                        trx_context.delay,
                        [](){}
@@ -1217,17 +1220,17 @@ void controller::pop_block() {
    my->pop_block();
 }
 
-bool controller::set_proposed_producers( vector<producer_key> producers ) {
+int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
    const auto& gpo = get_global_properties();
    auto cur_block_num = head_block_num() + 1;
 
    if( gpo.proposed_schedule_block_num.valid() ) {
       if( *gpo.proposed_schedule_block_num != cur_block_num )
-         return false; // there is already a proposed schedule set in a previous block, wait for it to become pending
+         return -1; // there is already a proposed schedule set in a previous block, wait for it to become pending
 
       if( std::equal( producers.begin(), producers.end(),
                       gpo.proposed_schedule.producers.begin(), gpo.proposed_schedule.producers.end() ) )
-         return false; // the proposed producer schedule does not change
+         return -1; // the proposed producer schedule does not change
    }
 
    producer_schedule_type sch;
@@ -1248,15 +1251,17 @@ bool controller::set_proposed_producers( vector<producer_key> producers ) {
    }
 
    if( std::equal( producers.begin(), producers.end(), begin, end ) )
-      return false; // the producer schedule would not change
+      return -1; // the producer schedule would not change
 
    sch.producers = std::move(producers);
+
+   int64_t version = sch.version;
 
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;
       gp.proposed_schedule = std::move(sch);
    });
-   return true;
+   return version;
 }
 
 const producer_schedule_type&    controller::active_producers()const {
@@ -1281,6 +1286,14 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 
 bool controller::skip_auth_check()const {
    return my->replaying_irreversible && !my->conf.force_all_checks;
+}
+
+bool controller::contracts_console()const {
+   return my->conf.contracts_console;
+}
+
+chain_id_type controller::get_chain_id()const {
+   return my->chain_id;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

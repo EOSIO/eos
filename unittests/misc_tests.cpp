@@ -532,51 +532,6 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE( suffix_test ) try {
-   uint64_t com = name( "com" );
-   uint64_t order = com;
-
-   uint64_t name_com = name("name.com");
-   uint64_t name_com_au = name("name.com.au");
-
-   //std::string str(13,'.');
-
-   uint64_t tmp = com;
-   auto print = []( uint64_t tmp ) {
-      static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
-
-      uint64_t suffix = 0;
-      bool endsuffix = false;
-      uint32_t offset = 0;
-      for( uint32_t i = 0; i <= 12; ++i, ++offset ) {
-         auto p = tmp >> 59;
-         char c = charmap[p];
-
-         if( !p ) {
-            endsuffix = true;
-         } else {
-            if( !endsuffix ) {
-               suffix |= uint64_t(p) << (59-(5*offset));
-            }
-         }
-         if( endsuffix && p ) {
-            endsuffix = false;
-            offset = 0;
-            suffix = uint64_t(p) << (59-(5*offset));
-         }
-         std::cerr << c;
-       //  str[12-i] = c;
-         tmp <<= 5;
-      }
-   //   std::cerr << "  suffix: " << name(suffix) <<"\n";
-   };
-
-   print( com );
-   //std::cerr <<"\n";
-   print( name_com );
-   print( name_com_au );
-
-} FC_LOG_AND_RETHROW() 
 
 BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
@@ -614,9 +569,9 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    trx.expiration = fc::time_point::now();
    trx.validate();
    BOOST_CHECK_EQUAL(0, trx.signatures.size());
-   ((const signed_transaction &)trx).sign( test.get_private_key( N(eosio), "active" ), chain_id_type());
+   ((const signed_transaction &)trx).sign( test.get_private_key( N(eosio), "active" ), test.control->get_chain_id());
    BOOST_CHECK_EQUAL(0, trx.signatures.size());
-   trx.sign( test.get_private_key( N(eosio), "active" ), chain_id_type()  );
+   trx.sign( test.get_private_key( N(eosio), "active" ), test.control->get_chain_id()  );
    BOOST_CHECK_EQUAL(1, trx.signatures.size());
    trx.validate();
 

@@ -256,9 +256,8 @@ fc::variant determine_required_keys(const signed_transaction& trx) {
    return required_keys["required_keys"];
 }
 
-void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
-   // TODO determine chain id
-   fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id_type{})};
+void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const chain_id_type& chain_id) {
+   fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id)};
    const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
    trx = signed_trx.as<signed_transaction>();
 }
@@ -289,7 +288,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
-      sign_transaction(trx, required_keys);
+      sign_transaction(trx, required_keys, info.chain_id);
    }
 
    if (!tx_dont_broadcast) {
@@ -340,45 +339,49 @@ void print_action_tree( const fc::variant& action ) {
 }
 
 void print_result( const fc::variant& result ) { try {
-      const auto& processed = result["processed"];
-      const auto& transaction_id = processed["id"].as_string();
-      string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
-      int64_t net = -1;
-      int64_t cpu = -1;
-      if (processed.get_object().contains("receipt")) {
-         const auto& receipt = processed["receipt"];
-         if (receipt.is_object()) {
-            net = receipt["net_usage_words"].as_int64() * 8;
-            cpu = receipt["cpu_usage_us"].as_int64();
+      if (result.is_object() && result.get_object().contains("processed")) {
+         const auto& processed = result["processed"];
+         const auto& transaction_id = processed["id"].as_string();
+         string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+         int64_t net = -1;
+         int64_t cpu = -1;
+         if( processed.get_object().contains( "receipt" )) {
+            const auto& receipt = processed["receipt"];
+            if( receipt.is_object()) {
+               net = receipt["net_usage_words"].as_int64() * 8;
+               cpu = receipt["cpu_usage_us"].as_int64();
+            }
          }
-      }
 
-      cerr << status << " transaction: " << transaction_id << "  ";
-      if (net < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << net;
-      }
-      cerr << " bytes  ";
-      if (cpu < 0) {
-         cerr << "<unknown>";
-      } else {
-         cerr << cpu;
-      }
+         cerr << status << " transaction: " << transaction_id << "  ";
+         if( net < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << net;
+         }
+         cerr << " bytes  ";
+         if( cpu < 0 ) {
+            cerr << "<unknown>";
+         } else {
+            cerr << cpu;
+         }
 
-      cerr << " us\n";
+         cerr << " us\n";
 
-      if( status == "failed" ) {
-         auto soft_except = processed["except"].as<optional<fc::exception>>();
-         if( soft_except ) {
-            edump((soft_except->to_detail_string()));
+         if( status == "failed" ) {
+            auto soft_except = processed["except"].as<optional<fc::exception>>();
+            if( soft_except ) {
+               edump((soft_except->to_detail_string()));
+            }
+         } else {
+            const auto& actions = processed["action_traces"].get_array();
+            for( const auto& a : actions ) {
+               print_action_tree( a );
+            }
+            wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
          }
       } else {
-         const auto& actions = processed["action_traces"].get_array();
-         for( const auto& a : actions ) {
-            print_action_tree( a );
-         }
-         wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
+         cerr << fc::json::to_pretty_string( result ) << endl;
       }
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
@@ -387,7 +390,7 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
    auto result = push_actions( move(actions), extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
       print_result( result );
    }
@@ -397,9 +400,8 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    auto result = push_transaction(trx, extra_kcpu, compression);
 
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result );
+      cout << fc::json::to_pretty_string( result ) << endl;
    } else {
-      auto trace = result["processed"].as<eosio::chain::transaction_trace>();
       print_result( result );
    }
 }
@@ -477,7 +479,6 @@ fc::variant regproducer_variant(const account_name& producer,
          ("max_inline_action_size", config::default_max_inline_action_size)
          ("max_inline_depth", config::default_max_inline_action_depth)
          ("max_authority_depth", config::default_max_auth_depth)
-         ("max_generated_transaction_count", config::default_max_gen_trx_count)
          ("max_storage_size", max_storage_size)
          ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
          ("storage_reserve_ratio", storage_reserve_ratio);
@@ -1051,7 +1052,7 @@ struct list_producers_subcommand {
             weight = 1;
          printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
          for ( auto& row : result.rows )
-            printf("%-13.13s %-54.54s %-59.59s %1.4f\n", 
+            printf("%-13.13s %-54.54s %-59.59s %1.4f\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
@@ -1523,18 +1524,27 @@ int main( int argc, char** argv ) {
    // get code
    string codeFilename;
    string abiFilename;
+   bool code_as_wasm = false;
    auto getCode = get->add_subcommand("code", localized("Retrieve the code and ABI for an account"), false);
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
-   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
+   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast/wasm to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
+   getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
 
       std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
 
       if( codeFilename.size() ){
-         std::cout << localized("saving wast to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
-         auto code = result["wast"].as_string();
+         std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
+         string code;
+
+         if(code_as_wasm) {
+            code = result["wasm"].as_string();
+         } else {
+            code = result["wast"].as_string();
+         }
+
          std::ofstream out( codeFilename.c_str() );
          out << code;
       }
@@ -1543,6 +1553,24 @@ int main( int argc, char** argv ) {
          auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
+      }
+   });
+
+   // get abi
+   string filename;
+   auto getAbi = get->add_subcommand("abi", localized("Retrieve the ABI for an account"), false);
+   getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
+   getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
+   getAbi->set_callback([&] {
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+
+      auto abi  = fc::json::to_pretty_string( result["abi"] );
+      if( filename.size() ) {
+         std::cout << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+         std::ofstream abiout( filename.c_str() );
+         abiout << abi;
+      } else {
+         std::cout << abi << "\n";
       }
    });
 
@@ -2109,16 +2137,28 @@ int main( int argc, char** argv ) {
    // sign subcommand
    string trx_json_to_sign;
    string str_private_key;
+   string str_chain_id;
    bool push_trx = false;
 
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
    sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
    sign->set_callback([&] {
       signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
+
+      fc::optional<chain_id_type> chain_id;
+
+      if( str_chain_id.size() == 0 ) {
+         ilog( "grabbing chain_id from nodeos" );
+         auto info = get_info();
+         chain_id = info.chain_id;
+      } else {
+         chain_id = chain_id_type(str_chain_id);
+      }
 
       if( str_private_key.size() == 0 ) {
          std::cerr << localized("private key: ");
@@ -2128,7 +2168,7 @@ int main( int argc, char** argv ) {
       }
 
       auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
-      trx.sign(priv_key, chain_id_type{});
+      trx.sign(priv_key, *chain_id);
 
       if(push_trx) {
          auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));

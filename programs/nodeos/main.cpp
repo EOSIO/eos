@@ -80,11 +80,13 @@ void initialize_logging()
 }
 
 enum return_codes {
-   OTHER_FAIL      = -2,
-   INITIALIZE_FAIL = -1,
-   SUCCESS         = 0,
-   BAD_ALLOC       = 1,
-   FIXED_REVERSIBLE = 2
+   OTHER_FAIL        = -2,
+   INITIALIZE_FAIL   = -1,
+   SUCCESS           = 0,
+   BAD_ALLOC         = 1,
+   DATABASE_DIRTY    = 2,
+   FIXED_REVERSIBLE  = 3,
+   EXTRACTED_GENESIS = 4
 };
 
 int main(int argc, char** argv)
@@ -103,6 +105,8 @@ int main(int argc, char** argv)
       ilog("eosio root is ${root}", ("root", root.string()));
       app().startup();
       app().exec();
+   } catch( const extract_genesis_state_exception& e ) {
+      return EXTRACTED_GENESIS;
    } catch( const fixed_reversible_db_exception& e ) {
       return FIXED_REVERSIBLE;
    } catch( const fc::exception& e ) {
@@ -113,6 +117,17 @@ int main(int argc, char** argv)
       return BAD_ALLOC;
    } catch( const boost::exception& e ) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
+      return OTHER_FAIL;
+   } catch( const std::runtime_error& e ) {
+      if( std::string(e.what()) == "database dirty flag set" ) {
+         elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
+         return DATABASE_DIRTY;
+      } else if( std::string(e.what()) == "database metadata dirty flag set" ) {
+         elog( "database metadata dirty flag set (likely due to unclean shutdown): replay required" );
+         return DATABASE_DIRTY;
+      } else {
+         elog( "${e}", ("e",e.what()));
+      }
       return OTHER_FAIL;
    } catch( const std::exception& e ) {
       elog("${e}", ("e",e.what()));

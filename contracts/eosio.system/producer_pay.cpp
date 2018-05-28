@@ -47,10 +47,7 @@ namespace eosiosystem {
       if( timestamp.slot - _gstate.last_producer_schedule_update.slot > 120 ) {
          update_elected_producers( timestamp );
          
-         print( "maybe update bids \n" );
-
          if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
-            print( "update bids" );
             name_bid_table bids(_self,_self);
             auto idx = bids.get_index<N(highbid)>();
             auto highest = idx.begin();
@@ -95,6 +92,15 @@ namespace eosiosystem {
          INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
                                                     {N(eosio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), N(eosio.saving), asset(to_savings), "unallocated inflation" } );
+
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), N(eosio.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
+
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), N(eosio.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
+
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
          _gstate.savings         += to_savings;
@@ -113,8 +119,6 @@ namespace eosiosystem {
       if( producer_per_vote_pay < min_pervote_daily_pay ) {
          producer_per_vote_pay = 0;
       }
-      int64_t total_pay            = producer_per_block_pay + producer_per_vote_pay;
-
       _gstate.pervote_bucket      -= producer_per_vote_pay;
       _gstate.perblock_bucket     -= producer_per_block_pay;
       _gstate.total_unpaid_blocks -= prod.unpaid_blocks;
@@ -124,9 +128,13 @@ namespace eosiosystem {
           p.unpaid_blocks = 0;
       });
       
-      if( total_pay > 0 ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                       { N(eosio), owner, asset(total_pay), std::string("producer pay") } );
+      if( producer_per_block_pay > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.bpay),N(active)},
+                                                       { N(eosio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+      }
+      if( producer_per_vote_pay > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.vpay),N(active)},
+                                                       { N(eosio.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
       }
    }
 
