@@ -247,7 +247,7 @@ namespace IR
 			const ResultType defaultTargetArgumentType = getBranchTargetByDepth(imm.defaultTargetDepth).branchArgumentType;
 			popAndValidateResultType("br_table argument",defaultTargetArgumentType);
 
-			assert(imm.branchTableIndex < functionDef.branchTables.size());
+			WAVM_ASSERT_THROW(imm.branchTableIndex < functionDef.branchTables.size());
 			const std::vector<U32>& targetDepths = functionDef.branchTables[imm.branchTableIndex];
 			for(Uptr targetIndex = 0;targetIndex < targetDepths.size();++targetIndex)
 			{
