@@ -750,8 +750,10 @@ struct controller_impl {
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
          push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string()));
       } catch ( ... ) {
-         ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+         wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
       }
 
       clear_expired_input_transactions();
