@@ -303,10 +303,10 @@ namespace eosio {
             my->server.listen(*my->listen_endpoint);
             my->server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "http: ${e}", ("e",e.to_detail_string()));
+            elog( "http service failed to start: ${e}", ("e",e.to_detail_string()));
             throw;
          } catch ( const std::exception& e ){
-            elog( "http: ${e}", ("e",e.what()));
+            elog( "http service failed to start: ${e}", ("e",e.what()));
             throw;
          } catch (...) {
             elog("error thrown from http io service");
