@@ -216,7 +216,7 @@
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI' )
 	if [ "${BVERSION}" != "1_67" ]; then
 		printf "\\tRemoving existing boost libraries in %s/opt/boost*.\\n" "${HOME}"
-		if ! rm -rf "${HOME}/opt/boost*"
+		if ! rm -rf "${HOME}"/opt/boost*
 		then
 			printf "\\n\\tUnable to remove deprecated boost libraries at this time.\\n"
 			printf "\\n\\tExiting now.\\n"
@@ -254,13 +254,13 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! ./bootstrap.sh "--prefix=$BOOST_ROOT"
+		if ! ./bootstrap.sh "--prefix=${BOOST_ROOT}"
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 0\\n"
 			printf "\\n\\tExiting now.\\n"
 			exit 1
 		fi
-		if ! ./b2 install
+		if ! "${TEMP_DIR}"/boost_1_67_0/b2 install
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 1\\n"
 			printf "\\n\\tExiting now.\\n"
@@ -272,6 +272,7 @@
 			printf "\\n\\tExiting now.\\n"
 			exit 1
 		fi
+		printf "\\tBoost successfully installed @ %s/opt/boost_1_67_0.\\n" "${HOME}"
 	else
 		printf "\\tBoost 1.67.0 found at %s/opt/boost_1_67_0.\\n" "${HOME}"
 	fi

@@ -125,8 +125,9 @@
 
 	printf "\\n\\tYUM repository successfully updated.\\n\\n"
 
-	DEP_ARRAY=( git autoconf automake bzip2 libtool ocaml.x86_64 doxygen graphviz-devel.x86_64 libicu-devel.x86_64 \
-	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64)
+	DEP_ARRAY=( git autoconf automake bzip2 libtool ocaml.x86_64 doxygen graphviz-devel.x86_64 \
+	libicu-devel.x86_64 bzip2.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
+	python-devel.x86_64 gettext-devel.x86_64)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -300,9 +301,9 @@
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep "#define BOOST_VERSION" "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
 	| tail -1 | tr -s ' ' | cut -d\  -f3)
-	if [ "${BVERSION}" != "106600" ]; then
+	if [ "${BVERSION}" != "106700" ]; then
 		printf "\\tRemoving existing boost libraries in %s/opt/boost* .\\n" "${HOME}"
-		if ! rm -rf "${HOME}/opt/boost*"
+		if ! rm -rf "${HOME}"/opt/boost*
 		then
 			printf "\\n\\tUnable to remove deprecated boost libraries at %s/opt/boost*.\\n" "${HOME}"
 			printf "\\n\\tExiting now.\\n\\n"
@@ -345,7 +346,7 @@
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! ./b2 install
+		if ! "${TEMP_DIR}"/boost_1_67_0/b2 -j2 install
 		then
 			printf "\\n\\tInstallation of boost libraries failed with the above error. 1\\n"
 			printf "\\n\\tExiting now.\\n\\n"

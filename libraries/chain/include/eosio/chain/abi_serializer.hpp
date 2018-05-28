@@ -37,7 +37,6 @@ struct abi_serializer {
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
 
-   bool has_cycle(const vector<pair<string, string>>& sedges)const;
    void validate()const;
 
    type_name resolve_type(const type_name& t)const;
