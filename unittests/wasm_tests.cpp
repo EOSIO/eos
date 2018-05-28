@@ -19,6 +19,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
+#include <fc/io/fstream.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -1470,6 +1472,168 @@ BOOST_FIXTURE_TEST_CASE( trigger_serialization_errors, TESTER) try {
    BOOST_CHECK_THROW(set_code(N(bbb), malformed_wasm), wasm_serialization_error);
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
+
+   produce_blocks(2);
+
+   create_accounts( {N(bad)} );
+   for( auto file : { "fuzz5.wsam", "fuzz1.wasm", "fuzz2.wasm", "fuzz6.wasm" } ) {
+      idump((file));
+      produce_blocks(2);
+      try {
+         string wasm;
+         fc::read_file_contents( file, wasm );
+         wdump((wasm.size()));
+         vector<uint8_t> data(wasm.size());
+         memcpy( data.data(), wasm.data(), wasm.size() );
+         set_code(N(bad), data );
+      } catch ( const std::bad_alloc& a ) {
+         elog( "bad alloc" );
+         throw;
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string())(file));
+      } catch ( ... ) {
+         elog( "unhandled exception: ${file}", ("file",file) );
+      }
+   }
+
+} FC_LOG_AND_RETHROW() 
+
+/**
+ * This test currently results in this error from time to time
+ *
+ * unit_test(63031,0x7fffdb27d3c0) malloc: *** mach_vm_map(size=140734729523200) failed (error code=3)
+ * *** error: can't allocate region
+ * *** set a breakpoint in malloc_error_break to debug
+ */
+BOOST_FIXTURE_TEST_CASE( fuzz3, TESTER ) try {
+
+   produce_blocks(2);
+
+   create_accounts( {N(bad)} );
+   for( auto file : {  "fuzz3.wasm"  } ) {
+      idump((file));
+      produce_blocks(2);
+      try {
+         string wasm;
+         fc::read_file_contents( file, wasm );
+         wdump((wasm.size()));
+         vector<uint8_t> data(wasm.size());
+         memcpy( data.data(), wasm.data(), wasm.size() );
+         set_code(N(bad), data );
+      produce_blocks(2);
+      } catch ( const std::bad_alloc& a ) {
+         elog( "bad alloc" );
+         throw;
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string())(file));
+      } catch ( ... ) {
+         elog( "unhandled exception: ${file}", ("file",file) );
+      }
+   }
+
+} FC_LOG_AND_RETHROW() 
+
+BOOST_FIXTURE_TEST_CASE( fuzz4, TESTER ) try {
+
+   produce_blocks(2);
+
+   create_accounts( {N(bad)} );
+   for( auto file : { "fuzz4.wasm"  } ) {
+      idump((file));
+      produce_blocks(2);
+      try {
+         string wasm;
+         fc::read_file_contents( file, wasm );
+         wdump((wasm.size()));
+         vector<uint8_t> data(wasm.size());
+         memcpy( data.data(), wasm.data(), wasm.size() );
+         set_code(N(bad), data );
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string())(file));
+      } catch ( ... ) {
+         elog( "unhandled exception: ${file}", ("file",file) );
+      }
+   }
+
+} FC_LOG_AND_RETHROW() 
+
+
+BOOST_FIXTURE_TEST_CASE( fuzz2, TESTER ) try {
+
+   produce_blocks(2);
+
+   create_accounts( {N(bad)} );
+   for( auto file : { "fuzz7.wsam", "fuzz8.wasm", "fuzz9.wasm", "fuzz10.wasm", "fuzz11.wasm", "fuzz12.wasm" } ) {
+      idump((file));
+      produce_blocks(2);
+      try {
+         string wasm;
+         fc::read_file_contents( file, wasm );
+         wdump((wasm.size()));
+         vector<uint8_t> data(wasm.size());
+         memcpy( data.data(), wasm.data(), wasm.size() );
+         set_code(N(bad), data );
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string())(file));
+      } catch ( ... ) {
+         elog( "unhandled exception: ${file}", ("file",file) );
+      }
+   }
+
+} FC_LOG_AND_RETHROW() 
+
+BOOST_FIXTURE_TEST_CASE( fuzz8, TESTER ) try {
+
+   produce_blocks(2);
+
+   create_accounts( {N(bad)} );
+   for( auto file : { "fuzz8.wasm"  } ) {
+      idump((file));
+      produce_blocks(2);
+      try {
+         string wasm;
+         fc::read_file_contents( file, wasm );
+         wdump((wasm.size()));
+         vector<uint8_t> data(wasm.size());
+         memcpy( data.data(), wasm.data(), wasm.size() );
+         set_code(N(bad), data );
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string())(file));
+      } catch ( ... ) {
+         elog( "unhandled exception: ${file}", ("file",file) );
+      }
+   }
+
+} FC_LOG_AND_RETHROW() 
+
+
+BOOST_FIXTURE_TEST_CASE( fuzz9, TESTER ) try {
+
+   produce_blocks(2);
+
+   create_accounts( {N(bad)} );
+   for( auto file : { "fuzz9.wasm"  } ) {
+      idump((file));
+      produce_blocks(2);
+      try {
+         string wasm;
+         fc::read_file_contents( file, wasm );
+         wdump((wasm.size()));
+         vector<uint8_t> data(wasm.size());
+         memcpy( data.data(), wasm.data(), wasm.size() );
+         set_code(N(bad), data );
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string())(file));
+      } catch ( ... ) {
+         elog( "unhandled exception: ${file}", ("file",file) );
+      }
+   }
+
+} FC_LOG_AND_RETHROW() 
+
+
 
 BOOST_FIXTURE_TEST_CASE( protect_injected, TESTER ) try {
    produce_blocks(2);

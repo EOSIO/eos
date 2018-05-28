@@ -380,9 +380,11 @@ namespace WASM
 		serializeConstant(stream,"expected user section (section ID 0)",(U8)SectionType::user);
 		ArrayOutputStream sectionStream;
 		serialize(sectionStream,userSection.name);
+    userSection.data.resize( sectionStream.capacity() ? sectionStream.capacity() : 1 );
 		serializeBytes(sectionStream,userSection.data.data(),userSection.data.size());
 		std::vector<U8> sectionBytes = sectionStream.getBytes();
 		serialize(stream,sectionBytes);
+    if( !sectionStream.capacity() ) throw std::runtime_error( "empty section" );
 	}
 	
 	void serialize(InputStream& stream,UserSection& userSection)
@@ -489,6 +491,10 @@ namespace WASM
 		{
 			LocalSet localSet;
 			serialize(bodyStream,localSet);
+
+      if( localSet.num > 1024*1024 )
+         throw FatalSerializationException( "localSet.num too large" );
+
 			for(Uptr index = 0;index < localSet.num;++index) { functionDef.nonParameterLocalTypes.push_back(localSet.type); }
 		}
 

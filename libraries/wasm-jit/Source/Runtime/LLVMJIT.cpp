@@ -575,7 +575,11 @@ namespace LLVMJIT
 		fpm->add(llvm::createCFGSimplificationPass());
 		fpm->add(llvm::createJumpThreadingPass());
 		fpm->add(llvm::createConstantPropagationPass());
-		fpm->doInitialization();
+
+		if( !fpm->doInitialization() ) {
+       throw std::runtime_error( "do initialization failed" );
+    }
+
 		for(auto functionIt = llvmModule->begin();functionIt != llvmModule->end();++functionIt)
 		{ fpm->run(*functionIt); }
 		delete fpm;
