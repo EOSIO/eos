@@ -13,10 +13,13 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include <fc/static_variant.hpp>
 
 namespace fc { class variant; }
 
@@ -331,19 +334,19 @@ public:
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
-   push_block_results push_block(const push_block_params& params);
+   void push_block(const push_block_params& params, chain::plugin_interface::next_function<push_block_results> next);
 
    using push_transaction_params = fc::variant_object;
    struct push_transaction_results {
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
-   push_transaction_results push_transaction(const push_transaction_params& params);
+   void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
 
 
    using push_transactions_params  = vector<push_transaction_params>;
    using push_transactions_results = vector<push_transaction_results>;
-   push_transactions_results push_transactions(const push_transactions_params& params);
+   void push_transactions(const push_transactions_params& params, chain::plugin_interface::next_function<push_transactions_results> next);
 
    friend resolver_factory<read_write>;
 };
@@ -366,7 +369,7 @@ public:
    chain_apis::read_write get_read_write_api();
 
    void accept_block( const chain::signed_block_ptr& block );
-   chain::transaction_trace_ptr accept_transaction(const chain::packed_transaction& trx);
+   void accept_transaction(const chain::packed_transaction& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 

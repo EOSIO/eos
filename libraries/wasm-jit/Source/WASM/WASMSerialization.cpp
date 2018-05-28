@@ -251,7 +251,7 @@ namespace WASM
 	}
 	void serialize(OutputStream& stream,BranchTableImm& imm,FunctionDef& functionDef)
 	{
-		assert(imm.branchTableIndex < functionDef.branchTables.size());
+		WAVM_ASSERT_THROW(imm.branchTableIndex < functionDef.branchTables.size());
 		std::vector<U32>& branchTable = functionDef.branchTables[imm.branchTableIndex];
 		serializeArray(stream,branchTable,[](OutputStream& stream,U32& targetDepth){serializeVarUInt32(stream,targetDepth);});
 		serializeVarUInt32(stream,imm.defaultTargetDepth);
@@ -368,7 +368,7 @@ namespace WASM
 	template<typename SerializeSection>
 	void serializeSection(InputStream& stream,SectionType expectedType,SerializeSection serializeSectionBody)
 	{
-		assert((SectionType)*stream.peek(sizeof(SectionType)) == expectedType);
+		WAVM_ASSERT_THROW((SectionType)*stream.peek(sizeof(SectionType)) == expectedType);
 		stream.advance(sizeof(SectionType));
 		Uptr numSectionBytes = 0;
 		serializeVarUInt32(stream,numSectionBytes);
@@ -382,9 +382,11 @@ namespace WASM
 		serializeConstant(stream,"expected user section (section ID 0)",(U8)SectionType::user);
 		ArrayOutputStream sectionStream;
 		serialize(sectionStream,userSection.name);
+		userSection.data.resize( sectionStream.capacity() ? sectionStream.capacity() : 1 );
 		serializeBytes(sectionStream,userSection.data.data(),userSection.data.size());
 		std::vector<U8> sectionBytes = sectionStream.getBytes();
 		serialize(stream,sectionBytes);
+		if( !sectionStream.capacity() ) throw FatalSerializationException( "empty section" );
 	}
 	
 	void serialize(InputStream& stream,UserSection& userSection)
@@ -398,7 +400,7 @@ namespace WASM
 		throwIfNotValidUTF8(userSection.name);
 		userSection.data.resize(sectionStream.capacity());
 		serializeBytes(sectionStream,userSection.data.data(),userSection.data.size());
-		assert(!sectionStream.capacity());
+		WAVM_ASSERT_THROW(!sectionStream.capacity());
 	}
 
 	struct LocalSet
@@ -496,6 +498,10 @@ namespace WASM
 		{
 			LocalSet localSet;
 			serialize(bodyStream,localSet);
+
+			if( localSet.num > 1024*1024 )
+				throw FatalSerializationException( "localSet.num too large" );
+
 			for(Uptr index = 0;index < localSet.num;++index) { functionDef.nonParameterLocalTypes.push_back(localSet.type); }
 		}
 

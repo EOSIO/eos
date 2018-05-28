@@ -19,6 +19,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
+#include <fc/io/fstream.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -29,6 +31,8 @@
 
 #include <array>
 #include <utility>
+
+#include "incbin.h"
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -1551,6 +1555,77 @@ BOOST_FIXTURE_TEST_CASE( protect_injected, TESTER ) try {
    produce_block();
 
    BOOST_CHECK_THROW(set_code(N(inj), import_injected_wast), fc::exception);
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
+INCBIN(fuzz1, "fuzz1.wasm");
+INCBIN(fuzz2, "fuzz2.wasm");
+INCBIN(fuzz3, "fuzz3.wasm");
+INCBIN(fuzz4, "fuzz4.wasm");
+INCBIN(fuzz5, "fuzz5.wasm");
+INCBIN(fuzz6, "fuzz6.wasm");
+INCBIN(fuzz7, "fuzz7.wasm");
+INCBIN(fuzz8, "fuzz8.wasm");
+INCBIN(fuzz9, "fuzz9.wasm");
+INCBIN(fuzz10, "fuzz10.wasm");
+INCBIN(fuzz11, "fuzz11.wasm");
+INCBIN(fuzz12, "fuzz12.wasm");
+
+BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(fuzzy)} );
+   produce_block();
+
+   {
+      vector<uint8_t> wasm(gfuzz1Data, gfuzz1Data + gfuzz1Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz2Data, gfuzz2Data + gfuzz2Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz3Data, gfuzz3Data + gfuzz3Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz4Data, gfuzz4Data + gfuzz4Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz5Data, gfuzz5Data + gfuzz5Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz6Data, gfuzz6Data + gfuzz6Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz7Data, gfuzz7Data + gfuzz7Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz8Data, gfuzz8Data + gfuzz8Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz9Data, gfuzz9Data + gfuzz9Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz10Data, gfuzz10Data + gfuzz10Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz11Data, gfuzz11Data + gfuzz11Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz12Data, gfuzz12Data + gfuzz12Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
