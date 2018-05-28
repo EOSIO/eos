@@ -728,9 +728,12 @@ void try_port( uint16_t port, uint32_t duration ) {
    }
 }
 
-void ensure_keosd_running() {
-    if (tx_skip_sign)
+void ensure_keosd_running(CLI::App* app) {
+    // get, version, net do not require keosd
+    if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net"))
         return;
+    if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+       return;
     auto parsed_url = parse_url(wallet_url);
     if (parsed_url.server != "localhost" && parsed_url.server != "127.0.0.1")
         return;
@@ -1467,7 +1470,7 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
-   app.set_callback([] { ensure_keosd_running();});
+   app.set_callback([&app]{ ensure_keosd_running(&app);});
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
