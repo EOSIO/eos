@@ -591,7 +591,7 @@ namespace WASM
 							throw FatalSerializationException("invalid import function type index");
 						}
 						module.functions.imports.push_back({{functionTypeIndex},std::move(moduleName),std::move(exportName)});
-                  if (BOOST_UNLIKELY(module.functions.imports.size() >= max_size))
+                  if (module.functions.imports.size() >= max_size)
                      throw FatalSerializationException(std::string("Too many function imports"));
 						break;
 					}
@@ -600,7 +600,7 @@ namespace WASM
 						TableType tableType;
 						serialize(sectionStream,tableType);
 						module.tables.imports.push_back({tableType,std::move(moduleName),std::move(exportName)});
-                  if (BOOST_UNLIKELY(module.functions.imports.size() >= max_size))
+                  if (module.functions.imports.size() >= max_size)
                      throw FatalSerializationException(std::string("Too many table imports"));
 						break;
 					}
@@ -609,7 +609,7 @@ namespace WASM
 						MemoryType memoryType;
 						serialize(sectionStream,memoryType);
 						module.memories.imports.push_back({memoryType,std::move(moduleName),std::move(exportName)});
-                  if (BOOST_UNLIKELY(module.functions.imports.size() >= max_size))
+                  if (module.functions.imports.size() >= max_size)
                      throw FatalSerializationException(std::string("Too many memory imports"));
 						break;
 					}
@@ -618,7 +618,7 @@ namespace WASM
 						GlobalType globalType;
 						serialize(sectionStream,globalType);
 						module.globals.imports.push_back({globalType,std::move(moduleName),std::move(exportName)});
-                  if (BOOST_UNLIKELY(module.functions.imports.size() >= max_size))
+                  if (module.functions.imports.size() >= max_size)
                      throw FatalSerializationException(std::string("Too many global imports"));
 						break;
 					}
@@ -677,7 +677,7 @@ namespace WASM
 				// try to get a serialization exception before making a huge allocation for malformed input.
 				module.functions.defs.clear();
             constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_section_elements;
-            if (BOOST_UNLIKELY( numFunctions >= max_size ))
+            if ( numFunctions >= max_size )
                throw FatalSerializationException(std::string("Too many function defs"));
 				for(Uptr functionIndex = 0;functionIndex < numFunctions;++functionIndex)
 				{
