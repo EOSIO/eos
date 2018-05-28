@@ -303,11 +303,14 @@ namespace eosio {
             my->server.listen(*my->listen_endpoint);
             my->server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "http: ${e}", ("e",e.to_detail_string()));
+            elog( "http service failed to start: ${e}", ("e",e.to_detail_string()));
+            throw;
          } catch ( const std::exception& e ){
-            elog( "http: ${e}", ("e",e.what()));
+            elog( "http service failed to start: ${e}", ("e",e.what()));
+            throw;
          } catch (...) {
             elog("error thrown from http io service");
+            throw;
          }
       }
 
@@ -322,11 +325,14 @@ namespace eosio {
             my->https_server.listen(*my->https_listen_endpoint);
             my->https_server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "https: ${e}", ("e",e.to_detail_string()));
+            elog( "https service failed to start: ${e}", ("e",e.to_detail_string()));
+            throw;
          } catch ( const std::exception& e ){
-            elog( "https: ${e}", ("e",e.what()));
+            elog( "https service failed to start: ${e}", ("e",e.what()));
+            throw;
          } catch (...) {
             elog("error thrown from https io service");
+            throw;
          }
       }
    }
