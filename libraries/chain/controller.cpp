@@ -260,8 +260,9 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
       fork_db.close();
-
-      edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
+      
+      if (head && blog.read_head())
+         edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
       reversible_blocks.flush();
