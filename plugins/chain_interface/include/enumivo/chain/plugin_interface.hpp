@@ -19,6 +19,7 @@ namespace enumivo { namespace chain { namespace plugin_interface {
    struct chain_plugin_interface;
    
    namespace channels {
+      using rejected_block         = channel_decl<struct rejected_block_tag,        signed_block_ptr>;
       using accepted_block_header  = channel_decl<struct accepted_block_header_tag, block_state_ptr>;
       using accepted_block         = channel_decl<struct accepted_block_tag,        block_state_ptr>;
       using irreversible_block     = channel_decl<struct irreversible_block_tag,    block_state_ptr>;
@@ -32,6 +33,7 @@ namespace enumivo { namespace chain { namespace plugin_interface {
       using get_block_by_number    = method_decl<chain_plugin_interface, signed_block_ptr(uint32_t block_num)>;
       using get_block_by_id        = method_decl<chain_plugin_interface, signed_block_ptr(const block_id_type& block_id)>;
       using get_head_block_id      = method_decl<chain_plugin_interface, block_id_type ()>;
+      using get_lib_block_id       = method_decl<chain_plugin_interface, block_id_type ()>;
 
       using get_last_irreversible_block_number = method_decl<chain_plugin_interface, uint32_t ()>;
    }
