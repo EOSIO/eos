@@ -185,12 +185,29 @@ namespace Serialization
 		};
 
 		// Ensure that the input does not encode more than maxBits of data.
-		enum { numUsedBitsInHighestByte = maxBits - (maxBytes-1) * 7 };
-		enum { highestByteUsedBitmask = U8(1<<numUsedBitsInHighestByte)-U8(1) };
-		enum { highestByteSignedBitmask = U8(~U8(highestByteUsedBitmask) & ~U8(0x80)) };
-		if((bytes[maxBytes-1] & ~highestByteUsedBitmask) != 0
-		&& ((bytes[maxBytes-1] & ~highestByteUsedBitmask) != U8(highestByteSignedBitmask) || !std::is_signed<Value>::value))
-		{ throw FatalSerializationException("Invalid LEB encoding: invalid final byte"); }
+		enum { numUsedBitsInLastByte = maxBits - (maxBytes-1) * 7 };
+		enum { numUnusedBitsInLast = 8 - numUsedBitsInLastByte };
+		enum { lastBitUsedMask = U8(1<<(numUsedBitsInLastByte-1)) };
+		enum { lastByteUsedMask = U8(1<<numUsedBitsInLastByte)-U8(1) };
+		enum { lastByteSignedMask = U8(~U8(lastByteUsedMask) & ~U8(0x80)) };
+		const U8 lastByte = bytes[maxBytes-1];
+		if(!std::is_signed<Value>::value)
+		{
+			if((lastByte & ~lastByteUsedMask) != 0)
+			{
+				throw FatalSerializationException("Invalid unsigned LEB encoding: unused bits in final byte must be 0");
+			}
+		}
+		else
+		{
+			const I8 signBit = I8((lastByte & lastBitUsedMask) << numUnusedBitsInLast);
+			const I8 signExtendedLastBit = signBit >> numUnusedBitsInLast;
+			if((lastByte & ~lastByteUsedMask) != (signExtendedLastBit & lastByteSignedMask))
+			{
+				throw FatalSerializationException(
+					"Invalid signed LEB encoding: unused bits in final byte must match the most-significant used bit");
+			}
+		}
 
 		// Decode the buffer's bytes into the output integer.
 		value = 0;
