@@ -577,8 +577,8 @@ namespace LLVMJIT
 		fpm->add(llvm::createConstantPropagationPass());
 
 		if( !fpm->doInitialization() ) {
-       throw std::runtime_error( "do initialization failed" );
-    }
+			throw std::runtime_error( "do initialization failed" );
+		}
 
 		for(auto functionIt = llvmModule->begin();functionIt != llvmModule->end();++functionIt)
 		{ fpm->run(*functionIt); }

@@ -93,10 +93,7 @@ namespace IR
 		if(expectedType != actualType)
 		{
 			throw ValidationException(
-				std::string("type mismatch: expected in ")/* + asString(expectedType)
-				+ " but got " + asString(actualType)
-				+ " in "*/ + context
-				);
+				std::string("type mismatch: expected in ") + context);
 		}
 	}
 
@@ -106,13 +103,6 @@ namespace IR
 		if(expectedType != actualType && expectedType != ValueType::any && actualType != ValueType::any)
 		{
 			throw ValidationException( "type mismatch" );
-
-			//	std::string("type mismatch: expected in ")/* + asString(expectedType)
-	/*		throw ValidationException(
-				std::string("type mismatch: expected ") + asString(expectedType)
-				+ " but got " + asString(actualType)
-				+ " in " + context + " operand"
-				);*/
 		}
 	}
 
@@ -224,13 +214,13 @@ namespace IR
 		}
 		void else_(NoImm imm)
 		{
-      if( controlStack.size() == 0 ) throw std::runtime_error( "control stack empty" );
+			if( controlStack.size() == 0 ) throw std::runtime_error( "control stack empty" );
 			popAndValidateResultType("if result",controlStack.back().resultType);
 			popControlStack(true);
 		}
 		void end(NoImm)
 		{
-      if( controlStack.size() == 0 ) throw std::runtime_error( "control stack empty" );
+			if( controlStack.size() == 0 ) throw std::runtime_error( "control stack empty" );
 			popAndValidateResultType("end result",controlStack.back().resultType);
 			popControlStack();
 		}
@@ -463,7 +453,7 @@ namespace IR
 
 		void popControlStack(bool isElse = false)
 		{
-      if( !controlStack.size() ) throw std::runtime_error( "empty control stack" );
+			if( !controlStack.size() ) throw std::runtime_error( "empty control stack" );
 			VALIDATE_UNLESS("stack was not empty at end of control structure: ",stack.size() > controlStack.back().outerStackSize);
 
 			if(isElse && controlStack.back().type == ControlContext::Type::ifThen)
@@ -486,7 +476,7 @@ namespace IR
 
 		void enterUnreachable()
 		{
-      if( !controlStack.size() ) throw std::runtime_error( "invalid control stack depth" );
+			if( !controlStack.size() ) throw std::runtime_error( "invalid control stack depth" );
 			stack.resize(controlStack.back().outerStackSize);
 			controlStack.back().isReachable = false;
 		}
