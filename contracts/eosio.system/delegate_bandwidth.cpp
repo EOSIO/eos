@@ -112,10 +112,8 @@ namespace eosiosystem {
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
 
-      if( payer != N(eosio) ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
-                                                       { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
-      }
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+         { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
 
       if( fee.amount > 0 ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
@@ -182,14 +180,12 @@ namespace eosiosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      if( N(eosio) != account ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
-         auto fee = tokens_out.amount / 200;
-         if( fee > 0 ) {
-            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
-                                                          { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
-         }
+      auto fee = tokens_out.amount / 200;
+      if( fee > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
+            { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
       }
    }
 
@@ -259,7 +255,7 @@ namespace eosiosystem {
 
          set_resource_limits( receiver, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
-         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0) ) {
+         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0)  && tot_itr->ram_bytes == 0 ) {
             totals_tbl.erase( tot_itr );
          }
       } // tot_itr can be invalid, should go out of scope

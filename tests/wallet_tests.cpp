@@ -4,6 +4,7 @@
  */
 #include <eosio/utilities/key_conversion.hpp>
 #include <eosio/utilities/rand.hpp>
+#include <eosio/chain/genesis_state.hpp>
 #include <eosio/wallet_plugin/wallet.hpp>
 #include <eosio/wallet_plugin/wallet_manager.hpp>
 
@@ -103,7 +104,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    wm.import_key("test", key1);
    BOOST_CHECK_EQUAL(2, wm.list_keys().size());
    auto keys = wm.list_keys();
-   
+
    auto pub_pri_pair = [](const char *key) -> auto {
        private_key_type prikey = private_key_type(std::string(key));
        return std::pair<const public_key_type, private_key_type>(prikey.get_public_key(), prikey);
@@ -145,12 +146,13 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    private_key_type pkey3{std::string(key3)};
 
    chain::signed_transaction trx;
+   auto chain_id = genesis_state().compute_chain_id();
    flat_set<public_key_type> pubkeys;
    pubkeys.emplace(pkey1.get_public_key());
    pubkeys.emplace(pkey2.get_public_key());
    pubkeys.emplace(pkey3.get_public_key());
-   trx = wm.sign_transaction(trx, pubkeys, chain_id_type{});
-   const auto& pks = trx.get_signature_keys(chain_id_type{});
+   trx = wm.sign_transaction(trx, pubkeys, chain_id );
+   const auto& pks = trx.get_signature_keys(chain_id);
    BOOST_CHECK_EQUAL(3, pks.size());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey1.get_public_key()) != pks.cend());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey2.get_public_key()) != pks.cend());

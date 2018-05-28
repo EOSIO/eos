@@ -6,6 +6,7 @@
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/transaction_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -230,10 +231,15 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_incoming_block(const signed_block_ptr& block) {
          fc_dlog(_log, "received incoming block ${id}", ("id", block->id()));
 
-         FC_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds(1)), "received a block from the future, ignoring it" );
+         FC_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds(7)), "received a block from the future, ignoring it" );
 
 
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+         /* de-dupe here... no point in aborting block if we already know the block */
+         auto id = block->id();
+         auto existing = chain.fetch_block_by_id( id );
+         if( existing ) { return; }
 
          // abort the pending block
          chain.abort_block();
@@ -244,23 +250,42 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          });
 
          // push the new block
-         chain.push_block(block);
+         bool except = false;
+         try {
+            chain.push_block(block);
+         } catch( const fc::exception& e ) {
+            elog((e.to_detail_string()));
+            except = true;
+         }
+         if( except ) {
+            app().get_channel<channels::rejected_block>().publish( block );
+            return;
+         }
 
          if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
             _production_enabled = true;
 
 
          if( fc::time_point::now() - block->timestamp < fc::seconds(5) || (block->block_num() % 1000 == 0) ) {
-            ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-                 ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(0,16))
+            ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, conf: ${confs}, latency: ${latency} ms]",
+                 ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(8,16))
                  ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
-                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed) );
+                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
          }
 
       }
 
       transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx, bool persist_until_expired = false) {
          fc_dlog(_log, "received incoming transaction ${id}", ("id", trx->id()));
+
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         auto id = trx->id();
+         if( chain.db().find<transaction_object, by_trx_id>(id) ) {
+            auto r = std::make_shared<transaction_trace>();
+            r->except = tx_duplicate( FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", id)) );
+            return r;
+         }
+
          return publish_results_of(trx, _transaction_ack_channel, [&]() -> transaction_trace_ptr {
             while (true) {
                chain::controller& chain = app().get_plugin<chain_plugin>().chain();
