@@ -214,13 +214,13 @@ namespace IR
 		}
 		void else_(NoImm imm)
 		{
-			if( controlStack.size() == 0 ) throw std::runtime_error( "control stack empty" );
+			if( controlStack.size() == 0 ) throw ValidationException( "control stack empty" );
 			popAndValidateResultType("if result",controlStack.back().resultType);
 			popControlStack(true);
 		}
 		void end(NoImm)
 		{
-			if( controlStack.size() == 0 ) throw std::runtime_error( "control stack empty" );
+			if( controlStack.size() == 0 ) throw ValidationException( "control stack empty" );
 			popAndValidateResultType("end result",controlStack.back().resultType);
 			popControlStack();
 		}
@@ -453,7 +453,7 @@ namespace IR
 
 		void popControlStack(bool isElse = false)
 		{
-			if( !controlStack.size() ) throw std::runtime_error( "empty control stack" );
+			if( !controlStack.size() ) throw ValidationException( "control stack empty" );
 			VALIDATE_UNLESS("stack was not empty at end of control structure: ",stack.size() > controlStack.back().outerStackSize);
 
 			if(isElse && controlStack.back().type == ControlContext::Type::ifThen)
@@ -476,7 +476,7 @@ namespace IR
 
 		void enterUnreachable()
 		{
-			if( !controlStack.size() ) throw std::runtime_error( "invalid control stack depth" );
+			if( !controlStack.size() ) throw ValidationException( "invalid control stack depth" );
 			stack.resize(controlStack.back().outerStackSize);
 			controlStack.back().isReachable = false;
 		}

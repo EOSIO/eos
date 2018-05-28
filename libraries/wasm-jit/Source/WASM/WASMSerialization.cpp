@@ -384,7 +384,7 @@ namespace WASM
 		serializeBytes(sectionStream,userSection.data.data(),userSection.data.size());
 		std::vector<U8> sectionBytes = sectionStream.getBytes();
 		serialize(stream,sectionBytes);
-		if( !sectionStream.capacity() ) throw std::runtime_error( "empty section" );
+		if( !sectionStream.capacity() ) throw FatalSerializationException( "empty section" );
 	}
 	
 	void serialize(InputStream& stream,UserSection& userSection)
