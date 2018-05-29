@@ -260,7 +260,7 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
       fork_db.close();
-      
+
       if (head && blog.read_head())
          edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
@@ -751,9 +751,13 @@ struct controller_impl {
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
          push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
-      } catch ( const fc::exception& e ) {
+      } catch( const boost::interprocess::bad_alloc& e  ) {
+         elog( "on block transaction failed due to a bad allocation" );
+         throw;
+      } catch( const fc::exception& e ) {
+         wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
          edump((e.to_detail_string()));
-      } catch ( ... ) {
+      } catch( ... ) {
          wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
       }
 
