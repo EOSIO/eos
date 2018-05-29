@@ -39,22 +39,22 @@ namespace fc
    };
 
    template<typename T>
-   class from_variant_visitor
+   class from_variant_visitor : reflector_verifier_visitor<T>
    {
       public:
          from_variant_visitor( const variant_object& _vo, T& v )
-         :vo(_vo),val(v){}
+         :reflector_verifier_visitor<T>(v)
+         ,vo(_vo){}
 
          template<typename Member, class Class, Member (Class::*member)>
          void operator()( const char* name )const
          {
             auto itr = vo.find(name);
             if( itr != vo.end() )
-               from_variant( itr->value(), val.*member );
+               from_variant( itr->value(), this->obj.*member );
          }
 
          const variant_object& vo;
-         T& val;
    };
 
    template<typename IsReflected=fc::false_type>

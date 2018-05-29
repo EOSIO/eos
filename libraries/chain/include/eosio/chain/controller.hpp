@@ -36,15 +36,28 @@ namespace eosio { namespace chain {
    class controller {
       public:
          struct config {
-            path         block_log_dir       =  chain::config::default_block_log_dir;
-            path         shared_memory_dir   =  chain::config::default_shared_memory_dir;
-            uint64_t     shared_memory_size  =  chain::config::default_shared_memory_size;
-            bool         read_only           =  false;
+            flat_set<account_name>   actor_whitelist;
+            flat_set<account_name>   actor_blacklist;
+            flat_set<account_name>   contract_whitelist;
+            flat_set<account_name>   contract_blacklist;
+            path                     blocks_dir             =  chain::config::default_blocks_dir_name;
+            path                     state_dir              =  chain::config::default_state_dir_name;
+            uint64_t                 state_size             =  chain::config::default_state_size;
+            uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
+            bool                     read_only              =  false;
+            bool                     force_all_checks       =  false;
+            bool                     contracts_console      =  false;
 
-            genesis_state                  genesis;
-            wasm_interface::vm_type        wasm_runtime = chain::config::default_wasm_runtime;
+            genesis_state            genesis;
+            wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
          };
 
+         enum class block_status {
+            irreversible = 0, ///< this block has already been applied before by this node and is considered irreversible
+            validated   = 1, ///< this is a complete block signed by a valid producer and has been previously applied by this node and therefore validated but it is not yet irreversible
+            complete   = 2, ///< this is a complete block signed by a valid producer but is not yet irreversible nor has it yet been applied by this node
+            incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
+         };
 
          controller( const config& cfg );
          ~controller();
@@ -96,10 +109,9 @@ namespace eosio { namespace chain {
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void commit_block();
-         void log_irreversible_blocks();
          void pop_block();
 
-         void push_block( const signed_block_ptr& b );
+         void push_block( const signed_block_ptr& b, block_status s = block_status::complete );
 
          /**
           * Call this method when a producer confirmation is received, this might update
@@ -142,14 +154,24 @@ namespace eosio { namespace chain {
 
          block_id_type get_block_id_for_num( uint32_t block_num )const;
 
+         void check_contract_list( account_name code )const;
+         bool is_producing_block()const;
+
+
+
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
 
-         bool set_proposed_producers( vector<producer_key> producers );
+         bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
+         int64_t set_proposed_producers( vector<producer_key> producers );
 
+         bool skip_auth_check()const;
 
+         bool contracts_console()const;
+
+         chain_id_type get_chain_id()const;
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
@@ -157,6 +179,7 @@ namespace eosio { namespace chain {
          signal<void(const transaction_metadata_ptr&)> accepted_transaction;
          signal<void(const transaction_trace_ptr&)>    applied_transaction;
          signal<void(const header_confirmation&)>      accepted_confirmation;
+         signal<void(const int&)>                      bad_alloc;
 
          /*
          signal<void()>                                  pre_apply_block;
@@ -200,8 +223,17 @@ namespace eosio { namespace chain {
 } }  /// eosio::chain
 
 FC_REFLECT( eosio::chain::controller::config,
-            (block_log_dir)
-            (shared_memory_dir)(shared_memory_size)(read_only)
+            (actor_whitelist)
+            (actor_blacklist)
+            (contract_whitelist)
+            (contract_blacklist)
+            (blocks_dir)
+            (state_dir)
+            (state_size)
+            (reversible_cache_size)
+            (read_only)
+            (force_all_checks)
+            (contracts_console)
             (genesis)
             (wasm_runtime)
           )

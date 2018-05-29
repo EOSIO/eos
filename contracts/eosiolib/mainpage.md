@@ -9,17 +9,12 @@ Welcome to the EOS.IO Documentation
 ## Smart Contract Developers
 - @ref eosiorpc
 - @ref contractdev
+	- @ref chainapi - Define API for querying internal chain state
+	- @ref database - APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following broad structure
 	- @ref actionapi - Defines API for querying action properties
-	- @ref chainapi - Defines API for querying internal chain state
-	- @ref cryptoapi - Defines API for calculating and checking hash
-	- @ref database - Defines APIs that store and retrieve data on the blockchain
-    - @ref dispatcher - Defines functions to dispatch action to proper action handler inside a contract
-	- @ref mathapi - Defines common math function
-	- @ref memoryapi - Defines common memory functions
 	- @ref consoleapi - Enables applications to log/print text messages
-	- @ref serialize - Defines functions to serialize and deserialize object
 	- @ref systemapi - 	Define API for interating with system level intrinsics
 	- @ref transactionapi - Define API for sending transactions and inline messages
-	- @ref types - Specifies builtin types, typedefs and aliases
+	- @ref types - Specifies typedefs and aliases
 	
 	

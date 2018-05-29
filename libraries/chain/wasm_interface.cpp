@@ -5,7 +5,6 @@
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
-#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
@@ -50,10 +49,10 @@ namespace eosio { namespace chain {
       //there are a couple opportunties for improvement here--
       //Easy: Cache the Module created here so it can be reused for instantiaion
       //Hard: Kick off instantiation in a separate thread at this location
-	   }
+	 }
 
    void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
-      my->get_instantiated_module(code_id, code)->apply(context);
+      my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
    }
 
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
@@ -71,6 +70,10 @@ class context_aware_api {
          if( context.context_free )
             FC_ASSERT( context_free, "only context free api's can be used in this context" );
          context.used_context_free_api |= !context_free;
+      }
+
+      void checktime() {
+         context.trx_context.checktime();
       }
 
    protected:
@@ -142,7 +145,7 @@ class privileged_api : public context_aware_api {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
-      bool set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_key> producers;
          fc::raw::unpack(ds, producers);
@@ -176,6 +179,7 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_blockchain_parameters, datalen );
          chain::chain_config cfg;
          fc::raw::unpack(ds, cfg);
+         cfg.validate();
          context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.configuration = cfg;
@@ -681,7 +685,7 @@ class producer_api : public context_aware_api {
 
          auto copy_size = std::min( buffer_size, s );
          memcpy( producers, active_producers.data(), copy_size );
-         
+
          return copy_size;
       }
 };
@@ -721,40 +725,53 @@ class crypto_api : public context_aware_api {
          return pubds.tellp();
       }
 
+      template<class Encoder> auto encode(char* data, size_t datalen) {
+         Encoder e;
+         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
+         while ( datalen > bs ) {
+            e.write( data, bs );
+            data += bs;
+            datalen -= bs;
+            context.trx_context.checktime();
+         }
+         e.write( data, datalen );
+         return e.result();
+      }
+
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
-         auto result = fc::sha256::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         auto result = encode<fc::sha256::encoder>( data, datalen );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
-         auto result = fc::sha1::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         auto result = encode<fc::sha1::encoder>( data, datalen );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
-         auto result = fc::sha512::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         auto result = encode<fc::sha512::encoder>( data, datalen );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
-         auto result = fc::ripemd160::hash( data, datalen );
-         FC_ASSERT( result == hash_val, "hash miss match" );
+         auto result = encode<fc::ripemd160::encoder>( data, datalen );
+         FC_ASSERT( result == hash_val, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
-         hash_val = fc::sha1::hash( data, datalen );
+         hash_val = encode<fc::sha1::encoder>( data, datalen );
       }
 
       void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
-         hash_val = fc::sha256::hash( data, datalen );
+         hash_val = encode<fc::sha256::encoder>( data, datalen );
       }
 
       void sha512(array_ptr<char> data, size_t datalen, fc::sha512& hash_val) {
-         hash_val = fc::sha512::hash( data, datalen );
+         hash_val = encode<fc::sha512::encoder>( data, datalen );
       }
 
       void ripemd160(array_ptr<char> data, size_t datalen, fc::ripemd160& hash_val) {
-         hash_val = fc::ripemd160::hash( data, datalen );
+         hash_val = encode<fc::ripemd160::encoder>( data, datalen );
       }
 };
 
@@ -782,7 +799,7 @@ class permission_api : public context_aware_api {
                                          provided_keys,
                                          provided_permissions,
                                          fc::seconds(trx.delay_sec),
-                                         std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                         std::bind(&transaction_context::checktime, &context.trx_context),
                                          false
                                        );
             return true;
@@ -814,7 +831,7 @@ class permission_api : public context_aware_api {
                                          provided_keys,
                                          provided_permissions,
                                          fc::microseconds(delay_us),
-                                         std::bind(&apply_context::checktime, &context, std::placeholders::_1),
+                                         std::bind(&transaction_context::checktime, &context.trx_context),
                                          false
                                        );
             return true;
@@ -903,11 +920,28 @@ public:
       FC_ASSERT( false, "abort() called");
    }
 
-   void eosio_assert(bool condition, null_terminated_ptr str) {
-      if( !condition ) {
-         std::string message( str );
+   // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
+   void eosio_assert( bool condition, null_terminated_ptr msg ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         std::string message( msg );
          edump((message));
-         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+      }
+   }
+
+   void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         std::string message( msg, msg_len );
+         edump((message));
+         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+      }
+   }
+
+   void eosio_assert_code( bool condition, uint64_t error_code ) {
+      if( BOOST_UNLIKELY( !condition ) ) {
+         edump((error_code));
+         EOS_THROW( eosio_assert_code_exception,
+                    "assertion failure with error code: ${error_code}", ("error_code", error_code) );
       }
    }
 
@@ -944,67 +978,85 @@ class action_api : public context_aware_api {
 class console_api : public context_aware_api {
    public:
       console_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+      : context_aware_api(ctx,true)
+      , ignore(!ctx.control.contracts_console()) {}
 
+      // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
-         context.console_append<const char*>(str);
+         if ( !ignore ) {
+            context.console_append<const char*>(str);
+         }
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
-         context.console_append(string(str, str_len));
+         if ( !ignore ) {
+            context.console_append(string(str, str_len));
+         }
       }
 
       void printi(int64_t val) {
-         context.console_append(val);
+         if ( !ignore ) {
+            context.console_append(val);
+         }
       }
 
       void printui(uint64_t val) {
-         context.console_append(val);
+         if ( !ignore ) {
+            context.console_append(val);
+         }
       }
 
       void printi128(const __int128& val) {
-         bool is_negative = (val < 0);
-         unsigned __int128 val_magnitude;
+         if ( !ignore ) {
+            bool is_negative = (val < 0);
+            unsigned __int128 val_magnitude;
 
-         if( is_negative )
-            val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
-         else
-            val_magnitude = static_cast<unsigned __int128>(val);
+            if( is_negative )
+               val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
+            else
+               val_magnitude = static_cast<unsigned __int128>(val);
 
-         fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
+            fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
 
-         if( is_negative ) {
-            context.console_append("-");
+            if( is_negative ) {
+               context.console_append("-");
+            }
+
+            context.console_append(fc::variant(v).get_string());
          }
-
-         context.console_append(fc::variant(v).get_string());
       }
 
       void printui128(const unsigned __int128& val) {
-         fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
-         context.console_append(fc::variant(v).get_string());
+         if ( !ignore ) {
+            fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
+            context.console_append(fc::variant(v).get_string());
+         }
       }
 
       void printsf( float val ) {
-         // Assumes float representation on native side is the same as on the WASM side
-         auto& console = context.get_console_stream();
-         auto orig_prec = console.precision();
+         if ( !ignore ) {
+            // Assumes float representation on native side is the same as on the WASM side
+            auto& console = context.get_console_stream();
+            auto orig_prec = console.precision();
 
-         console.precision( std::numeric_limits<float>::digits10 );
-         context.console_append(val);
+            console.precision( std::numeric_limits<float>::digits10 );
+            context.console_append(val);
 
-         console.precision( orig_prec );
+            console.precision( orig_prec );
+         }
       }
 
       void printdf( double val ) {
-         // Assumes double representation on native side is the same as on the WASM side
-         auto& console = context.get_console_stream();
-         auto orig_prec = console.precision();
+         if ( !ignore ) {
+            // Assumes double representation on native side is the same as on the WASM side
+            auto& console = context.get_console_stream();
+            auto orig_prec = console.precision();
 
-         console.precision( std::numeric_limits<double>::digits10 );
-         context.console_append(val);
+            console.precision( std::numeric_limits<double>::digits10 );
+            context.console_append(val);
 
-         console.precision( orig_prec );
+            console.precision( orig_prec );
+         }
       }
 
       void printqf( const float128_t& val ) {
@@ -1020,25 +1072,34 @@ class console_api : public context_aware_api {
           * having to deal with long doubles at all.
           */
 
-         auto& console = context.get_console_stream();
-         auto orig_prec = console.precision();
+         if ( !ignore ) {
+            auto& console = context.get_console_stream();
+            auto orig_prec = console.precision();
 
-         console.precision( std::numeric_limits<long double>::digits10 );
+            console.precision( std::numeric_limits<long double>::digits10 );
 
-         extFloat80_t val_approx;
-         f128M_to_extF80M(&val, &val_approx);
-         context.console_append( *(long double*)(&val_approx) );
+            extFloat80_t val_approx;
+            f128M_to_extF80M(&val, &val_approx);
+            context.console_append( *(long double*)(&val_approx) );
 
-         console.precision( orig_prec );
+            console.precision( orig_prec );
+         }
       }
 
       void printn(const name& value) {
-         context.console_append(value.to_string());
+         if ( !ignore ) {
+            context.console_append(value.to_string());
+         }
       }
 
       void printhex(array_ptr<const char> data, size_t data_len ) {
-         context.console_append(fc::to_hex(data, data_len));
+         if ( !ignore ) {
+            context.console_append(fc::to_hex(data, data_len));
+         }
       }
+
+   private:
+      bool ignore;
 };
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
@@ -1250,17 +1311,17 @@ class transaction_api : public context_aware_api {
          context.execute_context_free_inline(std::move(act));
       }
 
-      void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len ) {
+      void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
          try {
             transaction trx;
             fc::raw::unpack<transaction>(data, data_len, trx);
-            context.schedule_deferred_transaction(sender_id, payer, std::move(trx));
+            context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
-      void cancel_deferred( const unsigned __int128& val ) {
+      bool cancel_deferred( const unsigned __int128& val ) {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
-         context.cancel_deferred_transaction( (unsigned __int128)sender_id );
+         return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
 };
 
@@ -1623,15 +1684,15 @@ REGISTER_INTRINSICS(privileged_api,
    (activate_feature,                 void(int64_t)                         )
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
-   (set_active_producers,             int(int,int)                          )
+   (set_proposed_producers,           int64_t(int,int)                      )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INJECTED_INTRINSICS(apply_context,
-   (checktime,      void(int))
+REGISTER_INJECTED_INTRINSICS(transaction_context,
+   (checktime,      void())
 );
 
 REGISTER_INTRINSICS(producer_api,
@@ -1709,9 +1770,11 @@ REGISTER_INTRINSICS(system_api,
 );
 
 REGISTER_INTRINSICS(context_free_system_api,
-   (abort,        void()         )
-   (eosio_assert, void(int, int) )
-   (eosio_exit,   void(int)      )
+   (abort,                void()              )
+   (eosio_assert,         void(int, int)      )
+   (eosio_assert_message, void(int, int, int) )
+   (eosio_assert_code,    void(int, int64_t)  )
+   (eosio_exit,           void(int)           )
 );
 
 REGISTER_INTRINSICS(action_api,
@@ -1754,8 +1817,8 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 REGISTER_INTRINSICS(transaction_api,
    (send_inline,               void(int, int)               )
    (send_context_free_inline,  void(int, int)               )
-   (send_deferred,             void(int, int64_t, int, int) )
-   (cancel_deferred,           void(int)                    )
+   (send_deferred,             void(int, int64_t, int, int, int32_t) )
+   (cancel_deferred,           int(int)                     )
 );
 
 REGISTER_INTRINSICS(context_free_api,

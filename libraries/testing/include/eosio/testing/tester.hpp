@@ -24,6 +24,8 @@ std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v );
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e );
 
+eosio::chain::asset core_from_string(const std::string& s);
+
 namespace boost { namespace test_tools { namespace tt_detail {
 
    template<>
@@ -74,6 +76,8 @@ namespace eosio { namespace testing {
 
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
 
+         virtual ~base_tester() {};
+
          void              init(bool push_genesis = true);
          void              init(controller::config config);
 
@@ -85,6 +89,9 @@ namespace eosio { namespace testing {
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
+         void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
+         // Produce minimal number of blocks as possible to spend the given time without having any producer become inactive
+         void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds());
          signed_block_ptr     push_block(signed_block_ptr b);
 
          transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
@@ -151,7 +158,7 @@ namespace eosio { namespace testing {
          transaction_trace_ptr push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace_ptr push_reqauth(account_name from, string role, bool multi_sig = false);
          // use when just want any old non-context free action
-         transaction_trace_ptr push_dummy(account_name from, const string& v = "blah");
+         transaction_trace_ptr push_dummy(account_name from, const string& v = "blah", uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
          transaction_trace_ptr transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace_ptr transfer( account_name from, account_name to, string amount, string memo, account_name currency );
          transaction_trace_ptr issue( account_name to, string amount, account_name currency );
@@ -172,12 +179,12 @@ namespace eosio { namespace testing {
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
-         private_key_type get_private_key( name keyname, string role = "owner" ) const {
+         static private_key_type get_private_key( name keyname, string role = "owner" ) {
             return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
-         public_key_type get_public_key( name keyname, string role = "owner" ) const {
+         static public_key_type get_public_key( name keyname, string role = "owner" ) {
             return get_private_key<KeyType>( keyname, role ).get_public_key();
          }
 
@@ -204,7 +211,11 @@ namespace eosio { namespace testing {
 
          static action_result success() { return string(); }
 
-         static action_result error(const string& msg) { return msg; }
+         static action_result error( const string& msg ) { return msg; }
+
+         static action_result wasm_assert_msg( const string& msg ) { return "assertion failure with message: " + msg; }
+
+         static action_result wasm_assert_code( uint64_t error_code ) { return "assertion failure with error code: " + std::to_string(error_code); }
 
          auto get_resolver() {
             return [this]( const account_name& name ) -> optional<abi_serializer> {
@@ -301,9 +312,11 @@ namespace eosio { namespace testing {
       controller::config vcfg;
 
       validating_tester() {
-         vcfg.block_log_dir      = tempdir.path() / "vblocklog";
-         vcfg.shared_memory_dir  = tempdir.path() / "vshared";
-         vcfg.shared_memory_size = 1024*1024*8;
+         vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
+         vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
+         vcfg.state_size = 1024*1024*8;
+         vcfg.reversible_cache_size = 1024*1024*8;
+         vcfg.contracts_console = false;
 
          vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
          vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
@@ -322,12 +335,19 @@ namespace eosio { namespace testing {
          init(true);
       }
 
-      /*
       validating_tester(controller::config config) {
-         validating_node = std::make_unique<controller>(config);
+         FC_ASSERT( config.blocks_dir.filename().generic_string() != "."
+                    && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
+
+         vcfg = config;
+         vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
+         vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
+
+         validating_node = std::make_unique<controller>(vcfg);
+         validating_node->startup();
+
          init(config);
       }
-      */
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          auto sb = _produce_block(skip_time, false, skip_flag | 2);
@@ -421,11 +441,11 @@ namespace eosio { namespace testing {
    */
   struct eosio_assert_message_is {
      eosio_assert_message_is( const string& msg )
-           : expected( "assertion failed: " ) {
+           : expected( "assertion failure with message: " ) {
         expected.append( msg );
      }
 
-     bool operator()( const fc::assert_exception& ex );
+     bool operator()( const eosio_assert_message_exception& ex );
 
      string expected;
   };
@@ -435,11 +455,25 @@ namespace eosio { namespace testing {
    */
   struct eosio_assert_message_starts_with {
      eosio_assert_message_starts_with( const string& msg )
-           : expected( "assertion failed: " ) {
+           : expected( "assertion failure with message: " ) {
         expected.append( msg );
      }
 
-     bool operator()( const fc::assert_exception& ex );
+     bool operator()( const eosio_assert_message_exception& ex );
+
+     string expected;
+  };
+
+  /**
+   * Utility predicate to check whether an eosio_assert_code error code is equivalent to a given number
+   */
+  struct eosio_assert_code_is {
+     eosio_assert_code_is( uint64_t error_code )
+           : expected( "assertion failure with error code: " ) {
+        expected.append( std::to_string(error_code) );
+     }
+
+     bool operator()( const eosio_assert_code_exception& ex );
 
      string expected;
   };

@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          };
 
          // Check the last irreversible block number is set correctly
-         const auto expected_last_irreversible_block_number = calc_exp_last_irr_block_num(num_of_blocks_to_prod) + 1;
+         const auto expected_last_irreversible_block_number = calc_exp_last_irr_block_num(num_of_blocks_to_prod);
          BOOST_TEST(test.control->head_block_state()->dpos_irreversible_blocknum == expected_last_irreversible_block_number);
          // Check that block 201 cannot be found (only 20 blocks exist)
          BOOST_TEST(test.control->fetch_block_by_number(num_of_blocks_to_prod + 1 + 1) == nullptr);
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          test.produce_blocks(next_num_of_blocks_to_prod);
 
          const auto next_expected_last_irreversible_block_number = calc_exp_last_irr_block_num(
-                 num_of_blocks_to_prod + next_num_of_blocks_to_prod) + 1;
+                 num_of_blocks_to_prod + next_num_of_blocks_to_prod);
          // Check the last irreversible block number is updated correctly
          BOOST_TEST(test.control->head_block_state()->dpos_irreversible_blocknum == next_expected_last_irreversible_block_number);
          // Check that block 201 can now be found

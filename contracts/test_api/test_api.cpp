@@ -78,6 +78,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, test_abort);
       WASM_TEST_HANDLER_EX(test_action, test_current_receiver);
       WASM_TEST_HANDLER(test_action, test_publication_time);
+      WASM_TEST_HANDLER(test_action, test_assert_code);
 
       // test named actions
       // We enforce action name matches action data type name, so name mangling will not work for these tests.
@@ -136,8 +137,10 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_transaction, send_action_sender);
       WASM_TEST_HANDLER(test_transaction, deferred_print);
       WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction);
+      WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction_replace);
       WASM_TEST_HANDLER(test_transaction, send_deferred_tx_with_dtt_action);
-      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
+      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction_success);
+      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction_not_found);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
       WASM_TEST_HANDLER(test_transaction, stateful_api);
@@ -159,6 +162,14 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha1_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha1_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha256_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha256_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha512_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha512_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_ripemd160_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_ripemd160_failure);
 
       // test datastream
       WASM_TEST_HANDLER(test_datastream, test_basic);

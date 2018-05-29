@@ -10,7 +10,6 @@
 #include <eosio/chain/asset.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <fc/io/varint.hpp>
 
 using namespace boost;
@@ -54,53 +53,46 @@ namespace eosio { namespace chain {
    }
 
    void abi_serializer::configure_built_in_types() {
-      //public_key.hpp
-      built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
 
-      //symbol.hpp
-      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
-      built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
+      built_in_types.emplace("bool",                      pack_unpack<uint8_t>());
+      built_in_types.emplace("int8",                      pack_unpack<int8_t>());
+      built_in_types.emplace("uint8",                     pack_unpack<uint8_t>());
+      built_in_types.emplace("int16",                     pack_unpack<int16_t>());
+      built_in_types.emplace("uint16",                    pack_unpack<uint16_t>());
+      built_in_types.emplace("int32",                     pack_unpack<int32_t>());
+      built_in_types.emplace("uint32",                    pack_unpack<uint32_t>());
+      built_in_types.emplace("int64",                     pack_unpack<int64_t>());
+      built_in_types.emplace("uint64",                    pack_unpack<uint64_t>());
+      built_in_types.emplace("int128",                    pack_unpack<int128_t>());
+      built_in_types.emplace("uint128",                   pack_unpack<uint128_t>());
+      built_in_types.emplace("varint32",                  pack_unpack<fc::signed_int>());
+      built_in_types.emplace("varuint32",                 pack_unpack<fc::unsigned_int>());
 
-      //asset.hpp
-      built_in_types.emplace("asset",                     pack_unpack<asset>());
-      built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
+      // TODO: Add proper support for floating point types. For now this is good enough.
+      built_in_types.emplace("float32",                   pack_unpack<float>());
+      built_in_types.emplace("float64",                   pack_unpack<double>());
+      built_in_types.emplace("float128",                  pack_unpack<uint128_t>());
 
-      //native.hpp
+      built_in_types.emplace("time_point",                pack_unpack<fc::time_point>());
+      built_in_types.emplace("time_point_sec",            pack_unpack<fc::time_point_sec>());
+      built_in_types.emplace("block_timestamp_type",      pack_unpack<block_timestamp_type>());
+
+      built_in_types.emplace("name",                      pack_unpack<name>());
+
+      built_in_types.emplace("bytes",                     pack_unpack<bytes>());
       built_in_types.emplace("string",                    pack_unpack<string>());
-      built_in_types.emplace("clause_pair",               pack_unpack<clause_pair>());
-      built_in_types.emplace("time",                      pack_unpack<fc::time_point_sec>());
-      built_in_types.emplace("signature",                 pack_unpack<signature_type>());
+
       built_in_types.emplace("checksum160",               pack_unpack<checksum160_type>());
       built_in_types.emplace("checksum256",               pack_unpack<checksum256_type>());
       built_in_types.emplace("checksum512",               pack_unpack<checksum512_type>());
-      built_in_types.emplace("transaction_id_type",       pack_unpack<checksum256_type>());
-      built_in_types.emplace("field_name",                pack_unpack<field_name>());
-      built_in_types.emplace("fixed_string32",            pack_unpack<fixed_string32>());
-      built_in_types.emplace("fixed_string16",            pack_unpack<fixed_string16>());
-      built_in_types.emplace("type_name",                 pack_unpack<type_name>());
-      built_in_types.emplace("bytes",                     pack_unpack<bytes>());
-      built_in_types.emplace("uint128",                   pack_unpack<boost::multiprecision::uint128_t>());
-      built_in_types.emplace("uint256",                   pack_unpack<boost::multiprecision::uint256_t>());
-      built_in_types.emplace("varuint32",                 pack_unpack<fc::unsigned_int>());
-      built_in_types.emplace("bool",                      pack_unpack<uint8_t>());
-      built_in_types.emplace("int8",                      pack_unpack<int8_t>());
-      built_in_types.emplace("int16",                     pack_unpack<int16_t>());
-      built_in_types.emplace("int32",                     pack_unpack<int32_t>());
-      built_in_types.emplace("int64",                     pack_unpack<int64_t>());
-      built_in_types.emplace("uint8",                     pack_unpack<uint8_t>());
-      built_in_types.emplace("uint16",                    pack_unpack<uint16_t>());
-      built_in_types.emplace("uint32",                    pack_unpack<uint32_t>());
-      built_in_types.emplace("uint64",                    pack_unpack<uint64_t>());
-      built_in_types.emplace("varint32",                  pack_unpack<fc::signed_int>());
-      built_in_types.emplace("float64",                   pack_unpack<double>());
-      built_in_types.emplace("name",                      pack_unpack<name>());
-      built_in_types.emplace("account_name",              pack_unpack<account_name>());
-      built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
-      built_in_types.emplace("action_name",               pack_unpack<action_name>());
-      built_in_types.emplace("scope_name",                pack_unpack<scope_name>());
-      built_in_types.emplace("permission_level",          pack_unpack<permission_level>());
-      built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
-      built_in_types.emplace("newaccount",                pack_unpack<newaccount>());
+
+      built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
+      built_in_types.emplace("signature",                 pack_unpack<signature_type>());
+
+      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+      built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
+      built_in_types.emplace("asset",                     pack_unpack<asset>());
+      built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {
@@ -108,12 +100,14 @@ namespace eosio { namespace chain {
       structs.clear();
       actions.clear();
       tables.clear();
+      error_messages.clear();
 
       for( const auto& st : abi.structs )
          structs[st.name] = st;
 
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
+         FC_ASSERT(!is_type(td.new_type_name), "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
 
@@ -123,6 +117,9 @@ namespace eosio { namespace chain {
       for( const auto& t : abi.tables )
          tables[t.name] = t.type;
 
+      for( const auto& e : abi.error_messages )
+         error_messages[e.error_code] = e.error_msg;
+
       /**
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
@@ -131,6 +128,9 @@ namespace eosio { namespace chain {
       FC_ASSERT( structs.size() == abi.structs.size() );
       FC_ASSERT( actions.size() == abi.actions.size() );
       FC_ASSERT( tables.size() == abi.tables.size() );
+      FC_ASSERT( error_messages.size() == abi.error_messages.size() );
+
+      validate();
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
@@ -225,10 +225,15 @@ namespace eosio { namespace chain {
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
-   type_name abi_serializer::resolve_type(const type_name& type)const  {
+   type_name abi_serializer::resolve_type(const type_name& type)const {
       auto itr = typedefs.find(type);
-      if( itr != typedefs.end() )
-         return resolve_type(itr->second);
+      if( itr != typedefs.end() ) {
+         for( auto i = typedefs.size(); i > 0; --i ) { // avoid infinite recursion
+            const type_name& t = itr->second;
+            itr = typedefs.find( t );
+            if( itr == typedefs.end() ) return t;
+         }
+      }
       return type;
    }
 
@@ -351,6 +356,14 @@ namespace eosio { namespace chain {
       auto itr = tables.find(action);
       if( itr != tables.end() ) return itr->second;
       return type_name();
+   }
+
+   optional<string> abi_serializer::get_error_message( uint64_t error_code )const {
+      auto itr = error_messages.find( error_code );
+      if( itr == error_messages.end() )
+         return optional<string>();
+
+      return itr->second;
    }
 
 } }

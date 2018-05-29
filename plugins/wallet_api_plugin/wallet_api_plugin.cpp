@@ -31,19 +31,17 @@ using namespace eosio;
              if (body.empty()) body = "{}"; \
              INVOKE \
              cb(http_response_code, fc::json::to_string(result)); \
-          } catch (fc::eof_exception& e) { \
-             error_results results{400, "Bad Request", e}; \
-             cb(400, fc::json::to_string(results)); \
-             elog("Unable to parse arguments: ${args}", ("args", body)); \
-          } catch (fc::exception& e) { \
-             error_results results{500, "Internal Service Error", e}; \
-             cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
        }}
 
 #define INVOKE_R_R(api_handle, call_name, in_param) \
      auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>());
+
+#define INVOKE_R_R_R(api_handle, call_name, in_param0, in_param1) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>());
 
 #define INVOKE_R_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
@@ -88,6 +86,8 @@ void wallet_api_plugin::plugin_startup() {
             INVOKE_V_R_R(wallet_mgr, unlock, std::string, std::string), 200),
        CALL(wallet, wallet_mgr, import_key,
             INVOKE_V_R_R(wallet_mgr, import_key, std::string, std::string), 201),
+       CALL(wallet, wallet_mgr, create_key,
+            INVOKE_R_R_R(wallet_mgr, create_key, std::string, std::string), 201),
        CALL(wallet, wallet_mgr, list_wallets,
             INVOKE_R_V(wallet_mgr, list_wallets), 200),
        CALL(wallet, wallet_mgr, list_keys,

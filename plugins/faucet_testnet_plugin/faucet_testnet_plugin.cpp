@@ -62,14 +62,8 @@ using results_pair = std::pair<uint32_t,fc::variant>;
              if (body.empty()) body = "{}"; \
              const auto result = api_handle->invoke_cb(body); \
              response_cb(result.first, fc::json::to_string(result.second)); \
-          } catch (fc::eof_exception& e) { \
-             error_results results{400, "Bad Request", e}; \
-             response_cb(400, fc::json::to_string(results)); \
-             elog("Unable to parse arguments: ${args}", ("args", body)); \
-          } catch (fc::exception& e) { \
-             error_results results{500, "Internal Service Error", e}; \
-             response_cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, response_cb); \
           } \
        }}
 
@@ -232,7 +226,7 @@ struct faucet_testnet_plugin_impl {
       auto recovery_auth = chain::authority{1, {}, {{{_create_account_name, "active"}, 1}}};
 
       trx.actions.emplace_back(vector<chain::permission_level>{{_create_account_name,"active"}},
-                               newaccount{_create_account_name, new_account_name, owner_auth, active_auth, recovery_auth});
+                               newaccount{_create_account_name, new_account_name, owner_auth, active_auth});
 
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());

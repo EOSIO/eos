@@ -1,4 +1,9 @@
-file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/eosio/chain/core_symbol.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis_state_root_key.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp)
+
+file(GLOB HEADERS "include/eosio/chain/*.hpp"
+                  "include/eosio/chain/contracts/*.hpp"
+                  "${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp" )
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
@@ -13,10 +18,13 @@ add_library( eosio_chain
              authorization_manager.cpp
              resource_limits.cpp
              block_log.cpp
-             genesis_state.cpp
              transaction_context.cpp
              eosio_contract.cpp
              eosio_contract_abi.cpp
+             chain_config.cpp
+             chain_id_type.cpp
+             genesis_state.cpp
+             ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp
 
 #             chain_config.cpp
 #             block_trace.cpp

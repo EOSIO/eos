@@ -13,10 +13,13 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include <fc/static_variant.hpp>
 
 namespace fc { class variant; }
 
@@ -60,6 +63,7 @@ public:
 
    struct get_info_results {
       string                  server_version;
+      chain::chain_id_type    chain_id;
       uint32_t                head_block_num = 0;
       uint32_t                last_irreversible_block_num = 0;
       chain::block_id_type    last_irreversible_block_id;
@@ -113,12 +117,14 @@ public:
    struct get_code_results {
       name                   account_name;
       string                 wast;
+      string                 wasm;
       fc::sha256             code_hash;
       optional<abi_def>      abi;
    };
 
    struct get_code_params {
       name account_name;
+      bool code_as_wasm = false;
    };
    get_code_results get_code( const get_code_params& params )const;
 
@@ -143,8 +149,6 @@ public:
    };
    struct abi_bin_to_json_result {
       fc::variant    args;
-      vector<name>   required_scope;
-      vector<name>   required_auth;
    };
 
    abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
@@ -207,6 +211,20 @@ public:
    };
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
+
+   struct get_producers_params {
+      bool        json = false;
+      string      lower_bound;
+      uint32_t    limit = 50;
+   };
+
+   struct get_producers_result {
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex string or JSON object
+      double              total_producer_vote_weight;
+      string              more; ///< fill lower_bound with this value to fetch more rows
+   };
+
+   get_producers_result get_producers( const get_producers_params& params )const;
 
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
@@ -314,19 +332,19 @@ public:
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
-   push_block_results push_block(const push_block_params& params);
+   void push_block(const push_block_params& params, chain::plugin_interface::next_function<push_block_results> next);
 
    using push_transaction_params = fc::variant_object;
    struct push_transaction_results {
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
-   push_transaction_results push_transaction(const push_transaction_params& params);
+   void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
 
 
    using push_transactions_params  = vector<push_transaction_params>;
    using push_transactions_results = vector<push_transaction_results>;
-   push_transactions_results push_transactions(const push_transactions_params& params);
+   void push_transactions(const push_transactions_params& params, chain::plugin_interface::next_function<push_transactions_results> next);
 
    friend resolver_factory<read_write>;
 };
@@ -349,9 +367,11 @@ public:
    chain_apis::read_write get_read_write_api();
 
    void accept_block( const chain::signed_block_ptr& block );
-   void accept_transaction(const chain::packed_transaction& trx);
+   void accept_transaction(const chain::packed_transaction& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
+
+   bool recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir = optional<fc::path>() )const;
 
    // Only call this in plugin_initialize() to modify controller constructor configuration
    controller::config& chain_config();
@@ -360,7 +380,7 @@ public:
    // Only call this after plugin_startup()!
    const controller& chain() const;
 
-   void get_chain_id(chain::chain_id_type& cid) const;
+   chain::chain_id_type get_chain_id() const;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
@@ -371,7 +391,7 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-(server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
+(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
@@ -383,14 +403,17 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(ac
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 
+FC_REFLECT( eosio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_producer_vote_weight)(more) );
+
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
-FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
-FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name)(code_as_wasm) )
 FC_REFLECT( eosio::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
-FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
+FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )

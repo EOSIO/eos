@@ -5,6 +5,7 @@
 #pragma once
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/core_symbol.hpp>
 #include <string>
 #include <functional>
 
@@ -65,7 +66,7 @@ namespace eosio {
             explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) {
                FC_ASSERT(valid(), "invalid symbol: ${s}", ("s",s));
             }
-            explicit symbol(uint64_t v = SY(4, EOS)): m_value(v) {
+            explicit symbol(uint64_t v = CORE_SYMBOL): m_value(v) {
                FC_ASSERT(valid(), "invalid symbol: ${name}", ("name",name()));
             }
             static symbol from_string(const string& from)
@@ -78,7 +79,7 @@ namespace eosio {
                   auto prec_part = s.substr(0, comma_pos);
                   uint8_t p = fc::to_int64(prec_part);
                   string name_part = s.substr(comma_pos + 1);
-                  FC_ASSERT( p <= max_precision, "precision should be <= 18");
+                  FC_ASSERT( p <= max_precision, "precision ${p} should be <= 18", ("p", p));
                   return symbol(string_to_symbol(p, name_part.c_str()));
                } FC_CAPTURE_LOG_AND_RETHROW((from))
             }
@@ -96,6 +97,7 @@ namespace eosio {
             uint8_t decimals() const { return m_value & 0xFF; }
             uint64_t precision() const
             {
+               FC_ASSERT( decimals() <= max_precision, "precision ${p} should be <= 18", ("p", decimals()) );
                uint64_t p10 = 1;
                uint64_t p = decimals();
                while( p > 0  ) {
@@ -133,6 +135,11 @@ namespace eosio {
             friend DataStream& operator<< (DataStream& ds, const symbol& s)
             {
                return ds << s.to_string();
+            }
+
+            void reflector_verify()const {
+               FC_ASSERT( decimals() <= max_precision, "precision ${p} should be <= 18", ("p", decimals()) );
+               FC_ASSERT( valid_name(name()), "invalid symbol: ${name}", ("name",name()));
             }
 
          private:

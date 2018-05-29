@@ -49,6 +49,8 @@ void test_action::test_dummy_action() {
    total = get_action( 1, 0, buffer, static_cast<size_t>(total) );
    eosio_assert( total > 0, "get_action failed" );
    eosio::action act = eosio::get_action( 1, 0 );
+   eosio_assert( act.authorization.back().actor == N(testapi), "incorrect permission actor" );
+   eosio_assert( act.authorization.back().permission == N(active), "incorrect permission name" );
    eosio_assert( eosio::pack_size(act) == static_cast<size_t>(total), "pack_size does not match get_action size" );
    eosio_assert( act.account == N(testapi), "expected testapi account" );
 
@@ -215,4 +217,11 @@ void test_action::test_current_time() {
    uint32_t total = read_action_data(&tmp, sizeof(uint64_t));
    eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
    eosio_assert( tmp == current_time(), "tmp == current_time()" );
+}
+
+void test_action::test_assert_code() {
+   uint64_t code = 0;
+   uint32_t total = read_action_data(&code, sizeof(uint64_t));
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   eosio_assert_code( false, code );
 }

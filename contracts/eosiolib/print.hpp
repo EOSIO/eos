@@ -7,6 +7,7 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/fixed_key.hpp>
 #include <utility>
+#include <string>
 
 namespace eosio {
 
@@ -20,6 +21,18 @@ namespace eosio {
     */
    inline void print( const char* ptr ) {
       prints(ptr);
+   }
+
+   inline void print( const std::string& s) {
+      prints_l( s.c_str(), s.size() );
+   }
+
+   inline void print( std::string& s) {
+      prints_l( s.c_str(), s.size() );
+   }
+
+   inline void print( const char c ) {
+      prints_l( &c, 1 );
    }
 
    /**

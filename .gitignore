@@ -16,6 +16,8 @@
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
+cmake-build-debug/
+cmake-build-release/
 Makefile
 compile_commands.json
 moc_*
@@ -58,8 +60,6 @@ programs/nodeos/nodeos
 scripts/tn_init.sh
 
 tests/plugin_test
-tests/config.hpp
-unittests/config.hpp
 unittests/unit_test
 
 doxygen
@@ -78,4 +78,6 @@ build-debug/*
 etc/eosio/node_*
 var/lib/node_*
 .vscode
+.idea/
+*.iws
 .DS_Store

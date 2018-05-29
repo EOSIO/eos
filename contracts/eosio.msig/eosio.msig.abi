@@ -1,12 +1,15 @@
 {
+  "version": "eosio::abi/1.0",
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
-    },{
-      "new_type_name": "time_point_sec",
-      "type": "time"
-    }
-  ],
+   },{
+      "new_type_name": "permission_name",
+      "type": "name"
+   },{
+      "new_type_name": "action_name",
+      "type": "name"
+  }],
   "structs": [{
       "name": "permission_level",
       "base": "",
@@ -95,9 +98,15 @@
       "base": "",
       "fields": [
         {"name": "proposal_name", "type": "name"},
-        {"name": "requested_approvals", "type": "permission_level[]"},
-        {"name": "provided_approvals", "type": "permission_level[]"},
         {"name": "packed_transaction", "type": "bytes"}
+      ]
+    },{
+      "name": "approvals_info",
+      "base": "",
+      "fields": [
+        {"name": "proposal_name", "type": "name"},
+        {"name": "requested_approvals", "type": "permission_level[]"},
+        {"name": "provided_approvals", "type": "permission_level[]"}
       ]
     }
   ],
@@ -130,7 +139,14 @@
       "index_type": "i64",
       "key_names" : ["proposal_name"],
       "key_types" : ["name"]
-    } 
+    },{
+      "name": "approvals",
+      "type": "approvals_info",
+      "index_type": "i64",
+      "key_names" : ["proposal_name"],
+      "key_types" : ["name"]
+    }
   ],
-  "ricardian_clauses": []
+  "ricardian_clauses": [],
+  "abi_extensions": []
 }

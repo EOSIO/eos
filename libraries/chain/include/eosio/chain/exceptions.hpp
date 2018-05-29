@@ -105,14 +105,16 @@ namespace eosio { namespace chain {
                                     3010006, "Invalid transaction" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_type_exception,                chain_type_exception,
                                     3010007, "Invalid ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION( abi_not_found_exception,           chain_type_exception,
+                                    3010008, "No ABI found" )
       FC_DECLARE_DERIVED_EXCEPTION( block_id_type_exception,           chain_type_exception,
-                                    3010008, "Invalid block ID" )
+                                    3010009, "Invalid block ID" )
       FC_DECLARE_DERIVED_EXCEPTION( transaction_id_type_exception,     chain_type_exception,
-                                    3010009, "Invalid transaction ID" )
+                                    3010010, "Invalid transaction ID" )
       FC_DECLARE_DERIVED_EXCEPTION( packed_transaction_type_exception, chain_type_exception,
-                                    3010010, "Invalid packed transaction" )
+                                    3010011, "Invalid packed transaction" )
       FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              chain_type_exception,
-                                    3010011, "Invalid asset" )
+                                    3010012, "Invalid asset" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( fork_database_exception, chain_exception,
@@ -156,6 +158,8 @@ namespace eosio { namespace chain {
                                     3040007, "Invalid Reference Block" )
       FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                transaction_exception,
                                     3040008, "duplicate transaction" )
+      FC_DECLARE_DERIVED_EXCEPTION( deferred_tx_duplicate,       transaction_exception,
+                                    3040009, "duplicate deferred transaction" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -165,6 +169,10 @@ namespace eosio { namespace chain {
                                     3050001, "account name already exists" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception, action_validate_exception,
                                     3050002, "Invalid Action Arguments" )
+      FC_DECLARE_DERIVED_EXCEPTION( eosio_assert_message_exception, action_validate_exception,
+                                    3050003, "eosio_assert_message assertion failure" )
+      FC_DECLARE_DERIVED_EXCEPTION( eosio_assert_code_exception, action_validate_exception,
+                                    3050004, "eosio_assert_code assertion failure" )
 
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "database exception" )
@@ -238,7 +246,10 @@ namespace eosio { namespace chain {
                                     3100002, "unknown block" )
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,    misc_exception,
                                     3100003, "unknown transaction" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,    misc_exception,
+                                    3100004, "corrupted reversible block database was fixed" )
+      FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,    misc_exception,
+                                    3100005, "extracted genesis state from blocks.log" )
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception, chain_exception,
                                  3110000, "missing plugin exception" )
@@ -247,8 +258,8 @@ namespace eosio { namespace chain {
                                     3110001, "Missing Chain API Plugin" )
       FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,          missing_plugin_exception,
                                     3110002, "Missing Wallet API Plugin" )
-      FC_DECLARE_DERIVED_EXCEPTION( missing_account_history_api_plugin_exception, missing_plugin_exception,
-                                    3110003, "Missing Account History API Plugin" )
+      FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception, missing_plugin_exception,
+                                    3110003, "Missing History API Plugin" )
       FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,             missing_plugin_exception,
                                     3110004, "Missing Net API Plugin" )
 
@@ -271,5 +282,16 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( wallet_unlocked_exception,         wallet_exception,
                                     3120007, "Already unlocked" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
+                                 3130000, "actor or contract whitelist/blacklist exception" )
+
+      FC_DECLARE_DERIVED_EXCEPTION( actor_whitelist_exception,    chain_exception,
+                                    3130001, "Authorizing actor of transaction is not on the whitelist" )
+      FC_DECLARE_DERIVED_EXCEPTION( actor_blacklist_exception,    chain_exception,
+                                    3130002, "Authorizing actor of transaction is on the blacklist" )
+      FC_DECLARE_DERIVED_EXCEPTION( contract_whitelist_exception, chain_exception,
+                                    3130003, "Contract to execute is not on the whitelist" )
+      FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, chain_exception,
+                                    3130004, "Contract to execute is on the blacklist" )
 
 } } // eosio::chain

@@ -54,10 +54,10 @@ try:
         errorExit("Cluster never stabilized")
 
     producerKeys=testUtils.Cluster.parseClusterKeys(1)
-    initaPrvtKey=producerKeys["inita"]["private"]
-    initbPrvtKey=producerKeys["initb"]["private"]
+    defproduceraPrvtKey=producerKeys["defproducera"]["private"]
+    defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
 
-    cmd="%s --dont-launch --inita_prvt_key %s --initb_prvt_key %s %s %s %s" % (actualTest, initaPrvtKey, initbPrvtKey, "-v" if debug else "", "--dont-kill" if dontKill else "", "--only-bios" if onlyBios else "")
+    cmd="%s --dont-launch --defproducera_prvt_key %s --defproducerb_prvt_key %s %s %s %s" % (actualTest, defproduceraPrvtKey, defproducerbPrvtKey, "-v" if debug else "", "--dont-kill" if dontKill else "", "--only-bios" if onlyBios else "")
     Print("Starting up %s test: %s" % ("nodeos", actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):

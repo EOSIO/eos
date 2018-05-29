@@ -26,13 +26,22 @@ extern "C" {
     * @param net_weight - net limit
     * @param cpu_weight - cput limit
     */
-   void set_resource_limits( account_name account, uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight );
+   void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight );
+
+   /**
+    * Propose the new active producer schedule
+    * @param producer_data - packed data of produce_keys in the appropriate producer schedule order
+    * @param producer_data_size - size of the data buffer
+    *
+    * @return -1 if proposing a new producer schedule was unsuccessful, otherwise returns the version of the new proposed schedule
+    */
+   int64_t set_proposed_producers( char *producer_data, uint32_t producer_data_size );
 
    /**
     * @brief Set new active producers
     * Set new active producers. Producers will only be activated once the block which starts the next round is irrreversible
     * @param producer_data - pointer to producer schedule packed as bytes
-    * @param producer_data_size - size of the packed producer schedule 
+    * @param producer_data_size - size of the packed producer schedule
     * @pre `producer_data` is a valid pointer to a range of memory at least `producer_data_size` bytes long that contains serialized produced schedule data
     */
    void set_active_producers( char *producer_data, uint32_t producer_data_size );
@@ -60,7 +69,7 @@ extern "C" {
     * @param datalen - size of the packed blockchain parameters
     * @pre `data` is a valid pointer to a range of memory at least `datalen` bytes long that contains packed blockchain params data
     */
-   void     set_blockchain_parameters_packed(char* data, uint32_t datalen);
+   void set_blockchain_parameters_packed(char* data, uint32_t datalen);
 
    /**
     * @brief Retrieve the blolckchain parameters

@@ -6,9 +6,6 @@
 	path = libraries/appbase
 	url = https://github.com/eosio/appbase
         ignore = dirty
-[submodule "programs/snapshot"]
-	path = programs/snapshot
-	url = https://github.com/EOSIO/genesis.git
 [submodule "contracts/musl/upstream"]
 	path = contracts/musl/upstream
 	url = https://github.com/EOSIO/musl.git

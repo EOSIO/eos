@@ -39,7 +39,7 @@ BOOST_FIXTURE_TEST_CASE( delay_create_account, validating_tester) { try {
                              });
    set_transaction_headers(trx);
    trx.delay_sec = 3;
-   trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+   trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
 
    auto trace = push_transaction( trx );
 
@@ -66,7 +66,7 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
                              });
    set_transaction_headers(trx);
    trx.delay_sec = 3;
-   trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+   trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
 
    ilog( fc::json::to_pretty_string(trx) );
    auto trace = push_transaction( trx );
@@ -122,9 +122,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
 
@@ -281,9 +278,6 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", "eosio.token" )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    // issue to account "eosio.token"
@@ -404,9 +398,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -551,9 +542,6 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -692,9 +680,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -892,9 +877,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -1092,9 +1074,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -1291,9 +1270,6 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -1495,9 +1471,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -1664,9 +1637,6 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -1735,7 +1705,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    trx.actions.push_back(act);
 
    chain.set_transaction_headers(trx, 30, 10);
-   trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
+   trx.sign(chain.get_private_key(N(tester), "active"), chain.control->get_chain_id());
    trace = chain.push_transaction(trx);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
    gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
@@ -1811,9 +1781,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -1938,7 +1905,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
                             chain::canceldelay{{N(tester), config::active_name}, ids[0]});
 
    chain.set_transaction_headers(trx);
-   trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
+   trx.sign(chain.get_private_key(N(tester), "active"), chain.control->get_chain_id());
    trace = chain.push_transaction(trx);
    //wdump((fc::json::to_pretty_string(trace)));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
@@ -2057,9 +2024,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", eosio_token)
            ("maximum_supply", "9000000.0000 CUR")
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
 
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
@@ -2118,7 +2082,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
          trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
                                   chain::canceldelay{{N(tester), config::active_name}, trx_id});
          chain.set_transaction_headers(trx);
-         trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
+         trx.sign(chain.get_private_key(N(tester), "active"), chain.control->get_chain_id());
          BOOST_REQUIRE_EXCEPTION( chain.push_transaction(trx), action_validate_exception,
                                   fc_exception_message_is("canceling_auth in canceldelay action was not found as authorization in the original delayed transaction") );
       }
@@ -2129,7 +2093,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
          trx.actions.emplace_back(vector<permission_level>{{N(tester), N(second)}},
                                   chain::canceldelay{{N(tester), N(first)}, trx_id});
          chain.set_transaction_headers(trx);
-         trx.sign(chain.get_private_key(N(tester), "second"), chain_id_type());
+         trx.sign(chain.get_private_key(N(tester), "second"), chain.control->get_chain_id());
          BOOST_REQUIRE_THROW( chain.push_transaction(trx), irrelevant_auth_exception );
          BOOST_REQUIRE_EXCEPTION( chain.push_transaction(trx), irrelevant_auth_exception,
                                   fc_exception_message_starts_with("canceldelay action declares irrelevant authority") );
@@ -2140,7 +2104,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
                                chain::canceldelay{{N(tester), N(first)}, trx_id});
       chain.set_transaction_headers(trx);
-      trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
+      trx.sign(chain.get_private_key(N(tester), "active"), chain.control->get_chain_id());
       trace = chain.push_transaction(trx);
 
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
@@ -2204,7 +2168,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       trx.actions.emplace_back(vector<permission_level>{{N(tester), N(first)}},
                                chain::canceldelay{{N(tester), N(second)}, trx_id});
       chain.set_transaction_headers(trx);
-      trx.sign(chain.get_private_key(N(tester), "first"), chain_id_type());
+      trx.sign(chain.get_private_key(N(tester), "first"), chain.control->get_chain_id());
       trace = chain.push_transaction(trx);
 
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
@@ -2257,7 +2221,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
          trx.actions.emplace_back(vector<permission_level>{{N(tester), N(active)}},
                                   chain::canceldelay{{N(tester), config::owner_name}, trx_id});
          chain.set_transaction_headers(trx);
-         trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
+         trx.sign(chain.get_private_key(N(tester), "active"), chain.control->get_chain_id());
          BOOST_REQUIRE_THROW( chain.push_transaction(trx), irrelevant_auth_exception );
       }
 
@@ -2266,7 +2230,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
       trx.actions.emplace_back(vector<permission_level>{{N(tester), config::owner_name}},
                                chain::canceldelay{{N(tester), config::owner_name}, trx_id});
       chain.set_transaction_headers(trx);
-      trx.sign(chain.get_private_key(N(tester), "owner"), chain_id_type());
+      trx.sign(chain.get_private_key(N(tester), "owner"), chain.control->get_chain_id());
       trace = chain.push_transaction(trx);
 
       BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
@@ -2326,9 +2290,6 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    chain.push_action(N(eosio.token), N(create), N(eosio.token), mutable_variant_object()
            ("issuer", "eosio.token" )
            ("maximum_supply", "9000000.0000 CUR" )
-           ("can_freeze", 0)
-           ("can_recall", 0)
-           ("can_whitelist", 0)
    );
    chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
            ("to",       "tester")
@@ -2391,5 +2352,45 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("91.0000 CUR"), liquid_balance);
 
 } FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE( delay_expired, validating_tester) { try {
+
+   produce_blocks(2);
+   signed_transaction trx;
+
+   account_name a = N(newco);
+   account_name creator = config::system_account_name;
+
+   auto owner_auth =  authority( get_public_key( a, "owner" ) );
+   trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
+                             newaccount{
+                                .creator  = creator,
+                                .name     = a,
+                                .owner    = owner_auth,
+                                .active   = authority( get_public_key( a, "active" ) )
+                             });
+   set_transaction_headers(trx);
+   trx.delay_sec = 3;
+   trx.expiration = control->head_block_time() + fc::microseconds(1000000);
+   trx.sign( get_private_key( creator, "active" ), control->get_chain_id()  );
+
+   auto trace = push_transaction( trx );
+
+   BOOST_REQUIRE_EQUAL(transaction_receipt_header::delayed, trace->receipt->status);
+
+   signed_block_ptr sb = produce_block();
+
+   sb  = produce_block();
+
+   BOOST_REQUIRE_EQUAL(transaction_receipt_header::delayed, trace->receipt->status);
+   produce_empty_block(fc::milliseconds(610 * 1000));
+   sb  = produce_block();
+   BOOST_REQUIRE_EQUAL(1, sb->transactions.size());
+   BOOST_REQUIRE_EQUAL(transaction_receipt_header::expired, sb->transactions[0].status);
+
+   create_account(a); // account can still be created
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()

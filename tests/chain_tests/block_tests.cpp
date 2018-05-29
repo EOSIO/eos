@@ -288,7 +288,6 @@ BOOST_AUTO_TEST_CASE(trx_variant ) {
                                         .name     = new_account_name,
                                         .owner    = owner_auth,
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                        .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
       trx.expiration = time_point_sec(chain.control->head_block_time()) + 100;
       trx.ref_block_num = (uint16_t)chain.control->head_block_num();
@@ -322,11 +321,10 @@ BOOST_AUTO_TEST_CASE(trx_uniqueness) {
                                .creator  = config::system_account_name,
                                .name     = new_account_name,
                                .owner    = owner_auth,
-                               .active   = authority(chain.get_public_key(new_account_name, "active")),
-                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                               .active   = authority(chain.get_public_key(new_account_name, "active"))
                             });
    chain.set_transaction_headers(trx, 90);
-   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain.control->get_chain_id());
    chain.push_transaction(trx);
 
    BOOST_CHECK_THROW(chain.push_transaction(trx), tx_duplicate);
@@ -344,17 +342,16 @@ BOOST_AUTO_TEST_CASE(invalid_expiration) {
                                .creator  = config::system_account_name,
                                .name     = new_account_name,
                                .owner    = owner_auth,
-                               .active   = authority(chain.get_public_key(new_account_name, "active")),
-                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                               .active   = authority(chain.get_public_key(new_account_name, "active"))
                             });
    trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
    trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
-   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain.control->get_chain_id());
    // Unset expiration should throw
    BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
 
    memset(&trx.expiration, 0, sizeof(trx.expiration)); // currently redundant, as default is all zeros, but may not always be.
-   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain.control->get_chain_id());
    // Expired transaction (January 1970) should throw
    BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
    BOOST_REQUIRE_EQUAL( chain.validate(), true );
@@ -372,13 +369,12 @@ BOOST_AUTO_TEST_CASE(transaction_expiration) {
                                  .creator  = config::system_account_name,
                                  .name     = new_account_name,
                                  .owner    = owner_auth,
-                                 .active   = authority(chain.get_public_key(new_account_name, "active")),
-                                 .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                                 .active   = authority(chain.get_public_key(new_account_name, "active"))
                               });
       trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
       trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
       trx.expiration = chain.control->head_block_time() + fc::microseconds(i * 1000000);
-      trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+      trx.sign(chain.get_private_key(config::system_account_name, "active"), chain.control->get_chain_id());
 
       // expire in 1st time, pass in 2nd time
       if (i == 0)
@@ -400,13 +396,12 @@ BOOST_AUTO_TEST_CASE(invalid_tapos) {
                               .creator  = config::system_account_name,
                               .name     = new_account_name,
                               .owner    = owner_auth,
-                              .active   = authority(chain.get_public_key(new_account_name, "active")),
-                              .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                              .active   = authority(chain.get_public_key(new_account_name, "active"))
                            });
    trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num() + 1);
    trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
    trx.expiration = chain.control->head_block_time() + fc::microseconds(1000000);
-   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain.control->get_chain_id());
 
    BOOST_CHECK_THROW(chain.push_transaction(trx), invalid_ref_block_exception);
 
@@ -429,17 +424,16 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
                                         .creator  = config::system_account_name,
                                         .name     = new_account_name,
                                         .owner    = owner_auth,
-                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                        .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                 });
       chain.set_transaction_headers(trx);
-      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id()  );
 
       chain.push_transaction(trx, skip_transaction_signatures);
       chain.control->clear_pending();
 
       // Add unneeded signature
-      trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( name("random"), "active" ), chain.control->get_chain_id()  );
 
       // Check that it throws for irrelevant signatures
       BOOST_CHECK_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
@@ -463,11 +457,10 @@ BOOST_AUTO_TEST_CASE(no_auth) {
                                       .creator  = config::system_account_name,
                                       .name     = new_account_name,
                                       .owner    = owner_auth,
-                                      .active   = authority(),
-                                      .recovery = authority(),
+                                      .active   = authority()
                                 });
       chain.set_transaction_headers(trx);
-      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id()  );
 
       // Check that it throws for no auth
       BOOST_CHECK_THROW(chain.push_transaction( trx ), action_validate_exception);
@@ -876,8 +869,8 @@ BOOST_FIXTURE_TEST_CASE(reindex, validating_tester)
       // Create shared configuration, so the new chain can be recreated from existing block log
       chain_controller::controller_config cfg;
       fc::temp_directory tempdir;
-      cfg.block_log_dir      = tempdir.path() / "blocklog";
-      cfg.shared_memory_dir  = tempdir.path() / "shared";
+      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
+      cfg.shared_memory_dir  = tempdir.path() / config::default_state_dir_name;
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
@@ -958,25 +951,24 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
                                         .creator  = config::system_account_name,
                                         .name     = new_account_name,
                                         .owner    = owner_auth,
-                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                        .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                        .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                 });
       chain.set_transaction_headers(trx);
-      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
-      trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id()  );
+      trx.sign( chain.get_private_key( name("random"), "active" ), chain.control->get_chain_id()  );
 
       // Check that it throws for irrelevant signatures
       BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
 
       // Check that it throws for multiple signatures by the same key
       trx.signatures.clear();
-      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
-      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id() );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id() );
       BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_duplicate_sig);
 
       // Sign the transaction properly and push to the block
       trx.signatures.clear();
-      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id() );
       chain.push_transaction( trx );
 
       // Produce block so the transaction gets included in the block
@@ -1008,12 +1000,11 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
                                            .creator  = config::system_account_name,
                                            .name     = new_account_name,
                                            .owner    = owner_auth,
-                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                    });
          chain.set_transaction_headers(trx);
-         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
-         trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id()  );
+         trx.sign( chain.get_private_key( name("random"), "active" ), chain.control->get_chain_id()  );
 
          // Force push transaction with irrelevant signatures using a skip flag
          chain.push_transaction( trx, skip_transaction_signatures );
@@ -1041,12 +1032,11 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
                                            .creator  = config::system_account_name,
                                            .name     = new_account_name,
                                            .owner    = owner_auth,
-                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
-                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) )
                                    });
          chain.set_transaction_headers(trx);
-         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
-         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id() );
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain.control->get_chain_id() );
 
          // Force push transaction with multiple signatures by the same key using a skip flag
          chain.push_transaction( trx, skip_transaction_signatures );
@@ -1123,8 +1113,7 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
                                       .creator  = creator,
                                       .name     = a,
                                       .owner    = owner_auth,
-                                      .active   = authority( chain.get_public_key( a, "active" ) ),
-                                      .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                      .active   = authority( chain.get_public_key( a, "active" ) )
                                 });
 
       chain.set_transaction_headers(trx);
@@ -1140,7 +1129,7 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
       auto required_keys = chain.validating_node->get_required_keys(trx, available_keys);
       BOOST_TEST( required_keys.size() == 1 );
       BOOST_TEST( *required_keys.begin() == priv_key_needed.get_public_key() );
-      trx.sign( priv_key_needed, chain_id_type() );
+      trx.sign( priv_key_needed, chain.control->get_chain_id() );
       chain.push_transaction(trx);
 
       chain.produce_blocks();

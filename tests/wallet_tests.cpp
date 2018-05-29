@@ -4,6 +4,7 @@
  */
 #include <eosio/utilities/key_conversion.hpp>
 #include <eosio/utilities/rand.hpp>
+#include <eosio/chain/genesis_state.hpp>
 #include <eosio/wallet_plugin/wallet.hpp>
 #include <eosio/wallet_plugin/wallet_manager.hpp>
 
@@ -73,6 +74,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    if (fc::exists("test.wallet")) fc::remove("test.wallet");
    if (fc::exists("test2.wallet")) fc::remove("test2.wallet");
+   if (fc::exists("testgen.wallet")) fc::remove("testgen.wallet");
 
    constexpr auto key1 = "5JktVNHnRX48BUdtewU7N1CyL4Z886c42x7wYW7XhNWkDQRhdcS";
    constexpr auto key2 = "5Ju5RTcVDo35ndtzHioPMgebvBM6LkJ6tvuU6LTNQv8yaz3ggZr";
@@ -102,7 +104,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    wm.import_key("test", key1);
    BOOST_CHECK_EQUAL(2, wm.list_keys().size());
    auto keys = wm.list_keys();
-   
+
    auto pub_pri_pair = [](const char *key) -> auto {
        private_key_type prikey = private_key_type(std::string(key));
        return std::pair<const public_key_type, private_key_type>(prikey.get_public_key(), prikey);
@@ -144,12 +146,13 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    private_key_type pkey3{std::string(key3)};
 
    chain::signed_transaction trx;
+   auto chain_id = genesis_state().compute_chain_id();
    flat_set<public_key_type> pubkeys;
    pubkeys.emplace(pkey1.get_public_key());
    pubkeys.emplace(pkey2.get_public_key());
    pubkeys.emplace(pkey3.get_public_key());
-   trx = wm.sign_transaction(trx, pubkeys, chain_id_type{});
-   const auto& pks = trx.get_signature_keys(chain_id_type{});
+   trx = wm.sign_transaction(trx, pubkeys, chain_id );
+   const auto& pks = trx.get_signature_keys(chain_id);
    BOOST_CHECK_EQUAL(3, pks.size());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey1.get_public_key()) != pks.cend());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey2.get_public_key()) != pks.cend());
@@ -159,6 +162,31 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    wm.set_timeout(chrono::seconds(0));
    BOOST_CHECK_EQUAL(0, wm.list_keys().size());
 
+   wm.set_timeout(chrono::seconds(15));
+
+   wm.set_eosio_key("");
+
+   const string test_key_create_types[] = {"K1", "R1", "k1", ""};
+   for(const string& key_type_to_create : test_key_create_types) {
+      wm.create("testgen");
+
+      //check that the public key returned looks legit through a string conversion
+      // (would throw otherwise)
+      public_key_type create_key_pub(wm.create_key("testgen", key_type_to_create));
+
+      //now pluck out the private key from the wallet and see if the public key of said
+      // private key matches what was returned earlier from the create_key() call
+      private_key_type create_key_priv(wm.list_keys().cbegin()->second);
+      BOOST_CHECK_EQUAL((string)create_key_pub, (string)create_key_priv.get_public_key());
+
+      wm.lock("testgen");
+      BOOST_CHECK(fc::exists("testgen.wallet"));
+      fc::remove("testgen.wallet");
+   }
+
+   wm.create("testgen");
+   BOOST_CHECK_THROW(wm.create_key("testgen", "xxx"), chain::wallet_exception);
+   wm.lock("testgen");
 
    BOOST_CHECK(fc::exists("test.wallet"));
    BOOST_CHECK(fc::exists("test2.wallet"));
