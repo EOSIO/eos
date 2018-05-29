@@ -105,14 +105,16 @@ namespace eosio { namespace chain {
                                     3010006, "Invalid transaction" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_type_exception,                chain_type_exception,
                                     3010007, "Invalid ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION( abi_not_found_exception,           chain_type_exception,
+                                    3010008, "No ABI found" )
       FC_DECLARE_DERIVED_EXCEPTION( block_id_type_exception,           chain_type_exception,
-                                    3010008, "Invalid block ID" )
+                                    3010009, "Invalid block ID" )
       FC_DECLARE_DERIVED_EXCEPTION( transaction_id_type_exception,     chain_type_exception,
-                                    3010009, "Invalid transaction ID" )
+                                    3010010, "Invalid transaction ID" )
       FC_DECLARE_DERIVED_EXCEPTION( packed_transaction_type_exception, chain_type_exception,
-                                    3010010, "Invalid packed transaction" )
+                                    3010011, "Invalid packed transaction" )
       FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              chain_type_exception,
-                                    3010011, "Invalid asset" )
+                                    3010012, "Invalid asset" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( fork_database_exception, chain_exception,
