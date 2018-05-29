@@ -130,6 +130,14 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
+         ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Account added to actor whitelist (may specify multiple times)")
+         ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Account added to actor blacklist (may specify multiple times)")
+         ("contract-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Contract account added to contract whitelist (may specify multiple times)")
+         ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Contract account added to contract blacklist (may specify multiple times)")
          ;
 
 #warning TODO: rate limiting
@@ -162,6 +170,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ;
 }
 
+#define LOAD_VALUE_SET(options, name, container) \
+if( options.count(name) ) { \
+   const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
+   std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -175,7 +189,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->chain_config = controller::config();
 
-   if (options.count("blocks-dir")) {
+   LOAD_VALUE_SET(options, "actor-whitelist", my->chain_config->actor_whitelist);
+   LOAD_VALUE_SET(options, "actor-blacklist", my->chain_config->actor_blacklist);
+   LOAD_VALUE_SET(options, "contract-whitelist", my->chain_config->contract_whitelist);
+   LOAD_VALUE_SET(options, "contract-blacklist", my->chain_config->contract_blacklist);
+
+   if( options.count("blocks-dir") )
+   {
       auto bld = options.at("blocks-dir").as<bfs::path>();
       if(bld.is_relative())
          my->blocks_dir = app().data_dir() / bld;
@@ -183,7 +203,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->blocks_dir = bld;
    }
 
-   if(options.count("checkpoint"))
+   if( options.count("checkpoint") )
    {
       auto cps = options.at("checkpoint").as<vector<string>>();
       my->loaded_checkpoints.reserve(cps.size());
