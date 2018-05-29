@@ -182,7 +182,7 @@ namespace fc { namespace ecc {
         BN_mod(secexp, secexp, order, ctx);
 
         fc::sha256 secret;
-        assert(BN_num_bytes(secexp) <= int64_t(sizeof(secret)));
+        FC_ASSERT(BN_num_bytes(secexp) <= int64_t(sizeof(secret)));
         auto shift = sizeof(secret) - BN_num_bytes(secexp);
         BN_bn2bin(secexp, ((unsigned char*)&secret)+shift);
         return regenerate( secret );
