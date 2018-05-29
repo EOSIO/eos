@@ -163,6 +163,9 @@ struct controller_impl {
       FC_ASSERT( log_head );
       auto lh_block_num = log_head->block_num();
 
+      emit( self.irreversible_block, s );
+      db.commit( s->block_num );
+
       if( s->block_num <= lh_block_num ) {
 //         edump((s->block_num)("double call to on_irr"));
 //         edump((s->block_num)(s->block->previous)(log_head->id()));
@@ -172,9 +175,6 @@ struct controller_impl {
       FC_ASSERT( s->block_num - 1  == lh_block_num, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
       FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
       blog.append(s->block);
-
-      emit( self.irreversible_block, s );
-      db.commit( s->block_num );
 
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.begin();
@@ -261,7 +261,8 @@ struct controller_impl {
       pending.reset();
       fork_db.close();
 
-      edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
+      if (head && blog.read_head())
+         edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
       reversible_blocks.flush();
@@ -1400,6 +1401,10 @@ void controller::validate_tapos( const transaction& trx )const { try {
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 } FC_CAPTURE_AND_RETHROW() }
+
+bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
+   return db().find<transaction_object, by_trx_id>(id);
+}
 
 
 } } /// eosio::chain
