@@ -195,7 +195,7 @@ struct txn_test_gen_plugin_impl {
                act.account = N(txn.test.t);
                act.name = N(issue);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-               act.data = enumivo_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"txn.test.t\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
+               act.data = enumivo_coin_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"txn.test.t\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
                trx.actions.push_back(act);
             }
             {
