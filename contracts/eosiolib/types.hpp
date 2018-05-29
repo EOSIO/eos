@@ -14,7 +14,7 @@ namespace eosio {
 
    /**
     *  Converts a base32 symbol into its binary representation, used by string_to_name()
-    * 
+    *
     *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
     *  @param c - Character to be converted
     *  @return constexpr char - Converted character
@@ -32,7 +32,7 @@ namespace eosio {
    /**
     *  Converts a base32 string to a uint64_t. This is a constexpr so that
     *  this method can be used in template arguments as well.
-    * 
+    *
     *  @brief Converts a base32 string to a uint64_t.
     *  @param str - String representation of the name
     *  @return constexpr uint64_t - 64-bit unsigned integer representation of the name
@@ -65,7 +65,7 @@ namespace eosio {
 
    /**
     * Used to generate a compile time uint64_t from the base32 encoded string interpretation of X
-    * 
+    *
     * @brief Used to generate a compile time uint64_t from the base32 encoded string interpretation of X
     * @param X - String representation of the name
     * @return constexpr uint64_t - 64-bit unsigned integer representation of the name
@@ -107,23 +107,12 @@ namespace eosio {
    struct name {
       /**
        * Conversion Operator to convert name to uint64_t
-       * 
+       *
        * @brief Conversion Operator
        * @return uint64_t - Converted result
        */
       operator uint64_t()const { return value; }
 
-<<<<<<< HEAD
-      /**
-       * Equality Operator for name
-       * 
-       * @brief Equality Operator for name
-       * @param a - First data to be compared
-       * @param b - Second data to be compared
-       * @return true - if equal 
-       * @return false - if unequal
-       */
-=======
       // keep in sync with name::operator string() in eosio source code definition for name
       std::string to_string() const {
          static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
@@ -141,12 +130,20 @@ namespace eosio {
          return str;
       }
 
->>>>>>> master
+      /**
+       * Equality Operator for name
+       *
+       * @brief Equality Operator for name
+       * @param a - First data to be compared
+       * @param b - Second data to be compared
+       * @return true - if equal
+       * @return false - if unequal
+       */
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
 
       /**
        * Internal Representation of the account name
-       * 
+       *
        * @brief Internal Representation of the account name
        */
       account_name value = 0;
@@ -177,24 +174,39 @@ namespace std {
 
 /**
  * Equality Operator for checksum256
- * 
+ *
  * @brief Equality Operator for checksum256
  * @param lhs - First data to be compared
  * @param rhs - Second data to be compared
- * @return true - if equal 
+ * @return true - if equal
  * @return false - if unequal
  */
 bool operator==(const checksum256& lhs, const checksum256& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
 }
-<<<<<<< HEAD
 
-
-=======
+/**
+ * Equality Operator for checksum160
+ *
+ * @brief Equality Operator for checksum256
+ * @param lhs - First data to be compared
+ * @param rhs - Second data to be compared
+ * @return true - if equal
+ * @return false - if unequal
+ */
 bool operator==(const checksum160& lhs, const checksum160& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
 }
+
+/**
+ * Equality Operator for checksum160
+ *
+ * @brief Equality Operator for checksum256
+ * @param lhs - First data to be compared
+ * @param rhs - Second data to be compared
+ * @return true - if unequal
+ * @return false - if equal
+ */
 bool operator!=(const checksum160& lhs, const checksum160& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) != 0;
 }
->>>>>>> origin/slim

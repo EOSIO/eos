@@ -156,12 +156,12 @@ struct indexed_by {
 };
 
 /**
- *  @defgroup multiindex Multi Index Table 
+ *  @defgroup multiindex Multi Index Table
  *  @brief Defines EOSIO Multi Index Table
  *  @ingroup databasecpp
- * 
- *  
- *  
+ *
+ *
+ *
  *  EOSIO Multi-Index API provides a C++ interface to the EOSIO database. It is patterned after Boost Multi Index Container.
  *  EOSIO Multi-Index table requires exactly a uint64_t primary key. For the table to be able to retrieve the primary key,
  *  the object stored inside the table is required to have a const member function called primary_key() that returns uint64_t.
@@ -171,9 +171,9 @@ struct indexed_by {
  *  - uint256_t
  *  - double
  *  - long double
- *  
+ *
  *  @tparam TableName - name of the table
- *  @tparam T - type of the data stored inside the table 
+ *  @tparam T - type of the data stored inside the table
  *  @tparam Indices - secondary indices for the table, up to 16 indices is supported here
  *
  *  Example:
@@ -590,7 +590,7 @@ class multi_index
        *  @post each secondary index table initialized
        *  @post Secondary indices are updated to refer to the newly added object. If the secondary index tables do not exist, they are created.
        *  @post The payer is charged for the storage usage of the new object and, if the table (and secondary index tables) must be created, for the overhead of the table creation.
-       * 
+       *
        *  Notes
        *  The `eosio::multi_index` template has template parameters `<uint64_t TableName, typename T, typename... Indices>`, where:
        *  - `TableName` is the name of the table, maximum 12 characters long, characters in the name from the set of lowercase letters, digits 1 to 5, and the "." (period) character;
@@ -599,7 +599,7 @@ class multi_index
        *  - Each must be a default constructable class or struct
        *  - Each must have a function call operator that takes a const reference to the table object type and returns either a secondary key type or a reference to a secondary key type
        *  - It is recommended to use the eosio::const_mem_fun template, which is a type alias to the boost::multi_index::const_mem_fun.  See the documentation for the Boost const_mem_fun key extractor for more details.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -621,7 +621,7 @@ class multi_index
        *      typedef eosio::multi_index< N(address), address > address_index;
        *      void myaction() {
        *        address_index addresses(_self, _self); // code, scope
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -633,9 +633,9 @@ class multi_index
       /**
        *  Returns the `code` member property.
        *  @brief Returns the `code` member property.
-       * 
+       *
        *  @return Account name of the Code that owns the Primary Table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -658,7 +658,7 @@ class multi_index
        *      void myaction() {
        *        address_index addresses(N(dan), N(dan)); // code, scope
        *        eosio_assert(addresses.get_code() == N(dan), "Codes don't match.");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -668,9 +668,9 @@ class multi_index
       /**
        *  Returns the `scope` member property.
        *  @brief Returns the `scope` member property.
-       * 
+       *
        *  @return Scope id of the Scope within the Code of the Current Receiver under which the desired Primary Table instance can be found.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -693,7 +693,7 @@ class multi_index
        *      void myaction() {
        *        address_index addresses(N(dan), N(dan)); // code, scope
        *        eosio_assert(addresses.get_code() == N(dan), "Scopes don't match");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -766,9 +766,9 @@ class multi_index
       /**
        *  Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
        *  @brief Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return An iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -801,7 +801,7 @@ class multi_index
        *        });
        *        auto itr = addresses.find(N(dan));
        *        eosio_assert(itr == addresses.cbegin(), "Only address is not at front.");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -813,9 +813,9 @@ class multi_index
       /**
        *  Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
        *  @brief Returns an iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return An iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -848,7 +848,7 @@ class multi_index
        *        });
        *        auto itr = addresses.find(N(dan));
        *        eosio_assert(itr == addresses.begin(), "Only address is not at front.");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -858,9 +858,9 @@ class multi_index
       /**
        *  Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *  @brief Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return An iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -893,7 +893,7 @@ class multi_index
        *        });
        *        auto itr = addresses.find(N(dan));
        *        eosio_assert(itr != addresses.cend(), "Address for account doesn't exist");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -903,9 +903,9 @@ class multi_index
       /**
        *  Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *  @brief Returns an iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return An iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -938,7 +938,7 @@ class multi_index
        *        });
        *        auto itr = addresses.find(N(dan));
        *        eosio_assert(itr != addresses.end(), "Address for account doesn't exist");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -948,9 +948,9 @@ class multi_index
       /**
        *  Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *  @brief Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return A reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -993,19 +993,19 @@ class multi_index
        *        eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
        *        itr++;
        *        eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
-      
+
       /**
        *  Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *  @brief Returns a reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return A reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1048,7 +1048,7 @@ class multi_index
        *        eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
        *        itr++;
        *        eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1058,9 +1058,9 @@ class multi_index
       /**
        *  Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
        *  @brief Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return An iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1104,19 +1104,19 @@ class multi_index
        *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
        *        itr--;
        *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
-      
+
       /**
        *  Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
        *  @brief Returns an iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  @return An iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1160,7 +1160,7 @@ class multi_index
        *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
        *        itr--;
        *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1172,7 +1172,7 @@ class multi_index
        *  @brief Searches for the `object_type` with the lowest primary key that is greater than or equal to a given primary key.
        *
        *  @param primary - Primary key that establishes the target value for the lower bound search.
-       * 
+       *
        *  @return An iterator pointing to the `object_type` that has the lowest primary key that is greater than or equal to `primary`. If an object could not be found, it will return the `end` iterator. If the table does not exist** it will return `-1`.
        *
        *  Example:
@@ -1225,7 +1225,7 @@ class multi_index
        *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Lower Bound Record");
        *        itr++;
        *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1242,7 +1242,7 @@ class multi_index
        *  @brief Searches for the `object_type` with the highest primary key that is less than or equal to a given primary key.
        *
        *  @param primary - Primary key that establishes the target value for the upper bound search
-       * 
+       *
        *  @return An iterator pointing to the `object_type` that has the highest primary key that is less than or equal to `primary`. If an object could not be found, it will return the `end` iterator. If the table does not exist** it will return `-1`.
        *
        *  Example:
@@ -1294,7 +1294,7 @@ class multi_index
        *        eosio_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
        *        itr++;
        *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1309,9 +1309,9 @@ class multi_index
       /**
        *  Returns an available primary key.
        *  @brief Returns an available primary key.
-       * 
+       *
        *  @return An available (unused) primary key value.
-       * 
+       *
        *  Notes:
        *  Intended to be used in tables in which the primary keys of the table are strictly intended to be auto-incrementing, and thus will never be set to custom values by the contract.  Violating this expectation could result in the table appearing to be full due to inability to allocate an available primary key.
        *  Ideally this method would only be used to determine the appropriate primary key to use within new objects added to a table in which the primary keys of the table are strictly intended from the beginning to be autoincrementing and thus will not ever be set to custom arbitrary values by the contract. Violating this agreement could result in the table appearing full when in reality there is plenty of space left.
@@ -1346,7 +1346,7 @@ class multi_index
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1375,7 +1375,7 @@ class multi_index
        *  @brief Returns an appropriately typed Secondary Index.
        *
        *  @tparam IndexName - the ID of the desired secondary index
-       * 
+       *
        *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
        *
        *  Example:
@@ -1415,7 +1415,7 @@ class multi_index
        *        auto zip_index = addresses.get_index<N(zip)>();
        *        auto itr = zip_index.find(zipnumb);
        *        eosio_assert(itr->account_name == N(dan), "Incorrect Record ");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1438,7 +1438,7 @@ class multi_index
        *  @brief Returns an appropriately typed Secondary Index.
        *
        *  @tparam IndexName - the ID of the desired secondary index
-       * 
+       *
        *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
        *
        *  Example:
@@ -1489,7 +1489,7 @@ class multi_index
        *        eosio_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
        *        itr++;
        *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1512,7 +1512,7 @@ class multi_index
        *  @brief Returns an iterator to the given object in a Multi-Index table.
        *
        *  @param obj - A reference to the desired object
-       * 
+       *
        *  @return An iterator to the given object
        *
        *  Example:
@@ -1560,7 +1560,7 @@ class multi_index
        *        auto user = addresses.get(N(dan));
        *        auto itr = address.find(N(dan));
        *        eosio_assert(iterator_to(user) == itr, "Invalid iterator");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1581,11 +1581,11 @@ class multi_index
        *  @post A new object is created in the Multi-Index table, with a unique primary key (as specified in the object).  The object is serialized and written to the table. If the table does not exist, it is created.
        *  @post Secondary indices are updated to refer to the newly added object. If the secondary index tables do not exist, they are created.
        *  @post The payer is charged for the storage usage of the new object and, if the table (and secondary index tables) must be created, for the overhead of the table creation.
-       * 
+       *
        *  @return A primary key iterator to the newly created object
-       * 
+       *
        *  Exception - The account is not authorized to write to the table.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1616,7 +1616,7 @@ class multi_index
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1673,19 +1673,19 @@ class multi_index
        *  @param itr - an iterator pointing to the object to be updated
        *  @param payer - account name of the payer for the Storage usage of the updated row
        *  @param updater - lambda function that updates the target object
-       * 
+       *
        *  @pre itr points to an existing element
        *  @pre payer is a valid account that is authorized to execute the action and be billed for storage usage.
-       *  
+       *
        *  @post The modified object is serialized, then replaces the existing object in the table.
        *  @post Secondary indices are updated; the primary key of the updated object is not changed.
        *  @post The payer is charged for the storage usage of the updated object.
        *  @post If payer is the same as the existing payer, payer only pays for the usage difference between existing and updated object (and is refunded if this difference is negative).
        *  @post If payer is different from the existing payer, the existing payer is refunded for the storage usage of the existing object.
-       * 
+       *
        *  Exceptions:
        *  If called with an invalid precondition, execution is aborted.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1722,7 +1722,7 @@ class multi_index
        *          address.city = "San Luis Obispo";
        *          address.state = "CA";
        *        });
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1741,19 +1741,19 @@ class multi_index
        *  @param obj - a reference to the object to be updated
        *  @param payer - account name of the payer for the Storage usage of the updated row
        *  @param updater - lambda function that updates the target object
-       * 
+       *
        *  @pre obj is an existing object in the table
        *  @pre payer is a valid account that is authorized to execute the action and be billed for storage usage.
-       *  
+       *
        *  @post The modified object is serialized, then replaces the existing object in the table.
        *  @post Secondary indices are updated; the primary key of the updated object is not changed.
        *  @post The payer is charged for the storage usage of the updated object.
        *  @post If payer is the same as the existing payer, payer only pays for the usage difference between existing and updated object (and is refunded if this difference is negative).
        *  @post If payer is different from the existing payer, the existing payer is refunded for the storage usage of the existing object.
-       * 
+       *
        *  Exceptions:
        *  If called with an invalid precondition, execution is aborted.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1791,7 +1791,7 @@ class multi_index
        *          address.state = "CA";
        *        });
        *        eosio_assert(itr->city == "San Luis Obispo", "Address not modified");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1852,16 +1852,15 @@ class multi_index
          });
       }
 
-<<<<<<< HEAD
       /**
        *  Retrieves an existing object from a table using its primary key.
        *  @brief Retrieves an existing object from a table using its primary key.
        *
        *  @param primary - Primary key value of the object
        *  @return A constant reference to the object containing the specified primary key.
-       * 
+       *
        *  Exception - No object matches the given key
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1894,15 +1893,12 @@ class multi_index
        *        });
        *        auto user = addresses.get(N(dan));
        *        eosio_assert(user.first_name == "Daniel", "Couldn't get him.");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
-      const T& get( uint64_t primary )const {
-=======
-   const T& get( uint64_t primary, const char* error_msg = "unable to find key" )const {
->>>>>>> origin/slim
+      const T& get( uint64_t primary, const char* error_msg = "unable to find key" )const {
          auto result = find( primary );
          eosio_assert( result != cend(), error_msg );
          return *result;
@@ -1914,7 +1910,7 @@ class multi_index
        *
        *  @param primary - Primary key value of the object
        *  @return An iterator to the found object which has a primary key equal to `primary` OR the `end` iterator of the referenced table if an object with primary key `primary` is not found.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -1947,7 +1943,7 @@ class multi_index
        *        });
        *        auto itr = addresses.find(N(dan));
        *        eosio_assert(itr != addresses.end(), "Couldn't get him.");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -1971,19 +1967,19 @@ class multi_index
        *  @brief Remove an existing object from a table using its primary key.
        *
        *  @param itr - An iterator pointing to the object to be removed
-       *  
+       *
        *  @pre itr points to an existing element
        *  @post The object is removed from the table and all associated storage is reclaimed.
        *  @post Secondary indices associated with the table are updated.
        *  @post The existing payer for storage usage of the object is refunded for the table and secondary indices usage of the removed object, and if the table and indices are removed, for the associated overhead.
-       * 
+       *
        *  @return For the signature with `const_iterator`, returns a pointer to the object following the removed object.
-       * 
+       *
        *  Exceptions:
        *  The object to be removed is not in the table.
        *  The action is not authorized to modify the table.
        *  The given iterator is invalid.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -2018,7 +2014,7 @@ class multi_index
        *        eosio_assert(itr != addresses.end(), "Address for account not found");
        *        addresses.erase( itr );
        *        eosio_assert(itr != addresses.end(), "Address not erased properly");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
@@ -2039,17 +2035,17 @@ class multi_index
        *  @brief Remove an existing object from a table using its primary key.
        *
        *  @param obj - Object to be removed
-       *  
+       *
        *  @pre obj is an existing object in the table
        *  @post The object is removed from the table and all associated storage is reclaimed.
        *  @post Secondary indices associated with the table are updated.
        *  @post The existing payer for storage usage of the object is refunded for the table and secondary indices usage of the removed object, and if the table and indices are removed, for the associated overhead.
-       * 
+       *
        *  Exceptions:
        *  The object to be removed is not in the table.
        *  The action is not authorized to modify the table.
        *  The given iterator is invalid.
-       * 
+       *
        *  Example:
        *  @code
        *  #include <eosiolib/eosio.hpp>
@@ -2083,9 +2079,9 @@ class multi_index
        *        auto itr = addresses.find(N(dan));
        *        eosio_assert(itr != addresses.end(), "Record is not found");
        *        addresses.erase(*itr);
-       *        itr = addresses.find(N(dan));   
+       *        itr = addresses.find(N(dan));
        *        eosio_assert(itr == addresses.end(), "Record is not deleted");
-       *      } 
+       *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode

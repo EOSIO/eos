@@ -30,20 +30,11 @@ typedef uint64_t account_name;
  * @details Name of an account
  */
 typedef uint64_t permission_name;
-<<<<<<< HEAD
-
-/**
- * @brief Name of a token
- * @details Name of a token
- */
-typedef uint64_t token_name;
 
 /**
  * @brief Name of a table
  * @details Name of atable
  */
-=======
->>>>>>> master
 typedef uint64_t table_name;
 
 /**
@@ -51,15 +42,11 @@ typedef uint64_t table_name;
  * @details Time
  */
 typedef uint32_t time;
-<<<<<<< HEAD
-typedef uint32_t block_timestamp;
 
 /**
  * @brief Name of a scope
  * @details Name of a scope
  */
-=======
->>>>>>> master
 typedef uint64_t scope_name;
 
 /**
@@ -67,44 +54,15 @@ typedef uint64_t scope_name;
  * @details Name of an action
  */
 typedef uint64_t action_name;
-<<<<<<< HEAD
-
-/**
- * @brief Identifier for a region
- * @details Identifier for a region
- */
-typedef uint16_t region_id;
-
-
-/**
- * @brief Name of a symbol
- * @details Name of a symbol
- */
-typedef uint64_t asset_symbol;
-
-/**
- * @brief Type of an asset amount
- * @details Type of an asset amount
- */
-typedef int64_t share_type;
-
-/**
- * @brief Type of a permission weight
- * @details Type of a permission weight
- */
-typedef uint16_t weight_type;
 
 /**
  * @brief Macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned
  * @details Macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned
  */
 
-=======
-
 typedef uint16_t weight_type;
 
 /* macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned */
->>>>>>> master
 #define ALIGNED(X) __attribute__ ((aligned (16))) X
 
 /**
@@ -147,16 +105,6 @@ struct ALIGNED(checksum512) {
    uint8_t hash[64];
 };
 
-<<<<<<< HEAD
-/**
- * @brief Fixed Size String (16 bytes)
- * @details Fixed Size String (16 bytes)
- */
-struct fixed_string16 {
-   uint8_t len;
-   char str[16];
-};
-
 /**
  * @brief Type of EOSIO Transaction Id
  * @details Type of EOSIO Transaction Id. It is 256-bit hash
@@ -164,36 +112,6 @@ struct fixed_string16 {
 typedef struct checksum256 transaction_id_type;
 typedef struct checksum256 block_id_type;
 
-/**
- * @brief Type of EOSIO Field Name
- * @details Type of EOSIO Field Name. It is Fixed Size String (16 bytes)
- */
-typedef struct fixed_string16 field_name;
-
-/**
- * @brief Fixed Size String (32 bytes)
- * @details Fixed Size String (32 bytes)
- */
-struct fixed_string32 {
-   uint8_t len;
-   char str[32];
-};
-
-/**
- * @brief Type of EOSIO Type Name
- * @details Type of EOSIO Type Name. It is Fixed Size String (32 bytes)
- */
-typedef struct fixed_string32 type_name;
-
-/**
- * @brief Type of EOSIO Account Permission
- * @details Type of EOSIO Account Permission. It consists of the owner name and the permission name.
- */
-=======
-typedef struct checksum256 transaction_id_type;
-typedef struct checksum256 block_id_type;
-
->>>>>>> master
 struct account_permission {
    account_name account;
    permission_name permission;
