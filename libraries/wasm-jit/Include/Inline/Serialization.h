@@ -2,7 +2,6 @@
 
 #include "Platform/Platform.h"
 
-#include <boost/config.hpp>
 #include "../../../chain/include/eosio/chain/wasm_eosio_constraints.hpp"
 #include <string>
 #include <vector>

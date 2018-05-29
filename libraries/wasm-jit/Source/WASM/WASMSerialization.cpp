@@ -7,7 +7,6 @@
 #include "IR/Operators.h"
 #include "IR/Types.h"
 #include "IR/Validate.h"
-#include <iostream>
 
 using namespace Serialization;
 
