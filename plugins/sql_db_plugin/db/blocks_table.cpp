@@ -31,7 +31,7 @@ void blocks_table::create()
             "transaction_merkle_root VARCHAR(64),"
             "action_merkle_root VARCHAR(64),"
             "producer VARCHAR(12),"
-            "num_transactions INT,"
+            "num_transactions INT DEFAULT 0,"
             "confirmed INT, FOREIGN KEY (producer) REFERENCES accounts(name), UNIQUE KEY block_number (block_number))";
 }
 

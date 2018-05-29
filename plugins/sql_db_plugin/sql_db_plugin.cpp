@@ -56,13 +56,13 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
         db->wipe();
     }
 
-    m_irreversible_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::move(db));
+    m_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::move(db));
 
     chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
     FC_ASSERT(chain_plug);
     auto& chain = chain_plug->chain();
     // TODO: check irreversible to update info
-    m_irreversible_block_connection.emplace(chain.accepted_block.connect([=](const chain::block_state_ptr& b) {m_irreversible_block_consumer->push(b);}));
+    m_block_connection.emplace(chain.accepted_block.connect([=](const chain::block_state_ptr& b) {m_block_consumer->push(b);}));
 }
 
 void sql_db_plugin::plugin_startup()
@@ -73,7 +73,7 @@ void sql_db_plugin::plugin_startup()
 void sql_db_plugin::plugin_shutdown()
 {
     ilog("shutdown");
-    m_irreversible_block_connection.reset();
+    m_block_connection.reset();
 }
 
 } // namespace eosio

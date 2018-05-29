@@ -91,8 +91,13 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
     // TODO: move all
     if (action.name == N(issue)) {
 
-        auto to_name = abi_data["to"].as<chain::name>().to_string();
-        auto asset_quantity = abi_data["quantity"].as<chain::asset>();
+        try {
+            auto to_name = abi_data["to"].as<chain::name>().to_string();
+            auto asset_quantity = abi_data["quantity"].as<chain::asset>();
+        } catch (...) {
+            return;
+        }
+
         int exist;
 
         *m_session << "SELECT COUNT(*) FROM tokens WHERE account = :ac AND symbol = :sy",
@@ -114,9 +119,14 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
 
     if (action.name == N(transfer)) {
 
-        auto from_name = abi_data["from"].as<chain::name>().to_string();
-        auto to_name = abi_data["to"].as<chain::name>().to_string();
-        auto asset_quantity = abi_data["quantity"].as<chain::asset>();
+        try {
+            auto from_name = abi_data["from"].as<chain::name>().to_string();
+            auto to_name = abi_data["to"].as<chain::name>().to_string();
+            auto asset_quantity = abi_data["quantity"].as<chain::asset>();
+        } catch (...) {
+            return;
+        }
+
         int exist;
 
         *m_session << "SELECT COUNT(*) FROM tokens WHERE account = :ac AND symbol = :sy",
