@@ -163,6 +163,8 @@ namespace eosio { namespace chain {
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
 
+         bool is_known_unexpired_transaction( const transaction_id_type& id) const;
+
          int64_t set_proposed_producers( vector<producer_key> producers );
 
          bool skip_auth_check()const;
