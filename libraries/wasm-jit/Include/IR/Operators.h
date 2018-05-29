@@ -620,14 +620,14 @@ namespace IR
 		template<typename Visitor>
 		typename Visitor::Result decodeOp(Visitor& visitor)
 		{
-			assert(nextByte + sizeof(Opcode) <= end);
+			WAVM_ASSERT_THROW(nextByte + sizeof(Opcode) <= end);
 			Opcode opcode = *(Opcode*)nextByte;
 			switch(opcode)
 			{
 			#define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
 				case Opcode::name: \
 				{ \
-					assert(nextByte + sizeof(OpcodeAndImm<Imm>) <= end); \
+					WAVM_ASSERT_THROW(nextByte + sizeof(OpcodeAndImm<Imm>) <= end); \
 					OpcodeAndImm<Imm>* encodedOperator = (OpcodeAndImm<Imm>*)nextByte; \
 					nextByte += sizeof(OpcodeAndImm<Imm>); \
 					return visitor.name(encodedOperator->imm); \

@@ -628,10 +628,10 @@ namespace WAST
 		}
 
 		// Set the module's disassembly names.
-		assert(state.module.functions.size() == state.disassemblyNames.functions.size());
-		assert(state.module.tables.size() == state.disassemblyNames.tables.size());
-		assert(state.module.memories.size() == state.disassemblyNames.memories.size());
-		assert(state.module.globals.size() == state.disassemblyNames.globals.size());
+		WAVM_ASSERT_THROW(state.module.functions.size() == state.disassemblyNames.functions.size());
+		WAVM_ASSERT_THROW(state.module.tables.size() == state.disassemblyNames.tables.size());
+		WAVM_ASSERT_THROW(state.module.memories.size() == state.disassemblyNames.memories.size());
+		WAVM_ASSERT_THROW(state.module.globals.size() == state.disassemblyNames.globals.size());
 		IR::setDisassemblyNames(state.module,state.disassemblyNames);
 	}
 
