@@ -130,7 +130,7 @@ namespace fc { namespace ecc {
     std::string public_key::to_base58( const public_key_data &key )
     {
       uint32_t check = (uint32_t)sha256::hash(key.data, sizeof(key))._hash[0];
-      assert(key.size() + sizeof(check) == 37);
+      static_assert(sizeof(key) + sizeof(check) == 37, ""); // hack around gcc bug: key.size() should be constexpr, but isn't
       array<char, 37> data;
       memcpy(data.data, key.begin(), key.size());
       memcpy(data.begin() + key.size(), (const char*)&check, sizeof(check));
@@ -182,7 +182,7 @@ namespace fc { namespace ecc {
         BN_mod(secexp, secexp, order, ctx);
 
         fc::sha256 secret;
-        assert(BN_num_bytes(secexp) <= int64_t(sizeof(secret)));
+        FC_ASSERT(BN_num_bytes(secexp) <= int64_t(sizeof(secret)));
         auto shift = sizeof(secret) - BN_num_bytes(secexp);
         BN_bn2bin(secexp, ((unsigned char*)&secret)+shift);
         return regenerate( secret );
