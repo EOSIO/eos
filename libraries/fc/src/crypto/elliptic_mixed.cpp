@@ -7,7 +7,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
 
-#include <assert.h>
 #include <secp256k1.h>
 
 #include "_elliptic_impl_priv.hpp"
