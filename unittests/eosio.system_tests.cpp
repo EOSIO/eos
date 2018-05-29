@@ -1552,7 +1552,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
                                               ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
                                               )
                        );
-   
+
    produce_block(fc::hours(9));
    produce_blocks(8 * 21 * 12);
 
@@ -1730,6 +1730,8 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
 
    BOOST_REQUIRE_EQUAL(success(), stake("producvotera", core_from_string("70000000.0000"), core_from_string("70000000.0000") ));
 
+   BOOST_CHECK_EQUAL( wasm_assert_msg("not enough has been staked for users to unstake"), unstake( "producvotera", core_from_string("50.0000"), core_from_string("50.0000") ) );
+
    BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
                                                 ("voter",  "producvotera")
                                                 ("proxy", name(0).to_string())
@@ -1806,6 +1808,8 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
                           push_action(producer_names.front(), N(claimrewards), mvo()("owner", producer_names.front())));
       BOOST_REQUIRE(0 < get_balance(producer_names.front()).get_amount());
    }
+
+   BOOST_CHECK_EQUAL( success(), unstake( "producvotera", core_from_string("50.0000"), core_from_string("50.0000") ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -2555,7 +2559,7 @@ BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
    auto active_params = control->get_global_properties().configuration;
    BOOST_REQUIRE_EQUAL( params.max_block_net_usage, active_params.max_block_net_usage );
    BOOST_REQUIRE_EQUAL( params.max_transaction_lifetime, active_params.max_transaction_lifetime );
-   
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
