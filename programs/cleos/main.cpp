@@ -148,7 +148,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
   )
 
 string url = "http://localhost:8888/";
-string wallet_url = "http://localhost:8888/";
+string wallet_url = "http://localhost:8900/";
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -206,7 +206,7 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      return eosio::client::http::call( url, path, fc::variant(v) );
+      return eosio::client::http::do_http_call( url, path, fc::variant(v) );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -219,10 +219,14 @@ fc::variant call( const std::string& url,
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return ::call( url, path, fc::variant(v) ); }
+                  const T& v ) { return call( url, path, fc::variant(v) ); }
+
+template<>
+fc::variant call( const std::string& url,
+                  const std::string& path) { return call( url, path, fc::variant() ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
-   return ::call(url, get_info_func, fc::variant()).as<eosio::chain_apis::read_only::get_info_results>();
+   return call(url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_string() {
@@ -230,7 +234,7 @@ string generate_nonce_string() {
 }
 
 chain::action generate_nonce_action() {
-   return chain::action( {}, config::nobody_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
+   return chain::action( {}, config::null_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
 fc::variant determine_required_keys(const signed_transaction& trx) {
@@ -331,10 +335,30 @@ void print_result( const fc::variant& result ) { try {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
       string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
-      auto net = processed["net_usage"].as_int64()*8;
-      auto cpu = processed["cpu_usage"].as_int64() / 1024;
+      int64_t net = -1;
+      int64_t cpu = -1;
+      if (processed.get_object().contains("receipt")) {
+         const auto& receipt = processed["receipt"];
+         if (receipt.is_object()) {
+            net = receipt["net_usage_words"].as_int64() * 8;
+            cpu = receipt["cpu_usage_us"].as_int64();
+         }
+      }
 
-      cerr << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << "k cycles\n";
+      cerr << status << " transaction: " << transaction_id << "  ";
+      if (net < 0) {
+         cerr << "<unknown>";
+      } else {
+         cerr << net;
+      }
+      cerr << " bytes  ";
+      if (cpu < 0) {
+         cerr << "<unknown>";
+      } else {
+         cerr << cpu;
+      }
+
+      cerr << " us\n";
 
       if( status == "failed" ) {
          auto soft_except = processed["except"].as<optional<fc::exception>>();
@@ -391,7 +415,7 @@ chain::action create_action(const vector<permission_level>& authorization, const
       ("args", args);
 
    auto result = call(json_to_bin_func, arg);
-   wlog("result=${r}",("r",result));
+   wdump((result)(arg));
    return chain::action{authorization, code, act, result.get_object()["binargs"].as<bytes>()};
 }
 
@@ -675,46 +699,80 @@ struct set_action_permission_subcommand {
    }
 };
 
-bool port_busy( uint16_t port ) {
-   using namespace boost::asio;
-   
-   io_service ios;
-   boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
-   boost::asio::ip::tcp::socket socket(ios);
-   boost::system::error_code ec = error::would_block;
-   //connecting/failing to connect to localhost should be always fast - don't care about timeouts
-   socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
-   do {
-      ios.run_one();
-   } while (ec == error::would_block);
-   return !ec;
+
+bool port_used(uint16_t port) {
+    using namespace boost::asio;
+
+    io_service ios;
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+    boost::asio::ip::tcp::socket socket(ios);
+    boost::system::error_code ec = error::would_block;
+    //connecting/failing to connect to localhost should be always fast - don't care about timeouts
+    socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
+    do {
+        ios.run_one();
+    } while (ec == error::would_block);
+    return !ec;
 }
 
-void start_keosd( uint16_t wallet_port ) {
-   auto binPath = boost::dll::program_location();
-   boost::filesystem::path keosPath = binPath.parent_path().append("keosd"); //cleos and keosd are in the same installation directory
-   if ( !boost::filesystem::exists(keosPath) ) {
-      keosPath = binPath.parent_path().parent_path().append("keosd").append("keosd"); //build directory
-   }
-   if ( boost::filesystem::exists( keosPath ) ) {
-      namespace bp = boost::process;
-      keosPath = boost::filesystem::canonical( keosPath );
-      ::boost::process::child keos( keosPath, "--http-server-address=127.0.0.1:"+std::to_string(wallet_port),
-                                    bp::std_in.close(),
-                                    bp::std_out > bp::null,
-                                    bp::std_err > bp::null);
-      if (keos.running()) {
-         std::cerr << keosPath << " launched" << std::endl;
-         keos.detach();
-      } else {
-         std::cerr << "No wallet service listening on 127.0.0.1:" << std::to_string(wallet_port) << ". Failed to launch " << keosPath << std::endl;
+void try_port( uint16_t port, uint32_t duration ) {
+   using namespace std::chrono;
+   auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
+   while ( !port_used(port)) { 
+      if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
+         std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
+         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
       }
-   } else {
-      std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port) << ". Cannot automatically start keosd because keosd was not found." << std::endl;
    }
 }
 
-CLI::callback_t old_host_port = [](CLI::results_t) {
+void ensure_keosd_running() {
+    auto parsed_url = parse_url(wallet_url);
+    if (parsed_url.server != "localhost" && parsed_url.server == "127.0.0.1")
+        return;
+
+    auto wallet_port = std::stoi(parsed_url.port);
+    if (wallet_port < 0 || wallet_port > 65535) {
+        FC_THROW("port is not in valid range");
+    }
+
+    if (port_used(uint16_t(wallet_port)))  // Hopefully taken by keosd
+        return;
+
+
+    boost::filesystem::path binPath = boost::dll::program_location();
+    binPath.remove_filename();
+    // This extra check is necessary when running cleos like this: ./cleos ...
+    if (binPath.filename_is_dot())
+        binPath.remove_filename();
+    binPath.append("keosd"); // if cleos and keosd are in the same installation directory
+    if (!boost::filesystem::exists(binPath)) {
+        binPath.remove_filename().remove_filename().append("keosd").append("keosd");
+    }
+
+    if (boost::filesystem::exists(binPath)) {
+        namespace bp = boost::process;
+        binPath = boost::filesystem::canonical(binPath);
+        ::boost::process::child keos(binPath, "--http-server-address=127.0.0.1:" + parsed_url.port,
+                                     bp::std_in.close(),
+                                     bp::std_out > bp::null,
+                                     bp::std_err > bp::null);
+        if (keos.running()) {
+            std::cerr << binPath << " launched" << std::endl;
+            keos.detach();
+            sleep(1);
+        } else {
+            std::cerr << "No wallet service listening on 127.0.0.1:"
+                      << std::to_string(wallet_port) << ". Failed to launch " << binPath << std::endl;
+        }
+    } else {
+        std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port)
+                  << ". Cannot automatically start keosd because keosd was not found." << std::endl;
+    }
+}
+
+
+CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
                           "Use for example -u http://localhost:8888 or --url https://example.invalid/\n");
    exit(1);
@@ -763,7 +821,7 @@ struct create_account_subcommand {
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
-      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
+      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,
@@ -781,6 +839,8 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount);
 
       createAccount->set_callback([this] {
+            if( !active_key_str.size() ) 
+               active_key_str = owner_key_str;
             public_key_type owner_key, active_key;
             try {
                owner_key = public_key_type(owner_key_str);
@@ -920,6 +980,7 @@ struct delegate_bandwidth_subcommand {
    string stake_net_amount;
    string stake_cpu_amount;
    string stake_storage_amount;
+   bool transfer = false;
 
    delegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
@@ -927,6 +988,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
+      delegate_bandwidth->add_flag("--transfer", transfer, localized("specify to stake in name of receiver rather than in name of from"))->required();
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
@@ -934,7 +996,9 @@ struct delegate_bandwidth_subcommand {
                   ("from", from_str)
                   ("receiver", receiver_str)
                   ("stake_net_quantity", to_asset(stake_net_amount))
-                  ("stake_cpu_quantity", to_asset(stake_cpu_amount));
+                  ("stake_cpu_quantity", to_asset(stake_cpu_amount))
+                  ("transfer", transfer)
+                  ;
                   wdump((act_payload));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
       });
@@ -1003,7 +1067,7 @@ struct sellram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("account", receiver_str)
                ("bytes", amount);
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
+            send_actions({create_action({permission_level{receiver_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
          });
    }
 };
@@ -1142,16 +1206,50 @@ void get_account( const string& accountName, bool json_format ) {
                    << indent << "delegated:" << std::setw(17) << net_others
                    << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
       }
-      std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.net_limit.current_per_block)) << " bytes/block"
+
+      string unit = "bytes";
+      double net_usage = res.net_limit.available;
+
+      if( res.net_limit.available >= 1024*1024*1024 ){
+         unit = "Gb";
+         net_usage /= 1024*1024*1024;
+      } else if( res.net_limit.available >= 1024*1024 ){
+         unit = "Mb";
+         net_usage /= 1024*1024;
+      } else if( res.net_limit.available >= 1024 ) {
+         unit = "Kb";
+         net_usage /= 1024;
+      }
+
+      std::cout << std::fixed << setprecision(3);
+      std::cout << indent << "used:" << std::setw(15) << ("~"+std::to_string(res.net_limit.used)) << " bytes (past 3 days)"
                 << std::string(3, ' ') << "(assuming current congestion and current usage)" << std::endl
-                << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.net_limit.max_per_block)) << " bytes/block"
+                << indent << "available:" << std::setw(19) << ("~"+std::to_string(net_usage)) << " "<<unit
                 << std::string(3, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+                /*
                 << indent << "guaranteed: " << std::setw(11) << res.net_limit.guaranteed_per_day << " bytes/day"
                 << std::string(5, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+                */
                 << std::endl;
 
 
       std::cout << "cpu bandwidth:" << std::endl;
+
+      double cpu_avail = res.cpu_limit.available/1000000.;
+      string cunit = "sec";
+
+      if( cpu_avail > 60*60*24 ) {
+         cunit = "days";
+         cpu_avail /= 60*60*24;
+      } else  if( cpu_avail > 60*60 ) {
+         cunit = "hr";
+         cpu_avail /= 60*60;
+      } else if( cpu_avail > 60 ) {
+         cunit = "min";
+         cpu_avail /= 60;
+      }
+
+
       if ( res.total_resources.is_object() ) {
          asset cpu_own( res.delegated_bandwidth.is_object() ? stoll( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : 0 );
          auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
@@ -1161,12 +1259,12 @@ void get_account( const string& accountName, bool json_format ) {
                    << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
       }
 
-      std::cout << indent << "current:" << std::setw(15) << ("~"+std::to_string(res.cpu_limit.current_per_block/1024)) << " kcycle/block"
-                << std::string(2, ' ') << "(assuming current congestion and current usage)" << std::endl
-                << indent << "max:" << std::setw(19) << ("~"+std::to_string(res.cpu_limit.max_per_block/1024)) << " kcycle/block"
-                << std::string(2, ' ') << "(assuming current congestion and 0 usage in current window)" << std::endl
+      std::cout << indent << "used:" << std::setw(15) << ("~"+std::to_string(double(res.cpu_limit.used/1000000.))) << " sec (past 3 days)\n"
+                << indent << "available:" << std::setw(19) << ("~"+std::to_string(cpu_avail) )<< " " << cunit <<"\n"
+                /*
                 << indent << "guaranteed:" << std::setw(12) << res.cpu_limit.guaranteed_per_day/1024 << " kcycle/day"
                 << std::string(4, ' ') << "(assuming 100% congestion and 0 usage in current window)" << std::endl
+                */
                 << std::endl;
 
       if ( res.voter_info.is_object() ) {
@@ -1203,22 +1301,15 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", old_host_port, localized("the host where nodeos is running") )->group("hidden");
-   app.add_option( "-p,--port", old_host_port, localized("the port where nodeos is running") )->group("hidden");
-   app.add_option( "--wallet-host", old_host_port, localized("the host where keosd is running") )->group("hidden");
-   app.add_option( "--wallet-port", old_host_port, localized("the port where keosd is running") )->group("hidden");
+   app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where nodeos is running") )->group("hidden");
+   app.add_option( "-p,--port", obsoleted_option_host_port, localized("the port where nodeos is running") )->group("hidden");
+   app.add_option( "--wallet-host", obsoleted_option_host_port, localized("the host where keosd is running") )->group("hidden");
+   app.add_option( "--wallet-port", obsoleted_option_host_port, localized("the port where keosd is running") )->group("hidden");
 
    app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
 
-   auto parsed_url = parse_url( wallet_url );
-   auto wallet_port_uint = std::stoi(parsed_url.port);
-   if ( wallet_port_uint < 0 || 65535 < wallet_port_uint ) {
-      FC_THROW("port is not in valid range");
-   }
-   if ( ( parsed_url.server == "localhost" || parsed_url.server == "127.0.0.1" ) && !port_busy( uint16_t(wallet_port_uint) ) ) {
-      start_keosd( uint16_t(wallet_port_uint) );
-   }
+   app.set_callback([] { ensure_keosd_running();});
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -1527,7 +1618,7 @@ int main( int argc, char** argv ) {
       }
       auto result = call(get_transactions_func, arg);
       if( printjson ) {
-         std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
+         std::cout << fc::json::to_pretty_string(result) << std::endl;
       }
       else {
          const auto& trxs = result.get_object()["transactions"].get_array();
@@ -1535,7 +1626,7 @@ int main( int argc, char** argv ) {
 
             const auto& tobj = t.get_object();
             const auto& trx  = tobj["transaction"].get_object();
-            const auto& data = trx["data"].get_object();
+            const auto& data = trx["transaction"].get_object();
             const auto& msgs = data["actions"].get_array();
 
             for( const auto& msg : msgs ) {
@@ -1672,27 +1763,27 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
-      const auto& v = call(net_connect, new_host);
+      const auto& v = call(url, net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
-      const auto& v = call(net_disconnect, new_host);
+      const auto& v = call(url, net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"), false);
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->set_callback([&] {
-      const auto& v = call(net_status, new_host);
+      const auto& v = call(url, net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
    connections->set_callback([&] {
-      const auto& v = call(net_connections, new_host);
+      const auto& v = call(url, net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -1706,6 +1797,9 @@ int main( int argc, char** argv ) {
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
    createWallet->set_callback([&wallet_name] {
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
       const auto& v = call(wallet_url, wallet_create, wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
@@ -1717,6 +1811,9 @@ int main( int argc, char** argv ) {
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
       call(wallet_url, wallet_open, wallet_name);
       std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
@@ -1725,6 +1822,9 @@ int main( int argc, char** argv ) {
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
       call(wallet_url, wallet_lock, wallet_name);
       std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
@@ -1732,6 +1832,9 @@ int main( int argc, char** argv ) {
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
    locakAllWallets->set_callback([] {
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
       call(wallet_url, wallet_lock_all);
       std::cout << localized("Locked All Wallets") << std::endl;
    });
@@ -1748,6 +1851,8 @@ int main( int argc, char** argv ) {
          std::getline( std::cin, wallet_pw, '\n' );
          fc::set_console_echo(true);
       }
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
@@ -1777,6 +1882,9 @@ int main( int argc, char** argv ) {
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
       std::cout << localized("Wallets:") << std::endl;
       const auto& v = call(wallet_url, wallet_list);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -1785,12 +1893,18 @@ int main( int argc, char** argv ) {
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
    listKeys->set_callback([] {
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
       const auto& v = call(wallet_url, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
    stopKeosd->set_callback([] {
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
       const auto& v = call(wallet_url, keosd_stop);
       if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
          std::cerr << fc::json::to_pretty_string(v) << std::endl;

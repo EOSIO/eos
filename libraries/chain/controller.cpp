@@ -330,7 +330,7 @@ struct controller_impl {
       auto active_producers_authority = authority(1, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
-      create_native_account( config::nobody_account_name, empty_authority, empty_authority );
+      create_native_account( config::null_account_name, empty_authority, empty_authority );
       create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
       const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
       const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
@@ -395,17 +395,18 @@ struct controller_impl {
       etrx.set_reference_block( self.head_block_id() );
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
+      trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
       try {
-         trx_context.init_for_implicit_trx( deadline, 0 );
+         trx_context.init_for_implicit_trx();
          trx_context.published = gto.published;
          trx_context.trace->action_traces.emplace_back();
          trx_context.dispatch_action( trx_context.trace->action_traces.back(), etrx.actions.back(), gto.sender );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
-         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail, 
+         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -433,8 +434,10 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return (code == tx_soft_net_usage_exceeded::code_value) ||
-             (code == tx_deadline_exceeded::code_value);
+      return (code == block_net_usage_exceeded::code_value) ||
+             (code == block_cpu_usage_exceeded::code_value) ||
+             (code == deadline_exception::code_value)       ||
+             (code == leeway_deadline_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -467,11 +470,12 @@ struct controller_impl {
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
 
       transaction_context trx_context( self, dtrx, gto.trx_id );
+      trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
       try {
-         trx_context.init_for_deferred_trx( deadline, gto.published );
+         trx_context.init_for_deferred_trx( gto.published );
          bill_to_accounts = trx_context.bill_to_accounts;
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
@@ -576,16 +580,16 @@ struct controller_impl {
       transaction_trace_ptr trace;
       try {
          transaction_context trx_context(self, trx->trx, trx->id);
+         trx_context.deadline = deadline;
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
             if (implicit) {
-               trx_context.init_for_implicit_trx(deadline);
+               trx_context.init_for_implicit_trx();
             } else {
-               trx_context.init_for_input_trx(deadline,
-                                              trx->packed_trx.get_unprunable_size(),
-                                              trx->packed_trx.get_prunable_size(),
-                                              trx->trx.signatures.size());
+               trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
+                                               trx->packed_trx.get_prunable_size(),
+                                               trx->trx.signatures.size() );
             }
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
@@ -876,7 +880,7 @@ struct controller_impl {
       // Update resource limits:
       resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
-      uint32_t max_virtual_mult = 10000;
+      uint32_t max_virtual_mult = 1000;
       uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
       resource_limits.set_block_parameters(
          { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
@@ -1062,12 +1066,13 @@ void controller::push_confirmation( const header_confirmation& c ) {
    my->push_confirmation( c );
 }
 
-transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline ) {
-   return my->push_transaction(trx, deadline, false, 0);
+transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+   return my->push_transaction(trx, deadline, false, billed_cpu_time_us);
 }
 
-transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline ) {
-   return my->push_scheduled_transaction( trxid, deadline, 0 );
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
+{
+   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us );
 }
 
 uint32_t controller::head_block_num()const {
@@ -1184,7 +1189,12 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
       return blk_state->id;
    }
 
-   return my->blog.read_block_by_num(block_num)->id();
+   auto signed_blk = my->blog.read_block_by_num(block_num);
+
+   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+               "Could not find block: ${block}", ("block", block_num) );
+
+   return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 void controller::pop_block() {

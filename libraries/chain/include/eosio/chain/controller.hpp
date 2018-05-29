@@ -85,13 +85,13 @@ namespace eosio { namespace chain {
          /**
           *
           */
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline );
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
           *
           */
-         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline );
+         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
