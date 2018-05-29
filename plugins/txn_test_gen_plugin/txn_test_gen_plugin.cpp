@@ -229,6 +229,40 @@ struct txn_test_gen_plugin_impl {
       push_transactions(std::move(trxs), next);
    }
 
+   void set_performer(const std::string& performer_name, const std::string& performer_priv_key_string) {
+      performer = name(performer_name);
+
+      abi_def currency_abi_def = fc::json::from_string(eosio_token_abi).as<abi_def>();
+
+      controller& cc = app().get_plugin<chain_plugin>().chain();
+      auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
+
+      fc::crypto::private_key txn_test_receiver_C_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'c')));
+      fc::crypto::public_key  txn_text_receiver_C_pub_key = txn_test_receiver_C_priv_key.get_public_key();
+      performer_priv_key = fc::crypto::private_key(performer_priv_key_string);
+
+      //set txn.test.t contract to eosio.token & initialize it
+      {
+         signed_transaction trx;
+
+         vector<uint8_t> wasm = wast_to_wasm(std::string(eosio_token_wast));
+        {
+            action act;
+            act.account = N(txn.test.t);
+            act.name = N(issue);
+            act.authorization = vector<permission_level>{{name("txn.test.t"),config::active_name}};
+            act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string(fc::format_string("{\"to\":\"${performer}\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}",  fc::mutable_variant_object()("performer", performer))));
+            trx.actions.push_back(act);
+         }
+
+         trx.expiration = cc.head_block_time() + fc::seconds(30);
+         trx.set_reference_block(cc.head_block_id());
+         trx.max_net_usage_words = 5000;
+         trx.sign(txn_test_receiver_C_priv_key, chainid);
+         push_transactions({trx},[this](const fc::exception_ptr& e){});
+      }
+   }
+
    void start_generation(const std::string& salt, const uint64_t& period, const uint64_t& batch_size) {
       if(running)
          throw fc::exception(fc::invalid_operation_exception_code);
@@ -251,6 +285,18 @@ struct txn_test_gen_plugin_impl {
       act_b_to_a.name = N(transfer);
       act_b_to_a.authorization = vector<permission_level>{{name("txn.test.b"),config::active_name}};
       act_b_to_a.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
+
+      if (performer != name()) {
+         act_performer_to_c.account = N(txn.test.t);
+         act_performer_to_c.name = N(transfer);
+         act_performer_to_c.authorization = vector<permission_level>{{performer,config::active_name}};
+         act_performer_to_c.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"${performer}\",\"to\":\"txn.test.t\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("performer", string(performer))("l", salt))));
+
+         act_c_to_performer.account = N(txn.test.t);
+         act_c_to_performer.name = N(transfer);
+         act_c_to_performer.authorization = vector<permission_level>{{name("txn.test.t"),config::active_name}};
+         act_c_to_performer.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.t\",\"to\":\"${performer}\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("performer", string(performer))("l", salt))));
+      }
 
       timer_timeout = period;
       batch = batch_size/2;
@@ -289,6 +335,7 @@ struct txn_test_gen_plugin_impl {
          name recipient("txn.test.b");
          fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
          fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
+         fc::crypto::private_key c_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'c')));
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
          abi_serializer eosio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
@@ -306,33 +353,54 @@ struct txn_test_gen_plugin_impl {
          block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);
 
          for(unsigned int i = 0; i < batch; ++i) {
-         {
-         signed_transaction trx;
-         trx.actions.push_back(act_a_to_b);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 100;
-         trx.sign(a_priv_key, chainid);
-         trxs.emplace_back(std::move(trx));
+            if (performer != name()) {
+               {
+                  signed_transaction trx;
+                  trx.actions.push_back(act_performer_to_c);
+                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                  trx.set_reference_block(reference_block_id);
+                  trx.expiration = cc.head_block_time() + fc::seconds(900);
+                  trx.max_net_usage_words = 100;
+                  trx.sign(performer_priv_key, chainid);
+                  trxs.emplace_back(std::move(trx));
+               }
+               {
+                  signed_transaction trx;
+                  trx.actions.push_back(act_c_to_performer);
+                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                  trx.set_reference_block(reference_block_id);
+                  trx.expiration = cc.head_block_time() + fc::seconds(900);
+                  trx.max_net_usage_words = 100;
+                  trx.sign(c_priv_key, chainid);
+                  trxs.emplace_back(std::move(trx));
+               }
+            } else {
+               { 
+                  signed_transaction trx;
+                  trx.actions.push_back(act_a_to_b);
+                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                  trx.set_reference_block(reference_block_id);
+                  trx.expiration = cc.head_block_time() + fc::seconds(900);
+                  trx.max_net_usage_words = 100;
+                  trx.sign(a_priv_key, chainid);
+                  trxs.emplace_back(std::move(trx));
+               }
+               {
+                  signed_transaction trx;
+                  trx.actions.push_back(act_b_to_a);
+                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                  trx.set_reference_block(reference_block_id);
+                  trx.expiration = cc.head_block_time() + fc::seconds(900);
+                  trx.max_net_usage_words = 100;
+                  trx.sign(b_priv_key, chainid);
+                  trxs.emplace_back(std::move(trx));
+               }
+            }
          }
-
-         {
-         signed_transaction trx;
-         trx.actions.push_back(act_b_to_a);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 100;
-         trx.sign(b_priv_key, chainid);
-         trxs.emplace_back(std::move(trx));
-         }
-         }
-      } catch ( const fc::exception& e ) {
+         push_transactions(std::move(trxs), next);
+       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
       }
-
-      push_transactions(std::move(trxs), next);
    }
 
    void stop_generation() {
@@ -351,6 +419,12 @@ struct txn_test_gen_plugin_impl {
 
    action act_a_to_b;
    action act_b_to_a;
+
+   name performer;
+   fc::crypto::private_key performer_priv_key;
+
+   action act_performer_to_c;
+   action act_c_to_performer;
 
    int32_t txn_reference_block_lag;
 
@@ -374,6 +448,7 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
 void txn_test_gen_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       CALL_ASYNC(txn_test_gen, my, create_test_accounts, INVOKE_ASYNC_R_R(my, create_test_accounts, std::string, std::string), 200),
+      CALL(txn_test_gen, my, set_performer, INVOKE_V_R_R(my, set_performer, std::string, std::string), 200),
       CALL(txn_test_gen, my, stop_generation, INVOKE_V_V(my, stop_generation), 200),
       CALL(txn_test_gen, my, start_generation, INVOKE_V_R_R_R(my, start_generation, std::string, uint64_t, uint64_t), 200)
    });
