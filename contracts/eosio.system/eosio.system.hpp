@@ -83,7 +83,7 @@ namespace eosiosystem {
       block_timestamp       last_produced_block_time;
 
       uint64_t primary_key()const { return owner;                                   }
-      double   by_votes()const    { return is_active ? -total_votes : total_votes;   }
+      double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
       bool     active()const      { return is_active;                               }
       void     deactivate()       { producer_key = public_key(); is_active = false; }
 

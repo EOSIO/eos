@@ -2585,4 +2585,50 @@ BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
    
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( setram_effect, eosio_system_tester ) try {
+
+   const asset net = core_from_string("8.0000");
+   const asset cpu = core_from_string("8.0000");
+   std::vector<account_name> accounts = { N(aliceaccount), N(bobbyaccount) };
+   for (const auto& a: accounts) {
+      create_account_with_resources(a, config::system_account_name, core_from_string("1.0000"), false, net, cpu);
+   }
+
+   {
+      const auto name_a = accounts[0];
+      transfer( config::system_account_name, name_a, core_from_string("1000.0000") );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000.0000"), get_balance(name_a) );
+      const uint64_t init_bytes_a = get_total_stake(name_a)["ram_bytes"].as_uint64();
+      BOOST_REQUIRE_EQUAL( success(), buyram( name_a, name_a, core_from_string("300.0000") ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance(name_a) );
+      const uint64_t bought_bytes_a = get_total_stake(name_a)["ram_bytes"].as_uint64() - init_bytes_a;
+      
+      // after buying and selling balance should be 700 + 300 * 0.995 * 0.995 = 997.0075
+      BOOST_REQUIRE_EQUAL( success(), sellram(name_a, bought_bytes_a ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("997.0075"), get_balance(name_a) );
+   }
+
+   {
+      const auto name_b = accounts[1];
+      transfer( config::system_account_name, name_b, core_from_string("1000.0000") );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000.0000"), get_balance(name_b) );
+      const uint64_t init_bytes_b = get_total_stake(name_b)["ram_bytes"].as_uint64();
+      // name_b buys ram at current price
+      BOOST_REQUIRE_EQUAL( success(), buyram( name_b, name_b, core_from_string("300.0000") ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance(name_b) );
+      const uint64_t bought_bytes_b = get_total_stake(name_b)["ram_bytes"].as_uint64() - init_bytes_b;
+      
+      // increase max_ram_size, ram bought by name_b loses part of its value 
+      BOOST_REQUIRE_EQUAL( wasm_assert_msg("ram may only be increased"),
+                           push_action(config::system_account_name, N(setram), mvo()("max_ram_size", 64ll*1024 * 1024 * 1024)) );
+      BOOST_REQUIRE_EQUAL( success(),                                                                                                                                                                  
+                           push_action(config::system_account_name, N(setram), mvo()("max_ram_size", 80ll*1024 * 1024 * 1024)) );
+      
+      BOOST_REQUIRE_EQUAL( success(), sellram(name_b, bought_bytes_b ) );
+      BOOST_REQUIRE( core_from_string("900.0000") < get_balance(name_b) );
+      BOOST_REQUIRE( core_from_string("950.0000") > get_balance(name_b) );
+   }
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
