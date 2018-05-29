@@ -260,8 +260,9 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
       fork_db.close();
-
-      edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
+      
+      if (head && blog.read_head())
+         edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
       reversible_blocks.flush();
@@ -1396,6 +1397,10 @@ void controller::validate_tapos( const transaction& trx )const { try {
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 } FC_CAPTURE_AND_RETHROW() }
+
+bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
+   return db().find<transaction_object, by_trx_id>(id);
+}
 
 
 } } /// enumivo::chain

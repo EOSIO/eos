@@ -149,6 +149,7 @@ namespace enumivo {
                   elog( "${e}", ("e", err));
                   error_results results{websocketpp::http::status_code::internal_server_error,
                                         "Internal Service Error", fc::exception( FC_LOG_MESSAGE( error, e.what()))};
+                  con->set_body( fc::json::to_string( results ));
                } catch (...) {
                   err += "Unknown Exception";
                   error_results results{websocketpp::http::status_code::internal_server_error,
@@ -189,10 +190,13 @@ namespace enumivo {
                auto resource = con->get_uri()->get_resource();
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
+                  con->defer_http_response();
                   handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
                      con->set_body( std::move( body ));
                      con->set_status( websocketpp::http::status_code::value( code ));
+                     con->send_http_response();
                   } );
+
                } else {
                   wlog( "404 - not found: ${ep}", ("ep", resource));
                   error_results results{websocketpp::http::status_code::not_found,

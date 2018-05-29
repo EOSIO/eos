@@ -26,7 +26,7 @@ namespace Runtime
 		if(!table->baseAddress) { delete table; return nullptr; }
 		
 		// Grow the table to the type's minimum size.
-		assert(type.size.min <= UINTPTR_MAX);
+		WAVM_ASSERT_THROW(type.size.min <= UINTPTR_MAX);
 		if(growTable(table,Uptr(type.size.min)) == -1) { delete table; return nullptr; }
 		
 		// Add the table to the global array.
@@ -67,9 +67,9 @@ namespace Runtime
 	ObjectInstance* setTableElement(TableInstance* table,Uptr index,ObjectInstance* newValue)
 	{
 		// Write the new table element to both the table's elements array and its indirect function call data.
-		assert(index < table->elements.size());
+		WAVM_ASSERT_THROW(index < table->elements.size());
 		FunctionInstance* functionInstance = asFunction(newValue);
-		assert(functionInstance->nativeFunction);
+		WAVM_ASSERT_THROW(functionInstance->nativeFunction);
 		table->baseAddress[index].type = functionInstance->type;
 		table->baseAddress[index].value = functionInstance->nativeFunction;
 		auto oldValue = table->elements[index];

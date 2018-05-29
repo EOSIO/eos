@@ -86,6 +86,22 @@ enum class pending_block_mode {
    producing,
    speculating
 };
+#define CATCH_AND_CALL(NEXT)\
+   catch ( const fc::exception& err ) {\
+      NEXT(err.dynamic_copy_exception());\
+   } catch ( const std::exception& e ) {\
+      fc::exception fce( \
+         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
+         fc::std_exception_code,\
+         BOOST_CORE_TYPEID(e).name(),\
+         e.what() ) ;\
+      NEXT(fce.dynamic_copy_exception());\
+   } catch( ... ) {\
+      fc::unhandled_exception e(\
+         FC_LOG_MESSAGE(warn, "rethrow"),\
+         std::current_exception());\
+      NEXT(e.dynamic_copy_exception());\
+   }
 
 class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin_impl> {
    public:
@@ -128,8 +144,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       compat::channels::transaction_ack::channel_type&        _transaction_ack_channel;
 
-      incoming::methods::block_sync::method_type::handle       _incoming_block_sync_provider;
-      incoming::methods::transaction_sync::method_type::handle _incoming_transaction_sync_provider;
+      incoming::methods::block_sync::method_type::handle        _incoming_block_sync_provider;
+      incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
 
       transaction_id_with_expiry_index                         _blacklisted_transactions;
 
@@ -275,65 +291,62 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       }
 
-      transaction_trace_ptr on_incoming_transaction(const packed_transaction_ptr& trx, bool persist_until_expired = false) {
-         fc_dlog(_log, "received incoming transaction ${id}", ("id", trx->id()));
+      std::vector<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
+      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+
+         auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
+            next(response);
+            if (response.contains<fc::exception_ptr>()) {
+               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
+            } else {
+               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+            }
+         };
+
          auto id = trx->id();
-         if( chain.db().find<transaction_object, by_trx_id>(id) ) {
-            auto r = std::make_shared<transaction_trace>();
-            r->except = tx_duplicate( FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", id)) );
-            return r;
+         if( fc::time_point(trx->expiration()) < block_time ) {
+            send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
+            return;
          }
 
-         return publish_results_of(trx, _transaction_ack_channel, [&]() -> transaction_trace_ptr {
-            while (true) {
-               chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-               auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+         if( chain.is_known_unexpired_transaction(id) ) {
+            send_response(std::static_pointer_cast<fc::exception>(std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", id)) )));
+            return;
+         }
 
-               auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
-               bool deadline_is_subjective = false;
-               if (_pending_block_mode == pending_block_mode::producing && block_time < deadline) {
-                  deadline_is_subjective = true;
-                  deadline = block_time;
+         auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+         bool deadline_is_subjective = false;
+         if (_pending_block_mode == pending_block_mode::producing && block_time < deadline) {
+            deadline_is_subjective = true;
+            deadline = block_time;
+         }
+
+         try {
+            auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
+            if (trace->except) {
+               if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
+                  _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+               } else {
+                  auto e_ptr = trace->except->dynamic_copy_exception();
+                  send_response(e_ptr);
                }
-
-               auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
-
-               if (trace->except) {
-                  // edump((trace->except->to_detail_string()));
-                  if (failure_is_subjective(*trace->except, deadline_is_subjective) ) {
-                     // if we failed because the block was exhausted push the block out and try again if it succeeds
-                     if (_pending_block_mode == pending_block_mode::producing ) {
-                        fc_dlog(_log, "flushing block under production");
-
-                        if (maybe_produce_block()) {
-                           continue;
-                        }
-                     } else if (_pending_block_mode == pending_block_mode::speculating) {
-                        fc_dlog(_log, "dropping block under speculation");
-
-                        chain.abort_block();
-                        schedule_production_loop();
-                        continue;
-                     }
-
-                     // if we failed to produce a block that was not speculative (for some reason).  we are going to
-                     // return the trace with an exception set to the caller. if they don't support any retry mechanics
-                     // this may result in a lost transaction
-                  } else {
-                     trace->except->dynamic_rethrow_exception();
-                  }
-               } else if (persist_until_expired) {
+            } else {
+               if (persist_until_expired) {
                   // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
                   // ensure its applied to all future speculative blocks as well.
                   _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->expiration()});
                }
-
-               return trace;
+               send_response(trace);
             }
-         });
+
+         } catch ( boost::interprocess::bad_alloc& ) {
+            raise(SIGUSR1);
+         } CATCH_AND_CALL(send_response);
       }
+
 
       fc::microseconds get_irreversible_block_age() {
          auto now = fc::time_point::now();
@@ -459,8 +472,12 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       const std::vector<std::string> key_id_to_wif_pair_strings = options["private-key"].as<std::vector<std::string>>();
       for (const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
       {
-         auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
-         my->_private_keys[key_id_to_wif_pair.first] = key_id_to_wif_pair.second;
+         try {
+            auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
+            my->_private_keys[key_id_to_wif_pair.first] = key_id_to_wif_pair.second;
+         } catch ( fc::exception& e ) {
+            elog("Malformed private key pair");
+         }
       }
    }
 
@@ -476,7 +493,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const packed_transaction_ptr& trx){
       try {
-         my->on_incoming_transaction(trx);
+         my->on_incoming_transaction_async(trx, false, [](const auto&){});
       } FC_LOG_AND_DROP();
    });
 
@@ -484,8 +501,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       my->on_incoming_block(block);
    });
 
-   my->_incoming_transaction_sync_provider = app().get_method<incoming::methods::transaction_sync>().register_provider([this](const packed_transaction_ptr& trx, bool persist_until_expired) -> transaction_trace_ptr {
-      return my->on_incoming_transaction(trx, persist_until_expired);
+   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
+      return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 
 } FC_LOG_AND_RETHROW() }
@@ -793,12 +810,20 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                }
             } FC_LOG_AND_DROP();
          }
-
       }
 
       if (exhausted) {
          return start_block_result::exhausted;
       } else {
+         // attempt to apply any pending incoming transactions
+         if (!_pending_incoming_transactions.empty()) {
+            auto old_pending = std::move(_pending_incoming_transactions);
+            _pending_incoming_transactions.clear();
+            for (auto& e: old_pending) {
+               on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+            }
+         }
+
          return start_block_result::succeeded;
       }
    }
