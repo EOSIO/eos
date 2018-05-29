@@ -117,6 +117,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
+   cross_15_percent_threshold();
 
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
    transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
@@ -174,6 +175,8 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    issue( "eosio", core_from_string("1000.0000"), config::system_account_name );
    issue( "eosio.stake", core_from_string("1000.0000"), config::system_account_name );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
@@ -229,6 +232,8 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try 
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
 
    BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", core_from_string("2000.0000"), core_from_string("1000.0000") ) );
@@ -313,6 +318,8 @@ BOOST_FIXTURE_TEST_CASE( unstake_negative, eosio_system_tester ) try {
 
 
 BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
@@ -343,6 +350,8 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
 
 
 BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
 
    BOOST_REQUIRE_EQUAL( success(), stake ( "alice1111111", "bob111111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
@@ -397,6 +406,8 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
 
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake_separate, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( core_from_string("1000.0000"), get_balance( "alice1111111" ) );
 
@@ -433,6 +444,8 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_separate, eosio_system_tester ) try {
 
 
 BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
@@ -472,6 +485,8 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( stake_from_refund, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
@@ -593,6 +608,8 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
 
 
 BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester, * boost::unit_test::tolerance(1e+5) ) try {
+   cross_15_percent_threshold();
+
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice1111111), N(regproducer), mvo()
@@ -976,6 +993,8 @@ BOOST_FIXTURE_TEST_CASE( proxy_register_unregister_keeps_stake, eosio_system_tes
 
 
 BOOST_FIXTURE_TEST_CASE( proxy_stake_unstake_keeps_proxy_flag, eosio_system_tester ) try {
+   cross_15_percent_threshold();
+
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice1111111), N(regproxy), mvo()
                                                ("proxy",  "alice1111111")
                                                ("isproxy", true)
@@ -1006,6 +1025,8 @@ BOOST_FIXTURE_TEST_CASE( proxy_stake_unstake_keeps_proxy_flag, eosio_system_test
 
 
 BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester, * boost::unit_test::tolerance(1e+5) ) try {
+   cross_15_percent_threshold();
+
    create_accounts_with_resources( {  N(defproducer1), N(defproducer2), N(defproducer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer2", 2) );
@@ -1814,6 +1835,8 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system_tester, * boost::unit_test::tolerance(1e+6) ) try {
+   cross_15_percent_threshold();
+   
    create_accounts_with_resources( { N(donald111111), N(defproducer1), N(defproducer2), N(defproducer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer2", 2) );
