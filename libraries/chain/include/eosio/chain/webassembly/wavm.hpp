@@ -170,7 +170,7 @@ inline auto convert_native_to_wasm(running_instance_context& ctx, char* ptr) {
    char* top_of_memory = base + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem);
    if(ptr < base || ptr >= top_of_memory)
       Runtime::causeException(Exception::Cause::accessViolation);
-   return (int)(ptr - base);
+   return (U32)(ptr - base);
 }
 
 template<typename T>
@@ -379,7 +379,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
       const auto length = size_t(size);
-      T* base = array_ptr_impl<T>(ctx, ptr, length);
+      T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned array of const values" );
          std::remove_const_t<T> copy[length];
@@ -394,7 +394,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
       const auto length = size_t(size);
-      T* base = array_ptr_impl<T>(ctx, ptr, length);
+      T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned array of values" );
          std::remove_const_t<T> copy[length];
@@ -429,7 +429,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
-      return Then(ctx, null_terminated_ptr_impl(ctx, ptr), rest..., translated...);
+      return Then(ctx, null_terminated_ptr_impl(ctx, (U32)ptr), rest..., translated...);
    };
 
    template<then_type Then>
@@ -456,7 +456,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
       static_assert(std::is_same<std::remove_const_t<T>, char>::value && std::is_same<std::remove_const_t<U>, char>::value, "Currently only support array of (const)chars");
       const auto length = size_t(size);
-      return Then(ctx, array_ptr_impl<T>(ctx, ptr_t, length), array_ptr_impl<U>(ctx, ptr_u, length), length, rest..., translated...);
+      return Then(ctx, array_ptr_impl<T>(ctx, (U32)ptr_t, length), array_ptr_impl<U>(ctx, (U32)ptr_u, length), length, rest..., translated...);
    };
 
    template<then_type Then>
@@ -480,7 +480,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, I32 ptr, I32 value, I32 size) {
       const auto length = size_t(size);
-      return Then(ctx, array_ptr_impl<char>(ctx, ptr, length), value, length);
+      return Then(ctx, array_ptr_impl<char>(ctx, (U32)ptr, length), value, length);
    };
 
    template<then_type Then>
@@ -505,7 +505,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
-      T* base = array_ptr_impl<T>(ctx, ptr, 1);
+      T* base = array_ptr_impl<T>(ctx, (U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned const pointer" );
          std::remove_const_t<T> copy;
@@ -518,7 +518,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
-      T* base = array_ptr_impl<T>(ctx, ptr, 1);
+      T* base = array_ptr_impl<T>(ctx, (U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned pointer" );
          std::remove_const_t<T> copy;
@@ -580,11 +580,11 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
-      FC_ASSERT(ptr != 0);
+      FC_ASSERT((U32)ptr != 0);
       MemoryInstance* mem = ctx.memory;
-      if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+      if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
-      T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
+      T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
          wlog( "misaligned const reference" );
          std::remove_const_t<T> copy;
@@ -598,11 +598,11 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
-      FC_ASSERT(ptr != 0);
+      FC_ASSERT((U32)ptr != 0);
       MemoryInstance* mem = ctx.memory;
-      if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+      if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
-      T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
+      T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
          wlog( "misaligned reference" );
          std::remove_const_t<T> copy;
