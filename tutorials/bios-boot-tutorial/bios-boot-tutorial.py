@@ -28,7 +28,6 @@ systemAccounts = [
     'eosio.vpay',
 ]
 
-
 def jsonArg(a):
     return " '" + json.dumps(a) + "' "
 
@@ -258,7 +257,7 @@ def msigReplaceSystem():
 
 def produceNewAccounts():
     with open('newusers', 'w') as f:
-        for i in range(0, 3000):
+        for i in range(3000, 30000):
             x = getOutput(args.cleos + 'create key')
             r = re.match('Private key: *([^ \n]*)\nPublic key: *([^ \n]*)', x, re.DOTALL | re.MULTILINE)
             name = 'user'
@@ -266,7 +265,6 @@ def produceNewAccounts():
                 name += chr(ord('a') + ((i >> (j * 4)) & 15))
             print(i, name)
             f.write('        {"name":"%s", "pvt":"%s", "pub":"%s"},\n' % (name, r[1], r[2]))
-
 
 def stepKillAll():
     run('killall keosd nodeos || true')
@@ -343,7 +341,6 @@ commands = [
     ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
 ]
 
-
 parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
 parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
 parser.add_argument('--cleos', metavar='', help="Cleos command", default='../../build/programs/cleos/cleos --wallet-url http://localhost:6666 ')
@@ -355,7 +352,7 @@ parser.add_argument('--genesis', metavar='', help="Path to genesis.json", defaul
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 parser.add_argument('--symbol', metavar='', help="The eosio.system symbol", default='SYS')
-parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=0)
+parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=3000)
 parser.add_argument('--max-user-keys', metavar='', help="Maximum user keys to import into wallet", type=int, default=10)
 parser.add_argument('--extra-issue', metavar='', help="Extra amount to issue to cover buying ram", type=float, default=10.0000)
 parser.add_argument('--producer-limit', metavar='', help="Maximum number of producers. (0 = no limit)", type=int, default=0)
