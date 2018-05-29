@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['forward_5fiterator',['forward_iterator',['../classforward__iterator.html#ad408782e21285fc911c8030273b9d176',1,'forward_iterator']]]
+  ['controller_5fimpl',['controller_impl',['../classeosio_1_1chain_1_1transaction__context_afacea5f421e7b989103659e2e5fa3353.html#afacea5f421e7b989103659e2e5fa3353',1,'eosio::chain::transaction_context']]]
 ];

@@ -1,9 +1,10 @@
 var searchData=
 [
-  ['_5fao_5facq_5frel',['_AO_Acq_Rel',['../namespace___l_i_b_c_p_p___b_e_g_i_n___n_a_m_e_s_p_a_c_e___s_t_d.html#aa15cb8609cba62ebead9fab99231ce26acb8424f62b4e45016514ec0a33c4f57a',1,'_LIBCPP_BEGIN_NAMESPACE_STD']]],
-  ['_5fao_5facquire',['_AO_Acquire',['../namespace___l_i_b_c_p_p___b_e_g_i_n___n_a_m_e_s_p_a_c_e___s_t_d.html#aa15cb8609cba62ebead9fab99231ce26acd6cc0017ce4c40786a9f7859bf90473',1,'_LIBCPP_BEGIN_NAMESPACE_STD']]],
-  ['_5fao_5fconsume',['_AO_Consume',['../namespace___l_i_b_c_p_p___b_e_g_i_n___n_a_m_e_s_p_a_c_e___s_t_d.html#aa15cb8609cba62ebead9fab99231ce26ada41f64a441700e68c120c8a42282729',1,'_LIBCPP_BEGIN_NAMESPACE_STD']]],
-  ['_5fao_5frelaxed',['_AO_Relaxed',['../namespace___l_i_b_c_p_p___b_e_g_i_n___n_a_m_e_s_p_a_c_e___s_t_d.html#aa15cb8609cba62ebead9fab99231ce26a73003025aa4939f7b92c6b6e285e1490',1,'_LIBCPP_BEGIN_NAMESPACE_STD']]],
-  ['_5fao_5frelease',['_AO_Release',['../namespace___l_i_b_c_p_p___b_e_g_i_n___n_a_m_e_s_p_a_c_e___s_t_d.html#aa15cb8609cba62ebead9fab99231ce26a5168a4fd72e1500a8f01592c9dc52217',1,'_LIBCPP_BEGIN_NAMESPACE_STD']]],
-  ['_5fao_5fseq',['_AO_Seq',['../namespace___l_i_b_c_p_p___b_e_g_i_n___n_a_m_e_s_p_a_c_e___s_t_d.html#aa15cb8609cba62ebead9fab99231ce26a27e6e0c0d09fd9cef1f1610a6a100ed1',1,'_LIBCPP_BEGIN_NAMESPACE_STD']]]
+  ['account_5fcontrol_5fhistory_5fobject_5ftype',['account_control_history_object_type',['../namespaceeosio_1_1chain_a81e7501aac47b73f9c56a62cc67a4e39.html#a81e7501aac47b73f9c56a62cc67a4e39a0e0dff25e4a9d286cc711c406a7b6ceb',1,'eosio::chain']]],
+  ['account_5fhistory_5fobject_5ftype',['account_history_object_type',['../namespaceeosio_1_1chain_a81e7501aac47b73f9c56a62cc67a4e39.html#a81e7501aac47b73f9c56a62cc67a4e39a77660cdb3fcb2fab01432c0eed91cb88',1,'eosio::chain']]],
+  ['account_5fobject_5ftype',['account_object_type',['../namespaceeosio_1_1chain_a81e7501aac47b73f9c56a62cc67a4e39.html#a81e7501aac47b73f9c56a62cc67a4e39a156ce526b84237e7161087bb5682530f',1,'eosio::chain']]],
+  ['account_5fsequence_5fobject_5ftype',['account_sequence_object_type',['../namespaceeosio_1_1chain_a81e7501aac47b73f9c56a62cc67a4e39.html#a81e7501aac47b73f9c56a62cc67a4e39a597e599422bc4918e63caa67bce406c2',1,'eosio::chain']]],
+  ['account_5ftransaction_5fhistory_5fobject_5ftype',['account_transaction_history_object_type',['../namespaceeosio_1_1chain_a81e7501aac47b73f9c56a62cc67a4e39.html#a81e7501aac47b73f9c56a62cc67a4e39a9b5f51ee85a55be1fb91318131652b7d',1,'eosio::chain']]],
+  ['action_5fcode_5fobject_5ftype',['action_code_object_type',['../namespaceeosio_1_1chain_a81e7501aac47b73f9c56a62cc67a4e39.html#a81e7501aac47b73f9c56a62cc67a4e39a31cc2e3df8fef1703397705e18e99334',1,'eosio::chain']]],
+  ['action_5fhistory_5fobject_5ftype',['action_history_object_type',['../namespaceeosio_1_1chain_a81e7501aac47b73f9c56a62cc67a4e39.html#a81e7501aac47b73f9c56a62cc67a4e39acbda50ffe44a6b98b2eb19a4f006aa1e',1,'eosio::chain']]]
 ];

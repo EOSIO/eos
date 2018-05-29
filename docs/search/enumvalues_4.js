@@ -1,5 +1,8 @@
 var searchData=
 [
-  ['dbl',['DBL',['../vfprintf_8c.html#ae4d5251432e1a9e6803c0240cc492e18aa7b7ad27665e918c9b35318101379529',1,'DBL():&#160;vfprintf.c'],['../vfwprintf_8c.html#a7ff5f2dff38e7639981794c43dc9167baa7b7ad27665e918c9b35318101379529',1,'DBL():&#160;vfwprintf.c']]],
-  ['destroyed',['DESTROYED',['../struct_tracked_value.html#aaaf06c0ca38ea3d887a191c62bda26aba6752f24ed7b0536c8d64fbc3e343e77b',1,'TrackedValue']]]
+  ['else_5f_5fcode',['else__code',['../namespaceeosio_1_1chain_1_1wasm__ops_a4eff4c3a5ad1e8e813e0087e2f72c17b.html#a4eff4c3a5ad1e8e813e0087e2f72c17ba4470bfb517647ff514f98c3001610da4',1,'eosio::chain::wasm_ops']]],
+  ['end_5fcode',['end_code',['../namespaceeosio_1_1chain_1_1wasm__ops_a4eff4c3a5ad1e8e813e0087e2f72c17b.html#a4eff4c3a5ad1e8e813e0087e2f72c17ba68939d30ebab777150ad8999c50cc553',1,'eosio::chain::wasm_ops']]],
+  ['error_5fcode',['error_code',['../namespaceeosio_1_1chain_1_1wasm__ops_a4eff4c3a5ad1e8e813e0087e2f72c17b.html#a4eff4c3a5ad1e8e813e0087e2f72c17ba0c7c55ba7ae824cf3f86be60ca3e7a12',1,'eosio::chain::wasm_ops']]],
+  ['executed',['executed',['../structeosio_1_1chain_1_1transaction__receipt__header_a049e7f1fd718f73531d9f86f5b975845.html#a049e7f1fd718f73531d9f86f5b975845ad842917fdf9c38442cb6dd93a58d94e0',1,'eosio::chain::transaction_receipt_header']]],
+  ['expired',['expired',['../structeosio_1_1chain_1_1transaction__receipt__header_a049e7f1fd718f73531d9f86f5b975845.html#a049e7f1fd718f73531d9f86f5b975845ae9766385ec3ed9c3793eccca273e32a8',1,'eosio::chain::transaction_receipt_header']]]
 ];
