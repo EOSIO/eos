@@ -17,6 +17,11 @@ class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
+   struct runtime_options {
+      fc::optional<int32_t> max_transaction_time;
+      fc::optional<int32_t> max_irreversible_block_age;
+   };
+
    producer_plugin();
    virtual ~producer_plugin();
 
@@ -35,10 +40,14 @@ public:
    void pause();
    void resume();
    bool paused() const;
+   void update_runtime_options(const runtime_options& options);
+   runtime_options get_runtime_options() const;
 
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_plugin_impl> my;
 };
 
-} //eosiio
+} //eosio
+
+FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age));
