@@ -215,6 +215,10 @@ namespace eosio {
                ws.clear_access_channels(websocketpp::log::alevel::all);
                ws.init_asio(&app().get_io_service());
                ws.set_reuse_addr(true);
+               //  1MB blocks plus some additional room for encryption if enabled plus message overhead,
+               //  add an addition 512k to be conservative. Overrides the default 32MB.
+               ws.set_max_http_body_size(1024*1024 + 512*1024);
+               ws.set_max_message_size(1024*1024 + 512*1024);
 
                ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<T>(ws.get_con_from_hdl(hdl));
