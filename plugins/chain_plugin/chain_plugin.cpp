@@ -917,7 +917,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
    } else {
-      EOS_ASSERT(false, abi_type_exception, "No ABI found for ${contract}", ("contract", params.code));
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
@@ -930,7 +930,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
       abi_serializer abis( abi );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
    } else {
-      EOS_ASSERT(false, abi_type_exception, "No ABI found for ${contract}", ("contract", params.code));
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 }
