@@ -1,0 +1,23 @@
+var searchData=
+[
+  ['_5f_5fintrinsic_5fname',['__INTRINSIC_NAME',['../binaryen_8hpp_af0841dd1bafafbf454a60cea8bc74b19.html#af0841dd1bafafbf454a60cea8bc74b19',1,'__INTRINSIC_NAME():&#160;binaryen.hpp'],['../wavm_8hpp_af0841dd1bafafbf454a60cea8bc74b19.html#af0841dd1bafafbf454a60cea8bc74b19',1,'__INTRINSIC_NAME():&#160;wavm.hpp']]],
+  ['_5fadd_5fparen_5f1',['_ADD_PAREN_1',['../binaryen_8hpp_a9e42284b3a429036855dfdb15c2797c6.html#a9e42284b3a429036855dfdb15c2797c6',1,'_ADD_PAREN_1():&#160;binaryen.hpp'],['../wavm_8hpp_a9e42284b3a429036855dfdb15c2797c6.html#a9e42284b3a429036855dfdb15c2797c6',1,'_ADD_PAREN_1():&#160;wavm.hpp']]],
+  ['_5fadd_5fparen_5f1_5fend',['_ADD_PAREN_1_END',['../binaryen_8hpp_a3df26182b426587575fc124edb110330.html#a3df26182b426587575fc124edb110330',1,'_ADD_PAREN_1_END():&#160;binaryen.hpp'],['../wavm_8hpp_a3df26182b426587575fc124edb110330.html#a3df26182b426587575fc124edb110330',1,'_ADD_PAREN_1_END():&#160;wavm.hpp']]],
+  ['_5fadd_5fparen_5f2',['_ADD_PAREN_2',['../binaryen_8hpp_a48d591c062ee7488e35bec0b78c48502.html#a48d591c062ee7488e35bec0b78c48502',1,'_ADD_PAREN_2():&#160;binaryen.hpp'],['../wavm_8hpp_a48d591c062ee7488e35bec0b78c48502.html#a48d591c062ee7488e35bec0b78c48502',1,'_ADD_PAREN_2():&#160;wavm.hpp']]],
+  ['_5fadd_5fparen_5f2_5fend',['_ADD_PAREN_2_END',['../binaryen_8hpp_a85373ded4fadbf57ed9b31c2b4f0b9b2.html#a85373ded4fadbf57ed9b31c2b4f0b9b2',1,'_ADD_PAREN_2_END():&#160;binaryen.hpp'],['../wavm_8hpp_a85373ded4fadbf57ed9b31c2b4f0b9b2.html#a85373ded4fadbf57ed9b31c2b4f0b9b2',1,'_ADD_PAREN_2_END():&#160;wavm.hpp']]],
+  ['_5fexpand_5fargs',['_EXPAND_ARGS',['../wasm__interface__private_8hpp_a469a00632badf45b27367e4c0350fd26.html#a469a00632badf45b27367e4c0350fd26',1,'wasm_interface_private.hpp']]],
+  ['_5fintrinsic_5fname',['_INTRINSIC_NAME',['../binaryen_8hpp_a834f19471d170bba74603e4a77b5dfe1.html#a834f19471d170bba74603e4a77b5dfe1',1,'_INTRINSIC_NAME():&#160;binaryen.hpp'],['../wavm_8hpp_a834f19471d170bba74603e4a77b5dfe1.html#a834f19471d170bba74603e4a77b5dfe1',1,'_INTRINSIC_NAME():&#160;wavm.hpp']]],
+  ['_5fregister_5fbinaryen_5fintrinsic',['_REGISTER_BINARYEN_INTRINSIC',['../binaryen_8hpp_ac6013df9675e2b8f1fb4574c9ee95bda.html#ac6013df9675e2b8f1fb4574c9ee95bda',1,'binaryen.hpp']]],
+  ['_5fregister_5finjected_5fintrinsic',['_REGISTER_INJECTED_INTRINSIC',['../wasm__interface__private_8hpp_aeb278080eba88cfe4c3abfd0a6c8df36.html#aeb278080eba88cfe4c3abfd0a6c8df36',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fintrinsic',['_REGISTER_INTRINSIC',['../wasm__interface__private_8hpp_a021a2ca20f777444bb7b1fa915e72388.html#a021a2ca20f777444bb7b1fa915e72388',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fintrinsic0',['_REGISTER_INTRINSIC0',['../wasm__interface__private_8hpp_a8ddc2168fd458ab0667c37bef57e29fc.html#a8ddc2168fd458ab0667c37bef57e29fc',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fintrinsic1',['_REGISTER_INTRINSIC1',['../wasm__interface__private_8hpp_a96d6f19d1c8b33723430d626402388f8.html#a96d6f19d1c8b33723430d626402388f8',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fintrinsic2',['_REGISTER_INTRINSIC2',['../wasm__interface__private_8hpp_a3785e7a4f2fdc0c069dc9caa7c1f6dab.html#a3785e7a4f2fdc0c069dc9caa7c1f6dab',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fintrinsic3',['_REGISTER_INTRINSIC3',['../wasm__interface__private_8hpp_a3b5ec0c2cf9a2d4b1f6217a14905702d.html#a3b5ec0c2cf9a2d4b1f6217a14905702d',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fintrinsic4',['_REGISTER_INTRINSIC4',['../wasm__interface__private_8hpp_afd4e6d353387991adde7f4c66ec9a37c.html#afd4e6d353387991adde7f4c66ec9a37c',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fintrinsic_5fexplicit',['_REGISTER_INTRINSIC_EXPLICIT',['../wasm__interface__private_8hpp_ad3bd4b65c93266013ce0658714ece405.html#ad3bd4b65c93266013ce0658714ece405',1,'wasm_interface_private.hpp']]],
+  ['_5fregister_5fwavm_5fintrinsic',['_REGISTER_WAVM_INTRINSIC',['../wavm_8hpp_a810b71d4c7f351aeb635efebfda3b527.html#a810b71d4c7f351aeb635efebfda3b527',1,'wavm.hpp']]],
+  ['_5funwrap_5fseq',['_UNWRAP_SEQ',['../wasm__interface__private_8hpp_ac4958b69c88eb0edd6425cb45986e857.html#ac4958b69c88eb0edd6425cb45986e857',1,'wasm_interface_private.hpp']]],
+  ['_5fv',['_V',['../types_8hpp_a6bc6377fbef64c17239c389e9ae274a9.html#a6bc6377fbef64c17239c389e9ae274a9',1,'types.hpp']]],
+  ['_5fwrapped_5fseq',['_WRAPPED_SEQ',['../binaryen_8hpp_aea6bd1afd12fa3ce303856ef4cca541c.html#aea6bd1afd12fa3ce303856ef4cca541c',1,'_WRAPPED_SEQ():&#160;binaryen.hpp'],['../wavm_8hpp_aea6bd1afd12fa3ce303856ef4cca541c.html#aea6bd1afd12fa3ce303856ef4cca541c',1,'_WRAPPED_SEQ():&#160;wavm.hpp']]]
+];

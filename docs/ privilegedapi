@@ -1,9 +1,0 @@
-# group `privilegedapi` 
-
-Defines an API for accessing configuration of the chain that can only be done by privileged accounts.
-
-## Summary
-
- Members                        | Descriptions                                
---------------------------------|---------------------------------------------
-
