@@ -1751,13 +1751,13 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
 
    BOOST_REQUIRE_EQUAL(success(), stake("producvotera", core_from_string("70000000.0000"), core_from_string("70000000.0000") ));
 
-   BOOST_CHECK_EQUAL( wasm_assert_msg("not enough has been staked for users to unstake"), unstake( "producvotera", core_from_string("50.0000"), core_from_string("50.0000") ) );
-
    BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
                                                 ("voter",  "producvotera")
                                                 ("proxy", name(0).to_string())
                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+10))
                                                 ));
+
+   BOOST_CHECK_EQUAL( wasm_assert_msg("not enough has been staked for users to unstake"), unstake( "producvotera", core_from_string("50.0000"), core_from_string("50.0000") ) );
 
    // give a chance for everyone to produce blocks
    {
@@ -1836,7 +1836,7 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
 
 BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system_tester, * boost::unit_test::tolerance(1e+6) ) try {
    cross_15_percent_threshold();
-   
+
    create_accounts_with_resources( { N(donald111111), N(defproducer1), N(defproducer2), N(defproducer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer2", 2) );
