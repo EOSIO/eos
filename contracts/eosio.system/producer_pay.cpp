@@ -4,111 +4,138 @@
 
 namespace eosiosystem {
 
-static const uint32_t num_of_payed_producers = 121;
+   const int64_t  min_pervote_daily_pay = 100'0000;
+   const int64_t  min_activated_stake   = 150'000'000'0000;
+   const double   continuous_rate       = 0.04879;          // 5% annual rate
+   const double   perblock_rate         = 0.0025;           // 0.25%
+   const double   standby_rate          = 0.0075;           // 0.75%
+   const uint32_t blocks_per_year       = 52*7*24*2*3600;   // half seconds per year
+   const uint32_t seconds_per_year      = 52*7*24*3600;
+   const uint32_t blocks_per_day        = 2 * 24 * 3600;
+   const uint32_t blocks_per_hour       = 2 * 3600;
+   const uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
+   const uint64_t useconds_per_year     = seconds_per_year*1000000ll;
 
-bool system_contract::update_cycle(time block_time) {
-   global_state_singleton gs( _self, _self );
-   auto parameters = gs.exists() ? gs.get() : get_default_parameters();
-   if (parameters.first_block_time_in_cycle == 0) {
-      // This is the first time onblock is called in the blockchain.
-      parameters.last_bucket_fill_time = block_time;
-      gs.set( parameters, _self );
-      update_elected_producers( block_time );
-      return true;
-   }
 
-   static const uint32_t slots_per_cycle = parameters.blocks_per_cycle;
-   const uint32_t time_slots = block_time - parameters.first_block_time_in_cycle;
-   if (time_slots >= slots_per_cycle) {
-      time beginning_of_cycle = block_time - (time_slots % slots_per_cycle);
-      update_elected_producers(beginning_of_cycle);
-      return true;
-   }
-   return false;
-}
+   void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
+      using namespace eosio;
 
-void system_contract::onblock(const block_header& header) {
-   // update parameters if it's a new cycle
-   update_cycle(header.timestamp);
+      require_auth(N(eosio));
 
-   producers_table producers_tbl( _self, _self );
-   account_name producer = header.producer;
+      /** until activated stake crosses this threshold no new rewards are paid */
+      if( _gstate.total_activated_stake < min_activated_stake )
+         return;
 
-   global_state_singleton gs( _self, _self );
-   auto parameters = gs.exists() ? gs.get() : get_default_parameters();
-   //            const system_token_type block_payment = parameters.payment_per_block;
-   const asset block_payment = parameters.payment_per_block;
-   auto prod = producers_tbl.find(producer);
-   if ( prod != producers_tbl.end() ) {
-      producers_tbl.modify( prod, 0, [&](auto& p) {
-            p.per_block_payments += block_payment;
-            p.last_produced_block_time = header.timestamp;
+      if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
+         _gstate.last_pervote_bucket_fill = current_time();
+
+
+      /**
+       * At startup the initial producer may not be one that is registered / elected
+       * and therefore there may be no producer object for them.
+       */
+      auto prod = _producers.find(producer);
+      if ( prod != _producers.end() ) {
+         _gstate.total_unpaid_blocks++;
+         _producers.modify( prod, 0, [&](auto& p ) {
+               p.unpaid_blocks++;
+               p.last_produced_block_time = timestamp;
          });
-   }
-
-   const uint32_t num_of_payments = header.timestamp - parameters.last_bucket_fill_time;
-   //            const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
-   const asset to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
-   parameters.last_bucket_fill_time = header.timestamp;
-   parameters.eos_bucket += to_eos_bucket;
-   gs.set( parameters, _self );
-}
-
-void system_contract::claimrewards(const account_name& owner) {
-   require_auth(owner);
-   eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
-   producers_table producers_tbl( _self, _self );
-   auto prod = producers_tbl.find(owner);
-   eosio_assert(prod != producers_tbl.end(), "account name is not in producer list");
-   eosio_assert(prod->active(), "producer is not active"); // QUESTION: Why do we want to prevent inactive producers from claiming their earned rewards?
-   if( prod->last_rewards_claim > 0 ) {
-      eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
-   }
-   //            system_token_type rewards = prod->per_block_payments;
-   eosio::asset rewards = prod->per_block_payments;
-   auto idx = producers_tbl.template get_index<N(prototalvote)>();
-   auto itr = --idx.end();
-
-   bool is_among_payed_producers = false;
-   uint128_t total_producer_votes = 0;
-   uint32_t n = 0;
-   while( n < num_of_payed_producers ) {
-      if( !is_among_payed_producers ) {
-         if( itr->owner == owner )
-            is_among_payed_producers = true;
       }
-      if( itr->active() ) {
-         total_producer_votes += itr->total_votes;
-         ++n;
-      }
-      if( itr == idx.begin() ) {
-         break;
-      }
-      --itr;
-   }
-
-   if (is_among_payed_producers && total_producer_votes > 0) {
-      global_state_singleton gs( _self, _self );
-      if( gs.exists() ) {
-         auto parameters = gs.get();
-         //                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
-         auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( (prod->total_votes * parameters.eos_bucket.amount) / total_producer_votes ) );
-         rewards += share_of_eos_bucket;
-         parameters.eos_bucket -= share_of_eos_bucket;
-         gs.set( parameters, _self );
+      
+      /// only update block producers once every minute, block_timestamp is in half seconds
+      if( timestamp.slot - _gstate.last_producer_schedule_update.slot > 120 ) {
+         update_elected_producers( timestamp );
+         
+         if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
+            name_bid_table bids(_self,_self);
+            auto idx = bids.get_index<N(highbid)>();
+            auto highest = idx.begin();
+            if( highest != idx.end() &&
+                highest->high_bid > 0 &&
+                highest->last_bid_time < (current_time() - useconds_per_day) &&
+                _gstate.thresh_activated_stake_time > 0 &&
+                (current_time() - _gstate.thresh_activated_stake_time) > 14 * useconds_per_day ) {
+                   _gstate.last_name_close = timestamp;
+                   idx.modify( highest, 0, [&]( auto& b ){
+                         b.high_bid = -b.high_bid;
+               });
+            }
+         }
       }
    }
 
-   //            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
-   eosio_assert( rewards > asset(0, S(4,EOS)), "no rewards available to claim" );
+   using namespace eosio;
+   void system_contract::claimrewards( const account_name& owner ) {
+      require_auth(owner);
 
-   producers_tbl.modify( prod, 0, [&](auto& p) {
-         p.last_rewards_claim = now();
-         p.per_block_payments.amount = 0;
+      const auto& prod = _producers.get( owner );
+      eosio_assert( prod.active(), "producer does not have an active key" );
+      
+      eosio_assert( _gstate.total_activated_stake >= min_activated_stake, "not enough has been staked for producers to claim rewards" );
+
+      auto ct = current_time();
+
+      eosio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
+
+      const asset token_supply   = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
+      const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
+
+      if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0 ) {
+         auto new_tokens = static_cast<int64_t>( (continuous_rate * double(token_supply.amount) * double(usecs_since_last_fill)) / double(useconds_per_year) );
+
+         auto to_producers       = new_tokens / 5;
+         auto to_savings         = new_tokens - to_producers;
+         auto to_per_block_pay   = to_producers / 4;
+         auto to_per_vote_pay    = to_producers - to_per_block_pay;
+
+         INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
+                                                    {N(eosio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
+
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), N(eosio.saving), asset(to_savings), "unallocated inflation" } );
+
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), N(eosio.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
+
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                       { N(eosio), N(eosio.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
+
+         _gstate.pervote_bucket  += to_per_vote_pay;
+         _gstate.perblock_bucket += to_per_block_pay;
+         _gstate.savings         += to_savings;
+
+         _gstate.last_pervote_bucket_fill = ct;
+      }
+
+      int64_t producer_per_block_pay = 0;
+      if( _gstate.total_unpaid_blocks > 0 ) {
+         producer_per_block_pay = (_gstate.perblock_bucket * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
+      }
+      int64_t producer_per_vote_pay = 0;
+      if( _gstate.total_producer_vote_weight > 0 ) { 
+         producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
+      }
+      if( producer_per_vote_pay < min_pervote_daily_pay ) {
+         producer_per_vote_pay = 0;
+      }
+      _gstate.pervote_bucket      -= producer_per_vote_pay;
+      _gstate.perblock_bucket     -= producer_per_block_pay;
+      _gstate.total_unpaid_blocks -= prod.unpaid_blocks;
+
+      _producers.modify( prod, 0, [&](auto& p) {
+          p.last_claim_time = ct;
+          p.unpaid_blocks = 0;
       });
-
-   INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
-                                                 { N(eosio), owner, rewards, std::string("producer claiming rewards") } );
-}
+      
+      if( producer_per_block_pay > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.bpay),N(active)},
+                                                       { N(eosio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+      }
+      if( producer_per_vote_pay > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.vpay),N(active)},
+                                                       { N(eosio.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
+      }
+   }
 
 } //namespace eosiosystem

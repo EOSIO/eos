@@ -18,8 +18,8 @@ set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 3)
-set(VERSION_MINOR 0)
+set(VERSION_MAJOR 4)
+set(VERSION_MINOR 2)
 set(VERSION_PATCH 0)
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
@@ -85,7 +85,7 @@ IF( WIN32 )
   set(Boost_USE_MULTITHREADED ON)
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
-FIND_PACKAGE(Boost 1.66 REQUIRED COMPONENTS
+FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     thread
     date_time
     filesystem
@@ -180,6 +180,24 @@ endif()
 
 add_subdirectory( externals )
 
+if ("${CORE_SYMBOL_NAME}" STREQUAL "")
+  set( CORE_SYMBOL_NAME "SYS" )
+endif()
+string(TOUPPER ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME)
+
+string(LENGTH ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME_LENGTH)
+if (CORE_SYMBOL_NAME_LENGTH GREATER 7)
+  message(FATAL_ERROR "CORE_SYMBOL_NAME lenght must be a between 1 and 7 characters")
+endif()
+
+message( STATUS "Using '${CORE_SYMBOL_NAME}' as CORE symbol name" )
+
+if ("${EOSIO_ROOT_KEY}" STREQUAL "")
+   set(EOSIO_ROOT_KEY "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
+endif()
+
+message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for eosio account" )
+
 include(wasm)
 
 add_subdirectory( libraries )
@@ -187,6 +205,7 @@ add_subdirectory( contracts )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
+add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
 add_subdirectory( debian )

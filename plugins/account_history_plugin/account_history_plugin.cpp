@@ -8,7 +8,7 @@
 #include <eosio/account_history_plugin/public_key_history_object.hpp>
 #include <eosio/account_history_plugin/transaction_history_object.hpp>
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/controller.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -60,7 +60,7 @@ public:
    void check_init_db() {
       if( !init_db ) {
          init_db = true;
-         auto& db = chain_plug->chain().get_mutable_database();
+         auto& db = chain_plug->chain().db();
          db.add_index<account_control_history_multi_index>();
          db.add_index<account_transaction_history_multi_index>();
          db.add_index<public_key_history_multi_index>();
@@ -134,9 +134,11 @@ optional<block_id_type> account_history_plugin_impl::find_block_id(const chainba
 
 packed_transaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
 {
+   /* TODO: fix this
    for (const packed_transaction& trx : block.input_transactions)
       if (trx.get_transaction().id() == transaction_id)
          return trx;
+         */
 
    // ERROR in indexing logic
    FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block.id()));
@@ -144,7 +146,7 @@ packed_transaction account_history_plugin_impl::find_transaction(const chain::tr
 
 packed_transaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
 {
-   const auto& db = chain_plug->chain().get_database();
+   const auto& db = chain_plug->chain().db();
    optional<block_id_type> block_id;
    db.with_read_lock( [&]() {
       block_id = find_block_id(db, transaction_id);
@@ -163,7 +165,7 @@ packed_transaction account_history_plugin_impl::get_transaction(const chain::tra
 get_transactions_results account_history_plugin_impl::get_transactions(const account_name&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const
 {
    fc::time_point start_time = fc::time_point::now();
-   const auto& db = chain_plug->chain().get_database();
+   const auto& db = chain_plug->chain().db();
 
    block_transaction_id_map block_transaction_ids;
    db.with_read_lock( [&]() {
@@ -276,7 +278,7 @@ bool account_history_plugin_impl::time_exceeded(const fc::time_point& start_time
 vector<account_name> account_history_plugin_impl::get_key_accounts(const public_key_type& public_key) const
 {
    std::set<account_name> accounts;
-   const auto& db = chain_plug->chain().get_database();
+   const auto& db = chain_plug->chain().db();
    db.with_read_lock( [&]() {
       const auto& pub_key_idx = db.get_index<public_key_history_multi_index, by_pub_key>();
       auto range = pub_key_idx.equal_range( public_key );
@@ -291,7 +293,7 @@ vector<account_name> account_history_plugin_impl::get_key_accounts(const public_
 vector<account_name> account_history_plugin_impl::get_controlled_accounts(const account_name& controlling_account) const
 {
    std::set<account_name> accounts;
-   const auto& db = chain_plug->chain().get_database();
+   const auto& db = chain_plug->chain().db();
    db.with_read_lock( [&]() {
       const auto& account_control_idx = db.get_index<account_control_history_multi_index, by_controlling>();
       auto range = account_control_idx.equal_range( controlling_account );
@@ -310,7 +312,7 @@ static vector<account_name> generated_affected_accounts(const chain::transaction
          result.emplace_back(auth.actor);
       }
 
-      result.emplace_back(at.receiver);
+      result.emplace_back(at.receipt.receiver);
    }
 
    fc::deduplicate(result);
@@ -321,7 +323,7 @@ void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
 {
    const auto& block = trace.block;
    const auto block_id = block.id();
-   auto& db = chain_plug->chain().get_mutable_database();
+   auto& db = chain_plug->chain().db();
    const bool check_relevance = filter_on.size();
    auto process_one = [&](const chain::transaction_trace& trx_trace )
    {
@@ -351,11 +353,11 @@ void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
 
       for (const auto& act_trace : trx_trace.action_traces)
       {
-         if (act_trace.receiver == chain::config::system_account_name)
+         if (act_trace.receipt.receiver == chain::config::system_account_name)
          {
             if (act_trace.act.name == NEW_ACCOUNT)
             {
-               const auto create = act_trace.act.data_as<chain::contracts::newaccount>();
+               const auto create = act_trace.act.data_as<chain::newaccount>();
                add(db, create.owner.keys, create.name, OWNER);
                add(db, create.active.keys, create.name, ACTIVE);
                add(db, create.recovery.keys, create.name, RECOVERY);
@@ -366,7 +368,7 @@ void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
             }
             else if (act_trace.act.name == UPDATE_AUTH)
             {
-               const auto update = act_trace.act.data_as<chain::contracts::updateauth>();
+               const auto update = act_trace.act.data_as<chain::updateauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
                add(db, update.data.keys, update.account, update.permission);
 
@@ -375,7 +377,7 @@ void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
             }
             else if (act_trace.act.name == DELETE_AUTH)
             {
-               const auto del = act_trace.act.data_as<chain::contracts::deleteauth>();
+               const auto del = act_trace.act.data_as<chain::deleteauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
 
                remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
@@ -427,7 +429,7 @@ bool account_history_plugin_impl::is_scope_relevant(const vector<account_name>& 
 
 fc::variant account_history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) const
 {
-   const chainbase::database& database = chain_plug->chain().get_database();
+   const chainbase::database& database = chain_plug->chain().db();
    auto resolver = [&database]( const account_name& name ) -> optional<abi_serializer> {
       const auto* accnt = database.find<chain::account_object,chain::by_name>( name );
       if (accnt != nullptr) {
@@ -477,7 +479,7 @@ void account_history_plugin::plugin_initialize(const variables_map& options)
    }
 
    my->chain_plug = app().find_plugin<chain_plugin>();
-   my->chain_plug->chain_config().applied_block_callbacks.emplace_back( 
+   my->chain_plug->chain_config().applied_block_callbacks.emplace_back(
             [&impl = my](const chain::block_trace& trace) {
                   impl->check_init_db();
                   impl->applied_block(trace);
@@ -488,7 +490,7 @@ void account_history_plugin::plugin_initialize(const variables_map& options)
 void account_history_plugin::plugin_startup()
 {
    /*
-   auto& db = my->chain_plug->chain().get_mutable_database();
+   auto& db = my->chain_plug->chain().db();
    db.add_index<account_control_history_multi_index>();
    db.add_index<account_transaction_history_multi_index>();
    db.add_index<public_key_history_multi_index>();

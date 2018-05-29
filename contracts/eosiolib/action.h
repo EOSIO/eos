@@ -9,14 +9,14 @@ extern "C" {
    /**
     * @defgroup actionapi Action API
     * @ingroup contractdev
-    * @brief Define API for querying action properties
+    * @brief Defines API for  for querying action and sending action
     *
     */
 
    /**
     * @defgroup actioncapi Action C API
     * @ingroup actionapi
-    * @brief Define API for querying action properties
+    * @brief Defines API for querying action and sending action
     *
     *
     * A EOS.IO action has the following abstract structure:
@@ -58,7 +58,7 @@ extern "C" {
     * require_auth(N(inita)); // Do nothing since inita exists in the auth list
     * require_auth(N(initb)); // Throws an exception
     *
-    * print(now()); // Output: timestamp of last accepted block
+    * print(current_time()); // Output: timestamp (in microseconds since 1970) of current block
     *
     * @endcode
     *
@@ -68,16 +68,19 @@ extern "C" {
 
    /**
     *  Copy up to @ref len bytes of current action data to the specified location
+    * 
     *  @brief Copy current action data to the specified location
     *  @param msg - a pointer where up to @ref len bytes of the current action data will be copied
     *  @param len - len of the current action data to be copied, 0 to report required size
     *  @return the number of bytes copied to msg, or number of bytes that can be copied if len==0 passed
+    *  @pre `msg` is a valid pointer to a range of memory at least `len` bytes long
+    *  @post `msg` is filled with packed action data
     */
    uint32_t read_action_data( void* msg, uint32_t len );
 
    /**
-    * Get the length of the current action's data field
-    * This method is useful for dynamically sized actions
+    * Get the length of the current action's data field. This method is useful for dynamically sized actions
+    * 
     * @brief Get the length of current action's data field
     * @return the length of the current action's data field
     */
@@ -85,38 +88,54 @@ extern "C" {
 
    /**
     *  Add the specified account to set of accounts to be notified
+    * 
     *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
    void require_recipient( account_name name );
 
    /**
-    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found
+    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found.
+    * 
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     */
    void require_auth( account_name name );
+
+    /**
+    *  Verifies that @ref name has auth.
+    * 
+    *  @brief Verifies that @ref name has auth.
+    *  @param name - name of the account to be verified
+    */
    bool has_auth( account_name name );
 
    /**
-    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found
+    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found.
+    * 
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     *  @param permission - permission level to be verified
     */
    void require_auth2( account_name name, permission_name permission );
 
+   bool is_account( account_name name );
+
    /**
     *  Send an inline action in the context of this action's parent transaction
-    * @param serialized_action - serialized action
-    * @param size - size of serialized action in bytes
+    * 
+    *  @param serialized_action - serialized action
+    *  @param size - size of serialized action in bytes
+    *  @pre `serialized_action` is a valid pointer to an array at least `size` bytes long
     */
    void send_inline(char *serialized_action, size_t size);
 
    /**
     *  Send an inline context free action in the context of this action's parent transaction
-    * @param serialized_action - serialized action
-    * @param size - size of serialized action in bytes
+    * 
+    *  @param serialized_action - serialized action
+    *  @param size - size of serialized action in bytes
+    *  @pre `serialized_action` is a valid pointer to an array at least `size` bytes long
     */
    void send_context_free_inline(char *serialized_action, size_t size);
 
@@ -135,18 +154,11 @@ extern "C" {
    void require_read_lock( account_name name );
 
    /**
-    *  Returns the time in seconds from 1970 of the publication_time
+    *  Returns the time in microseconds from 1970 of the publication_time
     *  @brief Get the publication time
-    *  @return the time in seconds from 1970 of the publication_time
+    *  @return the time in microseconds from 1970 of the publication_time
     */
-   time  publication_time();
-
-   /**
-    *  Get the account which specifies the sender of the action
-    *  @brief Get the sender of the action
-    *  @return the account which specifies the sender of the action
-    */
-   account_name current_sender();
+   uint64_t  publication_time();
 
    /**
     *  Get the current receiver of the action

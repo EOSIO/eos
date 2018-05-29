@@ -11,13 +11,6 @@
 
 
 namespace eosio { namespace account {
-  /**
-  *  @defgroup accountcppapi Account C++ API
-  *  @brief C++ API for querying account data, e.g. account balance
-  *  @ingroup accountapi
-  *
-  * @{
-  */
 
 /**
 *  @brief The binary structure expected and populated by native balance function.
@@ -31,51 +24,58 @@ namespace eosio { namespace account {
 *     eosio::print("test1 balance=", test1_balance.eos_balance, "\n");
 *  }
 *  @endcode
-*  @{
+*
+*  @deprecated This is deprecated in Dawn 3.0
 */
 struct PACKED(account_balance) {
   /**
+  * Name of the account who's balance this is
+  * 
   * @brief Name of the account who's balance this is
-  * @details Name of the account who's balance this is
   */
   account_name account;
 
   /**
+  * Balance for this account
+  * 
   * @brief Balance for this account
-  * @details Balance for this account
   */
   asset eos_balance;
 
   /**
+  * Staked balance for this account
+  * 
   * @brief Staked balance for this account
-  * @details Staked balance for this account
   */
   asset staked_balance;
 
   /**
+  * Unstaking balance for this account
+  * 
   * @brief Unstaking balance for this account
-  * @details Unstaking balance for this account
   */
   asset unstaking_balance;
 
   /**
+  * Time at which last unstaking occurred for this account
+  * 
   * @brief Time at which last unstaking occurred for this account
-  * @details Time at which last unstaking occurred for this account
   */
   time last_unstaking_time;
 };
-/// @} account_balance
 
 /**
+ *  Retrieve a populated balance structure
+ * 
  *  @brief Retrieve a populated balance structure
- *  @details Retrieve a populated balance structure
  *  @param acnt - account
  *  @return true if account's balance is found
+ * 
+ *  @deprecated This is deprecated in Dawn 3.0
  */
 bool get(account_balance& acnt)
 {
    return account_balance_get(&acnt, sizeof(account_balance));
 }
 
-/// @}  eosio
 } }

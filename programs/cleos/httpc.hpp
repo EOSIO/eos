@@ -5,9 +5,32 @@
 #pragma once
 
 namespace eosio { namespace client { namespace http {
-   fc::variant call( const std::string& server_url,
-                     const std::string& path,
-                     const fc::variant& postdata = fc::variant() );
+
+   struct connection_param {
+       string& url;
+       string& path;
+       bool verify_cert;
+       std::vector<string>& headers;
+
+       connection_param( std::string& u,
+                         std::string& p,
+                         bool verify,
+                         std::vector<string>& h) : url(u), path(p), headers(h) {
+           verify_cert = verify;
+       }
+   };
+
+   struct parsed_url {
+      string scheme;
+      string server;
+      string port;
+      string path_prefix;
+   };
+
+   parsed_url parse_url( const string& server_url );
+
+   fc::variant do_http_call( const connection_param& cp,
+                             const fc::variant& postdata = fc::variant() );
 
    const string chain_func_base = "/v1/chain";
    const string get_info_func = chain_func_base + "/get_info";
@@ -20,13 +43,18 @@ namespace eosio { namespace client { namespace http {
    const string get_code_func = chain_func_base + "/get_code";
    const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
    const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
+   const string get_producers_func = chain_func_base + "/get_producers";
    const string get_required_keys = chain_func_base + "/get_required_keys";
 
+
+   const string history_func_base = "/v1/history";
+   const string get_actions_func = history_func_base + "/get_actions";
+   const string get_transaction_func = history_func_base + "/get_transaction";
+   const string get_key_accounts_func = history_func_base + "/get_key_accounts";
+   const string get_controlled_accounts_func = history_func_base + "/get_controlled_accounts";
+
    const string account_history_func_base = "/v1/account_history";
-   const string get_transaction_func = account_history_func_base + "/get_transaction";
    const string get_transactions_func = account_history_func_base + "/get_transactions";
-   const string get_key_accounts_func = account_history_func_base + "/get_key_accounts";
-   const string get_controlled_accounts_func = account_history_func_base + "/get_controlled_accounts";
 
    const string net_func_base = "/v1/net";
    const string net_connect = net_func_base + "/connect";
@@ -45,7 +73,9 @@ namespace eosio { namespace client { namespace http {
    const string wallet_lock_all = wallet_func_base + "/lock_all";
    const string wallet_unlock = wallet_func_base + "/unlock";
    const string wallet_import_key = wallet_func_base + "/import_key";
+   const string wallet_create_key = wallet_func_base + "/create_key";
    const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
+   const string keosd_stop = "/v1/keosd/stop";
 
    FC_DECLARE_EXCEPTION( connection_exception, 1100000, "Connection Exception" );
  }}}

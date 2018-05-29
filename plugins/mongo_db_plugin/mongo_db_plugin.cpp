@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
-#include <eosio/chain/contracts/chain_initializer.hpp>
+#include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
@@ -76,7 +76,7 @@ public:
    // transaction.id -> actions
    std::map<std::string, std::vector<chain::action>> reversible_actions;
    boost::mutex mtx;
-   boost::condition_variable condtion;
+   boost::condition_variable condition;
    boost::thread consume_thread;
    boost::atomic<bool> done{false};
    boost::atomic<bool> startup{true};
@@ -116,7 +116,7 @@ void mongo_db_plugin_impl::applied_irreversible_block(const signed_block& block)
          boost::mutex::scoped_lock lock(mtx);
          signed_block_queue.push_back(block);
          lock.unlock();
-         condtion.notify_one();
+         condition.notify_one();
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
@@ -136,7 +136,7 @@ void mongo_db_plugin_impl::applied_block(const block_trace& bt) {
          boost::mutex::scoped_lock lock(mtx);
          block_trace_queue.emplace_back(std::make_pair(bt, bt.block));
          lock.unlock();
-         condtion.notify_one();
+         condition.notify_one();
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_block ${e}", ("e", e.to_string()));
@@ -152,7 +152,7 @@ void mongo_db_plugin_impl::consume_blocks() {
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
          while (signed_block_queue.empty() && block_trace_queue.empty() && !done) {
-            condtion.wait(lock);
+            condition.wait(lock);
          }
          // capture blocks for processing
          size_t block_trace_size = block_trace_queue.size();
@@ -249,7 +249,7 @@ namespace {
         }
         abi_serializer abis;
         if (msg.account == chain::config::system_account_name) {
-           abi = chain::contracts::chain_initializer::eos_contract_abi(abi);
+           abi = chain::eosio_contract_abi(abi);
         }
         abis.set_abi(abi);
         auto v = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
@@ -472,7 +472,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                                         (trx_trace.status == chain::transaction_receipt::hard_fail) ? "hard_fail" :
                                         "unknown";
                trx_status_map[trx_trace.id] = trx_status;
-               
+
                for (const auto& req : trx_trace.deferred_transaction_requests) {
                   if ( req.contains<chain::deferred_transaction>() ) {
                      auto trx = req.get<chain::deferred_transaction>();
@@ -666,7 +666,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    } else if (msg.name == newaccount) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto newaccount = msg.data_as<chain::contracts::newaccount>();
+      auto newaccount = msg.data_as<chain::newaccount>();
 
       // create new account
       bsoncxx::builder::stream::document doc{};
@@ -683,7 +683,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    } else if (msg.name == setabi) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto setabi = msg.data_as<chain::contracts::setabi>();
+      auto setabi = msg.data_as<chain::setabi>();
       auto from_account = find_account(accounts, setabi.account);
 
       document update_from{};
@@ -705,7 +705,7 @@ mongo_db_plugin_impl::mongo_db_plugin_impl()
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {
    try {
       done = true;
-      condtion.notify_one();
+      condition.notify_one();
 
       consume_thread.join();
    } catch (std::exception& e) {
@@ -807,7 +807,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          ilog("Replay requested: wiping mongo database on startup");
          my->wipe_database_on_startup = true;
       }
-      if (options.at("resync-blockchain").as<bool>()) {
+      if (options.at("delete-all-blocks").as<bool>()) {
          ilog("Resync requested: wiping mongo database on startup");
          my->wipe_database_on_startup = true;
       }

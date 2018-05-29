@@ -7,8 +7,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
 
-#include <assert.h>
-
 #include "_elliptic_impl_pub.hpp"
 
 namespace fc { namespace ecc {

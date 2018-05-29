@@ -1,4 +1,5 @@
 {
+   "version": "eosio::abi/1.0",
    "types": [],
    "structs": [
       {
@@ -31,5 +32,6 @@
       }
    ],
    "tables": [],
-   "ricardian_clauses": []
+   "ricardian_clauses": [],
+   "abi_extensions": []
 }

@@ -1,40 +1,161 @@
 {
-  "types": [],
-  "structs": [{
-      "name": "nonce",
-       "base": "",
-       "fields": [
-          {"name":"value", "type":"string"}
-      ]
-    },{
-      "name": "transfer",
+   "version": "eosio::abi/1.0",
+   "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+   },{
+      "new_type_name": "permission_name",
+      "type": "name"
+   },{
+      "new_type_name": "action_name",
+      "type": "name"
+   },{
+      "new_type_name": "transaction_id_type",
+      "type": "checksum256"
+   },{
+      "new_type_name": "weight_type",
+      "type": "uint16"
+   }],
+   "____comment": "eosio.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
+   "structs": [{
+      "name": "permission_level",
       "base": "",
       "fields": [
-         {"name":"from", "type":"account_name"},
-         {"name":"to", "type":"account_name"},
-         {"name":"quantity", "type":"asset"},
-         {"name":"memo", "type":"string"}
+        {"name":"actor",      "type":"account_name"},
+        {"name":"permission", "type":"permission_name"}
       ]
     },{
-     "name": "issue",
-     "base": "",
-     "fields": [
-        {"name":"to", "type":"account_name"},
-        {"name":"quantity", "type":"asset"}
-     ]
-    },{
-      "name": "account",
+      "name": "key_weight",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"balance", "type":"uint64"}
+        {"name":"key",    "type":"public_key"},
+        {"name":"weight", "type":"weight_type"}
       ]
     },{
-      "name": "currency_stats",
+      "name": "bidname",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"supply", "type":"uint64"}
+        {"name":"bidder",  "type":"account_name"},
+        {"name":"newname", "type":"account_name"},
+        {"name":"bid", "type":"asset"}
+      ]
+    },{
+      "name": "permission_level_weight",
+      "base": "",
+      "fields": [
+        {"name":"permission", "type":"permission_level"},
+        {"name":"weight",     "type":"weight_type"}
+      ]
+    },{
+      "name": "wait_weight",
+      "base": "",
+      "fields": [
+        {"name":"wait_sec", "type":"uint32"},
+        {"name":"weight",   "type":"weight_type"}
+      ]
+    },{
+      "name": "authority",
+      "base": "",
+      "fields": [
+        {"name":"threshold", "type":"uint32"},
+        {"name":"keys",      "type":"key_weight[]"},
+        {"name":"accounts",  "type":"permission_level_weight[]"},
+        {"name":"waits",     "type":"wait_weight[]"}
+      ]
+    },{
+      "name": "newaccount",
+      "base": "",
+      "fields": [
+        {"name":"creator", "type":"account_name"},
+        {"name":"name",    "type":"account_name"},
+        {"name":"owner",   "type":"authority"},
+        {"name":"active",  "type":"authority"}
+      ]
+    },{
+      "name": "setcode",
+      "base": "",
+      "fields": [
+        {"name":"account",   "type":"account_name"},
+        {"name":"vmtype",    "type":"uint8"},
+        {"name":"vmversion", "type":"uint8"},
+        {"name":"code",      "type":"bytes"}
+      ]
+    },{
+      "name": "setabi",
+      "base": "",
+      "fields": [
+        {"name":"account", "type":"account_name"},
+        {"name":"abi",     "type":"bytes"}
+      ]
+    },{
+      "name": "updateauth",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"permission", "type":"permission_name"},
+        {"name":"parent",     "type":"permission_name"},
+        {"name":"auth",       "type":"authority"}
+      ]
+    },{
+      "name": "deleteauth",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"permission", "type":"permission_name"}
+      ]
+    },{
+      "name": "linkauth",
+      "base": "",
+      "fields": [
+        {"name":"account",     "type":"account_name"},
+        {"name":"code",        "type":"account_name"},
+        {"name":"type",        "type":"action_name"},
+        {"name":"requirement", "type":"permission_name"}
+      ]
+    },{
+      "name": "unlinkauth",
+      "base": "",
+      "fields": [
+        {"name":"account",     "type":"account_name"},
+        {"name":"code",        "type":"account_name"},
+        {"name":"type",        "type":"action_name"}
+      ]
+    },{
+      "name": "canceldelay",
+      "base": "",
+      "fields": [
+        {"name":"canceling_auth", "type":"permission_level"},
+        {"name":"trx_id",         "type":"transaction_id_type"}
+      ]
+    },{
+      "name": "onerror",
+      "base": "",
+      "fields": [
+        {"name":"sender_id", "type":"uint128"},
+        {"name":"sent_trx",  "type":"bytes"}
+      ]
+    },{
+      "name": "buyrambytes",
+      "base": "",
+      "fields": [
+         {"name":"payer", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"bytes", "type":"uint32"}
+      ]
+    },{
+      "name": "sellram",
+      "base": "",
+      "fields": [
+         {"name":"account", "type":"account_name"},
+         {"name":"bytes", "type":"uint64"}
+      ]
+    },{
+      "name": "buyram",
+      "base": "",
+      "fields": [
+         {"name":"payer", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"quant", "type":"asset"}
       ]
     },{
       "name": "delegatebw",
@@ -44,7 +165,7 @@
          {"name":"receiver", "type":"account_name"},
          {"name":"stake_net_quantity", "type":"asset"},
          {"name":"stake_cpu_quantity", "type":"asset"},
-         {"name":"stake_storage_quantity", "type":"asset"}
+         {"name":"transfer", "type":"bool"}
       ]
     },{
       "name": "undelegatebw",
@@ -53,8 +174,7 @@
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
          {"name":"unstake_net_quantity", "type":"asset"},
-         {"name":"unstake_cpu_quantity", "type":"asset"},
-         {"name":"unstake_storage_bytes", "type":"uint64"}
+         {"name":"unstake_cpu_quantity", "type":"asset"}
       ]
     },{
       "name": "refund",
@@ -68,10 +188,17 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
-         {"name":"net_weight", "type":"uint64"},
-         {"name":"cpu_weight", "type":"uint64"},
-         {"name":"storage_stake", "type":"uint64"},
-         {"name":"storage_bytes", "type":"uint64"}
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"}
+      ]
+    },{
+      "name": "user_resources",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"ram_bytes", "type":"uint64"}
       ]
     },{
       "name": "total_resources",
@@ -80,77 +207,87 @@
          {"name":"owner", "type":"account_name"},
          {"name":"net_weight", "type":"asset"},
          {"name":"cpu_weight", "type":"asset"},
-         {"name":"storage_stake", "type":"asset"},
-         {"name":"storage_bytes", "type":"uint64"}
+         {"name":"ram_bytes", "type":"uint64"}
       ]
     },{
       "name": "refund_request",
       "base": "",
       "fields": [
          {"name":"owner", "type":"account_name"},
-         {"name":"request_time", "type":"time"},
-         {"name":"amount", "type":"uint64"}
+         {"name":"request_time", "type":"time_point_sec"},
+         {"name":"net_amount", "type":"asset"},
+         {"name":"cpu_amount", "type":"asset"}
       ]
     },{
       "name": "blockchain_parameters",
       "base": "",
       "fields": [
-         {"name":"base_per_transaction_net_usage", "type":"uint32"},
-         {"name":"base_per_transaction_cpu_usage", "type":"uint32"},
-         {"name":"base_per_action_cpu_usage", "type":"uint32"},
-         {"name":"base_setcode_cpu_usage", "type":"uint32"},
-         {"name":"per_signature_cpu_usage", "type":"uint32"},
-         {"name":"per_lock_net_usage", "type":"uint32"},
-         {"name":"context_free_discount_cpu_usage_num", "type":"uint64"},
-         {"name":"context_free_discount_cpu_usage_den", "type":"uint64"},
-         {"name":"max_transaction_cpu_usage", "type":"uint32"},
-         {"name":"max_transaction_net_usage", "type":"uint32"},
-         {"name":"max_block_cpu_usage", "type": "uint64"},
-         {"name":"target_block_cpu_usage_pct", "type": "uint32"},
-         {"name":"max_block_net_usage", "type": "uint64"},
-         {"name":"target_block_net_usage_pct", "type": "uint32"},
-         {"name":"max_transaction_lifetime", "type":"uint32"},
-         {"name":"max_transaction_exec_time", "type":"uint32"},
-         {"name":"max_authority_depth", "type":"uint16"},
-         {"name":"max_inline_depth", "type":"uint16"},
-         {"name":"max_inline_action_size", "type":"uint32"},
-         {"name":"max_generated_transaction_count", "type":"uint32"},
-         {"name":"max_transaction_delay", "type":"uint32"}
+
+         {"name":"max_block_net_usage",                 "type":"uint64"},
+         {"name":"target_block_net_usage_pct",          "type":"uint32"},
+         {"name":"max_transaction_net_usage",           "type":"uint32"},
+         {"name":"base_per_transaction_net_usage",      "type":"uint32"},
+         {"name":"net_usage_leeway",                    "type":"uint32"},
+         {"name":"context_free_discount_net_usage_num", "type":"uint32"},
+         {"name":"context_free_discount_net_usage_den", "type":"uint32"},
+         {"name":"max_block_cpu_usage",                 "type":"uint32"},
+         {"name":"target_block_cpu_usage_pct",          "type":"uint32"},
+         {"name":"max_transaction_cpu_usage",           "type":"uint32"},
+         {"name":"min_transaction_cpu_usage",           "type":"uint32"},
+         {"name":"max_transaction_lifetime",            "type":"uint32"},
+         {"name":"deferred_trx_expiration_window",      "type":"uint32"},
+         {"name":"max_transaction_delay",               "type":"uint32"},
+         {"name":"max_inline_action_size",              "type":"uint32"},
+         {"name":"max_inline_action_depth",             "type":"uint16"},
+         {"name":"max_authority_depth",                 "type":"uint16"}
+
       ]
     },{
       "name": "eosio_parameters",
       "base": "blockchain_parameters",
       "fields": [
-         {"name":"max_storage_size", "type":"uint64"},
-         {"name":"percent_of_max_inflation_rate", "type":"uint32"},
-         {"name":"storage_reserve_ratio", "type":"uint32"}
+         {"name":"max_ram_size", "type":"uint64"}
       ]
     },{
       "name": "eosio_global_state",
       "base": "eosio_parameters",
       "fields": [
-         {"name":"total_storage_bytes_reserved", "type":"uint64"},
-         {"name":"total_storage_stake", "type":"uint64"},
-         {"name":"payment_per_block", "type":"uint64"}
+         {"name":"total_ram_bytes_reserved",      "type":"uint64"},
+         {"name":"total_ram_stake",               "type":"int64"},
+         {"name":"last_producer_schedule_update", "type":"time_point_sec"},
+         {"name":"last_pervote_bucket_fill",      "type":"uint64"},
+         {"name":"pervote_bucket",                "type":"int64"},
+         {"name":"perblock_bucket",               "type":"int64"},
+         {"name":"savings",                       "type":"int64"},
+         {"name":"total_unpaid_blocks",           "type":"uint32"},
+         {"name":"total_activated_stake",         "type":"int64"},
+         {"name":"thresh_activated_stake_time",   "type":"uint64"},
+         {"name":"last_producer_schedule_id",     "type":"checksum160"},
+         {"name":"total_producer_vote_weight",    "type":"float64"},
+         {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
     },{
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",              "type":"account_name"},
-         {"name":"total_votes",        "type":"uint128"},
-         {"name":"prefs",              "type":"eosio_parameters"},
-         {"name":"packed_key",         "type":"uint8[]"},
-         {"name":"per_block_payments", "type":"uint64"},
-         {"name":"last_claim_time",    "type":"uint32"}
+         {"name":"owner",                    "type":"account_name"},
+         {"name":"total_votes",              "type":"float64"},
+         {"name":"producer_key",             "type":"public_key"},
+         {"name":"url",                      "type":"string"},
+         {"name":"unpaid_blocks",            "type":"uint32"},
+         {"name":"last_claim_time",          "type":"uint64"},
+         {"name":"location",                 "type":"uint16"},
+         {"name":"time_became_active",       "type":"uint32"},
+         {"name":"last_produced_block_time", "type":"uint32"}
       ]
     },{
       "name": "regproducer",
       "base": "",
       "fields": [
         {"name":"producer",     "type":"account_name"},
-        {"name":"producer_key", "type":"bytes"},
-        {"name":"prefs",        "type":"eosio_parameters"}
+        {"name":"producer_key", "type":"public_key"},
+        {"name":"url",          "type":"string"},
+        {"name":"location",     "type":"uint16"}
       ]
     },{
       "name": "unregprod",
@@ -159,16 +296,17 @@
         {"name":"producer",     "type":"account_name"}
       ]
     },{
+      "name": "setram",
+      "base": "",
+      "fields": [
+        {"name":"max_ram_size",     "type":"uint64"}
+      ]
+    },{
       "name": "regproxy",
       "base": "",
       "fields": [
-        {"name":"proxy",     "type":"account_name"}
-      ]
-    },{
-      "name": "unregproxy",
-      "base": "",
-      "fields": [
-        {"name":"proxy",     "type":"account_name"}
+        {"name":"proxy",     "type":"account_name"},
+        {"name":"isproxy",   "type":"bool"}
       ]
     },{
       "name": "voteproducer",
@@ -182,17 +320,16 @@
       "name": "voter_info",
       "base": "",
       "fields": [
-        {"name":"owner",             "type":"account_name"},
-        {"name":"proxy",             "type":"account_name"},
-        {"name":"last_update",       "type":"uint32"},
-        {"name":"is_proxy",          "type":"uint32"},
-        {"name":"staked",            "type":"asset"},
-        {"name":"unstaking",         "type":"asset"},
-        {"name":"unstake_per_week",  "type":"asset"},
-        {"name":"proxied_votes",     "type":"uint128"},
-        {"name":"producers",         "type":"account_name[]"},
-        {"name":"deferred_trx_id",   "type":"uint32"},
-        {"name":"last_unstake",      "type":"uint32"}
+        {"name":"owner",                "type":"account_name"},
+        {"name":"proxy",                "type":"account_name"},
+        {"name":"producers",            "type":"account_name[]"},
+        {"name":"staked",               "type":"int64"},
+        {"name":"last_vote_weight",     "type":"float64"},
+        {"name":"proxied_vote_weight",  "type":"float64"},
+        {"name":"is_proxy",             "type":"bool"},
+        {"name":"deferred_trx_id",      "type":"uint32"},
+        {"name":"last_unstake_time",    "type":"time_point_sec"},
+        {"name":"unstaking",            "type":"asset"}
       ]
     },{
       "name": "claimrewards",
@@ -200,61 +337,189 @@
       "fields": [
         {"name":"owner",   "type":"account_name"}
       ]
+    },{
+      "name": "setpriv",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"is_priv",    "type":"int8"}
+      ]
+    },{
+      "name": "set_account_limits",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"ram_bytes",  "type":"int64"},
+        {"name":"net_weight", "type":"int64"},
+        {"name":"cpu_weight", "type":"int64"}
+      ]
+    },{
+      "name": "set_global_limits",
+      "base": "",
+      "fields": [
+        {"name":"cpu_usec_per_period",    "type":"int64"}
+      ]
+    },{
+      "name": "producer_key",
+      "base": "",
+      "fields": [
+        {"name":"producer_name",      "type":"account_name"},
+        {"name":"block_signing_key",  "type":"public_key"}
+      ]
+    },{
+      "name": "set_producers",
+      "base": "",
+      "fields": [
+        {"name":"schedule",   "type":"producer_key[]"}
+      ]
+    },{
+      "name": "require_auth",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"}
+      ]
+    },{
+      "name": "setparams",
+      "base": "",
+      "fields": [
+        {"name":"params", "type":"eosio_parameters"}
+      ]
     }
-  ],
-  "actions": [{
-      "name": "transfer",
-      "type": "transfer",
+   ],
+   "actions": [{
+     "name": "newaccount",
+     "type": "newaccount",
+     "ricardian_contract": ""
+   },{
+     "name": "setcode",
+     "type": "setcode",
+     "ricardian_contract": ""
+   },{
+     "name": "setabi",
+     "type": "setabi",
+     "ricardian_contract": ""
+   },{
+     "name": "updateauth",
+     "type": "updateauth",
+     "ricardian_contract": ""
+   },{
+     "name": "deleteauth",
+     "type": "deleteauth",
+     "ricardian_contract": ""
+   },{
+     "name": "linkauth",
+     "type": "linkauth",
+     "ricardian_contract": ""
+   },{
+     "name": "unlinkauth",
+     "type": "unlinkauth",
+     "ricardian_contract": ""
+   },{
+     "name": "canceldelay",
+     "type": "canceldelay",
+     "ricardian_contract": ""
+   },{
+     "name": "onerror",
+     "type": "onerror",
+     "ricardian_contract": ""
+   },{
+      "name": "buyrambytes",
+      "type": "buyrambytes",
       "ricardian_contract": ""
-    },{
-      "name": "issue",
-      "type": "issue",
+   },{
+      "name": "buyram",
+      "type": "buyram",
       "ricardian_contract": ""
-    },{
+   },{
+      "name": "sellram",
+      "type": "sellram",
+      "ricardian_contract": ""
+   },{
       "name": "delegatebw",
       "type": "delegatebw",
       "ricardian_contract": ""
-    },{
+   },{
       "name": "undelegatebw",
       "type": "undelegatebw",
       "ricardian_contract": ""
-    },{
+   },{
       "name": "refund",
       "type": "refund",
       "ricardian_contract": ""
-    },{
+   },{
       "name": "regproducer",
       "type": "regproducer",
       "ricardian_contract": ""
-    },{
+   },{
+      "name": "setram",
+      "type": "setram",
+      "ricardian_contract": ""
+   },{
+      "name": "bidname",
+      "type": "bidname",
+      "ricardian_contract": ""
+   },{
       "name": "unregprod",
       "type": "unregprod",
       "ricardian_contract": ""
-    },{
+   },{
       "name": "regproxy",
       "type": "regproxy",
       "ricardian_contract": ""
-    },{
-      "name": "unregproxy",
-      "type": "unregproxy",
-      "ricardian_contract": ""
-    },{
+   },{
       "name": "voteproducer",
       "type": "voteproducer",
       "ricardian_contract": ""
-    },{
+   },{
       "name": "claimrewards",
       "type": "claimrewards",
       "ricardian_contract": ""
-    },{
-      "name": "nonce",
-      "type": "nonce",
+   },{
+      "name": "setpriv",
+      "type": "setpriv",
       "ricardian_contract": ""
-    }
-  ],
-  "tables": [{
-      "name": "producerinfo",
+   },{
+      "name": "setalimits",
+      "type": "set_account_limits",
+      "ricardian_contract": ""
+    },{
+      "name": "setglimits",
+      "type": "set_global_limits",
+      "ricardian_contract": ""
+    },{
+      "name": "setprods",
+      "type": "set_producers",
+      "ricardian_contract": ""
+    },{
+      "name": "reqauth",
+      "type": "require_auth",
+      "ricardian_contract": ""
+    },{
+      "name": "setparams",
+      "type": "setparams",
+      "ricardian_contract": ""
+    }],
+   "tables": [{
+      "name": "producers",
       "type": "producer_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "global",
+      "type": "eosio_global_state",
+      "index_type": "i64",
+      "key_names" : [],
+      "key_types" : []
+    },{
+      "name": "voters",
+      "type": "voter_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["account_name"]
+    },{
+      "name": "userres",
+      "type": "user_resources",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
@@ -277,6 +542,7 @@
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
     }
-  ],
-  "ricardian_clauses": []
+   ],
+   "ricardian_clauses": [],
+   "abi_extensions": []
 }

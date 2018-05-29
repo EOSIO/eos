@@ -10,9 +10,7 @@
 #include "test_print.cpp"
 #include "test_types.cpp"
 #include "test_fixedpoint.cpp"
-#include "test_math.cpp"
 #include "test_compiler_builtins.cpp"
-#include "test_real.cpp"
 #include "test_crypto.cpp"
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
@@ -25,9 +23,10 @@ account_name global_receiver;
 extern "C" {
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       if( code == N(eosio) && action == N(onerror) ) {
-         auto error_dtrx = eosio::deferred_transaction::from_current_action();
+         auto error = eosio::onerror::from_current_action();
          eosio::print("onerror called\n");
-         auto error_action = error_dtrx.actions.at(0).name;
+         auto error_trx = error.unpack_sent_trx();
+         auto error_action = error_trx.actions.at(0).name;
 
          // Error handlers for deferred transactions in these tests currently only support the first action
 
@@ -43,7 +42,8 @@ extern "C" {
       }
       WASM_TEST_HANDLER(test_action, assert_true_cf);
 
-      require_auth(code);
+      if (action != WASM_TEST_ACTION("test_transaction", "stateful_api") && action != WASM_TEST_ACTION("test_transaction", "context_free_api"))
+         require_auth(code);
 
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
@@ -74,11 +74,11 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, require_auth);
       WASM_TEST_HANDLER(test_action, assert_false);
       WASM_TEST_HANDLER(test_action, assert_true);
-      WASM_TEST_HANDLER(test_action, now);
+      WASM_TEST_HANDLER(test_action, test_current_time);
       WASM_TEST_HANDLER(test_action, test_abort);
       WASM_TEST_HANDLER_EX(test_action, test_current_receiver);
-      WASM_TEST_HANDLER(test_action, test_current_sender);
       WASM_TEST_HANDLER(test_action, test_publication_time);
+      WASM_TEST_HANDLER(test_action, test_assert_code);
 
       // test named actions
       // We enforce action name matches action data type name, so name mangling will not work for these tests.
@@ -97,15 +97,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_print, test_printsf);
       WASM_TEST_HANDLER(test_print, test_printdf);
       WASM_TEST_HANDLER(test_print, test_printqf);
-
-      //test_math
-      WASM_TEST_HANDLER(test_math, test_multeq);
-      WASM_TEST_HANDLER(test_math, test_diveq);
-      WASM_TEST_HANDLER(test_math, test_i64_to_double);
-      WASM_TEST_HANDLER(test_math, test_double_to_i64);
-      WASM_TEST_HANDLER(test_math, test_diveq_by_0);
-      WASM_TEST_HANDLER(test_math, test_double_api);
-      WASM_TEST_HANDLER(test_math, test_double_api_div_0);
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_recover_key);
@@ -144,14 +135,18 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_transaction, send_transaction_trigger_error_handler);
       WASM_TEST_HANDLER_EX(test_transaction, send_transaction_large);
       WASM_TEST_HANDLER_EX(test_transaction, send_action_sender);
-      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_expiring_late);
       WASM_TEST_HANDLER(test_transaction, deferred_print);
       WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction);
-      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
+      WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction_replace);
+      WASM_TEST_HANDLER(test_transaction, send_deferred_tx_with_dtt_action);
+      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction_success);
+      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction_not_found);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
-      WASM_TEST_HANDLER(test_transaction, read_inline_action);
-      WASM_TEST_HANDLER(test_transaction, read_inline_cf_action);
+      WASM_TEST_HANDLER(test_transaction, stateful_api);
+      WASM_TEST_HANDLER(test_transaction, context_free_api);
+      WASM_TEST_HANDLER(test_transaction, new_feature);
+      WASM_TEST_HANDLER(test_transaction, active_new_feature);
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);
@@ -164,22 +159,25 @@ extern "C" {
       WASM_TEST_HANDLER(test_fixedpoint, test_division);
       WASM_TEST_HANDLER(test_fixedpoint, test_division_by_0);
 
-      // test double
-      WASM_TEST_HANDLER(test_real, create_instances);
-      WASM_TEST_HANDLER(test_real, test_addition);
-      WASM_TEST_HANDLER(test_real, test_multiplication);
-      WASM_TEST_HANDLER(test_real, test_division);
-      WASM_TEST_HANDLER(test_real, test_division_by_0);
-
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha1_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha1_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha256_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha256_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_sha512_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_sha512_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_ripemd160_failure);
+      WASM_TEST_HANDLER(test_checktime, checktime_assert_ripemd160_failure);
 
       // test datastream
       WASM_TEST_HANDLER(test_datastream, test_basic);
 
       // test permission
       WASM_TEST_HANDLER_EX(test_permission, check_authorization);
+      WASM_TEST_HANDLER_EX(test_permission, test_permission_last_used);
+      WASM_TEST_HANDLER_EX(test_permission, test_account_creation_time);
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");

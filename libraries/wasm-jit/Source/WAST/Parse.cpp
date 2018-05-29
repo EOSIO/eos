@@ -256,7 +256,7 @@ namespace WAST
 		// Find the first non-name character.
 		const char* firstChar = state.string + state.nextToken->begin;;
 		const char* nextChar = firstChar;
-		assert(*nextChar == '$');
+		WAVM_ASSERT_THROW(*nextChar == '$');
 		++nextChar;
 		while(true)
 		{
@@ -276,10 +276,10 @@ namespace WAST
 			}
 		};
 
-		assert(U32(nextChar - state.string) > state.nextToken->begin + 1);
+		WAVM_ASSERT_THROW(U32(nextChar - state.string) > state.nextToken->begin + 1);
 		++state.nextToken;
-		assert(U32(nextChar - state.string) <= state.nextToken->begin);
-		assert(U32(nextChar - firstChar) <= UINT32_MAX);
+		WAVM_ASSERT_THROW(U32(nextChar - state.string) <= state.nextToken->begin);
+		WAVM_ASSERT_THROW(U32(nextChar - firstChar) <= UINT32_MAX);
 		outName = Name(firstChar,U32(nextChar - firstChar));
 		return true;
 	}
@@ -417,7 +417,7 @@ namespace WAST
 						while(tryParseHexit(nextChar,hexit)) {};
 						break;
 					}
-					assert(codepoint * 16 + hexit >= codepoint);
+					WAVM_ASSERT_THROW(codepoint * 16 + hexit >= codepoint);
 					codepoint = codepoint * 16 + hexit;
 				}
 
@@ -455,7 +455,7 @@ namespace WAST
 		// Parse a string literal; the lexer has already rejected unterminated strings,
 		// so this just needs to copy the characters and evaluate escape codes.
 		const char* nextChar = state.string + state.nextToken->begin;
-		assert(*nextChar == '\"');
+		WAVM_ASSERT_THROW(*nextChar == '\"');
 		++nextChar;
 		while(true)
 		{
@@ -469,7 +469,7 @@ namespace WAST
 			}
 			case '\"':
 				++state.nextToken;
-				assert(state.string + state.nextToken->begin > nextChar);
+				WAVM_ASSERT_THROW(state.string + state.nextToken->begin > nextChar);
 				return true;
 			default:
 				outString += *nextChar++;

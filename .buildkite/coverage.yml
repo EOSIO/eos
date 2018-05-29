@@ -1,0 +1,29 @@
+steps:
+  - command: |
+        echo "--- :hammer: Building" && \
+        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DWASM_ROOT=/root/opt/wasm -DOPENSSL_ROOT_DIR=/usr/include/openssl -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_COVERAGE_TESTING=true -DBUILD_DOXYGEN=false && \
+        /usr/bin/ninja
+        echo "--- :spiral_note_pad: Generating Code Coverage Report" && \
+        /usr/bin/ninja EOS_ut_coverage && \
+        echo "--- :arrow_up: Publishing Code Coverage Report" && \
+        buildkite-agent artifact upload "EOS_ut_coverage/**/*" s3://eosio-coverage/$BUILDKITE_JOB_ID && \
+        cp /config/.coveralls.yml . && \
+        /usr/local/bin/coveralls-lcov EOS_ut_coverage_filtered.info && \
+        echo "+++ View Report" && \
+        printf "\033]1339;url=https://eosio-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/EOS_ut_coverage/index.html;content=View Full Coverage Report\a\n"
+    label: ":spiral_note_pad: Generate Report"
+    agents:
+      - "role=linux-coverage"
+    plugins:
+      docker#v1.1.1:
+        image: "eosio/ci:ubuntu18"
+        workdir: /data/job
+        mounts:
+          - /etc/buildkite-agent/config:/config
+        environment:
+          - BOOST_ROOT=/root/opt/boost_1_67_0
+          - OPENSSL_ROOT_DIR=/usr/include/openssl
+          - WASM_ROOT=/root/opt/wasm
+          - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
+          - CI=true
+    timeout: 60

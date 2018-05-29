@@ -179,13 +179,13 @@ namespace IR
 	// Conversion between ValueType and ResultType.
 	inline ValueType asValueType(ResultType type)
 	{
-		assert(type != ResultType::none);
+		WAVM_ASSERT_THROW(type != ResultType::none);
 		return (ValueType)type;
 	}
 
 	inline ResultType asResultType(ValueType type)
 	{
-		assert(type != ValueType::any);
+		WAVM_ASSERT_THROW(type != ValueType::any);
 		return (ResultType)type;
 	}
 
@@ -325,22 +325,22 @@ namespace IR
 
 		friend const FunctionType* asFunctionType(const ObjectType& objectType)
 		{
-			assert(objectType.kind == ObjectKind::function);
+			WAVM_ASSERT_THROW(objectType.kind == ObjectKind::function);
 			return objectType.function;
 		}
 		friend TableType asTableType(const ObjectType& objectType)
 		{
-			assert(objectType.kind == ObjectKind::table);
+			WAVM_ASSERT_THROW(objectType.kind == ObjectKind::table);
 			return objectType.table;
 		}
 		friend MemoryType asMemoryType(const ObjectType& objectType)
 		{
-			assert(objectType.kind == ObjectKind::memory);
+			WAVM_ASSERT_THROW(objectType.kind == ObjectKind::memory);
 			return objectType.memory;
 		}
 		friend GlobalType asGlobalType(const ObjectType& objectType)
 		{
-			assert(objectType.kind == ObjectKind::global);
+			WAVM_ASSERT_THROW(objectType.kind == ObjectKind::global);
 			return objectType.global;
 		}
 

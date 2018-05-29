@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <eosiolib/eosio.hpp>
+#include <eosiolib/time.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/contract.hpp>
 #include <eosiolib/crypto.h>
@@ -34,7 +35,7 @@ class dice : public eosio::contract {
       //@abi action
       void offerbet(const asset& bet, const account_name player, const checksum256& commitment) {
 
-         eosio_assert( bet.symbol == S(4,EOS) , "only EOS token allowed" );
+         eosio_assert( bet.symbol == CORE_SYMBOL, "only core token allowed" );
          eosio_assert( bet.is_valid(), "invalid bet" );
          eosio_assert( bet.amount > 0, "must bet positive quantity" );
 
@@ -86,7 +87,7 @@ class dice : public eosio::contract {
             auto game_itr = games.emplace(_self, [&](auto& new_game){
                new_game.id       = gdice_itr->nextgameid;
                new_game.bet      = new_offer_itr->bet;
-               new_game.deadline = 0;
+               new_game.deadline = eosio::time_point_sec(0);
 
                new_game.player1.commitment = matched_offer_itr->commitment;
                memset(&new_game.player1.reveal, 0, sizeof(checksum256));
@@ -184,7 +185,7 @@ class dice : public eosio::contract {
                else
                   game.player2.reveal = source;
 
-               game.deadline = now() + FIVE_MINUTES;
+               game.deadline = eosio::time_point_sec(now() + FIVE_MINUTES);
             });
          }
       }
@@ -195,7 +196,7 @@ class dice : public eosio::contract {
          auto game_itr = games.find(gameid);
 
          eosio_assert(game_itr != games.end(), "game not found");
-         eosio_assert(game_itr->deadline != 0 && now() > game_itr->deadline, "game not expired");
+         eosio_assert(game_itr->deadline != eosio::time_point_sec(0) && eosio::time_point_sec(now()) > game_itr->deadline, "game not expired");
 
          auto idx = offers.template get_index<N(commitment)>();
          auto player1_offer = idx.find( offer::get_commitment(game_itr->player1.commitment) );
@@ -300,7 +301,7 @@ class dice : public eosio::contract {
       struct game {
          uint64_t id;
          asset    bet;
-         time     deadline;
+         eosio::time_point_sec deadline;
          player   player1;
          player   player2;
 
