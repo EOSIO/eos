@@ -218,7 +218,7 @@ namespace eosio { namespace chain {
             previtr = previdx.find(id);
          }
       }
-      wdump((my->index.size()));
+      //wdump((my->index.size()));
    }
 
    void fork_database::set_validity( const block_state_ptr& h, bool valid ) {

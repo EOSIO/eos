@@ -26,6 +26,10 @@ namespace eosio {
       prints_l( s.c_str(), s.size() );
    }
 
+   inline void print( std::string& s) {
+      prints_l( s.c_str(), s.size() );
+   }
+
    inline void print( const char c ) {
       prints_l( &c, 1 );
    }

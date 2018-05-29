@@ -46,7 +46,7 @@ namespace NFA
 
 	StateIndex addState(Builder* builder)
 	{
-		assert(builder->nfaStates.size() < INT16_MAX);
+		WAVM_ASSERT_THROW(builder->nfaStates.size() < INT16_MAX);
 		builder->nfaStates.emplace_back();
 		return StateIndex(builder->nfaStates.size() - 1);
 	}
@@ -172,7 +172,7 @@ namespace NFA
 			typedef DenseStaticIntSet<StateIndex,numSupportedLocalStates> LocalStateSet;
 
 			const Uptr numLocalStates = stateIndexToLocalStateIndexMap.size();
-			assert(numLocalStates <= numSupportedLocalStates);
+			WAVM_ASSERT_THROW(numLocalStates <= numSupportedLocalStates);
 			maxLocalStates = std::max<Uptr>(maxLocalStates,numLocalStates);
 
 			// Combine the [nextState][char] transition maps for current states and transpose to [char][nextState]
@@ -306,12 +306,12 @@ namespace NFA
 
 		bool operator<(const StateTransitionsByChar& right) const
 		{
-			assert(numStates == right.numStates);
+			WAVM_ASSERT_THROW(numStates == right.numStates);
 			return memcmp(nextStateByInitialState,right.nextStateByInitialState,sizeof(StateIndex)*numStates) < 0;
 		}
 		bool operator!=(const StateTransitionsByChar& right) const
 		{
-			assert(numStates == right.numStates);
+			WAVM_ASSERT_THROW(numStates == right.numStates);
 			return memcmp(nextStateByInitialState,right.nextStateByInitialState,sizeof(StateIndex)*numStates) != 0;
 		}
 	};
@@ -320,7 +320,7 @@ namespace NFA
 	{
 		// Convert the NFA constructed by the builder to a DFA.
 		std::vector<DFAState> dfaStates = convertToDFA(builder);
-		assert(dfaStates.size() <= internalMaxStates);
+		WAVM_ASSERT_THROW(dfaStates.size() <= internalMaxStates);
 		delete builder;
 		
 		Timing::Timer timer;
@@ -366,7 +366,7 @@ namespace NFA
 		}
 
 		// Build a map from character index to offset into [charClass][initialState] transition map.
-		assert((numClasses - 1) * (numStates - 1) <= UINT32_MAX);
+		WAVM_ASSERT_THROW((numClasses - 1) * (numStates - 1) <= UINT32_MAX);
 		for(Uptr charIndex = 0;charIndex < 256;++charIndex)
 		{
 			charToOffsetMap[charIndex] = U32(numStates * characterToClassMap[charIndex]);
