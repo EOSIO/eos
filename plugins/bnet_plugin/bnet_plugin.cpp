@@ -239,7 +239,7 @@ namespace eosio {
         int                                                            _session_num = 0;
         session_state                                                  _state = hello_state;
         tcp::resolver                                                  _resolver;
-        bnet_plugin_impl&                                              _net_plugin;
+        bnet_ptr                                                       _net_plugin;
         boost::asio::io_service&                                       _ios;
         unique_ptr<ws::stream<tcp::socket>>                            _ws;
         boost::asio::strand< boost::asio::io_context::executor_type>   _strand;
@@ -265,9 +265,9 @@ namespace eosio {
         /**
          * Creating session from server socket acceptance
          */
-        explicit session( tcp::socket socket, bnet_plugin_impl& net_plug )
+        explicit session( tcp::socket socket, bnet_ptr net_plug )
         :_resolver(socket.get_io_service()),
-         _net_plugin( net_plug ),
+         _net_plugin( std::move(net_plug) ),
          _ios(socket.get_io_service()),
          _ws( new ws::stream<tcp::socket>(move(socket)) ),
          _strand(_ws->get_executor() ),
@@ -284,9 +284,9 @@ namespace eosio {
         /**
          * Creating outgoing session
          */
-        explicit session( boost::asio::io_context& ioc, bnet_plugin_impl& net_plug )
+        explicit session( boost::asio::io_context& ioc, bnet_ptr net_plug )
         :_resolver(ioc),
-         _net_plugin( net_plug ),
+         _net_plugin( std::move(net_plug) ),
          _ios(ioc),
          _ws( new ws::stream<tcp::socket>(ioc) ),
          _strand( _ws->get_executor() ),
@@ -1010,11 +1010,11 @@ namespace eosio {
      private:
         tcp::acceptor         _acceptor;
         tcp::socket           _socket;
-        bnet_plugin_impl&     _net_plugin;
+        bnet_ptr              _net_plugin;
 
      public:
-        listener( boost::asio::io_context& ioc, tcp::endpoint endpoint, bnet_plugin_impl& np  )
-        :_acceptor(ioc), _socket(ioc),_net_plugin(np)
+        listener( boost::asio::io_context& ioc, tcp::endpoint endpoint, bnet_ptr np  )
+        :_acceptor(ioc), _socket(ioc), _net_plugin(std::move(np))
         {
            boost::system::error_code ec;
 
@@ -1064,7 +1064,7 @@ namespace eosio {
          std::vector<std::string>                       _connect_to_peers; /// list of peers to connect to
          std::vector<std::thread>                       _socket_threads;
          int32_t                                        _num_threads = 1;
-         std::unique_ptr<boost::asio::io_context>       _ioc;
+         std::unique_ptr<boost::asio::io_context>       _ioc; // lifetime guarded by shared_ptr of bnet_plugin_impl
          std::shared_ptr<listener>                      _listener;
          std::shared_ptr<boost::asio::deadline_timer>   _timer;
 
@@ -1158,7 +1158,7 @@ namespace eosio {
 
                 if( !found ) {
                    wlog( "attempt to connect to ${p}", ("p",peer) );
-                   auto s = std::make_shared<session>( *_ioc, std::ref(*this) );
+                   auto s = std::make_shared<session>( *_ioc, shared_from_this() );
                    s->_local_peer_id = _peer_id;
                    _sessions[s.get()] = s;
                    s->run( peer );
@@ -1185,9 +1185,9 @@ namespace eosio {
      if( ec ) {
         return;
      }
-     auto newsession = std::make_shared<session>( move( _socket ), std::ref(_net_plugin) );
-     _net_plugin.async_add_session( newsession );
-     newsession->_local_peer_id = _net_plugin._peer_id;
+     auto newsession = std::make_shared<session>( move( _socket ), _net_plugin );
+     _net_plugin->async_add_session( newsession );
+     newsession->_local_peer_id = _net_plugin->_peer_id;
      newsession->run();
      do_accept();
    }
@@ -1274,7 +1274,7 @@ namespace eosio {
 
       my->_listener = std::make_shared<listener>( ioc,
                                                   tcp::endpoint{ address, my->_bnet_endpoint_port },
-                                                  std::ref(*my) );
+                                                  my );
       my->_listener->run();
 
       my->_socket_threads.reserve( my->_num_threads );
@@ -1283,7 +1283,7 @@ namespace eosio {
       }
 
       for( const auto& peer : my->_connect_to_peers ) {
-         auto s = std::make_shared<session>( ioc, std::ref(*my) );
+         auto s = std::make_shared<session>( ioc, my );
          s->_local_peer_id = my->_peer_id;
          my->_sessions[s.get()] = s;
          s->run( peer );
@@ -1298,6 +1298,12 @@ namespace eosio {
          elog( "exception thrown on timer shutdown" );
       }
 
+      /// shut down all threads and close all connections
+
+      my->for_each_session([](auto ses){
+         ses->do_goodbye( "shutting down" );
+      });
+
       my->_listener.reset();
       my->_ioc->stop();
 
@@ -1306,14 +1312,18 @@ namespace eosio {
          t.join();
       }
       wlog( "done joining threads" );
-      my->_ioc.reset();
-      /// shut down all threads and close all connections
+
+      my->for_each_session([](auto ses){
+         FC_ASSERT( false, "session ${ses} still active", ("ses", ses->_session_num) );
+      });
+
+      // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl
    }
 
 
    session::~session() {
      wlog( "close session ${n}",("n",_session_num) );
-     std::weak_ptr<bnet_plugin_impl> netp = _net_plugin.shared_from_this();
+     std::weak_ptr<bnet_plugin_impl> netp = _net_plugin;
      _app_ios.post( [netp,ses=this]{
         if( auto net = netp.lock() )
            net->on_session_close(ses);
@@ -1327,7 +1337,7 @@ namespace eosio {
           hello_msg.peer_id = self->_local_peer_id;
           hello_msg.last_irr_block_num = lib;
           hello_msg.pending_block_ids  = ids;
-          hello_msg.request_transactions = self->_net_plugin._request_trx;
+          hello_msg.request_transactions = self->_net_plugin->_request_trx;
           hello_msg.chain_id = app().get_plugin<chain_plugin>().get_chain_id(); // TODO: Quick fix in a rush. Maybe a better solution is needed.
 
           self->_local_lib = lib;
@@ -1338,7 +1348,7 @@ namespace eosio {
 
    void session::check_for_redundant_connection() {
      app().get_io_service().post( [self=shared_from_this()]{
-       self->_net_plugin.for_each_session( [self]( auto ses ){
+       self->_net_plugin->for_each_session( [self]( auto ses ){
          if( ses != self && ses->_remote_peer_id == self->_remote_peer_id ) {
            self->do_goodbye( "redundant connection" );
          }
