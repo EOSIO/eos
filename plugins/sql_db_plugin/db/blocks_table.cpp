@@ -29,7 +29,9 @@ void blocks_table::create()
             "irreversible TINYINT(1) DEFAULT 0,"
             "timestamp DATETIME DEFAULT NOW(),"
             "transaction_merkle_root VARCHAR(64),"
+            "action_merkle_root VARCHAR(64),"
             "producer VARCHAR(12),"
+            "num_transactions INT,"
             "confirmed INT, FOREIGN KEY (producer) REFERENCES accounts(name), UNIQUE KEY block_number (block_number))";
 }
 
@@ -38,17 +40,21 @@ void blocks_table::add(chain::signed_block_ptr block)
     const auto block_id_str = block->id().str();
     const auto previous_block_id_str = block->previous.str();
     const auto transaction_mroot_str = block->transaction_mroot.str();
+    const auto action_mroot_str = block->action_mroot.str();
     const auto timestamp = std::chrono::seconds{block->timestamp.operator fc::time_point().sec_since_epoch()}.count();
+    const auto num_transactions = (int)block->transactions.size();
 
-    *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root,"
-                  "producer, confirmed) VALUES (:id, :in, :pb, FROM_UNIXTIME(:ti), :tr, :pa, :pe)",
+    *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root, action_merkle_root,"
+                  "producer, confirmed, num_transactions) VALUES (:id, :in, :pb, FROM_UNIXTIME(:ti), :tr, :ar, :pa, :pe, :nt)",
             soci::use(block_id_str),
             soci::use(block->block_num()),
             soci::use(previous_block_id_str),
             soci::use(timestamp),
             soci::use(transaction_mroot_str),
+            soci::use(action_mroot_str),
             soci::use(block->producer.to_string()),
-            soci::use(block->confirmed);
+            soci::use(block->confirmed),
+            soci::use(num_transactions);
 }
 
 } // namespace
