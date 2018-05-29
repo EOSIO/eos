@@ -750,7 +750,13 @@ struct controller_impl {
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
          push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
-      } catch ( ... ) {
+      } catch( const boost::interprocess::bad_alloc& e  ) {
+         ilog( "on block transaction failed due to a bad allocation" );
+         throw;
+      } catch( const fc::exception& e ) {
+         ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+         edump((e.to_detail_string()));
+      } catch( ... ) {
          ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
       }
 
