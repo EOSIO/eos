@@ -89,7 +89,7 @@ namespace eosiosystem {
             he gets deactivated if he hasn't produced in 24 hours.
           */
          if ( it->time_became_active.slot == 0 ||
-              block_time.slot > it->time_became_active.slot + blocks_per_day ) {
+              block_time.slot > it->time_became_active.slot + 23 * blocks_per_hour ) {
             _producers.modify( *it, 0, [&](auto& p) {
                   p.time_became_active = block_time;
                });
@@ -104,10 +104,10 @@ namespace eosiosystem {
                });
          }
 
-         top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}));
+         top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
 
-      for (const auto& it: inactive_iters) {
+      for ( const auto& it: inactive_iters ) {
          _producers.modify( *it, 0, [&](auto& p) {
                p.deactivate();
                p.time_became_active.slot = 0;
