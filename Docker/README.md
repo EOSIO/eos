@@ -29,7 +29,7 @@ docker build -t eosio/eos:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
 
 ```bash
-docker built -t eosio/eos --build-arg symbol=<symbol> .
+docker build -t eosio/eos --build-arg symbol=<symbol> .
 ```
 
 ## Start nodeos docker container only
@@ -173,28 +173,28 @@ run `docker pull eosio/eos:latest`
 
 run `docker-compose up`
 
-### Dawn 4.0 Testnet
+### Dawn 4.2 Testnet
 
-We can easily set up a Dawn 4.0 local testnet using docker images. Just run the following commands:
+We can easily set up a Dawn 4.2 local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 
 ```
 # pull images
-docker pull eosio/eos:latest
+docker pull eosio/eos:20180528
 docker pull mongo:latest
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
 docker volume create --name=mongo-data-volume
 # start containers
-docker-compose -f docker-compose-dawn4.0.yaml up -d
+docker-compose -f docker-compose-dawn4.2.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
-docker-compose logs nodeosd
+docker-compose logs -f nodeosd
 # stop containers
-docker-compose -f docker-compose-dawn4.0.yaml down
+docker-compose -f docker-compose-dawn4.2.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.

@@ -112,12 +112,10 @@ namespace eosiosystem {
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
 
-      if( payer != N(eosio) ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
-                                                       { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
-      }
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+         { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
 
-      if( payer != N(eosio) && fee.amount > 0 ) {
+      if( fee.amount > 0 ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
                                                        { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
       }
@@ -182,14 +180,12 @@ namespace eosiosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      if( N(eosio) != account ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
+      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
-         auto fee = tokens_out.amount / 200;
-         if( fee > 0 ) {
-            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
-                                                          { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
-         }
+      auto fee = tokens_out.amount / 200;
+      if( fee > 0 ) {
+         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
+            { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
       }
    }
 
@@ -376,6 +372,7 @@ namespace eosiosystem {
       eosio_assert( asset() <= unstake_cpu_quantity, "must unstake a positive amount" );
       eosio_assert( asset() <= unstake_net_quantity, "must unstake a positive amount" );
       eosio_assert( asset() < unstake_cpu_quantity + unstake_net_quantity, "must unstake a positive amount" );
+      eosio_assert( _gstate.total_activated_stake >= min_activated_stake, "not enough has been staked for users to unstake" );
 
       changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
    } // undelegatebw

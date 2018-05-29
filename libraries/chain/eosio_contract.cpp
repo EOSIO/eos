@@ -125,15 +125,16 @@ void apply_eosio_setcode(apply_context& context) {
    auto& db = context.db;
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
-//   context.require_write_lock( config::eosio_auth_scope );
 
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
 
-
-   auto code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
-
-   wasm_interface::validate(act.code);
+   fc::sha256 code_id; /// default ID == 0
+   
+   if( act.code.size() > 0 ) {
+     code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
+     wasm_interface::validate(act.code);
+   }
 
    const auto& account = db.get<account_object,by_name>(act.account);
 
@@ -142,7 +143,7 @@ void apply_eosio_setcode(apply_context& context) {
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    FC_ASSERT( account.code_version != code_id, "contract is already running this version of code" );
-//   wlog( "set code: ${size}", ("size",act.code.size()));
+
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate

@@ -1,8 +1,8 @@
 #include "eosio.system.hpp"
 #include <eosiolib/dispatcher.hpp>
 
-#include "delegate_bandwidth.cpp"
 #include "producer_pay.cpp"
+#include "delegate_bandwidth.cpp"
 #include "voting.cpp"
 #include "exchange_state.cpp"
 
@@ -104,7 +104,7 @@ namespace eosiosystem {
          eosio_assert( current->high_bidder != bidder, "account is already high bidder" );
 
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.names),N(active)},
-                                                       { N(eosio.names), current->high_bidder, asset(current->high_bid), 
+                                                       { N(eosio.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
          bids.modify( current, bidder, [&]( auto& b ) {
@@ -125,7 +125,7 @@ namespace eosiosystem {
     *
     *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
     *     therefore, this method will execute an inline buyram from receiver for newacnt in
-    *     an amount equal to the current new account creation fee. 
+    *     an amount equal to the current new account creation fee.
     */
    void native::newaccount( account_name     creator,
                             account_name     newact
@@ -146,7 +146,7 @@ namespace eosiosystem {
             if( suffix == newact ) {
                name_bid_table bids(_self,_self);
                auto current = bids.find( newact );
-               eosio_assert( current != bids.end(), "no active bid for name" ); 
+               eosio_assert( current != bids.end(), "no active bid for name" );
                eosio_assert( current->high_bidder == creator, "only high bidder can claim" );
                eosio_assert( current->high_bid < 0, "auction for name is not closed yet" );
                bids.erase( current );
@@ -173,7 +173,7 @@ namespace eosiosystem {
    }
 
 } /// eosio.system
- 
+
 
 EOSIO_ABI( eosiosystem::system_contract,
      (setram)

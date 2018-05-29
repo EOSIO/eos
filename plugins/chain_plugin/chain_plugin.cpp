@@ -20,8 +20,6 @@
 #include <eosio/utilities/common.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
-#include <eosio/chain/plugin_interface.hpp>
-
 #include <boost/signals2/connection.hpp>
 
 #include <fc/io/json.hpp>
@@ -41,6 +39,23 @@ using boost::signals2::scoped_connection;
 
 //using txn_msg_rate_limits = controller::txn_msg_rate_limits;
 
+#define CATCH_AND_CALL(NEXT)\
+   catch ( const fc::exception& err ) {\
+      NEXT(err.dynamic_copy_exception());\
+   } catch ( const std::exception& e ) {\
+      fc::exception fce( \
+         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
+         fc::std_exception_code,\
+         BOOST_CORE_TYPEID(e).name(),\
+         e.what() ) ;\
+      NEXT(fce.dynamic_copy_exception());\
+   } catch( ... ) {\
+      fc::unhandled_exception e(\
+         FC_LOG_MESSAGE(warn, "rethrow"),\
+         std::current_exception());\
+      NEXT(e.dynamic_copy_exception());\
+   }
+
 
 class chain_plugin_impl {
 public:
@@ -53,20 +68,18 @@ public:
    ,accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
    ,incoming_block_channel(app().get_channel<incoming::channels::block>())
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
-   ,incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>())
+   ,incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>())
    {}
 
    bfs::path                        blocks_dir;
-   bfs::path                        genesis_file;
-   time_point                       genesis_timestamp;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
-   fc::optional<controller::config> chain_config = controller::config();
+   fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
-   chain_id_type                    chain_id;
+   fc::optional<chain_id_type>      chain_id;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
 
@@ -80,8 +93,8 @@ public:
    incoming::channels::block::channel_type&         incoming_block_channel;
 
    // retained references to methods for easy calling
-   incoming::methods::block_sync::method_type&       incoming_block_sync_method;
-   incoming::methods::transaction_sync::method_type& incoming_transaction_sync_method;
+   incoming::methods::block_sync::method_type&        incoming_block_sync_method;
+   incoming::methods::transaction_async::method_type& incoming_transaction_async_method;
 
    // method provider handles
    methods::get_block_by_number::method_type::handle                 get_block_by_number_provider;
@@ -109,8 +122,6 @@ chain_plugin::~chain_plugin(){}
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
-         ("genesis-json", bpo::value<bfs::path>()->default_value("genesis.json"), "File to read Genesis State from")
-         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -119,7 +130,15 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
-
+         ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Account added to actor whitelist (may specify multiple times)")
+         ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Account added to actor blacklist (may specify multiple times)")
+         ("contract-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Contract account added to contract whitelist (may specify multiple times)")
+         ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Contract account added to contract blacklist (may specify multiple times)")
+         ;
 
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -130,8 +149,14 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "The time frame, in seconds, that the per-code-account-transaction-msg-rate-limit is imposed over.")
           ("per-code-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(default_per_code_account),
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
-         ;
+
    cli.add_options()
+         ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
+         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("print-genesis-json", bpo::bool_switch()->default_value(false),
+           "extract genesis_state from blocks.log as JSON, print to console, and exit")
+         ("extract-genesis-json", bpo::value<bfs::path>(),
+           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
          ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
@@ -145,33 +170,32 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ;
 }
 
+#define LOAD_VALUE_SET(options, name, container) \
+if( options.count(name) ) { \
+   const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
+   std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
-   if(options.count("genesis-json")) {
-      auto genesis = options.at("genesis-json").as<bfs::path>();
-      if(genesis.is_relative())
-         my->genesis_file = app().config_dir() / genesis;
-      else
-         my->genesis_file = genesis;
+   try {
+      genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
+   } catch( const fc::exception& ) {
+      elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
+            ("root_key", genesis_state::eosio_root_key) );
+      throw;
    }
-   if(options.count("genesis-timestamp")) {
-     string tstr = options.at("genesis-timestamp").as<string>();
-     if (strcasecmp (tstr.c_str(), "now") == 0) {
-       my->genesis_timestamp = fc::time_point::now();
-       auto epoch_ms = my->genesis_timestamp.time_since_epoch().count() / 1000;
-       auto diff_ms = epoch_ms % block_interval_ms;
-       if (diff_ms > 0) {
-         auto delay_ms =  (block_interval_ms - diff_ms);
-         my->genesis_timestamp += fc::microseconds(delay_ms * 10000);
-         dlog ("pausing ${ms} milliseconds to the next interval",("ms",delay_ms));
-       }
-     }
-     else {
-       my->genesis_timestamp = time_point::from_iso_string (tstr);
-     }
-   }
-   if (options.count("blocks-dir")) {
+
+   my->chain_config = controller::config();
+
+   LOAD_VALUE_SET(options, "actor-whitelist", my->chain_config->actor_whitelist);
+   LOAD_VALUE_SET(options, "actor-blacklist", my->chain_config->actor_blacklist);
+   LOAD_VALUE_SET(options, "contract-whitelist", my->chain_config->contract_whitelist);
+   LOAD_VALUE_SET(options, "contract-blacklist", my->chain_config->contract_blacklist);
+
+   if( options.count("blocks-dir") )
+   {
       auto bld = options.at("blocks-dir").as<bfs::path>();
       if(bld.is_relative())
          my->blocks_dir = app().data_dir() / bld;
@@ -179,7 +203,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->blocks_dir = bld;
    }
 
-   if(options.count("checkpoint"))
+   if( options.count("checkpoint") )
    {
       auto cps = options.at("checkpoint").as<vector<string>>();
       my->loaded_checkpoints.reserve(cps.size());
@@ -208,6 +232,33 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
    my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
+
+   if( options.count("extract-genesis-json") ||  options.at("print-genesis-json").as<bool>() ) {
+      genesis_state gs;
+
+      if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
+         gs = block_log::extract_genesis_state( my->blocks_dir );
+      } else {
+         wlog( "No blocks.log found at '${p}'. Using default genesis state.", ("p", (my->blocks_dir / "blocks.log").generic_string()) );
+      }
+
+      if( options.at("print-genesis-json").as<bool>() ) {
+         ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string(gs)) );
+      }
+
+      if( options.count("extract-genesis-json") ) {
+         auto p = options.at("extract-genesis-json").as<bfs::path>();
+
+         if( p.is_relative() ) {
+            p = bfs::current_path() / p;
+         }
+
+         fc::json::save_to_file( gs, p, true );
+         ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
+      }
+
+      EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
+   }
 
    if( options.at("delete-all-blocks").as<bool>() ) {
       ilog("Deleting state database and blocks");
@@ -247,18 +298,48 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
    }
 
-   if( !fc::exists( my->genesis_file ) ) {
-      wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
-      genesis_state default_genesis;
-      fc::json::save_to_file( default_genesis, my->genesis_file, true );
-   }
+   if( options.count("genesis-json") ) {
+      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis State can only be specified on a fresh blockchain." );
 
-   my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
-   if( my->genesis_timestamp.sec_since_epoch() > 0 ) {
-      my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
+      auto genesis_file = options.at("genesis-json").as<bfs::path>();
+      if( genesis_file.is_relative() ) {
+         genesis_file = bfs::current_path() / genesis_file;
+      }
+
+      FC_ASSERT( fc::is_regular_file( genesis_file ),
+                 "Specified genesis file '${genesis}' does not exist.",
+                 ("genesis", genesis_file.generic_string()) );
+
+      my->chain_config->genesis = fc::json::from_file(genesis_file).as<genesis_state>();
+
+      ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()) );
+
+      if( options.count("genesis-timestamp") ) {
+         string tstr = options.at("genesis-timestamp").as<string>();
+         if( strcasecmp (tstr.c_str(), "now") == 0 ) {
+            my->chain_config->genesis.initial_timestamp = fc::time_point::now();
+            auto epoch_us = my->chain_config->genesis.initial_timestamp.time_since_epoch().count();
+            auto diff_us = epoch_us % config::block_interval_us;
+            if (diff_us > 0) {
+               auto delay_us = (config::block_interval_us - diff_us);
+               my->chain_config->genesis.initial_timestamp += fc::microseconds(delay_us);
+               dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
+            }
+        } else {
+          my->chain_config->genesis.initial_timestamp = time_point::from_iso_string( tstr );
+        }
+        ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", my->chain_config->genesis.initial_timestamp) );
+      }
+
+      wlog( "Starting up fresh blockchain with provided genesis state." );
+   } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
+      my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+   } else {
+      wlog( "Starting up fresh blockchain with default genesis state." );
    }
 
    my->chain.emplace(*my->chain_config);
+   my->chain_id.emplace(my->chain->get_chain_id());
 
    // set up method providers
    my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider([this](uint32_t block_num) -> signed_block_ptr {
@@ -317,7 +398,7 @@ void chain_plugin::plugin_startup()
         ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
 
    my->chain_config.reset();
-} FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
+} FC_CAPTURE_AND_RETHROW() }
 
 void chain_plugin::plugin_shutdown() {
    my->accepted_block_header_connection.reset();
@@ -337,8 +418,8 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-chain::transaction_trace_ptr chain_plugin::accept_transaction(const packed_transaction& trx) {
-   return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx) , false);
+void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
+   my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -429,8 +510,9 @@ controller::config& chain_plugin::chain_config() {
 controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
-void chain_plugin::get_chain_id(chain_id_type &cid)const {
-   memcpy(cid.id.data(), my->chain_id.id.data(), cid.id.data_size());
+chain::chain_id_type chain_plugin::get_chain_id()const {
+   FC_ASSERT( my->chain_id.valid(), "chain ID has not been initialized yet" );
+   return *my->chain_id;
 }
 
 namespace chain_apis {
@@ -441,6 +523,7 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    const auto& rm = db.get_resource_limits_manager();
    return {
       eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
+      db.get_chain_id(),
       db.head_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
@@ -652,20 +735,17 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
            ("ref_block_prefix", ref_block_prefix);
 }
 
-read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
+void read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
    try {
-      db.push_block( std::make_shared<signed_block>(params) );
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
+      next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
-   } catch ( ... ) {
-      throw;
-   }
-   return read_write::push_block_results();
+   } CATCH_AND_CALL(next);
 }
 
-read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   chain::transaction_id_type id;
-   fc::variant pretty_output;
+void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
+
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this);
@@ -673,38 +753,60 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
          abi_serializer::from_variant(params, *pretty_input, resolver);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
+      app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+         if (result.contains<fc::exception_ptr>()) {
+            next(result.get<fc::exception_ptr>());
+         } else {
+            auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
-      pretty_output = db.to_variant_with_abi( *trx_trace_ptr );;
-      //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
-      id = trx_trace_ptr->id;
+            try {
+               fc::variant pretty_output;
+               pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
+               //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
+
+               chain::transaction_id_type id = trx_trace_ptr->id;
+               next(read_write::push_transaction_results{id, pretty_output});
+            } CATCH_AND_CALL(next);
+         }
+      });
+
+
    } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
-   } catch ( ... ) {
-      throw;
-   }
-   return read_write::push_transaction_results{ id, pretty_output };
+   } CATCH_AND_CALL(next);
 }
 
-read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
-   FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
-   push_transactions_results result;
-   try {
-      result.reserve(params.size());
-      for( const auto& item : params ) {
-         try {
-           result.emplace_back( push_transaction( item ) );
-         } catch ( const fc::exception& e ) {
-           result.emplace_back( read_write::push_transaction_results{ transaction_id_type(),
-                             fc::mutable_variant_object( "error", e.to_detail_string() ) } );
-         }
+static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
+   auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
+      if (result.contains<fc::exception_ptr>()) {
+         const auto& e = result.get<fc::exception_ptr>();
+         results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
+      } else {
+         const auto& r = result.get<read_write::push_transaction_results>();
+         results->emplace_back( r );
       }
-   } catch ( boost::interprocess::bad_alloc& ) {
-      raise(SIGUSR1);
-   } catch ( ... ) {
-      throw;
-   }
-   return result;
+
+      int next_index = index + 1;
+      if (next_index < params->size()) {
+         push_recurse(rw, next_index, params, results, next );
+      } else {
+         next(*results);
+      }
+   };
+
+   rw->push_transaction(params->at(index), wrapped_next);
+}
+
+void read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
+   try {
+      FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
+      auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
+      auto result = std::make_shared<read_write::push_transactions_results>();
+      result->reserve(params.size());
+
+      push_recurse(this, 0, params_copy, result, next);
+
+   } CATCH_AND_CALL(next);
 }
 
 read_only::get_code_results read_only::get_code( const get_code_params& params )const {
@@ -834,6 +936,8 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
+   } else {
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
@@ -845,6 +949,8 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
+   } else {
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 }
