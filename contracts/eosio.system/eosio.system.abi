@@ -381,6 +381,20 @@
       "fields": [
         {"name":"params", "type":"blockchain_parameters"}
       ]
+    },
+    {
+      "name": "blacklist",
+      "base": "",
+      "fields": [
+        {"name":"name",    "type":"account_name"}
+      ]
+    },
+    {
+      "name": "unblacklist",
+      "base": "",
+      "fields": [
+        {"name":"name",    "type":"account_name"}
+      ]
     }
    ],
    "actions": [{
@@ -494,6 +508,14 @@
     },{
       "name": "setparams",
       "type": "setparams",
+      "ricardian_contract": ""
+    },{
+      "name": "blacklist",
+      "type": "blacklist",
+      "ricardian_contract": ""
+    },{
+      "name": "unblacklist",
+      "type": "unblacklist",
       "ricardian_contract": ""
     }],
    "tables": [{

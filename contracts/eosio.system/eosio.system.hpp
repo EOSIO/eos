@@ -68,6 +68,7 @@ namespace eosiosystem {
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
       bool                  is_active = true;
+      bool                  is_blacklisted = false;
       std::string           url;
       uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
@@ -81,7 +82,7 @@ namespace eosiosystem {
       void     deactivate()       { producer_key = public_key(); is_active = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
+      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(is_blacklisted)(url)
                         (unpaid_blocks)(last_claim_time)(location)
                         (time_became_active)(last_produced_block_time) )
    };
@@ -218,6 +219,11 @@ namespace eosiosystem {
          void setpriv( account_name account, uint8_t ispriv );
 
          void bidname( account_name bidder, account_name newname, asset bid );
+
+         void blacklist(account_name prod);
+
+         void unblacklist(account_name prod);
+
       private:
          void update_elected_producers( block_timestamp timestamp );
 

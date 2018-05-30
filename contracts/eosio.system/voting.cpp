@@ -42,6 +42,7 @@ namespace eosiosystem {
       auto prod = _producers.find( producer );
 
       if ( prod != _producers.end() ) {
+         eosio_assert(!(prod->is_blacklisted), "producer is blacklisted");
          if( producer_key != prod->producer_key ) {
              _producers.modify( prod, producer, [&]( producer_info& info ){
                   info.producer_key = producer_key;
