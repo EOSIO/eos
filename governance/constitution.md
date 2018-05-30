@@ -40,7 +40,7 @@ Members may only publish information to the Blockchain that is within their righ
 All service providers who produce tools to facilitate the construction and signing of transactions on behalf of other Members shall present to said other Members the full Ricardian contract terms of this Constitution and other referenced contracts. Service providers shall be liable for losses resulting from failure to disclose the full Ricardian contract terms to users.
 
 # Article XIV - Severability
-Severability If any part of this Constitution is declared unenforceable or invalid, the remainder will continue to be valid and enforceable.
+If any part of this Constitution is declared unenforceable or invalid, the remainder will continue to be valid and enforceable.
 
 # Article XV - Termination of Agreement 
 A Member is automatically released from all revocable obligations under this Constitution 3 years after the last transaction signed by that Member is incorporated into the blockchain. After 3 years of inactivity an account may be put up for auction and the proceeds distributed to all Members by removing EXAMPLE from circulation.
@@ -52,7 +52,7 @@ Members agree to hold software developers harmless for unintentional mistakes ma
 All rights and obligations under this Constitution are mutual and reciprocal and of equally significant value and cost to all parties.
 
 # Article XVIII - Acceptance
-A contract is deemed accepted when a member signs a transaction which incorporates a TAPOS proof of a block whose implied state incorporates an ABI and associated Ricardian contracts and said transaction is incorporated into the blockchain.
+A contract is deemed accepted when a member signs a transaction which incorporates a TAPOS proof of a block whose implied state incorporates an ABI of said contract and said transaction is incorporated into the blockchain.
 
 # Article XIX - Counterparts
 This Constitution may be executed in any number of counterparts, each of which when executed and delivered shall constitute a duplicate original, but all counterparts together shall constitute a single agreement.
