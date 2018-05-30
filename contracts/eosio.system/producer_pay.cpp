@@ -103,7 +103,6 @@ namespace eosiosystem {
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
-         _gstate.savings         += to_savings;
 
          _gstate.last_pervote_bucket_fill = ct;
       }

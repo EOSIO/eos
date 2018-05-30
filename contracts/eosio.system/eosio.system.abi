@@ -258,7 +258,6 @@
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
-         {"name":"savings",                       "type":"int64"},
          {"name":"total_unpaid_blocks",           "type":"uint32"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
