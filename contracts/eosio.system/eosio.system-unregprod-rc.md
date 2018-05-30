@@ -1,7 +1,5 @@
 # Action - `{{ unregprod }}`
 
-This Contract is legally binding and can be used in the event of a dispute.
-
 ### Description
 
 The `{{ unregprod }}` action... 
