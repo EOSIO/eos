@@ -1988,7 +1988,8 @@ namespace eosio {
                   if(conn->socket->is_open()) {
                      if (conn->peer_addr.empty()) {
                         visitors++;
-                        if (paddr == conn->socket->remote_endpoint().address().to_v4()) {
+                        boost::system::error_code ec;
+                        if (paddr == conn->socket->remote_endpoint(ec).address().to_v4()) {
                            from_addr++;
                         }
                      }
