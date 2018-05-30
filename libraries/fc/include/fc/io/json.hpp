@@ -2,6 +2,8 @@
 #include <fc/variant.hpp>
 #include <fc/filesystem.hpp>
 
+#define DEFAULT_MAX_RECURSION_DEPTH 200
+
 namespace fc
 {
    using std::ostream;
@@ -28,49 +30,53 @@ namespace fc
          };
 
          static ostream& to_stream( ostream& out, const fc::string&);
-         static ostream& to_stream( ostream& out, const variant& v, output_formatting format = stringify_large_ints_and_doubles );
-         static ostream& to_stream( ostream& out, const variants& v, output_formatting format = stringify_large_ints_and_doubles );
-         static ostream& to_stream( ostream& out, const variant_object& v, output_formatting format = stringify_large_ints_and_doubles );
+         static ostream& to_stream( ostream& out, const variant& v, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static ostream& to_stream( ostream& out, const variants& v, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static ostream& to_stream( ostream& out, const variant_object& v, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
 
-         static variant  from_string( const string& utf8_str, parse_type ptype = legacy_parser );
-         static variants variants_from_string( const string& utf8_str, parse_type ptype = legacy_parser );
-         static string   to_string( const variant& v, output_formatting format = stringify_large_ints_and_doubles );
-         static string   to_pretty_string( const variant& v, output_formatting format = stringify_large_ints_and_doubles );
+         //XXX static variant  from_stream( buffered_istream& in, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
 
-         static bool     is_valid( const std::string& json_str, parse_type ptype = legacy_parser );
+         static variant  from_string( const string& utf8_str, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static variants variants_from_string( const string& utf8_str, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static string   to_string( const variant& v, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static string   to_pretty_string( const variant& v, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+
+         static bool     is_valid( const std::string& json_str, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
 
          template<typename T>
-         static void     save_to_file( const T& v, const fc::path& fi, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles )
+         static void     save_to_file( const T& v, const fc::path& fi, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH )
          {
-            save_to_file( variant(v), fi, pretty, format );
+            save_to_file( variant(v, max_depth), fi, pretty, format, max_depth );
          }
 
-         static void     save_to_file( const variant& v, const fc::path& fi, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles );
-         static variant  from_file( const fc::path& p, parse_type ptype = legacy_parser );
+         static void     save_to_file( const variant& v, const fc::path& fi, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static variant  from_file( const fc::path& p, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
 
          template<typename T>
-         static T from_file( const fc::path& p, parse_type ptype = legacy_parser )
+         static T from_file( const fc::path& p, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH )
          {
-            return json::from_file(p, ptype).as<T>();
-         }
-
-         template<typename T>
-         static string   to_string( const T& v, output_formatting format = stringify_large_ints_and_doubles ) 
-         {
-            return to_string( variant(v), format );
+            return json::from_file(p, ptype, max_depth).as<T>();
          }
 
          template<typename T>
-         static string   to_pretty_string( const T& v, output_formatting format = stringify_large_ints_and_doubles ) 
+         static string   to_string( const T& v, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH )
          {
-            return to_pretty_string( variant(v), format );
+            return to_string( variant(v, max_depth), format, max_depth );
          }
 
          template<typename T>
-         static void save_to_file( const T& v, const std::string& p, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles ) 
+         static string   to_pretty_string( const T& v, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH ) 
          {
-            save_to_file( variant(v), fc::path(p), pretty );
+            return to_pretty_string( variant(v, max_depth), format, max_depth );
+         }
+
+         template<typename T>
+         static void save_to_file( const T& v, const std::string& p, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH ) 
+         {
+            save_to_file( variant(v, max_depth), fc::path(p), pretty, format, max_depth );
          } 
    };
 
 } // fc
+
+#undef DEFAULT_MAX_RECURSION_DEPTH

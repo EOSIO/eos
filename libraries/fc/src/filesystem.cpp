@@ -26,7 +26,7 @@
 
 namespace fc {
   // when converting to and from a variant, store utf-8 in the variant
-  void to_variant( const fc::path& path_to_convert, variant& variant_output ) 
+   void to_variant( const fc::path& path_to_convert, variant& variant_output, uint32_t ) 
   {
     std::wstring wide_string = path_to_convert.generic_wstring();
     std::string utf8_string;
@@ -38,7 +38,7 @@ namespace fc {
     //v = path;
   }
 
-  void from_variant( const fc::variant& variant_to_convert, fc::path& path_output ) 
+  void from_variant( const fc::variant& variant_to_convert, fc::path& path_output, uint32_t ) 
   {
     std::wstring wide_string;
     fc::decodeUtf8(variant_to_convert.as_string(), &wide_string);

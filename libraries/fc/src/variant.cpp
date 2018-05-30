@@ -25,91 +25,91 @@ variant::variant()
    set_variant_type( this, null_type );
 }
 
-variant::variant( fc::nullptr_t )
+variant::variant( fc::nullptr_t, uint32_t )
 {
    set_variant_type( this, null_type );
 }
 
-variant::variant( uint8_t val )
+variant::variant( uint8_t val, uint32_t )
 {
    *reinterpret_cast<uint64_t*>(this)  = val;
    set_variant_type( this, uint64_type );
 }
 
-variant::variant( int8_t val )
+variant::variant( int8_t val, uint32_t )
 {
    *reinterpret_cast<int64_t*>(this)  = val;
    set_variant_type( this, int64_type );
 }
 
-variant::variant( uint16_t val )
+variant::variant( uint16_t val, uint32_t )
 {
    *reinterpret_cast<uint64_t*>(this)  = val;
    set_variant_type( this, uint64_type );
 }
 
-variant::variant( int16_t val )
+variant::variant( int16_t val, uint32_t )
 {
    *reinterpret_cast<int64_t*>(this)  = val;
    set_variant_type( this, int64_type );
 }
 
-variant::variant( uint32_t val )
+variant::variant( uint32_t val, uint32_t )
 {
    *reinterpret_cast<uint64_t*>(this)  = val;
    set_variant_type( this, uint64_type );
 }
 
-variant::variant( int32_t val )
+variant::variant( int32_t val, uint32_t )
 {
    *reinterpret_cast<int64_t*>(this)  = val;
    set_variant_type( this, int64_type );
 }
 
-variant::variant( uint64_t val )
+variant::variant( uint64_t val, uint32_t )
 {
    *reinterpret_cast<uint64_t*>(this)  = val;
    set_variant_type( this, uint64_type );
 }
 
-variant::variant( int64_t val )
+variant::variant( int64_t val, uint32_t )
 {
    *reinterpret_cast<int64_t*>(this)  = val;
    set_variant_type( this, int64_type );
 }
 
-variant::variant( float val )
+variant::variant( float val, uint32_t )
 {
    *reinterpret_cast<double*>(this)  = val;
    set_variant_type( this, double_type );
 }
 
-variant::variant( double val )
+variant::variant( double val, uint32_t )
 {
    *reinterpret_cast<double*>(this)  = val;
    set_variant_type( this, double_type );
 }
 
-variant::variant( bool val )
+variant::variant( bool val, uint32_t )
 {
    *reinterpret_cast<bool*>(this)  = val;
    set_variant_type( this, bool_type );
 }
 
-variant::variant( char* str )
+   variant::variant( char* str, uint32_t )
 {
    *reinterpret_cast<string**>(this)  = new string( str );
    set_variant_type( this, string_type );
 }
 
-variant::variant( const char* str )
+variant::variant( const char* str, uint32_t )
 {
    *reinterpret_cast<string**>(this)  = new string( str );
    set_variant_type( this, string_type );
 }
 
 // TODO: do a proper conversion to utf8
-variant::variant( wchar_t* str )
+variant::variant( wchar_t* str, uint32_t )
 {
    size_t len = wcslen(str);
    boost::scoped_array<char> buffer(new char[len]);
@@ -120,7 +120,7 @@ variant::variant( wchar_t* str )
 }
 
 // TODO: do a proper conversion to utf8
-variant::variant( const wchar_t* str )
+variant::variant( const wchar_t* str, uint32_t )
 {
    size_t len = wcslen(str);
    boost::scoped_array<char> buffer(new char[len]);
@@ -130,29 +130,29 @@ variant::variant( const wchar_t* str )
    set_variant_type( this, string_type );
 }
 
-variant::variant( fc::string val )
+variant::variant( fc::string val, uint32_t )
 {
    *reinterpret_cast<string**>(this)  = new string( fc::move(val) );
    set_variant_type( this, string_type );
 }
-variant::variant( blob val )
+variant::variant( blob val, uint32_t )
 {
    *reinterpret_cast<blob**>(this)  = new blob( fc::move(val) );
    set_variant_type( this, blob_type );
 }
 
-variant::variant( variant_object obj)
+variant::variant( variant_object obj, uint32_t)
 {
    *reinterpret_cast<variant_object**>(this)  = new variant_object(fc::move(obj));
    set_variant_type(this,  object_type );
 }
-variant::variant( mutable_variant_object obj)
+variant::variant( mutable_variant_object obj, uint32_t)
 {
    *reinterpret_cast<variant_object**>(this)  = new variant_object(fc::move(obj));
    set_variant_type(this,  object_type );
 }
 
-variant::variant( variants arr )
+variant::variant( variants arr, uint32_t )
 {
    *reinterpret_cast<variants**>(this)  = new variants(fc::move(arr));
    set_variant_type(this,  array_type );

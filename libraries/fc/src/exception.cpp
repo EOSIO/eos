@@ -123,19 +123,23 @@ namespace fc
 
    exception::~exception(){}
 
-   void to_variant( const exception& e, variant& v )
+   void to_variant( const exception& e, variant& v, uint32_t max_depth )
    {
-      v = mutable_variant_object( "code", e.code() )
-                                ( "name", e.name() )
-                                ( "message", e.what() )
-                                ( "stack", e.get_log() );
-
+      FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
+      variant v_log;
+      to_variant( e.get_log(), v_log, max_depth - 1 );
+      mutable_variant_object tmp;
+      tmp( "code", e.code() )
+         ( "name", e.name() )
+         ( "message", e.what() )
+         ( "stack", v_log );
+      v = variant( tmp, max_depth );
    }
-   void          from_variant( const variant& v, exception& ll )
+   void          from_variant( const variant& v, exception& ll, uint32_t max_depth )
    {
       auto obj = v.get_object();
       if( obj.contains( "stack" ) )
-         ll.my->_elog =  obj["stack"].as<log_messages>();
+         ll.my->_elog =  obj["stack"].as<log_messages>( max_depth - 1 );
       if( obj.contains( "code" ) )
          ll.my->_code = obj["code"].as_int64();
       if( obj.contains( "name" ) )
@@ -219,6 +223,7 @@ namespace fc
       } catch( ... ) {
          ss << "<- exception in to_string.\n";
       }
+      return ss.str();
    }
 
    /**

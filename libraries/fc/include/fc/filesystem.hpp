@@ -182,8 +182,8 @@ namespace fc {
   const fc::path& current_path();
 
   class variant;
-  void to_variant( const fc::path&,  fc::variant&  );
-  void from_variant( const fc::variant& , fc::path& );
+  void to_variant( const fc::path&,  fc::variant&, uint32_t max_depth  );
+  void from_variant( const fc::variant& , fc::path&, uint32_t max_depth );
 
   template<> struct get_typename<path> { static const char* name()   { return "path";   } };
 
