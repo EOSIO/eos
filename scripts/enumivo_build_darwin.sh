@@ -222,7 +222,6 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		
 		if [ -d "$BUILD_DIR" ]; then
 			if ! rm -rf "$BUILD_DIR"
 			then

@@ -9,7 +9,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
 
-#include <assert.h>
 #include <secp256k1.h>
 
 #if _WIN32

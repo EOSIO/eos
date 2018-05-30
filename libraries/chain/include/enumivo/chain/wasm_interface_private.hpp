@@ -6,6 +6,7 @@
 #include <enumivo/chain/webassembly/runtime_interface.hpp>
 #include <enumivo/chain/wasm_enumivo_injection.hpp>
 #include <enumivo/chain/transaction_context.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include "IR/Module.h"
 #include "Runtime/Intrinsics.h"
@@ -54,6 +55,9 @@ namespace enumivo { namespace chain {
       {
          auto it = instantiation_cache.find(code_id);
          if(it == instantiation_cache.end()) {
+            auto timer_pause = fc::make_scoped_exit([&](){
+               trx_context.resume_billing_timer();
+            });
             trx_context.pause_billing_timer();
             IR::Module module;
             try {
@@ -76,7 +80,6 @@ namespace enumivo { namespace chain {
                ENU_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
-            trx_context.resume_billing_timer();
          }
          return it->second;
       }
