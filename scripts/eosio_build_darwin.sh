@@ -222,6 +222,14 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
+		if [ -d "$BUILD_DIR" ]; then
+			if ! rm -rf "$BUILD_DIR"
+			then
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "$BUILD_DIR" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+			fi
+		fi
 		printf "\\tBoost 1.67.0 successfully installed @ /usr/local.\\n"
 	else
 		printf "\\tBoost 1.67.0 found at /usr/local.\\n"

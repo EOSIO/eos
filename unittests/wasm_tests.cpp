@@ -19,6 +19,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
+#include <fc/io/fstream.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -29,6 +31,8 @@
 
 #include <array>
 #include <utility>
+
+#include "incbin.h"
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -1067,8 +1071,81 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_block();
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_table_key_validation, TESTER ) try {
+BOOST_FIXTURE_TEST_CASE( check_big_deserialization, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {N(cbd)} );
+   produce_block();
+
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements-2; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_code_size; i++)
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), fc::assert_exception); // this is caught first by MAX_SIZE_OF_ARRAYS check
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes-1; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
 } FC_LOG_AND_RETHROW()
+
 
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    produce_blocks(2);
@@ -1478,6 +1555,89 @@ BOOST_FIXTURE_TEST_CASE( protect_injected, TESTER ) try {
    produce_block();
 
    BOOST_CHECK_THROW(set_code(N(inj), import_injected_wast), fc::exception);
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
+INCBIN(fuzz1, "fuzz1.wasm");
+INCBIN(fuzz2, "fuzz2.wasm");
+INCBIN(fuzz3, "fuzz3.wasm");
+INCBIN(fuzz4, "fuzz4.wasm");
+INCBIN(fuzz5, "fuzz5.wasm");
+INCBIN(fuzz6, "fuzz6.wasm");
+INCBIN(fuzz7, "fuzz7.wasm");
+INCBIN(fuzz8, "fuzz8.wasm");
+INCBIN(fuzz9, "fuzz9.wasm");
+INCBIN(fuzz10, "fuzz10.wasm");
+INCBIN(fuzz11, "fuzz11.wasm");
+INCBIN(fuzz12, "fuzz12.wasm");
+//INCBIN(fuzz13, "fuzz13.wasm");
+
+BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(fuzzy)} );
+   produce_block();
+
+   {
+      vector<uint8_t> wasm(gfuzz1Data, gfuzz1Data + gfuzz1Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz2Data, gfuzz2Data + gfuzz2Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz3Data, gfuzz3Data + gfuzz3Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz4Data, gfuzz4Data + gfuzz4Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz5Data, gfuzz5Data + gfuzz5Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz6Data, gfuzz6Data + gfuzz6Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz7Data, gfuzz7Data + gfuzz7Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz8Data, gfuzz8Data + gfuzz8Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz9Data, gfuzz9Data + gfuzz9Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz10Data, gfuzz10Data + gfuzz10Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz11Data, gfuzz11Data + gfuzz11Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz12Data, gfuzz12Data + gfuzz12Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   /*  TODO: update wasm to have apply(...) then call, claim is that this
+    *  takes 1.6 seconds under wavm...
+   {
+      auto start = fc::time_point::now();
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      set_code(N(fuzzy), wasm);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+      auto end = fc::time_point::now();
+      edump((end-start));
+   }
+   */
+
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 

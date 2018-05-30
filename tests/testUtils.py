@@ -722,8 +722,8 @@ class Node(object):
         return ret
 
     def waitForNextBlock(self, timeout=None):
-        num=self.getIrreversibleBlockNum()
-        lam = lambda: self.getIrreversibleBlockNum() > num
+        num=self.getHeadBlockNum()
+        lam = lambda: self.getHeadBlockNum() > num
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
@@ -849,7 +849,7 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during actions by account retrieval. %s" % (msg))
             return None
-        
+
     # Gets accounts mapped to key. Returns array
     def getAccountsArrByKey(self, key):
         trans=self.getAccountsByKey(key)
@@ -1048,6 +1048,7 @@ class Node(object):
                 headBlockNumTag="head_block_num"
                 return info[headBlockNumTag]
         else:
+            # Either this implementation or the one in getIrreversibleBlockNum are likely wrong.
             block=self.getBlockFromDb(-1)
             if block is not None:
                 blockNum=block["block_num"]
@@ -1060,6 +1061,7 @@ class Node(object):
             if info is not None:
                 return info["last_irreversible_block_num"]
         else:
+            # Either this implementation or the one in getHeadBlockNum are likely wrong.
             block=self.getBlockFromDb(-1)
             if block is not None:
                 blockNum=block["block_num"]
@@ -1317,7 +1319,7 @@ class Cluster(object):
     __localHost="localhost"
     __BiosHost="localhost"
     __BiosPort=8788
-    
+
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
@@ -1396,8 +1398,8 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        cmd="%s -p %s -n %s -s %s -d %s -f" % (
-            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay)
+        cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin bnet" % (
+            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3])
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
@@ -1808,7 +1810,7 @@ class Cluster(object):
         m=re.search(r"node_([\d]+)", name)
         return int(m.group(1))
 
-        
+
     @staticmethod
     def parseProducerKeys(configFile, nodeName):
         """Parse node config file for producer keys. Returns dictionary. (Keys: account name; Values: dictionary objects (Keys: ["name", "node", "private","public"]; Values: account name, node id returned by nodeNameToId(nodeName), private key(string)and public key(string)))."""
@@ -2001,7 +2003,7 @@ class Cluster(object):
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
                 return False
-            
+
             eosioRamAccount=copy.deepcopy(eosioAccount)
             eosioRamAccount.name="eosio.ram"
             trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
@@ -2036,7 +2038,7 @@ class Cluster(object):
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return False
-            
+
             # Create currency0000, followed by issue currency0000
             contract=eosioTokenAccount.name
             Utils.Print("push create action to %s contract" % (contract))
@@ -2115,7 +2117,7 @@ class Cluster(object):
 
         return True
 
-    
+
     # Populates list of EosInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes, timeout=0):
         nodes=[]

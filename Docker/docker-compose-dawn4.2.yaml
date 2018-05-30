@@ -10,7 +10,7 @@ services:
       - mongo-data-volume:/data/db
 
   nodeosd:
-    image: eosio/eos:latest
+    image: eosio/eos:20180528
     command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --delete-all-blocks #--mongodb-uri mongodb://mongo:27017/EOS
     hostname: nodeosd
     links:
@@ -24,7 +24,7 @@ services:
       - nodeos-data-volume:/opt/eosio/bin/data-dir
 
   keosd:
-    image: eosio/eos:latest
+    image: eosio/eos:20180528
     command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: keosd
     links:
