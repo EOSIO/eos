@@ -5049,6 +5049,7 @@ static const char f32_test_wast[] = R"=====(
    (call $assert_return_nan (call $nearest (f32.const nan:0x200000)) (i32.const 10016))
 ))
 )=====";
+
 static const char f32_cmp_test_wast[] = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))

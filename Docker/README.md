@@ -29,7 +29,7 @@ docker build -t enumivo/enumivo:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
 By default, the symbol in enumivo.system is set to SYS. You can override this using the symbol argument while building the docker image.
 
 ```bash
-docker built -t enumivo/enumivo --build-arg symbol=<symbol> .
+docker build -t enumivo/enumivo --build-arg symbol=<symbol> .
 ```
 
 ## Start enunode docker container only

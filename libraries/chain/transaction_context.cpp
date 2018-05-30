@@ -406,6 +406,8 @@ namespace enumivo { namespace chain {
               transaction.trx_id = id;
               transaction.expiration = expire;
           });
+      } catch( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch ( ... ) {
           ENU_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );
