@@ -23,6 +23,8 @@ getChildCount () {
 }
 
 # launch nodeos
+cmd="programs/eosio-launcher/eosio-launcher -p 1 -n 1 -s mesh -d 1 -f  --nodeos '--max-transaction-time 5000 --filter-on *'"
+echo CMD: $cmd
 programs/eosio-launcher/eosio-launcher -p 1 -n 1 -s mesh -d 1 -f  --nodeos '--max-transaction-time 5000 --filter-on *'
 
 name="nodeos"
