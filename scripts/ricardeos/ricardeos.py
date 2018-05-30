@@ -3,6 +3,7 @@
 import json
 import sys
 import os.path
+import fnmatch
 
 def add_ricardian_contracts_to_actions(source_abi_directory, contract_name, abi_actions):
     abi_actions_with_ricardian_contracts = []
@@ -35,16 +36,43 @@ def add_ricardian_contracts_to_actions(source_abi_directory, contract_name, abi_
     
     return abi_actions_with_ricardian_contracts
 
+def create_ricardian_clauses_list(source_abi_directory, contract_name):
+    clause_file_pattern = '*-clause*-rc.md'
+    clause_files = fnmatch.filter(os.listdir(source_abi_directory), clause_file_pattern)
+
+    clause_prefix = 'clause-'
+    clause_postfix = '-rc.md'
+
+    abi_ricardian_clauses = []
+
+    for clause_file_name in clause_files:
+        rcContractPath = os.path.join(source_abi_directory, clause_file_name)
+        with open(rcContractPath) as contract_file_handle:
+            contract_contents = contract_file_handle.read()
+
+        start_of_clause_id = clause_file_name.index( clause_prefix ) + len( clause_prefix )
+        end_of_clause_id = clause_file_name.rindex(clause_postfix, start_of_clause_id)
+
+        clause_id = clause_file_name[start_of_clause_id:end_of_clause_id]
+
+        abi_ricardian_clauses.append({
+            'id': clause_id, 
+            'body': contract_contents
+        })
+
+    return abi_ricardian_clauses
+
 def add_ricardian_contracts_to_abi(source_abi, output_abi):
     source_abi_directory = os.path.dirname(source_abi)
     contract_name = os.path.split(source_abi)[1].rpartition(".")[0]
 
     print('Creating {output_abi} with ricardian contracts included'.format(output_abi = output_abi))
 
-    source_abi_file = open(source_abi, 'r')
-    source_abi_json = json.load(source_abi_file)
+    with open(source_abi, 'r') as source_abi_file:
+        source_abi_json = json.load(source_abi_file)
 
     source_abi_json['actions'] = add_ricardian_contracts_to_actions(source_abi_directory, contract_name, source_abi_json['actions'])
+    source_abi_json['ricardian_clauses'] = create_ricardian_clauses_list(source_abi_directory, contract_name)
 
     with open(output_abi, 'w') as output_abi_file:
         json.dump(source_abi_json, output_abi_file, indent=2)
