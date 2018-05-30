@@ -10,12 +10,6 @@
 
 using namespace eosio_system;
 
-struct eosio_parameters : eosio::chain::chain_config {
-   uint64_t  max_ram_size;
-};
-
-FC_REFLECT_DERIVED(eosio_parameters, (eosio::chain::chain_config), (max_ram_size));
-
 BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
@@ -32,7 +26,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
    const asset initial_ramfee_balance = get_balance(N(eosio.ramfee));
    BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", core_from_string("200.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("800.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( initial_ram_balance + core_from_string("199.0000"), get_balance(N(eosio.ram)) ); 
+   BOOST_REQUIRE_EQUAL( initial_ram_balance + core_from_string("199.0000"), get_balance(N(eosio.ram)) );
    BOOST_REQUIRE_EQUAL( initial_ramfee_balance + core_from_string("1.0000"), get_balance(N(eosio.ramfee)) );
 
    total = get_total_stake( "alice1111111" );
@@ -1494,7 +1488,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const int64_t from_pervote_bucket  = int64_t( vote_shares[prod_index] * expected_pervote_bucket);
 
       BOOST_REQUIRE( 1 >= abs(int32_t(initial_tot_unpaid_blocks - tot_unpaid_blocks) - int32_t(initial_unpaid_blocks - unpaid_blocks)) );
-      
+
       if (from_pervote_bucket >= 100 * 10000) {
          BOOST_REQUIRE( within_one( from_perblock_bucket + from_pervote_bucket, balance.get_amount() - initial_balance.get_amount() ) );
          BOOST_REQUIRE( within_one( expected_pervote_bucket - from_pervote_bucket, pervote_bucket ) );
@@ -1504,7 +1498,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
          BOOST_REQUIRE( within_one( expected_pervote_bucket, vpay_balance.get_amount() ) );
          BOOST_REQUIRE( within_one( perblock_bucket, bpay_balance.get_amount() ) );
       }
-      
+
       produce_blocks(5);
 
       BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
@@ -2560,9 +2554,8 @@ BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
       prod_perms.push_back( { name(x), config::active_name } );
    }
 
-   eosio_parameters params;
-   (eosio::chain::chain_config&)params = control->get_global_properties().configuration;
-   params.max_ram_size = 65ll*1024 * 1024 * 1024;
+   eosio::chain::chain_config params;
+   params = control->get_global_properties().configuration;
    //change some values
    params.max_block_net_usage += 10;
    params.max_transaction_lifetime += 1;
@@ -2646,7 +2639,7 @@ BOOST_FIXTURE_TEST_CASE( setram_effect, eosio_system_tester ) try {
       BOOST_REQUIRE_EQUAL( success(), buyram( name_a, name_a, core_from_string("300.0000") ) );
       BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance(name_a) );
       const uint64_t bought_bytes_a = get_total_stake(name_a)["ram_bytes"].as_uint64() - init_bytes_a;
-      
+
       // after buying and selling balance should be 700 + 300 * 0.995 * 0.995 = 997.0075
       BOOST_REQUIRE_EQUAL( success(), sellram(name_a, bought_bytes_a ) );
       BOOST_REQUIRE_EQUAL( core_from_string("997.0075"), get_balance(name_a) );
@@ -2661,13 +2654,13 @@ BOOST_FIXTURE_TEST_CASE( setram_effect, eosio_system_tester ) try {
       BOOST_REQUIRE_EQUAL( success(), buyram( name_b, name_b, core_from_string("300.0000") ) );
       BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance(name_b) );
       const uint64_t bought_bytes_b = get_total_stake(name_b)["ram_bytes"].as_uint64() - init_bytes_b;
-      
-      // increase max_ram_size, ram bought by name_b loses part of its value 
+
+      // increase max_ram_size, ram bought by name_b loses part of its value
       BOOST_REQUIRE_EQUAL( wasm_assert_msg("ram may only be increased"),
                            push_action(config::system_account_name, N(setram), mvo()("max_ram_size", 64ll*1024 * 1024 * 1024)) );
-      BOOST_REQUIRE_EQUAL( success(),                                                                                                                                                                  
+      BOOST_REQUIRE_EQUAL( success(),
                            push_action(config::system_account_name, N(setram), mvo()("max_ram_size", 80ll*1024 * 1024 * 1024)) );
-      
+
       BOOST_REQUIRE_EQUAL( success(), sellram(name_b, bought_bytes_b ) );
       BOOST_REQUIRE( core_from_string("900.0000") < get_balance(name_b) );
       BOOST_REQUIRE( core_from_string("950.0000") > get_balance(name_b) );
