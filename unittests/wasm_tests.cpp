@@ -1573,6 +1573,7 @@ INCBIN(fuzz12, "fuzz12.wasm");
 INCBIN(fuzz13, "fuzz13.wasm");
 INCBIN(fuzz14, "fuzz14.wasm");
 INCBIN(fuzz15, "fuzz15.wasm");
+//INCBIN(fuzz13, "fuzz13.wasm");
 
 BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    produce_blocks(2);
@@ -1640,6 +1641,17 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
       vector<uint8_t> wasm(gfuzz15Data, gfuzz15Data + gfuzz15Size);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
    }
+   /*  TODO: update wasm to have apply(...) then call, claim is that this
+    *  takes 1.6 seconds under wavm...
+   {
+      auto start = fc::time_point::now();
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      set_code(N(fuzzy), wasm);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+      auto end = fc::time_point::now();
+      edump((end-start));
+   }
+   */
 
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()

@@ -85,6 +85,7 @@ struct hello {
    public_key_type               peer_id;
    string                        network_version;
    string                        agent;
+   string                        protocol_version = "1.0.0";
    string                        user;
    string                        password;
    chain_id_type                 chain_id;
@@ -92,7 +93,7 @@ struct hello {
    uint32_t                      last_irr_block_num = 0;
    vector<block_id_type>         pending_block_ids;
 };
-FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
+FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(protocol_version)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
 
 
 /**
@@ -100,11 +101,10 @@ FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(chain_id)(r
  * and informs a peer not to send this message.
  */
 struct trx_notice {
-   sha256                signed_trx_id; ///< hash of trx + sigs
-   fc::time_point_sec    expiration; ///< expiration of trx
+   vector<sha256>  signed_trx_id; ///< hash of trx + sigs
 };
 
-FC_REFLECT( trx_notice, (signed_trx_id)(expiration) )
+FC_REFLECT( trx_notice, (signed_trx_id) )
 
 /**
  *  This message is sent upon successfully adding a transaction to the fork database
@@ -239,7 +239,7 @@ namespace eosio {
         int                                                            _session_num = 0;
         session_state                                                  _state = hello_state;
         tcp::resolver                                                  _resolver;
-        bnet_plugin_impl&                                              _net_plugin;
+        bnet_ptr                                                       _net_plugin;
         boost::asio::io_service&                                       _ios;
         unique_ptr<ws::stream<tcp::socket>>                            _ws;
         boost::asio::strand< boost::asio::io_context::executor_type>   _strand;
@@ -265,9 +265,9 @@ namespace eosio {
         /**
          * Creating session from server socket acceptance
          */
-        explicit session( tcp::socket socket, bnet_plugin_impl& net_plug )
+        explicit session( tcp::socket socket, bnet_ptr net_plug )
         :_resolver(socket.get_io_service()),
-         _net_plugin( net_plug ),
+         _net_plugin( std::move(net_plug) ),
          _ios(socket.get_io_service()),
          _ws( new ws::stream<tcp::socket>(move(socket)) ),
          _strand(_ws->get_executor() ),
@@ -284,9 +284,9 @@ namespace eosio {
         /**
          * Creating outgoing session
          */
-        explicit session( boost::asio::io_context& ioc, bnet_plugin_impl& net_plug )
+        explicit session( boost::asio::io_context& ioc, bnet_ptr net_plug )
         :_resolver(ioc),
-         _net_plugin( net_plug ),
+         _net_plugin( std::move(net_plug) ),
          _ios(ioc),
          _ws( new ws::stream<tcp::socket>(ioc) ),
          _strand( _ws->get_executor() ),
@@ -614,6 +614,9 @@ namespace eosio {
            if( send_block_notice() ) return;
            if( send_pong() ) return;
            if( send_ping() ) return;
+
+           /// we don't know where we are (waiting on accept block localhost)
+           if( _local_head_block_id == block_id_type() ) return ;
            if( send_next_block() ) return;
            if( send_next_trx() ) return;
         }
@@ -935,6 +938,7 @@ namespace eosio {
         void check_for_redundant_connection();
 
         void on( const signed_block_ptr& b ) {
+           FC_ASSERT( b, "bad block" );
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
            auto id = b->id();
@@ -975,6 +979,8 @@ namespace eosio {
         }
 
         void on( const packed_transaction_ptr& p ) {
+           FC_ASSERT( p, "bad transaction" );
+
            auto id = p->id();
           // ilog( "recv trx ${n}", ("n", id) );
            if( p->expiration() < fc::time_point::now() ) return;
@@ -1010,11 +1016,11 @@ namespace eosio {
      private:
         tcp::acceptor         _acceptor;
         tcp::socket           _socket;
-        bnet_plugin_impl&     _net_plugin;
+        bnet_ptr              _net_plugin;
 
      public:
-        listener( boost::asio::io_context& ioc, tcp::endpoint endpoint, bnet_plugin_impl& np  )
-        :_acceptor(ioc), _socket(ioc),_net_plugin(np)
+        listener( boost::asio::io_context& ioc, tcp::endpoint endpoint, bnet_ptr np  )
+        :_acceptor(ioc), _socket(ioc), _net_plugin(std::move(np))
         {
            boost::system::error_code ec;
 
@@ -1049,26 +1055,22 @@ namespace eosio {
 
    class bnet_plugin_impl : public std::enable_shared_from_this<bnet_plugin_impl> {
       public:
-         bnet_plugin_impl() {
-            _peer_pk = fc::crypto::private_key::generate();
-            _peer_id = _peer_pk.get_public_key();
-         }
+         bnet_plugin_impl() = default;
 
-         string                                         _bnet_endpoint_address = "0.0.0.0";
-         uint16_t                                       _bnet_endpoint_port = 4321;
-         bool                                           _request_trx = true;
-         public_key_type                                _peer_id;
-         private_key_type                               _peer_pk; /// one time random key to identify this process
+         const private_key_type  _peer_pk = fc::crypto::private_key::generate(); /// one time random key to identify this process
+         public_key_type         _peer_id = _peer_pk.get_public_key();
+         string                                                 _bnet_endpoint_address = "0.0.0.0";
+         uint16_t                                               _bnet_endpoint_port = 4321;
+         bool                                                   _request_trx = true;
 
+         std::vector<std::string>                               _connect_to_peers; /// list of peers to connect to
+         std::vector<std::thread>                               _socket_threads;
+         int32_t                                                _num_threads = 1;
 
-         std::vector<std::string>                       _connect_to_peers; /// list of peers to connect to
-         std::vector<std::thread>                       _socket_threads;
-         int32_t                                        _num_threads = 1;
-         std::unique_ptr<boost::asio::io_context>       _ioc;
-         std::shared_ptr<listener>                      _listener;
-         std::shared_ptr<boost::asio::deadline_timer>   _timer;
-
-         std::map<const session*, std::weak_ptr<session> > _sessions;
+         std::unique_ptr<boost::asio::io_context>               _ioc; // lifetime guarded by shared_ptr of bnet_plugin_impl
+         std::shared_ptr<listener>                              _listener;
+         std::shared_ptr<boost::asio::deadline_timer>           _timer;    // only access on app io_service
+         std::map<const session*, std::weak_ptr<session> >      _sessions; // only access on app io_service
 
          channels::irreversible_block::channel_type::handle     _on_irb_handle;
          channels::accepted_block::channel_type::handle         _on_accepted_block_handle;
@@ -1085,6 +1087,7 @@ namespace eosio {
          }
 
          void on_session_close( const session* s ) {
+            if( !app().get_io_service().get_executor().running_in_this_thread() ) { elog( "wrong strand"); }
             auto itr = _sessions.find(s);
             if( _sessions.end() != itr )
                _sessions.erase(itr);
@@ -1092,14 +1095,16 @@ namespace eosio {
 
          template<typename Call>
          void for_each_session( Call callback ) {
-            for( const auto& item : _sessions ) {
-               if( auto ses = item.second.lock() ) {
-                  ses->_ios.post( boost::asio::bind_executor(
-                                        ses->_strand,
-                                        [ses,cb=callback](){ cb(ses); }
-                                    ));
+            app().get_io_service().post([this, callback = callback] {
+               for (const auto& item : _sessions) {
+                  if (auto ses = item.second.lock()) {
+                     ses->_ios.post(boost::asio::bind_executor(
+                           ses->_strand,
+                           [ses, cb = callback]() { cb(ses); }
+                     ));
+                  }
                }
-            }
+            });
          }
 
          void on_accepted_transaction( transaction_metadata_ptr trx ) {
@@ -1146,6 +1151,7 @@ namespace eosio {
          };
 
          void on_reconnect_peers() {
+             if( !app().get_io_service().get_executor().running_in_this_thread() ) { elog( "wrong strand"); }
              for( const auto& peer : _connect_to_peers ) {
                 bool found = false;
                 for( const auto& con : _sessions ) {
@@ -1158,7 +1164,7 @@ namespace eosio {
 
                 if( !found ) {
                    wlog( "attempt to connect to ${p}", ("p",peer) );
-                   auto s = std::make_shared<session>( *_ioc, std::ref(*this) );
+                   auto s = std::make_shared<session>( *_ioc, shared_from_this() );
                    s->_local_peer_id = _peer_id;
                    _sessions[s.get()] = s;
                    s->run( peer );
@@ -1185,9 +1191,9 @@ namespace eosio {
      if( ec ) {
         return;
      }
-     auto newsession = std::make_shared<session>( move( _socket ), std::ref(_net_plugin) );
-     _net_plugin.async_add_session( newsession );
-     newsession->_local_peer_id = _net_plugin._peer_id;
+     auto newsession = std::make_shared<session>( move( _socket ), _net_plugin );
+     _net_plugin->async_add_session( newsession );
+     newsession->_local_peer_id = _net_plugin->_peer_id;
      newsession->run();
      do_accept();
    }
@@ -1274,7 +1280,7 @@ namespace eosio {
 
       my->_listener = std::make_shared<listener>( ioc,
                                                   tcp::endpoint{ address, my->_bnet_endpoint_port },
-                                                  std::ref(*my) );
+                                                  my );
       my->_listener->run();
 
       my->_socket_threads.reserve( my->_num_threads );
@@ -1283,7 +1289,7 @@ namespace eosio {
       }
 
       for( const auto& peer : my->_connect_to_peers ) {
-         auto s = std::make_shared<session>( ioc, std::ref(*my) );
+         auto s = std::make_shared<session>( ioc, my );
          s->_local_peer_id = my->_peer_id;
          my->_sessions[s.get()] = s;
          s->run( peer );
@@ -1298,6 +1304,12 @@ namespace eosio {
          elog( "exception thrown on timer shutdown" );
       }
 
+      /// shut down all threads and close all connections
+
+      my->for_each_session([](auto ses){
+         ses->do_goodbye( "shutting down" );
+      });
+
       my->_listener.reset();
       my->_ioc->stop();
 
@@ -1306,14 +1318,18 @@ namespace eosio {
          t.join();
       }
       wlog( "done joining threads" );
-      my->_ioc.reset();
-      /// shut down all threads and close all connections
+
+      my->for_each_session([](auto ses){
+         FC_ASSERT( false, "session ${ses} still active", ("ses", ses->_session_num) );
+      });
+
+      // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl
    }
 
 
    session::~session() {
      wlog( "close session ${n}",("n",_session_num) );
-     std::weak_ptr<bnet_plugin_impl> netp = _net_plugin.shared_from_this();
+     std::weak_ptr<bnet_plugin_impl> netp = _net_plugin;
      _app_ios.post( [netp,ses=this]{
         if( auto net = netp.lock() )
            net->on_session_close(ses);
@@ -1327,7 +1343,7 @@ namespace eosio {
           hello_msg.peer_id = self->_local_peer_id;
           hello_msg.last_irr_block_num = lib;
           hello_msg.pending_block_ids  = ids;
-          hello_msg.request_transactions = self->_net_plugin._request_trx;
+          hello_msg.request_transactions = self->_net_plugin->_request_trx;
           hello_msg.chain_id = app().get_plugin<chain_plugin>().get_chain_id(); // TODO: Quick fix in a rush. Maybe a better solution is needed.
 
           self->_local_lib = lib;
@@ -1338,7 +1354,7 @@ namespace eosio {
 
    void session::check_for_redundant_connection() {
      app().get_io_service().post( [self=shared_from_this()]{
-       self->_net_plugin.for_each_session( [self]( auto ses ){
+       self->_net_plugin->for_each_session( [self]( auto ses ){
          if( ses != self && ses->_remote_peer_id == self->_remote_peer_id ) {
            self->do_goodbye( "redundant connection" );
          }

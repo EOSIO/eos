@@ -239,7 +239,7 @@ namespace fc {
           s.get(b);
           v |= uint32_t(uint8_t(b) & 0x7f) << by;
           by += 7;
-      } while( uint8_t(b) & 0x80 );
+      } while( uint8_t(b) & 0x80 && by < 32 );
       vi.value = static_cast<uint32_t>(v);
     }
 
