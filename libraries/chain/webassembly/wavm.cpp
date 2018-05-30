@@ -113,7 +113,9 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
    try {
       Serialization::MemoryInputStream stream((const U8*)code_bytes, code_size);
       WASM::serialize(stream, *module);
-   } catch(Serialization::FatalSerializationException& e) {
+   } catch(const Serialization::FatalSerializationException& e) {
+      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+   } catch(const IR::ValidationException& e) {
       EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
    }
 
