@@ -220,6 +220,8 @@ namespace eosiosystem {
 
          void setpriv( account_name account, uint8_t ispriv );
 
+         void rmvproducer( account_name producer ); 
+
          void bidname( account_name bidder, account_name newname, asset bid );
       private:
          void update_elected_producers( block_timestamp timestamp );

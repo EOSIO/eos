@@ -172,6 +172,14 @@ namespace eosiosystem {
       set_blockchain_parameters( params );
    }
 
+   void system_contract::rmvproducer( account_name producer ) {
+      require_auth( _self );
+      auto prod = _producers.get( producer );
+      _producers.modify( prod, 0, [&](auto& p) {
+            p.deactivate();
+         });
+   }
+
 } /// eosio.system
 
 

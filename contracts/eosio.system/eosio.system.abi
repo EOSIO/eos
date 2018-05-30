@@ -344,6 +344,12 @@
         {"name":"is_priv",    "type":"int8"}
       ]
     },{
+      "name": "rmvproducer",
+      "base": "",
+      "fields": [
+        {"name":"producer", "type":"account_name"}
+      ]
+    },{
       "name": "set_account_limits",
       "base": "",
       "fields": [
