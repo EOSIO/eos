@@ -1517,9 +1517,8 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
    }
 
-   // wait for 23 hours which is not enough for producers to get deactivated
-   // payment calculations don't change. By now, pervote_bucket has grown enough
-   // that a producer's share is more than 100 tokens
+   // Wait for 23 hours. By now, pervote_bucket has grown enough
+   // that a producer's share is more than 100 tokens.
    produce_block(fc::seconds(23 * 3600));
 
    {
@@ -1591,56 +1590,6 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       BOOST_REQUIRE(100 * 10000 <= get_balance(prod_name).get_amount());
       BOOST_REQUIRE_EQUAL(wasm_assert_msg("already claimed rewards within past day"),
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
-   }
-
-   // wait two more hours, now most producers haven't produced in a day and will
-   // be deactivated
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
-                                              ("voter",  "producvotera")
-                                              ("proxy", name(0).to_string())
-                                              ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
-                                              )
-                       );
-
-   produce_block(fc::hours(9));
-   produce_blocks(8 * 21 * 12);
-
-   {
-      bool all_newly_elected_produced = true;
-      for (uint32_t i = 21; i < producer_names.size(); ++i) {
-         if (0 == get_producer_info(producer_names[i])["unpaid_blocks"].as<uint32_t>()) {
-            all_newly_elected_produced = false;
-         }
-      }
-      BOOST_REQUIRE(all_newly_elected_produced);
-   }
-
-   {
-      uint32_t survived_active_producers = 0;
-      uint32_t one_inactive_index = 0;
-      for (uint32_t i = 0; i < 21; ++i) {
-         if (fc::crypto::public_key() != fc::crypto::public_key(get_producer_info(producer_names[i])["producer_key"].as_string())) {
-            ++survived_active_producers;
-         } else {
-            one_inactive_index = i;
-         }
-      }
-
-      BOOST_REQUIRE(3 >= survived_active_producers);
-
-      auto inactive_prod_info = get_producer_info(producer_names[one_inactive_index]);
-      BOOST_REQUIRE_EQUAL(0, inactive_prod_info["time_became_active"].as<uint32_t>());
-      BOOST_REQUIRE_EQUAL(wasm_assert_msg("producer does not have an active key"),
-                          push_action(producer_names[one_inactive_index], N(claimrewards), mvo()("owner", producer_names[one_inactive_index])));
-      // re-register deactivated producer and let him produce blocks again
-      const uint32_t initial_unpaid_blocks = inactive_prod_info["unpaid_blocks"].as<uint32_t>();
-      regproducer(producer_names[one_inactive_index]);
-      produce_blocks(8 * 21 * 12);
-      auto reactivated_prod_info   = get_producer_info(producer_names[one_inactive_index]);
-      const uint32_t unpaid_blocks = reactivated_prod_info["unpaid_blocks"].as<uint32_t>();
-      BOOST_REQUIRE(initial_unpaid_blocks + 12 <= unpaid_blocks);
-      BOOST_REQUIRE_EQUAL(success(),
-                          push_action(producer_names[one_inactive_index], N(claimrewards), mvo()("owner", producer_names[one_inactive_index])));
    }
 
 } FC_LOG_AND_RETHROW()

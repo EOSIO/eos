@@ -80,42 +80,12 @@ namespace eosiosystem {
       std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
       top_producers.reserve(21);
 
-      std::vector<decltype(idx.cbegin())> inactive_iters;
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
-
-         /**
-            If it's the first time or it's been over a day since a producer was last voted in, 
-            update his info. Otherwise, a producer gets a grace period of 7 hours after which
-            he gets deactivated if he hasn't produced in 24 hours.
-          */
-         if ( it->time_became_active.slot == 0 ||
-              block_time.slot > it->time_became_active.slot + 23 * blocks_per_hour ) {
-            _producers.modify( *it, 0, [&](auto& p) {
-                  p.time_became_active = block_time;
-               });
-         } else if ( block_time.slot > (2 * 21 * 12 * 100) + it->time_became_active.slot &&
-                     block_time.slot > it->last_produced_block_time.slot + blocks_per_day ) {
-            // save producers that will be deactivated
-            inactive_iters.push_back(it);
-            continue;
-         } else {
-            _producers.modify( *it, 0, [&](auto& p) {
-                  p.time_became_active = block_time;
-               });
-         }
-
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
 
       if ( top_producers.size() < _gstate.last_producer_schedule_size ) {
          return;
-      }
-
-      for ( const auto& it: inactive_iters ) {
-         _producers.modify( *it, 0, [&](auto& p) {
-               p.deactivate();
-               p.time_became_active.slot = 0;
-            });
       }
 
       /// sort by producer name

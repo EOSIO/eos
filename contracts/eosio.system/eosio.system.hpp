@@ -78,8 +78,6 @@ namespace eosiosystem {
       uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
-      block_timestamp       time_became_active;
-      block_timestamp       last_produced_block_time;
 
       uint64_t primary_key()const { return owner;                                   }
       double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
@@ -88,8 +86,7 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
-                        (unpaid_blocks)(last_claim_time)(location)
-                        (time_became_active)(last_produced_block_time) )
+                        (unpaid_blocks)(last_claim_time)(location) )
    };
 
    struct voter_info {

@@ -39,7 +39,6 @@ namespace eosiosystem {
          _gstate.total_unpaid_blocks++;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks++;
-               p.last_produced_block_time = timestamp;
          });
       }
       
