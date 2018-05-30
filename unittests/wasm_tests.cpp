@@ -1071,8 +1071,81 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_block();
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_table_key_validation, TESTER ) try {
+BOOST_FIXTURE_TEST_CASE( check_big_deserialization, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {N(cbd)} );
+   produce_block();
+
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements-2; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_code_size; i++)
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), fc::assert_exception); // this is caught first by MAX_SIZE_OF_ARRAYS check
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes-1; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
 } FC_LOG_AND_RETHROW()
+
 
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    produce_blocks(2);
