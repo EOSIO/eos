@@ -22,6 +22,7 @@ parser.add_argument("--dont-kill", help="Leave cluster running after test finish
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
+parser.add_argument("--kill-all", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
@@ -29,6 +30,7 @@ pnodes=args.p
 debug=args.v
 dontKill=args.dont_kill
 dumpErrorDetails=args.dump_error_details
+killAll=args.kill_all
 
 testUtils.Utils.Debug=debug
 
@@ -58,7 +60,7 @@ cluster=testUtils.Cluster()
 (fd, nodesFile) = tempfile.mkstemp()
 try:
     Print("BEGIN")
-    cluster.killall()
+    cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
@@ -98,7 +100,7 @@ finally:
 
     if killEosInstances:
         Print("Shut down the cluster and cleanup.")
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
 
 exit(0)
