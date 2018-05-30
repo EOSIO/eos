@@ -243,15 +243,10 @@
 
       ]
     },{
-      "name": "eosio_parameters",
+      "name": "eosio_global_state",
       "base": "blockchain_parameters",
       "fields": [
-         {"name":"max_ram_size", "type":"uint64"}
-      ]
-    },{
-      "name": "eosio_global_state",
-      "base": "eosio_parameters",
-      "fields": [
+         {"name":"max_ram_size",                  "type":"uint64"},
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
          {"name":"total_ram_stake",               "type":"int64"},
          {"name":"last_producer_schedule_update", "type":"time_point_sec"},
@@ -384,7 +379,7 @@
       "name": "setparams",
       "base": "",
       "fields": [
-        {"name":"params", "type":"eosio_parameters"}
+        {"name":"params", "type":"blockchain_parameters"}
       ]
     }
    ],
