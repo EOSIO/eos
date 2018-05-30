@@ -1570,6 +1570,9 @@ INCBIN(fuzz9, "fuzz9.wasm");
 INCBIN(fuzz10, "fuzz10.wasm");
 INCBIN(fuzz11, "fuzz11.wasm");
 INCBIN(fuzz12, "fuzz12.wasm");
+INCBIN(fuzz13, "fuzz13.wasm");
+INCBIN(fuzz14, "fuzz14.wasm");
+INCBIN(fuzz15, "fuzz15.wasm");
 //INCBIN(fuzz13, "fuzz13.wasm");
 INCBIN(big_allocation, "big_allocation.wasm");
 INCBIN(crash_section_size_too_big, "crash_section_size_too_big.wasm");
@@ -1635,6 +1638,18 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    }
    {
       vector<uint8_t> wasm(gfuzz12Data, gfuzz12Data + gfuzz12Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz14Data, gfuzz14Data + gfuzz14Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+      {
+      vector<uint8_t> wasm(gfuzz15Data, gfuzz15Data + gfuzz15Size);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
    }
    /*  TODO: update wasm to have apply(...) then call, claim is that this
