@@ -38,12 +38,19 @@ action_trace apply_context::exec_one()
       const auto &a = control.get_account(receiver);
       privileged = a.privileged;
       auto native = control.find_apply_handler(receiver, act.account, act.name);
-      if (native) {
+      if( native ) {
+         if( control.is_producing_block() ) {
+            control.check_contract_list( receiver );
+         }
          (*native)(*this);
       }
 
       if( a.code.size() > 0
-          && !(act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name) ) {
+          && !(act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name) )
+      {
+         if( control.is_producing_block() ) {
+            control.check_contract_list( receiver );
+         }
          try {
             control.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
@@ -368,6 +375,8 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
          return -1;
       act_ptr = &trx.actions[index];
    }
+   
+   FC_ASSERT(act_ptr, "action is not found" ); 
 
    auto ps = fc::raw::pack_size( *act_ptr );
    if( ps <= buffer_size ) {

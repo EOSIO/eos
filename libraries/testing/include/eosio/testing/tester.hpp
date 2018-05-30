@@ -76,6 +76,8 @@ namespace eosio { namespace testing {
 
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
 
+         virtual ~base_tester() {};
+
          void              init(bool push_genesis = true);
          void              init(controller::config config);
 
@@ -177,12 +179,12 @@ namespace eosio { namespace testing {
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
-         private_key_type get_private_key( name keyname, string role = "owner" ) const {
+         static private_key_type get_private_key( name keyname, string role = "owner" ) {
             return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
-         public_key_type get_public_key( name keyname, string role = "owner" ) const {
+         static public_key_type get_public_key( name keyname, string role = "owner" ) {
             return get_private_key<KeyType>( keyname, role ).get_public_key();
          }
 
@@ -333,12 +335,19 @@ namespace eosio { namespace testing {
          init(true);
       }
 
-      /*
       validating_tester(controller::config config) {
-         validating_node = std::make_unique<controller>(config);
+         FC_ASSERT( config.blocks_dir.filename().generic_string() != "."
+                    && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
+
+         vcfg = config;
+         vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
+         vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
+
+         validating_node = std::make_unique<controller>(vcfg);
+         validating_node->startup();
+
          init(config);
       }
-      */
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          auto sb = _produce_block(skip_time, false, skip_flag | 2);

@@ -130,6 +130,14 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
+         ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Account added to actor whitelist (may specify multiple times)")
+         ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Account added to actor blacklist (may specify multiple times)")
+         ("contract-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Contract account added to contract whitelist (may specify multiple times)")
+         ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Contract account added to contract blacklist (may specify multiple times)")
          ;
 
 #warning TODO: rate limiting
@@ -162,6 +170,32 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ;
 }
 
+#define LOAD_VALUE_SET(options, name, container) \
+if( options.count(name) ) { \
+   const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
+   std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
+}
+
+fc::time_point calculate_genesis_timestamp( string tstr ) {
+   fc::time_point genesis_timestamp;
+   if( strcasecmp (tstr.c_str(), "now") == 0 ) {
+      genesis_timestamp = fc::time_point::now();
+   } else {
+      genesis_timestamp = time_point::from_iso_string( tstr );
+   }
+
+   auto epoch_us = genesis_timestamp.time_since_epoch().count();
+   auto diff_us = epoch_us % config::block_interval_us;
+   if (diff_us > 0) {
+      auto delay_us = (config::block_interval_us - diff_us);
+      genesis_timestamp += fc::microseconds(delay_us);
+      dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
+   }
+
+   ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", genesis_timestamp) );
+   return genesis_timestamp;
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -175,7 +209,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->chain_config = controller::config();
 
-   if (options.count("blocks-dir")) {
+   LOAD_VALUE_SET(options, "actor-whitelist", my->chain_config->actor_whitelist);
+   LOAD_VALUE_SET(options, "actor-blacklist", my->chain_config->actor_blacklist);
+   LOAD_VALUE_SET(options, "contract-whitelist", my->chain_config->contract_whitelist);
+   LOAD_VALUE_SET(options, "contract-blacklist", my->chain_config->contract_blacklist);
+
+   if( options.count("blocks-dir") )
+   {
       auto bld = options.at("blocks-dir").as<bfs::path>();
       if(bld.is_relative())
          my->blocks_dir = app().data_dir() / bld;
@@ -183,7 +223,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->blocks_dir = bld;
    }
 
-   if(options.count("checkpoint"))
+   if( options.count("checkpoint") )
    {
       auto cps = options.at("checkpoint").as<vector<string>>();
       my->loaded_checkpoints.reserve(cps.size());
@@ -279,7 +319,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    if( options.count("genesis-json") ) {
-      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis State can only be specified on a fresh blockchain." );
+      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis state can only be set on a fresh blockchain." );
 
       auto genesis_file = options.at("genesis-json").as<bfs::path>();
       if( genesis_file.is_relative() ) {
@@ -295,23 +335,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()) );
 
       if( options.count("genesis-timestamp") ) {
-         string tstr = options.at("genesis-timestamp").as<string>();
-         if( strcasecmp (tstr.c_str(), "now") == 0 ) {
-            my->chain_config->genesis.initial_timestamp = fc::time_point::now();
-            auto epoch_us = my->chain_config->genesis.initial_timestamp.time_since_epoch().count();
-            auto diff_us = epoch_us % config::block_interval_us;
-            if (diff_us > 0) {
-               auto delay_us = (config::block_interval_us - diff_us);
-               my->chain_config->genesis.initial_timestamp += fc::microseconds(delay_us);
-               dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
-            }
-        } else {
-          my->chain_config->genesis.initial_timestamp = time_point::from_iso_string( tstr );
-        }
-        ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", my->chain_config->genesis.initial_timestamp) );
+         my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at("genesis-timestamp").as<string>() );
       }
 
       wlog( "Starting up fresh blockchain with provided genesis state." );
+   } else if( options.count("genesis-timestamp") ) {
+      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis state can only be set on a fresh blockchain." );
+
+      my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at("genesis-timestamp").as<string>() );
+
+      wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
    } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
       my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
    } else {
@@ -916,6 +949,8 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
+   } else {
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
@@ -927,6 +962,8 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
+   } else {
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 }
