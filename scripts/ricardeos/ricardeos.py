@@ -10,18 +10,18 @@ def add_ricardian_contracts_to_actions(source_abi_directory, contract_name, abi_
 
     for abi_action in abi_actions:
         action_name = abi_action["name"]
-        contract_action_filename = f'{contract_name}-{action_name}-rc.md'
-        
+        contract_action_filename = '{contract_name}-{action_name}-rc.md'.format(contract_name = contract_name, action_name = action_name)
+
         # check for rc file
-        rcContractPath = os.path.join(source_abi_directory, contract_action_filename)
-        if os.path.exists(rcContractPath):
+        rc_contract_path = os.path.join(source_abi_directory, contract_action_filename)
+        if os.path.exists(rc_contract_path):
             print('Importing Contract {contract_action_filename} for {contract_name}:{action_name}'.format(
                 contract_action_filename = contract_action_filename, 
                 contract_name = contract_name, 
                 action_name = action_name
             ))
 
-            with open(rcContractPath) as contract_file_handle:
+            with open(rc_contract_path) as contract_file_handle:
                 contract_contents = contract_file_handle.read()
 
             abi_action['ricardian_contract'] = contract_contents
@@ -46,8 +46,8 @@ def create_ricardian_clauses_list(source_abi_directory, contract_name):
     abi_ricardian_clauses = []
 
     for clause_file_name in clause_files:
-        rcContractPath = os.path.join(source_abi_directory, clause_file_name)
-        with open(rcContractPath) as contract_file_handle:
+        rc_contract_path = os.path.join(source_abi_directory, clause_file_name)
+        with open(rc_contract_path) as contract_file_handle:
             contract_contents = contract_file_handle.read()
 
         start_of_clause_id = clause_file_name.index( clause_prefix ) + len( clause_prefix )
