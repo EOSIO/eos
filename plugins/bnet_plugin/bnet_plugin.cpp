@@ -935,6 +935,7 @@ namespace eosio {
         void check_for_redundant_connection();
 
         void on( const signed_block_ptr& b ) {
+           FC_ASSERT( b, "bad block" );
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
            auto id = b->id();
@@ -975,6 +976,8 @@ namespace eosio {
         }
 
         void on( const packed_transaction_ptr& p ) {
+           FC_ASSERT( p, "bad transaction" );
+
            auto id = p->id();
           // ilog( "recv trx ${n}", ("n", id) );
            if( p->expiration() < fc::time_point::now() ) return;
