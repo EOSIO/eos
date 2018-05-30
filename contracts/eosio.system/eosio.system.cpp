@@ -172,6 +172,27 @@ namespace eosiosystem {
       set_blockchain_parameters( params );
    }
 
+   void system_contract::blacklist(account_name producer) {
+      require_auth( N(eosio) );
+      auto prod = _producers.find( producer );
+      eosio_assert(prod != _producers.end(), "producer not found");
+      eosio_assert(!(prod->is_blacklisted), "producer is already blacklisted");
+      _producers.modify( prod, 0, [&]( producer_info& info ){
+            info.is_blacklisted = true;
+            info.deactivate();
+      });
+   }
+
+   void system_contract::unblacklist(account_name producer) {
+      require_auth( N(eosio) );
+      auto prod = _producers.find( producer );
+      eosio_assert(prod != _producers.end(), "producer not found");
+      eosio_assert(prod->is_blacklisted, "producer is not blacklisted");
+      _producers.modify( prod, 0, [&]( producer_info& info ){
+            info.is_blacklisted = false;
+      });
+   }
+
 } /// eosio.system
 
 
@@ -190,5 +211,5 @@ EOSIO_ABI( eosiosystem::system_contract,
      //this file
      (bidname)
      (setpriv)
-     (setparams)
+     (setparams)(blacklist)(unblacklist)
 )
