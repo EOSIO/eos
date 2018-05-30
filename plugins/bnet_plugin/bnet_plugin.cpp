@@ -85,6 +85,7 @@ struct hello {
    public_key_type               peer_id;
    string                        network_version;
    string                        agent;
+   string                        protocol_version = "1.0.0";
    string                        user;
    string                        password;
    chain_id_type                 chain_id;
@@ -92,7 +93,7 @@ struct hello {
    uint32_t                      last_irr_block_num = 0;
    vector<block_id_type>         pending_block_ids;
 };
-FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
+FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(protocol_version)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
 
 
 /**
@@ -100,11 +101,10 @@ FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(chain_id)(r
  * and informs a peer not to send this message.
  */
 struct trx_notice {
-   sha256                signed_trx_id; ///< hash of trx + sigs
-   fc::time_point_sec    expiration; ///< expiration of trx
+   vector<sha256>  signed_trx_id; ///< hash of trx + sigs
 };
 
-FC_REFLECT( trx_notice, (signed_trx_id)(expiration) )
+FC_REFLECT( trx_notice, (signed_trx_id) )
 
 /**
  *  This message is sent upon successfully adding a transaction to the fork database
@@ -614,6 +614,9 @@ namespace eosio {
            if( send_block_notice() ) return;
            if( send_pong() ) return;
            if( send_ping() ) return;
+
+           /// we don't know where we are (waiting on accept block localhost)
+           if( _local_head_block_id == block_id_type() ) return ;
            if( send_next_block() ) return;
            if( send_next_trx() ) return;
         }
