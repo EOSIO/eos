@@ -21,7 +21,7 @@ Each Member agrees that penalties for breach of contract may include, but are no
 # Article VII  - Open Source
 Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via a free and open source license, and each smart contract shall be documented with a Ricardian Contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
 
-# Article VII - Language
+# Article VIII - Language
 Multi-lingual contracts must specify one prevailing language in case of dispute and the author of any translation shall be liable for losses due to their false, misleading, or ambiguous attested translations. 
 
 # Article IX - Dispute Resolution
@@ -43,7 +43,7 @@ All service providers who produce tools to facilitate the construction and signi
 If any part of this Constitution is declared unenforceable or invalid, the remainder will continue to be valid and enforceable.
 
 # Article XV - Termination of Agreement 
-A Member is automatically released from all revocable obligations under this Constitution 3 years after the last transaction signed by that Member is incorporated into the blockchain. After 3 years of inactivity an account may be put up for auction and the proceeds distributed to all Members by removing EXAMPLE from circulation.
+A Member is automatically released from all revocable obligations under this Constitution 3 years after the last transaction signed by that Member is incorporated into the blockchain. After 3 years of inactivity an account may be put up for auction and the proceeds distributed to all Members according to the system contract provisions then in effect for such redistribution.
 
 # Article XVI - Developer Liability
 Members agree to hold software developers harmless for unintentional mistakes made in the expression of contractual intent, whether or not said mistakes were due to actual or perceived negligence.
