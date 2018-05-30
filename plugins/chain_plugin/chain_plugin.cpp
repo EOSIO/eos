@@ -176,6 +176,26 @@ if( options.count(name) ) { \
    std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
 }
 
+fc::time_point calculate_genesis_timestamp( string tstr ) {
+   fc::time_point genesis_timestamp;
+   if( strcasecmp (tstr.c_str(), "now") == 0 ) {
+      genesis_timestamp = fc::time_point::now();
+   } else {
+      genesis_timestamp = time_point::from_iso_string( tstr );
+   }
+
+   auto epoch_us = genesis_timestamp.time_since_epoch().count();
+   auto diff_us = epoch_us % config::block_interval_us;
+   if (diff_us > 0) {
+      auto delay_us = (config::block_interval_us - diff_us);
+      genesis_timestamp += fc::microseconds(delay_us);
+      dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
+   }
+
+   ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", genesis_timestamp) );
+   return genesis_timestamp;
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -299,7 +319,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    if( options.count("genesis-json") ) {
-      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis State can only be specified on a fresh blockchain." );
+      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis state can only be set on a fresh blockchain." );
 
       auto genesis_file = options.at("genesis-json").as<bfs::path>();
       if( genesis_file.is_relative() ) {
@@ -315,23 +335,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()) );
 
       if( options.count("genesis-timestamp") ) {
-         string tstr = options.at("genesis-timestamp").as<string>();
-         if( strcasecmp (tstr.c_str(), "now") == 0 ) {
-            my->chain_config->genesis.initial_timestamp = fc::time_point::now();
-            auto epoch_us = my->chain_config->genesis.initial_timestamp.time_since_epoch().count();
-            auto diff_us = epoch_us % config::block_interval_us;
-            if (diff_us > 0) {
-               auto delay_us = (config::block_interval_us - diff_us);
-               my->chain_config->genesis.initial_timestamp += fc::microseconds(delay_us);
-               dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
-            }
-        } else {
-          my->chain_config->genesis.initial_timestamp = time_point::from_iso_string( tstr );
-        }
-        ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", my->chain_config->genesis.initial_timestamp) );
+         my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at("genesis-timestamp").as<string>() );
       }
 
       wlog( "Starting up fresh blockchain with provided genesis state." );
+   } else if( options.count("genesis-timestamp") ) {
+      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis state can only be set on a fresh blockchain." );
+
+      my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at("genesis-timestamp").as<string>() );
+
+      wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
    } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
       my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
    } else {
