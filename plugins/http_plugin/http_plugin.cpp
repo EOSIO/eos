@@ -85,6 +85,7 @@ namespace eosio {
          optional<tcp::endpoint>  listen_endpoint;
          string                   access_control_allow_origin;
          string                   access_control_allow_headers;
+         string                   access_control_max_age;
          bool                     access_control_allow_credentials = false;
 
          websocket_server_type    server;
@@ -148,6 +149,7 @@ namespace eosio {
                   elog( "${e}", ("e", err));
                   error_results results{websocketpp::http::status_code::internal_server_error,
                                         "Internal Service Error", fc::exception( FC_LOG_MESSAGE( error, e.what()))};
+                  con->set_body( fc::json::to_string( results ));
                } catch (...) {
                   err += "Unknown Exception";
                   error_results results{websocketpp::http::status_code::internal_server_error,
@@ -170,18 +172,31 @@ namespace eosio {
                if( !access_control_allow_headers.empty()) {
                   con->append_header( "Access-Control-Allow-Headers", access_control_allow_headers );
                }
+               if( !access_control_max_age.empty()) {
+                  con->append_header( "Access-Control-Max-Age", access_control_max_age );
+               }
                if( access_control_allow_credentials ) {
                   con->append_header( "Access-Control-Allow-Credentials", "true" );
                }
+               
+               auto& req = con->get_request();
+               if(req.get_method() == "OPTIONS") {
+                  con->set_status(websocketpp::http::status_code::ok);
+                  return;
+               }
+
                con->append_header( "Content-type", "application/json" );
                auto body = con->get_request_body();
                auto resource = con->get_uri()->get_resource();
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
+                  con->defer_http_response();
                   handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
                      con->set_body( std::move( body ));
                      con->set_status( websocketpp::http::status_code::value( code ));
+                     con->send_http_response();
                   } );
+
                } else {
                   wlog( "404 - not found: ${ep}", ("ep", resource));
                   error_results results{websocketpp::http::status_code::not_found,
@@ -243,6 +258,12 @@ namespace eosio {
              }),
              "Specify the Access-Control-Allow-Headers to be returned on each request.")
 
+            ("access-control-max-age", bpo::value<string>()->notifier([this](const string& v) {
+                my->access_control_max_age = v;
+                ilog("configured http with Access-Control-Max-Age : ${o}", ("o", my->access_control_max_age));
+             }),
+             "Specify the Access-Control-Max-Age to be returned on each request.")
+
             ("access-control-allow-credentials",
              bpo::bool_switch()->notifier([this](bool v) {
                 my->access_control_allow_credentials = v;
@@ -303,11 +324,14 @@ namespace eosio {
             my->server.listen(*my->listen_endpoint);
             my->server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "http: ${e}", ("e",e.to_detail_string()));
+            elog( "http service failed to start: ${e}", ("e",e.to_detail_string()));
+            throw;
          } catch ( const std::exception& e ){
-            elog( "http: ${e}", ("e",e.what()));
+            elog( "http service failed to start: ${e}", ("e",e.what()));
+            throw;
          } catch (...) {
             elog("error thrown from http io service");
+            throw;
          }
       }
 
@@ -322,11 +346,14 @@ namespace eosio {
             my->https_server.listen(*my->https_listen_endpoint);
             my->https_server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "https: ${e}", ("e",e.to_detail_string()));
+            elog( "https service failed to start: ${e}", ("e",e.to_detail_string()));
+            throw;
          } catch ( const std::exception& e ){
-            elog( "https: ${e}", ("e",e.what()));
+            elog( "https service failed to start: ${e}", ("e",e.what()));
+            throw;
          } catch (...) {
             elog("error thrown from https io service");
+            throw;
          }
       }
    }

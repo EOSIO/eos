@@ -149,6 +149,7 @@ namespace eosio {
       tcp::endpoint                    listen_endpoint;
       string                           p2p_address;
       uint32_t                         max_client_count = 0;
+      uint32_t                         max_nodes_per_host = 1;
       uint32_t                         num_clients = 0;
 
       vector<string>                   supplied_peers;
@@ -301,6 +302,7 @@ namespace eosio {
    constexpr auto     def_send_buffer_size_mb = 4;
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
+   constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
    constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
    constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -1976,23 +1978,41 @@ namespace eosio {
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
             if( !ec ) {
                uint32_t visitors = 0;
+               uint32_t from_addr = 0;
+               auto paddr = socket->remote_endpoint(ec).address().to_v4();
+               if (ec) {
+                  fc_elog(logger,"Error getting remote endpoint: ${m}",("m", ec.message()));
+                  return;
+               }
                for (auto &conn : connections) {
-                  if(conn->socket->is_open() && conn->peer_addr.empty()) {
-                     visitors++;
+                  if(conn->socket->is_open()) {
+                     if (conn->peer_addr.empty()) {
+                        visitors++;
+                        if (paddr == conn->socket->remote_endpoint().address().to_v4()) {
+                           from_addr++;
+                        }
+                     }
                   }
                }
                if (num_clients != visitors) {
                   ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
                   num_clients = visitors;
                }
-               if( max_client_count == 0 || num_clients < max_client_count ) {
+               if( from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count )) {
                   ++num_clients;
                   connection_ptr c = std::make_shared<connection>( socket );
                   connections.insert( c );
                   start_session( c );
-               } else {
-                  elog( "Error max_client_count ${m} exceeded",
-                        ( "m", max_client_count) );
+               }
+               else {
+                  if (from_addr >= max_nodes_per_host) {
+                     fc_elog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
+                             ("n", from_addr+1)("ra",paddr.to_string()));
+                  }
+                  else {
+                     fc_elog(logger, "Error max_client_count ${m} exceeded",
+                             ( "m", max_client_count) );
+                  }
                   socket->close( );
                }
                start_listen_loop();
@@ -2405,28 +2425,22 @@ namespace eosio {
       }
       dispatcher->recv_transaction(c, tid);
       uint64_t code = 0;
-      try {
-         auto trace = chain_plug->accept_transaction( msg);
-         if (!trace->except) {
-            fc_dlog(logger, "chain accepted transaction");
-            dispatcher->bcast_transaction(msg);
-            return;
+      chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+         if (result.contains<fc::exception_ptr>()) {
+            auto e_ptr = result.get<fc::exception_ptr>();
+            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+               elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
+         } else {
+            auto trace = result.get<transaction_trace_ptr>();
+            if (!trace->except) {
+               fc_dlog(logger, "chain accepted transaction");
+               dispatcher->bcast_transaction(msg);
+               return;
+            }
          }
 
-         // if accept didn't throw but there was an exception on the trace
-         // it means that this was non-fatally rejected from the chain.
-         // we will mark it as "rejected" and hope someone sends it to us later
-         // when we are able to accept it.
-      }
-      catch( const fc::exception &ex) {
-         code = ex.code();
-         elog( "accept txn threw  ${m}",("m",ex.to_detail_string()));
-      }
-      catch( ...) {
-         elog( " caught something attempting to accept transaction");
-      }
-
-      dispatcher->rejected_transaction(tid);
+         dispatcher->rejected_transaction(tid);
+      });
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
@@ -2627,6 +2641,7 @@ namespace eosio {
       transaction_id_type id = results.second->id();
       if (results.first) {
          fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
+         dispatcher->rejected_transaction(id);
       } else {
          fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
          dispatcher->bcast_transaction(*results.second);
@@ -2775,6 +2790,7 @@ namespace eosio {
          ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
          ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
          ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
+         ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client0nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
@@ -2807,7 +2823,7 @@ namespace eosio {
       my->resp_expected_period = def_resp_expected_wait;
       my->dispatcher->just_send_it_max = options.at("max-implicit-request").as<uint32_t>();
       my->max_client_count = options.at("max-clients").as<int>();
-
+      my->max_nodes_per_host = options.at("p2p-max-nodes-per-host").as<int>();
       my->num_clients = 0;
       my->started_sessions = 0;
 
