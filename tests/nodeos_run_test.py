@@ -509,8 +509,8 @@ try:
     transDuplicate=node.pushMessage(contract, action, data, opts, True)
     if transDuplicate is not None and transDuplicate[0]:
         transDuplicateId=testUtils.Node.getTransId(transDuplicate[1])
-        if transId == transDuplicateId:
-            cmdError("%s push message currency1111 duplicate transfer accepted but with different transaction ids, it is likely a timing issue, report if problem persists, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+        if transId != transDuplicateId:
+            cmdError("%s push message currency1111 duplicate transfer incorrectly accepted, but they were generated with different transaction ids, it is likely a timing issue, report if problem persists, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
         else:
             cmdError("%s push message currency1111 transfer, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
         errorExit("Failed to reject duplicate message for currency1111 contract")
