@@ -1,4 +1,4 @@
-# eosio.system undelegatebw
+# enumivo.system undelegatebw
 
 This Ricardian contract for the system action *undelegatebw* is legally binding and can be used in the event of a dispute. 
 
@@ -14,4 +14,4 @@ As an authorized party I {{ signer }} wish to unstake {{ asset-unstake_cpu_quant
 
 If I as signer am not the beneficial owner of these tokens I stipulate I have proof that I’ve been authorized to take this action by their beneficial owner(s). 
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

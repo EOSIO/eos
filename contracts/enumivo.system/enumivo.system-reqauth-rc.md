@@ -16,4 +16,4 @@ The `{{ reqauth }}` action requires the following `input` and `input type`:
 
 As an authorized party I {{ signer }} wish to UNKNOWN
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

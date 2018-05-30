@@ -16,4 +16,4 @@ The `{{ claimrewards }}` action requires the following `input` and `input type`:
 
 As an authorized party I {{ signer }} wish to have the rewards earned by {{ ownerVar }} deposited into their (my)  account.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

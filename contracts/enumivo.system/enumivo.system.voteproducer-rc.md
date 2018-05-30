@@ -15,4 +15,4 @@ I stipulate I have not and will not accept anything of value in exchange for the
 
 I acknowledge that using any system of automatic voting, re-voting, or vote refreshing, or allowing such a system to be used on my behalf or on behalf of another, is forbidden and doing so violates this contract.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

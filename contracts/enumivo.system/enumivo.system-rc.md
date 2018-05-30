@@ -1,14 +1,14 @@
-# Smart Contract - `{{ eosio.system }}`
+# Smart Contract - `{{ enumivo.system }}`
 
-This is an overview of the actions for the `{{ eosio.system }}` smart contract. This Contract is legally binding and can be used in the event of a dispute. Disputes shall be settled through the standard arbitration process established by EOS.IO.
+This is an overview of the actions for the `{{ enumivo.system }}` smart contract. This Contract is legally binding and can be used in the event of a dispute. Disputes shall be settled through the standard arbitration process established by Enumivo.
 
 ### Description
 
-The `{{ eosio.system }}` contract...
+The `{{ enumivo.system }}` contract...
 
 ### Actions, Inputs and Input Types
 
-The table below contains the `actions`, `inputs` and `input types` for the `{{ eosio.system }}` contract.
+The table below contains the `actions`, `inputs` and `input types` for the `{{ enumivo.system }}` contract.
 
 | Action | Input | Input Type |
 |:--|:--|:--|

@@ -1,6 +1,6 @@
 # Action - `{{ buyrambytes }}`
 
-This Contract is legally binding and can be used in the event of a dispute. Disputes shall be settled through the standard arbitration process established by EOS.IO.
+This Contract is legally binding and can be used in the event of a dispute. Disputes shall be settled through the standard arbitration process established by Enumivo.
 
 ### Description
 
@@ -16,4 +16,4 @@ The `{{ buyrambytes }}` action requires the following `inputs` and `input types`
 
 As an authorized party I {{ signer }} wish to buy  {{ bytesVar }} bytes of RAM at the current price using the funds of {{ payerVar }} with the RAM to be owned by and be the property of {{ receiverVar }}.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

@@ -1,6 +1,6 @@
 # Action - `{{ bidname }}`
 
-This Contract is legally binding and can be used in the event of a dispute. Disputes shall be settled through the standard arbitration process established by EOS.IO.
+This Contract is legally binding and can be used in the event of a dispute. Disputes shall be settled through the standard arbitration process established by Enumivo.
 
 ### Description
 
@@ -16,4 +16,4 @@ The `{{ bidname }}` action requires the following `inputs` and `input types`:
 
 As an authorized party I {{ signer }} wish to bid on behalf of {{ bidderVar }} the amount of {{ bidVar }} toward purchase of the account name {{ newnameVar }}.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

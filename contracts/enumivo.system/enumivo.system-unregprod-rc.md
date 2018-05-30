@@ -16,4 +16,4 @@ The `{{ unregprod }}` action requires the following `input` and `input type`:
 
 As an authorized party I {{ signer }} wish to unregister the block producer candidate {{ producerVar }}, rendering that candidate no longer able to receive votes.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

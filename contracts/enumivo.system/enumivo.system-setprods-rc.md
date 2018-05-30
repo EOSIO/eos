@@ -19,4 +19,4 @@ THIS IS A SYSTEM COMMAND NOT AVAILABLE FOR DIRECT ACCESS BY USERS.
 
 As an authorized party I {{ signer }} wish to set the rotation of producers to be {{ scheduleVar }}.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

@@ -16,4 +16,4 @@ The `{{ buyram }}` action requires the following `inputs` and `input types`:
 
 As an authorized party I {{ signer }} wish to buy  {{ quantVar }} worth of RAM using the funds of {{ payerVar }} with the RAM to be owned by and be the property of {{ receiverVar }}.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

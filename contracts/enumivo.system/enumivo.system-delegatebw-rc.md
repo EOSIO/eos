@@ -1,4 +1,4 @@
-# eosio.system delegatebw
+# enumivo.system delegatebw
 
 This Ricardian contract for the system action *delegatebw* is legally binding and can be used in the event of a dispute. 
 
@@ -21,4 +21,4 @@ It is {{ bool:transfer }} that I wish these tokens to become immediately owned b
 
 As signer I stipulate that, if I am not the beneficial owner of these tokens, I have proof that I’ve been authorized to take this action by their beneficial owner(s). 
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 

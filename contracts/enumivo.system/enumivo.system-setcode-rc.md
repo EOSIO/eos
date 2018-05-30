@@ -16,4 +16,4 @@ The `{{ setcode }}` action requires the following `inputs` and `input types`:
 
 As an authorized party I {{ signer }} wish to store in  memory owned by {{ accountVar }} the code {{ codeVar }} which shall use VM Type {{ vmtypeVar }} version {{ vmversionVar }}.
 
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
+All disputes arising from this contract shall be resolved in the Enumivo Core Arbitration Forum. 
