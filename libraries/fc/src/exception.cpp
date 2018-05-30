@@ -219,6 +219,7 @@ namespace fc
       } catch( ... ) {
          ss << "<- exception in to_string.\n";
       }
+      return ss.str();
    }
 
    /**
