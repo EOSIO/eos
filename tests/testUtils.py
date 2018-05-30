@@ -1373,7 +1373,7 @@ class Cluster(object):
             raise RuntimeError("Cluster already running.")
 
         cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin bnet" % (
-            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().isoformat(timespec='milliseconds') )
+            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3])
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
