@@ -9,6 +9,7 @@
 #include <functional>
 #include <unordered_map>
 #include <boost/core/typeinfo.hpp>
+#include <boost/interprocess/exceptions.hpp>
 
 namespace fc
 {
@@ -382,7 +383,9 @@ namespace fc
   FC_MULTILINE_MACRO_END
 
 #define FC_LOG_AND_RETHROW( )  \
-   catch( fc::exception& er ) { \
+   catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
       FC_RETHROW_EXCEPTION( er, warn, "rethrow" ); \
    } catch( const std::exception& e ) {  \
@@ -402,7 +405,9 @@ namespace fc
    }
 
 #define FC_CAPTURE_LOG_AND_RETHROW( ... )  \
-   catch( fc::exception& er ) { \
+   catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
       wdump( __VA_ARGS__ ); \
       FC_RETHROW_EXCEPTION( er, warn, "rethrow", FC_FORMAT_ARG_PARAMS(__VA_ARGS__) ); \
@@ -425,7 +430,9 @@ namespace fc
    }
 
 #define FC_CAPTURE_AND_LOG( ... )  \
-   catch( fc::exception& er ) { \
+   catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
       wdump( __VA_ARGS__ ); \
    } catch( const std::exception& e ) {  \
@@ -445,7 +452,9 @@ namespace fc
    }
 
 #define FC_LOG_AND_DROP( ... )  \
-   catch( fc::exception& er ) { \
+   catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
    } catch( const std::exception& e ) {  \
       fc::exception fce( \
@@ -468,7 +477,9 @@ namespace fc
  *   appending the provided log message.
  */
 #define FC_RETHROW_EXCEPTIONS( LOG_LEVEL, FORMAT, ... ) \
-   catch( fc::exception& er ) { \
+   catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( fc::exception& er ) { \
       FC_RETHROW_EXCEPTION( er, LOG_LEVEL, FORMAT, __VA_ARGS__ ); \
    } catch( const std::exception& e ) {  \
       fc::exception fce( \
@@ -483,7 +494,9 @@ namespace fc
    }
 
 #define FC_CAPTURE_AND_RETHROW( ... ) \
-   catch( fc::exception& er ) { \
+   catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( fc::exception& er ) { \
       FC_RETHROW_EXCEPTION( er, warn, "", FC_FORMAT_ARG_PARAMS(__VA_ARGS__) ); \
    } catch( const std::exception& e ) {  \
       fc::exception fce( \
@@ -496,4 +509,3 @@ namespace fc
                 FC_LOG_MESSAGE( warn, "",FC_FORMAT_ARG_PARAMS(__VA_ARGS__)), \
                 std::current_exception() ); \
    }
-
