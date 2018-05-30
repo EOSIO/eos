@@ -86,11 +86,11 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
-    Print("Stand up EOS wallet keosd")
+    Print("Stand up ENU wallet enuwallet")
     walletMgr.killall()
     walletMgr.cleanup()
     if walletMgr.launch() is False:
-        errorExit("Failed to stand up keosd.")
+        errorExit("Failed to stand up enuwallet.")
 
     accountsCount=total_nodes
     walletName="MyWallet"
@@ -104,7 +104,7 @@ try:
         errorExit("Wallet initialization failed.")
 
     defproduceraAccount=cluster.defproduceraAccount
-    eosioAccount=cluster.eosioAccount
+    enumivoAccount=cluster.enumivoAccount
 
     Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, wallet.name))
     if not walletMgr.importKey(defproduceraAccount, wallet):
@@ -112,7 +112,7 @@ try:
 
     Print("Create accounts.")
     #if not cluster.createAccounts(defproduceraAccount):
-    if not cluster.createAccounts(eosioAccount):
+    if not cluster.createAccounts(enumivoAccount):
         errorExit("Accounts creation failed.")
 
     Print("Wait on cluster sync.")
