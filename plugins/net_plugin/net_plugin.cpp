@@ -1943,7 +1943,7 @@ namespace eosio {
       c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
             auto c = weak_conn.lock();
             if (!c) return;
-            if( !err ) {
+            if( !err && c->socket->is_open() ) {
                start_session( c );
                c->send_handshake ();
             } else {
