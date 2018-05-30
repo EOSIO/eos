@@ -1592,6 +1592,31 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name)));
    }
 
+   {
+      const uint32_t rmv_index = 5;
+      account_name prod_name = producer_names[rmv_index];
+
+      auto info = get_producer_info(prod_name);
+      BOOST_REQUIRE( info["is_active"].as<bool>() );
+      BOOST_REQUIRE( fc::crypto::public_key() != fc::crypto::public_key(info["producer_key"].as_string()) );
+
+      BOOST_REQUIRE_EQUAL( error("missing authority of eosio"),
+                           push_action(prod_name, N(rmvproducer), mvo()("producer", prod_name)));
+      BOOST_REQUIRE_EQUAL( error("missing authority of eosio"),
+                           push_action(producer_names[rmv_index + 2], N(rmvproducer), mvo()("producer", prod_name) ) );
+      BOOST_REQUIRE_EQUAL( success(),
+                           push_action(config::system_account_name, N(rmvproducer), mvo()("producer", prod_name) ) );
+
+      info = get_producer_info(prod_name);
+      BOOST_REQUIRE( !info["is_active"].as<bool>() );
+      BOOST_REQUIRE( fc::crypto::public_key() == fc::crypto::public_key(info["producer_key"].as_string()) );
+      BOOST_REQUIRE_EQUAL( wasm_assert_msg("producer does not have an active key"),
+                           push_action(prod_name, N(claimrewards), mvo()("owner", prod_name) ) );
+
+      BOOST_REQUIRE_EQUAL( wasm_assert_msg("producer not found"),
+                           push_action(config::system_account_name, N(rmvproducer), mvo()("producer", "nonexistingp") ) );
+   }
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) try {
@@ -2603,9 +2628,11 @@ BOOST_FIXTURE_TEST_CASE( setram_effect, eosio_system_tester ) try {
       BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance(name_b) );
       const uint64_t bought_bytes_b = get_total_stake(name_b)["ram_bytes"].as_uint64() - init_bytes_b;
       
-      // increase max_ram_size, ram bought by name_b loses part of its value 
+      // increase max_ram_size, ram bought by name_b loses part of its value
       BOOST_REQUIRE_EQUAL( wasm_assert_msg("ram may only be increased"),
                            push_action(config::system_account_name, N(setram), mvo()("max_ram_size", 64ll*1024 * 1024 * 1024)) );
+      BOOST_REQUIRE_EQUAL( error("missing authority of eosio"),
+                           push_action(name_b, N(setram), mvo()("max_ram_size", 80ll*1024 * 1024 * 1024)) );
       BOOST_REQUIRE_EQUAL( success(),                                                                                                                                                                  
                            push_action(config::system_account_name, N(setram), mvo()("max_ram_size", 80ll*1024 * 1024 * 1024)) );
       

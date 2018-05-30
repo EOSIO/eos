@@ -484,6 +484,10 @@
       "type": "setpriv",
       "ricardian_contract": ""
    },{
+      "name": "rmvproducer",
+      "type": "rmvproducer",
+      "ricardian_contract": ""
+   },{
       "name": "setalimits",
       "type": "set_account_limits",
       "ricardian_contract": ""

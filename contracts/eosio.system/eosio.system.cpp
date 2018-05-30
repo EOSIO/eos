@@ -174,7 +174,8 @@ namespace eosiosystem {
 
    void system_contract::rmvproducer( account_name producer ) {
       require_auth( _self );
-      auto prod = _producers.get( producer );
+      auto prod = _producers.find( producer );
+      eosio_assert( prod != _producers.end(), "producer not found" ); 
       _producers.modify( prod, 0, [&](auto& p) {
             p.deactivate();
          });
@@ -198,5 +199,6 @@ EOSIO_ABI( eosiosystem::system_contract,
      //this file
      (bidname)
      (setpriv)
+     (rmvproducer)
      (setparams)
 )
