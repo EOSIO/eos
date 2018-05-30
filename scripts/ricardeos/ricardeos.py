@@ -117,7 +117,7 @@ def export_ricardian_from_abi(source_abi):
     contract_name = os.path.split(source_abi)[1].rpartition(".")[0]
 
     if not os.path.exists(source_abi):
-        print(f'Source ABI not found in {source_abi}')
+        print('Source ABI not found in {source_abi}'.format(source_abi = source_abi))
         sys.exit(0)
 
     with open(source_abi, 'r') as source_abi_file:
