@@ -685,7 +685,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    } else if ( _pause_production ) {
       elog("Not producing block because production is explicitly paused");
       _pending_block_mode = pending_block_mode::speculating;
-   } else if ( irreversible_block_age >= _max_irreversible_block_age_us ) {
+   } else if ( _max_irreversible_block_age_us.count() >= 0 && irreversible_block_age >= _max_irreversible_block_age_us ) {
       elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", irreversible_block_age.count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
       _pending_block_mode = pending_block_mode::speculating;
    }
