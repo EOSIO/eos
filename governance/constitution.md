@@ -5,19 +5,19 @@ This constitution is a multi-party contract entered into by the Members by virtu
 Members shall not initiate violence or the threat of violence against another Member.
 
 # Article II
-No Member of this blockchain shall make knowingly make false or misleading attestations nor profit thereby nor thereby cause loss to others.
+No Member of this blockchain shall knowingly make false or misleading attestations nor profit thereby nor thereby cause loss to others.
 
 # Article III
-The Members grant the right of contract and of private property to each other, therefore no property shall change hands except with the consent of the owner, by a lawful Arbitrator’s order, or community referendum. 
+The Members grant the right of contract and of private property to each other, therefore no property shall change hands except with the consent of the owner, by a lawful Arbitrator’s order, or through a community referendum. 
 
 # Article IV
-The Members agree to resolve disputes through the blockchain’s arbitration process, or any other process that the parties to a transaction may mutually agree.
+The Members agree to resolve disputes through the blockchain’s arbitration process, or through any other process that the parties to a transaction may mutually agree.
 
 # Article V
 No Member shall offer nor accept anything of value in exchange for a vote of any type, nor shall any Member unduly influence the vote of another.
 
 # Article VI
-No Member nor SYS token holder shall have fiduciary responsability to support the value of the SYS token. The Members do not authorize anyone to hold assets, borrow, nor contract on behalf of SYS token holders collectively. This blockchain has no owners, managers or fiduciaries; therefore, no Member shall have beneficial interest in more than 10% of the SYS token supply.
+No Member nor SYS token holder shall have fiduciary responsibility to support the value of the SYS token. The Members do not authorize anyone to hold assets, borrow, or contract on behalf of SYS token holders collectively. This blockchain has no owners, managers or fiduciaries; therefore, no Member shall have beneficial interest in more than 10% of the SYS token supply.
 
 # Article VII
 Each Member agrees that penalties for violations may include, but are not limited to, fines, account freezing, and restitution.
@@ -26,7 +26,7 @@ Each Member agrees that penalties for violations may include, but are not limite
 No Member shall serve as a Block Producer who has not agreed in advance to the Block Producer Agreement provided by the Members of this blockchain.
 
 # Article IX
-Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via an free and open source license, and each smart contract shall be documented with a Ricardian Contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
+Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via a free and open source license, and each smart contract shall be documented with a Ricardian Contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
 
 # Article X
 Multi-lingual contracts must specify one prevailing language in case of dispute and the author is liable for losses due to ambiguity of translation. 
