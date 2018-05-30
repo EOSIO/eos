@@ -69,8 +69,8 @@ public:
    /// @return A list of wallet names with " *" appended if the wallet is unlocked.
    std::vector<std::string> list_wallets();
 
-   /// @return A list of private keys from all unlocked wallets in wif format.
-   map<public_key_type,private_key_type> list_keys();
+   /// @return A list of private keys from a wallet provided password is correct to said wallet
+   map<public_key_type,private_key_type> list_keys(const string& name, const string& pw);
 
    /// @return A set of public keys from all unlocked wallets, use with chain_controller::get_required_keys.
    flat_set<public_key_type> get_public_keys();

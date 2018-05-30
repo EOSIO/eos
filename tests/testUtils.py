@@ -1272,17 +1272,17 @@ class WalletMgr(object):
 
         return wallets
 
-    def getKeys(self):
+    def getKeys(self, wallet):
         keys=[]
 
         p = re.compile(r'\n\s+\"(\w+)\"\n', re.MULTILINE)
-        cmd="%s %s wallet keys" % (Utils.EosClientPath, self.endpointArgs)
+        cmd="%s %s wallet private_keys --name %s --password %s " % (Utils.EosClientPath, self.endpointArgs, wallet.name, wallet.password)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("retStr: %s" % (retStr))
         m=p.findall(retStr)
         if m is None:
-            Utils.Print("ERROR: wallet keys parser failure")
+            Utils.Print("ERROR: wallet private_keys parser failure")
             return None
         keys=m
 
