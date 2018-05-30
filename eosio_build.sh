@@ -61,7 +61,7 @@
 	txtrst=$(tput sgr0)
 
 	if [ $# -ne 0 ]; then
-		while getopts ":cdo:" opt; do
+		while getopts ":cdos:" opt; do
 			case "${opt}" in
 				o )
 					options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -73,6 +73,9 @@
 						exit 1
 					fi
 				;;
+                s )
+                    CORE_SYMBOL_NAME="${OPTARG}"
+                ;;
 				c )
 					ENABLE_COVERAGE_TESTING=true
 				;;
@@ -228,6 +231,7 @@
 	if ! "${CMAKE}" -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
 		-DCMAKE_C_COMPILER="${C_COMPILER}" -DWASM_ROOT="${WASM_ROOT}" \
 		-DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
+        -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
 		-DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" ..
 	then
 		printf "\\n\\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\\n\\n"
