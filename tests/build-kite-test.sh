@@ -2,10 +2,10 @@
 
 ARCH=$( uname )
 pgrep_opts="-fl"
-if [ "$ARCH" -eq "Linux" ]; then
+if [ "$ARCH" == "Linux" ]; then
     OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 
-    if [[ $OS_NAME -eq "Ubuntu" || $OS_NAME -eq "Linux Mint" || $OS_NAME -eq "Fedora" || $OS_NAME -eq "CentOS Linux" || $OS_NAME -eq "arch" ]]; then
+    if [[ $OS_NAME == "Ubuntu" || $OS_NAME == "Linux Mint" || $OS_NAME == "Fedora" || $OS_NAME == "CentOS Linux" || $OS_NAME == "arch" ]]; then
         pgrep_opts="-a"
     fi
 fi
@@ -16,39 +16,16 @@ getChildCount () {
     name=$1
 
     #echo child name: $name
-    cmd="pgrep $pgrep_opts $name | grep '\-s' | wc -l"
+    cmd="pgrep $pgrep_opts $name | wc -l"
     echo CMD: $cmd
-    count=`pgrep $pgrep_opts $name | grep '\-s' | wc -l`
-    # pgrep $pgrep_opts $name | grep '\-s'
+    count=`pgrep $pgrep_opts $name | wc -l`
     fun_ret=$count
 }
 
-sleep_on=0
-while getopts ":s" opt; do
-  case ${opt} in
-    s ) # process option a
-    sleep_on=1
-      ;;
-    \? ) echo "Usage: cmd [-s]"
-      ;;
-  esac
-done
+# launch nodeos
+programs/eosio-launcher/eosio-launcher -p 1 -n 1 -s mesh -d 1 -f  --nodeos '--max-transaction-time 5000 --filter-on *'
 
-if [[ $sleep_on -eq 1 ]]; then
-    echo Child is heading to sleep...
-    sleep 2000000
-    exit 0
-fi
-
-# me=`basename "$0"`
-# name=${me:0:-3}
-name="build-kite-test"
-# exit 0
-
-# spawn child process
-cmd="nohup $0 -s"
-echo CMD: $cmd
-nohup $0 -s&
+name="nodeos"
 
 getChildCount $name
 count=$fun_ret
@@ -66,9 +43,10 @@ getChildCount $name
 count=$fun_ret
 echo child count 3: $count
 
-cmd="pkill sleep"
+# kill nodeos
+cmd="pkill -9 $name"
 echo CMD: $cmd
-pkill sleep
+pkill -9 $name
 
 sleep 1
 
@@ -84,6 +62,7 @@ echo child count 5: $count
 
 if [[ $count -ne 0 ]]; then
     echo ERROR: child process is still alive.
+    ps aux
     exit 1
 fi
 
