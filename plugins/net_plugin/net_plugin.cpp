@@ -1943,7 +1943,7 @@ namespace eosio {
       c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
             auto c = weak_conn.lock();
             if (!c) return;
-            if( !err ) {
+            if( !err && c->socket->is_open() ) {
                start_session( c );
                c->send_handshake ();
             } else {
@@ -1988,7 +1988,8 @@ namespace eosio {
                   if(conn->socket->is_open()) {
                      if (conn->peer_addr.empty()) {
                         visitors++;
-                        if (paddr == conn->socket->remote_endpoint().address().to_v4()) {
+                        boost::system::error_code ec;
+                        if (paddr == conn->socket->remote_endpoint(ec).address().to_v4()) {
                            from_addr++;
                         }
                      }
