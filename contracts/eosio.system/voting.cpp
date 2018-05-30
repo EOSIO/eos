@@ -107,6 +107,10 @@ namespace eosiosystem {
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
 
+      if ( top_producers.size() < _gstate.last_producer_schedule_size ) {
+         return;
+      }
+
       for ( const auto& it: inactive_iters ) {
          _producers.modify( *it, 0, [&](auto& p) {
                p.deactivate();
@@ -130,6 +134,7 @@ namespace eosiosystem {
       if( new_id != _gstate.last_producer_schedule_id ) {
          _gstate.last_producer_schedule_id = new_id;
          set_proposed_producers( packed_schedule.data(),  packed_schedule.size() );
+         _gstate.last_producer_schedule_size = top_producers.size();
       }
       _gstate.last_producer_schedule_update = block_time;
    }
