@@ -22,7 +22,7 @@ Each Member agrees that penalties for breach of contract may include, but are no
 Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via an free and open source license, and each smart contract shall be documented with a Ricardian Contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
 
 # Article VII - Language
-Multi-lingual contracts must specify one prevailing language in case of dispute and the author is liable for losses due to their false, misleading, or ambiguous attestations of translations. 
+Multi-lingual contracts must specify one prevailing language in case of dispute and the author is liable for losses due to their false, misleading, or ambiguous attested translations. 
 
 # Article IX - Dispute Resolution
 All disputes arising out of or in connection with this constitution shall be finally settled under the Rules of Arbitration of the International Chamber of Commerce by one or more arbitrators appointed in accordance with the said Rules.
