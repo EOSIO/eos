@@ -79,7 +79,7 @@ def add_ricardian_contracts_to_abi(source_abi, output_abi):
 
 def import_ricardian_to_abi(source_abi, output_abi):
     if not os.path.exists(source_abi):
-        print(f'Source ABI not found in {source_abi}')
+        print('Source ABI not found in {source_abi}'.format(source_abi = source_abi))
         sys.exit(0)
 
     if os.path.exists(output_abi):
