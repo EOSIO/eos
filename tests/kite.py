@@ -92,7 +92,6 @@ time.sleep(1)
 
 cmd="pgrep %s %s" % (pgrepOpts, EosServerName)
 
-#sOut=None
 print("cmd: %s" % (cmd))
 psOut=None
 try:
@@ -103,6 +102,16 @@ except (subprocess.CalledProcessError) as _:
 
 print("pgrep output after SIGKILL:\n%s" %(psOut))
 
+cmd="ps aux"
+print("cmd: %s" % (cmd))
+psOut=None
+try:
+    psOut=subprocess.check_output(cmd.split()).decode("utf-8")
+except (subprocess.CalledProcessError) as _:
+    print("ERROR: No nodeos process found.")
+    exit(1)
+
+print("ps aux output after SIGKILL:\n%s" %(psOut))
 
 def myFunc():
     try:
