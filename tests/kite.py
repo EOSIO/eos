@@ -65,7 +65,7 @@ if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS 
 
 cmd="pgrep %s %s" % (pgrepOpts, EosServerName)
 
-sOut=None
+#sOut=None
 print("cmd: %s" % (cmd))
 psOut=None
 try:
@@ -74,6 +74,7 @@ except (subprocess.CalledProcessError) as _:
     print("ERROR: No nodeos process found.")
     exit(1)
 
+print("pgrep output after launch:\n%s" %(psOut))
 pattern=r"[\n]?(\d+) (.* --data-dir var/lib/node_00)"
 m=re.search(pattern, psOut, re.MULTILINE)
 if m is None:
@@ -86,6 +87,22 @@ print("Killing nodeos process. Pid: %d" % (pid))
 
 os.kill(pid, signal.SIGKILL)
 #os.kill(pid, signal.SIGHUP)
+
+time.sleep(1)
+
+cmd="pgrep %s %s" % (pgrepOpts, EosServerName)
+
+#sOut=None
+print("cmd: %s" % (cmd))
+psOut=None
+try:
+    psOut=subprocess.check_output(cmd.split()).decode("utf-8")
+except (subprocess.CalledProcessError) as _:
+    print("ERROR: No nodeos process found.")
+    exit(1)
+
+print("pgrep output after SIGKILL:\n%s" %(psOut))
+
 
 def myFunc():
     try:
