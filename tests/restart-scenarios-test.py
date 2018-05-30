@@ -4,7 +4,6 @@ import testUtils
 
 import argparse
 import random
-import signal
 
 ###############################################################
 # Test for different nodes restart scenarios.
@@ -65,8 +64,8 @@ testSuccessful=False
 
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster()
-walletMgr=testUtils.WalletMgr(False)
+cluster=testUtils.Cluster(walletd=True)
+walletMgr=testUtils.WalletMgr(True)
 
 try:
     cluster.setChainStrategy(chainSyncStrategyStr)
@@ -87,6 +86,12 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
+    Print("Stand up EOS wallet keosd")
+    walletMgr.killall()
+    walletMgr.cleanup()
+    if walletMgr.launch() is False:
+        errorExit("Failed to stand up keosd.")
+
     accountsCount=total_nodes
     walletName="MyWallet"
     Print("Creating wallet %s if one doesn't already exist." % walletName)
@@ -99,14 +104,15 @@ try:
         errorExit("Wallet initialization failed.")
 
     defproduceraAccount=cluster.defproduceraAccount
+    eosioAccount=cluster.eosioAccount
 
     Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, wallet.name))
     if not walletMgr.importKey(defproduceraAccount, wallet):
         errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
     Print("Create accounts.")
-    #if not cluster.createAccounts(wallet):
-    if not cluster.createAccounts(defproduceraAccount):
+    #if not cluster.createAccounts(defproduceraAccount):
+    if not cluster.createAccounts(eosioAccount):
         errorExit("Accounts creation failed.")
 
     Print("Wait on cluster sync.")
@@ -115,9 +121,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -130,9 +136,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -150,9 +156,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -173,6 +179,5 @@ finally:
             Print("Cleanup cluster and wallet data.")
             cluster.cleanup()
             walletMgr.cleanup()
-    pass
 
 exit(0)
