@@ -263,6 +263,7 @@
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
          {"name":"last_producer_schedule_id",     "type":"checksum160"},
+         {"name":"last_producer_schedule_size",   "type":"uint16"},
          {"name":"total_producer_vote_weight",    "type":"float64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
@@ -273,6 +274,7 @@
          {"name":"owner",                    "type":"account_name"},
          {"name":"total_votes",              "type":"float64"},
          {"name":"producer_key",             "type":"public_key"},
+         {"name":"is_active",                "type":"bool"},
          {"name":"url",                      "type":"string"},
          {"name":"unpaid_blocks",            "type":"uint32"},
          {"name":"last_claim_time",          "type":"uint64"},
