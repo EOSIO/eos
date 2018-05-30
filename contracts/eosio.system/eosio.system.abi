@@ -381,6 +381,21 @@
       "fields": [
         {"name":"params", "type":"blockchain_parameters"}
       ]
+    },{
+      "name": "connector",
+      "base": "",
+      "fields": [
+        {"name":"balance", "type":"asset"},
+        {"name":"weight", "type":"float64"}
+      ]
+    },{
+      "name": "exchange_state",
+      "base": "",
+      "fields": [
+        {"name":"supply", "type":"asset"},
+        {"name":"base", "type":"connector"},
+        {"name":"quote", "type":"connector"}
+      ]
     }
    ],
    "actions": [{
@@ -525,6 +540,12 @@
       "type": "delegated_bandwidth",
       "index_type": "i64",
       "key_names" : ["to"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "rammarket",
+      "type": "exchange_state",
+      "index_type": "i64",
+      "key_names" : ["supply"],
       "key_types" : ["uint64"]
     },{
       "name": "refunds",
