@@ -406,6 +406,8 @@ namespace eosio { namespace chain {
               transaction.trx_id = id;
               transaction.expiration = expire;
           });
+      } catch( const boost::interprocess::bad_alloc& ) {
+         throw;
       } catch ( ... ) {
           EOS_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );

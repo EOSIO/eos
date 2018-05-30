@@ -4,7 +4,6 @@
 #include <openssl/sha.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
-#include <assert.h>
 #include <fc/crypto/base64.hpp>
 #include <fc/io/sstream.hpp>
 #include <fc/io/stdio.hpp>
@@ -75,13 +74,13 @@ namespace fc {
 
     bool public_key::verify( const sha1& digest, const signature& sig )const
     {
-       assert( sig.size() == 2048/8 );
+       static_assert( sig.size() == 2048/8, "" );
        return 0 != RSA_verify( NID_sha1, (const uint8_t*)&digest, 20,
                                (uint8_t*)sig.data(), 2048/8, my->rsa );
     }
     bool public_key::verify( const sha256& digest, const signature& sig )const
     {
-       assert( sig.size() == 2048/8 );
+       static_assert( sig.size() == 2048/8, "" );
        return 0 != RSA_verify( NID_sha256, (const uint8_t*)&digest, 32,
                                (uint8_t*)sig.data(), 2048/8, my->rsa );
     }
