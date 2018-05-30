@@ -192,16 +192,17 @@ namespace fc { namespace ecc {
             FC_ASSERT( my->_key != nullptr );
             auto my_pub_key = get_public_key().serialize(); // just for good measure
             //ECDSA_SIG *sig = ECDSA_do_sign((unsigned char*)&digest, sizeof(digest), my->_key);
-            public_key_data key_data;
-            while( true )
+            public_key_data   key_data;
+            compact_signature csig;
+            do
             {
                 ecdsa_sig sig = ECDSA_do_sign((unsigned char*)&digest, sizeof(digest), my->_key);
 
                 if (sig==nullptr)
                     FC_THROW_EXCEPTION( exception, "Unable to sign" );
 
-                compact_signature csig;
-                // memset( csig.data, 0, sizeof(csig) );
+                
+                memset( csig.data, 0, sizeof(csig) );
 
                 int nBitsR = BN_num_bits(sig->r);
                 int nBitsS = BN_num_bits(sig->s);
@@ -253,7 +254,7 @@ namespace fc { namespace ecc {
                     auto slen = BN_bn2bin(sig->s,&csig.data[65-(nBitsS+7)/8]);
                     idump( (rlen)(slen) );
                     */
-                }
+                } while(require_canonical && !public_key::is_canonical( csig ));
                 return csig;
             } // while true
         } FC_RETHROW_EXCEPTIONS( warn, "sign ${digest}", ("digest", digest)("private_key",*this) );
