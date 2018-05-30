@@ -28,7 +28,6 @@ systemAccounts = [
     'eosio.vpay',
 ]
 
-
 def jsonArg(a):
     return " '" + json.dumps(a) + "' "
 
@@ -105,7 +104,7 @@ def startNode(nodeIndex, account):
     )
     cmd = (
         args.nodeos +
-        '    --max-transaction-time 200'
+        '    --max-irreversible-block-age 9999999'
         '    --contracts-console'
         '    --genesis-json ' + os.path.abspath(args.genesis) +
         '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'
@@ -115,6 +114,7 @@ def startNode(nodeIndex, account):
         '    --http-server-address 127.0.0.1:' + str(8000 + nodeIndex) +
         '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + nodeIndex) +
         '    --max-clients ' + str(maxClients) +
+        '    --p2p-max-nodes-per-host ' + str(maxClients) +
         '    --enable-stale-production'
         '    --producer-name ' + account['name'] +
         '    --private-key \'["' + account['pub'] + '","' + account['pvt'] + '"]\''
@@ -137,25 +137,40 @@ def createSystemAccounts():
 def intToCurrency(i):
     return '%d.%04d %s' % (i // 10000, i % 10000, args.symbol)
 
-def fillStake(b, e):
+def allocateFunds(b, e):
     dist = numpy.random.pareto(1.161, e - b).tolist() # 1.161 = 80/20 rule
     dist.sort()
     dist.reverse()
     factor = 1_000_000_000 / sum(dist)
     total = 0
     for i in range(b, e):
-        stake = round(factor * dist[i - b] * 10000 / 2)
+        funds = round(factor * dist[i - b] * 10000)
         if i >= firstProducer and i < firstProducer + numProducers:
-            stake = max(stake, round(args.min_producer_stake * 10000))
-        total += stake * 2
-        accounts[i]['stake'] = stake
-    return total + round(args.extra_issue * 10000)
+            funds = max(funds, round(args.min_producer_funds * 10000))
+        total += funds
+        accounts[i]['funds'] = funds
+    return total
 
 def createStakedAccounts(b, e):
+    ramFunds = round(args.ram_funds * 10000)
+    configuredMinStake = round(args.min_stake * 10000)
+    maxUnstaked = round(args.max_unstaked * 10000)
     for i in range(b, e):
         a = accounts[i]
-        stake = intToCurrency(a['stake'])
-        run(args.cleos + 'system newaccount eosio --transfer ' + a['name'] + ' ' + a['pub'] + ' --stake-net "' + stake + '" --stake-cpu "' + stake + '"')
+        funds = a['funds']
+        if funds < ramFunds:
+            print('skipping %s: not enough funds to cover ram' % a['name'])
+            continue
+        minStake = min(funds - ramFunds, configuredMinStake)
+        unstaked = min(funds - ramFunds - minStake, maxUnstaked)
+        stake = funds - ramFunds - unstaked
+        stakeNet = round(stake / 2)
+        stakeCpu = stake - stakeNet
+        print('%s: total funds=%s, ram=%s, net=%s, cpu=%s, unstaked=%s' % (a['name'], intToCurrency(a['funds']), intToCurrency(ramFunds), intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(unstaked)))
+        assert(funds == ramFunds + stakeNet + stakeCpu + unstaked)
+        run(args.cleos + 'system newaccount --transfer eosio %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram-EOS "%s"   ' % 
+            (a['name'], a['pub'], intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(ramFunds)))
+        run(args.cleos + 'transfer eosio %s "%s"' % (a['name'], intToCurrency(unstaked)))
 
 def regProducers(b, e):
     for i in range(b, e):
@@ -216,11 +231,6 @@ def resign(account, controller):
     sleep(1)
     run(args.cleos + 'get account ' + account)
 
-def sendUnstakedFunds(b, e):
-    for i in range(b, e):
-        a = accounts[i]
-        run(args.cleos + 'transfer eosio ' + a['name'] + ' "10.0000 ' + args.symbol + '"')
-
 def randomTransfer(b, e):
     for j in range(20):
         src = accounts[random.randint(b, e - 1)]['name']
@@ -258,7 +268,7 @@ def msigReplaceSystem():
 
 def produceNewAccounts():
     with open('newusers', 'w') as f:
-        for i in range(0, 3000):
+        for i in range(3000, 30000):
             x = getOutput(args.cleos + 'create key')
             r = re.match('Private key: *([^ \n]*)\nPublic key: *([^ \n]*)', x, re.DOTALL | re.MULTILINE)
             name = 'user'
@@ -266,7 +276,6 @@ def produceNewAccounts():
                 name += chr(ord('a') + ((i >> (j * 4)) & 15))
             print(i, name)
             f.write('        {"name":"%s", "pvt":"%s", "pub":"%s"},\n' % (name, r[1], r[2]))
-
 
 def stepKillAll():
     run('killall keosd nodeos || true')
@@ -282,7 +291,7 @@ def stepInstallSystemContracts():
     run(args.cleos + 'set contract eosio.msig ' + args.contracts_dir + 'eosio.msig/')
 def stepCreateTokens():
     run(args.cleos + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (args.symbol))
-    totalAllocation = fillStake(0, len(accounts))
+    totalAllocation = allocateFunds(0, len(accounts))
     run(args.cleos + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
@@ -309,9 +318,6 @@ def stepResign():
     resign('eosio', 'eosio.prods')
     for a in systemAccounts:
         resign(a, 'eosio')
-def stepIssueUnstaked():
-    run(args.cleos + 'push action eosio.token issue \'["eosio", "%d.0000 %s", "memo"]\' -p eosio' % ((len(accounts)) * 10, args.symbol))
-    sendUnstakedFunds(0, args.num_senders)
 def stepTransfer():
     while True:
         randomTransfer(0, args.num_senders)
@@ -338,11 +344,9 @@ commands = [
     ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
     ('q', 'resign',         stepResign,                 True,    "Resign eosio"),
     ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
-    ('u', 'issue',          stepIssueUnstaked,          True,    "Issue unstaked tokens"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
 ]
-
 
 parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
 parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
@@ -355,11 +359,13 @@ parser.add_argument('--genesis', metavar='', help="Path to genesis.json", defaul
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 parser.add_argument('--symbol', metavar='', help="The eosio.system symbol", default='SYS')
-parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=0)
+parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=3000)
 parser.add_argument('--max-user-keys', metavar='', help="Maximum user keys to import into wallet", type=int, default=10)
-parser.add_argument('--extra-issue', metavar='', help="Extra amount to issue to cover buying ram", type=float, default=10.0000)
+parser.add_argument('--ram-funds', metavar='', help="How much funds for each user to spend on ram", type=float, default=0.1)
+parser.add_argument('--min-stake', metavar='', help="Minimum stake before allocating unstaked funds", type=float, default=0.9)
+parser.add_argument('--max-unstaked', metavar='', help="Maximum unstaked funds", type=float, default=10)
 parser.add_argument('--producer-limit', metavar='', help="Maximum number of producers. (0 = no limit)", type=int, default=0)
-parser.add_argument('--min-producer-stake', metavar='', help="Minimum producer CPU and BW stake", type=float, default=200.0000)
+parser.add_argument('--min-producer-funds', metavar='', help="Minimum producer funds", type=float, default=1000.0000)
 parser.add_argument('--num-producers-vote', metavar='', help="Number of producers for which each user votes", type=int, default=20)
 parser.add_argument('--num-voters', metavar='', help="Number of voters", type=int, default=10)
 parser.add_argument('--num-senders', metavar='', help="Number of users to transfer funds randomly", type=int, default=10)
