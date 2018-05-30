@@ -70,10 +70,10 @@ struct signed_int {
 
 class variant;
 
-void to_variant( const signed_int& var,  variant& vo );
-void from_variant( const variant& var,  signed_int& vo );
-void to_variant( const unsigned_int& var,  variant& vo );
-void from_variant( const variant& var,  unsigned_int& vo );
+void to_variant( const signed_int& var,  variant& vo, uint32_t max_depth = 1 );
+void from_variant( const variant& var,  signed_int& vo, uint32_t max_depth = 1 );
+void to_variant( const unsigned_int& var,  variant& vo, uint32_t max_depth = 1 );
+void from_variant( const variant& var,  unsigned_int& vo, uint32_t max_depth = 1 );
 
 }  // namespace fc
 

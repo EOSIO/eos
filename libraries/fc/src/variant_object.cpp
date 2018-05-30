@@ -345,7 +345,7 @@ namespace fc
    /** Appends \a key and \a var without checking for duplicates, designed to
     *  simplify construction of dictionaries using (key,val)(key2,val2) syntax 
     */
-   mutable_variant_object& mutable_variant_object::operator()( string key, variant var )
+   mutable_variant_object& mutable_variant_object::operator()( string key, variant var, uint32_t )
    {
       _key_value->push_back( entry( fc::move(key), fc::move(var) ) );
       return *this;

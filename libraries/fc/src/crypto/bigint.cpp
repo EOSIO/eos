@@ -208,16 +208,16 @@ namespace fc {
       }
 
   /** encodes the big int as base64 string, or a number */
-  void to_variant( const bigint& bi, variant& v )
+  void to_variant( const bigint& bi, variant& v, uint32_t )
   {
     std::vector<char> ve = bi;
     v = fc::variant(base64_encode((unsigned char*)ve.data(),ve.size()));
   }
 
   /** decodes the big int as base64 string, or a number */
-  void from_variant( const variant& v, bigint& bi )
+  void from_variant( const variant& v, bigint& bi, uint32_t )
   {
-    if( v.is_numeric() ) bi = bigint( static_cast<unsigned long>(v.as_uint64()) );
+    if( v.is_numeric() ) bi = bigint( static_cast<unsigned long>(v.as_uint64( )) );
     else
     {
         std::string b64 = v.as_string();

@@ -143,11 +143,11 @@ namespace fc {
     return get_approximate_relative_time_string(time_point_sec(event_time), time_point_sec(relative_to_time), ago);
   }
 
-  void to_variant( const microseconds& input_microseconds,  variant& output_variant )
+  void to_variant( const microseconds& input_microseconds,  variant& output_variant, uint32_t )
   {
     output_variant = input_microseconds.count();
   }
-  void from_variant( const variant& input_variant,  microseconds& output_microseconds )
+  void from_variant( const variant& input_variant,  microseconds& output_microseconds, uint32_t )
   {
     output_microseconds = microseconds(input_variant.as_int64());
   }

@@ -194,13 +194,13 @@ namespace fc {
       return lzbits;
    }
 
-  void to_variant( const sha256& bi, variant& v )
+  void to_variant( const sha256& bi, variant& v, uint32_t max_depth )
   {
      v = std::vector<char>( (const char*)&bi, ((const char*)&bi) + sizeof(bi) );
   }
-  void from_variant( const variant& v, sha256& bi )
+  void from_variant( const variant& v, sha256& bi, uint32_t max_depth )
   {
-    std::vector<char> ve = v.as< std::vector<char> >();
+    std::vector<char> ve = v.as< std::vector<char> >( max_depth );
     if( ve.size() )
     {
         memcpy(&bi, ve.data(), fc::min<size_t>(ve.size(),sizeof(bi)) );

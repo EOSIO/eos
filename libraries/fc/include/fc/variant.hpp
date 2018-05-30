@@ -189,7 +189,7 @@ namespace fc
    template<typename A, typename B>
    void to_variant( const std::pair<A,B>& t, variant& v, uint32_t max_depth );
    template<typename A, typename B>
-   void from_variant( const variant& v, std::pair<A,B>& p );
+   void from_variant( const variant& v, std::pair<A,B>& p, uint32_t max_depth );
 
 
 
@@ -371,7 +371,7 @@ namespace fc
         }
 
         template<typename T>
-        explicit variant( const T& val, uint32_t max_depth );
+        explicit variant( const T& val, uint32_t max_depth = 1 /*XXX no default in bitshares */ );
 
 
         void    clear();

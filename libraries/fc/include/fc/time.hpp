@@ -38,8 +38,8 @@ namespace fc {
   inline microseconds days(int64_t d) { return hours(24*d); }
 
   class variant;
-  void to_variant( const fc::microseconds&,  fc::variant&  );
-  void from_variant( const fc::variant& , fc::microseconds& );
+  void to_variant( const fc::microseconds&,  fc::variant&, uint32_t max_depth = 1  );
+  void from_variant( const fc::variant& , fc::microseconds&, uint32_t max_depth = 1 );
 
   class time_point {
     public:

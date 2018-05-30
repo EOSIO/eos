@@ -372,42 +372,44 @@ struct visitor {
    struct from_static_variant 
    {
       variant& var;
-      from_static_variant( variant& dv ):var(dv){}
+      const uint32_t _max_depth;
+      from_static_variant( variant& dv, uint32_t max_depth ):var(dv),_max_depth(max_depth){}
 
       typedef void result_type;
       template<typename T> void operator()( const T& v )const
       {
-         to_variant( v, var );
+         to_variant( v, var, _max_depth );
       }
    };
 
    struct to_static_variant
    {
       const variant& var;
-      to_static_variant( const variant& dv ):var(dv){}
+      const uint32_t _max_depth;
+      to_static_variant( const variant& dv, uint32_t max_depth ):var(dv),_max_depth(max_depth){}
 
       typedef void result_type;
       template<typename T> void operator()( T& v )const
       {
-         from_variant( var, v ); 
+         from_variant( var, v, _max_depth ); 
       }
    };
 
 
-   template<typename... T> void to_variant( const fc::static_variant<T...>& s, fc::variant& v )
+   template<typename... T> void to_variant( const fc::static_variant<T...>& s, fc::variant& v, uint32_t max_depth )
    {
       variant tmp;
       variants vars(2);
       vars[0] = s.which();
-      s.visit( from_static_variant(vars[1]) );
+      s.visit( from_static_variant(vars[1], max_depth - 1) );
       v = std::move(vars);
    }
-   template<typename... T> void from_variant( const fc::variant& v, fc::static_variant<T...>& s )
+   template<typename... T> void from_variant( const fc::variant& v, fc::static_variant<T...>& s, uint32_t max_depth )
    {
       auto ar = v.get_array();
       if( ar.size() < 2 ) return;
       s.set_which( ar[0].as_uint64() );
-      s.visit( to_static_variant(ar[1]) );
+      s.visit( to_static_variant(ar[1], max_depth - 1) );
    }
 
   template<typename... T> struct get_typename { static const char* name()   { return BOOST_CORE_TYPEID(static_variant<T...>).name();   } };

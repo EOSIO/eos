@@ -98,13 +98,13 @@ bool operator == ( const ripemd160& h1, const ripemd160& h2 ) {
   return memcmp( h1._hash, h2._hash, sizeof(h1._hash) ) == 0;
 }
   
-  void to_variant( const ripemd160& bi, variant& v )
+  void to_variant( const ripemd160& bi, variant& v, uint32_t )
   {
      v = std::vector<char>( (const char*)&bi, ((const char*)&bi) + sizeof(bi) );
   }
-  void from_variant( const variant& v, ripemd160& bi )
+  void from_variant( const variant& v, ripemd160& bi, uint32_t max_depth )
   {
-    std::vector<char> ve = v.as< std::vector<char> >();
+    std::vector<char> ve = v.as< std::vector<char> >( max_depth );
     if( ve.size() )
     {
         memcpy(&bi, ve.data(), fc::min<size_t>(ve.size(),sizeof(bi)) );
