@@ -73,6 +73,13 @@ namespace eosiosystem {
       _global.set( _gstate, _self );
    }
 
+   void system_contract::setparams( const eosio::blockchain_parameters& params ) {
+      require_auth( N(eosio) );
+      (eosio::blockchain_parameters&)(_gstate) = params;
+      eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
+      set_blockchain_parameters( params );
+   }
+
    void system_contract::setpriv( account_name account, uint8_t ispriv ) {
       require_auth( _self );
       set_privileged( account, ispriv );
@@ -165,13 +172,6 @@ namespace eosiosystem {
       set_resource_limits( newact, 0, 0, 0 );
    }
 
-   void system_contract::setparams( const eosio_parameters& params ) {
-      require_auth( N(eosio) );
-      (eosiosystem::eosio_parameters&)(_gstate) = params;
-      eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
-      set_blockchain_parameters( params );
-   }
-
    void system_contract::blacklist(account_name producer) {
       require_auth( N(eosio) );
       auto prod = _producers.find( producer );
@@ -197,11 +197,14 @@ namespace eosiosystem {
 
 
 EOSIO_ABI( eosiosystem::system_contract,
-     (setram)
-     // delegate_bandwith.cpp
-     (delegatebw)(undelegatebw)(refund)
-     (buyram)(buyrambytes)(sellram)
+     // native.hpp (newaccount definition is actually in eosio.system.cpp)
+     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
+     // eosio.system.cpp
+     (setram)(setparams)(setpriv)(bidname)
+     // delegate_bandwidth.cpp
+     (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
      // voting.cpp
+     (regproducer)(unregprod)(voteproducer)(regproxy)
      // producer_pay.cpp
      (regproxy)(regproducer)(unregprod)(voteproducer)
      (claimrewards)
@@ -212,4 +215,5 @@ EOSIO_ABI( eosiosystem::system_contract,
      (bidname)
      (setpriv)
      (setparams)(blacklist)(unblacklist)
+     (onblock)(claimrewards)
 )

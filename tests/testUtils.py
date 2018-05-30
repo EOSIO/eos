@@ -1297,11 +1297,22 @@ class WalletMgr(object):
             with open(WalletMgr.__walletLogFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
 
-    @staticmethod
-    def killall():
-        cmd="pkill -9 %s" % (Utils.EosWalletName)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        subprocess.call(cmd.split())
+    # @staticmethod
+    # def killall():
+    #     cmd="pkill -9 %s" % (Utils.EosWalletName)
+    #     if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+    #     subprocess.call(cmd.split())
+
+    def killall(self, allInstances=False):
+        """Kill keos instances. allInstances will kill all keos instances running on the system."""
+        if self.__walletPid:
+            os.kill(self.__walletPid, signal.SIGKILL)
+
+        if allInstances:
+            cmd="pkill -9 %s" % (Utils.EosWalletName)
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            subprocess.call(cmd.split())
+
 
     @staticmethod
     def cleanup():
@@ -2210,17 +2221,19 @@ class Cluster(object):
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
 
-    def killall(self, silent=True):
-        cmd="%s -k 15" % (Utils.EosLauncherPath)
+    def killall(self, silent=True, allInstances=False):
+        """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
+        cmd="%s -k 9" % (Utils.EosLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
 
-        # ocassionally the launcher cannot kill the eos server
-        cmd="pkill -9 %s" % (Utils.EosServerName)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Failed to shut down eos cluster.")
+        if allInstances:
+            # ocassionally the launcher cannot kill the eos server
+            cmd="pkill -9 %s" % (Utils.EosServerName)
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
+                if not silent: Utils.Print("Failed to shut down eos cluster.")
 
         # another explicit nodes shutdown
         for node in self.nodes:
