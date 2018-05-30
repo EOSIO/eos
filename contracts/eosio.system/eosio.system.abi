@@ -526,12 +526,6 @@
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
     },{
-      "name": "totalband",
-      "type": "total_resources",
-      "index_type": "i64",
-      "key_names" : ["owner"],
-      "key_types" : ["uint64"]
-    },{
       "name": "delband",
       "type": "delegated_bandwidth",
       "index_type": "i64",
