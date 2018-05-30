@@ -1,15 +1,15 @@
 This Constitution is a multi-party contract entered into by the Members by virtue of their use of this blockchain. 
 
-# Article I - Non Violence
+# Article I - No Initiation of Violence
 Members shall not initiate violence or the threat of violence against another Member.
 
-# Article II - Perjury
+# Article II - No Perjury
 Members shall be liable for losses caused by false or misleading attestations and shall forfeit any profit gained thereby. 
 
 # Article III - Rights
 The Members grant the right of contract and of private property to each other, therefore no property shall change hands except with the consent of the owner, by a valid Arbitrator’s order, or via community referendum. This Constitution creates no positive rights for or between any Members.
 
-# Article IV - Vote Buying
+# Article IV - No Vote Buying
 No Member shall offer nor accept anything of value in exchange for a vote of any type, nor shall any Member unduly influence the vote of another.
 
 # Article V - No Fiduciary 
