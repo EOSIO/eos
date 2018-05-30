@@ -37,7 +37,7 @@ class transaction_metadata {
       }
 
       const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id ) {
-         if( !signing_keys || signing_keys->first != chain_id ) // Unlikely for more than one chain_id to be used in one nodeos instance
+         if( !signing_keys || signing_keys->first != chain_id ) // Unlikely for more than one chain_id to be used in one enunode instance
             signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id ) );
          return signing_keys->second;
       }
