@@ -57,7 +57,6 @@ namespace eosiosystem {
       uint32_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
-      checksum160          last_producer_schedule_id;
       uint16_t             last_producer_schedule_size = 0;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
       block_timestamp      last_name_close;
@@ -66,7 +65,7 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (last_producer_schedule_id)(last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
+                                (last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
    };
 
    struct producer_info {
@@ -153,7 +152,7 @@ namespace eosiosystem {
          // functions defined in delegate_bandwidth.cpp
 
          /**
-          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'. 
+          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'.
           *  If transfer == true, then 'receiver' can unstake to their account
           *  Else 'from' can unstake at any time.
           */
@@ -167,7 +166,7 @@ namespace eosiosystem {
           *  left to delegate.
           *
           *  This will cause an immediate reduction in net/cpu bandwidth of the
-          *  receiver. 
+          *  receiver.
           *
           *  A transaction is scheduled to send the tokens back to 'from' after
           *  the staking period has passed. If existing transaction is scheduled, it
@@ -220,7 +219,7 @@ namespace eosiosystem {
 
          void setpriv( account_name account, uint8_t ispriv );
 
-         void rmvproducer( account_name producer ); 
+         void rmvproducer( account_name producer );
 
          void bidname( account_name bidder, account_name newname, asset bid );
       private:

@@ -98,15 +98,10 @@ namespace eosiosystem {
          producers.push_back(item.first);
 
       bytes packed_schedule = pack(producers);
-      checksum160 new_id;
-      sha1( packed_schedule.data(), packed_schedule.size(), &new_id );
 
-      if( new_id != _gstate.last_producer_schedule_id ) {
-         _gstate.last_producer_schedule_id = new_id;
-         set_proposed_producers( packed_schedule.data(),  packed_schedule.size() );
+      if( set_proposed_producers( packed_schedule.data(),  packed_schedule.size() ) >= 0 ) {
          _gstate.last_producer_schedule_size = top_producers.size();
       }
-      _gstate.last_producer_schedule_update = block_time;
    }
 
    double stake2vote( int64_t staked ) {
