@@ -214,7 +214,7 @@
 	if [ -d "${HOME}/opt/boost_1_67_0" ]; then
 		if ! mv "${HOME}/opt/boost_1_67_0" "$BOOST_ROOT"
 		then
-			printf "\\n\\tUnable to move directory ${HOME}/opt/boost_1_67_0 to ${BOOST_ROOT}.\\n"
+			printf "\\n\\tUnable to move directory %s/opt/boost_1_67_0 to %s.\\n" "${HOME}" "${BOOST_ROOT}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1
 		fi
@@ -299,7 +299,7 @@
 		fi
 		printf "\\tBoost successfully installed @ %s.\\n" "${BOOST_ROOT}"
 	else
-		printf "\\tBoost 1.67.0 found at %s.\\n" "${BOOST_ROOT}"
+		printf "\\tBoost found at %s.\\n" "${BOOST_ROOT}"
 	fi
 
 	printf "\\n\\tChecking MongoDB installation.\\n"

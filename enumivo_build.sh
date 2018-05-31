@@ -153,7 +153,7 @@
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
+				export BOOST_ROOT="${HOME}/opt/boost"
 			;;
 			"elementary OS")
 				FILE="${PWD}/scripts/enumivo_build_ubuntu.sh"
@@ -161,7 +161,7 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
+				export BOOST_ROOT="${HOME}/opt/boost"
 			;;
 			"Fedora")
 				FILE="${PWD}/scripts/enumivo_build_fedora.sh"
@@ -177,7 +177,7 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
+				export BOOST_ROOT="${HOME}/opt/boost"
 			;;
 			"Ubuntu")
 				FILE="${PWD}/scripts/enumivo_build_ubuntu.sh"
@@ -185,7 +185,7 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
+				export BOOST_ROOT="${HOME}/opt/boost"
 			;;
 			*)
 				printf "\\n\\tUnsupported Linux Distribution. Exiting now.\\n\\n"
