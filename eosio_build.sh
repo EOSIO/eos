@@ -169,7 +169,7 @@
 				C_COMPILER=gcc
 				MONGOD_CONF=/etc/mongod.conf
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
+				export BOOST_ROOT="${HOME}/opt/boost"
 			;;
 			"Linux Mint")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
