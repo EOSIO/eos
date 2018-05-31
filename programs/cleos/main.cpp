@@ -874,7 +874,7 @@ struct create_account_subcommand {
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
                auto net = to_asset(stake_net);
                auto cpu = to_asset(stake_cpu);
-               if ( net.get_amount() == 0 && cpu.get_amount() == 0 ) {
+               if ( net.get_amount() != 0 || cpu.get_amount() != 0 ) {
                   action delegate = create_delegate( creator, account_name, net, cpu, transfer);
                   send_actions( { create, buyram, delegate } );
                } else {
