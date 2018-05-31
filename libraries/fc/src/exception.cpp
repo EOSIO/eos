@@ -299,6 +299,11 @@ namespace fc
       return *this;
    }
 
+   void throw_assertion_failure( const std::string& message )
+   {
+      FC_THROW_EXCEPTION( fc::assert_exception, message );
+   }
+
    void record_assert_trip(
       const char* filename,
       uint32_t lineno,
