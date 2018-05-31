@@ -130,6 +130,46 @@ class Utils:
         ret=Utils.waitForObj(myLam, timeout)
         return False if ret is None else ret
 
+    @staticmethod
+    def filterJsonObject(data):
+        firstIdx=data.find('{')
+        lastIdx=data.rfind('}')
+        retStr=data[firstIdx:lastIdx+1]
+        return retStr
+
+    @staticmethod
+    def runCmdArrReturnJson(cmdArr, trace=False, silentErrors=True):
+        retStr=Utils.checkOutput(cmdArr)
+        jStr=Utils.filterJsonObject(retStr)
+        if trace: Utils.Print ("RAW > %s"% (retStr))
+        if trace: Utils.Print ("JSON> %s"% (jStr))
+        if not jStr:
+            msg="Received empty JSON response"
+            if not silentErrors:
+                Utils.Print ("ERROR: "+ msg)
+                Utils.Print ("RAW > %s"% retStr)
+            raise TypeError(msg)
+
+        try:
+            jsonData=json.loads(jStr)
+            return jsonData
+        except json.decoder.JSONDecodeError as ex:
+            Utils.Print (ex)
+            Utils.Print ("RAW > %s"% retStr)
+            Utils.Print ("JSON> %s"% jStr)
+            raise
+
+    @staticmethod
+    def runCmdReturnStr(cmd, trace=False):
+        retStr=Utils.checkOutput(cmd.split())
+        if trace: Utils.Print ("RAW > %s"% (retStr))
+        return retStr
+
+    @staticmethod
+    def runCmdReturnJson(cmd, trace=False, silentErrors=False):
+        cmdArr=shlex.split(cmd)
+        return Utils.runCmdArrReturnJson(cmdArr, trace=trace, silentErrors=silentErrors)
+
 
 ###########################################################################################
 class Account(object):
@@ -184,57 +224,6 @@ class Node(object):
 
         assert trans["processed"]["receipt"]["status"] == "executed", printTrans(trans)
 
-    @staticmethod
-    def runCmdReturnJson(cmd, trace=False, silentErrors=False):
-        cmdArr=shlex.split(cmd)
-        retStr=Utils.checkOutput(cmdArr)
-        jStr=Node.filterJsonObject(retStr)
-        if trace: Utils.Print ("RAW > %s"% (retStr))
-        if trace: Utils.Print ("JSON> %s"% (jStr))
-        if not jStr:
-            msg="Received empty JSON response"
-            if not silentErrors:
-                Utils.Print ("ERROR: "+ msg)
-                Utils.Print ("RAW > %s"% retStr)
-            raise TypeError(msg)
-
-        try:
-            jsonData=json.loads(jStr)
-            return jsonData
-        except json.decoder.JSONDecodeError as ex:
-            Utils.Print (ex)
-            Utils.Print ("RAW > %s"% retStr)
-            Utils.Print ("JSON> %s"% jStr)
-            raise
-
-    @staticmethod
-    def __runCmdArrReturnJson(cmdArr, trace=False):
-        retStr=Utils.checkOutput(cmdArr)
-        jStr=Node.filterJsonObject(retStr)
-        if trace: Utils.Print ("RAW > %s"% (retStr))
-        if trace: Utils.Print ("JSON> %s"% (jStr))
-        jsonData=json.loads(jStr)
-        return jsonData
-
-    @staticmethod
-    def runCmdReturnStr(cmd, trace=False):
-        retStr=Node.__checkOutput(cmd.split())
-        if trace: Utils.Print ("RAW > %s"% (retStr))
-        return retStr
-
-    @staticmethod
-    def filterJsonObject(data):
-        firstIdx=data.find('{')
-        lastIdx=data.rfind('}')
-        retStr=data[firstIdx:lastIdx+1]
-        return retStr
-
-    @staticmethod
-    def __checkOutput(cmd):
-        retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
-        #retStr=subprocess.check_output(cmd).decode("utf-8")
-        return retStr
-
     # Passes input to stdin, executes cmd. Returns tuple with return code(int),
     #  stdout(byte stream) and stderr(byte stream).
     @staticmethod
@@ -267,7 +256,7 @@ class Node(object):
         outStr=Node.byteArrToStr(outs)
         if not outStr:
             return None
-        extJStr=Node.filterJsonObject(outStr)
+        extJStr=Utils.filterJsonObject(outStr)
         if not extJStr:
             return None
         jStr=Node.normalizeJsonObject(extJStr)
@@ -319,7 +308,7 @@ class Node(object):
             cmd="%s %s get block %s" % (Utils.EosClientPath, self.endpointArgs, blockNum)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
-                trans=Node.runCmdReturnJson(cmd)
+                trans=Utils.runCmdReturnJson(cmd)
                 return trans
             except subprocess.CalledProcessError as ex:
                 if not silentErrors:
@@ -391,7 +380,7 @@ class Node(object):
             cmd="%s %s get transaction %s" % (Utils.EosClientPath, self.endpointArgs, transId)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
-                trans=Node.runCmdReturnJson(cmd)
+                trans=Utils.runCmdReturnJson(cmd)
                 return trans
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
@@ -561,7 +550,7 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
             transId=Node.getTransId(trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -588,7 +577,7 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
             transId=Node.getTransId(trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -610,7 +599,7 @@ class Node(object):
         cmd="%s %s get account -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -633,7 +622,7 @@ class Node(object):
         cmd="%s %s get table %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, scope, table)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -663,7 +652,7 @@ class Node(object):
         cmd="%s %s get currency balance %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, account, symbol)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnStr(cmd)
+            trans=Utils.runCmdReturnStr(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -679,7 +668,7 @@ class Node(object):
         cmd="%s %s get currency stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -746,7 +735,7 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (s))
         trans=None
         try:
-            trans=Node.__runCmdArrReturnJson(cmdArr)
+            trans=Utils.runCmdArrReturnJson(cmdArr)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
@@ -827,7 +816,7 @@ class Node(object):
         cmd="%s %s get accounts %s" % (Utils.EosClientPath, self.endpointArgs, key)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -843,7 +832,7 @@ class Node(object):
         cmd="%s %s get actions -j %s %d %d" % (Utils.EosClientPath, self.endpointArgs, account.name, pos, offset)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            actions=Node.runCmdReturnJson(cmd)
+            actions=Utils.runCmdReturnJson(cmd)
             return actions
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -862,7 +851,7 @@ class Node(object):
         cmd="%s %s get servants %s" % (Utils.EosClientPath, self.endpointArgs, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -927,7 +916,7 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
-            trans=Node.runCmdReturnJson(cmd, trace=False)
+            trans=Utils.runCmdReturnJson(cmd, trace=False)
         except subprocess.CalledProcessError as ex:
             if not shouldFail:
                 msg=ex.output.decode("utf-8")
@@ -987,7 +976,7 @@ class Node(object):
         s=" ".join(cmdArr)
         if Utils.Debug: Utils.Print("cmd: %s" % (s))
         try:
-            trans=Node.__runCmdArrReturnJson(cmdArr)
+            trans=Utils.runCmdArrReturnJson(cmdArr)
             return (True, trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -1001,7 +990,7 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Utils.runCmdReturnJson(cmd)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during set permission. %s" % (msg))
@@ -1016,7 +1005,7 @@ class Node(object):
         cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd, silentErrors=silentErrors)
+            trans=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
             return trans
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
