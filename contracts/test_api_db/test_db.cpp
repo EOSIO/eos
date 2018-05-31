@@ -159,7 +159,7 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
 
       buffer_len = 20;
       len = db_get_i64(itr, value, 0);
-      len = db_get_i64(itr, value, len);
+      len = db_get_i64(itr, value, (uint32_t)len);
       value[len] = '\0';
       std::string sfull(value);
       eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64 - full");
