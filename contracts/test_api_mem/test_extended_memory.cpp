@@ -90,7 +90,7 @@ void test_extended_memory::test_page_memory_exceeded() {
 }
 
 void test_extended_memory::test_page_memory_negative_bytes() {
-   eosio_assert(reinterpret_cast<int32_t>(sbrk(-1)) == -1, "Should have errored for trying to remove memory");
+   eosio_assert(reinterpret_cast<int32_t>(sbrk((uint32_t)-1)) == -1, "Should have errored for trying to remove memory");
 }
 
 void test_extended_memory::test_initial_buffer() {

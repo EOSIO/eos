@@ -15,7 +15,7 @@ namespace eosio {
 
          void setalimits( account_name account, uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight ) {
             require_auth( _self );
-            set_resource_limits( account, ram_bytes, net_weight, cpu_weight );
+            set_resource_limits( account, (int64_t)ram_bytes, (int64_t)net_weight, (int64_t)cpu_weight );
          }
 
          void setglimits( uint64_t ram, uint64_t net, uint64_t cpu ) {
