@@ -827,7 +827,7 @@ struct create_account_subcommand {
    string active_key_str;
    string stake_net;
    string stake_cpu;
-   uint32_t buy_ram_bytes_in_kbytes = 8;
+   uint32_t buy_ram_bytes_in_kbytes = 0;
    string buy_ram_eos;
    bool transfer;
    bool simple;
@@ -866,10 +866,20 @@ struct create_account_subcommand {
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
+               if ( buy_ram_eos.empty() && buy_ram_bytes_in_kbytes == 0) {
+                  std::cerr << "ERROR: Either --buy-ram-EOS or --buy-ram-bytes with non-zero value is required" << std::endl;
+                  return;
+               }
                action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
-               action delegate = create_delegate( creator, account_name, to_asset(stake_net), to_asset(stake_cpu), transfer);
-               send_actions( { create, buyram, delegate } );
+               auto net = to_asset(stake_net);
+               auto cpu = to_asset(stake_cpu);
+               if ( 0 < net.get_amount() + cpu.get_amount() ) {
+                  action delegate = create_delegate( creator, account_name, net, cpu, transfer);
+                  send_actions( { create, buyram, delegate } );
+               } else {
+                  send_actions( { create, buyram } );
+               }
             } else {
                send_actions( { create } );
             }
