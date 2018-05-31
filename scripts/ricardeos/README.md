@@ -9,7 +9,7 @@ Running this will scan the directory of the abi for all rc.md files and add them
 The script will also notify the user of any actions that the script cannot find rc.md files for.
 
 ## Export Example
-`$ python3 ricardeos.py export ../../contracts/currency/currency.abi`
+`$ python3 ricardeos.py export /path/to/sorce-contract.abi`
 
 Running this will dump the contents of all ricardian contracts:
 
