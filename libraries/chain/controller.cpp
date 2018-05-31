@@ -1047,7 +1047,7 @@ struct controller_impl {
          vector<account_name> blacklisted;
          blacklisted.reserve( actors.size() );
          set_intersection( actors.begin(), actors.end(),
-                           conf.actor_blacklist.begin(), conf.actor_whitelist.end(),
+                           conf.actor_blacklist.begin(), conf.actor_blacklist.end(),
                            std::back_inserter(blacklisted)
                          );
          ENU_ASSERT( blacklisted.size() == 0, actor_blacklist_exception,
