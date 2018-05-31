@@ -11,7 +11,6 @@
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/scoped_exit.hpp>
-#include <fc/network/http/http_client.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -25,7 +24,6 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/signals2/connection.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
@@ -154,8 +152,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       fc::optional<scoped_connection>                          _accepted_block_connection;
       fc::optional<scoped_connection>                          _irreversible_block_connection;
-
-      fc::http_client                                          _http_client;
 
       /*
        * HACK ALERT
@@ -434,8 +430,6 @@ void producer_plugin::set_program_options(
           "   KEOSD:<data>           \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
          ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a keosd provider for signing")
-         ("trusted-root-cert", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "PEM encoded trusted root certificate (or path to file containing one) used to validate any TLS connections made.  (may specify multiple times)\n")
          ;
    config_file_options.add(producer_options);
 }
@@ -490,7 +484,7 @@ make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl,
          fc::variant params;
          fc::to_variant(std::make_pair(digest, pubkey), params);
          auto deadline = impl->_keosd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_keosd_provider_timeout_us : fc::time_point::maximum();
-         return impl->_http_client.post_sync(keosd_url, params, deadline).as<chain::signature_type>();
+         return app().get_plugin<http_client_plugin>().get_client().post_sync(keosd_url, params, deadline).as<chain::signature_type>();
       } else {
          return signature_type();
       }
@@ -541,28 +535,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
          } catch (...) {
             elog("Malformed signature provider: \"${val}\", ignoring!", ("val", key_spec_pair));
-         }
-      }
-   }
-
-   if ( options.count("trusted-root-cert") ) {
-      const std::vector<std::string> root_pems = options["trusted-root-cert"].as<std::vector<std::string>>();
-      for (const auto& root_pem : root_pems) {
-         if (boost::algorithm::starts_with(root_pem, "-----BEGIN CERTIFICATE-----\n")) {
-            try {
-               my->_http_client.add_cert(root_pem);
-            } catch (const fc::exception& e) {
-               elog("Failed add PEM literal\n${p} : ${e}", ("p", root_pem)("e",e.to_detail_string()));
-            }
-         } else {
-            try {
-               auto infile = std::ifstream(root_pem);
-               std::stringstream sstr;
-               sstr << infile.rdbuf();
-               my->_http_client.add_cert(sstr.str());
-            } catch (const fc::exception& e) {
-               elog("Failed to read PEM ${f} : ${e}", ("f", root_pem)("e",e.to_detail_string()));
-            }
          }
       }
    }
