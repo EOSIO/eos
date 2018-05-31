@@ -970,7 +970,11 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    transaction pretty_input;
-   from_variant(params.transaction, pretty_input);
+   auto resolver = make_resolver(this);
+   try {
+      abi_serializer::from_variant(params.transaction, pretty_input, resolver);
+   } ENU_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
+
    auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);
    get_required_keys_result result;
    result.required_keys = required_keys_set;

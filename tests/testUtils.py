@@ -1272,17 +1272,17 @@ class WalletMgr(object):
 
         return wallets
 
-    def getKeys(self):
+    def getKeys(self, wallet):
         keys=[]
 
         p = re.compile(r'\n\s+\"(\w+)\"\n', re.MULTILINE)
-        cmd="%s %s wallet keys" % (Utils.EnuClientPath, self.endpointArgs)
+        cmd="%s %s wallet private_keys --name %s --password %s " % (Utils.EnuClientPath, self.endpointArgs, wallet.name, wallet.password)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("retStr: %s" % (retStr))
         m=p.findall(retStr)
         if m is None:
-            Utils.Print("ERROR: wallet keys parser failure")
+            Utils.Print("ERROR: wallet private_keys parser failure")
             return None
         keys=m
 
@@ -1297,11 +1297,22 @@ class WalletMgr(object):
             with open(WalletMgr.__walletLogFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
 
-    @staticmethod
-    def killall():
-        cmd="pkill -9 %s" % (Utils.EnuWalletName)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        subprocess.call(cmd.split())
+    # @staticmethod
+    # def killall():
+    #     cmd="pkill -9 %s" % (Utils.EnuWalletName)
+    #     if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+    #     subprocess.call(cmd.split())
+
+    def killall(self, allInstances=False):
+        """Kill enuwallet instances. allInstances will kill all enuwallet instances running on the system."""
+        if self.__walletPid:
+            os.kill(self.__walletPid, signal.SIGKILL)
+
+        if allInstances:
+            cmd="pkill -9 %s" % (Utils.EnuWalletName)
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            subprocess.call(cmd.split())
+
 
     @staticmethod
     def cleanup():
@@ -2210,17 +2221,19 @@ class Cluster(object):
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
 
-    def killall(self, silent=True):
-        cmd="%s -k 15" % (Utils.EnuLauncherPath)
+    def killall(self, silent=True, allInstances=False):
+        """Kill cluster enunode instances. allInstances will kill all enunode instances running on the system."""
+        cmd="%s -k 9" % (Utils.EnuLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down enu cluster.")
 
-        # ocassionally the launcher cannot kill the enu server
-        cmd="pkill -9 %s" % (Utils.EnuServerName)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Failed to shut down enu cluster.")
+        if allInstances:
+            # ocassionally the launcher cannot kill the enu server
+            cmd="pkill -9 %s" % (Utils.EnuServerName)
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
+                if not silent: Utils.Print("Failed to shut down enu cluster.")
 
         # another explicit nodes shutdown
         for node in self.nodes:
