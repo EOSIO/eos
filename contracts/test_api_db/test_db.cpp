@@ -536,6 +536,9 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
    }
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
+
 void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_t, uint64_t) {
    auto key = eosio::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
    char* ptr = (char*)(&key);
@@ -545,3 +548,5 @@ void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_
    // test that find_primary doesn't crash on unaligned data
    db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (eosio::key256*)(ptr), 2, 0);
 }
+
+#pragma clang diagnostic pop

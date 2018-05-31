@@ -74,13 +74,13 @@ void test_datastream::test_basic()
         int a[2];
         bool operator==(const StaticArray &o) const { return a[0] == o.a[0] && a[1] == o.a[1]; }
     };
-    testtype<StaticArray>::run({10,20}, "StaticArray");
+    testtype<StaticArray>::run({{10,20}}, "StaticArray");
 
     testtype<std::string>::run("hello", "string");
 
     testtype<std::vector<int> >::run({10,20,30}, "vector");
     testtype<std::vector<int> >::run({}, "empty vector");
-    testtype<std::array<int, 3> >::run({10,20,30}, "std::array<T,N>");
+    testtype<std::array<int, 3> >::run({{10,20,30}}, "std::array<T,N>");
     testtype<std::map<int, std::string> >::run({{1,"apple"}, {2,"cat"}, {3,"panda"}}, "map");
     testtype<std::tuple<int, std::string, double> >::run({1, "abc", 3.3333}, "tuple");
 }
