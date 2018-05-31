@@ -143,6 +143,7 @@
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
+				export BOOST_ROOT="${HOME}/opt/boost"
 			;;
 			"CentOS Linux")
 				FILE="${PWD}/scripts/eosio_build_centos.sh"
@@ -152,6 +153,7 @@
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
+				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"elementary OS")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
@@ -159,6 +161,7 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
+				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"Fedora")
 				FILE="${PWD}/scripts/eosio_build_fedora.sh"
@@ -166,6 +169,7 @@
 				C_COMPILER=gcc
 				MONGOD_CONF=/etc/mongod.conf
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"Linux Mint")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
@@ -173,6 +177,7 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
+				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"Ubuntu")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
@@ -180,13 +185,13 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
+				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			*)
 				printf "\\n\\tUnsupported Linux Distribution. Exiting now.\\n\\n"
 				exit 1
 		esac
 
-		export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 		OPENSSL_ROOT_DIR=/usr/include/openssl
 		WASM_ROOT="${HOME}/opt/wasm"
 	fi

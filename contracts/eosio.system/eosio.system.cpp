@@ -85,6 +85,15 @@ namespace eosiosystem {
       set_privileged( account, ispriv );
    }
 
+   void system_contract::rmvproducer( account_name producer ) {
+      require_auth( _self );
+      auto prod = _producers.find( producer );
+      eosio_assert( prod != _producers.end(), "producer not found" );
+      _producers.modify( prod, 0, [&](auto& p) {
+            p.deactivate();
+         });
+   }
+
    void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
       require_auth( bidder );
       eosio_assert( eosio::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
@@ -179,7 +188,7 @@ EOSIO_ABI( eosiosystem::system_contract,
      // native.hpp (newaccount definition is actually in eosio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // eosio.system.cpp
-     (setram)(setparams)(setpriv)(bidname)
+     (setram)(setparams)(setpriv)(rmvproducer)(bidname)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
      // voting.cpp
