@@ -211,5 +211,24 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
    return stxn;
 }
 
+chain::signature_type
+wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_type& key) {
+   check_timeout();
+
+   try {
+      for (const auto& i : wallets) {
+         if (!i.second->is_locked()) {
+            const auto& k = i.second->try_get_private_key(key);
+            if (k) {
+               return k->sign(digest);
+            }
+         }
+      }
+   } FC_LOG_AND_RETHROW();
+
+   ENU_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
+}
+
+
 } // namespace wallet
 } // namespace enumivo
