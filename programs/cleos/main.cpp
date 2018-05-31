@@ -844,9 +844,9 @@ struct create_account_subcommand {
                                    (localized("The amount of EOS delegated for net bandwidth")))->required();
          createAccount->add_option("--stake-cpu", stake_cpu,
                                    (localized("The amount of EOS delegated for CPU bandwidth")))->required();
-         createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
+         createAccount->add_option("--buy-ram-kbytes", buy_ram_bytes_in_kbytes,
                                    (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
-         createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
+         createAccount->add_option("--buy-ram", buy_ram_eos,
                                    (localized("The amount of RAM bytes to purchase for the new account in EOS")));
          createAccount->add_flag("--transfer", transfer,
                                  (localized("Transfer voting power and right to unstake EOS to receiver")));
