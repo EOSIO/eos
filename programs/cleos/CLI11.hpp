@@ -863,6 +863,7 @@ class Option {
     /// Set the option as required
     Option *required(bool value = true) {
         required_ = value;
+        description_ += " (required)";
         return this;
     }
 
