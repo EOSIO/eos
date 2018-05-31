@@ -309,9 +309,11 @@ namespace eosio {
             /** to minimize latency when sending large 1MB blocks, the send buffer should not have to
              * wait for an "ack", making this larger could result in higher latency for smaller urgent
              * messages.
+             *  1MB blocks plus some additional room for encryption if enabled plus message overhead,
+             *  add an addition 512k to be conservative.
              */
-            _ws->next_layer().set_option( boost::asio::socket_base::send_buffer_size( 1024*1024 ) );
-            _ws->next_layer().set_option( boost::asio::socket_base::receive_buffer_size( 1024*1024 ) );
+            _ws->next_layer().set_option( boost::asio::socket_base::send_buffer_size( 1024*1024 + 512*1024 ) );
+            _ws->next_layer().set_option( boost::asio::socket_base::receive_buffer_size( 1024*1024 + 512*1024 ) );
            } catch ( ... ) {
               elog( "uncaught exception on set socket options" );
            }
