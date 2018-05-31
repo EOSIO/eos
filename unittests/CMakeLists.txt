@@ -31,12 +31,12 @@ add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_ram_l
 
 #Manually run unit_test for all supported runtimes
 #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
-add_test(NAME unit_test_binaryen COMMAND unit_test
- -t \!wasm_tests/weighted_cpu_limit_tests
- --report_level=detailed --color_output -- --binaryen)
-add_test(NAME unit_test_wavm COMMAND unit_test
- -t \!wasm_tests/weighted_cpu_limit_tests
- --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+# add_test(NAME unit_test_binaryen COMMAND unit_test
+#  -t \!wasm_tests/weighted_cpu_limit_tests
+#  --report_level=detailed --color_output -- --binaryen)
+# add_test(NAME unit_test_wavm COMMAND unit_test
+#  -t \!wasm_tests/weighted_cpu_limit_tests
+#  --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 
 if(ENABLE_COVERAGE_TESTING)
 
