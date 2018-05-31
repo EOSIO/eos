@@ -30,6 +30,21 @@ public:
    :_ioc()
    ,_sslc(ssl::context::sslv23_client)
    {
+      set_verify_peers(true);
+   }
+
+   void add_cert(const std::string& cert_pem_string) {
+      error_code ec;
+      _sslc.add_certificate_authority(boost::asio::buffer(cert_pem_string.data(), cert_pem_string.size()), ec);
+      FC_ASSERT(!ec, "Failed to add cert: ${msg}", ("msg", ec.message()));
+   }
+
+   void set_verify_peers(bool enabled) {
+      if (enabled) {
+         _sslc.set_verify_mode(ssl::verify_peer);
+      } else {
+         _sslc.set_verify_mode(ssl::verify_none);
+      }
    }
 
    template<typename SyncReadStream, typename Fn, typename CancelFn>
@@ -38,7 +53,12 @@ public:
       boost::asio::deadline_timer timer(s.get_io_service());
 
       timer.expires_at(deadline);
-      timer.async_wait([&timer_result] (const error_code& error) { timer_result.emplace(error); });
+      bool timer_cancelled = false;
+      timer.async_wait([&timer_result, &timer_cancelled] (const error_code& error) {
+         if (!error && !timer_cancelled) {
+            timer_result.emplace(error);
+         }
+      });
 
       optional<error_code> f_result;
       f(f_result);
@@ -47,6 +67,7 @@ public:
       while (s.get_io_service().run_one())
       {
          if (f_result) {
+            timer_cancelled = true;
             timer.cancel();
          } else if (timer_result) {
             cf();
@@ -111,12 +132,6 @@ public:
       });
    }
 
-   void add_cert(const std::string& cert_pem_string) {
-      error_code ec;
-      _sslc.add_certificate_authority(boost::asio::buffer(cert_pem_string.data(), cert_pem_string.size()), ec);
-      FC_ASSERT(!ec, "Failed to add cert: ${msg}", ("msg", ec.message()));
-   }
-
    host_key url_to_host_key( const url& dest ) {
       FC_ASSERT(dest.host(), "Provided URL has no host");
       uint16_t port = 80;
@@ -153,13 +168,14 @@ public:
       }
 
       error_code ec = sync_connect_with_timeout(ssl_socket->next_layer(), *dest.host(), dest.port() ? std::to_string(*dest.port()) : "443", deadline);
-      FC_ASSERT(!ec, "Failed to connect: ${message}", ("message",ec.message()));
-
-      sync_do_with_deadline(ssl_socket->next_layer(), deadline, [&ssl_socket](optional<error_code>& final_ec){
-         ssl_socket->async_handshake(ssl::stream_base::client, [&final_ec](const error_code& ec) {
-            final_ec.emplace(ec);
+      if (!ec) {
+         ec = sync_do_with_deadline(ssl_socket->next_layer(), deadline, [&ssl_socket](optional<error_code>& final_ec) {
+            ssl_socket->async_handshake(ssl::stream_base::client, [&final_ec](const error_code& ec) {
+               final_ec.emplace(ec);
+            });
          });
-      });
+      }
+      FC_ASSERT(!ec, "Failed to connect: ${message}", ("message",ec.message()));
 
       auto res = _connections.emplace(std::piecewise_construct,
                                       std::forward_as_tuple(key),
@@ -332,6 +348,10 @@ variant http_client::post_sync(const url& dest, const variant& payload, const fc
 
 void http_client::add_cert(const std::string& cert_pem_string) {
    _my->add_cert(cert_pem_string);
+}
+
+void http_client::set_verify_peers(bool enabled) {
+   _my->set_verify_peers(enabled);
 }
 
 http_client::~http_client() {

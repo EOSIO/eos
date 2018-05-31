@@ -27,6 +27,7 @@ class http_client {
       }
 
       void add_cert(const std::string& cert_pem_string);
+      void set_verify_peers(bool enabled);
 
 private:
    std::unique_ptr<class http_client_impl> _my;
