@@ -414,8 +414,8 @@ void producer_plugin::set_program_options(
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
-         ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( 30 * 60 ),
-          "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on")
+         ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( -1 ),
+          "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on (use negative value to indicate unlimited)")
          ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -752,7 +752,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    } else if ( _pause_production ) {
       elog("Not producing block because production is explicitly paused");
       _pending_block_mode = pending_block_mode::speculating;
-   } else if ( irreversible_block_age >= _max_irreversible_block_age_us ) {
+   } else if ( _max_irreversible_block_age_us.count() >= 0 && irreversible_block_age >= _max_irreversible_block_age_us ) {
       elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", ("age", irreversible_block_age.count() / 1'000'000)( "max", _max_irreversible_block_age_us.count() / 1'000'000 ));
       _pending_block_mode = pending_block_mode::speculating;
    }

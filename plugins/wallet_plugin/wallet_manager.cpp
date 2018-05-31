@@ -95,18 +95,16 @@ std::vector<std::string> wallet_manager::list_wallets() {
    return result;
 }
 
-map<public_key_type,private_key_type> wallet_manager::list_keys() {
+map<public_key_type,private_key_type> wallet_manager::list_keys(const string& name, const string& pw) {
    check_timeout();
-   map<public_key_type,private_key_type> result;
-   for (const auto& i : wallets) {
-      if (!i.second->is_locked()) {
-         const auto& keys = i.second->list_keys();
-         for (const auto& i : keys) {
-            result[i.first] = i.second;
-         }
-      }
-   }
-   return result;
+
+   if (wallets.count(name) == 0)
+      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+   auto& w = wallets.at(name);
+   if (w->is_locked())
+      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+   w->check_password(pw); //throws if bad password
+   return w->list_keys();
 }
 
 flat_set<public_key_type> wallet_manager::get_public_keys() {

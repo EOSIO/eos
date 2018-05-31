@@ -1,7 +1,5 @@
 # Action - `{{ unlinkauth }}`
 
-This Contract is legally binding and can be used in the event of a dispute. 
-
 ### Description
 
 The `{{ unlinkauth }}` action... 
@@ -16,5 +14,3 @@ The `{{ unlinkauth }}` action requires the following `inputs` and `input types`:
 
 
 As an authorized party I {{ signer }} wish to UNKNOWN
-
-All disputes arising from this contract shall be resolved in the EOS Core Arbitration Forum. 
