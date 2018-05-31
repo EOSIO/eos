@@ -159,6 +159,8 @@ try:
         cmdError("eos wallet create")
         errorExit("Failed to create wallet %s." % (defproduceraWalletName))
 
+    Print("Wallet \"%s\" password=%s." % (defproduceraWalletName, defproduceraWallet.password.encode("utf-8")))
+
     defproduceraAccount=cluster.defproduceraAccount
     defproducerbAccount=cluster.defproducerbAccount
 
@@ -505,6 +507,16 @@ try:
         errorExit("Failed to push message to currency1111 contract")
     transId=testUtils.Node.getTransId(trans[1])
 
+    Print("push duplicate transfer action to currency1111 contract")
+    transDuplicate=node.pushMessage(contract, action, data, opts, True)
+    if transDuplicate is not None and transDuplicate[0]:
+        transDuplicateId=testUtils.Node.getTransId(transDuplicate[1])
+        if transId != transDuplicateId:
+            cmdError("%s push message currency1111 duplicate transfer incorrectly accepted, but they were generated with different transaction ids, it is likely a timing issue, report if problem persists, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+        else:
+            cmdError("%s push message currency1111 transfer, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+        errorExit("Failed to reject duplicate message for currency1111 contract")
+
     Print("verify transaction exists")
     if not node.waitForTransIdOnNode(transId):
         cmdError("%s get transaction trans_id" % (ClientName))
@@ -574,6 +586,99 @@ try:
     except (AssertionError, TypeError, KeyError) as _:
         Print("FAILURE - Failed to parse block transaction. %s" % (myTrans))
         raise
+
+    Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
+    if not walletMgr.unlockWallet(defproduceraWallet):
+        cmdError("%s wallet unlock" % (ClientName))
+        errorExit("Failed to unlock wallet %s" % (defproduceraWallet.name))
+
+    Print("push transfer action to currency1111 contract that would go negative")
+    contract="currency1111"
+    action="transfer"
+    data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
+    data +="\"00.0051 CUR\",\"memo\":\"test\"}"
+    opts="--permission defproducera@active"
+    trans=node.pushMessage(contract, action, data, opts, True)
+    if trans is None or trans[0]:
+        cmdError("%s push message currency1111 transfer should have failed" % (ClientName))
+        errorExit("Failed to reject invalid transfer message to currency1111 contract")
+
+    Print("read current contract balance")
+    amountStr=node.getTableAccountBalance("currency1111", defproduceraAccount.name)
+
+    expected="0.0050 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="99999.9950 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("push another transfer action to currency1111 contract")
+    contract="currency1111"
+    action="transfer"
+    data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
+    data +="\"00.0050 CUR\",\"memo\":\"test\"}"
+    opts="--permission defproducera@active"
+    trans=node.pushMessage(contract, action, data, opts)
+    if trans is None or not trans[0]:
+        cmdError("%s push message currency1111 transfer" % (ClientName))
+        errorExit("Failed to push message to currency1111 contract")
+    transId=testUtils.Node.getTransId(trans[1])
+
+    Print("read current contract balance")
+    amountStr=node.getCurrencyBalance("currency1111", defproduceraAccount.name, "CUR")
+    expected="0.0000 CUR"
+    try:
+        actual=amountStr.strip()
+        assert(expected == actual or not actual)
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Failed get currecy balance assertion. (expected=<%s>, actual=<%s>)" % (str(expected), str(actual)))
+        raise
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="100000.0000 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("push transfer action to currency1111 contract that would go negative")
+    contract="currency1111"
+    action="transfer"
+    data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
+    data +="\"00.0025 CUR\",\"memo\":\"test\"}"
+    opts="--permission defproducera@active"
+    trans=node.pushMessage(contract, action, data, opts, True)
+    if trans is None or trans[0]:
+        cmdError("%s push message currency1111 transfer should have failed" % (ClientName))
+        errorExit("Failed to reject invalid transfer message to currency1111 contract")
+
+    Print("read current contract balance")
+    amountStr=node.getCurrencyBalance("currency1111", defproduceraAccount.name, "CUR")
+    expected="0.0000 CUR"
+    try:
+        actual=amountStr.strip()
+        assert(expected == actual or not actual)
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Failed get currecy balance assertion. (expected=<%s>, actual=<%s>)" % (str(expected), str(actual)))
+        raise
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="100000.0000 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("Locking wallet \"%s\"." % (defproduceraWallet.name))
+    if not walletMgr.lockWallet(defproduceraWallet):
+        cmdError("%s wallet lock" % (ClientName))
+        errorExit("Failed to lock wallet %s" % (defproduceraWallet.name))
 
 
     Print("Exchange Contract Tests")
