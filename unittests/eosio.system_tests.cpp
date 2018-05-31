@@ -638,12 +638,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester, * boost::unit_t
    REQUIRE_MATCHING_OBJECT( voter( "bob111111111", core_from_string("11.1111") ), get_voter_info( "bob111111111" ) );
 
    //bob111111111 votes for alice1111111
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob111111111), N(voteproducer), mvo()
-                                               ("voter",  "bob111111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(alice1111111) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), { N(alice1111111) } ) );
 
    //check that producer parameters stay the same after voting
    prod = get_producer_info( "alice1111111" );
@@ -656,12 +651,8 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester, * boost::unit_t
    REQUIRE_MATCHING_OBJECT( voter( "carol1111111", core_from_string("22.2222") ), get_voter_info( "carol1111111" ) );
    BOOST_REQUIRE_EQUAL( core_from_string("2977.7778"), get_balance( "carol1111111" ) );
    //carol1111111 votes for alice1111111
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(carol1111111), N(voteproducer), mvo()
-                                               ("voter",  "carol1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(alice1111111) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(carol1111111), { N(alice1111111) } ) );
+
    //new stake votes be added to alice1111111's total_votes
    prod = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("33.3333")) == prod["total_votes"].as_double() );
@@ -681,12 +672,8 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester, * boost::unit_t
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("86.8886")) == prod["total_votes"].as_double() );
 
    //bob111111111 revokes his vote
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob111111111), N(voteproducer), mvo()
-                                               ("voter",  "bob111111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>() )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), vector<account_name>() ) );
+
    //should decrease alice1111111's total_votes
    prod = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("20.2220")) == prod["total_votes"].as_double() );
@@ -714,12 +701,7 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester, * bo
 
    //bob111111111 should not be able to vote for alice1111111 who is not a producer
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer is not registered" ),
-                        push_action( N(bob111111111), N(voteproducer), mvo()
-                                    ("voter",  "bob111111111")
-                                    ("proxy", name(0).to_string() )
-                                    ("producers", vector<account_name>{ N(alice1111111) } )
-                        )
-   );
+                        vote( N(bob111111111), { N(alice1111111) } ) );
 
    //alice1111111 registers as a producer
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
@@ -742,12 +724,7 @@ BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester, * bo
 
    //bob111111111 should not be able to vote for alice1111111 who is an unregistered producer
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer is not currently registered" ),
-                        push_action( N(bob111111111), N(voteproducer), mvo()
-                                    ("voter",  "bob111111111")
-                                    ("proxy", name(0).to_string() )
-                                    ("producers", vector<account_name>{ N(alice1111111) } )
-                        )
-   );
+                        vote( N(bob111111111), { N(alice1111111) } ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -759,12 +736,7 @@ BOOST_FIXTURE_TEST_CASE( more_than_30_producer_voting, eosio_system_tester ) try
 
    //bob111111111 should not be able to vote for alice1111111 who is not a producer
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "attempt to vote for too many producers" ),
-                        push_action( N(bob111111111), N(voteproducer), mvo()
-                                     ("voter",  "bob111111111")
-                                     ("proxy", name(0).to_string() )
-                                     ("producers", vector<account_name>(31, N(alice1111111)) )
-                        )
-   );
+                        vote( N(bob111111111), vector<account_name>(31, N(alice1111111)) ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -787,12 +759,7 @@ BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, eosio_system_tester ) try 
 
    //bob111111111 should not be able to vote for alice1111111 who is not a producer
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer votes must be unique and sorted" ),
-                        push_action( N(bob111111111), N(voteproducer), mvo()
-                                     ("voter",  "bob111111111")
-                                     ("proxy", name(0).to_string() )
-                                     ("producers", vector<account_name>(30, N(alice1111111)) )
-                        )
-   );
+                        vote( N(bob111111111), vector<account_name>(30, N(alice1111111)) ) );
 
    auto prod = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( 0 == prod["total_votes"].as_double() );
@@ -818,12 +785,7 @@ BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester, * boost::unit
    REQUIRE_MATCHING_OBJECT( voter( "bob111111111", core_from_string("13.5791") ), get_voter_info( "bob111111111" ) );
 
    //bob111111111 votes for alice1111111
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob111111111), N(voteproducer), mvo()
-                                               ("voter",  "bob111111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(alice1111111) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote(N(bob111111111), { N(alice1111111) } ) );
 
    auto prod = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("13.5791")) == prod["total_votes"].as_double() );
@@ -897,12 +859,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester, * boost::u
    //carol1111111 votes for alice1111111 and bob111111111
    issue( "carol1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "carol1111111", core_from_string("15.0005"), core_from_string("5.0000") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(carol1111111), N(voteproducer), mvo()
-                                               ("voter",  "carol1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(alice1111111), N(bob111111111) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(carol1111111), { N(alice1111111), N(bob111111111) } ) );
 
    auto alice_info = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("20.0005")) == alice_info["total_votes"].as_double() );
@@ -910,12 +867,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester, * boost::u
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("20.0005")) == bob_info["total_votes"].as_double() );
 
    //carol1111111 votes for alice1111111 (but revokes vote for bob111111111)
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(carol1111111), N(voteproducer), mvo()
-                                               ("voter",  "carol1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(alice1111111) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(carol1111111), { N(alice1111111) } ) );
 
    alice_info = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("20.0005")) == alice_info["total_votes"].as_double() );
@@ -925,12 +877,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_two_producers, eosio_system_tester, * boost::u
    //alice1111111 votes for herself and bob111111111
    issue( "alice1111111", core_from_string("2.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", core_from_string("1.0000"), core_from_string("1.0000") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(voteproducer), mvo()
-                                               ("voter",  "alice1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(alice1111111), N(bob111111111) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote(N(alice1111111), { N(alice1111111), N(bob111111111) } ) );
 
    alice_info = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("22.0005")) == alice_info["total_votes"].as_double() );
@@ -1047,32 +994,17 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester, * 
    //accumulate proxied votes
    issue( "bob111111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("100.0002"), core_from_string("50.0001") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob111111111), N(voteproducer), mvo()
-                                               ("voter",  "bob111111111")
-                                               ("proxy", "alice1111111" )
-                                               ("producers", vector<account_name>() )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote(N(bob111111111), vector<account_name>(), N(alice1111111) ) );
    REQUIRE_MATCHING_OBJECT( proxy( "alice1111111" )( "proxied_vote_weight", stake2votes(core_from_string("150.0003")) ), get_voter_info( "alice1111111" ) );
 
    //vote for producers
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(voteproducer), mvo()
-                                               ("voter",  "alice1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(defproducer1), N(defproducer2) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote(N(alice1111111), { N(defproducer1), N(defproducer2) } ) );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("150.0003")) == get_producer_info( "defproducer1" )["total_votes"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("150.0003")) == get_producer_info( "defproducer2" )["total_votes"].as_double() );
    BOOST_TEST_REQUIRE( 0 == get_producer_info( "defproducer3" )["total_votes"].as_double() );
 
    //vote for another producers
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(voteproducer), mvo()
-                                               ("voter",  "alice1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(defproducer1), N(defproducer3) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(alice1111111), { N(defproducer1), N(defproducer3) } ) );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("150.0003")) == get_producer_info( "defproducer1" )["total_votes"].as_double() );
    BOOST_REQUIRE_EQUAL( 0, get_producer_info( "defproducer2" )["total_votes"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("150.0003")) == get_producer_info( "defproducer3" )["total_votes"].as_double() );
@@ -1135,13 +1067,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
 
    transfer( config::system_account_name, "producvotera", core_from_string("400000000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL(success(), stake("producvotera", core_from_string("100000000.0000"), core_from_string("100000000.0000")));
-
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
-                                              ("voter",  "producvotera")
-                                              ("proxy", name(0).to_string())
-                                              ("producers", vector<account_name>{ N(defproducera) })
-                                              )
-                       );
+   BOOST_REQUIRE_EQUAL(success(), vote( N(producvotera), { N(defproducera) }));
 
    // defproducera is the only active producer
    // produce enough blocks so new schedule kicks in and defproducera produces some blocks
@@ -1167,13 +1093,12 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
 
       BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
 
-      const auto global_state          = get_global_state();
+      const auto     global_state      = get_global_state();
       const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
       const int64_t  perblock_bucket   = global_state["perblock_bucket"].as<int64_t>();
       const int64_t  savings           = get_balance(N(eosio.saving)).get_amount();
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
-
 
       prod = get_producer_info("defproducera");
       BOOST_REQUIRE_EQUAL(1, prod["unpaid_blocks"].as<uint32_t>());
@@ -1247,7 +1172,6 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const asset initial_supply  = get_token_supply();
       const asset initial_balance = get_balance(N(defproducera));
 
-
       BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
 
       const auto global_state          = get_global_state();
@@ -1256,7 +1180,6 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const int64_t  perblock_bucket   = global_state["perblock_bucket"].as<int64_t>();
       const int64_t  savings           = get_balance(N(eosio.saving)).get_amount();
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
-
 
       prod = get_producer_info("defproducera");
       BOOST_REQUIRE_EQUAL(1, prod["unpaid_blocks"].as<uint32_t>());
@@ -1364,33 +1287,10 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
    // producvoterc votes for defproducera ... defproducerz
    // producvoterd votes for abcproducera ... abcproducern
    {
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
-                                                 ("voter",  "producvotera")
-                                                 ("proxy", name(0).to_string())
-                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+10))
-                                                 )
-                          );
-
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterb), N(voteproducer), mvo()
-                                                 ("voter",  "producvoterb")
-                                                 ("proxy", name(0).to_string())
-                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
-                                                 )
-                          );
-
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterc), N(voteproducer), mvo()
-                                                 ("voter",  "producvoterc")
-                                                 ("proxy", name(0).to_string())
-                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+26))
-                                                 )
-                          );
-
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterd), N(voteproducer), mvo()
-                                                 ("voter",  "producvoterd")
-                                                 ("proxy", name(0).to_string())
-                                                 ("producers", vector<account_name>(producer_names.begin()+26, producer_names.end()))
-                                                 )
-                          );
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvotera), vector<account_name>(producer_names.begin(), producer_names.begin()+10)));
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvoterb), vector<account_name>(producer_names.begin(), producer_names.begin()+21)));
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvoterc), vector<account_name>(producer_names.begin(), producer_names.begin()+26)));
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvoterd), vector<account_name>(producer_names.begin()+26, producer_names.end())));
    }
 
    {
@@ -1751,15 +1651,8 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
 
 
    transfer(config::system_account_name, "producvotera", core_from_string("200000000.0000"), config::system_account_name);
-
    BOOST_REQUIRE_EQUAL(success(), stake("producvotera", core_from_string("70000000.0000"), core_from_string("70000000.0000") ));
-
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
-                                                ("voter",  "producvotera")
-                                                ("proxy", name(0).to_string())
-                                                ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+10))
-                                                ));
-
+   BOOST_REQUIRE_EQUAL(success(), vote( N(producvotera), vector<account_name>(producer_names.begin(), producer_names.begin()+10)));
    BOOST_CHECK_EQUAL( wasm_assert_msg("not enough has been staked for users to unstake"), unstake( "producvotera", core_from_string("50.0000"), core_from_string("50.0000") ) );
 
    // give a chance for everyone to produce blocks
@@ -1797,19 +1690,8 @@ BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
    transfer(config::system_account_name, "producvoterc", core_from_string("100000000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL(success(), stake("producvoterc", core_from_string("2000000.0000"), core_from_string("2000000.0000")));
 
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterb), N(voteproducer), mvo()
-                                                ("voter",  "producvoterb")
-                                                ("proxy", name(0).to_string())
-                                                ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
-                                                )
-                        );
-
-   BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterc), N(voteproducer), mvo()
-                                                ("voter",  "producvoterc")
-                                                ("proxy", name(0).to_string())
-                                                ("producers", vector<account_name>(producer_names.begin(), producer_names.end()))
-                                                )
-                        );
+   BOOST_REQUIRE_EQUAL(success(), vote( N(producvoterb), vector<account_name>(producer_names.begin(), producer_names.begin()+21)));
+   BOOST_REQUIRE_EQUAL(success(), vote( N(producvoterc), vector<account_name>(producer_names.begin(), producer_names.end())));
 
    // give a chance for everyone to produce blocks
    {
@@ -1856,12 +1738,7 @@ BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system
    //alice1111111 makes stake and votes
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", core_from_string("30.0001"), core_from_string("20.0001") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(voteproducer), mvo()
-                                               ("voter",  "alice1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(defproducer1), N(defproducer2) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(alice1111111), { N(defproducer1), N(defproducer2) } ) );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("50.0002")) == get_producer_info( "defproducer1" )["total_votes"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("50.0002")) == get_producer_info( "defproducer2" )["total_votes"].as_double() );
    BOOST_REQUIRE_EQUAL( 0, get_producer_info( "defproducer3" )["total_votes"].as_double() );
@@ -1876,12 +1753,7 @@ BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system
    //bob111111111 chooses alice1111111 as a proxy
    issue( "bob111111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("100.0002"), core_from_string("50.0001") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob111111111), N(voteproducer), mvo()
-                                                ("voter",  "bob111111111")
-                                                ("proxy", "alice1111111" )
-                                                ("producers", vector<account_name>() )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), vector<account_name>(), "alice1111111" ) );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("150.0003")) == get_voter_info( "alice1111111" )["proxied_vote_weight"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("200.0005")) == get_producer_info( "defproducer1" )["total_votes"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("200.0005")) == get_producer_info( "defproducer2" )["total_votes"].as_double() );
@@ -1890,17 +1762,11 @@ BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system
    //carol1111111 chooses alice1111111 as a proxy
    issue( "carol1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "carol1111111", core_from_string("30.0001"), core_from_string("20.0001") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol1111111), N(voteproducer), mvo()
-                                                ("voter",  "carol1111111")
-                                                ("proxy", "alice1111111" )
-                                                ("producers", vector<account_name>() )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(carol1111111), vector<account_name>(), "alice1111111" ) );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("200.0005")) == get_voter_info( "alice1111111" )["proxied_vote_weight"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("250.0007")) == get_producer_info( "defproducer1" )["total_votes"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("250.0007")) == get_producer_info( "defproducer2" )["total_votes"].as_double() );
    BOOST_REQUIRE_EQUAL( 0, get_producer_info( "defproducer3" )["total_votes"].as_double() );
-
 
    //proxied voter carol1111111 increases stake
    BOOST_REQUIRE_EQUAL( success(), stake( "carol1111111", core_from_string("50.0000"), core_from_string("70.0000") ) );
@@ -1917,12 +1783,7 @@ BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system
    BOOST_REQUIRE_EQUAL( 0, get_producer_info( "defproducer3" )["total_votes"].as_double() );
 
    //proxied voter carol1111111 chooses another proxy
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol1111111), N(voteproducer), mvo()
-                                                ("voter",  "carol1111111")
-                                                ("proxy", "donald111111" )
-                                                ("producers", vector<account_name>() )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(carol1111111), vector<account_name>(), "donald111111" ) );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("50.0001")), get_voter_info( "alice1111111" )["proxied_vote_weight"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("170.0002")), get_voter_info( "donald111111" )["proxied_vote_weight"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("100.0003")), get_producer_info( "defproducer1" )["total_votes"].as_double() );
@@ -1930,12 +1791,7 @@ BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system
    BOOST_REQUIRE_EQUAL( 0, get_producer_info( "defproducer3" )["total_votes"].as_double() );
 
    //bob111111111 switches to direct voting and votes for one of the same producers, but not for another one
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob111111111), N(voteproducer), mvo()
-                                                ("voter",  "bob111111111")
-                                                ("proxy", "")
-                                                ("producers", vector<account_name>{ N(defproducer2) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), { N(defproducer2) } ) );
    BOOST_TEST_REQUIRE( 0.0 == get_voter_info( "alice1111111" )["proxied_vote_weight"].as_double() );
    BOOST_TEST_REQUIRE(  stake2votes(core_from_string("50.0002")), get_producer_info( "defproducer1" )["total_votes"].as_double() );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("100.0003")), get_producer_info( "defproducer2" )["total_votes"].as_double() );
@@ -1961,13 +1817,7 @@ BOOST_FIXTURE_TEST_CASE( vote_both_proxy_and_producers, eosio_system_tester ) tr
    issue( "bob111111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("100.0002"), core_from_string("50.0001") ) );
    BOOST_REQUIRE_EQUAL( wasm_assert_msg("cannot vote for producers and proxy at same time"),
-
-                        push_action( N(bob111111111), N(voteproducer), mvo()
-                                     ("voter",  "bob111111111")
-                                     ("proxy", "alice1111111" )
-                                     ("producers", vector<account_name>{ N(carol1111111) } )
-                        )
-   );
+                        vote( N(bob111111111), { N(carol1111111) }, "alice1111111" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -1979,21 +1829,11 @@ BOOST_FIXTURE_TEST_CASE( select_invalid_proxy, eosio_system_tester ) try {
 
    //selecting account not registered as a proxy
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "invalid proxy specified" ),
-                        push_action(N(bob111111111), N(voteproducer), mvo()
-                                    ("voter",  "bob111111111")
-                                    ("proxy", "alice1111111" )
-                                    ("producers", vector<account_name>() )
-                        )
-   );
+                        vote( N(bob111111111), vector<account_name>(), "alice1111111" ) );
 
    //selecting not existing account as a proxy
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "invalid proxy specified" ),
-                        push_action(N(bob111111111), N(voteproducer), mvo()
-                                    ("voter",  "bob111111111")
-                                    ("proxy", "notexist" )
-                                    ("producers", vector<account_name>() )
-                        )
-   );
+                        vote( N(bob111111111), vector<account_name>(), "notexist" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -2013,12 +1853,7 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
    //bob111111111 stakes and selects alice1111111 as a proxy
    issue( "bob111111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("100.0002"), core_from_string("50.0001") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob111111111), N(voteproducer), mvo()
-                                                ("voter",  "bob111111111")
-                                                ("proxy", "alice1111111" )
-                                                ("producers", vector<account_name>() )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), vector<account_name>(), "alice1111111" ) );
    REQUIRE_MATCHING_OBJECT( proxy( "alice1111111" )( "proxied_vote_weight", stake2votes( core_from_string("150.0003") ))( "staked", 100000 ), get_voter_info( "alice1111111" ) );
 
    //double regestering should fail without affecting total votes and stake
@@ -2064,28 +1899,17 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
                                                 ("isproxy",  1)
                         )
    );
-   //proxy should not be able to use a proxy
 
+   //proxy should not be able to use a proxy
    issue( "bob111111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("100.0002"), core_from_string("50.0001") ) );
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "account registered as a proxy is not allowed to use a proxy" ),
-
-                        push_action( N(bob111111111), N(voteproducer), mvo()
-                                     ("voter",  "bob111111111")
-                                     ("proxy", "alice1111111" )
-                                     ("producers", vector<account_name>() )
-                        )
-   );
+                        vote( N(bob111111111), vector<account_name>(), "alice1111111" ) );
 
    //voter that uses a proxy should not be allowed to become a proxy
    issue( "carol1111111", core_from_string("1000.0000"),  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "carol1111111", core_from_string("100.0002"), core_from_string("50.0001") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol1111111), N(voteproducer), mvo()
-                                                ("voter",  "carol1111111")
-                                                ("proxy", "alice1111111" )
-                                                ("producers", vector<account_name>() )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(carol1111111), vector<account_name>(), "alice1111111" ) );
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "account that uses a proxy is not allowed to become a proxy" ),
                         push_action( N(carol1111111), N(regproxy), mvo()
                                      ("proxy",  "carol1111111")
@@ -2095,12 +1919,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
 
    //proxy should not be able to use itself as a proxy
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "cannot proxy to self" ),
-                        push_action( N(bob111111111), N(voteproducer), mvo()
-                                     ("voter",  "bob111111111")
-                                     ("proxy", "bob111111111" )
-                                     ("producers", vector<account_name>() )
-                        )
-   );
+                        vote( N(bob111111111), vector<account_name>(), "bob111111111" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -2133,14 +1952,8 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
    //stake more than 15% of total EOS supply to activate chain
    transfer( "eosio", "alice1111111", core_from_string("600000000.0000"), "eosio" );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
-   //                                                           1000000000.0000
    //vote for producers
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(voteproducer), mvo()
-                                               ("voter",  "alice1111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(defproducer1) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(alice1111111), { N(defproducer1) } ) );
    produce_blocks(250);
    auto producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
@@ -2155,12 +1968,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
    ilog("stake");
    BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("40000.0000"), core_from_string("40000.0000") ) );
    ilog("start vote");
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob111111111), N(voteproducer), mvo()
-                                               ("voter",  "bob111111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(defproducer2) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), { N(defproducer2) } ) );
    ilog(".");
    produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
@@ -2172,12 +1980,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
    //REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
    // elect 3 producers
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob111111111), N(voteproducer), mvo()
-                                               ("voter",  "bob111111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(defproducer2), N(defproducer3) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), { N(defproducer2), N(defproducer3) } ) );
    produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
@@ -2188,12 +1991,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
    //REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
    // try to go back to 2 producers and fail
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob111111111), N(voteproducer), mvo()
-                                               ("voter",  "bob111111111")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(defproducer3) } )
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob111111111), { N(defproducer3) } ) );
    produce_blocks(250);
    producer_keys = control->head_block_state()->active_schedule.producers;
    BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
@@ -2219,10 +2017,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    stake_with_transfer( config::system_account_name, "sam", core_from_string( "80000000.0000" ), core_from_string( "80000000.0000" ) );
 
    regproducer( config::system_account_name );
-   push_action( N(sam), N(voteproducer), mvo()
-               ("voter",  "sam")
-               ("proxy", name(0).to_string() )
-               ("producers", vector<account_name>{ config::system_account_name } ) );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(sam), { config::system_account_name } ) );
    // wait 14 days after min required amount has been staked
    produce_block( fc::days(14) );
    produce_block();
@@ -2264,18 +2059,8 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    // stake but but not enough to go live
    stake_with_transfer( config::system_account_name, "bob",  core_from_string( "35000000.0000" ), core_from_string( "35000000.0000" ) );
    stake_with_transfer( config::system_account_name, "carl", core_from_string( "35000000.0000" ), core_from_string( "35000000.0000" ) );
-   BOOST_REQUIRE_EQUAL( success(),push_action( N(bob), N(voteproducer), mvo()
-                                               ("voter",  "bob")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(producer) } )
-                                               )
-                        );
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(carl), N(voteproducer), mvo()
-                                                ("voter",  "carl")
-                                                ("proxy", name(0).to_string() )
-                                                ("producers", vector<account_name>{ N(producer) } )
-                                                )
-                        );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(bob), { N(producer) } ) );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(carl), { N(producer) } ) );
 
    // start bids
    bidname( "bob",  "prefa", core_from_string("1.0003") );
@@ -2331,12 +2116,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    // stake enough to go above the 15% threshold
    stake_with_transfer( config::system_account_name, "alice", core_from_string( "10000000.0000" ), core_from_string( "10000000.0000" ) );
    BOOST_REQUIRE_EQUAL(0, get_producer_info("producer")["unpaid_blocks"].as<uint32_t>());
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(voteproducer), mvo()
-                                                ("voter",  "alice")
-                                                ("proxy", name(0).to_string() )
-                                                ("producers", vector<account_name>{ N(producer) } )
-                                                )
-                        );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(alice), { N(producer) } ) );
 
    // need to wait for 14 days after going live
    produce_blocks(10);
@@ -2433,26 +2213,9 @@ BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
    }
 
    {
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvotera), N(voteproducer), mvo()
-                                                 ("voter",     "producvotera")
-                                                 ("proxy",     name(0).to_string())
-                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+20))
-                                                 )
-                          );
-
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterb), N(voteproducer), mvo()
-                                                 ("voter",     "producvoterb")
-                                                 ("proxy",     name(0).to_string())
-                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.begin()+21))
-                                                 )
-                          );
-
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterc), N(voteproducer), mvo()
-                                                 ("voter",     "producvoterc")
-                                                 ("proxy",     name(0).to_string())
-                                                 ("producers", vector<account_name>(producer_names.begin(), producer_names.end()))
-                                                 )
-                          );
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvotera), vector<account_name>(producer_names.begin(), producer_names.begin()+20)));
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvoterb), vector<account_name>(producer_names.begin(), producer_names.begin()+21)));
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvoterc), vector<account_name>(producer_names.begin(), producer_names.end())));
    }
 
    // give a chance for everyone to produce blocks
@@ -2478,12 +2241,7 @@ BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
       const uint32_t voted_out_index = 20;
       const uint32_t new_prod_index  = 23;
       BOOST_REQUIRE_EQUAL(success(), stake("producvoterd", core_from_string("40000000.0000"), core_from_string("40000000.0000")));
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterd), N(voteproducer), mvo()
-                                                 ("voter",     "producvoterd")
-                                                 ("proxy",     name(0).to_string())
-                                                 ("producers", vector<account_name>{ producer_names[new_prod_index] })
-                                                 )
-                          );
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvoterd), { producer_names[new_prod_index] }));
       BOOST_REQUIRE_EQUAL(0, get_producer_info(producer_names[new_prod_index])["unpaid_blocks"].as<uint32_t>());
       produce_blocks(4 * 12 * 21);
       BOOST_REQUIRE(0 < get_producer_info(producer_names[new_prod_index])["unpaid_blocks"].as<uint32_t>());
@@ -2491,12 +2249,7 @@ BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
       produce_blocks(2 * 12 * 21);
       BOOST_REQUIRE_EQUAL(initial_unpaid_blocks, get_producer_info(producer_names[voted_out_index])["unpaid_blocks"].as<uint32_t>());
       produce_block(fc::hours(24));
-      BOOST_REQUIRE_EQUAL(success(), push_action(N(producvoterd), N(voteproducer), mvo()
-                                                 ("voter",     "producvoterd")
-                                                 ("proxy",     name(0).to_string())
-                                                 ("producers", vector<account_name>{ producer_names[voted_out_index] })
-                                                 )
-                          );
+      BOOST_REQUIRE_EQUAL(success(), vote(N(producvoterd), { producer_names[voted_out_index] }));
       produce_blocks(2 * 12 * 21);
       BOOST_REQUIRE(fc::crypto::public_key() != fc::crypto::public_key(get_producer_info(producer_names[voted_out_index])["producer_key"].as_string()));
       BOOST_REQUIRE_EQUAL(success(), push_action(producer_names[voted_out_index], N(claimrewards), mvo()("owner", producer_names[voted_out_index])));
