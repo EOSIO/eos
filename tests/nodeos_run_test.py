@@ -51,6 +51,7 @@ parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upo
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
+parser.add_argument("--kill-all", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -66,6 +67,7 @@ dontLaunch=args.dont_launch
 dontKill=args.dont_kill
 prodCount=args.prod_count
 onlyBios=args.only_bios
+killAll=args.kill_all
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
@@ -88,11 +90,11 @@ try:
     if enableMongo and not cluster.isMongodDbRunning():
         errorExit("MongoDb doesn't seem to be running.")
 
-    walletMgr.killall()
+    walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
 
     if localTest and not dontLaunch:
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
         if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill) is False:
@@ -129,7 +131,7 @@ try:
     exchangeAccount.ownerPublicKey=PUB_KEY2
 
     Print("Stand up walletd")
-    walletMgr.killall()
+    walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         cmdError("%s" % (WalletdName))
@@ -192,7 +194,7 @@ try:
         errorExit("Unexpected wallet list: %s" % (wallets))
 
     Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys()
+    actualKeys=walletMgr.getKeys(testWallet)
     expectedkeys=[]
     for account in accounts:
         expectedkeys.append(account.ownerPrivateKey)
@@ -217,7 +219,7 @@ try:
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
     Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys()
+    actualKeys=walletMgr.getKeys(defproduceraWallet)
     expectedkeys=[defproduceraAccount.ownerPrivateKey]
     noMatch=list(set(expectedkeys) - set(actualKeys))
     if len(noMatch) > 0:
@@ -700,14 +702,14 @@ finally:
 
     if killEosInstances:
         Print("Shut down the cluster.")
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         if testSuccessful and not keepLogs:
             Print("Cleanup cluster data.")
             cluster.cleanup()
 
     if killWallet:
         Print("Shut down the wallet.")
-        walletMgr.killall()
+        walletMgr.killall(allInstances=killAll)
         if testSuccessful and not keepLogs:
             Print("Cleanup wallet data.")
             walletMgr.cleanup()

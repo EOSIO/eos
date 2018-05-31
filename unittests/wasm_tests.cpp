@@ -1071,8 +1071,81 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_block();
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_table_key_validation, TESTER ) try {
+BOOST_FIXTURE_TEST_CASE( check_big_deserialization, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {N(cbd)} );
+   produce_block();
+
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements-2; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_code_size; i++)
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), fc::assert_exception); // this is caught first by MAX_SIZE_OF_ARRAYS check
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes-1; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
 } FC_LOG_AND_RETHROW()
+
 
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    produce_blocks(2);
@@ -1497,6 +1570,21 @@ INCBIN(fuzz9, "fuzz9.wasm");
 INCBIN(fuzz10, "fuzz10.wasm");
 INCBIN(fuzz11, "fuzz11.wasm");
 INCBIN(fuzz12, "fuzz12.wasm");
+INCBIN(fuzz13, "fuzz13.wasm");
+INCBIN(fuzz14, "fuzz14.wasm");
+INCBIN(fuzz15, "fuzz15.wasm");
+//INCBIN(fuzz13, "fuzz13.wasm");
+INCBIN(big_allocation, "big_allocation.wasm");
+INCBIN(crash_section_size_too_big, "crash_section_size_too_big.wasm");
+INCBIN(leak_no_destructor, "leak_no_destructor.wasm");
+INCBIN(leak_readExports, "leak_readExports.wasm");
+INCBIN(leak_readFunctions, "leak_readFunctions.wasm");
+INCBIN(leak_readFunctions_2, "leak_readFunctions_2.wasm");
+INCBIN(leak_readFunctions_3, "leak_readFunctions_3.wasm");
+INCBIN(leak_readGlobals, "leak_readGlobals.wasm");
+INCBIN(leak_readImports, "leak_readImports.wasm");
+INCBIN(leak_wasm_binary_cpp_L1249, "leak_wasm_binary_cpp_L1249.wasm");
+INCBIN(readFunctions_slowness_out_of_memory, "readFunctions_slowness_out_of_memory.wasm");
 
 BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    produce_blocks(2);
@@ -1551,6 +1639,74 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    {
       vector<uint8_t> wasm(gfuzz12Data, gfuzz12Data + gfuzz12Size);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz14Data, gfuzz14Data + gfuzz14Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+      {
+      vector<uint8_t> wasm(gfuzz15Data, gfuzz15Data + gfuzz15Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   /*  TODO: update wasm to have apply(...) then call, claim is that this
+    *  takes 1.6 seconds under wavm...
+   {
+      auto start = fc::time_point::now();
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      set_code(N(fuzzy), wasm);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+      auto end = fc::time_point::now();
+      edump((end-start));
+   }
+   */
+
+   {
+      vector<uint8_t> wasm(gbig_allocationData, gbig_allocationData + gbig_allocationSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gcrash_section_size_too_bigData, gcrash_section_size_too_bigData + gcrash_section_size_too_bigSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_no_destructorData, gleak_no_destructorData + gleak_no_destructorSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readExportsData, gleak_readExportsData + gleak_readExportsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctionsData, gleak_readFunctionsData + gleak_readFunctionsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctions_2Data, gleak_readFunctions_2Data + gleak_readFunctions_2Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctions_3Data, gleak_readFunctions_3Data + gleak_readFunctions_3Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readGlobalsData, gleak_readGlobalsData + gleak_readGlobalsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readImportsData, gleak_readImportsData + gleak_readImportsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_wasm_binary_cpp_L1249Data, gleak_wasm_binary_cpp_L1249Data + gleak_wasm_binary_cpp_L1249Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(greadFunctions_slowness_out_of_memoryData, greadFunctions_slowness_out_of_memoryData + greadFunctions_slowness_out_of_memorySize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
    }
 
    produce_blocks(1);

@@ -56,6 +56,7 @@ add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactio
 add_test(NAME distributed-transactions-remote-test COMMAND tests/distributed-transactions-remote-test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO removed on slim: add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME restart-scenarios-test_hard_replay COMMAND tests/restart-scenarios-test.py -c hardReplay -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: add_test(NAME consensus-validation-malicious-producers COMMAND tests/consensus-validation-malicious-producers.py -w 80 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 if(ENABLE_COVERAGE_TESTING)

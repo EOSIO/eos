@@ -3,6 +3,7 @@
 #include "Inline/Timing.h"
 #include "Logging/Logging.h"
 #include "RuntimePrivate.h"
+#include "IR/Validate.h"
 
 #ifdef _DEBUG
 	// This needs to be 1 to allow debuggers such as Visual Studio to place breakpoints and step through the JITed code.
@@ -88,6 +89,7 @@ namespace LLVMJIT
 	{
 		UnitMemoryManager()
 		: imageBaseAddress(nullptr)
+		, numAllocatedImagePages(0)
 		, isFinalized(false)
 		, codeSection({0})
 		, readOnlySection({0})
@@ -100,11 +102,12 @@ namespace LLVMJIT
 			if(hasRegisteredEHFrames)
 			{
 				hasRegisteredEHFrames = false;
-				deregisterEHFrames(ehFramesAddr,ehFramesLoadAddr,ehFramesNumBytes);
+            llvm::RTDyldMemoryManager::deregisterEHFrames(ehFramesAddr,ehFramesLoadAddr,ehFramesNumBytes);
 			}
 
 			// Decommit the image pages, but leave them reserved to catch any references to them that might erroneously remain.
-			Platform::decommitVirtualPages(imageBaseAddress,numAllocatedImagePages);
+			if(numAllocatedImagePages)
+				Platform::decommitVirtualPages(imageBaseAddress,numAllocatedImagePages);
 		}
 		
 		void registerEHFrames(U8* addr, U64 loadAddr,uintptr_t numBytes) override
@@ -228,7 +231,8 @@ namespace LLVMJIT
 		}
 		~JITUnit()
 		{
-			compileLayer->removeModuleSet(handle);
+			if(handleIsValid)
+				compileLayer->removeModuleSet(handle);
 			#ifdef _WIN64
 				if(pdataCopy) { Platform::deregisterSEHUnwindInfo(reinterpret_cast<Uptr>(pdataCopy)); }
 			#endif
@@ -266,6 +270,7 @@ namespace LLVMJIT
 		std::unique_ptr<ObjectLayer> objectLayer;
 		std::unique_ptr<CompileLayer> compileLayer;
 		CompileLayer::ModuleSetHandleT handle;
+		bool handleIsValid = false;
 		bool shouldLogMetrics;
 
 		struct LoadedObject
@@ -575,10 +580,7 @@ namespace LLVMJIT
 		fpm->add(llvm::createCFGSimplificationPass());
 		fpm->add(llvm::createJumpThreadingPass());
 		fpm->add(llvm::createConstantPropagationPass());
-
-		if( !fpm->doInitialization() ) {
-			throw std::runtime_error( "do initialization failed" );
-		}
+		fpm->doInitialization();
 
 		for(auto functionIt = llvmModule->begin();functionIt != llvmModule->end();++functionIt)
 		{ fpm->run(*functionIt); }
@@ -597,6 +599,7 @@ namespace LLVMJIT
 			std::vector<llvm::Module*>{llvmModule},
 			&memoryManager,
 			&NullResolver::singleton);
+		handleIsValid = true;
 		compileLayer->emitAndFinalize(handle);
 
 		if(shouldLogMetrics)

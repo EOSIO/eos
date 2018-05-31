@@ -6,6 +6,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include "IR/Module.h"
 #include "Runtime/Intrinsics.h"
@@ -54,13 +55,18 @@ namespace eosio { namespace chain {
       {
          auto it = instantiation_cache.find(code_id);
          if(it == instantiation_cache.end()) {
+            auto timer_pause = fc::make_scoped_exit([&](){
+               trx_context.resume_billing_timer();
+            });
             trx_context.pause_billing_timer();
             IR::Module module;
             try {
                Serialization::MemoryInputStream stream((const U8*)code.data(), code.size());
                WASM::serialize(stream, module);
                module.userSections.clear();
-            } catch(Serialization::FatalSerializationException& e) {
+            } catch(const Serialization::FatalSerializationException& e) {
+               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+            } catch(const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
@@ -72,11 +78,12 @@ namespace eosio { namespace chain {
                Serialization::ArrayOutputStream outstream;
                WASM::serialize(outstream, module);
                bytes = outstream.getBytes();
-            } catch(Serialization::FatalSerializationException& e) {
+            } catch(const Serialization::FatalSerializationException& e) {
+               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+            } catch(const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
-            trx_context.resume_billing_timer();
          }
          return it->second;
       }

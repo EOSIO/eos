@@ -4,7 +4,6 @@ import testUtils
 
 import argparse
 import random
-import signal
 
 ###############################################################
 # Test for different nodes restart scenarios.
@@ -45,6 +44,7 @@ parser.add_argument("--dump-error-details",
                     action='store_true')
 parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
                     action='store_true')
+parser.add_argument("--kill-all", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
@@ -58,6 +58,7 @@ killSignal=args.kill_sig
 killEosInstances= not args.dont_kill
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
+killAll=args.kill_all
 
 seed=1
 testUtils.Utils.Debug=debug
@@ -65,14 +66,14 @@ testSuccessful=False
 
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster()
-walletMgr=testUtils.WalletMgr(False)
+cluster=testUtils.Cluster(walletd=True)
+walletMgr=testUtils.WalletMgr(True)
 
 try:
     cluster.setChainStrategy(chainSyncStrategyStr)
     cluster.setWalletMgr(walletMgr)
 
-    cluster.killall()
+    cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
     Print ("producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d, chain sync strategy: %s" % (
@@ -87,6 +88,12 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
+    Print("Stand up EOS wallet keosd")
+    walletMgr.killall(allInstances=killAll)
+    walletMgr.cleanup()
+    if walletMgr.launch() is False:
+        errorExit("Failed to stand up keosd.")
+
     accountsCount=total_nodes
     walletName="MyWallet"
     Print("Creating wallet %s if one doesn't already exist." % walletName)
@@ -99,14 +106,15 @@ try:
         errorExit("Wallet initialization failed.")
 
     defproduceraAccount=cluster.defproduceraAccount
+    eosioAccount=cluster.eosioAccount
 
     Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, wallet.name))
     if not walletMgr.importKey(defproduceraAccount, wallet):
         errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
     Print("Create accounts.")
-    #if not cluster.createAccounts(wallet):
-    if not cluster.createAccounts(defproduceraAccount):
+    #if not cluster.createAccounts(defproduceraAccount):
+    if not cluster.createAccounts(eosioAccount):
         errorExit("Accounts creation failed.")
 
     Print("Wait on cluster sync.")
@@ -115,9 +123,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -130,9 +138,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -150,9 +158,9 @@ try:
 
     # TBD: Known issue (Issue 2043) that 'get currency0000 balance' doesn't return balance.
     #  Uncomment when functional
-    # Print("Spread funds and validate")
-    # if not cluster.spreadFundsAndValidate(10):
-    #     errorExit("Failed to spread and validate funds.")
+    Print("Spread funds and validate")
+    if not cluster.spreadFundsAndValidate(10):
+        errorExit("Failed to spread and validate funds.")
 
     Print("Wait on cluster sync.")
     if not cluster.waitOnClusterSync():
@@ -167,12 +175,11 @@ finally:
 
     if killEosInstances:
         Print("Shut down the cluster%s" % (" and cleanup." if (testSuccessful and not keepLogs) else "."))
-        cluster.killall()
-        walletMgr.killall()
+        cluster.killall(allInstances=killAll)
+        walletMgr.killall(allInstances=killAll)
         if testSuccessful and not keepLogs:
             Print("Cleanup cluster and wallet data.")
             cluster.cleanup()
             walletMgr.cleanup()
-    pass
 
 exit(0)

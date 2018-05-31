@@ -16,6 +16,7 @@ import sys
 import random
 import json
 import shlex
+from sys import stdout
 
 from core_symbol import CORE_SYMBOL
 
@@ -39,7 +40,7 @@ class Utils:
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
-        sys.stdout.write(s)
+        stdout.write(s)
         print(*args, **kwargs)
 
     SyncStrategy=namedtuple("ChainSyncStrategy", "name id arg")
@@ -47,6 +48,7 @@ class Utils:
     SyncNoneTag="none"
     SyncReplayTag="replay"
     SyncResyncTag="resync"
+    SyncHardReplayTag="hardReplay"
 
     SigKillTag="kill"
     SigTermTag="term"
@@ -78,6 +80,9 @@ class Utils:
         chainSyncStrategy=Utils.SyncStrategy(Utils.SyncResyncTag, 2, "--delete-all-blocks")
         chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
 
+        chainSyncStrategy=Utils.SyncStrategy(Utils.SyncHardReplayTag, 3, "--hard-replay-blockchain")
+        chainSyncStrategies[chainSyncStrategy.name]=chainSyncStrategy
+
         return chainSyncStrategies
 
     @staticmethod
@@ -98,14 +103,24 @@ class Utils:
             timeout=60
 
         endTime=time.time()+timeout
-        while endTime > time.time():
-            ret=lam()
-            if ret is not None:
-                return ret
-            sleepTime=3
-            Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
-                        (sleepTime, endTime - time.time()))
-            time.sleep(sleepTime)
+        needsNewLine=False
+        try:
+            while endTime > time.time():
+                ret=lam()
+                if ret is not None:
+                    return ret
+                sleepTime=3
+                if Utils.Debug:
+                    Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                                (sleepTime, endTime - time.time()))
+                else:
+                    stdout.write('.')
+                    stdout.flush()
+                    needsNewLine=True
+                time.sleep(sleepTime)
+        finally:
+            if needsNewLine:
+                Utils.Print()
 
         return None
 
@@ -170,16 +185,17 @@ class Node(object):
         assert trans["processed"]["receipt"]["status"] == "executed", printTrans(trans)
 
     @staticmethod
-    def runCmdReturnJson(cmd, trace=False):
+    def runCmdReturnJson(cmd, trace=False, silentErrors=False):
         cmdArr=shlex.split(cmd)
         retStr=Utils.checkOutput(cmdArr)
         jStr=Node.filterJsonObject(retStr)
         if trace: Utils.Print ("RAW > %s"% (retStr))
         if trace: Utils.Print ("JSON> %s"% (jStr))
         if not jStr:
-            msg="Expected JSON response"
-            Utils.Print ("ERROR: "+ msg)
-            Utils.Print ("RAW > %s"% retStr)
+            msg="Received empty JSON response"
+            if not silentErrors:
+                Utils.Print ("ERROR: "+ msg)
+                Utils.Print ("RAW > %s"% retStr)
             raise TypeError(msg)
 
         try:
@@ -446,9 +462,9 @@ class Node(object):
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction parsing failed. Transaction: %s" % (trans))
-            raise
+            return None
 
-        headBlockNum=self.getIrreversibleBlockNum()
+        headBlockNum=self.getHeadBlockNum()
         assert(headBlockNum)
         try:
             headBlockNum=int(headBlockNum)
@@ -706,8 +722,8 @@ class Node(object):
         return ret
 
     def waitForNextBlock(self, timeout=None):
-        num=self.getIrreversibleBlockNum()
-        lam = lambda: self.getIrreversibleBlockNum() > num
+        num=self.getHeadBlockNum()
+        lam = lambda: self.getHeadBlockNum() > num
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
@@ -833,7 +849,7 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during actions by account retrieval. %s" % (msg))
             return None
-        
+
     # Gets accounts mapped to key. Returns array
     def getAccountsArrByKey(self, key):
         trans=self.getAccountsByKey(key)
@@ -1000,7 +1016,7 @@ class Node(object):
         cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            trans=Node.runCmdReturnJson(cmd)
+            trans=Node.runCmdReturnJson(cmd, silentErrors=silentErrors)
             return trans
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
@@ -1032,6 +1048,7 @@ class Node(object):
                 headBlockNumTag="head_block_num"
                 return info[headBlockNumTag]
         else:
+            # Either this implementation or the one in getIrreversibleBlockNum are likely wrong.
             block=self.getBlockFromDb(-1)
             if block is not None:
                 blockNum=block["block_num"]
@@ -1044,6 +1061,7 @@ class Node(object):
             if info is not None:
                 return info["last_irreversible_block_num"]
         else:
+            # Either this implementation or the one in getHeadBlockNum are likely wrong.
             block=self.getBlockFromDb(-1)
             if block is not None:
                 blockNum=block["block_num"]
@@ -1068,7 +1086,7 @@ class Node(object):
             return False
 
         if not Utils.waitForBool(myFunc):
-            Utils.Print("ERROR: Failed to kill node (%s)." % (self.cmd), ex)
+            Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
         # mark node as killed
@@ -1077,34 +1095,44 @@ class Node(object):
         return True
 
     # TBD: make nodeId an internal property
-    def relaunch(self, nodeId, chainArg):
+    def relaunch(self, nodeId, chainArg, timeout=Utils.systemWaitTimeout):
 
-        running=True
-        try:
-            os.kill(self.pid, 0) #check if process with pid is running
-        except OSError as _:
-            running=False
+        assert(self.pid is None)
+        assert(self.killed)
 
-        if running:
-            Utils.Print("WARNING: A process with pid (%d) is already running." % (self.pid))
+        if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
+        dataDir="var/lib/node_%02d" % (nodeId)
+        dt = datetime.datetime.now()
+        dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
+        stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
+        with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
+            cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
+            Utils.Print("cmd: %s" % (cmd))
+            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+            self.pid=popen.pid
+
+        def isNodeAlive():
+            """wait for node to be responsive."""
+            try:
+                return True if self.checkPulse() else False
+            except (TypeError) as _:
+                pass
+            return False
+
+        isAlive=Utils.waitForBool(isNodeAlive, timeout)
+        if isAlive:
+            Utils.Print("Node relaunch was successfull.")
         else:
-            if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
-            dataDir="var/lib/node_%02d" % (nodeId)
-            dt = datetime.datetime.now()
-            dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
-                dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-            stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
-            stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
-            with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-                cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
-                Utils.Print("cmd: %s" % (cmd))
-                popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-                self.pid=popen.pid
-
+            Utils.Print("ERROR: Node relaunch Failed.")
+            self.pid=None
+            return False
+            
         self.killed=False
         return True
 
-    
+
 ###########################################################################################
 
 Wallet=namedtuple("Wallet", "name password host port")
@@ -1244,17 +1272,17 @@ class WalletMgr(object):
 
         return wallets
 
-    def getKeys(self):
+    def getKeys(self, wallet):
         keys=[]
 
         p = re.compile(r'\n\s+\"(\w+)\"\n', re.MULTILINE)
-        cmd="%s %s wallet keys" % (Utils.EosClientPath, self.endpointArgs)
+        cmd="%s %s wallet private_keys --name %s --password %s " % (Utils.EosClientPath, self.endpointArgs, wallet.name, wallet.password)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=subprocess.check_output(cmd.split()).decode("utf-8")
         #Utils.Print("retStr: %s" % (retStr))
         m=p.findall(retStr)
         if m is None:
-            Utils.Print("ERROR: wallet keys parser failure")
+            Utils.Print("ERROR: wallet private_keys parser failure")
             return None
         keys=m
 
@@ -1269,11 +1297,22 @@ class WalletMgr(object):
             with open(WalletMgr.__walletLogFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
 
-    @staticmethod
-    def killall():
-        cmd="pkill -9 %s" % (Utils.EosWalletName)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        subprocess.call(cmd.split())
+    # @staticmethod
+    # def killall():
+    #     cmd="pkill -9 %s" % (Utils.EosWalletName)
+    #     if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+    #     subprocess.call(cmd.split())
+
+    def killall(self, allInstances=False):
+        """Kill keos instances. allInstances will kill all keos instances running on the system."""
+        if self.__walletPid:
+            os.kill(self.__walletPid, signal.SIGKILL)
+
+        if allInstances:
+            cmd="pkill -9 %s" % (Utils.EosWalletName)
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            subprocess.call(cmd.split())
+
 
     @staticmethod
     def cleanup():
@@ -1291,7 +1330,7 @@ class Cluster(object):
     __localHost="localhost"
     __BiosHost="localhost"
     __BiosPort=8788
-    
+
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
@@ -1370,8 +1409,8 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        cmd="%s -p %s -n %s -s %s -d %s -f --p2p-plugin bnet" % (
-            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay)
+        cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin bnet" % (
+            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3])
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
@@ -1724,7 +1763,7 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to spread funds across nodes.")
             return False
 
-        Utils.Print("Funds spread across all accounts. Noew validate funds")
+        Utils.Print("Funds spread across all accounts. Now validate funds")
 
         if False == self.validateSpreadFunds(initialBalances, transferAmount, self.defproduceraAccount, self.accounts):
             Utils.Print("ERROR: Failed to validate funds transfer across nodes.")
@@ -1782,7 +1821,7 @@ class Cluster(object):
         m=re.search(r"node_([\d]+)", name)
         return int(m.group(1))
 
-        
+
     @staticmethod
     def parseProducerKeys(configFile, nodeName):
         """Parse node config file for producer keys. Returns dictionary. (Keys: account name; Values: dictionary objects (Keys: ["name", "node", "private","public"]; Values: account name, node id returned by nodeNameToId(nodeName), private key(string)and public key(string)))."""
@@ -1975,7 +2014,7 @@ class Cluster(object):
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
                 return False
-            
+
             eosioRamAccount=copy.deepcopy(eosioAccount)
             eosioRamAccount.name="eosio.ram"
             trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
@@ -2010,7 +2049,7 @@ class Cluster(object):
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return False
-            
+
             # Create currency0000, followed by issue currency0000
             contract=eosioTokenAccount.name
             Utils.Print("push create action to %s contract" % (contract))
@@ -2089,7 +2128,7 @@ class Cluster(object):
 
         return True
 
-    
+
     # Populates list of EosInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes, timeout=0):
         nodes=[]
@@ -2155,7 +2194,7 @@ class Cluster(object):
 
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if not node.relaunch(i, chainArg):
+            if node.killed and not node.relaunch(i, chainArg):
                 return False
 
         return True
@@ -2182,17 +2221,19 @@ class Cluster(object):
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
 
-    def killall(self, silent=True):
-        cmd="%s -k 15" % (Utils.EosLauncherPath)
+    def killall(self, silent=True, allInstances=False):
+        """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
+        cmd="%s -k 9" % (Utils.EosLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
 
-        # ocassionally the launcher cannot kill the eos server
-        cmd="pkill -9 %s" % (Utils.EosServerName)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Failed to shut down eos cluster.")
+        if allInstances:
+            # ocassionally the launcher cannot kill the eos server
+            cmd="pkill -9 %s" % (Utils.EosServerName)
+            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
+                if not silent: Utils.Print("Failed to shut down eos cluster.")
 
         # another explicit nodes shutdown
         for node in self.nodes:

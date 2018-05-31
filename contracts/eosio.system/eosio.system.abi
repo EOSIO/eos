@@ -243,26 +243,20 @@
 
       ]
     },{
-      "name": "eosio_parameters",
+      "name": "eosio_global_state",
       "base": "blockchain_parameters",
       "fields": [
-         {"name":"max_ram_size", "type":"uint64"}
-      ]
-    },{
-      "name": "eosio_global_state",
-      "base": "eosio_parameters",
-      "fields": [
+         {"name":"max_ram_size",                  "type":"uint64"},
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
          {"name":"total_ram_stake",               "type":"int64"},
          {"name":"last_producer_schedule_update", "type":"time_point_sec"},
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
-         {"name":"savings",                       "type":"int64"},
          {"name":"total_unpaid_blocks",           "type":"uint32"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
-         {"name":"last_producer_schedule_id",     "type":"checksum160"},
+         {"name":"last_producer_schedule_size",   "type":"uint16"},
          {"name":"total_producer_vote_weight",    "type":"float64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
@@ -270,15 +264,14 @@
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",                    "type":"account_name"},
-         {"name":"total_votes",              "type":"float64"},
-         {"name":"producer_key",             "type":"public_key"},
-         {"name":"url",                      "type":"string"},
-         {"name":"unpaid_blocks",            "type":"uint32"},
-         {"name":"last_claim_time",          "type":"uint64"},
-         {"name":"location",                 "type":"uint16"},
-         {"name":"time_became_active",       "type":"uint32"},
-         {"name":"last_produced_block_time", "type":"uint32"}
+         {"name":"owner",           "type":"account_name"},
+         {"name":"total_votes",     "type":"float64"},
+         {"name":"producer_key",    "type":"public_key"},
+         {"name":"is_active",       "type":"bool"},
+         {"name":"url",             "type":"string"},
+         {"name":"unpaid_blocks",   "type":"uint32"},
+         {"name":"last_claim_time", "type":"uint64"},
+         {"name":"location",        "type":"uint16"}
       ]
     },{
       "name": "regproducer",
@@ -345,6 +338,12 @@
         {"name":"is_priv",    "type":"int8"}
       ]
     },{
+      "name": "rmvproducer",
+      "base": "",
+      "fields": [
+        {"name":"producer", "type":"account_name"}
+      ]
+    },{
       "name": "set_account_limits",
       "base": "",
       "fields": [
@@ -382,7 +381,22 @@
       "name": "setparams",
       "base": "",
       "fields": [
-        {"name":"params", "type":"eosio_parameters"}
+        {"name":"params", "type":"blockchain_parameters"}
+      ]
+    },{
+      "name": "connector",
+      "base": "",
+      "fields": [
+        {"name":"balance", "type":"asset"},
+        {"name":"weight", "type":"float64"}
+      ]
+    },{
+      "name": "exchange_state",
+      "base": "",
+      "fields": [
+        {"name":"supply", "type":"asset"},
+        {"name":"base", "type":"connector"},
+        {"name":"quote", "type":"connector"}
       ]
     }
    ],
@@ -479,6 +493,10 @@
       "type": "setpriv",
       "ricardian_contract": ""
    },{
+      "name": "rmvproducer",
+      "type": "rmvproducer",
+      "ricardian_contract": ""
+   },{
       "name": "setalimits",
       "type": "set_account_limits",
       "ricardian_contract": ""
@@ -524,16 +542,16 @@
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
     },{
-      "name": "totalband",
-      "type": "total_resources",
-      "index_type": "i64",
-      "key_names" : ["owner"],
-      "key_types" : ["uint64"]
-    },{
       "name": "delband",
       "type": "delegated_bandwidth",
       "index_type": "i64",
       "key_names" : ["to"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "rammarket",
+      "type": "exchange_state",
+      "index_type": "i64",
+      "key_names" : ["supply"],
       "key_types" : ["uint64"]
     },{
       "name": "refunds",
