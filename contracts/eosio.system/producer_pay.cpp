@@ -39,7 +39,6 @@ namespace eosiosystem {
          _gstate.total_unpaid_blocks++;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks++;
-               p.last_produced_block_time = timestamp;
          });
       }
       
@@ -103,7 +102,6 @@ namespace eosiosystem {
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
-         _gstate.savings         += to_savings;
 
          _gstate.last_pervote_bucket_fill = ct;
       }
