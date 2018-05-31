@@ -114,13 +114,28 @@ void snapshot_plugin::plugin_initialize(const variables_map& options) {
                uint32_t total_tables = std::distance(table_idx.begin(), table_idx.end());
                fc::raw::pack(out, total_tables);
                iterate_all_tables(db, [&](const table_id_object& t_id) {
-                  fc::raw::pack(out, t_id);
+
+                  uint32_t cnt = 0;
+                  iterate_all_rows(db, t_id, [&cnt](const key_value_object& row) { cnt++; });
+
+                  fc::raw::pack(out, t_id.id);
+                  fc::raw::pack(out, t_id.code);
+                  fc::raw::pack(out, t_id.scope);
+                  fc::raw::pack(out, t_id.table);
+                  fc::raw::pack(out, t_id.payer);
+                  fc::raw::pack(out, cnt);
+
+                  //fc::raw::pack(out, t_id);
+                  //t_id.count = cnt;
+
                   iterate_all_rows(db, t_id, [&](const key_value_object& row) {
                      fc::raw::pack(out, row);
                   });
                });
 
+               out.flush();
                out.close();
+               ilog( "Snapshot saved in ${s}",("s",snapshot_to));
             } catch ( ... ) {
                try { fc::remove( snapshot_to); } catch (...) {}
                wlog( "Failed to take snapshot");
