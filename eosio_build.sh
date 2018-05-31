@@ -42,7 +42,7 @@
 
    	function usage()
    	{ 
-		printf "\\tUsage: %s [Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] [CodeCoverage -c ] [Doxygen -d]\\n\\n" "$0" 1>&2
+		printf "\\tUsage: %s \\n\\t[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n\\t[CodeCoverage -c ] \\n\\t[Doxygen -d] \\n\\t[CoreSymbolName -s <1-7 characters>]\\n\\n" "$0" 1>&2
 		exit 1
 	}
 
@@ -52,6 +52,7 @@
 	DISK_MIN=20
 	DOXYGEN=false
 	ENABLE_COVERAGE_TESTING=false
+	CORE_SYMBOL_NAME="SYS"
 	TEMP_DIR="/tmp"
 	TIME_BEGIN=$( date -u +%s )
 	VERSION=1.2
@@ -61,7 +62,7 @@
 	txtrst=$(tput sgr0)
 
 	if [ $# -ne 0 ]; then
-		while getopts ":cdo:" opt; do
+		while getopts ":cdos:" opt; do
 			case "${opt}" in
 				o )
 					options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -78,6 +79,15 @@
 				;;
 				d )
 					DOXYGEN=true
+				;;
+				s)
+					if [ "${#OPTARG}" -gt 6 ] || [ -z "${#OPTARG}" ]; then
+						printf "\\n\\tInvalid argument: %s\\n" "${OPTARG}" 1>&2
+						usage
+						exit 1
+					else
+						CORE_SYMBOL_NAME="${OPTARG}"
+					fi
 				;;
 				\? )
 					printf "\\n\\tInvalid Option: %s\\n" "-${OPTARG}" 1>&2
@@ -143,7 +153,6 @@
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost"
 			;;
 			"CentOS Linux")
 				FILE="${PWD}/scripts/eosio_build_centos.sh"
@@ -153,7 +162,6 @@
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"elementary OS")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
@@ -161,7 +169,6 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"Fedora")
 				FILE="${PWD}/scripts/eosio_build_fedora.sh"
@@ -169,7 +176,6 @@
 				C_COMPILER=gcc
 				MONGOD_CONF=/etc/mongod.conf
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"Linux Mint")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
@@ -177,7 +183,6 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			"Ubuntu")
 				FILE="${PWD}/scripts/eosio_build_ubuntu.sh"
@@ -185,13 +190,13 @@
 				C_COMPILER=clang-4.0
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
-				export BOOST_ROOT="${HOME}/opt/boost_1_67_0"
 			;;
 			*)
 				printf "\\n\\tUnsupported Linux Distribution. Exiting now.\\n\\n"
 				exit 1
 		esac
 
+		export BOOST_ROOT="${HOME}/opt/boost"
 		OPENSSL_ROOT_DIR=/usr/include/openssl
 		WASM_ROOT="${HOME}/opt/wasm"
 	fi
@@ -231,7 +236,7 @@
 	fi
 	
 	if ! "${CMAKE}" -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
-		-DCMAKE_C_COMPILER="${C_COMPILER}" -DWASM_ROOT="${WASM_ROOT}" \
+		-DCMAKE_C_COMPILER="${C_COMPILER}" -DWASM_ROOT="${WASM_ROOT}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
 		-DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
 		-DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" ..
 	then

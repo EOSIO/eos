@@ -63,6 +63,7 @@ namespace fc
            if( _args.valid() && _args->size() ) 
            {
              // TODO: args = fc::move(_args);
+              _query = fc::move(_largs);
            }
          }
 
@@ -71,6 +72,7 @@ namespace fc
          ostring                   _user;
          ostring                   _pass;
          opath                     _path;
+         ostring                   _query;
          ovariant_object           _args;
          fc::optional<uint16_t>    _port;
     };
@@ -99,6 +101,7 @@ namespace fc
       if( my->_host.valid() ) ss<<*my->_host;
       if( my->_port.valid() ) ss<<":"<<*my->_port;
       if( my->_path.valid() ) ss<<my->_path->generic_string();
+      if( my->_query.valid() ) ss<<"?"<<*my->_query;
     //  if( my->_args ) ss<<"?"<<*my->_args;
       return ss.str();
   }
@@ -184,6 +187,10 @@ namespace fc
   opath                     url::path()const
   {
     return my->_path;
+  }
+  ostring                   url::query()const
+  {
+    return my->_query;
   }
   ovariant_object           url::args()const
   {

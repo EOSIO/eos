@@ -294,9 +294,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                                           my->chain_config->reversible_cache_size,
                                           my->chain_config->blocks_dir/config::reversible_blocks_dir_name ) ) {
             ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
-            fc::copy( backup_dir/config::reversible_blocks_dir_name, my->chain_config->blocks_dir/config::reversible_blocks_dir_name );
-            fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->blocks_dir/"reversible/shared_memory.bin" );
-            fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->blocks_dir/"reversible/shared_memory.meta" );
+            fc::copy( backup_dir / config::reversible_blocks_dir_name,
+                      my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
+            fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
+                      my->chain_config->blocks_dir/ config::reversible_blocks_dir_name / "shared_memory.bin" );
+            fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
+                      my->chain_config->blocks_dir/ config::reversible_blocks_dir_name / "shared_memory.meta" );
          }
       }
    } else if( options.at("replay-blockchain").as<bool>() ) {
