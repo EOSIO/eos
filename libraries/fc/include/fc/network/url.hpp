@@ -47,6 +47,7 @@ namespace fc {
       ostring                   user()const;
       ostring                   pass()const;
       opath                     path()const;
+      ostring                   query()const;
       ovariant_object           args()const;
       fc::optional<uint16_t>    port()const;
 
@@ -86,6 +87,7 @@ namespace fc {
       ostring                   user()const;
       ostring                   pass()const;
       opath                     path()const;
+      ostring                   query()const;
       ovariant_object           args()const;
       fc::optional<uint16_t>    port()const;
       
@@ -94,6 +96,7 @@ namespace fc {
       void set_user( string         );
       void set_pass( string         );
       void set_path( fc::path p     );
+      void set_query( string        );
       void set_args( variant_object );
       void set_port( uint16_t       );
 

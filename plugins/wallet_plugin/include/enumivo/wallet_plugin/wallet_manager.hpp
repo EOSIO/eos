@@ -51,6 +51,14 @@ public:
    chain::signed_transaction sign_transaction(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
                                              const chain::chain_id_type& id);
 
+
+   /// Sign digest with the private keys specified via their public keys.
+   /// @param digest the digest to sign.
+   /// @param key the public key of the corresponding private key to sign the digest with
+   /// @return signature over the digest
+   /// @throws fc::exception if corresponding private keys not found in unlocked wallets
+   chain::signature_type sign_digest(const chain::digest_type& digest, const public_key_type& key);
+
    /// Create a new wallet.
    /// A new wallet is created in file dir/{name}.wallet see set_dir.
    /// The new wallet is unlocked after creation.

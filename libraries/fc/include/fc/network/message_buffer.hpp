@@ -8,6 +8,7 @@
 #include <fc/io/raw.hpp>
 #include <deque>
 #include <array>
+#include <fc/exception/exception.hpp>
 
 namespace fc {
   template <uint32_t buffer_len>
@@ -120,7 +121,15 @@ namespace fc {
      *  Logically, this is the different between where the read and write pointers are.
      */
     uint32_t bytes_to_read() const {
-      return (write_ind.first - read_ind.first) * buffer_len + write_ind.second - read_ind.second;
+      return bytes_to_read_from_index(read_ind);
+    }
+
+    /*
+     *  Returns the current number of bytes remaining to be read from a given index
+     *  Logically, this is the different between where the given index is and the write pointers.
+     */
+    uint32_t bytes_to_read_from_index(index_t ind) const {
+      return (write_ind.first - ind.first) * buffer_len + write_ind.second - ind.second;
     }
 
     /*
@@ -198,7 +207,7 @@ namespace fc {
      */
     bool read(void* s, uint32_t size) {
       if (bytes_to_read() < size) {
-        return false;
+        FC_THROW_EXCEPTION(out_of_range_exception, "tried to read ${r} but only ${s} left", ("r", size)("s", bytes_to_read()));
       }
       if (read_ind.second + size <= buffer_len) {
         memcpy(s, read_ptr(), size);
@@ -217,8 +226,8 @@ namespace fc {
      *  The supplied index is advanced, but the read pointer is unaffected.
      */
     bool peek(void* s, uint32_t size, index_t& index) {
-      if (bytes_to_read() < size) {
-        return false;
+      if (bytes_to_read_from_index(index) < size) {
+        FC_THROW_EXCEPTION(out_of_range_exception, "tried to peek ${r} but only ${s} left", ("r", size)("s",bytes_to_read_from_index(index)));
       }
       if (index.second + size <= buffer_len) {
         memcpy(s, get_ptr(index), size);
