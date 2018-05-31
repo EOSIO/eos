@@ -779,7 +779,6 @@ struct controller_impl {
       try {
          p->sign( signer_callback, false); //trust );
       } catch ( ... ) {
-         edump(( fc::json::to_pretty_string( p->header ) ) );
          throw;
       }
 
