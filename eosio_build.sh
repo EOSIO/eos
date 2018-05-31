@@ -106,8 +106,7 @@
 			esac
 		done
 	fi
-echo $CORE_SYMBOL_NAME
-exit
+
 	if [ ! -d .git ]; then
 		printf "\\n\\tThis build script only works with sources cloned from git\\n"
 		printf "\\tPlease clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\\n"
