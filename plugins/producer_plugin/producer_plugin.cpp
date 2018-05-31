@@ -420,14 +420,14 @@ void producer_plugin::set_program_options(
           "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "(DEPRECATED - Use signature-provider instead) Tuple of [public key, WIF private key] (may specify multiple times)")
-         ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({std::string(default_priv_key.get_public_key()) + "=" + std::string(default_priv_key)}, std::string(default_priv_key.get_public_key()) + "=" + std::string(default_priv_key)),
-          "Key=Value pairs in the form <public-key-string>=<provider-spec-string>\n"
+         ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)}, std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)),
+          "Key=Value pairs in the form <public-key>=<provider-spec>\n"
           "Where:\n"
-          "   <public-key-string>    \tis a string form of a vaild EOSIO public key\n\n"
-          "   <provider-spec-string> \tis a string in the form <provider-type>:<data>\n\n"
-          "   <provider-type>        \tis KEY, or KEOSD\n\n"
-          "   KEY:<data>             \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
-          "   KEOSD:<data>           \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
+          "   <public-key>    \tis a string form of a vaild EOSIO public key\n\n"
+          "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
+          "   <provider-type> \tis KEY, or KEOSD\n\n"
+          "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
+          "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
          ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a keosd provider for signing")
          ;
