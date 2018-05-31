@@ -46,11 +46,9 @@ namespace eosiosystem {
       uint64_t             last_pervote_bucket_fill = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
-      int64_t              savings = 0;
       uint32_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
-      checksum160          last_producer_schedule_id;
       uint16_t             last_producer_schedule_size = 0;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
       block_timestamp      last_name_close;
@@ -59,8 +57,8 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters,
                                 (max_ram_size)(total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
-                                (pervote_bucket)(perblock_bucket)(savings)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (last_producer_schedule_id)(last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
+                                (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
+                                (last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
    };
 
    struct producer_info {
@@ -72,8 +70,6 @@ namespace eosiosystem {
       uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
-      block_timestamp       time_became_active;
-      block_timestamp       last_produced_block_time;
 
       uint64_t primary_key()const { return owner;                                   }
       double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
@@ -82,8 +78,7 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
-                        (unpaid_blocks)(last_claim_time)(location)
-                        (time_became_active)(last_produced_block_time) )
+                        (unpaid_blocks)(last_claim_time)(location) )
    };
 
    struct voter_info {
@@ -216,6 +211,8 @@ namespace eosiosystem {
          void claimrewards( const account_name& owner );
 
          void setpriv( account_name account, uint8_t ispriv );
+
+         void rmvproducer( account_name producer );
 
          void bidname( account_name bidder, account_name newname, asset bid );
       private:

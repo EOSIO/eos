@@ -194,7 +194,7 @@ try:
         errorExit("Unexpected wallet list: %s" % (wallets))
 
     Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys()
+    actualKeys=walletMgr.getKeys(testWallet)
     expectedkeys=[]
     for account in accounts:
         expectedkeys.append(account.ownerPrivateKey)
@@ -219,7 +219,7 @@ try:
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
     Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys()
+    actualKeys=walletMgr.getKeys(defproduceraWallet)
     expectedkeys=[defproduceraAccount.ownerPrivateKey]
     noMatch=list(set(expectedkeys) - set(actualKeys))
     if len(noMatch) > 0:
