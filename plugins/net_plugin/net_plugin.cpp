@@ -1188,7 +1188,7 @@ namespace eosio {
             pending_message_buffer.peek(&b, 1, index);
             which |= uint32_t(uint8_t(b) & 0x7f) << by;
             by += 7;
-         } while( uint8_t(b) & 0x80 );
+         } while( uint8_t(b) & 0x80 && by < 32);
 
          if (which == uint64_t(net_message::tag<signed_block>::value)) {
             blk_buffer.resize(message_length);
@@ -2055,7 +2055,7 @@ namespace eosio {
                            uint32_t message_length;
                            auto index = conn->pending_message_buffer.read_index();
                            conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
-                           if(message_length > def_send_buffer_size*2) {
+                           if(message_length > def_send_buffer_size*2 || message_length == 0) {
                               elog("incoming message length unexpected (${i})", ("i", message_length));
                               close(conn);
                               return;
