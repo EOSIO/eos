@@ -867,7 +867,7 @@ struct create_account_subcommand {
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
                if ( buy_ram_eos.empty() && buy_ram_bytes_in_kbytes == 0) {
-                  std::cerr << "ERROR: Either --buy-ram-EOS or --buy-ram-bytes with non-zero value is required" << std::endl;
+                  std::cerr << "ERROR: Either --buy-ram or --buy-ram-kbytes with non-zero value is required" << std::endl;
                   return;
                }
                action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
