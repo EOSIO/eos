@@ -3297,6 +3297,31 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine_to_name)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(abi_type_nested_in_vector)
+{ try {
+      // inifinite loop in types
+      const char* repeat_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "store_t",
+         "base": "",
+         "fields": [{
+            "name": "id",
+            "type": "uint64"
+         },{
+            "name": "childs",
+            "type": "store_t[]"
+         }],
+     "actions": [],
+     "tables": []
+   }
+   )=====";
+
+   BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::exception );
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
 { try {
    // inifinite loop in types

@@ -658,7 +658,9 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester, * boost::unit_t
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("33.3333")) == prod["total_votes"].as_double() );
 
    //bob111111111 increases his stake
-   BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("55.0000"), core_from_string("0.5555") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "bob111111111", core_from_string("33.0000"), core_from_string("0.3333") ) );
+   //alice1111111 stake with transfer to bob111111111
+   BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "alice1111111", "bob111111111", core_from_string("22.0000"), core_from_string("0.2222") ) );
    //should increase alice1111111's total_votes
    prod = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("88.8888")) == prod["total_votes"].as_double() );
@@ -678,7 +680,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester, * boost::unit_t
    prod = get_producer_info( "alice1111111" );
    BOOST_TEST_REQUIRE( stake2votes(core_from_string("20.2220")) == prod["total_votes"].as_double() );
    //but eos should still be at stake
-   BOOST_REQUIRE_EQUAL( core_from_string("1933.3334"), get_balance( "bob111111111" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1955.5556"), get_balance( "bob111111111" ) );
 
    //carol1111111 unstakes rest of eos
    BOOST_REQUIRE_EQUAL( success(), unstake( "carol1111111", core_from_string("20.0000"), core_from_string("0.2220") ) );

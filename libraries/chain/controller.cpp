@@ -776,12 +776,7 @@ struct controller_impl {
    void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback, bool trust  ) {
       auto p = pending->_pending_block_state;
 
-      try {
-         p->sign( signer_callback, false); //trust );
-      } catch ( ... ) {
-         edump(( fc::json::to_pretty_string( p->header ) ) );
-         throw;
-      }
+      p->sign( signer_callback, false); //trust );
 
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
