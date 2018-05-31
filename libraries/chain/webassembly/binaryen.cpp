@@ -73,7 +73,7 @@ std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiat
       table.resize(module->table.initial);
       for (auto& segment : module->table.segments) {
          Address offset = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(segment.offset).value.geti32();
-         FC_ASSERT(offset + segment.data.size() <= module->table.initial);
+         FC_ASSERT( uint64_t(offset) + segment.data.size() <= module->table.initial);
          for (size_t i = 0; i != segment.data.size(); ++i) {
             table[offset + i] = segment.data[i];
          }

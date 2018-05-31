@@ -91,7 +91,7 @@ void wallet_api_plugin::plugin_startup() {
        CALL(wallet, wallet_mgr, list_wallets,
             INVOKE_R_V(wallet_mgr, list_wallets), 200),
        CALL(wallet, wallet_mgr, list_keys,
-            INVOKE_R_V(wallet_mgr, list_keys), 200),
+            INVOKE_R_R_R(wallet_mgr, list_keys, std::string, std::string), 200),
        CALL(wallet, wallet_mgr, get_public_keys,
             INVOKE_R_V(wallet_mgr, get_public_keys), 200)
    });

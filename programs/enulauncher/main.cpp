@@ -978,7 +978,6 @@ launcher_def::write_config_file (tn_node_def &node) {
       exit (-1);
    }
 
-   cfg << "genesis-json = " << host->genesis << "\n";
    cfg << "blocks-dir = " << block_dir << "\n";
    cfg << "readonly = 0\n";
    cfg << "send-whole-blocks = true\n";
@@ -1462,6 +1461,7 @@ launcher_def::launch (enudaemon_def &instance, string &gts) {
   }
 
   enudaemoncmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
+  enudaemoncmd += " --genesis-json " + genesis.string();
   if (gts.length()) {
     enudaemoncmd += " --genesis-timestamp " + gts;
   }

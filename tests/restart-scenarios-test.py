@@ -44,6 +44,7 @@ parser.add_argument("--dump-error-details",
                     action='store_true')
 parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
                     action='store_true')
+parser.add_argument("--kill-all", help="Kill all enunode and enuwallet instances", action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
@@ -57,6 +58,7 @@ killSignal=args.kill_sig
 killEnuInstances= not args.dont_kill
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
+killAll=args.kill_all
 
 seed=1
 testUtils.Utils.Debug=debug
@@ -71,7 +73,7 @@ try:
     cluster.setChainStrategy(chainSyncStrategyStr)
     cluster.setWalletMgr(walletMgr)
 
-    cluster.killall()
+    cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
     Print ("producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d, chain sync strategy: %s" % (
@@ -87,7 +89,7 @@ try:
         errorExit("Cluster never stabilized")
 
     Print("Stand up ENU wallet enuwallet")
-    walletMgr.killall()
+    walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         errorExit("Failed to stand up enuwallet.")
@@ -173,8 +175,8 @@ finally:
 
     if killEnuInstances:
         Print("Shut down the cluster%s" % (" and cleanup." if (testSuccessful and not keepLogs) else "."))
-        cluster.killall()
-        walletMgr.killall()
+        cluster.killall(allInstances=killAll)
+        walletMgr.killall(allInstances=killAll)
         if testSuccessful and not keepLogs:
             Print("Cleanup cluster and wallet data.")
             cluster.cleanup()
