@@ -159,7 +159,8 @@ namespace eosio {
      * @brief Generates eosio::abi_def struct handling events from ASTConsumer
      */
    class abi_generator {
-      private: 
+      private:
+         static constexpr size_t max_recursion_depth = 25; // arbitrary depth to prevent infinite recursion
          bool                   verbose;
          int                    optimizations;
          abi_def*               output;
@@ -171,6 +172,7 @@ namespace eosio {
          string                 target_contract;
          vector<string>         target_actions;
          ricardian_contracts    rc;
+
       public:
 
          enum optimization {
@@ -178,7 +180,8 @@ namespace eosio {
          };
 
          abi_generator()
-         :optimizations(0)
+         : verbose(false)
+         , optimizations(0)
          , output(nullptr)
          , compiler_instance(nullptr)
          , ast_context(nullptr)
@@ -283,17 +286,17 @@ namespace eosio {
          string decl_to_string(clang::Decl* d);
 
          bool is_typedef(const clang::QualType& qt);
-         QualType add_typedef(const clang::QualType& qt);
+         QualType add_typedef(const clang::QualType& qt, size_t recursion_depth);
 
          bool is_vector(const clang::QualType& qt);
          bool is_vector(const string& type_name);
-         string add_vector(const clang::QualType& qt);
+         string add_vector(const clang::QualType& qt, size_t recursion_depth);
 
          bool is_struct(const clang::QualType& qt);
-         string add_struct(const clang::QualType& qt, string full_type_name="");
+         string add_struct(const clang::QualType& qt, string full_type_name, size_t recursion_depth);
 
          string get_type_name(const clang::QualType& qt, bool no_namespace);
-         string add_type(const clang::QualType& tqt);
+         string add_type(const clang::QualType& tqt, size_t recursion_depth);
 
          bool is_elaborated(const clang::QualType& qt);
          bool is_struct_specialization(const clang::QualType& qt);
