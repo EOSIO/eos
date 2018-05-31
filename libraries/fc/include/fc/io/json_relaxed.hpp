@@ -21,7 +21,7 @@
 namespace fc { namespace json_relaxed
 {
    template<typename T, bool strict>
-   variant variant_from_stream( T& in );
+   variant variant_from_stream( T& in, uint32_t max_depth );
 
    template<typename T>
    std::string tokenFromStream( T& in )
@@ -562,7 +562,7 @@ namespace fc { namespace json_relaxed
    } FC_CAPTURE_AND_RETHROW( (token) ) }
 
    template<typename T, bool strict>
-   variant_object objectFromStream( T& in )
+   variant_object objectFromStream( T& in, uint32_t max_depth )
    {
       mutable_variant_object obj;
       try
@@ -590,7 +590,7 @@ namespace fc { namespace json_relaxed
                                         ("key", key) );
             }
             in.get();
-            auto val = json_relaxed::variant_from_stream<T, strict>( in );
+            auto val = json_relaxed::variant_from_stream<T, strict>( in, max_depth - 1 );
 
             obj(std::move(key),std::move(val));
             skip_white_space(in);
@@ -613,7 +613,7 @@ namespace fc { namespace json_relaxed
    }
 
    template<typename T, bool strict>
-   variants arrayFromStream( T& in )
+   variants arrayFromStream( T& in, uint32_t max_depth )
    {
       variants ar;
       try
@@ -631,7 +631,7 @@ namespace fc { namespace json_relaxed
               continue;
            }
            if( skip_white_space(in) ) continue;
-           ar.push_back( json_relaxed::variant_from_stream<T, strict>(in) );
+           ar.push_back( json_relaxed::variant_from_stream<T, strict>(in, max_depth - 1) );
            skip_white_space(in);
         }
         if( in.peek() != ']' )
@@ -686,7 +686,7 @@ namespace fc { namespace json_relaxed
    }
    
    template<typename T, bool strict>
-   variant variant_from_stream( T& in )
+   variant variant_from_stream( T& in, uint32_t max_depth )
    {
       skip_white_space(in);
       variant var;
@@ -701,11 +701,11 @@ namespace fc { namespace json_relaxed
               in.get();
               continue;
             case '"':
-              return json_relaxed::stringFromStream<T, strict>( in );
+               return json_relaxed::stringFromStream<T, strict>( in );
             case '{':
-              return json_relaxed::objectFromStream<T, strict>( in );
+              return json_relaxed::objectFromStream<T, strict>( in, max_depth - 1 );
             case '[':
-              return json_relaxed::arrayFromStream<T, strict>( in );
+              return json_relaxed::arrayFromStream<T, strict>( in, max_depth - 1 );
             case '-':
             case '+':
             case '.':

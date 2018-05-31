@@ -93,7 +93,6 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
 void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
-   set<std::pair<account_name, permission_name>> authorizing_accounts;
 
    for( const auto& a : accounts ) {
 
@@ -232,7 +231,6 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
       */
    }
 
-   auto old_ram_bytes = limits.ram_bytes;
    _db.modify( limits, [&]( resource_limits_object& pending_limits ){
       pending_limits.ram_bytes = ram_bytes;
       pending_limits.net_weight = net_weight;
