@@ -49,32 +49,35 @@ public:
 
    template<typename SyncReadStream, typename Fn, typename CancelFn>
    error_code sync_do_with_deadline( SyncReadStream& s, deadline_type deadline, Fn f, CancelFn cf ) {
-      optional<error_code> timer_result;
+      bool timer_expired = false;
       boost::asio::deadline_timer timer(s.get_io_service());
 
       timer.expires_at(deadline);
       bool timer_cancelled = false;
-      timer.async_wait([&timer_result, &timer_cancelled] (const error_code& error) {
-         if (!error && !timer_cancelled) {
-            timer_result.emplace(error);
+      timer.async_wait([&timer_expired, &timer_cancelled] (const error_code&) {
+         // the only non-success error_code this is called with is operation_aborted but since
+         // we could have queued "success" when we cancelled the timer, we set a flag at the
+         // safer scope and only respect that.
+         if (!timer_cancelled) {
+            timer_expired = true;
          }
       });
 
       optional<error_code> f_result;
       f(f_result);
 
-      s.get_io_service().reset();
+      s.get_io_service().restart();
       while (s.get_io_service().run_one())
       {
          if (f_result) {
             timer_cancelled = true;
             timer.cancel();
-         } else if (timer_result) {
+         } else if (timer_expired) {
             cf();
          }
       }
 
-      if (!timer_result) {
+      if (!timer_expired) {
          return *f_result;
       } else {
          return error_code(boost::system::errc::timed_out, boost::system::system_category());
@@ -262,13 +265,14 @@ public:
    variant post_sync(const url& dest, const variant& payload, const fc::time_point& _deadline) {
       static const deadline_type epoch(boost::gregorian::date(1970, 1, 1));
       auto deadline = epoch + boost::posix_time::microseconds(_deadline.time_since_epoch().count());
+      FC_ASSERT(dest.host(), "No host set on URL");
 
       string path = dest.path() ? dest.path()->generic_string() : "/";
       if (dest.query()) {
          path = path + "?" + *dest.query();
       }
 
-      http::request<http::string_body> req{http::verb::post, dest.path()->generic_string(), 11};
+      http::request<http::string_body> req{http::verb::post, path, 11};
       req.set(http::field::host, *dest.host());
       req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
       req.set(http::field::content_type, "application/json");

@@ -198,12 +198,6 @@ class static_variant {
     alignas(Types...) char storage[impl::type_info<Types...>::size];
     int _tag;
 
-    /*template<typename X>
-    void init(const X& x) {
-        _tag = impl::position<X, Types...>::pos;
-        new(storage) X(x);
-    }*/
-
     template<typename X>
     void init(X&& x) {
         _tag = impl::position<std::decay_t<X>, Types...>::pos;
@@ -244,15 +238,6 @@ public:
     {
        mv.visit( impl::move_construct<static_variant>(*this) );
     }
-
-    /*template<typename X>
-    static_variant(const X& v) {
-        static_assert(
-            impl::position<X, Types...>::pos != -1,
-            "Type not in static_variant."
-        );
-        init(v);
-    }*/
 
     template<typename X>
     static_variant(X&& v) {
