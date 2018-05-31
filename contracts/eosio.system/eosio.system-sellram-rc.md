@@ -2,7 +2,7 @@
 
 ### Description
 
-The `{{ sellram }}` action sells unused RAM for SYS tokens.
+The `{{ sellram }}` action sells unused RAM for tokens.
 
 ### Inputs and Input Types
 
