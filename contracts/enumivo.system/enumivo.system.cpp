@@ -184,7 +184,7 @@ namespace enumivosystem {
 } /// enumivo.system
 
 
-ENUIO_ABI( enumivosystem::system_contract,
+ENUMIVO_ABI( enumivosystem::system_contract,
      // native.hpp (newaccount definition is actually in enumivo.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // enumivo.system.cpp
