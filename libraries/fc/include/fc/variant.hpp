@@ -57,8 +57,8 @@ namespace fc
 
    struct blob { std::vector<char> data; };
 
-   void to_variant( const blob& var,  variant& vo, uint32_t max_depth );
-   void from_variant( const variant& var,  blob& vo, uint32_t max_depth );
+   void to_variant( const blob& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  blob& vo, uint32_t max_depth = 1 );
 
 
    template<typename T, typename... Args> void to_variant( const boost::multi_index_container<T,Args...>& s, variant& v, uint32_t max_depth );
@@ -247,8 +247,8 @@ namespace fc
         variant( variant_object, uint32_t max_depth = 1 );
         variant( mutable_variant_object, uint32_t max_depth = 1 );
         variant( variants, uint32_t max_depth = 1 );
-        variant( const variant& );
-        variant( variant&& );
+        variant( const variant&, uint32_t max_depth = 1 );
+        variant( variant&&, uint32_t max_depth = 1 );
        ~variant();
 
         /**

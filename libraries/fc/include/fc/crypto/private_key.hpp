@@ -60,9 +60,9 @@ namespace fc { namespace crypto {
 } }  // fc::crypto
 
 namespace fc {
-   void to_variant(const crypto::private_key& var,  variant& vo);
+   void to_variant(const crypto::private_key& var,  variant& vo, uint32_t max_depth);
 
-   void from_variant(const variant& var, crypto::private_key& vo);
+   void from_variant(const variant& var, crypto::private_key& vo, uint32_t max_depth);
 } // namespace fc
 
 FC_REFLECT(fc::crypto::private_key, (_storage) )

@@ -222,27 +222,27 @@ namespace fc { namespace ecc {
 
 }
 
-void to_variant( const ecc::private_key& var,  variant& vo )
+   void to_variant( const ecc::private_key& var,  variant& vo, uint32_t )
 {
     vo = var.get_secret();
 }
 
-void from_variant( const variant& var,  ecc::private_key& vo )
+void from_variant( const variant& var,  ecc::private_key& vo, uint32_t max_depth )
 {
     fc::sha256 sec;
-    from_variant( var, sec );
+    from_variant( var, sec, max_depth - 1 );
     vo = ecc::private_key::regenerate(sec);
 }
 
-void to_variant( const ecc::public_key& var,  variant& vo )
+void to_variant( const ecc::public_key& var,  variant& vo, uint32_t max_depth )
 {
     vo = var.serialize();
 }
 
-void from_variant( const variant& var,  ecc::public_key& vo )
+void from_variant( const variant& var,  ecc::public_key& vo, uint32_t max_depth )
 {
     ecc::public_key_data dat;
-    from_variant( var, dat );
+    from_variant( var, dat, max_depth );
     vo = ecc::public_key(dat);
 }
 

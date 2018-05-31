@@ -63,16 +63,16 @@ namespace fc {
       }
   } FC_RETHROW_EXCEPTIONS( warn, "unable to convert ISO-formatted string to fc::time_point" ) }
 
-  void to_variant( const fc::time_point& t, variant& v ) {
+   void to_variant( const fc::time_point& t, variant& v, uint32_t ) {
     v = fc::string( t );
   }
-  void from_variant( const fc::variant& v, fc::time_point& t ) {
+  void from_variant( const fc::variant& v, fc::time_point& t, uint32_t ) {
     t = fc::time_point::from_iso_string( v.as_string() );
   }
-  void to_variant( const fc::time_point_sec& t, variant& v ) {
+  void to_variant( const fc::time_point_sec& t, variant& v, uint32_t ) {
     v = fc::string( t );
   }
-  void from_variant( const fc::variant& v, fc::time_point_sec& t ) {
+  void from_variant( const fc::variant& v, fc::time_point_sec& t, uint32_t ) {
     t = fc::time_point_sec::from_iso_string( v.as_string() );
   }
 

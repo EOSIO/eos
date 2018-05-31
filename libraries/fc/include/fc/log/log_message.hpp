@@ -8,6 +8,8 @@
 #include <fc/shared_ptr.hpp>
 #include <memory>
 
+#define FC_MAX_LOG_OBJECT_DEPTH 200
+
 namespace fc
 {
    namespace detail 
@@ -43,8 +45,8 @@ namespace fc
          values value;
    };
 
-   void to_variant( log_level e, variant& v );
-   void from_variant( const variant& e, log_level& ll );
+   void to_variant( log_level e, variant& v, uint32_t max_depth = 1 );
+   void from_variant( const variant& e, log_level& ll, uint32_t max_depth = 1 );
 
    /**
     *  @brief provides information about where and when a log message was generated.
@@ -61,8 +63,8 @@ namespace fc
                     uint64_t line, 
                     const char* method );
         ~log_context();
-        explicit log_context( const variant& v );
-        variant to_variant()const;
+        explicit log_context( const variant& v, uint32_t max_depth );
+        variant to_variant( uint32_t max_depth)const;
 
         string        get_file()const;
         uint64_t      get_line_number()const;
@@ -81,8 +83,8 @@ namespace fc
         std::shared_ptr<detail::log_context_impl> my;
    };
 
-   void to_variant( const log_context& l, variant& v );
-   void from_variant( const variant& l, log_context& c );
+   void to_variant( const log_context& l, variant& v, uint32_t max_depth );
+   void from_variant( const variant& l, log_context& c, uint32_t max_depth );
 
    /**
     *  @brief aggregates a message along with the context and associated meta-information.
@@ -112,8 +114,8 @@ namespace fc
          log_message( log_context ctx, std::string format, variant_object args = variant_object() );
          ~log_message();
 
-         log_message( const variant& v );
-         variant        to_variant()const;
+         log_message( const variant& v, uint32_t max_depth );
+         variant        to_variant( uint32_t max_depth )const;
                               
          string         get_message()const;
                               
@@ -125,8 +127,8 @@ namespace fc
          std::shared_ptr<detail::log_message_impl> my;
    };
 
-   void    to_variant( const log_message& l, variant& v );
-   void    from_variant( const variant& l, log_message& c );
+   void    to_variant( const log_message& l, variant& v, uint32_t max_depth );
+   void    from_variant( const variant& l, log_message& c, uint32_t max_depth );
 
    typedef std::vector<log_message> log_messages;
 
@@ -158,5 +160,6 @@ FC_REFLECT_TYPENAME( fc::log_message );
  * @param ...  A set of key/value pairs denoted as ("key",val)("key2",val2)...
  */
 #define FC_LOG_MESSAGE( LOG_LEVEL, FORMAT, ... ) \
-   fc::log_message( FC_LOG_CONTEXT(LOG_LEVEL), FORMAT, fc::mutable_variant_object()__VA_ARGS__ )
-
+   fc::log_message( FC_LOG_CONTEXT(LOG_LEVEL), \
+                    FORMAT, \
+                    fc::limited_mutable_variant_object( FC_MAX_LOG_OBJECT_DEPTH, true )__VA_ARGS__ )
