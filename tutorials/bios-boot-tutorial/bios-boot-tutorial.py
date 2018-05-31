@@ -13,7 +13,7 @@ import time
 args = None
 logFile = None
 
-unlockTimeout = 99999999999
+unlockTimeout = 999999999
 fastUnstakeSystem = './fast.refund/eosio.system/eosio.system.wasm'
 
 systemAccounts = [
