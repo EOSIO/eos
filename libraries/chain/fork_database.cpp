@@ -79,8 +79,6 @@ namespace eosio { namespace chain {
    void fork_database::close() {
       if( my->index.size() == 0 ) return;
 
-      fc::datastream<size_t> ps;
-
       auto fork_db_dat = my->datadir / config::forkdb_filename;
       std::ofstream out( fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
       uint32_t num_blocks_in_fork_db = my->index.size();
