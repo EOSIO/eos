@@ -631,25 +631,25 @@ namespace fc { namespace crypto { namespace r1 {
 
 }
 }
-  void to_variant( const crypto::r1::private_key& var,  variant& vo )
+  void to_variant( const crypto::r1::private_key& var,  variant& vo, uint32_t )
   {
     vo = var.get_secret();
   }
-  void from_variant( const variant& var,  crypto::r1::private_key& vo )
+  void from_variant( const variant& var,  crypto::r1::private_key& vo, uint32_t max_depth )
   {
     fc::sha256 sec;
-    from_variant( var, sec );
+    from_variant( var, sec, max_depth );
     vo = crypto::r1::private_key::regenerate(sec);
   }
 
-  void to_variant( const crypto::r1::public_key& var,  variant& vo )
+  void to_variant( const crypto::r1::public_key& var,  variant& vo, uint32_t )
   {
     vo = var.serialize();
   }
-  void from_variant( const variant& var,  crypto::r1::public_key& vo )
+  void from_variant( const variant& var,  crypto::r1::public_key& vo, uint32_t max_depth )
   {
     crypto::r1::public_key_data dat;
-    from_variant( var, dat );
+    from_variant( var, dat, max_depth );
     vo = crypto::r1::public_key(dat);
   }
 

@@ -164,12 +164,12 @@ namespace fc
    }
 
 
-   void to_variant( const variant_object& var,  variant& vo )
+   void to_variant( const variant_object& var,  variant& vo, uint32_t )
    {
       vo = variant(var);
    }
 
-   void from_variant( const variant& var,  variant_object& vo )
+   void from_variant( const variant& var,  variant_object& vo, uint32_t )
    {
       vo = var.get_object();
    }
@@ -345,7 +345,7 @@ namespace fc
    /** Appends \a key and \a var without checking for duplicates, designed to
     *  simplify construction of dictionaries using (key,val)(key2,val2) syntax 
     */
-   mutable_variant_object& mutable_variant_object::operator()( string key, variant var )
+   mutable_variant_object& mutable_variant_object::operator()( string key, variant var, uint32_t )
    {
       _key_value->push_back( entry( fc::move(key), fc::move(var) ) );
       return *this;
@@ -367,12 +367,44 @@ namespace fc
       return *this;
    }
 
-   void to_variant( const mutable_variant_object& var,  variant& vo )
+   limited_mutable_variant_object::limited_mutable_variant_object( uint32_t m, bool skip_on_exception )
+         : mutable_variant_object(),
+           _max_depth(m - 1),
+           _reached_depth_limit(m == 0),
+           _skip_on_exception(skip_on_exception)
+   {
+      if( !skip_on_exception )
+         FC_ASSERT( m > 0, "Recursion depth exceeded!" );
+      else if( m == 0 )
+         set( "__err_msg", "[ERROR: Recusion depth exceeded!]" );
+   }
+
+   limited_mutable_variant_object& limited_mutable_variant_object::operator()( const variant_object& vo )
+   {
+      if( _reached_depth_limit )
+         // _skip_on_exception will always be true here
+         return *this;
+
+      try
+      {
+         mutable_variant_object::operator()( vo );
+      }
+      catch( ... )
+      {
+         if( !_skip_on_exception )
+            throw;
+         else
+            set( "__err_msg", "[ERROR: Caught exception in operator()( const variant_object& ).]" );
+      }
+      return *this;
+   }
+
+   void to_variant( const mutable_variant_object& var,  variant& vo, uint32_t )
    {
       vo = variant(var);
    }
 
-   void from_variant( const variant& var,  mutable_variant_object& vo )
+   void from_variant( const variant& var,  mutable_variant_object& vo, uint32_t )
    {
       vo = var.get_object();
    }

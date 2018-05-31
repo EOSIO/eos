@@ -141,12 +141,12 @@ namespace fc { namespace crypto {
 
 namespace fc
 {
-   void to_variant(const fc::crypto::private_key& var, variant& vo)
+   void to_variant(const fc::crypto::private_key& var, variant& vo, uint32_t )
    {
       vo = string(var);
    }
 
-   void from_variant(const variant& var, fc::crypto::private_key& vo)
+   void from_variant(const variant& var, fc::crypto::private_key& vo, uint32_t )
    {
       vo = fc::crypto::private_key(var.as_string());
    }

@@ -175,10 +175,10 @@ namespace fc {
 
   } // namespace r1
   } // namespace crypto
-  void to_variant( const crypto::r1::private_key& var,  variant& vo );
-  void from_variant( const variant& var,  crypto::r1::private_key& vo );
-  void to_variant( const crypto::r1::public_key& var,  variant& vo );
-  void from_variant( const variant& var,  crypto::r1::public_key& vo );
+  void to_variant( const crypto::r1::private_key& var,  variant& vo, uint32_t max_depth );
+  void from_variant( const variant& var,  crypto::r1::private_key& vo, uint32_t max_depth );
+  void to_variant( const crypto::r1::public_key& var,  variant& vo, uint32_t max_depth );
+  void from_variant( const variant& var,  crypto::r1::public_key& vo, uint32_t max_depth );
 
   namespace raw
   {

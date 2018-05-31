@@ -54,11 +54,11 @@ namespace fc
       my->thread_name = fc::get_thread_name();
    }
 
-   log_context::log_context( const variant& v )
+   log_context::log_context( const variant& v, uint32_t max_depth )
    :my( std::make_shared<detail::log_context_impl>() )
    {
        auto obj = v.get_object();
-       my->level        = obj["level"].as<log_level>();
+       my->level        = obj["level"].as<log_level>(max_depth);
        my->file         = obj["file"].as_string();
        my->line         = obj["line"].as_uint64();
        my->method       = obj["method"].as_string();
@@ -66,9 +66,9 @@ namespace fc
        my->thread_name  = obj["thread_name"].as_string();
        if (obj.contains("task_name"))
          my->task_name    = obj["task_name"].as_string();
-       my->timestamp    = obj["timestamp"].as<time_point>();
+       my->timestamp    = obj["timestamp"].as<time_point>(max_depth);
        if( obj.contains( "context" ) )
-           my->context      = obj["context"].as<string>();
+           my->context      = obj["context"].as<string>(max_depth);
    }
 
    fc::string log_context::to_string()const
@@ -87,26 +87,26 @@ namespace fc
    log_context::~log_context(){}
 
 
-   void to_variant( const log_context& l, variant& v )
+   void to_variant( const log_context& l, variant& v, uint32_t max_depth)
    { 
-      v = l.to_variant();     
+      v = l.to_variant(max_depth);
    }
 
-   void from_variant( const variant& l, log_context& c )
+   void from_variant( const variant& l, log_context& c, uint32_t max_depth)
    { 
-        c = log_context(l); 
+      c = log_context(l, max_depth); 
    }
 
-   void from_variant( const variant& l, log_message& c )
+   void from_variant( const variant& l, log_message& c, uint32_t max_depth)
    { 
-        c = log_message(l); 
+      c = log_message(l, max_depth);
    }
-   void to_variant( const log_message& m, variant& v )
+   void to_variant( const log_message& m, variant& v, uint32_t max_depth)
    {
-        v = m.to_variant();
+        v = m.to_variant(max_depth);
    }
 
-   void  to_variant( log_level e, variant& v )
+   void  to_variant( log_level e, variant& v, uint32_t )
    {
       switch( e )
       {
@@ -130,7 +130,7 @@ namespace fc
            return;
       }
    }
-   void from_variant( const variant& v, log_level& e )
+   void from_variant( const variant& v, log_level& e, uint32_t )
    {
       try 
       {
@@ -159,16 +159,16 @@ namespace fc
    string     log_context::get_context()const   { return my->context; }
 
 
-   variant log_context::to_variant()const
+   variant log_context::to_variant(uint32_t max_depth)const
    {
       mutable_variant_object o;
-              o( "level",        variant(my->level)      )
+              o( "level",        variant(my->level, max_depth - 1)      )
                ( "file",         my->file                )
                ( "line",         my->line                )
                ( "method",       my->method              )
                ( "hostname",     my->hostname            )
                ( "thread_name",  my->thread_name         )
-               ( "timestamp",    variant(my->timestamp)  );
+               ( "timestamp",    variant(my->timestamp, max_depth - 1)  );
 
       if( my->context.size() ) 
          o( "context",      my->context             );
@@ -181,22 +181,23 @@ namespace fc
    :my( std::make_shared<detail::log_message_impl>() ){}
 
    log_message::log_message( log_context ctx, std::string format, variant_object args )
-   :my( std::make_shared<detail::log_message_impl>(std::move(ctx)) )
+      :my( std::make_shared<detail::log_message_impl>(std::move(ctx)) )
    {
       my->format  = std::move(format);
       my->args    = std::move(args);
    }
 
-   log_message::log_message( const variant& v )
-   :my( std::make_shared<detail::log_message_impl>( log_context( v.get_object()["context"] ) ) )
+   log_message::log_message( const variant& v, uint32_t max_depth )
+   :my( std::make_shared<detail::log_message_impl>( log_context( v.get_object()["context"], max_depth ) ) )
    {
       my->format = v.get_object()["format"].as_string();
       my->args   = v.get_object()["data"].get_object();
    }
 
-   variant log_message::to_variant()const
+   variant log_message::to_variant(uint32_t max_depth)const
    {
-      return mutable_variant_object( "context", my->context )
+      return limited_mutable_variant_object(max_depth)
+                          ( "context", my->context )
                           ( "format",  my->format )
                           ( "data",    my->args   );
    }

@@ -124,8 +124,8 @@ namespace fc
           */
           virtual std::shared_ptr<exception> dynamic_copy_exception()const;
 
-         friend void to_variant( const exception& e, variant& v );
-         friend void from_variant( const variant& e, exception& ll );
+         friend void to_variant( const exception& e, variant& v, uint32_t max_depth );
+         friend void from_variant( const variant& e, exception& ll, uint32_t max_depth );
 
          exception& operator=( const exception& copy );
          exception& operator=( exception&& copy );
@@ -133,8 +133,8 @@ namespace fc
          std::unique_ptr<detail::exception_impl> my;
    };
 
-   void to_variant( const exception& e, variant& v );
-   void from_variant( const variant& e, exception& ll );
+   void to_variant( const exception& e, variant& v, uint32_t max_depth );
+   void from_variant( const variant& e, exception& ll, uint32_t max_depth );
    typedef std::shared_ptr<exception> exception_ptr;
 
    typedef optional<exception> oexception;

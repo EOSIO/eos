@@ -19,6 +19,17 @@
 
 #include <boost/multiprecision/cpp_int.hpp>
 
+#ifdef FC_ASSERT
+#define _FC_ASSERT(...) FC_ASSERT( __VA_ARGS__ )
+#else
+// poor man's FC_ASSERT, want to avoid recursive inclusion of exception.hpp
+namespace fc
+{
+void throw_assertion_failure( const std::string& message );
+}
+#define _FC_ASSERT( cond, msg ) { if( !(cond) ) { fc::throw_assertion_failure( #cond ": " msg ); } }
+#endif
+
 namespace fc
 {
    /**
@@ -29,8 +40,8 @@ namespace fc
     * for your Serializable_type
     *
     *  @code
-    *     void   to_variant( const Serializable_type& e, variant& v );
-    *     void   from_variant( const variant& e, Serializable_type& ll );
+    *     void   to_variant( const Serializable_type& e, variant& v, uint32_t max_depth );
+    *     void   from_variant( const variant& e, Serializable_type& ll, uint32_t max_depth );
     *  @endcode
     */
 
@@ -46,12 +57,12 @@ namespace fc
 
    struct blob { std::vector<char> data; };
 
-   void to_variant( const blob& var,  variant& vo );
-   void from_variant( const variant& var,  blob& vo );
+   void to_variant( const blob& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  blob& vo, uint32_t max_depth = 1 );
 
 
-   template<typename T, typename... Args> void to_variant( const boost::multi_index_container<T,Args...>& s, variant& v );
-   template<typename T, typename... Args> void from_variant( const variant& v, boost::multi_index_container<T,Args...>& s );
+   template<typename T, typename... Args> void to_variant( const boost::multi_index_container<T,Args...>& s, variant& v, uint32_t max_depth );
+   template<typename T, typename... Args> void from_variant( const variant& v, boost::multi_index_container<T,Args...>& s, uint32_t max_depth );
 
    using namespace boost::multiprecision;
    template<size_t Size>
@@ -59,126 +70,126 @@ namespace fc
    template<size_t Size>
    using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
 
-   void to_variant( const UInt<8>& n, variant& v );
-   void from_variant( const variant& v, UInt<8>& n );
+   void to_variant( const UInt<8>& n, variant& v, uint32_t max_depth = 1 );
+   void from_variant( const variant& v, UInt<8>& n, uint32_t max_depth = 1 );
 
-   void to_variant( const UInt<16>& n, variant& v );
-   void from_variant( const variant& v, UInt<16>& n );
+   void to_variant( const UInt<16>& n, variant& v, uint32_t max_depth = 1 );
+   void from_variant( const variant& v, UInt<16>& n, uint32_t max_depth = 1 );
 
-   void to_variant( const UInt<32>& n, variant& v );
-   void from_variant( const variant& v, UInt<32>& n );
+   void to_variant( const UInt<32>& n, variant& v, uint32_t max_depth = 1 );
+   void from_variant( const variant& v, UInt<32>& n, uint32_t max_depth = 1 );
 
-   void to_variant( const UInt<64>& n, variant& v );
-   void from_variant( const variant& v, UInt<64>& n );
+   void to_variant( const UInt<64>& n, variant& v, uint32_t max_depth = 1 );
+   void from_variant( const variant& v, UInt<64>& n, uint32_t max_depth = 1 );
 
-   template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v );
-   template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n );
+   template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v, uint32_t max_depth );
+   template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n, uint32_t max_depth );
 
-   template<typename T> void to_variant( const smart_ref<T>& s, variant& v );
-   template<typename T> void from_variant( const variant& v, smart_ref<T>& s );
-   template<typename T> void to_variant( const safe<T>& s, variant& v );
-   template<typename T> void from_variant( const variant& v, safe<T>& s );
-   template<typename T> void to_variant( const std::unique_ptr<T>& s, variant& v );
-   template<typename T> void from_variant( const variant& v, std::unique_ptr<T>& s );
+   template<typename T> void to_variant( const smart_ref<T>& s, variant& v, uint32_t max_depth );
+   template<typename T> void from_variant( const variant& v, smart_ref<T>& s, uint32_t max_depth );
+   template<typename T> void to_variant( const safe<T>& s, variant& v, uint32_t max_depth );
+   template<typename T> void from_variant( const variant& v, safe<T>& s, uint32_t max_depth );
+   template<typename T> void to_variant( const std::unique_ptr<T>& s, variant& v, uint32_t max_depth );
+   template<typename T> void from_variant( const variant& v, std::unique_ptr<T>& s, uint32_t max_depth );
 
-   template<typename... T> void to_variant( const static_variant<T...>& s, variant& v );
-   template<typename... T> void from_variant( const variant& v, static_variant<T...>& s );
+   template<typename... T> void to_variant( const static_variant<T...>& s, variant& v, uint32_t max_depth );
+   template<typename... T> void from_variant( const variant& v, static_variant<T...>& s, uint32_t max_depth );
 
-   void to_variant( const uint8_t& var,  variant& vo );
-   void from_variant( const variant& var,  uint8_t& vo );
-   void to_variant( const int8_t& var,  variant& vo );
-   void from_variant( const variant& var,  int8_t& vo );
+   void to_variant( const uint8_t& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  uint8_t& vo, uint32_t max_depth = 1 );
+   void to_variant( const int8_t& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  int8_t& vo, uint32_t max_depth = 1 );
 
-   void to_variant( const uint16_t& var,  variant& vo );
-   void from_variant( const variant& var,  uint16_t& vo );
-   void to_variant( const int16_t& var,  variant& vo );
-   void from_variant( const variant& var,  int16_t& vo );
+   void to_variant( const uint16_t& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  uint16_t& vo, uint32_t max_depth = 1 );
+   void to_variant( const int16_t& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  int16_t& vo, uint32_t max_depth = 1 );
 
-   void to_variant( const uint32_t& var,  variant& vo );
-   void from_variant( const variant& var,  uint32_t& vo );
-   void to_variant( const int32_t& var,  variant& vo );
-   void from_variant( const variant& var,  int32_t& vo );
+   void to_variant( const uint32_t& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  uint32_t& vo, uint32_t max_depth = 1 );
+   void to_variant( const int32_t& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  int32_t& vo, uint32_t max_depth = 1 );
 
-   void to_variant( const unsigned __int128& var,  variant& vo );
-   void from_variant( const variant& var,  unsigned __int128& vo );
-   void to_variant( const __int128& var,  variant& vo );
-   void from_variant( const variant& var,  __int128& vo );
+   void to_variant( const unsigned __int128& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  unsigned __int128& vo, uint32_t max_depth = 1 );
+   void to_variant( const __int128& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  __int128& vo, uint32_t max_depth = 1 );
 
-   void to_variant( const variant_object& var,  variant& vo );
-   void from_variant( const variant& var,  variant_object& vo );
-   void to_variant( const mutable_variant_object& var,  variant& vo );
-   void from_variant( const variant& var,  mutable_variant_object& vo );
-   void to_variant( const std::vector<char>& var,  variant& vo );
-   void from_variant( const variant& var,  std::vector<char>& vo );
+   void to_variant( const variant_object& var,  variant& vo, uint32_t max_depth );
+   void from_variant( const variant& var,  variant_object& vo, uint32_t max_depth );
+   void to_variant( const mutable_variant_object& var,  variant& vo, uint32_t max_depth );
+   void from_variant( const variant& var,  mutable_variant_object& vo, uint32_t max_depth );
+   void to_variant( const std::vector<char>& var,  variant& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var,  std::vector<char>& vo, uint32_t max_depth = 1 );
 
    template<typename K, typename T>
-   void to_variant( const std::unordered_map<K,T>& var,  variant& vo );
+   void to_variant( const std::unordered_map<K,T>& var,  variant& vo, uint32_t max_depth );
    template<typename K, typename T>
-   void from_variant( const variant& var,  std::unordered_map<K,T>& vo );
+   void from_variant( const variant& var,  std::unordered_map<K,T>& vo, uint32_t max_depth );
 
    template<typename K, typename... T>
-   void to_variant( const fc::flat_map<K,T...>& var,  variant& vo );
+   void to_variant( const fc::flat_map<K,T...>& var,  variant& vo, uint32_t max_depth );
    template<typename K, typename... T>
-   void from_variant( const variant& var, fc::flat_map<K,T...>& vo );
+   void from_variant( const variant& var, fc::flat_map<K,T...>& vo, uint32_t max_depth );
 
    template<typename K, typename T>
-   void to_variant( const std::map<K,T>& var,  variant& vo );
+   void to_variant( const std::map<K,T>& var,  variant& vo, uint32_t max_depth );
    template<typename K, typename T>
-   void from_variant( const variant& var,  std::map<K,T>& vo );
+   void from_variant( const variant& var,  std::map<K,T>& vo, uint32_t max_depth );
    template<typename K, typename T>
-   void to_variant( const std::multimap<K,T>& var,  variant& vo );
+   void to_variant( const std::multimap<K,T>& var,  variant& vo, uint32_t max_depth );
    template<typename K, typename T>
-   void from_variant( const variant& var,  std::multimap<K,T>& vo );
+   void from_variant( const variant& var,  std::multimap<K,T>& vo, uint32_t max_depth );
 
 
    template<typename T>
-   void to_variant( const std::unordered_set<T>& var,  variant& vo );
+   void to_variant( const std::unordered_set<T>& var,  variant& vo, uint32_t max_depth );
    template<typename T>
-   void from_variant( const variant& var,  std::unordered_set<T>& vo );
+   void from_variant( const variant& var,  std::unordered_set<T>& vo, uint32_t max_depth );
 
    template<typename T>
-   void to_variant( const std::deque<T>& var,  variant& vo );
+   void to_variant( const std::deque<T>& var,  variant& vo, uint32_t max_depth );
    template<typename T>
-   void from_variant( const variant& var,  std::deque<T>& vo );
+   void from_variant( const variant& var,  std::deque<T>& vo, uint32_t max_depth );
 
    template<typename T>
-   void to_variant( const fc::flat_set<T>& var,  variant& vo );
+   void to_variant( const fc::flat_set<T>& var,  variant& vo, uint32_t max_depth );
    template<typename T>
-   void from_variant( const variant& var, fc::flat_set<T>& vo );
+   void from_variant( const variant& var, fc::flat_set<T>& vo, uint32_t max_depth );
 
    template<typename T>
-   void to_variant( const std::set<T>& var,  variant& vo );
+   void to_variant( const std::set<T>& var,  variant& vo, uint32_t max_depth );
    template<typename T>
-   void from_variant( const variant& var,  std::set<T>& vo );
+   void from_variant( const variant& var,  std::set<T>& vo, uint32_t max_depth );
 
-   void to_variant( const time_point& var,  variant& vo );
-   void from_variant( const variant& var,  time_point& vo );
+   void to_variant( const time_point& var,  variant& vo, uint32_t max_depth );
+   void from_variant( const variant& var,  time_point& vo, uint32_t max_depth );
 
-   void to_variant( const time_point_sec& var,  variant& vo );
-   void from_variant( const variant& var,  time_point_sec& vo );
+   void to_variant( const time_point_sec& var,  variant& vo, uint32_t max_depth );
+   void from_variant( const variant& var,  time_point_sec& vo, uint32_t max_depth );
 
-   void to_variant( const microseconds& input_microseconds,  variant& output_variant );
-   void from_variant( const variant& input_variant,  microseconds& output_microseconds );
+   void to_variant( const microseconds& input_microseconds,  variant& output_variant, uint32_t max_depth );
+   void from_variant( const variant& input_variant,  microseconds& output_microseconds, uint32_t max_depth );
 
    #ifdef __APPLE__
-   void to_variant( size_t s, variant& v );
+   void to_variant( size_t s, variant& v, uint32_t max_depth = 1 );
    #elif !defined(_MSC_VER)
-   void to_variant( long long int s, variant& v );
-   void to_variant( unsigned long long int s, variant& v );
+   void to_variant( long long int s, variant& v, uint32_t max_depth = 1 );
+   void to_variant( unsigned long long int s, variant& v, uint32_t max_depth = 1 );
    #endif
-   void to_variant( const std::string& s, variant& v );
+   void to_variant( const std::string& s, variant& v, uint32_t max_depth = 1 );
 
    template<typename T>
-   void to_variant( const std::shared_ptr<T>& var,  variant& vo );
+   void to_variant( const std::shared_ptr<T>& var,  variant& vo, uint32_t max_depth );
 
    template<typename T>
-   void from_variant( const variant& var,  std::shared_ptr<T>& vo );
+   void from_variant( const variant& var,  std::shared_ptr<T>& vo, uint32_t max_depth );
 
    typedef std::vector<variant>   variants;
    template<typename A, typename B>
-   void to_variant( const std::pair<A,B>& t, variant& v );
+   void to_variant( const std::pair<A,B>& t, variant& v, uint32_t max_depth );
    template<typename A, typename B>
-   void from_variant( const variant& v, std::pair<A,B>& p );
+   void from_variant( const variant& v, std::pair<A,B>& p, uint32_t max_depth );
 
 
 
@@ -210,31 +221,34 @@ namespace fc
         /// Constructs a null_type variant
         variant();
         /// Constructs a null_type variant
-        variant( nullptr_t );
+        variant( nullptr_t, uint32_t max_depth = 1 );
 
         /// @param str - UTF8 string
-        variant( const char* str );
-        variant( char* str );
-        variant( wchar_t* str );
-        variant( const wchar_t* str );
-        variant( float val );
-        variant( uint8_t val );
-        variant( int8_t val );
-        variant( uint16_t val );
-        variant( int16_t val );
-        variant( uint32_t val );
-        variant( int32_t val );
-        variant( uint64_t val );
-        variant( int64_t val );
-        variant( double val );
-        variant( bool val );
-        variant( blob val );
-        variant( fc::string val );
-        variant( variant_object );
-        variant( mutable_variant_object );
-        variant( variants );
-        variant( const variant& );
-        variant( variant&& );
+        variant( const char* str, uint32_t max_depth = 1 );
+        variant( char* str, uint32_t max_depth = 1 );
+        variant( wchar_t* str, uint32_t max_depth = 1 );
+        variant( const wchar_t* str, uint32_t max_depth = 1 );
+        variant( float val, uint32_t max_depth = 1 );
+        variant( uint8_t val, uint32_t max_depth = 1 );
+        variant( int8_t val, uint32_t max_depth = 1 );
+        variant( uint16_t val, uint32_t max_depth = 1 );
+        variant( int16_t val, uint32_t max_depth = 1 );
+        variant( uint32_t val, uint32_t max_depth = 1 );
+        variant( int32_t val, uint32_t max_depth = 1 );
+        variant( uint64_t val, uint32_t max_depth = 1 );
+#ifdef __APPLE__
+        variant( size_t val, uint32_t max_depth = 1 );
+#endif
+        variant( int64_t val, uint32_t max_depth = 1 );
+        variant( double val, uint32_t max_depth = 1 );
+        variant( bool val, uint32_t max_depth = 1 );
+        variant( blob val, uint32_t max_depth = 1 );
+        variant( fc::string val, uint32_t max_depth = 1 );
+        variant( variant_object, uint32_t max_depth = 1 );
+        variant( mutable_variant_object, uint32_t max_depth = 1 );
+        variant( variants, uint32_t max_depth = 1 );
+        variant( const variant&, uint32_t max_depth = 1 );
+        variant( variant&&, uint32_t max_depth = 1 );
        ~variant();
 
         /**
@@ -326,17 +340,17 @@ namespace fc
          *  types.
          */
         template<typename T>
-        T as()const
+        T as( uint32_t max_depth = 10 /* XXX */ )const
         {
            T tmp;
-           from_variant( *this, tmp );
+           from_variant( *this, tmp, max_depth );
            return tmp;
         }
 
         template<typename T>
-        void as( T& v )const
+        void as( T& v, uint32_t max_depth  = 10 /* XXX */ )const
         {
-           from_variant( *this, v );
+           from_variant( *this, v, max_depth );
         }
 
         variant& operator=( variant&& v );
@@ -349,14 +363,15 @@ namespace fc
         }
 
         template<typename T>
-        variant( const optional<T>& v )
+        variant( const optional<T>& v, uint32_t max_depth )
         {
+           _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
            memset( this, 0, sizeof(*this) );
-           if( v.valid() ) *this = variant(*v);
+           if( v.valid() ) *this = variant(*v, max_depth - 1);
         }
 
         template<typename T>
-        explicit variant( const T& val );
+        explicit variant( const T& val, uint32_t max_depth = 1 /*XXX no default in bitshares */ );
 
 
         void    clear();
@@ -368,67 +383,72 @@ namespace fc
    typedef optional<variant> ovariant;
 
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  string& vo );
+   void from_variant( const variant& var, string& vo, uint32_t max_depth = 1 );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  variants& vo );
-   void from_variant( const variant& var,  variant& vo );
+   void from_variant( const variant& var, variants& vo, uint32_t max_depth = 1 );
+   void from_variant( const variant& var, variant& vo, uint32_t max_depth = 1 );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  int64_t& vo );
+   void from_variant( const variant& var, int64_t& vo, uint32_t max_depth = 1 );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  uint64_t& vo );
+   void from_variant( const variant& var, uint64_t& vo, uint32_t max_depth = 1 );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  bool& vo );
+   void from_variant( const variant& var, bool& vo, uint32_t max_depth = 1 );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  double& vo );
+   void from_variant( const variant& var, double& vo, uint32_t max_depth = 1 );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  float& vo );
+   void from_variant( const variant& var, float& vo, uint32_t max_depth = 1 );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  int32_t& vo );
+   void from_variant( const variant& var, int32_t& vo, uint32_t max_depth );
    /** @ingroup Serializable */
-   void from_variant( const variant& var,  uint32_t& vo );
+   void from_variant( const variant& var, uint32_t& vo, uint32_t max_depth );
    /** @ingroup Serializable */
    template<typename T>
-   void from_variant( const variant& var,  optional<T>& vo )
+   void from_variant( const variant& var,  optional<T>& vo, uint32_t max_depth )
    {
       if( var.is_null() ) vo = optional<T>();
       else
       {
+          _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
           vo = T();
-          from_variant( var, *vo );
+          from_variant( var, *vo, max_depth - 1 );
       }
    }
    template<typename T>
-   void to_variant( const std::unordered_set<T>& var,  variant& vo )
+   void to_variant( const std::unordered_set<T>& var,  variant& vo, uint32_t max_depth )
    {
+       _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
        std::vector<variant> vars(var.size());
        size_t i = 0;
        for( auto itr = var.begin(); itr != var.end(); ++itr, ++i )
-          vars[i] = variant(*itr);
+          vars[i] = variant( *itr, max_depth - 1 );
        vo = vars;
    }
    template<typename T>
-   void from_variant( const variant& var,  std::unordered_set<T>& vo )
+   void from_variant( const variant& var,  std::unordered_set<T>& vo, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = var.get_array();
       vo.clear();
       vo.reserve( vars.size() );
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
-         vo.insert( itr->as<T>() );
+         vo.insert( itr->as<T>( max_depth - 1 ) );
    }
 
 
    template<typename K, typename T>
-   void to_variant( const std::unordered_map<K, T>& var,  variant& vo )
+   void to_variant( const std::unordered_map<K, T>& var,  variant& vo, uint32_t max_depth )
    {
+       _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
        std::vector< variant > vars(var.size());
        size_t i = 0;
        for( auto itr = var.begin(); itr != var.end(); ++itr, ++i )
-          vars[i] = fc::variant(*itr);
+          vars[i] = fc::variant( *itr, max_depth - 1 );
        vo = vars;
    }
    template<typename K, typename T>
-   void from_variant( const variant& var,  std::unordered_map<K, T>& vo )
+   void from_variant( const variant& var,  std::unordered_map<K, T>& vo, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = var.get_array();
       vo.clear();
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
@@ -436,201 +456,234 @@ namespace fc
 
    }
    template<typename K, typename T>
-   void to_variant( const std::map<K, T>& var,  variant& vo )
+   void to_variant( const std::map<K, T>& var,  variant& vo, uint32_t max_depth )
    {
+       _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
        std::vector< variant > vars(var.size());
        size_t i = 0;
        for( auto itr = var.begin(); itr != var.end(); ++itr, ++i )
-          vars[i] = fc::variant(*itr);
+          vars[i] = fc::variant( *itr, max_depth - 1 );
        vo = vars;
    }
    template<typename K, typename T>
-   void from_variant( const variant& var,  std::map<K, T>& vo )
+   void from_variant( const variant& var,  std::map<K, T>& vo, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = var.get_array();
       vo.clear();
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
-         vo.insert( itr->as< std::pair<K,T> >() );
+         vo.insert( itr->as< std::pair<K,T> >(max_depth - 1) );
    }
 
    template<typename K, typename T>
-   void to_variant( const std::multimap<K, T>& var,  variant& vo )
+   void to_variant( const std::multimap<K, T>& var,  variant& vo, uint32_t max_depth )
    {
+       _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
        std::vector< variant > vars(var.size());
        size_t i = 0;
        for( auto itr = var.begin(); itr != var.end(); ++itr, ++i )
-          vars[i] = fc::variant(*itr);
+          vars[i] = fc::variant( *itr, max_depth - 1 );
        vo = vars;
    }
    template<typename K, typename T>
-   void from_variant( const variant& var,  std::multimap<K, T>& vo )
+   void from_variant( const variant& var,  std::multimap<K, T>& vo, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = var.get_array();
       vo.clear();
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
-         vo.insert( itr->as< std::pair<K,T> >() );
+         vo.insert( itr->as< std::pair<K,T> >( max_depth - 1 ) );
    }
 
 
    template<typename T>
-   void to_variant( const std::set<T>& var,  variant& vo )
+   void to_variant( const std::set<T>& var,  variant& vo, uint32_t max_depth )
    {
+       _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
        std::vector<variant> vars(var.size());
        size_t i = 0;
        for( auto itr = var.begin(); itr != var.end(); ++itr, ++i )
-          vars[i] = variant(*itr);
+          vars[i] = variant( *itr, max_depth - 1 );
        vo = vars;
    }
    template<typename T>
-   void from_variant( const variant& var,  std::set<T>& vo )
+   void from_variant( const variant& var,  std::set<T>& vo, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = var.get_array();
       vo.clear();
       //vo.reserve( vars.size() );
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
-         vo.insert( itr->as<T>() );
+         vo.insert( itr->as<T>( max_depth - 1 ) );
    }
 
    /** @ingroup Serializable */
    template<typename T>
-   void from_variant( const variant& var, std::deque<T>& tmp )
+   void from_variant( const variant& var, std::deque<T>& tmp, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = var.get_array();
       tmp.clear();
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
-         tmp.push_back( itr->as<T>() );
+         tmp.push_back( itr->as<T>( max_depth - 1 ) );
    }
 
    /** @ingroup Serializable */
    template<typename T>
-   void to_variant( const std::deque<T>& t, variant& v )
+   void to_variant( const std::deque<T>& t, variant& v, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       std::vector<variant> vars(t.size());
       for( size_t i = 0; i < t.size(); ++i )
-         vars[i] = variant(t[i]);
+         vars[i] = variant( t[i], max_depth - 1 );
       v = std::move(vars);
    }
 
 
    /** @ingroup Serializable */
    template<typename T>
-   void from_variant( const variant& var, std::vector<T>& tmp )
+   void from_variant( const variant& var, std::vector<T>& tmp, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = var.get_array();
       tmp.clear();
       tmp.reserve( vars.size() );
       for( auto itr = vars.begin(); itr != vars.end(); ++itr )
-         tmp.push_back( itr->as<T>() );
+         tmp.push_back( itr->as<T>( max_depth - 1 ) );
    }
 
    /** @ingroup Serializable */
    template<typename T>
-   void to_variant( const std::vector<T>& t, variant& v )
+   void to_variant( const std::vector<T>& t, variant& v, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       std::vector<variant> vars(t.size());
        for( size_t i = 0; i < t.size(); ++i )
-          vars[i] = variant(t[i]);
+          vars[i] = variant( t[i], max_depth - 1 );
        v = std::move(vars);
    }
 
 
    /** @ingroup Serializable */
    template<typename A, typename B>
-   void to_variant( const std::pair<A,B>& t, variant& v )
+   void to_variant( const std::pair<A,B>& t, variant& v, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       std::vector<variant> vars(2);
-      vars[0] = variant(t.first);
-      vars[1] = variant(t.second);
-       v = vars;
+      vars[0] = variant( t.first, max_depth - 1 );
+      vars[1] = variant( t.second, max_depth - 1 );
+      v = vars;
    }
    template<typename A, typename B>
-   void from_variant( const variant& v, std::pair<A,B>& p )
+   void from_variant( const variant& v, std::pair<A,B>& p, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = v.get_array();
       if( vars.size() > 0 )
-      p.first  = vars[0].as<A>();
+         p.first  = vars[0].as<A>( max_depth - 1 );
       if( vars.size() > 1 )
-      p.second = vars[1].as<B>();
+         p.second = vars[1].as<B>( max_depth - 1 );
    }
 
 
    template<typename T>
-   variant::variant( const T& val )
+   variant::variant( const T& val, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       memset( this, 0, sizeof(*this) );
-      to_variant( val, *this );
+      to_variant( val, *this, max_depth );
    }
    #ifdef __APPLE__
-   inline void to_variant( size_t s, variant& v ) { v = variant(uint64_t(s)); }
+   inline void to_variant( size_t s, variant& v, uint32_t max_depth ) { v = variant(uint64_t(s)); }
    #endif
    template<typename T>
-   void to_variant( const std::shared_ptr<T>& var,  variant& vo )
+   void to_variant( const std::shared_ptr<T>& var,  variant& vo, uint32_t max_depth )
    {
-      if( var ) to_variant( *var, vo );
+      if( var )
+      {
+         _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
+         to_variant( *var, vo, max_depth - 1 );
+      }
       else vo = nullptr;
    }
 
    template<typename T>
-   void from_variant( const variant& var,  std::shared_ptr<T>& vo )
+   void from_variant( const variant& var,  std::shared_ptr<T>& vo, uint32_t max_depth )
    {
       if( var.is_null() ) vo = nullptr;
-      else if( vo ) from_variant( var, *vo );
-      else {
-          vo = std::make_shared<T>();
-          from_variant( var, *vo );
+      else
+      {
+         _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
+         vo = std::make_shared<T>();
+         from_variant( var, *vo, max_depth - 1 );
       }
    }
    template<typename T>
-   void to_variant( const std::unique_ptr<T>& var,  variant& vo )
+   void to_variant( const std::unique_ptr<T>& var,  variant& vo, uint32_t max_depth )
    {
-      if( var ) to_variant( *var, vo );
+      if( var )
+      {
+         _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
+         to_variant( *var, vo, max_depth - 1 );
+      }
       else vo = nullptr;
    }
 
    template<typename T>
-   void from_variant( const variant& var,  std::unique_ptr<T>& vo )
+   void from_variant( const variant& var,  std::unique_ptr<T>& vo, uint32_t max_depth )
    {
       if( var.is_null() ) vo.reset();
-      else if( vo ) from_variant( var, *vo );
-      else {
-          vo.reset( new T() );
-          from_variant( var, *vo );
+      else
+      {
+         _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
+         vo.reset( new T() );
+         from_variant( var, *vo, max_depth - 1 );
       }
    }
 
 
    template<typename T>
-   void to_variant( const safe<T>& s, variant& v ) { v = s.value; }
+   void to_variant( const safe<T>& s, variant& v, uint32_t max_depth ) {
+      to_variant( s.value, v, max_depth );
+   }
 
    template<typename T>
-   void from_variant( const variant& v, safe<T>& s ) { s.value = v.as_uint64(); }
+   void from_variant( const variant& v, safe<T>& s, uint32_t max_depth ) {
+      s.value = v.as<T>( max_depth );
+   }
 
    template<typename T>
-   void to_variant( const smart_ref<T>& s, variant& v ) { v = *s; }
+   void to_variant( const smart_ref<T>& s, variant& v, uint32_t max_depth ) {
+      to_variant( *s, v, max_depth );
+   }
 
    template<typename T>
-   void from_variant( const variant& v, smart_ref<T>& s ) { from_variant( v, *s ); }
+   void from_variant( const variant& v, smart_ref<T>& s, uint32_t max_depth ) {
+      from_variant( v, *s, max_depth );
+   }
 
-   template<typename T, typename... Args> void to_variant( const boost::multi_index_container<T,Args...>& c, variant& v )
+   template<typename T, typename... Args> void to_variant( const boost::multi_index_container<T,Args...>& c, variant& v, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
        std::vector<variant> vars;
        vars.reserve( c.size() );
        for( const auto& item : c )
-          vars.emplace_back( variant(item) );
+          vars.emplace_back( variant( item, max_depth - 1 ) );
        v = std::move(vars);
    }
 
-   template<typename T, typename... Args> void from_variant( const variant& v, boost::multi_index_container<T,Args...>& c )
+   template<typename T, typename... Args> void from_variant( const variant& v, boost::multi_index_container<T,Args...>& c, uint32_t max_depth )
    {
+      _FC_ASSERT( max_depth > 0, "Recursion depth exceeded!" );
       const variants& vars = v.get_array();
       c.clear();
       for( const auto& item : vars )
-         c.insert( item.as<T>() );
+         c.insert( item.as<T>( max_depth - 1 ) );
    }
-   template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v ) {
+   template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v, uint32_t max_depth ) {
       v = std::string(n);
    }
-   template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n ) {
+   template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n, uint32_t max_depth ) {
       n = boost::multiprecision::number<T>(v.get_string());
    }
 

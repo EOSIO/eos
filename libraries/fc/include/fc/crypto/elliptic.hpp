@@ -231,10 +231,10 @@ namespace fc {
       };
 
   } // namespace ecc
-  void to_variant( const ecc::private_key& var,  variant& vo );
-  void from_variant( const variant& var,  ecc::private_key& vo );
-  void to_variant( const ecc::public_key& var,  variant& vo );
-  void from_variant( const variant& var,  ecc::public_key& vo );
+  void to_variant( const ecc::private_key& var,  variant& vo, uint32_t max_depth );
+  void from_variant( const variant& var,  ecc::private_key& vo, uint32_t max_depth );
+  void to_variant( const ecc::public_key& var,  variant& vo, uint32_t max_depth );
+  void from_variant( const variant& var,  ecc::public_key& vo, uint32_t max_depth );
 
   namespace raw
   {

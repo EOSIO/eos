@@ -63,16 +63,16 @@ namespace fc {
       }
   } FC_RETHROW_EXCEPTIONS( warn, "unable to convert ISO-formatted string to fc::time_point" ) }
 
-  void to_variant( const fc::time_point& t, variant& v ) {
+   void to_variant( const fc::time_point& t, variant& v, uint32_t ) {
     v = fc::string( t );
   }
-  void from_variant( const fc::variant& v, fc::time_point& t ) {
+  void from_variant( const fc::variant& v, fc::time_point& t, uint32_t ) {
     t = fc::time_point::from_iso_string( v.as_string() );
   }
-  void to_variant( const fc::time_point_sec& t, variant& v ) {
+  void to_variant( const fc::time_point_sec& t, variant& v, uint32_t ) {
     v = fc::string( t );
   }
-  void from_variant( const fc::variant& v, fc::time_point_sec& t ) {
+  void from_variant( const fc::variant& v, fc::time_point_sec& t, uint32_t ) {
     t = fc::time_point_sec::from_iso_string( v.as_string() );
   }
 
@@ -143,11 +143,11 @@ namespace fc {
     return get_approximate_relative_time_string(time_point_sec(event_time), time_point_sec(relative_to_time), ago);
   }
 
-  void to_variant( const microseconds& input_microseconds,  variant& output_variant )
+  void to_variant( const microseconds& input_microseconds,  variant& output_variant, uint32_t )
   {
     output_variant = input_microseconds.count();
   }
-  void from_variant( const variant& input_variant,  microseconds& output_microseconds )
+  void from_variant( const variant& input_variant,  microseconds& output_microseconds, uint32_t )
   {
     output_microseconds = microseconds(input_variant.as_int64());
   }

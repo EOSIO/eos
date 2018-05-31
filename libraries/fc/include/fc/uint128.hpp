@@ -127,8 +127,8 @@ namespace fc
 
   class variant;
 
-  void to_variant( const uint128& var,  variant& vo );
-  void from_variant( const variant& var,  uint128& vo );
+  void to_variant( const uint128& var,  variant& vo, uint32_t max_depth = 1 );
+  void from_variant( const variant& var,  uint128& vo, uint32_t max_depth = 1 );
 //  void to_variant( const unsigned __int128& var,  variant& vo );
 //  void from_variant( const variant& var,  unsigned __int128& vo );
 
