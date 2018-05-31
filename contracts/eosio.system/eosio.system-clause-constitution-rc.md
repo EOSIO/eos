@@ -19,7 +19,7 @@ No Member nor SYS token holder shall have fiduciary responsibility to support th
 Each Member agrees that penalties for breach of contract may include, but are not limited to, fines, loss of account, and other restitution.
 
 # Article VII  - Open Source
-Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via a free and open source license, and each smart contract shall be documented with a Ricardian Contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
+Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via a free and open source license, and each smart contract shall be documented with a Ricardian contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
 
 # Article VIII - Language
 Multi-lingual contracts must specify one prevailing language in case of dispute and the author of any translation shall be liable for losses due to their false, misleading, or ambiguous attested translations. 
@@ -34,7 +34,7 @@ Choice of law for disputes shall be, in order of precedence, this Constitution a
 This Constitution and its subordinate documents shall not be amended except by a vote of the token holders with no less than 15% vote participation among tokens and no fewer than 10% more Yes than No votes, sustained for 30 continuous days within a 120 day period.
 
 # Article XII - Publishing
-Members may only publish information to the Blockchain that is within their right to publish. Furthermore, Members voluntarily consent for all Members to permanently and irrevocably retain a copy, analyze, and distribute all broadcast transactions and derivative information.
+Members may only publish information to the blockchain that is within their right to publish. Furthermore, Members voluntarily consent for all Members to permanently and irrevocably retain a copy, analyze, and distribute all broadcast transactions and derivative information.
 
 # Article XIII - Informed Consent 
 All service providers who produce tools to facilitate the construction and signing of transactions on behalf of other Members shall present to said other Members the full Ricardian contract terms of this Constitution and other referenced contracts. Service providers shall be liable for losses resulting from failure to disclose the full Ricardian contract terms to users.
@@ -52,7 +52,7 @@ Members agree to hold software developers harmless for unintentional mistakes ma
 All rights and obligations under this Constitution are mutual and reciprocal and of equally significant value and cost to all parties.
 
 # Article XVIII - Acceptance
-A contract is deemed accepted when a member signs a transaction which incorporates a TAPOS proof of a block whose implied state incorporates an ABI of said contract and said transaction is incorporated into the blockchain.
+A contract is deemed accepted when a Member signs a transaction which incorporates a TAPOS proof of a block whose implied state incorporates an ABI of said contract and said transaction is incorporated into the blockchain.
 
 # Article XIX - Counterparts
 This Constitution may be executed in any number of counterparts, each of which when executed and delivered shall constitute a duplicate original, but all counterparts together shall constitute a single agreement.
