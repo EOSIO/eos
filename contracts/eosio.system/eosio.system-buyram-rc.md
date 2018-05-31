@@ -2,11 +2,11 @@
 
 ### Description
 
-This action will attempt to reserve about {{quant}} SYS tokens worth of RAM on behalf of {{receiver}}. 
+This action will attempt to reserve about {{quant}} worth of RAM on behalf of {{receiver}}. 
 
-{{buyer}} authorizes this contract to transfer {{quant}} SYS tokens to buy RAM based upon the current price as determined by the market maker algorithm.
+{{buyer}} authorizes this contract to transfer {{quant}} to buy RAM based upon the current price as determined by the market maker algorithm.
 
-{{buyer}} accepts that a 0.5% fee will be charged on the SYS spent and that the actual RAM received may be slightly less than expected due to the approximations necessary to enable this service.
+{{buyer}} accepts that a 0.5% fee will be charged on the amount spent and that the actual RAM received may be slightly less than expected due to the approximations necessary to enable this service.
 {{buyer}} accepts that a 0.5% fee will be charged if and when they sell the RAM received.
 {{buyer}} accepts that rounding errors resulting from limits of computational precision may result in less RAM being allocated.
 {{buyer}} acknowledges that the supply of RAM may be increased at any time up to the limits of off-the-shelf computer equipment and that this may result in RAM selling for less than purchase price.
