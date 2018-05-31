@@ -77,7 +77,7 @@ namespace eosio { namespace chain {
          bool                          apply_context_free = true;
 
          fc::time_point                deadline = fc::time_point::maximum();
-         fc::microseconds              leeway = fc::microseconds(1000);
+         fc::microseconds              leeway = fc::microseconds(3000);
          int64_t                       billed_cpu_time_us = 0;
 
       private:

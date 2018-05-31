@@ -55,7 +55,7 @@
 
 	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make automake libbz2-dev libssl-dev \
 	libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
-        autoconf libtool curl zlib1g-dev doxygen graphviz)
+    autoconf libtool curl zlib1g-dev doxygen graphviz)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -104,6 +104,23 @@
 		done
 	else 
 		printf "\\n\\tNo required dpkg dependencies to install.\\n"
+	fi
+
+	if [ -d "${HOME}/opt/boost_1_67_0" ]; then
+		if ! mv "${HOME}/opt/boost_1_67_0" "$BOOST_ROOT"
+		then
+			printf "\\n\\tUnable to move directory %s/opt/boost_1_67_0 to %s.\\n" "${HOME}" "${BOOST_ROOT}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1
+		fi
+		if [ -d "$BUILD_DIR" ]; then
+			if ! rm -rf "$BUILD_DIR"
+			then
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "$BUILD_DIR" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+			fi
+		fi
 	fi
 
 	printf "\\n\\tChecking boost library installation.\\n"
@@ -174,9 +191,9 @@
 			exit 1;
 			fi
 		fi
-		printf "\\tBoost 1.67.0 successfully installed @ %s/opt/boost_1_67_0.\\n" "${HOME}"
+		printf "\\tBoost successfully installed @ %s.\\n" "${BOOST_ROOT}"
 	else
-		printf "\\tBoost 1.67.0 found at %s/opt/boost_1_67_0.\\n\\n" "${HOME}"
+		printf "\\tBoost found at %s.\\n" "${BOOST_ROOT}"
 	fi
 
 	printf "\\n\\tChecking MongoDB installation.\\n"
