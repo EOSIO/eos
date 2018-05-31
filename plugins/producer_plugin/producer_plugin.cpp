@@ -1013,12 +1013,12 @@ bool producer_plugin_impl::maybe_produce_block() {
 static auto make_debug_time_logger() {
    auto start = fc::time_point::now();
    return fc::make_scoped_exit([=](){
-      dlog("Signing took ${ms}us", ("ms", fc::time_point::now() - start) );
+      fc_dlog(_log, "Signing took ${ms}us", ("ms", fc::time_point::now() - start) );
    });
 }
 
 static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_time_logger())> {
-   if ((fc::logger::get(DEFAULT_LOGGER)).is_enabled( fc::log_level::debug ) ){
+   if (_log.is_enabled( fc::log_level::debug ) ){
       return make_debug_time_logger();
    } else {
       return {};
