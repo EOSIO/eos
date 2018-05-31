@@ -222,7 +222,7 @@ namespace fc { namespace ecc {
 
 }
 
-   void to_variant( const ecc::private_key& var,  variant& vo, uint32_t )
+void to_variant( const ecc::private_key& var,  variant& vo, uint32_t )
 {
     vo = var.get_secret();
 }
