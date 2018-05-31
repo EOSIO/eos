@@ -17,16 +17,14 @@ class http_client {
       http_client();
       ~http_client();
 
-      variant post_sync(const url& dest, const variant& payload);
+      variant post_sync(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
 
       template<typename T>
-      variant post_sync(const url& dest, const T& payload) {
+      variant post_sync(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
          variant payload_v;
          to_variant(payload, payload_v);
-         return post_sync(dest, payload_v);
+         return post_sync(dest, payload_v, deadline);
       }
-
-      void set_timeout(microseconds timeout);
 
       void add_cert(const std::string& cert_pem_string);
 

@@ -1,5 +1,6 @@
 #include <fc/network/http/http_client.hpp>
 #include <fc/io/json.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -22,17 +23,96 @@ public:
    using ssl_socket_ptr = std::unique_ptr<ssl::stream<tcp::socket>>;
    using connection = static_variant<raw_socket_ptr, ssl_socket_ptr>;
    using connection_map = std::map<host_key, connection>;
-
+   using error_code = boost::system::error_code;
+   using deadline_type = boost::posix_time::ptime;
 
    http_client_impl()
    :_ioc()
    ,_sslc(ssl::context::sslv23_client)
-   ,_resolver(_ioc)
    {
    }
 
+   template<typename SyncReadStream, typename Fn, typename CancelFn>
+   error_code sync_do_with_deadline( SyncReadStream& s, deadline_type deadline, Fn f, CancelFn cf ) {
+      optional<error_code> timer_result;
+      boost::asio::deadline_timer timer(s.get_io_service());
+
+      timer.expires_at(deadline);
+      timer.async_wait([&timer_result] (const error_code& error) { timer_result.emplace(error); });
+
+      optional<error_code> f_result;
+      f(f_result);
+
+      s.get_io_service().reset();
+      while (s.get_io_service().run_one())
+      {
+         if (f_result) {
+            timer.cancel();
+         } else if (timer_result) {
+            cf();
+         }
+      }
+
+      if (!timer_result) {
+         return *f_result;
+      } else {
+         return error_code(boost::system::errc::timed_out, boost::system::system_category());
+      }
+   }
+
+   template<typename SyncReadStream, typename Fn>
+   error_code sync_do_with_deadline( SyncReadStream& s, deadline_type deadline, Fn f) {
+      return sync_do_with_deadline(s, deadline, f, [&s](){
+         s.lowest_layer().cancel();
+      });
+   };
+
+   template<typename SyncReadStream>
+   error_code sync_connect_with_timeout( SyncReadStream& s, const std::string& host, const std::string& port,  const deadline_type& deadline ) {
+      tcp::resolver local_resolver(s.get_io_service());
+      bool cancelled = false;
+
+      auto res = sync_do_with_deadline(s, deadline, [&local_resolver, &cancelled, &s, &host, &port](optional<error_code>& final_ec){
+         local_resolver.async_resolve(host, port, [&cancelled, &s, &final_ec](const error_code& ec, tcp::resolver::results_type resolved ){
+            if (ec) {
+               final_ec.emplace(ec);
+               return;
+            }
+
+            if (!cancelled) {
+               boost::asio::async_connect(s, resolved.begin(), resolved.end(), [&final_ec](const error_code& ec, tcp::resolver::iterator ){
+                  final_ec.emplace(ec);
+               });
+            }
+         });
+      },[&local_resolver, &cancelled](){
+         cancelled = true;
+         local_resolver.cancel();
+      });
+
+      return res;
+   };
+
+   template<typename SyncReadStream>
+   error_code sync_write_with_timeout(SyncReadStream& s, http::request<http::string_body>& req, const deadline_type& deadline ) {
+      return sync_do_with_deadline(s, deadline, [&s, &req](optional<error_code>& final_ec){
+         http::async_write(s, req, [&final_ec]( const error_code& ec, std::size_t ) {
+            final_ec.emplace(ec);
+         });
+      });
+   }
+
+   template<typename SyncReadStream>
+   error_code sync_read_with_timeout(SyncReadStream& s, boost::beast::flat_buffer& buffer, http::response<http::string_body>& res, const deadline_type& deadline ) {
+      return sync_do_with_deadline(s, deadline, [&s, &buffer, &res](optional<error_code>& final_ec){
+         http::async_read(s, buffer, res, [&final_ec]( const error_code& ec, std::size_t ) {
+            final_ec.emplace(ec);
+         });
+      });
+   }
+
    void add_cert(const std::string& cert_pem_string) {
-      boost::system::error_code ec;
+      error_code ec;
       _sslc.add_certificate_authority(boost::asio::buffer(cert_pem_string.data(), cert_pem_string.size()), ec);
       FC_ASSERT(!ec, "Failed to add cert: ${msg}", ("msg", ec.message()));
    }
@@ -47,37 +127,39 @@ public:
       return std::make_tuple(dest.proto(), *dest.host(), port);
    }
 
-   connection_map::iterator create_raw_connection( const url& dest ) {
+   connection_map::iterator create_raw_connection( const url& dest, const deadline_type& deadline ) {
       auto key = url_to_host_key(dest);
       auto socket = std::make_unique<tcp::socket>(_ioc);
-      const auto results = _resolver.resolve(*dest.host(), dest.port() ? std::to_string(*dest.port()) : "80");
 
-      // Make the connection on the IP address we get from a lookup
-      boost::asio::connect(*socket, results.begin(), results.end());
+      error_code ec = sync_connect_with_timeout(*socket, *dest.host(), dest.port() ? std::to_string(*dest.port()) : "80", deadline);
+      FC_ASSERT(!ec, "Failed to connect: ${message}", ("message",ec.message()));
 
       auto res = _connections.emplace(std::piecewise_construct,
-                           std::forward_as_tuple(key),
-                           std::forward_as_tuple(std::move(socket)));
+                                      std::forward_as_tuple(key),
+                                      std::forward_as_tuple(std::move(socket)));
 
       return res.first;
    }
 
-   connection_map::iterator create_ssl_connection( const url& dest ) {
+   connection_map::iterator create_ssl_connection( const url& dest, const deadline_type& deadline ) {
       auto key = url_to_host_key(dest);
       auto ssl_socket = std::make_unique<ssl::stream<tcp::socket>>(_ioc, _sslc);
 
       // Set SNI Hostname (many hosts need this to handshake successfully)
       if(!SSL_set_tlsext_host_name(ssl_socket->native_handle(), dest.host()->c_str()))
       {
-         boost::system::error_code ec{static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
+         error_code ec{static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
          FC_THROW("Unable to set SNI Host Name: ${msg}", ("msg", ec.message()));
       }
 
-      const auto results = _resolver.resolve(*dest.host(), dest.port() ? std::to_string(*dest.port()) : "443");
+      error_code ec = sync_connect_with_timeout(ssl_socket->next_layer(), *dest.host(), dest.port() ? std::to_string(*dest.port()) : "443", deadline);
+      FC_ASSERT(!ec, "Failed to connect: ${message}", ("message",ec.message()));
 
-      // Make the connection on the IP address we get from a lookup
-      boost::asio::connect(ssl_socket->next_layer(), results.begin(), results.end());
-      ssl_socket->handshake(ssl::stream_base::client);
+      sync_do_with_deadline(ssl_socket->next_layer(), deadline, [&ssl_socket](optional<error_code>& final_ec){
+         ssl_socket->async_handshake(ssl::stream_base::client, [&final_ec](const error_code& ec) {
+            final_ec.emplace(ec);
+         });
+      });
 
       auto res = _connections.emplace(std::piecewise_construct,
                                       std::forward_as_tuple(key),
@@ -86,11 +168,11 @@ public:
       return res.first;
    }
 
-   connection_map::iterator create_connection( const url& dest ) {
+   connection_map::iterator create_connection( const url& dest, const deadline_type& deadline ) {
       if (dest.proto() == "http") {
-         return create_raw_connection(dest);
+         return create_raw_connection(dest, deadline);
       } else if (dest.proto() == "https") {
-         return create_ssl_connection(dest);
+         return create_ssl_connection(dest, deadline);
       } else {
          FC_THROW("Unknown protocol ${proto}", ("proto", dest.proto()));
       }
@@ -115,49 +197,56 @@ public:
       }
    }
 
-   connection_map::iterator get_connection( const url& dest ) {
+   connection_map::iterator get_connection( const url& dest, const deadline_type& deadline ) {
       auto key = url_to_host_key(dest);
       auto conn_itr = _connections.find(key);
       if (conn_itr == _connections.end() || check_closed(conn_itr)) {
-         return create_connection(dest);
+         return create_connection(dest, deadline);
       } else {
          return conn_itr;
       }
    }
 
-   struct write_request_visitor : visitor<boost::beast::error_code> {
-      write_request_visitor(http::request<http::string_body>& req)
-      :req(req)
+   struct write_request_visitor : visitor<error_code> {
+      write_request_visitor(http_client_impl* that, http::request<http::string_body>& req, const deadline_type& deadline)
+      :that(that)
+      ,req(req)
+      ,deadline(deadline)
       {}
 
       template<typename S>
-      boost::beast::error_code operator() ( S& stream ) const {
-         boost::beast::error_code ec;
-         http::write(*stream, req, ec);
-         return ec;
+      error_code operator() ( S& stream ) const {
+         return that->sync_write_with_timeout(*stream, req, deadline);
       }
 
+      http_client_impl*                 that;
       http::request<http::string_body>& req;
+      const deadline_type&              deadline;
    };
 
-   struct read_response_visitor : visitor<boost::beast::error_code> {
-      read_response_visitor(boost::beast::flat_buffer& buffer, http::response<http::string_body>& res)
-      :buffer(buffer)
+   struct read_response_visitor : visitor<error_code> {
+      read_response_visitor(http_client_impl* that, boost::beast::flat_buffer& buffer, http::response<http::string_body>& res, const deadline_type& deadline)
+      :that(that)
+      ,buffer(buffer)
       ,res(res)
+      ,deadline(deadline)
       {}
 
       template<typename S>
-      boost::beast::error_code operator() ( S& stream ) const {
-         boost::beast::error_code ec;
-         http::read(*stream, buffer, res, ec);
-         return ec;
+      error_code operator() ( S& stream ) const {
+         return that->sync_read_with_timeout(*stream, buffer, res, deadline);
       }
 
-      boost::beast::flat_buffer& buffer;
+      http_client_impl*                  that;
+      boost::beast::flat_buffer&         buffer;
       http::response<http::string_body>& res;
+      const deadline_type&               deadline;
    };
 
-   variant post_sync(const url& dest, const variant& payload) {
+   variant post_sync(const url& dest, const variant& payload, const fc::time_point& _deadline) {
+      static const deadline_type epoch(boost::gregorian::date(1970, 1, 1));
+      auto deadline = epoch + boost::posix_time::microseconds(_deadline.time_since_epoch().count());
+
       string path = dest.path() ? dest.path()->generic_string() : "/";
       if (dest.query()) {
          path = path + "?" + *dest.query();
@@ -171,9 +260,13 @@ public:
       req.body() = json::to_string(payload);
       req.prepare_payload();
 
-      auto conn_iter = get_connection(dest);
+      auto conn_iter = get_connection(dest, deadline);
+      auto eraser = make_scoped_exit([this, &conn_iter](){
+         _connections.erase(conn_iter);
+      });
+
       // Send the HTTP request to the remote host
-      boost::beast::error_code ec = conn_iter->second.visit(write_request_visitor(req));
+      error_code ec = conn_iter->second.visit(write_request_visitor(this, req, deadline));
       FC_ASSERT(!ec, "Failed to send request: ${message}", ("message",ec.message()));
 
       // This buffer is used for reading and must be persisted
@@ -183,12 +276,12 @@ public:
       http::response<http::string_body> res;
 
       // Receive the HTTP response
-      ec = conn_iter->second.visit(read_response_visitor(buffer, res));
+      ec = conn_iter->second.visit(read_response_visitor(this, buffer, res, deadline));
       FC_ASSERT(!ec, "Failed to read response: ${message}", ("message",ec.message()));
 
-      if (!res.keep_alive()) {
-         // close the connection
-         _connections.erase(conn_iter);
+      // if the connection can be kept open, keep it open
+      if (res.keep_alive()) {
+         eraser.cancel();
       }
 
       auto result = json::from_string(res.body());
@@ -220,13 +313,9 @@ public:
       return result;
    }
 
-   microseconds _timeout;  /// the time out for connect operations
-
-
 
    boost::asio::io_context  _ioc;
    ssl::context             _sslc;
-   tcp::resolver            _resolver;
    connection_map           _connections;
 };
 
@@ -237,12 +326,8 @@ http_client::http_client()
 
 }
 
-variant http_client::post_sync(const url& dest, const variant& payload) {
-   return _my->post_sync(dest, payload);
-}
-
-void http_client::set_timeout(microseconds timeout) {
-   _my->_timeout = timeout;
+variant http_client::post_sync(const url& dest, const variant& payload, const fc::time_point& deadline) {
+   return _my->post_sync(dest, payload, deadline);
 }
 
 void http_client::add_cert(const std::string& cert_pem_string) {

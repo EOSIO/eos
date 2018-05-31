@@ -134,6 +134,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       int32_t                                                   _max_transaction_time_ms;
       fc::microseconds                                          _max_irreversible_block_age_us;
       fc::time_point                                            _irreversible_block_time;
+      fc::microseconds                                          _keosd_provider_timeout_us;
 
       time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
@@ -431,6 +432,8 @@ void producer_plugin::set_program_options(
           "   <provider-type>        \tis KEY, or KEOSD\n\n"
           "   KEY:<data>             \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
           "   KEOSD:<data>           \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
+         ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
+          "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a keosd provider for signing")
          ("trusted-root-cert", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "PEM encoded trusted root certificate (or path to file containing one) used to validate any TLS connections made.  (may specify multiple times)\n")
          ;
@@ -486,7 +489,8 @@ make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl,
       if (impl) {
          fc::variant params;
          fc::to_variant(std::make_pair(digest, pubkey), params);
-         return impl->_http_client.post_sync(keosd_url,params).as<chain::signature_type>();
+         auto deadline = impl->_keosd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_keosd_provider_timeout_us : fc::time_point::maximum();
+         return impl->_http_client.post_sync(keosd_url, params, deadline).as<chain::signature_type>();
       } else {
          return signature_type();
       }
@@ -562,6 +566,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          }
       }
    }
+
+   my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
 
    my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
 
