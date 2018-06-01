@@ -26,9 +26,12 @@ namespace enumivo {
          void setprods( std::vector<enumivo::producer_key> schedule ) {
             (void)schedule; // schedule argument just forces the deserialization of the action data into vector<producer_key> (necessary check)
             require_auth( _self );
-            char buffer[action_data_size()];
-            read_action_data( buffer, sizeof(buffer) ); // should be the same data as enumivo::pack(schedule)
-            set_proposed_producers(buffer, sizeof(buffer));
+
+            constexpr size_t max_stack_buffer_size = 512;
+            size_t size = action_data_size();
+            char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+            read_action_data( buffer, size );
+            set_proposed_producers(buffer, size);
          }
 
          void reqauth( action_name from ) {
