@@ -42,7 +42,7 @@ namespace eosio {
       size_t size = action_data_size();
 
       //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
-      constexpr size_t max_stack_buffer_size = 512;
+      constexpr size_t max_stack_buffer_size = 128;
       void* buffer = nullptr;
       if( size > 0 ) {
          buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);

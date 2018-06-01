@@ -17,7 +17,7 @@ void multisig::propose( account_name proposer,
 */
 
 void multisig::propose() {
-   constexpr size_t max_stack_buffer_size = 512;
+   constexpr size_t max_stack_buffer_size = 128;
    size_t size = action_data_size();
    char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
    read_action_data( buffer, size );
