@@ -563,3 +563,40 @@ static const char import_injected_wast[] =                                      
 " (import \"" EOSIO_INJECTED_MODULE_NAME "\" \"checktime\" (func $inj (param i32)))"  \
 " (func $apply (param $0 i64) (param $1 i64) (param $2 i64))"                         \
 ")";
+
+static const char memory_growth_memset_store[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 1)
+ (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
+    (drop (grow_memory (i32.const 2)))
+    (i32.store (i32.const 80000) (i32.const 2))
+    (i32.store (i32.const 140000) (i32.const 3))
+ )
+)
+)=====";
+
+static const char memory_growth_memset_test[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (memory $0 1)
+ (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
+   (drop (grow_memory (i32.const 2)))
+   (call $eosio_assert
+     (i32.eq
+       (i32.load offset=80000 (i32.const 0))
+       (i32.const 0)
+     )
+     (i32.const 0)
+   )
+   (call $eosio_assert
+     (i32.eq
+       (i32.load offset=140000 (i32.const 0))
+       (i32.const 0)
+     )
+     (i32.const 0)
+   )
+ )
+)
+)=====";
