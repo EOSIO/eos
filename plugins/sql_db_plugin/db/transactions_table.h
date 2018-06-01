@@ -14,7 +14,7 @@ public:
 
     void drop();
     void create();
-    void add(chain::transaction transaction);
+    void add(uint32_t block_id, chain::transaction transaction);
 
 private:
     std::shared_ptr<soci::session> m_session;

@@ -19,7 +19,7 @@ void database::consume(const std::vector<chain::block_state_ptr> &blocks)
     {
         m_blocks_table->add(block->block);
         for (const auto& transaction : block->trxs) {
-            m_transactions_table->add(transaction->trx);
+            m_transactions_table->add(block->block_num, transaction->trx);
             for (const auto& action : transaction->trx.actions) {
                 m_actions_table->add(action, transaction->trx.id());
             }

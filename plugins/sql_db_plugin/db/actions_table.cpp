@@ -42,8 +42,8 @@ void actions_table::create()
     *m_session << "CREATE TABLE tokens("
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
-            "amount FLOAT,"
-            "staked FLOAT, FOREIGN KEY (account) REFERENCES accounts(name))"; // NOT WORKING VERY GOOD float issue
+            "amount REAL,"
+            "staked REAL, FOREIGN KEY (account) REFERENCES accounts(name))"; // NOT WORKING VERY GOOD float issue
 }
 
 void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
@@ -91,13 +91,8 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
     // TODO: move all
     if (action.name == N(issue)) {
 
-        try {
-            auto to_name = abi_data["to"].as<chain::name>().to_string();
-            auto asset_quantity = abi_data["quantity"].as<chain::asset>();
-        } catch (...) {
-            return;
-        }
-
+        auto to_name = abi_data["to"].as<chain::name>().to_string();
+        auto asset_quantity = abi_data["quantity"].as<chain::asset>();
         int exist;
 
         *m_session << "SELECT COUNT(*) FROM tokens WHERE account = :ac AND symbol = :sy",
@@ -119,14 +114,9 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
 
     if (action.name == N(transfer)) {
 
-        try {
-            auto from_name = abi_data["from"].as<chain::name>().to_string();
-            auto to_name = abi_data["to"].as<chain::name>().to_string();
-            auto asset_quantity = abi_data["quantity"].as<chain::asset>();
-        } catch (...) {
-            return;
-        }
-
+        auto from_name = abi_data["from"].as<chain::name>().to_string();
+        auto to_name = abi_data["to"].as<chain::name>().to_string();
+        auto asset_quantity = abi_data["quantity"].as<chain::asset>();
         int exist;
 
         *m_session << "SELECT COUNT(*) FROM tokens WHERE account = :ac AND symbol = :sy",
