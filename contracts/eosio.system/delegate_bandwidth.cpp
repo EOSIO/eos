@@ -169,7 +169,7 @@ namespace eosiosystem {
           tokens_out = es.convert( asset(bytes,S(0,RAM)), CORE_SYMBOL);
       });
 
-      _gstate.total_ram_bytes_reserved -= bytes;
+      _gstate.total_ram_bytes_reserved -= static_cast<decltype(_gstate.total_ram_bytes_reserved)>(bytes); // bytes > 0 is asserted above
       _gstate.total_ram_stake          -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
@@ -190,7 +190,6 @@ namespace eosiosystem {
    }
 
    void validate_b1_vesting( int64_t stake ) {
-      const int64_t seconds_per_year = 60*60*24*365;
       const int64_t base_time = 1527811200; /// 2018-06-01
       const int64_t max_claimable = 100'000'000'0000ll;
       const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );

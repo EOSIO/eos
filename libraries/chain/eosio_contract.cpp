@@ -146,7 +146,7 @@ void apply_eosio_setcode(apply_context& context) {
 
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
-      #warning TODO: update setcode message to include the hash, then validate it in validate
+      // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
       a.code_version = code_id;
       a.code.resize( code_size );
