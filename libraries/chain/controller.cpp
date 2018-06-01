@@ -871,13 +871,14 @@ struct controller_impl {
             if (except) {
                elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
 
-               while (ritr != branches.first.rend() ) {
-                  fork_db.set_validity( *ritr, false );
-                  ++ritr;
-               }
+               // ritr currently points to the block that threw
+               // if we mark it invalid it will automatically remove all forks built off it.
+               fork_db.set_validity( *ritr, false );
 
                // pop all blocks from the bad fork
-               for( auto itr = (ritr + 1).base(); itr != branches.second.end(); ++itr ) {
+               // ritr base is a forward itr to the last block successfully applied
+               auto applied_itr = ritr.base();
+               for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
                   fork_db.mark_in_current_chain( *itr , false );
                   pop_block();
                }
