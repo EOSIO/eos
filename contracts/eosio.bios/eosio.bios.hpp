@@ -26,8 +26,11 @@ namespace eosio {
          void setprods( std::vector<eosio::producer_key> schedule ) {
             (void)schedule; // schedule argument just forces the deserialization of the action data into vector<producer_key> (necessary check)
             require_auth( _self );
-            char buffer[action_data_size()];
-            read_action_data( buffer, sizeof(buffer) ); // should be the same data as eosio::pack(schedule)
+
+            constexpr size_t max_stack_buffer_size = 128;
+            size_t size = action_data_size();
+            char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+            read_action_data( buffer, size );
             set_proposed_producers(buffer, sizeof(buffer));
          }
 
