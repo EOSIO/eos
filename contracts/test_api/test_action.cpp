@@ -152,7 +152,7 @@ void test_action::test_cf_action() {
       publication_time();
       eosio_assert( false, "system_api should not be allowed" );
    } else if ( cfa.payload == 210 ) {
-      send_inline( "hello", 6 );
+      send_inline( (char*)"hello", 6 );
       eosio_assert( false, "transaction_api should not be allowed" );
    } else if ( cfa.payload == 211 ) {
       send_deferred( N(testapi), N(testapi), "hello", 6 );
