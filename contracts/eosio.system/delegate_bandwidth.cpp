@@ -122,8 +122,8 @@ namespace eosiosystem {
 
       int64_t bytes_out;
 
-      const auto& market = _rammarket.get(S(4,RAMCORE), "ram market does not exist");
-      _rammarket.modify( market, 0, [&]( auto& es ) {
+      auto itr = _rammarket.find(S(4,RAMCORE));
+      _rammarket.modify( itr, 0, [&]( auto& es ) {
           bytes_out = es.convert( quant_after_fee,  S(0,RAM) ).amount;
       });
 
