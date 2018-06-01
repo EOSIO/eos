@@ -140,7 +140,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Contract account added to contract blacklist (may specify multiple times)")
          ;
 
-#warning TODO: rate limiting
+// TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
          ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(default_per_auth_account),

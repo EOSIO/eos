@@ -657,7 +657,7 @@ namespace fc
               return;
            }
          default:
-            FC_THROW_EXCEPTION( fc::invalid_arg_exception, "Unsupported variant type: " + v.get_type() );
+            FC_THROW_EXCEPTION( fc::invalid_arg_exception, "Unsupported variant type: " + std::to_string( v.get_type() ) );
       }
    }
 
