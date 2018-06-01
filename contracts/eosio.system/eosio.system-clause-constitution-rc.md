@@ -1,7 +1,7 @@
 This Constitution is a multi-party contract entered into by the Members by virtue of their use of this blockchain.
 
 # Article I - No Initiation of Violence
-Members shall not initiate violence or the threat of violence against another Member.
+Members shall not initiate violence or the threat of violence against another Member. Lawful prosecution of crimes with the goal of preserving life, liberty and property does not constitute initiation of violence.
 
 # Article II - No Perjury
 Members shall be liable for losses caused by false or misleading attestations and shall forfeit any profit gained thereby.
@@ -13,12 +13,12 @@ The Members grant the right of contract and of private property to each other, t
 No Member shall offer nor accept anything of value in exchange for a vote of any type, nor shall any Member unduly influence the vote of another.
 
 # Article V - No Fiduciary
-No Member nor SYS token holder shall have fiduciary responsibility to support the value of the SYS token. The Members do not authorize anyone to hold assets, borrow, nor contract on behalf of SYS token holders collectively. This blockchain has no owners, managers or fiduciaries; therefore, no Member shall have beneficial interest in more than 10% of the SYS token supply.
+No Member nor EOS token holder shall have fiduciary responsibility to support the value of the EOS token. The Members do not authorize anyone to hold assets, borrow, nor contract on behalf of EOS token holders collectively. This blockchain has no owners, managers or fiduciaries; therefore, no Member shall have beneficial interest in more than 10% of the EOS token supply.
 
 # Article VI - Restitution
 Each Member agrees that penalties for breach of contract may include, but are not limited to, fines, loss of account, and other restitution.
 
-# Article VII  - Open Source
+# Article VII - Open Source
 Each Member who makes available a smart contract on this blockchain shall be a Developer. Each Developer shall offer their smart contracts via a free and open source license, and each smart contract shall be documented with a Ricardian Contract stating the intent of all parties and naming the Arbitration Forum that will resolve disputes arising from that contract.
 
 # Article VIII - Language
@@ -56,3 +56,6 @@ A contract is deemed accepted when a member signs a transaction which incorporat
 
 # Article XIX - Counterparts
 This Constitution may be executed in any number of counterparts, each of which when executed and delivered shall constitute a duplicate original, but all counterparts together shall constitute a single agreement.
+
+# Article XX - Interim Constitution
+This constitution is interim and is intended to remain in effect until a permanent constitution is written and ratified in a referendum.
