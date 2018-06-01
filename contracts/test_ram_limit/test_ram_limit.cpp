@@ -8,6 +8,11 @@
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/contract.hpp>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#pragma clang diagnostic ignored "-Wsign-compare"
+
 class test_ram_limit : public eosio::contract {
    public:
       const uint32_t FIVE_MINUTES = 5*60;
@@ -72,5 +77,7 @@ class test_ram_limit : public eosio::contract {
       };
       typedef eosio::multi_index< N(test.table), test> test_table;
 };
+
+#pragma clang diagnostic pop
 
 EOSIO_ABI( test_ram_limit, (setentry)(rmentry)(printentry) )
