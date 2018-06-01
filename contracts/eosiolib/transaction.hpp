@@ -76,7 +76,7 @@ namespace eosio {
     * @return the indicated action
     */
    inline action get_action( uint32_t type, uint32_t index ) {
-      constexpr size_t max_stack_buffer_size = 128;
+      constexpr size_t max_stack_buffer_size = 512;
       int s = ::get_action( type, index, nullptr, 0 );
       eosio_assert( s > 0, "get_action size failed" );
       size_t size = static_cast<size_t>(s);

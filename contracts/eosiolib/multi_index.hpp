@@ -136,7 +136,7 @@ class multi_index
          return (n & 0x000000000000000FULL) == 0;
       }
 
-      constexpr static size_t max_stack_buffer_size = 128;
+      constexpr static size_t max_stack_buffer_size = 512;
 
       static_assert( validate_table_name(TableName), "multi_index does not support table names with a length greater than 12");
 
