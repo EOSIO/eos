@@ -589,7 +589,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
 
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
-#warning This test does not appear to be very robust.
+// TODO Increase the robustness of this test.
    resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
    create_accounts( {N(f_tests)} );
    create_accounts( {N(acc2)} );
@@ -1713,7 +1713,7 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 
 
-#warning restore net_usage_tests
+// TODO: restore net_usage_tests
 #if 0
 BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
    int count = 0;

@@ -8,6 +8,11 @@
 #include <enumivolib/enumivo.hpp>
 #include <enumivolib/contract.hpp>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#pragma clang diagnostic ignored "-Wsign-compare"
+
 class test_ram_limit : public enumivo::contract {
    public:
       const uint32_t FIVE_MINUTES = 5*60;
@@ -72,5 +77,7 @@ class test_ram_limit : public enumivo::contract {
       };
       typedef enumivo::multi_index< N(test.table), test> test_table;
 };
+
+#pragma clang diagnostic pop
 
 ENUMIVO_ABI( test_ram_limit, (setentry)(rmentry)(printentry) )
