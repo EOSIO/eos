@@ -21,7 +21,7 @@ namespace eosio {
          eosio_assert( symbol.is_valid(),        "invalid symbol name" );
       }
 
-      bool is_amount_within_range()const { return -max_amount <= amount && amount <= max_amount; }
+      bool is_amount_within_range()const { return 0 <= amount && amount <= max_amount; }
       bool is_valid()const               { return is_amount_within_range() && symbol.is_valid(); }
 
       void set_amount( int64_t a ) {
@@ -38,7 +38,7 @@ namespace eosio {
       asset& operator-=( const asset& a ) {
          eosio_assert( a.symbol == symbol, "attempt to subtract asset with different symbol" );
          amount -= a.amount;
-         eosio_assert( -max_amount <= amount, "subtraction underflow" );
+         eosio_assert( 0 <= amount, "subtraction underflow" );
          eosio_assert( amount <= max_amount,  "subtraction overflow" );
          return *this;
       }
@@ -46,7 +46,7 @@ namespace eosio {
       asset& operator+=( const asset& a ) {
          eosio_assert( a.symbol == symbol, "attempt to add asset with different symbol" );
          amount += a.amount;
-         eosio_assert( -max_amount <= amount, "addition underflow" );
+         eosio_assert( 0 <= amount, "addition underflow" );
          eosio_assert( amount <= max_amount,  "addition overflow" );
          return *this;
       }
@@ -65,7 +65,7 @@ namespace eosio {
 
       asset& operator*=( int64_t a ) {
          eosio_assert( a == 0 || (amount * a) / a == amount, "multiplication overflow or underflow" );
-         eosio_assert( -max_amount <= amount, "multiplication underflow" );
+         eosio_assert( 0 <= amount, "multiplication underflow" );
          eosio_assert( amount <= max_amount,  "multiplication overflow" );
          amount *= a;
          return *this;
