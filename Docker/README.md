@@ -35,7 +35,7 @@ docker build -t eosio/eos --build-arg symbol=<symbol> .
 ## Start nodeos docker container only
 
 ```bash
-docker run --name nodeos -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
+docker run --name nodeos -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e arg1 arg2
 ```
 
 By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
@@ -49,7 +49,7 @@ $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5
 Alternately, you can directly mount host directory into the container
 
 ```bash
-docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
+docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e arg1 arg2
 ```
 
 ## Get chain info
@@ -142,7 +142,7 @@ version: "3"
 services:
   nodeosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh
+    command: /opt/eosio/bin/nodeosd.sh -e
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -181,12 +181,11 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 
 ```
 # pull images
-docker pull eosio/eos:20180528
-docker pull mongo:latest
+docker pull eosio/eos:v1.0.0
+
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
-docker volume create --name=mongo-data-volume
 # start containers
 docker-compose -f docker-compose-eosio1.0.yaml up -d
 # get chain info
