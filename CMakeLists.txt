@@ -1,7 +1,6 @@
 cmake_minimum_required( VERSION 3.5 )
 
-# Defines EOS library target.
-project( EOS )
+project( EOSIO )
 
 enable_testing()
 
@@ -13,13 +12,13 @@ include( VersionMacros )
 include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
 
-set( BLOCKCHAIN_NAME "Eos" )
+set( BLOCKCHAIN_NAME "EOSIO" )
 set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 4)
-set(VERSION_MINOR 2)
+set(VERSION_MAJOR 1)
+set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
@@ -29,12 +28,12 @@ set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
-        message(FATAL_ERROR "GCC version must be at least 4.8!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
+        message(FATAL_ERROR "GCC version must be at least 6.0!")
     endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.3)
-        message(FATAL_ERROR "Clang version must be at least 3.3!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.0)
+        message(FATAL_ERROR "Clang version must be at least 4.0!")
     endif()
 endif()
 
