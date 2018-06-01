@@ -117,7 +117,7 @@ namespace eosiosystem {
       } else {
          eosio_assert( current->high_bid > 0, "this auction has already closed" );
          eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
-         eosio_assert( current->high_bidder != bidder, "account is already high bidder" );
+         eosio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.names),N(active)},
                                                        { N(eosio.names), current->high_bidder, asset(current->high_bid),
@@ -135,13 +135,10 @@ namespace eosiosystem {
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
     *
-    *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
-    *  characters long without '.' until a future account auction process is implemented
-    *  which prevents name squatting.
+    *  Account names containing '.' symbols must have a suffix equal to the name of the creator.
+    *  This allows users who buy a premium name (shorter than 12 characters with no dots) to be the only ones
+    *  who can create accounts with the creator's name as a suffix.
     *
-    *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
-    *     therefore, this method will execute an inline buyram from receiver for newacnt in
-    *     an amount equal to the current new account creation fee.
     */
    void native::newaccount( account_name     creator,
                             account_name     newact
@@ -157,13 +154,13 @@ namespace eosiosystem {
            has_dot |= !(tmp & 0x1f);
            tmp >>= 5;
          }
-         auto suffix = eosio::name_suffix(newact);
-         if( has_dot ) {
+         if( has_dot ) { // or is less than 12 characters
+            auto suffix = eosio::name_suffix(newact);
             if( suffix == newact ) {
                name_bid_table bids(_self,_self);
                auto current = bids.find( newact );
                eosio_assert( current != bids.end(), "no active bid for name" );
-               eosio_assert( current->high_bidder == creator, "only high bidder can claim" );
+               eosio_assert( current->high_bidder == creator, "only highest bidder can claim" );
                eosio_assert( current->high_bid < 0, "auction for name is not closed yet" );
                bids.erase( current );
             } else {

@@ -26,8 +26,8 @@ namespace eosiosystem {
      int64_t                 high_bid = 0; ///< negative high_bid == closed auction waiting to be claimed
      uint64_t                last_bid_time = 0;
 
-     auto     primary_key()const { return newname;   }
-     uint64_t by_high_bid()const { return -high_bid; }
+     auto     primary_key()const { return newname;                          }
+     uint64_t by_high_bid()const { return static_cast<uint64_t>(-high_bid); }
    };
 
    typedef eosio::multi_index< N(namebids), name_bid,

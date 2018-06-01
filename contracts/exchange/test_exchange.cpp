@@ -344,6 +344,7 @@ exchange_state borrow( const exchange_state& current, account_name user,
     ///   remove amount_to_borrow from exchange 
     ///   lock collateral for user 
     /// simulate complete margin calls 
+    return exchange_state();
 }
 
 exchange_state cover( const exchange_state& current, account_name user,
@@ -357,14 +358,14 @@ exchange_state cover( const exchange_state& current, account_name user,
    //     - if borrowed from user, reduce borrowed from user
    /// calculate new call price and update least collateralized position
    /// simulate complete margin calls
-
+   return exchange_state();
 }
 
 exchange_state lend( const exchange_state& current, account_name lender,
                      asset asset_to_lend ) {
    /// add to pool of funds available for lending and buy SHARES in
    ///  interest pool at current rate.  
-
+   return exchange_state();
 }
 
 exchange_state unlend( const exchange_state& current, account_name lender,
@@ -372,7 +373,8 @@ exchange_state unlend( const exchange_state& current, account_name lender,
     /// sell shares in interest pool at current rate
     /// this is permitable so long as total borrowed from users remains less than
     /// total available to lend. Otherwise, margin is called on the least 
-    /// collateralized position. 
+    /// collateralized position.
+   return exchange_state();
 }
 
 
