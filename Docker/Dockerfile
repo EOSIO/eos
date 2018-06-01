@@ -1,6 +1,6 @@
 FROM enumivo/builder as builder
 ARG branch=master
-ARG symbol=SYS
+ARG symbol=ENU
 
 RUN git clone -b $branch https://github.com/enumivo/enumivo.git --recursive \
     && cd enumivo && echo "$branch:$(git rev-parse HEAD)" > /etc/enumivo-version \

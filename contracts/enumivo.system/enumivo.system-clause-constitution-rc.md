@@ -13,7 +13,7 @@ The Members grant the right of contract and of private property to each other, t
 No Member shall offer nor accept anything of value in exchange for a vote of any type, nor shall any Member unduly influence the vote of another.
 
 # Article V - No Fiduciary 
-No Member nor SYS token holder shall have fiduciary responsibility to support the value of the SYS token. The Members do not authorize anyone to hold assets, borrow, nor contract on behalf of SYS token holders collectively. This blockchain has no owners, managers or fiduciaries; therefore, no Member shall have beneficial interest in more than 10% of the SYS token supply.
+No Member nor ENU token holder shall have fiduciary responsibility to support the value of the ENU token. The Members do not authorize anyone to hold assets, borrow, nor contract on behalf of ENU token holders collectively. This blockchain has no owners, managers or fiduciaries; therefore, no Member shall have beneficial interest in more than 20% of the ENU token supply.
 
 # Article VI - Restitution
 Each Member agrees that penalties for breach of contract may include, but are not limited to, fines, loss of account, and other restitution.
