@@ -249,7 +249,7 @@
          {"name":"max_ram_size",                  "type":"uint64"},
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
          {"name":"total_ram_stake",               "type":"int64"},
-         {"name":"last_producer_schedule_update", "type":"time_point_sec"},
+         {"name":"last_producer_schedule_update", "type":"block_timestamp_type"},
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
