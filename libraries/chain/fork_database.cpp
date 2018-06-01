@@ -209,14 +209,14 @@ namespace eosio { namespace chain {
             my->index.erase(itr);
 
          auto& previdx = my->index.get<by_prev>();
-         auto  previtr = previdx.find(id);
-         while( previtr != previdx.end() ) {
+         auto  previtr = previdx.lower_bound(remove_queue[i]);
+         while( previtr != previdx.end() && (*previtr)->header.previous == remove_queue[i] ) {
             remove_queue.push_back( (*previtr)->id );
-            previdx.erase(previtr);
-            previtr = previdx.find(id);
+            ++previtr;
          }
       }
       //wdump((my->index.size()));
+      my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
    void fork_database::set_validity( const block_state_ptr& h, bool valid ) {

@@ -158,6 +158,9 @@ def createStakedAccounts(b, e):
     for i in range(b, e):
         a = accounts[i]
         funds = a['funds']
+        print('#' * 80)
+        print('# %d/%d %s %s' % (i, e, a['name'], intToCurrency(funds)))
+        print('#' * 80)
         if funds < ramFunds:
             print('skipping %s: not enough funds to cover ram' % a['name'])
             continue
@@ -168,9 +171,10 @@ def createStakedAccounts(b, e):
         stakeCpu = stake - stakeNet
         print('%s: total funds=%s, ram=%s, net=%s, cpu=%s, unstaked=%s' % (a['name'], intToCurrency(a['funds']), intToCurrency(ramFunds), intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(unstaked)))
         assert(funds == ramFunds + stakeNet + stakeCpu + unstaked)
-        run(args.cleos + 'system newaccount --transfer eosio %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram "%s"   ' % 
+        retry(args.cleos + 'system newaccount --transfer eosio %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram "%s"   ' % 
             (a['name'], a['pub'], intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(ramFunds)))
-        run(args.cleos + 'transfer eosio %s "%s"' % (a['name'], intToCurrency(unstaked)))
+        if unstaked:
+            retry(args.cleos + 'transfer eosio %s "%s"' % (a['name'], intToCurrency(unstaked)))
 
 def regProducers(b, e):
     for i in range(b, e):
@@ -268,7 +272,7 @@ def msigReplaceSystem():
 
 def produceNewAccounts():
     with open('newusers', 'w') as f:
-        for i in range(3000, 30000):
+        for i in range(120_000, 200_000):
             x = getOutput(args.cleos + 'create key')
             r = re.match('Private key: *([^ \n]*)\nPublic key: *([^ \n]*)', x, re.DOTALL | re.MULTILINE)
             name = 'user'

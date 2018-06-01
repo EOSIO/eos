@@ -10,7 +10,7 @@ services:
     build:
       context: .
     image: eosio/eos
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e
     hostname: nodeosd
     ports:
       - 8888:8888
