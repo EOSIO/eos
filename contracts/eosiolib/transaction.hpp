@@ -76,12 +76,13 @@ namespace eosio {
     * @return the indicated action
     */
    inline action get_action( uint32_t type, uint32_t index ) {
+      constexpr size_t max_stack_buffer_size = 128;
       auto size = ::get_action(type, index, nullptr, 0);
       eosio_assert( size > 0, "get_action size failed" );
-      char buf[size];
-      auto size2 = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      auto size2 = ::get_action(type, index, buffer, static_cast<size_t>(size) );
       eosio_assert( size == size2, "get_action failed" );
-      return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
+      return eosio::unpack<eosio::action>(buffer, static_cast<size_t>(size));
    }
 
    ///@} transactioncpp api
