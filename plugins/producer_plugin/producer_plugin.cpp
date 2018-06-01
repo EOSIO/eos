@@ -504,7 +504,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          try {
             auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
             my->_signature_providers[key_id_to_wif_pair.first] = make_key_signature_provider(key_id_to_wif_pair.second);
-            wlog("\"private-key\" is DEPRECATED, use \"signature-provider=${pub}=KEY:${priv}\"", ("pub",key_id_to_wif_pair.first)("priv", key_id_to_wif_pair.second));
+            auto blanked_privkey = std::string(std::string(key_id_to_wif_pair.second).size(), '*' );
+            wlog("\"private-key\" is DEPRECATED, use \"signature-provider=${pub}=KEY:${priv}\"", ("pub",key_id_to_wif_pair.first)("priv", blanked_privkey));
          } catch ( fc::exception& e ) {
             elog("Malformed private key pair");
          }
@@ -1013,12 +1014,12 @@ bool producer_plugin_impl::maybe_produce_block() {
 static auto make_debug_time_logger() {
    auto start = fc::time_point::now();
    return fc::make_scoped_exit([=](){
-      dlog("Signing took ${ms}us", ("ms", fc::time_point::now() - start) );
+      fc_dlog(_log, "Signing took ${ms}us", ("ms", fc::time_point::now() - start) );
    });
 }
 
 static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_time_logger())> {
-   if ((fc::logger::get(DEFAULT_LOGGER)).is_enabled( fc::log_level::debug ) ){
+   if (_log.is_enabled( fc::log_level::debug ) ){
       return make_debug_time_logger();
    } else {
       return {};

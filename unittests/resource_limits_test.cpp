@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
     */
 
 
-#warning restore weighted capacity cpu tests
+// TODO: restore weighted capacity cpu tests
 #if 0
    BOOST_FIXTURE_TEST_CASE(weighted_capacity_cpu, resource_limits_fixture) try {
       const vector<int64_t> weights = { 234, 511, 672, 800, 1213 };

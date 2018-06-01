@@ -13,7 +13,7 @@ import time
 args = None
 logFile = None
 
-unlockTimeout = 99999999999
+unlockTimeout = 999999999
 fastUnstakeSystem = './fast.refund/enumivo.system/enumivo.system.wasm'
 
 systemAccounts = [
@@ -168,7 +168,7 @@ def createStakedAccounts(b, e):
         stakeCpu = stake - stakeNet
         print('%s: total funds=%s, ram=%s, net=%s, cpu=%s, unstaked=%s' % (a['name'], intToCurrency(a['funds']), intToCurrency(ramFunds), intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(unstaked)))
         assert(funds == ramFunds + stakeNet + stakeCpu + unstaked)
-        run(args.enucli + 'system newaccount --transfer enumivo %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram-ENU "%s"   ' % 
+        run(args.enucli + 'system newaccount --transfer enumivo %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram "%s"   ' % 
             (a['name'], a['pub'], intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(ramFunds)))
         run(args.enucli + 'transfer enumivo %s "%s"' % (a['name'], intToCurrency(unstaked)))
 

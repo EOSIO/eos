@@ -1281,7 +1281,12 @@ class memory_api : public context_aware_api {
       }
 
       int memcmp( array_ptr<const char> dest, array_ptr<const char> src, size_t length) {
-         return ::memcmp(dest, src, length);
+         int ret = ::memcmp(dest, src, length);
+         if(ret < 0)
+            return -1;
+         if(ret > 0)
+            return 1;
+         return 0;
       }
 
       char* memset( array_ptr<char> dest, int value, size_t length ) {
