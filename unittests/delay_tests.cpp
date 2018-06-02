@@ -269,27 +269,27 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    // link auth
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", "enumivo.token")
+           ("code", "enumivo.tkn")
            ("type", "transfer")
            ("requirement", "first"));
 
    // create CUR token
    chain.produce_blocks();
    chain.push_action(N(enumivo.tkn), N(create), N(enumivo.tkn), mutable_variant_object()
-           ("issuer", "enumivo.token" )
+           ("issuer", "enumivo.tkn" )
            ("maximum_supply", "9000000.0000 CUR" )
    );
 
-   // issue to account "enumivo.token"
+   // issue to account "enumivo.tkn"
    chain.push_action(N(enumivo.tkn), name("issue"), N(enumivo.tkn), fc::mutable_variant_object()
-           ("to",       "enumivo.token")
+           ("to",       "enumivo.tkn")
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
-   // transfer from enumivo.token to tester
+   // transfer from enumivo.tkn to tester
    trace = chain.push_action(N(enumivo.tkn), name("transfer"), N(enumivo.tkn), fc::mutable_variant_object()
-       ("from", "enumivo.token")
+       ("from", "enumivo.tkn")
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -2288,7 +2288,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 
    chain.produce_blocks();
    chain.push_action(N(enumivo.tkn), N(create), N(enumivo.tkn), mutable_variant_object()
-           ("issuer", "enumivo.token" )
+           ("issuer", "enumivo.tkn" )
            ("maximum_supply", "9000000.0000 CUR" )
    );
    chain.push_action(N(enumivo.tkn), name("issue"), N(enumivo.tkn), fc::mutable_variant_object()
@@ -2331,7 +2331,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    //should be able to create transaction with delay 60 sec, despite permission delay being 30 days, because max_transaction_delay is 60 sec
    trace = chain.push_action(N(enumivo.tkn), name("transfer"), N(tester), fc::mutable_variant_object()
                            ("from", "tester")
-                           ("to", "enumivo.token")
+                           ("to", "enumivo.tkn")
                            ("quantity", "9.0000 CUR")
                            ("memo", "" ), 120, 60);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace->receipt->status);
