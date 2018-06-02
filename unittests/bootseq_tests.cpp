@@ -5,8 +5,8 @@
 #include <enumivo.system/enumivo.system.wast.hpp>
 #include <enumivo.system/enumivo.system.abi.hpp>
 // These contracts are still under dev
-#include <enumivo.bios/enumivo.bios.wast.hpp>
-#include <enumivo.bios/enumivo.bios.abi.hpp>
+#include <enu.bios/enu.bios.wast.hpp>
+#include <enu.bios/enu.bios.abi.hpp>
 #include <enu.token/enu.token.wast.hpp>
 #include <enu.token/enu.token.abi.hpp>
 #include <enumivo.msig/enumivo.msig.wast.hpp>
@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         create_accounts({N(enumivo.msig), N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
 
         // Set code for the following accounts:
-        //  - enumivo (code: enumivo.bios) (already set by tester constructor)
+        //  - enumivo (code: enu.bios) (already set by tester constructor)
         //  - enumivo.msig (code: enumivo.msig)
         //  - enu.token (code: enu.token)
         set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &enumivo_active_pk);

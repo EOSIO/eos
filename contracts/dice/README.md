@@ -53,7 +53,7 @@ Example game session using enucli
 
 ##### Upload bios contract
 ````bash
-enucli set contract enumivo build/contracts/enumivo.bios -p enumivo
+enucli set contract enumivo build/contracts/enu.bios -p enumivo
 ````
 
 ##### Ceate enu.token account

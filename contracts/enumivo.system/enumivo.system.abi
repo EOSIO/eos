@@ -16,7 +16,7 @@
       "new_type_name": "weight_type",
       "type": "uint16"
    }],
-   "____comment": "enumivo.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
+   "____comment": "enu.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
    "structs": [{
       "name": "permission_level",
       "base": "",
