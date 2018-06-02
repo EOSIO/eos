@@ -3,7 +3,7 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #include <proxy/proxy.hpp>
-#include <enumivolib/transaction.hpp>
+#include <enulib/transaction.hpp>
 #include <enu.token/enu.token.hpp>
 
 namespace proxy {

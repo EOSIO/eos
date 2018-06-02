@@ -3,9 +3,9 @@
  *    @copyright defined in enumivo/LICENSE.txt
  */
 
-#include <enumivolib/enu.hpp>
-#include <enumivolib/print.hpp>
-#include <enumivolib/compiler_builtins.h>
+#include <enulib/enu.hpp>
+#include <enulib/print.hpp>
+#include <enulib/compiler_builtins.h>
 
 #include "test_api.hpp"
 

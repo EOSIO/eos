@@ -1,7 +1,7 @@
 #pragma once
 
-#include <enumivolib/singleton.hpp>
-#include <enumivolib/multi_index.hpp>
+#include <enulib/singleton.hpp>
+#include <enulib/multi_index.hpp>
 
 namespace identity {
 

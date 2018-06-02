@@ -1,6 +1,6 @@
 #pragma once
-#include <enumivolib/print.hpp>
-#include <enumivolib/action.hpp>
+#include <enulib/print.hpp>
+#include <enulib/action.hpp>
 
 #include <boost/fusion/adapted/std_tuple.hpp>
 #include <boost/fusion/include/std_tuple.hpp>

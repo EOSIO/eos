@@ -1,6 +1,6 @@
 #pragma once
-#include <enumivolib/types.h>
-#include <enumivolib/print.hpp>
+#include <enulib/types.h>
+#include <enulib/print.hpp>
 
 namespace enumivo
 {

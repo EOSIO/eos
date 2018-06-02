@@ -3,7 +3,7 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <enumivolib/types.h>
+#include <enulib/types.h>
 #include <functional>
 #include <tuple>
 #include <string>

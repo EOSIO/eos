@@ -3,9 +3,9 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <enumivolib/print.h>
-#include <enumivolib/types.hpp>
-#include <enumivolib/fixed_key.hpp>
+#include <enulib/print.h>
+#include <enulib/types.hpp>
+#include <enulib/fixed_key.hpp>
 #include <utility>
 #include <string>
 

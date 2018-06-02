@@ -1,5 +1,5 @@
 #pragma once
-#include <enumivolib/privileged.hpp>
+#include <enulib/privileged.hpp>
 
 #include <vector>
 

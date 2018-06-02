@@ -3,7 +3,7 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <enumivolib/system.h>
+#include <enulib/system.h>
 
 extern "C" {
    /**

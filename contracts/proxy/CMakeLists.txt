@@ -3,6 +3,6 @@ configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 
 add_wast_executable(TARGET proxy
   INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}" ${Boost_INCLUDE_DIR} 
-  LIBRARIES libc++ libc enumivolib
+  LIBRARIES libc++ libc enulib
   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
 )

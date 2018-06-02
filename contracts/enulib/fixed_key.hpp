@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <type_traits>
 
-#include <enumivolib/system.h>
+#include <enulib/system.h>
 
 namespace enumivo {
 

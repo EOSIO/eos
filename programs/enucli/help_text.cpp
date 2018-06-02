@@ -103,10 +103,10 @@ const char* error_advice_name_type_exception = R"=====(Name should be less than 
 const char* error_advice_public_key_type_exception = R"=====(Public key should be encoded in base58 and starts with ENU prefix)=====";
 const char* error_advice_private_key_type_exception = R"=====(Private key should be encoded in base58 WIF)=====";
 const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON follows the right authority structure!
-You can refer to contracts/enumivolib/native.hpp for reference)=====";
+You can refer to contracts/enulib/native.hpp for reference)=====";
 const char* error_advice_action_type_exception = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
 const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!
-You can refer to contracts/enumivolib/transaction.hpp for reference)=====";
+You can refer to contracts/enulib/transaction.hpp for reference)=====";
 const char* error_advice_abi_type_exception =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],

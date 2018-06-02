@@ -1,6 +1,6 @@
 #pragma once
-#include <enumivolib/multi_index.hpp>
-#include <enumivolib/system.h>
+#include <enulib/multi_index.hpp>
+#include <enulib/system.h>
 
 namespace  enumivo {
 

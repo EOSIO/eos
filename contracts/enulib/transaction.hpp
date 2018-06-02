@@ -3,11 +3,11 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <enumivolib/transaction.h>
-#include <enumivolib/action.hpp>
-#include <enumivolib/types.hpp>
-#include <enumivolib/time.hpp>
-#include <enumivolib/serialize.hpp>
+#include <enulib/transaction.h>
+#include <enulib/action.hpp>
+#include <enulib/types.hpp>
+#include <enulib/time.hpp>
+#include <enulib/serialize.hpp>
 #include <vector>
 
 namespace enumivo {

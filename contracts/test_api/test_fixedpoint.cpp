@@ -1,5 +1,5 @@
-#include <enumivolib/fixedpoint.hpp>
-#include <enumivolib/enu.hpp>
+#include <enulib/fixedpoint.hpp>
+#include <enulib/enu.hpp>
 
 #include "test_api.hpp"
 

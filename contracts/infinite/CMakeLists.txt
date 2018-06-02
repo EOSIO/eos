@@ -1,5 +1,5 @@
 add_wast_executable(TARGET infinite
   INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-  LIBRARIES libc++ libc enumivolib
+  LIBRARIES libc++ libc enulib
   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
 )

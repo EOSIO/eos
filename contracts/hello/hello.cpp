@@ -1,4 +1,4 @@
-#include <enumivolib/enu.hpp>
+#include <enulib/enu.hpp>
 using namespace enumivo;
 
 class hello : public enumivo::contract {

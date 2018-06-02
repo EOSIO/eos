@@ -1,6 +1,6 @@
 #pragma once
-#include <enumivolib/enu.hpp>
-#include <enumivolib/privileged.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/privileged.hpp>
 
 namespace enumivo {
 

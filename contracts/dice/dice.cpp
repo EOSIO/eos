@@ -5,11 +5,11 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <enumivolib/enu.hpp>
-#include <enumivolib/time.hpp>
-#include <enumivolib/asset.hpp>
-#include <enumivolib/contract.hpp>
-#include <enumivolib/crypto.h>
+#include <enulib/enu.hpp>
+#include <enulib/time.hpp>
+#include <enulib/asset.hpp>
+#include <enulib/contract.hpp>
+#include <enulib/crypto.h>
 
 using enumivo::key256;
 using enumivo::indexed_by;

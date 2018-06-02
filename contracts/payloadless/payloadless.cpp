@@ -1,5 +1,5 @@
-#include <enumivolib/enu.hpp>
-#include <enumivolib/print.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/print.hpp>
 using namespace enumivo;
 
 class payloadless : public enumivo::contract {

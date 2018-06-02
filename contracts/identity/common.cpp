@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-#include <enumivolib/chain.h>
+#include <enulib/chain.h>
 
 namespace identity {
 

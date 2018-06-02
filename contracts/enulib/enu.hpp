@@ -3,9 +3,9 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <enumivolib/types.hpp>
-#include <enumivolib/action.hpp>
-#include <enumivolib/print.hpp>
-#include <enumivolib/multi_index.hpp>
-#include <enumivolib/dispatcher.hpp>
-#include <enumivolib/contract.hpp>
+#include <enulib/types.hpp>
+#include <enulib/action.hpp>
+#include <enulib/print.hpp>
+#include <enulib/multi_index.hpp>
+#include <enulib/dispatcher.hpp>
+#include <enulib/contract.hpp>

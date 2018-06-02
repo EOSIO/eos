@@ -1,5 +1,5 @@
-#include <enumivolib/enu.hpp>
-#include <enumivolib/memory.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/memory.hpp>
 #include "../test_api/test_api.hpp"
 
 //using namespace enumivo;

@@ -1,8 +1,8 @@
 #pragma once
-#include <enumivolib/core_symbol.hpp>
-#include <enumivolib/serialize.hpp>
-#include <enumivolib/print.hpp>
-#include <enumivolib/system.h>
+#include <enulib/core_symbol.hpp>
+#include <enulib/serialize.hpp>
+#include <enulib/print.hpp>
+#include <enulib/system.h>
 #include <tuple>
 #include <limits>
 

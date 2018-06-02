@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in enumivo/LICENSE.txt
  */
-#include <enumivolib/enu.hpp>
+#include <enulib/enu.hpp>
 
 /**
  *  @defgroup tictactoecontract Tic Tac Toe Contract

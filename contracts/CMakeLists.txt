@@ -4,7 +4,7 @@ set(DEFAULT_SYSTEM_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts/libc++/upstream
 
 set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/externals/magic_get/include)
 
-add_subdirectory(enumivolib)
+add_subdirectory(enulib)
 add_subdirectory(musl)
 add_subdirectory(libc++)
 add_subdirectory(simple.token)
@@ -47,7 +47,7 @@ add_custom_command(OUTPUT share/enumivo/skeleton/skeleton.cpp
                    VERBATIM)
 add_custom_target(copy_skeleton_contract ALL DEPENDS share/enumivo/skeleton/skeleton.cpp)
 
-install(DIRECTORY enumivolib DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+install(DIRECTORY enulib DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 install(DIRECTORY enumivo.system DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 install(DIRECTORY musl DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 install(DIRECTORY libc++ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})

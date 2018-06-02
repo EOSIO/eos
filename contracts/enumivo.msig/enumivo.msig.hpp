@@ -1,6 +1,6 @@
 #pragma once
-#include <enumivolib/enu.hpp>
-#include <enumivolib/transaction.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/transaction.hpp>
 
 namespace enumivo {
 

@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <enumivolib/system.h>
+#include <enulib/system.h>
 
 extern "C" {
   /**

@@ -17,12 +17,12 @@
 
 #include <boost/multi_index/mem_fun.hpp>
 
-#include <enumivolib/action.h>
-#include <enumivolib/types.hpp>
-#include <enumivolib/serialize.hpp>
-#include <enumivolib/datastream.hpp>
-#include <enumivolib/db.h>
-#include <enumivolib/fixed_key.hpp>
+#include <enulib/action.h>
+#include <enulib/types.hpp>
+#include <enulib/serialize.hpp>
+#include <enulib/datastream.hpp>
+#include <enulib/db.h>
+#include <enulib/fixed_key.hpp>
 
 namespace enumivo {
 

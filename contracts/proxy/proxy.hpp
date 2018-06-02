@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <enumivolib/enu.hpp>
+#include <enulib/enu.hpp>
 
 namespace proxy {
 

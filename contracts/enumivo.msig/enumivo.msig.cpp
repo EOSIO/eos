@@ -1,6 +1,6 @@
 #include <enumivo.msig/enumivo.msig.hpp>
-#include <enumivolib/action.hpp>
-#include <enumivolib/permission.hpp>
+#include <enulib/action.hpp>
+#include <enulib/permission.hpp>
 
 namespace enumivo {
 

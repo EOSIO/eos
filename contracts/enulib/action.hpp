@@ -3,9 +3,9 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 #pragma once
-#include <enumivolib/action.h>
-#include <enumivolib/datastream.hpp>
-#include <enumivolib/serialize.hpp>
+#include <enulib/action.h>
+#include <enulib/datastream.hpp>
+#include <enulib/serialize.hpp>
 
 #include <boost/preprocessor/variadic/size.hpp>
 #include <boost/preprocessor/variadic/to_tuple.hpp>

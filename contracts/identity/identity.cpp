@@ -1,8 +1,8 @@
 #include "common.hpp"
 
-#include <enumivolib/contract.hpp>
-#include <enumivolib/dispatcher.hpp>
-#include <enumivolib/vector.hpp>
+#include <enulib/contract.hpp>
+#include <enulib/dispatcher.hpp>
+#include <enulib/vector.hpp>
 
 namespace identity {
    using enumivo::action_meta;

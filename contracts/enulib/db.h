@@ -5,7 +5,7 @@
  */
 #pragma once
 
-#include <enumivolib/types.h>
+#include <enulib/types.h>
 extern "C" {
 /**
  *  @defgroup database Database API

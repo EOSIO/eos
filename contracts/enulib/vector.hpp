@@ -1,6 +1,6 @@
 #pragma once
-#include <enumivolib/memory.hpp>
-#include <enumivolib/stdlib.hpp>
+#include <enulib/memory.hpp>
+#include <enulib/stdlib.hpp>
 #include <vector>
 
 namespace enumivo {

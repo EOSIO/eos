@@ -1,6 +1,6 @@
 #pragma once 
-#include <enumivolib/varint.hpp>
-#include <enumivolib/serialize.hpp>
+#include <enulib/varint.hpp>
+#include <enulib/serialize.hpp>
 
 namespace enumivo {
    struct public_key {

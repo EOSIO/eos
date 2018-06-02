@@ -3,7 +3,7 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 
-#include <enumivolib/memory.hpp>
+#include <enulib/memory.hpp>
 
 
 void verify_mem(const void* const ptr, const uint32_t val, const uint32_t size)

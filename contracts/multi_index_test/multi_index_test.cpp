@@ -1,6 +1,6 @@
-#include <enumivolib/enu.hpp>
-#include <enumivolib/dispatcher.hpp>
-#include <enumivolib/multi_index.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/dispatcher.hpp>
+#include <enulib/multi_index.hpp>
 
 using namespace enumivo;
 
