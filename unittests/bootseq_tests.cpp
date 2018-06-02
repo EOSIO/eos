@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create enu.msig and enu.token
-        create_accounts({N(enu.msig), N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
+        create_accounts({N(enu.msig), N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enu.stake), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
 
         // Set code for the following accounts:
         //  - enumivo (code: enu.bios) (already set by tester constructor)
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(N(enumivo), a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(enumivo.stk), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth(N(enu.stake), a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 

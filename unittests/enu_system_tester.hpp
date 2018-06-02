@@ -46,7 +46,7 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts({ N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk),
+      create_accounts({ N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enu.stake),
                N(enumivo.bpay), N(enumivo.vpay), N(enumivo.save), N(enumivo.name) });
 
 
@@ -82,7 +82,7 @@ public:
       create_account_with_resources( N(bob111111111), config::system_account_name, core_from_string("0.4500"), false );
       create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("enumivo")  + get_balance("enumivo.rfee") + get_balance("enumivo.stk") + get_balance("enumivo.ram") );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("enumivo")  + get_balance("enumivo.rfee") + get_balance("enu.stake") + get_balance("enumivo.ram") );
    }
 
 

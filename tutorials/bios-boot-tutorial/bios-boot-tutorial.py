@@ -23,7 +23,7 @@ systemAccounts = [
     'enumivo.ram',
     'enumivo.rfee',
     'enumivo.save',
-    'enumivo.stk',
+    'enu.stake',
     'enu.token',
     'enumivo.vpay',
 ]

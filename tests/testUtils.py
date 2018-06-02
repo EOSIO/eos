@@ -2030,7 +2030,7 @@ class Cluster(object):
                 return False
 
             enumivoStakeAccount=copy.deepcopy(enumivoAccount)
-            enumivoStakeAccount.name="enumivo.stk"
+            enumivoStakeAccount.name="enu.stake"
             trans=biosNode.createAccount(enumivoStakeAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoStakeAccount.name))

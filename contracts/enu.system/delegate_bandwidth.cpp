@@ -260,7 +260,7 @@ namespace enumivosystem {
       } // tot_itr can be invalid, should go out of scope
 
       // create refund or update from existing refund
-      if ( N(enumivo.stk) != source_stake_from ) { //for enumivo both transfer and refund make no sense
+      if ( N(enu.stake) != source_stake_from ) { //for enumivo both transfer and refund make no sense
          refunds_table refunds_tbl( _self, from );
          auto req = refunds_tbl.find( from );
 
@@ -325,7 +325,7 @@ namespace enumivosystem {
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
             INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {source_stake_from, N(active)},
-               { source_stake_from, N(enumivo.stk), asset(transfer_amount), std::string("stake bandwidth") } );
+               { source_stake_from, N(enu.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -388,8 +388,8 @@ namespace enumivosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.stk),N(active)},
-                                                    { N(enumivo.stk), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enu.stake),N(active)},
+                                                    { N(enu.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }
