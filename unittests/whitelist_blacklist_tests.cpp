@@ -58,11 +58,11 @@ class whitelist_blacklist_tester {
          chain->set_code(N(enumivo.tkn), enumivo_token_wast);
          chain->set_abi(N(enumivo.tkn), enumivo_token_abi);
          chain->push_action( N(enumivo.tkn), N(create), N(enumivo.tkn), mvo()
-              ( "issuer", "enumivo.token" )
+              ( "issuer", "enumivo.tkn" )
               ( "maximum_supply", "1000000.00 TOK" )
          );
          chain->push_action( N(enumivo.tkn), N(issue), N(enumivo.tkn), mvo()
-              ( "to", "enumivo.token" )
+              ( "to", "enumivo.tkn" )
               ( "quantity", "1000000.00 TOK" )
               ( "memo", "issue" )
          );
