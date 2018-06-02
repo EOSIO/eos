@@ -5,7 +5,7 @@
 
 	MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
 
-	CPU_SPEED=$(bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^6) / 10")
+	CPU_SPEED=$(bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^8) / 10")
 	CPU_CORE=$( sysctl -in machdep.cpu.core_count )
 
 	DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
