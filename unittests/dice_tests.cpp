@@ -240,7 +240,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
      ("maximum_supply", core_from_string("1000000000.0000"))
    );
 
-   push_action(N(enumivo.token), N(issue), N(enumivo.token), mvo()
+   push_action(N(enumivo.tkn), N(issue), N(enumivo.tkn), mvo()
      ("to", "enumivo")
      ("quantity", core_from_string("1000000000.0000"))
      ("memo", "")
