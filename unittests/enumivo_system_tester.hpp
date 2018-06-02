@@ -10,8 +10,8 @@
 #include <enumivo.system/enumivo.system.wast.hpp>
 #include <enumivo.system/enumivo.system.abi.hpp>
 
-#include <enumivo.coin/enumivo.coin.wast.hpp>
-#include <enumivo.coin/enumivo.coin.abi.hpp>
+#include <enumivo.token/enumivo.token.wast.hpp>
+#include <enumivo.token/enumivo.token.abi.hpp>
 
 #include <enumivo.msig/enumivo.msig.wast.hpp>
 #include <enumivo.msig/enumivo.msig.abi.hpp>
@@ -46,23 +46,23 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts({ N(enumivo.coin), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk),
+      create_accounts({ N(enumivo.token), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk),
                N(enumivo.bpay), N(enumivo.vpay), N(enumivo.save), N(enumivo.name) });
 
 
       produce_blocks( 100 );
 
-      set_code( N(enumivo.coin), enumivo_coin_wast );
-      set_abi( N(enumivo.coin), enumivo_coin_abi );
+      set_code( N(enumivo.token), enumivo_token_wast );
+      set_abi( N(enumivo.token), enumivo_token_abi );
 
       {
-         const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.coin) );
+         const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.token) );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          token_abi_ser.set_abi(abi);
       }
 
-      create_currency( N(enumivo.coin), config::system_account_name, core_from_string("10000000000.0000") );
+      create_currency( N(enumivo.token), config::system_account_name, core_from_string("10000000000.0000") );
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) );
 
@@ -329,7 +329,7 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-      vector<char> data = get_row_by_account( N(enumivo.coin), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
+      vector<char> data = get_row_by_account( N(enumivo.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
       return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data)["balance"].as<asset>();
    }
 
@@ -357,14 +357,14 @@ public:
    }
 
    void issue( name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.coin), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.token), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", amount )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.coin), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(enumivo.token), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", amount)
@@ -384,7 +384,7 @@ public:
    fc::variant get_stats( const string& symbolname ) {
       auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.coin), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(enumivo.token), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data );
    }
 

@@ -4,7 +4,7 @@
  */
 #include <proxy/proxy.hpp>
 #include <enumivolib/transaction.hpp>
-#include <enumivo.coin/enumivo.coin.hpp>
+#include <enumivo.token/enumivo.token.hpp>
 
 namespace proxy {
    using namespace enumivo;
@@ -50,7 +50,7 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(permission_level{self, N(active)}, N(enumivo.coin), N(transfer), new_transfer);
+         out.actions.emplace_back(permission_level{self, N(active)}, N(enumivo.token), N(transfer), new_transfer);
          out.delay_sec = code_config.delay;
          out.send(id, self);
       }
@@ -93,7 +93,7 @@ extern "C" {
     void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       if( code == N(enumivo) && action == N(onerror) ) {
          apply_onerror( receiver, onerror::from_current_action() );
-      } else if( code == N(enumivo.coin) ) {
+      } else if( code == N(enumivo.token) ) {
          if( action == N(transfer) ) {
             apply_transfer(receiver, code, unpack_action_data<enumivo::token::transfer_args>());
          }

@@ -4,8 +4,8 @@
 
 #include <fc/variant_object.hpp>
 
-#include <enumivo.coin/enumivo.coin.wast.hpp>
-#include <enumivo.coin/enumivo.coin.abi.hpp>
+#include <enumivo.token/enumivo.token.wast.hpp>
+#include <enumivo.token/enumivo.token.abi.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -54,15 +54,15 @@ class whitelist_blacklist_tester {
          cfg.contract_blacklist = contract_blacklist;
 
          chain.emplace(cfg);
-         chain->create_accounts({N(enumivo.coin), N(alice), N(bob), N(charlie)});
-         chain->set_code(N(enumivo.coin), enumivo_coin_wast);
-         chain->set_abi(N(enumivo.coin), enumivo_coin_abi);
-         chain->push_action( N(enumivo.coin), N(create), N(enumivo.coin), mvo()
-              ( "issuer", "enumivo.coin" )
+         chain->create_accounts({N(enumivo.token), N(alice), N(bob), N(charlie)});
+         chain->set_code(N(enumivo.token), enumivo_token_wast);
+         chain->set_abi(N(enumivo.token), enumivo_token_abi);
+         chain->push_action( N(enumivo.token), N(create), N(enumivo.token), mvo()
+              ( "issuer", "enumivo.token" )
               ( "maximum_supply", "1000000.00 TOK" )
          );
-         chain->push_action( N(enumivo.coin), N(issue), N(enumivo.coin), mvo()
-              ( "to", "enumivo.coin" )
+         chain->push_action( N(enumivo.token), N(issue), N(enumivo.token), mvo()
+              ( "to", "enumivo.token" )
               ( "quantity", "1000000.00 TOK" )
               ( "memo", "issue" )
          );
@@ -70,7 +70,7 @@ class whitelist_blacklist_tester {
       }
 
       transaction_trace_ptr transfer( account_name from, account_name to, string quantity = "1.00 TOK" ) {
-         return chain->push_action( N(enumivo.coin), N(transfer), from, mvo()
+         return chain->push_action( N(enumivo.token), N(transfer), from, mvo()
             ( "from", from )
             ( "to", to )
             ( "quantity", quantity )
@@ -100,10 +100,10 @@ BOOST_AUTO_TEST_SUITE(whitelist_blacklist_tests)
 
 BOOST_AUTO_TEST_CASE( actor_whitelist ) { try {
    whitelist_blacklist_tester test;
-   test.actor_whitelist = {N(enumivo), N(enumivo.coin), N(alice)};
+   test.actor_whitelist = {N(enumivo), N(enumivo.token), N(alice)};
    test.init();
 
-   test.transfer( N(enumivo.coin), N(alice), "1000.00 TOK" );
+   test.transfer( N(enumivo.token), N(alice), "1000.00 TOK" );
 
    test.transfer( N(alice), N(bob),  "100.00 TOK" );
 
@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE( actor_whitelist ) { try {
                        );
    signed_transaction trx;
    trx.actions.emplace_back( vector<permission_level>{{N(alice),config::active_name}, {N(bob),config::active_name}},
-                             N(enumivo.coin), N(transfer),
+                             N(enumivo.token), N(transfer),
                              fc::raw::pack(transfer_args{
                                .from  = N(alice),
                                .to    = N(bob),
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist ) { try {
    test.actor_blacklist = {N(bob)};
    test.init();
 
-   test.transfer( N(enumivo.coin), N(alice), "1000.00 TOK" );
+   test.transfer( N(enumivo.token), N(alice), "1000.00 TOK" );
 
    test.transfer( N(alice), N(bob),  "100.00 TOK" );
 
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist ) { try {
 
    signed_transaction trx;
    trx.actions.emplace_back( vector<permission_level>{{N(alice),config::active_name}, {N(bob),config::active_name}},
-                             N(enumivo.coin), N(transfer),
+                             N(enumivo.token), N(transfer),
                              fc::raw::pack(transfer_args{
                                 .from  = N(alice),
                                 .to    = N(bob),
@@ -167,12 +167,12 @@ BOOST_AUTO_TEST_CASE( actor_blacklist ) { try {
 
 BOOST_AUTO_TEST_CASE( contract_whitelist ) { try {
    whitelist_blacklist_tester test;
-   test.contract_whitelist = {N(enumivo), N(enumivo.coin), N(bob)};
+   test.contract_whitelist = {N(enumivo), N(enumivo.token), N(bob)};
    test.init();
 
-   test.transfer( N(enumivo.coin), N(alice), "1000.00 TOK" );
+   test.transfer( N(enumivo.token), N(alice), "1000.00 TOK" );
 
-   test.transfer( N(alice), N(enumivo.coin) );
+   test.transfer( N(alice), N(enumivo.token) );
 
    test.transfer( N(alice), N(bob) );
    test.transfer( N(alice), N(charlie), "100.00 TOK" );
@@ -181,13 +181,13 @@ BOOST_AUTO_TEST_CASE( contract_whitelist ) { try {
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(bob), enumivo_coin_wast);
-   test.chain->set_abi(N(bob), enumivo_coin_abi);
+   test.chain->set_code(N(bob), enumivo_token_wast);
+   test.chain->set_abi(N(bob), enumivo_token_abi);
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(charlie), enumivo_coin_wast);
-   test.chain->set_abi(N(charlie), enumivo_coin_abi);
+   test.chain->set_code(N(charlie), enumivo_token_wast);
+   test.chain->set_abi(N(charlie), enumivo_token_abi);
 
    test.chain->produce_blocks();
 
@@ -219,9 +219,9 @@ BOOST_AUTO_TEST_CASE( contract_blacklist ) { try {
    test.contract_blacklist = {N(charlie)};
    test.init();
 
-   test.transfer( N(enumivo.coin), N(alice), "1000.00 TOK" );
+   test.transfer( N(enumivo.token), N(alice), "1000.00 TOK" );
 
-   test.transfer( N(alice), N(enumivo.coin) );
+   test.transfer( N(alice), N(enumivo.token) );
 
    test.transfer( N(alice), N(bob) );
    test.transfer( N(alice), N(charlie), "100.00 TOK" );
@@ -230,13 +230,13 @@ BOOST_AUTO_TEST_CASE( contract_blacklist ) { try {
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(bob), enumivo_coin_wast);
-   test.chain->set_abi(N(bob), enumivo_coin_abi);
+   test.chain->set_code(N(bob), enumivo_token_wast);
+   test.chain->set_abi(N(bob), enumivo_token_abi);
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(charlie), enumivo_coin_wast);
-   test.chain->set_abi(N(charlie), enumivo_coin_abi);
+   test.chain->set_code(N(charlie), enumivo_token_wast);
+   test.chain->set_abi(N(charlie), enumivo_token_abi);
 
    test.chain->produce_blocks();
 

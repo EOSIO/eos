@@ -2,8 +2,8 @@
 #include <enumivo/testing/tester.hpp>
 #include <enumivo/chain/abi_serializer.hpp>
 
-#include <enumivo.coin/enumivo.coin.wast.hpp>
-#include <enumivo.coin/enumivo.coin.abi.hpp>
+#include <enumivo.token/enumivo.token.wast.hpp>
+#include <enumivo.token/enumivo.token.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -18,21 +18,21 @@ using namespace std;
 
 using mvo = fc::mutable_variant_object;
 
-class enumivo_coin_tester : public tester {
+class enumivo_token_tester : public tester {
 public:
 
-   enumivo_coin_tester() {
+   enumivo_token_tester() {
       produce_blocks( 2 );
 
-      create_accounts( { N(alice), N(bob), N(carol), N(enumivo.coin) } );
+      create_accounts( { N(alice), N(bob), N(carol), N(enumivo.token) } );
       produce_blocks( 2 );
 
-      set_code( N(enumivo.coin), enumivo_coin_wast );
-      set_abi( N(enumivo.coin), enumivo_coin_abi );
+      set_code( N(enumivo.token), enumivo_token_wast );
+      set_abi( N(enumivo.token), enumivo_token_abi );
 
       produce_blocks();
 
-      const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.coin) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.token) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -42,7 +42,7 @@ public:
       string action_type_name = abi_ser.get_action_type(name);
 
       action act;
-      act.account = N(enumivo.coin);
+      act.account = N(enumivo.token);
       act.name    = name;
       act.data    = abi_ser.variant_to_binary( action_type_name, data );
 
@@ -53,7 +53,7 @@ public:
    {
       auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.coin), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(enumivo.token), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data );
    }
 
@@ -61,14 +61,14 @@ public:
    {
       auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.coin), acc, N(accounts), symbol_code );
+      vector<char> data = get_row_by_account( N(enumivo.token), acc, N(accounts), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data );
    }
 
    action_result create( account_name issuer,
                 asset        maximum_supply ) {
 
-      return push_action( N(enumivo.coin), N(create), mvo()
+      return push_action( N(enumivo.token), N(create), mvo()
            ( "issuer", issuer)
            ( "maximum_supply", maximum_supply)
       );
@@ -97,9 +97,9 @@ public:
    abi_serializer abi_ser;
 };
 
-BOOST_AUTO_TEST_SUITE(enumivo_coin_tests)
+BOOST_AUTO_TEST_SUITE(enumivo_token_tests)
 
-BOOST_FIXTURE_TEST_CASE( create_tests, enumivo_coin_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_tests, enumivo_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    auto stats = get_stats("3,TKN");
@@ -112,7 +112,7 @@ BOOST_FIXTURE_TEST_CASE( create_tests, enumivo_coin_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, enumivo_coin_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, enumivo_token_tester ) try {
 
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "max-supply must be positive" ),
       create( N(alice), asset::from_string("-1000.000 TKN"))
@@ -120,7 +120,7 @@ BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, enumivo_coin_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( symbol_already_exists, enumivo_coin_tester ) try {
+BOOST_FIXTURE_TEST_CASE( symbol_already_exists, enumivo_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("100 TKN"));
    auto stats = get_stats("0,TKN");
@@ -137,7 +137,7 @@ BOOST_FIXTURE_TEST_CASE( symbol_already_exists, enumivo_coin_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_max_supply, enumivo_coin_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_max_supply, enumivo_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("4611686018427387903 TKN"));
    auto stats = get_stats("0,TKN");
@@ -161,7 +161,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_supply, enumivo_coin_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_max_decimals, enumivo_coin_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_max_decimals, enumivo_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1.000000000000000000 TKN"));
    auto stats = get_stats("18,TKN");
@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, enumivo_coin_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( issue_tests, enumivo_coin_tester ) try {
+BOOST_FIXTURE_TEST_CASE( issue_tests, enumivo_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    produce_blocks(1);
@@ -219,7 +219,7 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, enumivo_coin_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( transfer_tests, enumivo_coin_tester ) try {
+BOOST_FIXTURE_TEST_CASE( transfer_tests, enumivo_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000 CERO"));
    produce_blocks(1);

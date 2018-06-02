@@ -24,7 +24,7 @@ systemAccounts = [
     'enumivo.rfee',
     'enumivo.save',
     'enumivo.stk',
-    'enumivo.coin',
+    'enumivo.token',
     'enumivo.vpay',
 ]
 
@@ -291,12 +291,12 @@ def stepStartBoot():
     startNode(0, {'name': 'enumivo', 'pvt': args.private_key, 'pub': args.public_key})
     sleep(1.5)
 def stepInstallSystemContracts():
-    run(args.enucli + 'set contract enumivo.coin ' + args.contracts_dir + 'enumivo.coin/')
+    run(args.enucli + 'set contract enumivo.token ' + args.contracts_dir + 'enumivo.token/')
     run(args.enucli + 'set contract enumivo.msig ' + args.contracts_dir + 'enumivo.msig/')
 def stepCreateTokens():
-    run(args.enucli + 'push action enumivo.coin create \'["enumivo", "10000000000.0000 %s"]\' -p enumivo.coin' % (args.symbol))
+    run(args.enucli + 'push action enumivo.token create \'["enumivo", "10000000000.0000 %s"]\' -p enumivo.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
-    run(args.enucli + 'push action enumivo.coin issue \'["enumivo", "%s", "memo"]\' -p enumivo' % intToCurrency(totalAllocation))
+    run(args.enucli + 'push action enumivo.token issue \'["enumivo", "%s", "memo"]\' -p enumivo' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
     retry(args.enucli + 'set contract enumivo ' + args.contracts_dir + 'enumivo.system/')
