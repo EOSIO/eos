@@ -235,20 +235,20 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    add_dice_authority(N(bob));
    add_dice_authority(N(carol));
 
-   push_action(N(enumivo.tkn), N(create), N(enumivo.tkn), mvo()
-     ("issuer", "enumivo.tkn")
+   push_action(N(enumivo.token), N(create), N(enumivo.token), mvo()
+     ("issuer", "enumivo.token")
      ("maximum_supply", core_from_string("1000000000.0000"))
    );
 
-   push_action(N(enumivo.tkn), N(issue), N(enumivo.tkn), mvo()
+   push_action(N(enumivo.token), N(issue), N(enumivo.token), mvo()
      ("to", "enumivo")
      ("quantity", core_from_string("1000000000.0000"))
      ("memo", "")
    );
 
-   transfer( N(enumivo), N(alice), core_from_string("10000.0000"), "", N(enumivo.tkn) );
-   transfer( N(enumivo), N(bob),   core_from_string("10000.0000"), "", N(enumivo.tkn) );
-   transfer( N(enumivo), N(carol), core_from_string("10000.0000"), "", N(enumivo.tkn) );
+   transfer( N(enumivo), N(alice), core_from_string("10000.0000"), "", N(enumivo.token) );
+   transfer( N(enumivo), N(bob),   core_from_string("10000.0000"), "", N(enumivo.token) );
+   transfer( N(enumivo), N(carol), core_from_string("10000.0000"), "", N(enumivo.token) );
 
    produce_block();
 
@@ -387,7 +387,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL(
-      get_currency_balance(N(enumivo.tkn), symbol(CORE_SYMBOL), N(alice)),
+      get_currency_balance(N(enumivo.token), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10009.0000")
    );
 
