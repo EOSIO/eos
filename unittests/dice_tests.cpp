@@ -387,7 +387,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL(
-      get_currency_balance(N(enumivo.token), symbol(CORE_SYMBOL), N(alice)),
+      get_currency_balance(N(enumivo.tkn), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10009.0000")
    );
 
