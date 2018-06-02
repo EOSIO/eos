@@ -555,6 +555,7 @@ clang::CXXRecordDecl::base_class_range abi_generator::get_struct_bases(const cla
   auto cxxrecord_decl = clang::dyn_cast<CXXRecordDecl>(record_type->getDecl());
   ABI_ASSERT(cxxrecord_decl != nullptr);
   //record_type->getCanonicalTypeInternal().dump();
+  ABI_ASSERT(cxxrecord_decl->hasDefinition(), "No definition for ${t}", ("t", qt.getAsString()));
 
   auto bases = cxxrecord_decl->bases();
 

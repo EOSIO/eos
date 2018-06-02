@@ -114,6 +114,7 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    }
 
    void growMemory(Address old_size, Address new_size) override {
+      memset(memory.data + old_size.addr, 0, new_size.addr - old_size.addr);
       current_memory_size += new_size.addr - old_size.addr;
    }
 

@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+  enunoded:
+    image: enumivo/enumivo:v1.0.0
+    command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir -e
+    hostname: enunoded
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - enunode-data-volume:/opt/enumivo/bin/data-dir
+
+  enuwallet:
+    image: enumivo/enumivo:v1.0.0
+    command: /opt/enumivo/bin/enuwallet --wallet-dir /opt/enumivo/bin/data-dir --http-server-address=127.0.0.1:8900
+    hostname: enuwallet
+    links:
+      - enunoded
+    volumes:
+      - enuwallet-data-volume:/opt/enumivo/bin/data-dir
+
+volumes:
+ enunode-data-volume:
+   external: true
+ enuwallet-data-volume:
+   external: true

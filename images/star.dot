@@ -1,0 +1,34 @@
+digraph G
+{
+layout="circo";
+"testnet_0\nprod=inita,initk,initu"->"testnet_3\nprod=initd,initn" [dir="forward"];
+"testnet_0\nprod=inita,initk,initu"->"testnet_6\nprod=initg,initq" [dir="forward"];
+"testnet_0\nprod=inita,initk,initu"->"testnet_9\nprod=initj,initt" [dir="forward"];
+"testnet_1\nprod=initb,initl"->"testnet_4\nprod=inite,inito" [dir="forward"];
+"testnet_1\nprod=initb,initl"->"testnet_7\nprod=inith,initr" [dir="forward"];
+"testnet_1\nprod=initb,initl"->"testnet_0\nprod=inita,initk,initu" [dir="forward"];
+"testnet_2\nprod=initc,initm"->"testnet_5\nprod=initf,initp" [dir="forward"];
+"testnet_2\nprod=initc,initm"->"testnet_8\nprod=initi,inits" [dir="forward"];
+"testnet_2\nprod=initc,initm"->"testnet_1\nprod=initb,initl" [dir="forward"];
+"testnet_3\nprod=initd,initn"->"testnet_6\nprod=initg,initq" [dir="forward"];
+"testnet_3\nprod=initd,initn"->"testnet_9\nprod=initj,initt" [dir="forward"];
+"testnet_3\nprod=initd,initn"->"testnet_2\nprod=initc,initm" [dir="forward"];
+"testnet_4\nprod=inite,inito"->"testnet_7\nprod=inith,initr" [dir="forward"];
+"testnet_4\nprod=inite,inito"->"testnet_0\nprod=inita,initk,initu" [dir="forward"];
+"testnet_4\nprod=inite,inito"->"testnet_3\nprod=initd,initn" [dir="forward"];
+"testnet_5\nprod=initf,initp"->"testnet_8\nprod=initi,inits" [dir="forward"];
+"testnet_5\nprod=initf,initp"->"testnet_1\nprod=initb,initl" [dir="forward"];
+"testnet_5\nprod=initf,initp"->"testnet_4\nprod=inite,inito" [dir="forward"];
+"testnet_6\nprod=initg,initq"->"testnet_9\nprod=initj,initt" [dir="forward"];
+"testnet_6\nprod=initg,initq"->"testnet_2\nprod=initc,initm" [dir="forward"];
+"testnet_6\nprod=initg,initq"->"testnet_5\nprod=initf,initp" [dir="forward"];
+"testnet_7\nprod=inith,initr"->"testnet_0\nprod=inita,initk,initu" [dir="forward"];
+"testnet_7\nprod=inith,initr"->"testnet_3\nprod=initd,initn" [dir="forward"];
+"testnet_7\nprod=inith,initr"->"testnet_6\nprod=initg,initq" [dir="forward"];
+"testnet_8\nprod=initi,inits"->"testnet_1\nprod=initb,initl" [dir="forward"];
+"testnet_8\nprod=initi,inits"->"testnet_4\nprod=inite,inito" [dir="forward"];
+"testnet_8\nprod=initi,inits"->"testnet_7\nprod=inith,initr" [dir="forward"];
+"testnet_9\nprod=initj,initt"->"testnet_2\nprod=initc,initm" [dir="forward"];
+"testnet_9\nprod=initj,initt"->"testnet_5\nprod=initf,initp" [dir="forward"];
+"testnet_9\nprod=initj,initt"->"testnet_8\nprod=initi,inits" [dir="forward"];
+}
