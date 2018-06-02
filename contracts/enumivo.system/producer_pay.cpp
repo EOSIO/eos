@@ -77,7 +77,7 @@ namespace enumivosystem {
 
       enumivo_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
-      const asset token_supply   = token( N(enumivo.token)).get_supply(symbol_type(system_token_symbol).name() );
+      const asset token_supply   = token( N(enumivo.tkn)).get_supply(symbol_type(system_token_symbol).name() );
       const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
 
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0 ) {
@@ -88,16 +88,16 @@ namespace enumivosystem {
          auto to_per_block_pay   = to_producers / 4;
          auto to_per_vote_pay    = to_producers - to_per_block_pay;
 
-         INLINE_ACTION_SENDER(enumivo::token, issue)( N(enumivo.token), {{N(enumivo),N(active)}},
+         INLINE_ACTION_SENDER(enumivo::token, issue)( N(enumivo.tkn), {{N(enumivo),N(active)}},
                                                     {N(enumivo), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.token), {N(enumivo),N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo),N(active)},
                                                        { N(enumivo), N(enumivo.save), asset(to_savings), "unallocated inflation" } );
 
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.token), {N(enumivo),N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo),N(active)},
                                                        { N(enumivo), N(enumivo.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
 
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.token), {N(enumivo),N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo),N(active)},
                                                        { N(enumivo), N(enumivo.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
 
          _gstate.pervote_bucket  += to_per_vote_pay;
@@ -127,11 +127,11 @@ namespace enumivosystem {
       });
       
       if( producer_per_block_pay > 0 ) {
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.token), {N(enumivo.bpay),N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo.bpay),N(active)},
                                                        { N(enumivo.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
       }
       if( producer_per_vote_pay > 0 ) {
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.token), {N(enumivo.vpay),N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo.vpay),N(active)},
                                                        { N(enumivo.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
       }
    }
