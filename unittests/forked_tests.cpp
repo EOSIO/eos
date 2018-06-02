@@ -154,8 +154,8 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    auto r2 = c.create_accounts( {N(enu.token)} );
    wdump((fc::json::to_pretty_string(r2)));
-   c.set_code( N(enu.token), enumivo_token_wast );
-   c.set_abi( N(enu.token), enumivo_token_abi );
+   c.set_code( N(enu.token), enu_token_wast );
+   c.set_abi( N(enu.token), enu_token_abi );
    c.produce_blocks(10);
 
 

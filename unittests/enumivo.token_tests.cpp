@@ -18,17 +18,17 @@ using namespace std;
 
 using mvo = fc::mutable_variant_object;
 
-class enumivo_token_tester : public tester {
+class enu_token_tester : public tester {
 public:
 
-   enumivo_token_tester() {
+   enu_token_tester() {
       produce_blocks( 2 );
 
       create_accounts( { N(alice), N(bob), N(carol), N(enu.token) } );
       produce_blocks( 2 );
 
-      set_code( N(enu.token), enumivo_token_wast );
-      set_abi( N(enu.token), enumivo_token_abi );
+      set_code( N(enu.token), enu_token_wast );
+      set_abi( N(enu.token), enu_token_abi );
 
       produce_blocks();
 
@@ -97,9 +97,9 @@ public:
    abi_serializer abi_ser;
 };
 
-BOOST_AUTO_TEST_SUITE(enumivo_token_tests)
+BOOST_AUTO_TEST_SUITE(enu_token_tests)
 
-BOOST_FIXTURE_TEST_CASE( create_tests, enumivo_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_tests, enu_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    auto stats = get_stats("3,TKN");
@@ -112,7 +112,7 @@ BOOST_FIXTURE_TEST_CASE( create_tests, enumivo_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, enumivo_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, enu_token_tester ) try {
 
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "max-supply must be positive" ),
       create( N(alice), asset::from_string("-1000.000 TKN"))
@@ -120,7 +120,7 @@ BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, enumivo_token_tester ) try 
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( symbol_already_exists, enumivo_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( symbol_already_exists, enu_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("100 TKN"));
    auto stats = get_stats("0,TKN");
@@ -137,7 +137,7 @@ BOOST_FIXTURE_TEST_CASE( symbol_already_exists, enumivo_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_max_supply, enumivo_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_max_supply, enu_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("4611686018427387903 TKN"));
    auto stats = get_stats("0,TKN");
@@ -161,7 +161,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_supply, enumivo_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_max_decimals, enumivo_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_max_decimals, enu_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1.000000000000000000 TKN"));
    auto stats = get_stats("18,TKN");
@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, enumivo_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( issue_tests, enumivo_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( issue_tests, enu_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    produce_blocks(1);
@@ -219,7 +219,7 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, enumivo_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( transfer_tests, enumivo_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( transfer_tests, enu_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000 CERO"));
    produce_blocks(1);

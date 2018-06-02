@@ -52,8 +52,8 @@ public:
 
       produce_blocks( 100 );
 
-      set_code( N(enu.token), enumivo_token_wast );
-      set_abi( N(enu.token), enumivo_token_abi );
+      set_code( N(enu.token), enu_token_wast );
+      set_abi( N(enu.token), enu_token_abi );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( N(enu.token) );

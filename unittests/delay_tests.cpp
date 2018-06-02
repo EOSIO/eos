@@ -87,7 +87,7 @@ asset get_currency_balance(const TESTER& chain, account_name account) {
    return chain.get_currency_balance(N(enu.token), symbol(SY(4,CUR)), account);
 }
 
-const std::string enumivo_token = name(N(enu.token)).to_string();
+const std::string enu_token = name(N(enu.token)).to_string();
 
 // test link to permission with delay directly on it
 BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
@@ -99,8 +99,8 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -115,24 +115,24 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "first"));
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR")
    );
 
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -237,8 +237,8 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -374,8 +374,8 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -390,24 +390,24 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "first"));
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR")
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -512,8 +512,8 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -534,24 +534,24 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "second"));
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR")
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -656,8 +656,8 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -672,24 +672,24 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "first"));
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token )
+           ("issuer", enu_token )
            ("maximum_supply", "9000000.0000 CUR" )
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -847,8 +847,8 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -869,24 +869,24 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "second"));
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR" )
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -1044,8 +1044,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -1060,7 +1060,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "first"));
    chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
@@ -1072,18 +1072,18 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR" )
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -1126,7 +1126,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
                          vector<permission_level>{permission_level{tester_account, N(first)}},
                          fc::mutable_variant_object()
       ("account", "tester")
-      ("code", enumivo_token)
+      ("code", enu_token)
       ("type", "transfer")
       ("requirement", "second"),
       30, 3),
@@ -1139,7 +1139,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
                       vector<permission_level>{{tester_account, N(first)}},
                       fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "second"),
            30, 10
@@ -1246,8 +1246,8 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -1262,24 +1262,24 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "first"));
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token )
+           ("issuer", enu_token )
            ("maximum_supply", "9000000.0000 CUR" )
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -1320,7 +1320,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
                          vector<permission_level>{{tester_account, N(first)}},
                          fc::mutable_variant_object()
          ("account", "tester")
-         ("code", enumivo_token)
+         ("code", enu_token)
          ("type", "transfer"),
          30, 7
       ),
@@ -1331,7 +1331,7 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
    // this transaction will be delayed 20 blocks
    chain.push_action(config::system_account_name, unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer"),
            30, 10
    );
@@ -1435,8 +1435,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -1457,7 +1457,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "second"));
    chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
@@ -1469,18 +1469,18 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR" )
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -1521,7 +1521,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    // this transaction will be delayed 20 blocks
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "third"),
            30, 10
@@ -1626,8 +1626,8 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -1635,18 +1635,18 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    chain.produce_blocks(10);
 
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR")
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -1757,8 +1757,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks(10);
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -1773,24 +1773,24 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "first"));
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR")
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -1994,8 +1994,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    chain.create_account(N(enu.token));
    chain.produce_blocks();
 
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));
@@ -2016,24 +2016,24 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
    );
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "first"));
 
    chain.produce_blocks();
    chain.push_action(N(enu.token), N(create), N(enu.token), mutable_variant_object()
-           ("issuer", enumivo_token)
+           ("issuer", enu_token)
            ("maximum_supply", "9000000.0000 CUR")
    );
 
    chain.push_action(N(enu.token), name("issue"), N(enu.token), fc::mutable_variant_object()
-           ("to",       enumivo_token)
+           ("to",       enu_token)
            ("quantity", "1000000.0000 CUR")
            ("memo", "for stuff")
    );
 
    auto trace = chain.push_action(N(enu.token), name("transfer"), N(enu.token), fc::mutable_variant_object()
-       ("from", enumivo_token)
+       ("from", enu_token)
        ("to", "tester")
        ("quantity", "100.0000 CUR")
        ("memo", "hi" )
@@ -2127,7 +2127,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test2 ) { try {
 
    chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", enumivo_token)
+           ("code", enu_token)
            ("type", "transfer")
            ("requirement", "second"),
            30, 5
@@ -2280,8 +2280,8 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
    const auto& tester_account = N(tester);
 
    chain.create_account(N(enu.token));
-   chain.set_code(N(enu.token), enumivo_token_wast);
-   chain.set_abi(N(enu.token), enumivo_token_abi);
+   chain.set_code(N(enu.token), enu_token_wast);
+   chain.set_abi(N(enu.token), enu_token_abi);
 
    chain.produce_blocks();
    chain.create_account(N(tester));

@@ -189,7 +189,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //  - enumivo.msig (code: enumivo.msig)
         //  - enu.token (code: enu.token)
         set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &enumivo_active_pk);
-        set_code_abi(N(enu.token), enumivo_token_wast, enumivo_token_abi); //, &enumivo_active_pk);
+        set_code_abi(N(enu.token), enu_token_wast, enu_token_abi); //, &enumivo_active_pk);
 
         // Set privileged for enumivo.msig and enu.token
         set_privileged(N(enumivo.msig));
@@ -198,8 +198,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Verify enumivo.msig and enu.token is privileged
         const auto& enumivo_msig_acc = get<account_object, by_name>(N(enumivo.msig));
         BOOST_TEST(enumivo_msig_acc.privileged == true);
-        const auto& enumivo_token_acc = get<account_object, by_name>(N(enu.token));
-        BOOST_TEST(enumivo_token_acc.privileged == true);
+        const auto& enu_token_acc = get<account_object, by_name>(N(enu.token));
+        BOOST_TEST(enu_token_acc.privileged == true);
 
 
         // Create ENU tokens in enu.token, set its manager as enumivo

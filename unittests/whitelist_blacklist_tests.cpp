@@ -55,8 +55,8 @@ class whitelist_blacklist_tester {
 
          chain.emplace(cfg);
          chain->create_accounts({N(enu.token), N(alice), N(bob), N(charlie)});
-         chain->set_code(N(enu.token), enumivo_token_wast);
-         chain->set_abi(N(enu.token), enumivo_token_abi);
+         chain->set_code(N(enu.token), enu_token_wast);
+         chain->set_abi(N(enu.token), enu_token_abi);
          chain->push_action( N(enu.token), N(create), N(enu.token), mvo()
               ( "issuer", "enu.token" )
               ( "maximum_supply", "1000000.00 TOK" )
@@ -181,13 +181,13 @@ BOOST_AUTO_TEST_CASE( contract_whitelist ) { try {
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(bob), enumivo_token_wast);
-   test.chain->set_abi(N(bob), enumivo_token_abi);
+   test.chain->set_code(N(bob), enu_token_wast);
+   test.chain->set_abi(N(bob), enu_token_abi);
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(charlie), enumivo_token_wast);
-   test.chain->set_abi(N(charlie), enumivo_token_abi);
+   test.chain->set_code(N(charlie), enu_token_wast);
+   test.chain->set_abi(N(charlie), enu_token_abi);
 
    test.chain->produce_blocks();
 
@@ -230,13 +230,13 @@ BOOST_AUTO_TEST_CASE( contract_blacklist ) { try {
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(bob), enumivo_token_wast);
-   test.chain->set_abi(N(bob), enumivo_token_abi);
+   test.chain->set_code(N(bob), enu_token_wast);
+   test.chain->set_abi(N(bob), enu_token_abi);
 
    test.chain->produce_blocks();
 
-   test.chain->set_code(N(charlie), enumivo_token_wast);
-   test.chain->set_abi(N(charlie), enumivo_token_abi);
+   test.chain->set_code(N(charlie), enu_token_wast);
+   test.chain->set_abi(N(charlie), enu_token_abi);
 
    test.chain->produce_blocks();
 

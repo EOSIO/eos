@@ -415,8 +415,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
    produce_blocks(50);
 
    create_accounts( { N(enu.token) } );
-   set_code( N(enu.token), enumivo_token_wast );
-   set_abi( N(enu.token), enumivo_token_abi );
+   set_code( N(enu.token), enu_token_wast );
+   set_abi( N(enu.token), enu_token_abi );
 
    create_currency( N(enu.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
@@ -527,8 +527,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
    produce_blocks(50);
 
    create_accounts( { N(enu.token) } );
-   set_code( N(enu.token), enumivo_token_wast );
-   set_abi( N(enu.token), enumivo_token_abi );
+   set_code( N(enu.token), enu_token_wast );
+   set_abi( N(enu.token), enu_token_abi );
 
    create_currency( N(enu.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
