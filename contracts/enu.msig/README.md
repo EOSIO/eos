@@ -1,11 +1,11 @@
-enumivo.msig
+enu.msig
 --------
 
 Actions:
 The naming convention is codeaccount::actionname followed by a list of paramters.
 
 Create a proposal
-## enumivo.msig::propose    proposer proposal_name requested trx
+## enu.msig::propose    proposer proposal_name requested trx
    - **proposer** account proposing a transaction
    - **proposal_name** name of the proposal (should be unique for proposer)
    - **requested** permission levels expected to approve the proposal
@@ -14,7 +14,7 @@ Create a proposal
    Storage changes are billed to 'proposer'
 
 Approve a proposal
-## enumivo.msig::approve    proposer proposal_name level
+## enu.msig::approve    proposer proposal_name level
    - **proposer** account proposing a transaction
    - **proposal_name** name of the proposal
    - **level** permission level approving the transaction
@@ -22,7 +22,7 @@ Approve a proposal
    Storage changes are billed to 'proposer'
 
 Revoke an approval of transaction
-## enumivo.msig::unapprove    proposer proposal_name level
+## enu.msig::unapprove    proposer proposal_name level
    - **proposer** account proposing a transaction
    - **proposal_name** name of the proposal
    - **level** permission level revoking approval from the transaction
@@ -30,13 +30,13 @@ Revoke an approval of transaction
    Storage changes are billed to 'proposer'
 
 Cancel a proposal
-## enumivo.msig::cancel    proposer proposal_name canceler
+## enu.msig::cancel    proposer proposal_name canceler
    - **proposer** account proposing a transaction
    - **proposal_name** name of the proposal
    - **canceler** account canceling the transaction (only proposer can cancel not expired transaction)
 
 Execute a proposal
-## enumivo.msig::exec    proposer proposal_name executer
+## enu.msig::exec    proposer proposal_name executer
    - **proposer** account proposing a transaction
    - **proposal_name** name of the proposal
    - **executer** account executing the transaction
@@ -45,7 +45,7 @@ Execute a proposal
 enucli usage example.
 
 Prerequisites:
-   - enu.token contract installed to enu.token accountm, enumivo.msig contract installed on enumivo.msig account which is a priviliged account.
+   - enu.token contract installed to enu.token accountm, enu.msig contract installed on enu.msig account which is a priviliged account.
    - account 'treasury' is the issuer of ENU token.
    - account 'tester' exists.
    - keys to accounts 'treasury' and 'tester' imported into local wallet, the wallet is unlocked.
@@ -54,7 +54,7 @@ One user creates a proposal:
 ````
 $ enucli multisig propose test '[{"actor": "treasury", "permission": "active"}]' '[{"actor": "treasury", "permission": "active"}]' enu.token issue '{"to": "tester", "quantity": "1000.0000 ENU", "memo": ""}' -p tester
 executed transaction: e26f3a3a7cba524a7b15a0b6c77c7daa73d3ba9bf84e83f9c2cdf27fcb183d61  336 bytes  107520 cycles
-#    enumivo.msig <= enumivo.msig::propose          {"proposer":"tester","proposal_name":"test","requested":[{"actor":"treasury","permission":"active"}]...
+#    enu.msig <= enu.msig::propose          {"proposer":"tester","proposal_name":"test","requested":[{"actor":"treasury","permission":"active"}]...
 ````
 
 Another user reviews the transaction:
@@ -102,12 +102,12 @@ And then approves it:
 ````
 $ enucli multisig approve tester test '{"actor": "treasury", "permission": "active"}' -p treasury
 executed transaction: 475970a4b0016368d0503d1ce01577376f91f5a5ba63dd4353683bd95101b88d  256 bytes  108544 cycles
-#    enumivo.msig <= enumivo.msig::approve          {"proposer":"tester","proposal_name":"test","level":{"actor":"treasury","permission":"active"}}
+#    enu.msig <= enu.msig::approve          {"proposer":"tester","proposal_name":"test","level":{"actor":"treasury","permission":"active"}}
 ````
 
 First user initiates execution:
 ````
 $ enucli multisig exec tester test -p tester
 executed transaction: 64e5eaceb77362694055f572ae35876111e87b637a55250de315b1b55e56d6c2  248 bytes  109568 cycles
-#    enumivo.msig <= enumivo.msig::exec             {"proposer":"tester","proposal_name":"test","executer":"tester"}
+#    enu.msig <= enu.msig::exec             {"proposer":"tester","proposal_name":"test","executer":"tester"}
 ````

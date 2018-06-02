@@ -9,8 +9,8 @@
 #include <enu.bios/enu.bios.abi.hpp>
 #include <enu.token/enu.token.wast.hpp>
 #include <enu.token/enu.token.abi.hpp>
-#include <enumivo.msig/enumivo.msig.wast.hpp>
-#include <enumivo.msig/enumivo.msig.abi.hpp>
+#include <enu.msig/enu.msig.wast.hpp>
+#include <enu.msig/enu.msig.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -181,23 +181,23 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
-        // Create enumivo.msig and enu.token
-        create_accounts({N(enumivo.msig), N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
+        // Create enu.msig and enu.token
+        create_accounts({N(enu.msig), N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
 
         // Set code for the following accounts:
         //  - enumivo (code: enu.bios) (already set by tester constructor)
-        //  - enumivo.msig (code: enumivo.msig)
+        //  - enu.msig (code: enu.msig)
         //  - enu.token (code: enu.token)
-        set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &enumivo_active_pk);
+        set_code_abi(N(enu.msig), enu_msig_wast, enu_msig_abi);//, &enumivo_active_pk);
         set_code_abi(N(enu.token), enu_token_wast, enu_token_abi); //, &enumivo_active_pk);
 
-        // Set privileged for enumivo.msig and enu.token
-        set_privileged(N(enumivo.msig));
+        // Set privileged for enu.msig and enu.token
+        set_privileged(N(enu.msig));
         set_privileged(N(enu.token));
 
-        // Verify enumivo.msig and enu.token is privileged
-        const auto& enumivo_msig_acc = get<account_object, by_name>(N(enumivo.msig));
-        BOOST_TEST(enumivo_msig_acc.privileged == true);
+        // Verify enu.msig and enu.token is privileged
+        const auto& enu_msig_acc = get<account_object, by_name>(N(enu.msig));
+        BOOST_TEST(enu_msig_acc.privileged == true);
         const auto& enu_token_acc = get<account_object, by_name>(N(enu.token));
         BOOST_TEST(enu_token_acc.privileged == true);
 

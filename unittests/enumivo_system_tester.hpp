@@ -13,8 +13,8 @@
 #include <enu.token/enu.token.wast.hpp>
 #include <enu.token/enu.token.abi.hpp>
 
-#include <enumivo.msig/enumivo.msig.wast.hpp>
-#include <enumivo.msig/enumivo.msig.abi.hpp>
+#include <enu.msig/enu.msig.wast.hpp>
+#include <enu.msig/enu.msig.abi.hpp>
 
 #include <fc/variant_object.hpp>
 
@@ -407,21 +407,21 @@ public:
    abi_serializer initialize_multisig() {
       abi_serializer msig_abi_ser;
       {
-         create_account_with_resources( N(enumivo.msig), config::system_account_name );
-         BOOST_REQUIRE_EQUAL( success(), buyram( "enumivo", "enumivo.msig", core_from_string("5000.0000") ) );
+         create_account_with_resources( N(enu.msig), config::system_account_name );
+         BOOST_REQUIRE_EQUAL( success(), buyram( "enumivo", "enu.msig", core_from_string("5000.0000") ) );
          produce_block();
 
          auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                                config::system_account_name,  mutable_variant_object()
-                                               ("account", "enumivo.msig")
+                                               ("account", "enu.msig")
                                                ("is_priv", 1)
          );
 
-         set_code( N(enumivo.msig), enumivo_msig_wast );
-         set_abi( N(enumivo.msig), enumivo_msig_abi );
+         set_code( N(enu.msig), enu_msig_wast );
+         set_abi( N(enu.msig), enu_msig_abi );
 
          produce_blocks();
-         const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.msig) );
+         const auto& accnt = control->db().get<account_object,by_name>( N(enu.msig) );
          abi_def msig_abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
          msig_abi_ser.set_abi(msig_abi);
@@ -435,7 +435,7 @@ public:
       string action_type_name = msig_abi_ser.get_action_type(name);
 
       action act;
-      act.account = N(enumivo.msig);
+      act.account = N(enu.msig);
       act.name = name;
       act.data = msig_abi_ser.variant_to_binary( action_type_name, data );
 

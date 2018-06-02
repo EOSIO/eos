@@ -2,7 +2,7 @@
 file(GLOB ABI_FILES "*.abi")
 configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 
-add_wast_executable(TARGET enumivo.msig
+add_wast_executable(TARGET enu.msig
   INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
   LIBRARIES libc++ libc enulib
   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}

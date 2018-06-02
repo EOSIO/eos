@@ -18,7 +18,7 @@ fastUnstakeSystem = './fast.refund/enumivo.system/enumivo.system.wasm'
 
 systemAccounts = [
     'enumivo.bpay',
-    'enumivo.msig',
+    'enu.msig',
     'enumivo.name',
     'enumivo.ram',
     'enumivo.rfee',
@@ -292,7 +292,7 @@ def stepStartBoot():
     sleep(1.5)
 def stepInstallSystemContracts():
     run(args.enucli + 'set contract enu.token ' + args.contracts_dir + 'enu.token/')
-    run(args.enucli + 'set contract enumivo.msig ' + args.contracts_dir + 'enumivo.msig/')
+    run(args.enucli + 'set contract enu.msig ' + args.contracts_dir + 'enu.msig/')
 def stepCreateTokens():
     run(args.enucli + 'push action enu.token create \'["enumivo", "10000000000.0000 %s"]\' -p enu.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
@@ -301,7 +301,7 @@ def stepCreateTokens():
 def stepSetSystemContract():
     retry(args.enucli + 'set contract enumivo ' + args.contracts_dir + 'enumivo.system/')
     sleep(1)
-    run(args.enucli + 'push action enumivo setpriv' + jsonArg(['enumivo.msig', 1]) + '-p enumivo@active')
+    run(args.enucli + 'push action enumivo setpriv' + jsonArg(['enu.msig', 1]) + '-p enumivo@active')
 def stepCreateStakedAccounts():
     createStakedAccounts(0, len(accounts))
 def stepRegProducers():
