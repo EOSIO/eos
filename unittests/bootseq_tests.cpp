@@ -193,7 +193,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Set privileged for enumivo.msig and enumivo.token
         set_privileged(N(enumivo.msig));
-        set_privileged(N(enumivo.token));
+        set_privileged(N(enumivo.tkn));
 
         // Verify enumivo.msig and enumivo.token is privileged
         const auto& enumivo_msig_acc = get<account_object, by_name>(N(enumivo.msig));
