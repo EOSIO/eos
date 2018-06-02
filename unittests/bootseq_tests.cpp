@@ -203,8 +203,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
 
         // Create ENU tokens in enu.token, set its manager as enumivo
-        auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
-        auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
+        auto max_supply = core_from_string("5000000000.0000"); /// 1x larger than 1B initial tokens
+        auto initial_supply = core_from_string("500000000.0000"); /// 1x larger than 1B initial tokens
         create_currency(N(enu.token), config::system_account_name, max_supply);
         // Issue the genesis supply of 1 billion ENU tokens to enu.system
         issue(N(enu.token), config::system_account_name, config::system_account_name, initial_supply);

@@ -5,7 +5,7 @@
 namespace enumivosystem {
 
    const int64_t  min_pervote_daily_pay = 100'0000;
-   const int64_t  min_activated_stake   = 50'000'000'0000;
+   const int64_t  min_activated_stake   = 150'000'000'0000;
    const double   continuous_rate       = 0.04879;          // 5% annual rate
    const double   perblock_rate         = 0.0025;           // 0.25%
    const double   standby_rate          = 0.0075;           // 0.75%
