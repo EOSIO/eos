@@ -102,7 +102,7 @@ namespace enumivosystem {
       enumivo_assert( bid.amount > 0, "insufficient bid" );
 
       INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {bidder,N(active)},
-                                                    { bidder, N(enumivo.name), bid, std::string("bid name ")+(name{newname}).to_string()  } );
+                                                    { bidder, N(enu.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
@@ -119,8 +119,8 @@ namespace enumivosystem {
          enumivo_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          enumivo_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.name),N(active)},
-                                                       { N(enumivo.name), current->high_bidder, asset(current->high_bid),
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enu.names),N(active)},
+                                                       { N(enu.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
          bids.modify( current, bidder, [&]( auto& b ) {

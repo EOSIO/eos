@@ -146,7 +146,7 @@ if node0 is None:
 
 # enumivo should have the same key as defproducera
 enumivo = copy.copy(defproduceraAccount)
-enumivo.name = "enumivo"
+enu.names = "enumivo"
 
 Print("Info of each node:")
 for i in range(len(hosts)):
@@ -159,7 +159,7 @@ for i in range(len(hosts)):
 wastFile="contracts/enu.system/enu.system.wast"
 abiFile="contracts/enu.system/enu.system.abi"
 Print("\nPush system contract %s %s" % (wastFile, abiFile))
-trans=node0.publishContract(enumivo.name, wastFile, abiFile, waitForTransBlock=True)
+trans=node0.publishContract(enu.names, wastFile, abiFile, waitForTransBlock=True)
 if trans is None:
     Utils.errorExit("Failed to publish enu.system.")
 else:

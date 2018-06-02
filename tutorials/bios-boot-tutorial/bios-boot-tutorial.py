@@ -17,15 +17,15 @@ unlockTimeout = 999999999
 fastUnstakeSystem = './fast.refund/enu.system/enu.system.wasm'
 
 systemAccounts = [
-    'enumivo.bpay',
+    'enu.blockpay',
     'enu.msig',
-    'enumivo.name',
-    'enumivo.ram',
-    'enumivo.rfee',
-    'enumivo.save',
+    'enu.names',
+    'enu.ram',
+    'enu.ramfee',
+    'enu.savings',
     'enu.stake',
     'enu.token',
-    'enumivo.vpay',
+    'enu.votepay',
 ]
 
 def jsonArg(a):

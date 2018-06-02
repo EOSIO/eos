@@ -92,13 +92,13 @@ namespace enumivosystem {
                                                     {N(enumivo), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo),N(active)},
-                                                       { N(enumivo), N(enumivo.save), asset(to_savings), "unallocated inflation" } );
+                                                       { N(enumivo), N(enu.savings), asset(to_savings), "unallocated inflation" } );
 
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo),N(active)},
-                                                       { N(enumivo), N(enumivo.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
+                                                       { N(enumivo), N(enu.blockpay), asset(to_per_block_pay), "fund per-block bucket" } );
 
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo),N(active)},
-                                                       { N(enumivo), N(enumivo.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
+                                                       { N(enumivo), N(enu.votepay), asset(to_per_vote_pay), "fund per-vote bucket" } );
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
@@ -127,12 +127,12 @@ namespace enumivosystem {
       });
       
       if( producer_per_block_pay > 0 ) {
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.bpay),N(active)},
-                                                       { N(enumivo.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enu.blockpay),N(active)},
+                                                       { N(enu.blockpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
       }
       if( producer_per_vote_pay > 0 ) {
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.vpay),N(active)},
-                                                       { N(enumivo.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enu.votepay),N(active)},
+                                                       { N(enu.votepay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
       }
    }
 

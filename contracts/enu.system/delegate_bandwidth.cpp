@@ -113,11 +113,11 @@ namespace enumivosystem {
       quant_after_fee.amount -= fee.amount;
 
       INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {payer,N(active)},
-         { payer, N(enumivo.ram), quant_after_fee, std::string("buy ram") } );
+         { payer, N(enu.ram), quant_after_fee, std::string("buy ram") } );
 
       if( fee.amount > 0 ) {
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {payer,N(active)},
-                                                       { payer, N(enumivo.rfee), fee, std::string("ram fee") } );
+                                                       { payer, N(enu.ramfee), fee, std::string("ram fee") } );
       }
 
       int64_t bytes_out;
@@ -180,12 +180,12 @@ namespace enumivosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.ram),N(active)},
-                                                       { N(enumivo.ram), account, asset(tokens_out), std::string("sell ram") } );
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enu.ram),N(active)},
+                                                       { N(enu.ram), account, asset(tokens_out), std::string("sell ram") } );
       auto fee = tokens_out.amount / 200;
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {account,N(active)},
-            { account, N(enumivo.rfee), asset(fee), std::string("sell ram fee") } );
+            { account, N(enu.ramfee), asset(fee), std::string("sell ram fee") } );
       }
    }
 

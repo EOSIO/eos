@@ -2016,14 +2016,14 @@ class Cluster(object):
                 return False
 
             enumivoRamAccount=copy.deepcopy(enumivoAccount)
-            enumivoRamAccount.name="enumivo.ram"
+            enumivoRamAccount.name="enu.ram"
             trans=biosNode.createAccount(enumivoRamAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoRamAccount.name))
                 return False
 
             enumivoRamfeeAccount=copy.deepcopy(enumivoAccount)
-            enumivoRamfeeAccount.name="enumivo.rfee"
+            enumivoRamfeeAccount.name="enu.ramfee"
             trans=biosNode.createAccount(enumivoRamfeeAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoRamfeeAccount.name))

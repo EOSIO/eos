@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create enu.msig and enu.token
-        create_accounts({N(enu.msig), N(enu.token), N(enumivo.ram), N(enumivo.rfee), N(enu.stake), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
+        create_accounts({N(enu.msig), N(enu.token), N(enu.ram), N(enu.ramfee), N(enu.stake), N(enu.votepay), N(enu.blockpay), N(enu.savings) });
 
         // Set code for the following accounts:
         //  - enumivo (code: enu.bios) (already set by tester constructor)

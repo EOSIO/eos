@@ -33,7 +33,7 @@ class enu_msig_tester : public tester {
 public:
 
    enu_msig_tester() {
-      create_accounts( { N(enu.msig), N(enu.stake), N(enumivo.ram), N(enumivo.rfee), N(alice), N(bob), N(carol) } );
+      create_accounts( { N(enu.msig), N(enu.stake), N(enu.ram), N(enu.ramfee), N(alice), N(bob), N(carol) } );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
@@ -421,7 +421,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enu_msig_tester ) t
    create_currency( N(enu.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enu.stake") + get_balance("enumivo.ram") );
+                        get_balance("enumivo") + get_balance("enu.ramfee") + get_balance("enu.stake") + get_balance("enu.ram") );
 
    set_code( config::system_account_name, enu_system_wast );
    set_abi( config::system_account_name, enu_system_abi );
@@ -433,7 +433,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enu_msig_tester ) t
    create_account_with_resources( N(carol1111111), N(enumivo), core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enu.stake") + get_balance("enumivo.ram") );
+                        get_balance("enumivo") + get_balance("enu.ramfee") + get_balance("enu.stake") + get_balance("enu.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
@@ -544,7 +544,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enu_msig_tester )
    create_account_with_resources( N(carol1111111), N(enumivo), core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enu.stake") + get_balance("enumivo.ram") );
+                        get_balance("enumivo") + get_balance("enu.ramfee") + get_balance("enu.stake") + get_balance("enu.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};
