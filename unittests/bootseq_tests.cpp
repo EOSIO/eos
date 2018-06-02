@@ -36,7 +36,7 @@ struct genesis_account {
 };
 
 std::vector<genesis_account> test_genesis( {
-  {N(b1),    100'000'000'0000ll},
+  {N(erl),    100'000'000'0000ll},
   {N(whale4), 40'000'000'0000ll},
   {N(whale3), 30'000'000'0000ll},
   {N(whale2), 20'000'000'0000ll},
@@ -255,7 +255,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                                 ("producers", producers)
                      );
         };
-        votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+        votepro( N(erl), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
                            N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
                            N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
         votepro( N(whale2), {N(runnerup1), N(runnerup2), N(runnerup3)} );
@@ -318,13 +318,13 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
 
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000")), enumivo_assert_message_exception);
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(erl), N(erl), core_from_string("49999500.0000"), core_from_string("49999500.0000")), enumivo_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
 
         // Block one should be able to unstake all his stake now
-        undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
+        undelegate_bandwidth(N(erl), N(erl), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
 
         return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
