@@ -94,7 +94,7 @@ def is_valid_deposit(action):
     if receiver != 'exchange':
         return False
 
-    if (account == 'enumivo.token' and
+    if (account == 'enumivo.tkn' and
             action_name == 'transfer' and
             memo == KEY_TO_INTERNAL_ACCOUNT and
             valid_user and
@@ -121,7 +121,7 @@ def is_valid_withdrawal(action):
     if receiver != 'exchange':
         return False
 
-    if (account == 'enumivo.token' and
+    if (account == 'enumivo.tkn' and
             action_name == 'transfer' and
             memo == KEY_TO_INTERNAL_ACCOUNT and
             valid_user and

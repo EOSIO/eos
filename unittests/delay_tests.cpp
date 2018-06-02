@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
    // unlink auth
    trace = chain.push_action(config::system_account_name, unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")
-           ("code", "enumivo.token")
+           ("code", "enumivo.tkn")
            ("type", "transfer"));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
@@ -2308,7 +2308,7 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
 
    trace = chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
                      ("account", "tester")
-                     ("code", "enumivo.token")
+                     ("code", "enumivo.tkn")
                      ("type", "transfer")
                      ("requirement", "first"));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);

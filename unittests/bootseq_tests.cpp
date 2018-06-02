@@ -187,22 +187,22 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Set code for the following accounts:
         //  - enumivo (code: enumivo.bios) (already set by tester constructor)
         //  - enumivo.msig (code: enumivo.msig)
-        //  - enumivo.token (code: enumivo.token)
+        //  - enumivo.tkn (code: enumivo.tkn)
         set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &enumivo_active_pk);
         set_code_abi(N(enumivo.tkn), enumivo_token_wast, enumivo_token_abi); //, &enumivo_active_pk);
 
-        // Set privileged for enumivo.msig and enumivo.token
+        // Set privileged for enumivo.msig and enumivo.tkn
         set_privileged(N(enumivo.msig));
         set_privileged(N(enumivo.tkn));
 
-        // Verify enumivo.msig and enumivo.token is privileged
+        // Verify enumivo.msig and enumivo.tkn is privileged
         const auto& enumivo_msig_acc = get<account_object, by_name>(N(enumivo.msig));
         BOOST_TEST(enumivo_msig_acc.privileged == true);
         const auto& enumivo_token_acc = get<account_object, by_name>(N(enumivo.tkn));
         BOOST_TEST(enumivo_token_acc.privileged == true);
 
 
-        // Create ENU tokens in enumivo.token, set its manager as enumivo
+        // Create ENU tokens in enumivo.tkn, set its manager as enumivo
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
         create_currency(N(enumivo.tkn), config::system_account_name, max_supply);

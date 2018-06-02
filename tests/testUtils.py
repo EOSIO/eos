@@ -878,7 +878,7 @@ class Node(object):
         """Returns ENU currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 ENU". """
         assert isinstance(scope, str)
         if not self.enableMongo:
-            amount=self.getTableAccountBalance("enumivo.token", scope)
+            amount=self.getTableAccountBalance("enumivo.tkn", scope)
             if Utils.Debug: Utils.Print("getNodeAccountEnuBalance %s %s" % (scope, amount))
             assert isinstance(amount, str)
             return amount
@@ -2009,7 +2009,7 @@ class Cluster(object):
                     return False
 
             enumivoTokenAccount=copy.deepcopy(enumivoAccount)
-            enumivoTokenAccount.name="enumivo.token"
+            enumivoTokenAccount.name="enumivo.tkn"
             trans=biosNode.createAccount(enumivoTokenAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoTokenAccount.name))
@@ -2040,7 +2040,7 @@ class Cluster(object):
             transId=Node.getTransId(trans)
             biosNode.waitForTransIdOnNode(transId)
 
-            contract="enumivo.token"
+            contract="enumivo.tkn"
             contractDir="contracts/%s" % (contract)
             wastFile="contracts/%s/%s.wast" % (contract, contract)
             abiFile="contracts/%s/%s.abi" % (contract, contract)
