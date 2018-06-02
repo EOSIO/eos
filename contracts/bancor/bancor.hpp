@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 #include <enumivolib/token.hpp>
 #include <enumivolib/reflect.hpp>
 #include <enumivolib/generic_currency.hpp>

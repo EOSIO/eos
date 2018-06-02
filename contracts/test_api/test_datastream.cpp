@@ -1,5 +1,5 @@
 
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 #include <enumivolib/datastream.hpp>
 #include <cmath>
 

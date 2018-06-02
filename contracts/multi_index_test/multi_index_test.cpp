@@ -1,4 +1,4 @@
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 #include <enumivolib/dispatcher.hpp>
 #include <enumivolib/multi_index.hpp>
 

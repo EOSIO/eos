@@ -1,4 +1,4 @@
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 
 class simpletoken : public enumivo::contract {
    public:

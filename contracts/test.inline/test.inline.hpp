@@ -1,4 +1,4 @@
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 #include <enumivolib/privileged.h>
 #include <enumivolib/producer_schedule.hpp>
 

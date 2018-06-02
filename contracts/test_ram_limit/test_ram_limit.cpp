@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 #include <enumivolib/contract.hpp>
 
 #pragma clang diagnostic push

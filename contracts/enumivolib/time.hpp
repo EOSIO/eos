@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <string>
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 
 namespace enumivo {
   class microseconds {

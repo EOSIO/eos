@@ -3,7 +3,7 @@
  *    @copyright defined in enumivo/LICENSE.txt
  */
 
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 #include <enumivolib/print.hpp>
 #include <enumivolib/compiler_builtins.h>
 

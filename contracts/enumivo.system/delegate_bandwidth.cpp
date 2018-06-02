@@ -4,7 +4,7 @@
  */
 #include "enumivo.system.hpp"
 
-#include <enumivolib/enumivo.hpp>
+#include <enumivolib/enu.hpp>
 #include <enumivolib/print.hpp>
 #include <enumivolib/datastream.hpp>
 #include <enumivolib/serialize.hpp>

@@ -135,7 +135,7 @@
 #include <string>
 #include <stdexcept>
 */
-//include <enumivolib/enumivo.hpp>
+//include <enumivolib/enu.hpp>
 #include <enumivolib/dispatcher.hpp>
 
 using namespace enumivo;
