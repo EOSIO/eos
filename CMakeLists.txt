@@ -1,6 +1,5 @@
 cmake_minimum_required( VERSION 3.5 )
 
-# Defines Enumivo library target.
 project( Enumivo )
 
 enable_testing()
@@ -29,12 +28,12 @@ set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
-        message(FATAL_ERROR "GCC version must be at least 4.8!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
+        message(FATAL_ERROR "GCC version must be at least 6.0!")
     endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.3)
-        message(FATAL_ERROR "Clang version must be at least 3.3!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.0)
+        message(FATAL_ERROR "Clang version must be at least 4.0!")
     endif()
 endif()
 
@@ -42,7 +41,6 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
-set(ENU_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 
 #set (USE_PCH 1)
 
@@ -187,7 +185,7 @@ string(TOUPPER ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME)
 
 string(LENGTH ${CORE_SYMBOL_NAME} CORE_SYMBOL_NAME_LENGTH)
 if (CORE_SYMBOL_NAME_LENGTH GREATER 7)
-  message(FATAL_ERROR "CORE_SYMBOL_NAME lenght must be a between 1 and 7 characters")
+  message(FATAL_ERROR "CORE_SYMBOL_NAME length must be between 1 and 7 characters")
 endif()
 
 message( STATUS "Using '${CORE_SYMBOL_NAME}' as CORE symbol name" )
@@ -196,7 +194,7 @@ if ("${ENUMIVO_ROOT_KEY}" STREQUAL "")
    set(ENUMIVO_ROOT_KEY "ENU6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
 endif()
 
-message( STATUS "Using '${ENUMIVO_ROOT_KEY}' as public key for enumivo account" )
+message( STATUS "Using '${ENUMIVO_ROOT_KEY}' as public key for 'enumivo' account" )
 
 include(wasm)
 

@@ -114,6 +114,7 @@ namespace Runtime
 			{
 				return -1;
 			}
+			memset(memory->baseAddress + (memory->numPages << IR::numBytesPerPageLog2), 0, numNewPages << IR::numBytesPerPageLog2);
 			memory->numPages += numNewPages;
 		}
 		return previousNumPages;

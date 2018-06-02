@@ -10,7 +10,7 @@ services:
     build:
       context: .
     image: enumivo/enumivo
-    command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir
+    command: /opt/enumivo/bin/enunoded.sh --data-dir /opt/enumivo/bin/data-dir -e
     hostname: enunoded
     ports:
       - 8888:8888
