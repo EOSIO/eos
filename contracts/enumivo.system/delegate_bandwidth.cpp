@@ -112,11 +112,11 @@ namespace enumivosystem {
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
 
-      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {payer,N(active)},
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {payer,N(active)},
          { payer, N(enumivo.ram), quant_after_fee, std::string("buy ram") } );
 
       if( fee.amount > 0 ) {
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {payer,N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {payer,N(active)},
                                                        { payer, N(enumivo.rfee), fee, std::string("ram fee") } );
       }
 
@@ -180,11 +180,11 @@ namespace enumivosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo.ram),N(active)},
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.ram),N(active)},
                                                        { N(enumivo.ram), account, asset(tokens_out), std::string("sell ram") } );
       auto fee = tokens_out.amount / 200;
       if( fee > 0 ) {
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {account,N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {account,N(active)},
             { account, N(enumivo.rfee), asset(fee), std::string("sell ram fee") } );
       }
    }
@@ -324,7 +324,7 @@ namespace enumivosystem {
 
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
-            INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {source_stake_from, N(active)},
+            INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {source_stake_from, N(active)},
                { source_stake_from, N(enumivo.stk), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
@@ -388,7 +388,7 @@ namespace enumivosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo.stk),N(active)},
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.stk),N(active)},
                                                     { N(enumivo.stk), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );

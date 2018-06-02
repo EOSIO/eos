@@ -31,14 +31,14 @@ int main( int argc, char** argv ) {
       wlog("set producer schedule to [dan,sam,pam]");
       c.produce_blocks(30);
 
-      auto r2 = c.create_accounts( {N(enumivo.tkn)} );
+      auto r2 = c.create_accounts( {N(enu.token)} );
       wdump((fc::json::to_pretty_string(r2)));
-      c.set_code( N(enumivo.tkn), enumivo_token_wast );
-      c.set_abi( N(enumivo.tkn), enumivo_token_abi );
+      c.set_code( N(enu.token), enumivo_token_wast );
+      c.set_abi( N(enu.token), enumivo_token_abi );
       c.produce_blocks(10);
 
 
-      auto cr = c.push_action( N(enumivo.tkn), N(create), N(enumivo.tkn), mutable_variant_object()
+      auto cr = c.push_action( N(enu.token), N(create), N(enu.token), mutable_variant_object()
                  ("issuer",       "enumivo" )
                  ("maximum_supply", "10000000.0000 ENU")
                  ("can_freeze", 0)
@@ -48,7 +48,7 @@ int main( int argc, char** argv ) {
 
       wdump((fc::json::to_pretty_string(cr)));
 
-      cr = c.push_action( N(enumivo.tkn), N(issue), N(enumivo), mutable_variant_object()
+      cr = c.push_action( N(enu.token), N(issue), N(enumivo), mutable_variant_object()
                  ("to",       "dan" )
                  ("quantity", "100.0000 ENU")
                  ("memo", "")
@@ -187,7 +187,7 @@ int main( int argc, char** argv ) {
 
       c.produce_blocks(3);
 
-      cr = c.push_action( N(enumivo.tkn), N(issue), N(enumivo), mutable_variant_object()
+      cr = c.push_action( N(enu.token), N(issue), N(enumivo), mutable_variant_object()
                  ("to",       "unregistered" )
                  ("quantity", "100.0000 ENU")
                  ("memo", "")

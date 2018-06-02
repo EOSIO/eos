@@ -102,14 +102,14 @@ public:
       base_tester::push_action(contract, N(create), contract, act );
    }
    void issue( name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.tkn), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(enu.token), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", amount )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.tkn), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(enu.token), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
@@ -121,7 +121,7 @@ public:
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
       const auto& db  = control->db();
-      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(enumivo.tkn), act, N(accounts)));
+      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(enu.token), act, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
@@ -414,11 +414,11 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
    set_producers( {N(alice),N(bob),N(carol)} );
    produce_blocks(50);
 
-   create_accounts( { N(enumivo.tkn) } );
-   set_code( N(enumivo.tkn), enumivo_token_wast );
-   set_abi( N(enumivo.tkn), enumivo_token_abi );
+   create_accounts( { N(enu.token) } );
+   set_code( N(enu.token), enumivo_token_wast );
+   set_abi( N(enu.token), enumivo_token_abi );
 
-   create_currency( N(enumivo.tkn), config::system_account_name, core_from_string("10000000000.0000") );
+   create_currency( N(enu.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
                         get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enumivo.stk") + get_balance("enumivo.ram") );
@@ -526,11 +526,11 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
    set_producers( {N(alice),N(bob),N(carol), N(apple)} );
    produce_blocks(50);
 
-   create_accounts( { N(enumivo.tkn) } );
-   set_code( N(enumivo.tkn), enumivo_token_wast );
-   set_abi( N(enumivo.tkn), enumivo_token_abi );
+   create_accounts( { N(enu.token) } );
+   set_code( N(enu.token), enumivo_token_wast );
+   set_abi( N(enu.token), enumivo_token_abi );
 
-   create_currency( N(enumivo.tkn), config::system_account_name, core_from_string("10000000000.0000") );
+   create_currency( N(enu.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) );
 

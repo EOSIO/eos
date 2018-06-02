@@ -24,15 +24,15 @@ public:
    enumivo_token_tester() {
       produce_blocks( 2 );
 
-      create_accounts( { N(alice), N(bob), N(carol), N(enumivo.tkn) } );
+      create_accounts( { N(alice), N(bob), N(carol), N(enu.token) } );
       produce_blocks( 2 );
 
-      set_code( N(enumivo.tkn), enumivo_token_wast );
-      set_abi( N(enumivo.tkn), enumivo_token_abi );
+      set_code( N(enu.token), enumivo_token_wast );
+      set_abi( N(enu.token), enumivo_token_abi );
 
       produce_blocks();
 
-      const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.tkn) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(enu.token) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -42,7 +42,7 @@ public:
       string action_type_name = abi_ser.get_action_type(name);
 
       action act;
-      act.account = N(enumivo.tkn);
+      act.account = N(enu.token);
       act.name    = name;
       act.data    = abi_ser.variant_to_binary( action_type_name, data );
 
@@ -53,7 +53,7 @@ public:
    {
       auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.tkn), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(enu.token), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data );
    }
 
@@ -61,14 +61,14 @@ public:
    {
       auto symb = enumivo::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(enumivo.tkn), acc, N(accounts), symbol_code );
+      vector<char> data = get_row_by_account( N(enu.token), acc, N(accounts), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data );
    }
 
    action_result create( account_name issuer,
                 asset        maximum_supply ) {
 
-      return push_action( N(enumivo.tkn), N(create), mvo()
+      return push_action( N(enu.token), N(create), mvo()
            ( "issuer", issuer)
            ( "maximum_supply", maximum_supply)
       );

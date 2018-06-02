@@ -22,7 +22,7 @@ namespace enumivosystem {
       auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
-         auto system_token_supply   = enumivo::token(N(enumivo.tkn)).get_supply(enumivo::symbol_type(system_token_symbol).name()).amount;
+         auto system_token_supply   = enumivo::token(N(enu.token)).get_supply(enumivo::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
@@ -101,7 +101,7 @@ namespace enumivosystem {
       enumivo_assert( bid.symbol == asset().symbol, "asset must be system token" );
       enumivo_assert( bid.amount > 0, "insufficient bid" );
 
-      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {bidder,N(active)},
+      INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {bidder,N(active)},
                                                     { bidder, N(enumivo.name), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
@@ -119,7 +119,7 @@ namespace enumivosystem {
          enumivo_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          enumivo_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enumivo.tkn), {N(enumivo.name),N(active)},
+         INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enumivo.name),N(active)},
                                                        { N(enumivo.name), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
