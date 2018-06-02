@@ -3,7 +3,7 @@
  *  @copyright defined in enumivo/LICENSE.txt
  */
 
-#include <enumivo.token/enumivo.token.hpp>
+#include <enu.token/enu.token.hpp>
 
 namespace enumivo {
 

@@ -56,14 +56,14 @@ Example game session using enucli
 enucli set contract enumivo build/contracts/enumivo.bios -p enumivo
 ````
 
-##### Ceate enumivo.token account
+##### Ceate enu.token account
 ````bash
-enucli create account enumivo enumivo.token ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+enucli create account enumivo enu.token ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
-##### Set enumivo.token contract to enumivo.token account
+##### Set enu.token contract to enu.token account
 ````bash
-enucli set contract enumivo.token build/contracts/enumivo.token -p enumivo.token
+enucli set contract enu.token build/contracts/enu.token -p enu.token
 ````
 
 ##### Create dice account
@@ -78,7 +78,7 @@ enucli set contract dice build/contracts/dice -p dice
 
 ##### Create native ENU token
 ````bash
-enucli push action enumivo.token create '[ "enumivo", "1000000000.0000 ENU", 0, 0, 0]' -p enumivo.token
+enucli push action enu.token create '[ "enumivo", "1000000000.0000 ENU", 0, 0, 0]' -p enu.token
 ````
 
 ##### Create alice account
@@ -93,12 +93,12 @@ enucli create account enumivo bob ENU7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7S
 
 ##### Issue 1000 ENU to alice
 ````bash
-enucli push action enumivo.token issue '[ "alice", "1000.0000 ENU", "" ]' -p enumivo
+enucli push action enu.token issue '[ "alice", "1000.0000 ENU", "" ]' -p enumivo
 ````
 
 ##### Issue 1000 ENU to bob
 ````bash
-enucli push action enumivo.token issue '[ "bob", "1000.0000 ENU", "" ]' -p enumivo
+enucli push action enu.token issue '[ "bob", "1000.0000 ENU", "" ]' -p enumivo
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)
@@ -263,7 +263,7 @@ enucli push action dice withdraw '[ "alice", "103.0000 ENU" ]' -p alice
 
 ##### Balance of alice after withdraw
 ````bash
-enucli get currency balance enumivo.token alice enu
+enucli get currency balance enu.token alice enu
 1003.0000 ENU
 ````
 

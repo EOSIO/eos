@@ -4,7 +4,7 @@
  */
 #include <proxy/proxy.hpp>
 #include <enumivolib/transaction.hpp>
-#include <enumivo.token/enumivo.token.hpp>
+#include <enu.token/enu.token.hpp>
 
 namespace proxy {
    using namespace enumivo;

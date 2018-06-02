@@ -6,8 +6,8 @@
 #include <dice/dice.wast.hpp>
 #include <dice/dice.abi.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enu.token/enu.token.wast.hpp>
+#include <enu.token/enu.token.abi.hpp>
 
 #include <Runtime/Runtime.h>
 

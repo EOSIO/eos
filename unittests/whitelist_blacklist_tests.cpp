@@ -4,8 +4,8 @@
 
 #include <fc/variant_object.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enu.token/enu.token.wast.hpp>
+#include <enu.token/enu.token.abi.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester

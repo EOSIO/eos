@@ -23,8 +23,8 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enu.token/enu.token.wast.hpp>
+#include <enu.token/enu.token.abi.hpp>
 
 namespace enumivo { namespace detail {
   struct txn_test_gen_empty {};
@@ -163,7 +163,7 @@ struct txn_test_gen_plugin_impl {
             trxs.emplace_back(std::move(trx));
          }
 
-         //set txn.test.t contract to enumivo.token & initialize it
+         //set txn.test.t contract to enu.token & initialize it
          {
             signed_transaction trx;
 

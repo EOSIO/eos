@@ -10,8 +10,8 @@
 #include <enumivo.system/enumivo.system.wast.hpp>
 #include <enumivo.system/enumivo.system.abi.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enu.token/enu.token.wast.hpp>
+#include <enu.token/enu.token.abi.hpp>
 
 #include <enumivo.msig/enumivo.msig.wast.hpp>
 #include <enumivo.msig/enumivo.msig.abi.hpp>

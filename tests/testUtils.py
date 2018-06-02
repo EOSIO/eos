@@ -2040,7 +2040,7 @@ class Cluster(object):
             transId=Node.getTransId(trans)
             biosNode.waitForTransIdOnNode(transId)
 
-            contract="enumivo.token"
+            contract="enu.token"
             contractDir="contracts/%s" % (contract)
             wastFile="contracts/%s/%s.wast" % (contract, contract)
             abiFile="contracts/%s/%s.abi" % (contract, contract)

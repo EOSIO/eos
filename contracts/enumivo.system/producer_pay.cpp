@@ -1,6 +1,6 @@
 #include "enumivo.system.hpp"
 
-#include <enumivo.token/enumivo.token.hpp>
+#include <enu.token/enu.token.hpp>
 
 namespace enumivosystem {
 

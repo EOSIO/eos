@@ -291,7 +291,7 @@ def stepStartBoot():
     startNode(0, {'name': 'enumivo', 'pvt': args.private_key, 'pub': args.public_key})
     sleep(1.5)
 def stepInstallSystemContracts():
-    run(args.enucli + 'set contract enu.token ' + args.contracts_dir + 'enumivo.token/')
+    run(args.enucli + 'set contract enu.token ' + args.contracts_dir + 'enu.token/')
     run(args.enucli + 'set contract enumivo.msig ' + args.contracts_dir + 'enumivo.msig/')
 def stepCreateTokens():
     run(args.enucli + 'push action enu.token create \'["enumivo", "10000000000.0000 %s"]\' -p enu.token' % (args.symbol))

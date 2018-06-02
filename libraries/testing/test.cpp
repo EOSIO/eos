@@ -1,8 +1,8 @@
 #include <enumivo/testing/tester.hpp>
 #include <fc/io/json.hpp>
 
-#include <enumivo.token/enumivo.token.wast.hpp>
-#include <enumivo.token/enumivo.token.abi.hpp>
+#include <enu.token/enu.token.wast.hpp>
+#include <enu.token/enu.token.abi.hpp>
 
 using namespace enumivo::chain;
 using namespace enumivo::testing;
