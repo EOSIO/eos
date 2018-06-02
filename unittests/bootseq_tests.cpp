@@ -198,16 +198,16 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Verify enumivo.msig and enumivo.token is privileged
         const auto& enumivo_msig_acc = get<account_object, by_name>(N(enumivo.msig));
         BOOST_TEST(enumivo_msig_acc.privileged == true);
-        const auto& enumivo_token_acc = get<account_object, by_name>(N(enumivo.token));
+        const auto& enumivo_token_acc = get<account_object, by_name>(N(enumivo.tkn));
         BOOST_TEST(enumivo_token_acc.privileged == true);
 
 
         // Create ENU tokens in enumivo.token, set its manager as enumivo
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
-        create_currency(N(enumivo.token), config::system_account_name, max_supply);
+        create_currency(N(enumivo.tkn), config::system_account_name, max_supply);
         // Issue the genesis supply of 1 billion ENU tokens to enumivo.system
-        issue(N(enumivo.token), config::system_account_name, config::system_account_name, initial_supply);
+        issue(N(enumivo.tkn), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
