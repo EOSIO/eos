@@ -67,6 +67,7 @@ extern "C" {
      *  @return 1 if transaction was canceled, 0 if transaction was not found
      *
      *  Example:
+*
      *  @code
      *  id = 0xffffffffffffffff
      *  cancel_deferred( id );

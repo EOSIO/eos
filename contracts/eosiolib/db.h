@@ -116,6 +116,7 @@ void db_remove_i64(int32_t iterator);
   *  @post `data` will be filled with the retrieved data
   *
   *  Example:
+*
   *  @code
   *  char value[50];
   *  auto len = db_get_i64(itr, value, buffer_len);
@@ -137,6 +138,7 @@ int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
   *  @post `primary` will be replaced with the primary key of the data proceeding the data pointed by the iterator
   *
   *  Example:
+*
   *  @code
   *  int charlie_itr = db_find_i64(receiver, receiver, table1, N(charlie));
   *  // nothing after charlie
@@ -158,6 +160,7 @@ int32_t db_next_i64(int32_t iterator, uint64_t* primary);
   *  @post `primary` will be replaced with the primary key of the data preceeding the data pointed by the iterator
   *
   *  Example:
+*
   *  @code
   *  uint64_t prim = 123;
   *  int itr_prev = db_previous_i64(itr, &prim);
@@ -176,6 +179,7 @@ int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
   *  @return iterator to the found record
   *
   *  Example:
+*
   *  @code
   *  int itr = db_find_i64(receiver, receiver, table1, N(charlie));
   *  @endcode

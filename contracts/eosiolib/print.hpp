@@ -268,6 +268,7 @@ namespace eosio {
      *  @param args - The other values to be printed
      *
      *  Example:
+*
      *  @code
      *  const char *s = "Hello World!";
      *  uint64_t unsigned_64_bit_int = 1e+18;
@@ -296,6 +297,7 @@ namespace eosio {
     *  @return iostream& - Reference to the input output stream
     *
     *  Example:
+*
     *  @code
     *  const char *s = "Hello World!";
     *  uint64_t unsigned_64_bit_int = 1e+18;

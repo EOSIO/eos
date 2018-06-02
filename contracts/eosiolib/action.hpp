@@ -32,6 +32,7 @@ namespace eosio {
     *  @return Unpacked action data casted as T.
     *
     *  Example:
+    *
     *  @code
     *  struct dummy_action {
     *    char a; //1
@@ -66,6 +67,7 @@ namespace eosio {
     *  @param remaining_accounts accounts to be notified
     *
     *  Example:
+    *
     *  @code
     *  require_recipient(N(Account1), N(Account2), N(Account3)); // throws exception if any of them not in set.
     *  @endcode
@@ -75,16 +77,16 @@ namespace eosio {
       require_recipient( name );
       require_recipient( remaining_accounts... );
    }
-    
+
    /**
     * Packed representation of a permission level (Authorization)
-    * 
+    *
     * @brief Packed representation of a permission level (Authorization)
     */
    struct permission_level {
       /**
        * Construct a new permission level object with actor name and permission name
-       * 
+       *
        * @brief Construct a new permission level object
        * @param a - Name of the account who owns this authorization
        * @param p - Name of the permission
@@ -93,27 +95,27 @@ namespace eosio {
 
       /**
        * Default Constructor
-       * 
+       *
        * @brief Construct a new permission level object
        */
       permission_level(){}
-     
+
       /**
        * Name of the account who owns this permission
-       * 
+       *
        * @brief Name of the account who owns this permission
        */
       account_name    actor;
       /**
        * Name of the permission
-       * 
+       *
        * @brief Name of the permission
        */
       permission_name permission;
 
       /**
        * Check equality of two permissions
-       * 
+       *
        * @brief Check equality of two permissions
        * @param a - first permission to compare
        * @param b - second permission to compare
@@ -126,12 +128,12 @@ namespace eosio {
 
       EOSLIB_SERIALIZE( permission_level, (actor)(permission) )
    };
-   
+
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.
-    * 
+    *
     * @brief Require the specified authorization for this action
-    * 
+    *
     * @param level - Authorization to be required
     */
    void require_auth(const permission_level& level) {
@@ -141,48 +143,48 @@ namespace eosio {
    /**
     * This is the packed representation of an action along with
     * meta-data about the authorization levels.
-    * 
+    *
     * @brief Packed representation of an action
     */
    struct action {
       /**
        * Name of the account the action is intended for
-       * 
+       *
        * @brief Name of the account the action is intended for
        */
       account_name               account;
 
       /**
        * Name of the action
-       * 
+       *
        * @brief Name of the action
        */
       action_name                name;
 
       /**
        * List of permissions that authorize this action
-       * 
+       *
        * @brief List of permissions that authorize this action
        */
       vector<permission_level>   authorization;
 
       /**
        * Payload data
-       * 
+       *
        * @brief Payload data
        */
       bytes                      data;
-      
+
       /**
        * Default Constructor
-       * 
+       *
        * @brief Construct a new action object
        */
       action() = default;
 
       /**
        * Construct a new action object with the given permission and action struct
-       * 
+       *
        * @brief Construct a new action object with the given permission and action struct
        * @tparam Action  - Type of action struct
        * @param auth - The permission that authorizes this action
@@ -198,7 +200,7 @@ namespace eosio {
 
       /**
        * Construct a new action object with the given list of permissions and action struct
-       * 
+       *
        * @brief Construct a new action object with the given list of permissions and action struct
        * @tparam Action  - Type of action struct
        * @param auth - The list of permissions that authorizes this action
@@ -215,7 +217,7 @@ namespace eosio {
 
       /**
        * Construct a new action object with the given action struct
-       * 
+       *
        * @brief Construct a new action object with the given action struct
        * @tparam Action  - Type of action struct
        * @param value - The action struct that will be serialized via pack into data
@@ -229,7 +231,7 @@ namespace eosio {
 
       /**
        * Construct a new action object with the given action struct
-       * 
+       *
        * @brief Construct a new action object with the given permission, action receiver, action name, action struct
        * @tparam T  - Type of action struct
        * @param auth - The permissions that authorizes this action
@@ -243,7 +245,7 @@ namespace eosio {
 
       /**
        * Construct a new action object with the given action struct
-       * 
+       *
        * @brief Construct a new action object with the given list of permissions, action receiver, action name, action struct
        * @tparam T  - Type of action struct
        * @param auths - The list of permissions that authorize this action
@@ -256,20 +258,20 @@ namespace eosio {
       :account(a), name(n), authorization(std::move(auths)), data(pack(std::forward<T>(value))) {}
 
       EOSLIB_SERIALIZE( action, (account)(name)(authorization)(data) )
-  
+
       /**
        * Send the action as inline action
-       * 
+       *
        * @brief Send the action as inline action
        */
       void send() const {
          auto serialize = pack(*this);
          ::send_inline(serialize.data(), serialize.size());
       }
-  
+
       /**
        * Send the action as inline context free action
-       * 
+       *
        * @brief Send the action as inline context free action
        * @pre This action should not contain any authorizations
        */
@@ -281,7 +283,7 @@ namespace eosio {
 
       /**
        * Retrieve the unpacked data as T
-       * 
+       *
        * @brief Retrieve the unpacked data as T
        * @tparam T expected type of data
        * @return the action data
@@ -294,10 +296,10 @@ namespace eosio {
       }
 
    };
-   
+
    /**
     * Base class to derive a new defined action from so it can take advantage of the dispatcher
-    * 
+    *
     * @brief Base class to derive a new defined action from
     * @tparam Account - The account this action is intended for
     * @tparam Name - The name of the action
@@ -306,20 +308,20 @@ namespace eosio {
    struct action_meta {
       /**
        * Get the account this action is intended for
-       * 
+       *
        * @brief Get the account this action is intended for
        * @return uint64_t The account this action is intended for
        */
       static uint64_t get_account() { return Account; }
       /**
        * Get the name of this action
-       * 
+       *
        * @brief Get the name of this action
        * @return uint64_t Name of the action
        */
       static uint64_t get_name()  { return Name; }
    };
-   
+
    ///@} actioncpp api
 
    template<typename... Args>
@@ -357,13 +359,13 @@ INLINE_ACTION_SENDER3( CONTRACT_CLASS, NAME, ::eosio::string_to_name(#NAME) )
 
 /**
  * @addtogroup actioncppapi
- * Additional documentation for group 
+ * Additional documentation for group
  * @{
- */ 
+ */
 
-/** 
+/**
  * Send inline action
- * 
+ *
  * @brief Send inline action
  * @param CONTRACT - The account this action is intended for
  * @param NAME - The name of the action
@@ -375,7 +377,7 @@ BOOST_PP_TUPLE_ENUM(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TU
 
 /**
  * Extend a new defined action with theaction meta, so it can work with the dispatcher
- * 
+ *
  * @brief Extend a new defined action with the action meta
  * @param CODE - The account this action is intended for
  * @param NAME - The name of the action

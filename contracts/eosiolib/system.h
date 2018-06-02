@@ -28,6 +28,7 @@ extern "C" {
     *  @param test - 0 to abort, 1 to ignore
     *
     *  Example:
+*
     *  @code
     *  eosio_assert(1 == 2, "One is not equal to two.");
     *  eosio_assert(1 == 1, "One is not equal to one.");
@@ -59,6 +60,7 @@ extern "C" {
     *  @brief Aborts execution of wasm without failing the contract
     *  @param code - the exit code
     *  Example:
+*
     *  @code
     *  eosio_exit(0);
     *  eosio_exit(1);
@@ -74,6 +76,7 @@ extern "C" {
     *  @brief Get time of the last accepted block
     *  @return time in seconds from 1970 of the last accepted block
     *  Example:
+*
     *  @code
     *  time current_time = now();
     *  @endcode
