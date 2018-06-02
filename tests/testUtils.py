@@ -88,9 +88,11 @@ class Utils:
     @staticmethod
     def checkOutput(cmd):
         assert(isinstance(cmd, list))
-        #retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
-        retStr=subprocess.check_output(cmd).decode("utf-8")
-        return retStr
+        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (output,error)=popen.communicate();
+        if popen.returncode != 0:
+            raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=error)
+        return output.decode("utf-8")
 
     @staticmethod
     def errorExit(msg="", raw=False, errorCode=1):
