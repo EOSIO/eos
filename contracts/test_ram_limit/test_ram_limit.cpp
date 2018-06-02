@@ -5,8 +5,8 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <enumivolib/enumivo.hpp>
-#include <enumivolib/contract.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/contract.hpp>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-conversion"

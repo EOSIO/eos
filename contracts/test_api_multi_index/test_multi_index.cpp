@@ -1,6 +1,6 @@
-#include <enumivolib/multi_index.hpp>
+#include <enulib/multi_index.hpp>
 #include "../test_api/test_api.hpp"
-#include <enumivolib/print.hpp>
+#include <enulib/print.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <limits>
 #include <cmath>

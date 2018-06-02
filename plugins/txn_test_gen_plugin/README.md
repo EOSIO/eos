@@ -60,7 +60,7 @@ $ ./enunode -d ~/enumivo.data/generator_node --config-dir ~/enumivo.data/generat
 ### Create a wallet on the non-producer and set bios contract
 ```bash
 $ ./enucli wallet create
-$ ./enucli set contract enumivo ~/enumivo/build.release/contracts/enumivo.bios/ 
+$ ./enucli set contract enumivo ~/enumivo/build.release/contracts/enu.bios/ 
 ```
 
 ### Initialize the accounts txn_test_gen_plugin uses

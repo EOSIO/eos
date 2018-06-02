@@ -51,7 +51,7 @@ a couple of minutes, but either way enunode will keep you posted on the status.
 
 ## Initial Condition
 ```
-./enucli get currency balance enumivo.coin scott ENU
+./enucli get currency balance enu.token scott ENU
 900.0000 ENU
 ```
 
@@ -60,14 +60,14 @@ We will now deposit some funds to exchange:
 ```
 ./enucli transfer scott exchange "1.0000 ENU"
 executed transaction: 5ec797175dd24612acd8fc5a8685fa44caa8646cec0a87b12568db22a3df02fb  256 bytes  8k cycles
-#   enumivo.coin <= enumivo.coin::transfer        {"from":"scott","to":"exchange","quantity":"1.0000 ENU","memo":""}
+#   enu.token <= enu.token::transfer        {"from":"scott","to":"exchange","quantity":"1.0000 ENU","memo":""}
 >> transfer
-#         scott <= enumivo.coin::transfer        {"from":"scott","to":"exchange","quantity":"1.0000 ENU","memo":""}
-#      exchange <= enumivo.coin::transfer        {"from":"scott","to":"exchange","quantity":"1.0000 ENU","memo":""}
+#         scott <= enu.token::transfer        {"from":"scott","to":"exchange","quantity":"1.0000 ENU","memo":""}
+#      exchange <= enu.token::transfer        {"from":"scott","to":"exchange","quantity":"1.0000 ENU","memo":""}
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
-This output indicates that the action "enumivo.coin::transfer" was delivered to 3 accounts/contracts, (enumivo.coin, scott, and exchange). 
+This output indicates that the action "enu.token::transfer" was delivered to 3 accounts/contracts, (enu.token, scott, and exchange). 
 The enumivo token standard requires that both the sender and receiver account/contract be notified of all transfer actions so those
 accounts can run custom logic.  At this time neither `scott` nor `exchange` has any contact set, but the transaction log
 still notes that they were notified.  
@@ -75,7 +75,7 @@ still notes that they were notified.
 
 ## Polling Account History 
 The account history consists of all actions which were either authorized by the account or received by the account. Since the
-exchange received the `enumivo.coin::transfer` action it is listed in the history. If you are using the console confirmed and
+exchange received the `enu.token::transfer` action it is listed in the history. If you are using the console confirmed and
 irreversible transactions are printed in "green" while unconfirmed transactions are printed in "yellow". Without color you
 can tell whether a transaction is confirmed or not by the first character, '#' for irreversible and '?' for potentially reversable.
 
@@ -83,7 +83,7 @@ can tell whether a transaction is confirmed or not by the first character, '#' f
 ./enucli get actions exchange
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
-#    0   2018-04-29T01:09:45.000     enumivo.coin::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    0   2018-04-29T01:09:45.000     enu.token::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
 ```
 
 Do a few more transfers:
@@ -92,9 +92,9 @@ Do a few more transfers:
 ./enucli get actions exchange
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
-#    0   2018-04-29T01:09:45.000     enumivo.coin::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
-#    1   2018-04-29T01:16:25.000     enumivo.coin::transfer => exchange      2269828c... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
-?    2   2018-04-29T01:19:54.000     enumivo.coin::transfer => exchange      213f3797... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    0   2018-04-29T01:09:45.000     enu.token::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    1   2018-04-29T01:16:25.000     enu.token::transfer => exchange      2269828c... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+?    2   2018-04-29T01:19:54.000     enu.token::transfer => exchange      213f3797... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
 ```
 
 The last transfer is still pending, waiting on irreversibility. 
@@ -126,7 +126,7 @@ To get only the last action you would do the following...
 ./enucli get actions exchange -1 -1
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
-#    2   2018-04-29T01:19:54.000     enumivo.coin::transfer => exchange      213f3797... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    2   2018-04-29T01:19:54.000     enu.token::transfer => exchange      213f3797... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
 ```
 
 This says go to the last sequence number (indicated by pos = -1) and then fetch "1" item prior to it (offset = -1). This should
@@ -144,7 +144,7 @@ We pass pos=1 and offset=0 to get the range [1,1+0] or [1,1].
 ./enucli get actions exchange 1 0
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
-#    1   2018-04-29T01:16:25.000     enumivo.coin::transfer => exchange      2269828c... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    1   2018-04-29T01:16:25.000     enu.token::transfer => exchange      2269828c... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
 ```
 
 We can call this in a loop procesing each confirmed action (those starting with #) until we either run out of items or
@@ -184,7 +184,7 @@ Here is the JSON returned when querying sequence 2.
           ]
         },
         "act": {
-          "account": "enumivo.coin",
+          "account": "enu.token",
           "name": "transfer",
           "authorization": [{
               "actor": "scott",
@@ -217,7 +217,7 @@ Given this JSON, an action is irreversible (final) if `"block_num" < "last_irrev
 You can identify irreversible deposits by the following:
 
 ```
-    actions[0].action_trace.act.account == "enumivo.coin" &&
+    actions[0].action_trace.act.account == "enu.token" &&
     actions[0].action_trace.act.name == "transfer" &&
     actions[0].action_trace.act.data.quantity == "X.0000 ENU" &&
     actions[0].action_trace.to == "exchange" && 
@@ -236,7 +236,7 @@ other contracts with "transfer" actions that "notify" your account. If you do no
 then you may process "false deposits".  
 
 ```
-    actions[0].action_trace.act.account == "enumivo.coin" &&
+    actions[0].action_trace.act.account == "enu.token" &&
     actions[0].action_trace.receipt.receiver == "exchange" 
 ```
 
@@ -245,7 +245,7 @@ then you may process "false deposits".
 Now that we have received 3 deposits we should see that the exchange has a balance of 3.0000 ENU.
 
 ```
-./enucli get currency balance enumivo.coin exchange ENU
+./enucli get currency balance enu.token exchange ENU
 3.0000 ENU
 ```
 
@@ -262,10 +262,10 @@ Lets assume scott wants to withdraw `1.0000 ENU`:
 ```
 ./enucli transfer exchange scott  "1.0000 ENU"
 executed transaction: 93e785202e7502bb1383ad10e786cc20f7dd738d3fd3da38712b3fb38fb9af26  256 bytes  8k cycles
-#   enumivo.coin <= enumivo.coin::transfer        {"from":"exchange","to":"scott","quantity":"1.0000 ENU","memo":""}
+#   enu.token <= enu.token::transfer        {"from":"exchange","to":"scott","quantity":"1.0000 ENU","memo":""}
 >> transfer
-#      exchange <= enumivo.coin::transfer        {"from":"exchange","to":"scott","quantity":"1.0000 ENU","memo":""}
-#         scott <= enumivo.coin::transfer        {"from":"exchange","to":"scott","quantity":"1.0000 ENU","memo":""}
+#      exchange <= enu.token::transfer        {"from":"exchange","to":"scott","quantity":"1.0000 ENU","memo":""}
+#         scott <= enu.token::transfer        {"from":"exchange","to":"scott","quantity":"1.0000 ENU","memo":""}
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
@@ -273,7 +273,7 @@ At this stage your local `enunode` client accepted the transaction and likely br
 
 Now we can get the history and see that there are "3" new actions listed all with trx id `93e78520...` which is what
 our transfer command returned to us. Because `exchange` authorized the transaction it is informed of all accounts which
-processed and accepted the 'transfer'.  In this case the 'enumivo.coin' contract processed it and updated balances, the
+processed and accepted the 'transfer'.  In this case the 'enu.token' contract processed it and updated balances, the
 sender ('exchange') processed it and so did the receiver ('scott') and all 3 contracts/accounts approved it and/or performed
 state transitions based upon the action.
 
@@ -281,13 +281,13 @@ state transitions based upon the action.
 ./enucli get actions exchange -1 -8
 #  seq  when                              contract::action => receiver      trx id...   args
 ================================================================================================================
-#    0   2018-04-29T01:09:45.000     enumivo.coin::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
-#    1   2018-04-29T01:16:25.000     enumivo.coin::transfer => exchange      2269828c... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
-#    2   2018-04-29T01:19:54.000     enumivo.coin::transfer => exchange      213f3797... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
-#    3   2018-04-29T01:53:57.000     enumivo.coin::transfer => exchange      8b7766ac... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
-#    4   2018-04-29T01:54:17.500     enumivo.coin::transfer => enumivo.coin   93e78520... {"from":"exchange","to":"scott","quantity":"1.0000 ENU","mem...
-#    5   2018-04-29T01:54:17.500     enumivo.coin::transfer => exchange      93e78520... {"from":"exchange","to":"scott","quantity":"1.0000 ENU","mem...
-#    6   2018-04-29T01:54:17.500     enumivo.coin::transfer => scott         93e78520... {"from":"exchange","to":"scott","quantity":"1.0000 ENU","mem...
+#    0   2018-04-29T01:09:45.000     enu.token::transfer => exchange      5ec79717... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    1   2018-04-29T01:16:25.000     enu.token::transfer => exchange      2269828c... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    2   2018-04-29T01:19:54.000     enu.token::transfer => exchange      213f3797... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    3   2018-04-29T01:53:57.000     enu.token::transfer => exchange      8b7766ac... {"from":"scott","to":"exchange","quantity":"1.0000 ENU","mem...
+#    4   2018-04-29T01:54:17.500     enu.token::transfer => enu.token   93e78520... {"from":"exchange","to":"scott","quantity":"1.0000 ENU","mem...
+#    5   2018-04-29T01:54:17.500     enu.token::transfer => exchange      93e78520... {"from":"exchange","to":"scott","quantity":"1.0000 ENU","mem...
+#    6   2018-04-29T01:54:17.500     enu.token::transfer => scott         93e78520... {"from":"exchange","to":"scott","quantity":"1.0000 ENU","mem...
 ```
 
 By processing the history we can also be informed when our transaction was confirmed. In practice it may be useful to embed an exchange-specify memo

@@ -16,8 +16,8 @@
 #include <noop/noop.wast.hpp>
 #include <noop/noop.abi.hpp>
 
-#include <enumivo.system/enumivo.system.wast.hpp>
-#include <enumivo.system/enumivo.system.abi.hpp>
+#include <enu.system/enu.system.wast.hpp>
+#include <enu.system/enu.system.abi.hpp>
 
 #include <fc/io/fstream.hpp>
 
@@ -1035,9 +1035,9 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
 
  } FC_LOG_AND_RETHROW()
 
-// abi_serializer::to_variant failed because enumivo_system_abi modified via set_abi.
+// abi_serializer::to_variant failed because enu_system_abi modified via set_abi.
 // This test also verifies that chain_initializer::enu_contract_abi() does not conflict
-// with enumivo_system_abi as they are not allowed to contain duplicates.
+// with enu_system_abi as they are not allowed to contain duplicates.
 BOOST_FIXTURE_TEST_CASE(enumivo_abi, TESTER) try {
    produce_blocks(2);
 

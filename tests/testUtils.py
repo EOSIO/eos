@@ -878,7 +878,7 @@ class Node(object):
         """Returns ENU currency0000 account balance from enucli get table command. Returned balance is string following syntax "98.0311 ENU". """
         assert isinstance(scope, str)
         if not self.enableMongo:
-            amount=self.getTableAccountBalance("enumivo.coin", scope)
+            amount=self.getTableAccountBalance("enu.token", scope)
             if Utils.Debug: Utils.Print("getNodeAccountEnuBalance %s %s" % (scope, amount))
             assert isinstance(amount, str)
             return amount
@@ -1921,7 +1921,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (enumivoName))
                 return False
 
-            contract="enumivo.bios"
+            contract="enu.bios"
             contractDir="contracts/%s" % (contract)
             wastFile="contracts/%s/%s.wast" % (contract, contract)
             abiFile="contracts/%s/%s.abi" % (contract, contract)
@@ -2009,28 +2009,28 @@ class Cluster(object):
                     return False
 
             enumivoTokenAccount=copy.deepcopy(enumivoAccount)
-            enumivoTokenAccount.name="enumivo.coin"
+            enumivoTokenAccount.name="enu.token"
             trans=biosNode.createAccount(enumivoTokenAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoTokenAccount.name))
                 return False
 
             enumivoRamAccount=copy.deepcopy(enumivoAccount)
-            enumivoRamAccount.name="enumivo.ram"
+            enumivoRamAccount.name="enu.ram"
             trans=biosNode.createAccount(enumivoRamAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoRamAccount.name))
                 return False
 
             enumivoRamfeeAccount=copy.deepcopy(enumivoAccount)
-            enumivoRamfeeAccount.name="enumivo.rfee"
+            enumivoRamfeeAccount.name="enu.ramfee"
             trans=biosNode.createAccount(enumivoRamfeeAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoRamfeeAccount.name))
                 return False
 
             enumivoStakeAccount=copy.deepcopy(enumivoAccount)
-            enumivoStakeAccount.name="enumivo.stk"
+            enumivoStakeAccount.name="enu.stake"
             trans=biosNode.createAccount(enumivoStakeAccount, enumivoAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (enumivoStakeAccount.name))
@@ -2040,7 +2040,7 @@ class Cluster(object):
             transId=Node.getTransId(trans)
             biosNode.waitForTransIdOnNode(transId)
 
-            contract="enumivo.coin"
+            contract="enu.token"
             contractDir="contracts/%s" % (contract)
             wastFile="contracts/%s/%s.wast" % (contract, contract)
             abiFile="contracts/%s/%s.abi" % (contract, contract)
@@ -2088,7 +2088,7 @@ class Cluster(object):
                             (expectedAmount, actualAmount))
                 return False
 
-            contract="enumivo.system"
+            contract="enu.system"
             contractDir="contracts/%s" % (contract)
             wastFile="contracts/%s/%s.wast" % (contract, contract)
             abiFile="contracts/%s/%s.abi" % (contract, contract)

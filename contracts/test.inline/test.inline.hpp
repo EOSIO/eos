@@ -1,6 +1,6 @@
-#include <enumivolib/enumivo.hpp>
-#include <enumivolib/privileged.h>
-#include <enumivolib/producer_schedule.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/privileged.h>
+#include <enulib/producer_schedule.hpp>
 
 namespace enumivo {
 

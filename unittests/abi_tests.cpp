@@ -526,11 +526,11 @@ struct abi_gen_helper {
 
   bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
 
-    std::string include_param = std::string("-I") + enumivolib_path;
+    std::string include_param = std::string("-I") + enulib_path;
     std::string pfr_include_param = std::string("-I") + pfr_include_path;
     std::string boost_include_param = std::string("-I") + boost_include_path;
-    std::string stdcpp_include_param = std::string("-I") + enumivolib_path + "/libc++/upstream/include";
-    std::string stdc_include_param = std::string("-I") + enumivolib_path +  "/musl/upstream/include";
+    std::string stdcpp_include_param = std::string("-I") + enulib_path + "/libc++/upstream/include";
+    std::string stdc_include_param = std::string("-I") + enulib_path +  "/musl/upstream/include";
 
     abi_def output;
 
@@ -574,7 +574,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_unknown_type, abi_gen_helper)
 { try {
 
    const char* unknown_type = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
    //@abi action
    struct transfer {
       uint64_t param1;
@@ -591,10 +591,10 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
 
    const char* all_types = R"=====(
    #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
-   #include <enumivolib/types.hpp>
-   #include <enumivolib/varint.hpp>
-   #include <enumivolib/asset.hpp>
-   #include <enumivolib/time.hpp>
+   #include <enulib/types.hpp>
+   #include <enulib/varint.hpp>
+   #include <enulib/asset.hpp>
+   #include <enulib/time.hpp>
 
    using namespace enumivo;
 
@@ -742,7 +742,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_base, abi_gen_helper)
 { try {
 
    const char* double_base = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    struct A {
       uint64_t param3;
@@ -766,7 +766,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
 { try {
 
    const char* double_action = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    struct A {
       uint64_t param3;
@@ -830,7 +830,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
 { try {
 
    const char* all_indexes = R"=====(
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
    #include <string>
 
    using namespace enumivo;
@@ -983,7 +983,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_unable_to_determine_index, abi_gen_helper)
 { try {
 
    const char* unable_to_determine_index = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    //@abi table
    struct table1 {
@@ -1003,7 +1003,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_field_name, abi_gen_helper)
    //TODO: full action / full table
   // typedef fixed_string16 FieldName;
    const char* long_field_name = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    //@abi table
    struct table1 {
@@ -1020,7 +1020,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_type_name, abi_gen_helper)
 { try {
 
    const char* long_type_name = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    struct this_is_a_very_very_very_very_long_type_name {
       uint64_t field;
@@ -1042,7 +1042,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_same_type_different_namespace, abi_gen_helper)
 { try {
 
    const char* same_type_different_namespace = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    namespace A {
      //@abi table
@@ -1068,7 +1068,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_bad_index_type, abi_gen_helper)
 { try {
 
    const char* bad_index_type = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    //@abi table table1 i128i128
    struct table1 {
@@ -1087,7 +1087,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
 { try {
 
    const char* full_table_decl = R"=====(
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
 
    //@abi table table1 i64
    class table1 {
@@ -1141,7 +1141,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_str_table_decl, abi_gen_helper)
 { try {
 
    const char* str_table_decl = R"=====(
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
    #include <string>
 
    //@abi table
@@ -1192,7 +1192,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_union_table, abi_gen_helper)
 { try {
 
    const char* union_table = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    //@abi table
    union table1 {
@@ -1210,7 +1210,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_same_action_different_type, abi_gen_helper)
 { try {
 
    const char* same_action_different_type = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    //@abi action action1
    struct table1 {
@@ -1231,7 +1231,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_template_base, abi_gen_helper)
 { try {
 
    const char* template_base = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
    template<typename T>
    class base {
@@ -1291,7 +1291,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
 { try {
 
    const char* action_and_table = R"=====(
-   #include <enumivolib/types.h>
+   #include <enulib/types.h>
 
   /* @abi table
    * @abi action
@@ -1343,7 +1343,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
 { try {
 
    const char* simple_typedef = R"=====(
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
 
    using namespace enumivo;
 
@@ -1406,7 +1406,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
 { try {
 
    const char* field_typedef = R"=====(
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
 
    using namespace enumivo;
 
@@ -1487,7 +1487,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
    const char* abigen_vector_of_POD = R"=====(
    #include <vector>
    #include <string>
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
 
    using namespace enumivo;
    using namespace std;
@@ -1555,7 +1555,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
    const char* abigen_vector_of_structs = R"=====(
    #include <vector>
    #include <string>
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
 
    using namespace enumivo;
    using namespace std;
@@ -1639,7 +1639,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension, abi_gen_helper)
    const char* abigen_vector_multidimension = R"=====(
    #include <vector>
    #include <string>
-   #include <enumivolib/types.hpp>
+   #include <enulib/types.hpp>
 
    using namespace enumivo;
    using namespace std;
@@ -1662,8 +1662,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_alias, abi_gen_helper)
    const char* abigen_vector_alias = R"=====(
    #include <string>
    #include <vector>
-   #include <enumivolib/types.hpp>
-   #include <enumivolib/print.hpp>
+   #include <enulib/types.hpp>
+   #include <enulib/print.hpp>
 
    using namespace std;
 
@@ -1732,8 +1732,8 @@ BOOST_FIXTURE_TEST_CASE(abgigen_enumivoabi_macro, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <enumivolib/enumivo.hpp>
-      #include <enumivolib/print.hpp>
+      #include <enulib/enu.hpp>
+      #include <enulib/print.hpp>
 
 
       using namespace enumivo;
@@ -1791,8 +1791,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_contract_inheritance, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <enumivolib/enumivo.hpp>
-      #include <enumivolib/print.hpp>
+      #include <enulib/enu.hpp>
+      #include <enulib/print.hpp>
 
 
       using namespace enumivo;

@@ -3,19 +3,19 @@
 #include <enumivo/chain/abi_serializer.hpp>
 #include <enumivo/chain/wast_to_wasm.hpp>
 
-#include <enumivo.msig/enumivo.msig.wast.hpp>
-#include <enumivo.msig/enumivo.msig.abi.hpp>
+#include <enu.msig/enu.msig.wast.hpp>
+#include <enu.msig/enu.msig.abi.hpp>
 
 #include <exchange/exchange.wast.hpp>
 #include <exchange/exchange.abi.hpp>
 
 #include <test_api/test_api.wast.hpp>
 
-#include <enumivo.system/enumivo.system.wast.hpp>
-#include <enumivo.system/enumivo.system.abi.hpp>
+#include <enu.system/enu.system.wast.hpp>
+#include <enu.system/enu.system.abi.hpp>
 
-#include <enumivo.coin/enumivo.coin.wast.hpp>
-#include <enumivo.coin/enumivo.coin.abi.hpp>
+#include <enu.token/enu.token.wast.hpp>
+#include <enu.token/enu.token.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -29,24 +29,24 @@ using namespace fc;
 
 using mvo = fc::mutable_variant_object;
 
-class enumivo_msig_tester : public tester {
+class enu_msig_tester : public tester {
 public:
 
-   enumivo_msig_tester() {
-      create_accounts( { N(enumivo.msig), N(enumivo.stk), N(enumivo.ram), N(enumivo.rfee), N(alice), N(bob), N(carol) } );
+   enu_msig_tester() {
+      create_accounts( { N(enu.msig), N(enu.stake), N(enu.ram), N(enu.ramfee), N(alice), N(bob), N(carol) } );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                             config::system_account_name,  mutable_variant_object()
-                                            ("account", "enumivo.msig")
+                                            ("account", "enu.msig")
                                             ("is_priv", 1)
       );
 
-      set_code( N(enumivo.msig), enumivo_msig_wast );
-      set_abi( N(enumivo.msig), enumivo_msig_abi );
+      set_code( N(enu.msig), enu_msig_wast );
+      set_abi( N(enu.msig), enu_msig_abi );
 
       produce_blocks();
-      const auto& accnt = control->db().get<account_object,by_name>( N(enumivo.msig) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(enu.msig) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -102,14 +102,14 @@ public:
       base_tester::push_action(contract, N(create), contract, act );
    }
    void issue( name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.coin), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(enu.token), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", amount )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(enumivo.coin), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(enu.token), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
@@ -121,7 +121,7 @@ public:
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
       const auto& db  = control->db();
-      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(enumivo.coin), act, N(accounts)));
+      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(enu.token), act, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
@@ -140,7 +140,7 @@ public:
       vector<account_name> accounts;
       if( auth )
          accounts.push_back( signer );
-      auto trace = base_tester::push_action( N(enumivo.msig), name, accounts, data );
+      auto trace = base_tester::push_action( N(enu.msig), name, accounts, data );
       produce_block();
       BOOST_REQUIRE_EQUAL( true, chain_has_transaction(trace->id) );
       return trace;
@@ -149,7 +149,7 @@ public:
          string action_type_name = abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(enumivo.msig);
+         act.account = N(enu.msig);
          act.name = name;
          act.data = abi_ser.variant_to_binary( action_type_name, data );
          //std::cout << "test:\n" << fc::to_hex(act.data.data(), act.data.size()) << " size = " << act.data.size() << std::endl;
@@ -163,7 +163,7 @@ public:
    abi_serializer abi_ser;
 };
 
-transaction enumivo_msig_tester::reqauth( account_name from, const vector<permission_level>& auths ) {
+transaction enu_msig_tester::reqauth( account_name from, const vector<permission_level>& auths ) {
    fc::variants v;
    for ( auto& level : auths ) {
       v.push_back(fc::mutable_variant_object()
@@ -191,9 +191,9 @@ transaction enumivo_msig_tester::reqauth( account_name from, const vector<permis
    return trx;
 }
 
-BOOST_AUTO_TEST_SUITE(enumivo_msig_tests)
+BOOST_AUTO_TEST_SUITE(enu_msig_tests)
 
-BOOST_FIXTURE_TEST_CASE( propose_approve_execute, enumivo_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_approve_execute, enu_msig_tester ) try {
    auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
 
    push_action( N(alice), N(propose), mvo()
@@ -234,7 +234,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, enumivo_msig_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, enumivo_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, enu_msig_tester ) try {
    auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
 
    push_action( N(alice), N(propose), mvo()
@@ -268,7 +268,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, enumivo_msig_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, enumivo_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, enu_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name }, { N(bob), config::active_name } } );
    push_action( N(alice), N(propose), mvo()
                   ("proposer",      "alice")
@@ -316,7 +316,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, enumivo_msig_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, enumivo_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, enu_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name },  { N(bob), config::active_name } } );
    //try with not enough requested auth
    BOOST_REQUIRE_EXCEPTION( push_action( N(alice), N(propose), mvo()
@@ -332,7 +332,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, enumivo_msig_tester 
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( big_transaction, enumivo_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( big_transaction, enu_msig_tester ) try {
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
    auto wasm = wast_to_wasm( exchange_wast );
 
@@ -396,7 +396,7 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, enumivo_msig_tester ) try {
 
 
 
-BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enu_msig_tester ) try {
 
    // required to set up the link between (enumivo active) and (enumivo.prods active)
    //
@@ -414,17 +414,17 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
    set_producers( {N(alice),N(bob),N(carol)} );
    produce_blocks(50);
 
-   create_accounts( { N(enumivo.coin) } );
-   set_code( N(enumivo.coin), enumivo_coin_wast );
-   set_abi( N(enumivo.coin), enumivo_coin_abi );
+   create_accounts( { N(enu.token) } );
+   set_code( N(enu.token), enu_token_wast );
+   set_abi( N(enu.token), enu_token_abi );
 
-   create_currency( N(enumivo.coin), config::system_account_name, core_from_string("10000000000.0000") );
+   create_currency( N(enu.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enumivo.stk") + get_balance("enumivo.ram") );
+                        get_balance("enumivo") + get_balance("enu.ramfee") + get_balance("enu.stake") + get_balance("enu.ram") );
 
-   set_code( config::system_account_name, enumivo_system_wast );
-   set_abi( config::system_account_name, enumivo_system_abi );
+   set_code( config::system_account_name, enu_system_wast );
+   set_abi( config::system_account_name, enu_system_abi );
 
    produce_blocks();
 
@@ -433,7 +433,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
    create_account_with_resources( N(carol1111111), N(enumivo), core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enumivo.stk") + get_balance("enumivo.ram") );
+                        get_balance("enumivo") + get_balance("enu.ramfee") + get_balance("enu.stake") + get_balance("enu.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
@@ -514,7 +514,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enumivo_msig_tester
    );
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enu_msig_tester ) try {
 
    // set up the link between (enumivo active) and (enumivo.prods active)
    set_authority(N(enumivo), "active", authority(1,
@@ -526,16 +526,16 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
    set_producers( {N(alice),N(bob),N(carol), N(apple)} );
    produce_blocks(50);
 
-   create_accounts( { N(enumivo.coin) } );
-   set_code( N(enumivo.coin), enumivo_coin_wast );
-   set_abi( N(enumivo.coin), enumivo_coin_abi );
+   create_accounts( { N(enu.token) } );
+   set_code( N(enu.token), enu_token_wast );
+   set_abi( N(enu.token), enu_token_abi );
 
-   create_currency( N(enumivo.coin), config::system_account_name, core_from_string("10000000000.0000") );
+   create_currency( N(enu.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) );
 
-   set_code( config::system_account_name, enumivo_system_wast );
-   set_abi( config::system_account_name, enumivo_system_abi );
+   set_code( config::system_account_name, enu_system_wast );
+   set_abi( config::system_account_name, enu_system_abi );
 
    produce_blocks();
 
@@ -544,7 +544,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enumivo_msig_test
    create_account_with_resources( N(carol1111111), N(enumivo), core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enumivo.stk") + get_balance("enumivo.ram") );
+                        get_balance("enumivo") + get_balance("enu.ramfee") + get_balance("enu.stake") + get_balance("enu.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};

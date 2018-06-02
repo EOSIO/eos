@@ -2,16 +2,16 @@
  * @file action_test.cpp
  * @copyright defined in enumivo/LICENSE.txt
  */
-#include <enumivolib/action.hpp>
-#include <enumivolib/transaction.hpp>
-#include <enumivolib/chain.h>
-#include <enumivolib/db.h>
-#include <enumivolib/crypto.h>
-#include <enumivolib/privileged.h>
-#include <enumivolib/enumivo.hpp>
-#include <enumivolib/datastream.hpp>
-#include <enumivolib/print.hpp>
-#include <enumivolib/compiler_builtins.h>
+#include <enulib/action.hpp>
+#include <enulib/transaction.hpp>
+#include <enulib/chain.h>
+#include <enulib/db.h>
+#include <enulib/crypto.h>
+#include <enulib/privileged.h>
+#include <enulib/enu.hpp>
+#include <enulib/datastream.hpp>
+#include <enulib/print.hpp>
+#include <enulib/compiler_builtins.h>
 #include "test_api.hpp"
 
 void test_action::read_action_normal() {

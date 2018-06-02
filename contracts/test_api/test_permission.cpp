@@ -2,14 +2,14 @@
  * @file action_test.cpp
  * @copyright defined in enumivo/LICENSE.txt
  */
-#include <enumivolib/permission.h>
-#include <enumivolib/db.h>
+#include <enulib/permission.h>
+#include <enulib/db.h>
 
-#include <enumivolib/enumivo.hpp>
-#include <enumivolib/print.hpp>
-#include <enumivolib/compiler_builtins.h>
-#include <enumivolib/serialize.hpp>
-#include <enumivolib/action.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/print.hpp>
+#include <enulib/compiler_builtins.h>
+#include <enulib/serialize.hpp>
+#include <enulib/action.hpp>
 
 #include "test_api.hpp"
 

@@ -4,10 +4,10 @@
  */
 #pragma once
 
-#include <enumivolib/enumivo.hpp>
-#include <enumivolib/token.hpp>
-#include <enumivolib/reflect.hpp>
-#include <enumivolib/generic_currency.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/token.hpp>
+#include <enulib/reflect.hpp>
+#include <enulib/generic_currency.hpp>
 
 #include <bancor/converter.hpp>
 #include <currency/currency.hpp>

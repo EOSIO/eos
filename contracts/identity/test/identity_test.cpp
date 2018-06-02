@@ -1,6 +1,6 @@
-#include <enumivolib/action.h>
-#include <enumivolib/contract.hpp>
-#include <enumivolib/dispatcher.hpp>
+#include <enulib/action.h>
+#include <enulib/contract.hpp>
+#include <enulib/dispatcher.hpp>
 #include <identity/interface.hpp>
 
 namespace identity_test {

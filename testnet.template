@@ -85,7 +85,7 @@ wcmd create -n ignition
 ###INSERT cacmd
 
 
-ecmd set contract enumivo contracts/enumivo.bios contracts/enumivo.bios/enumivo.bios.wast contracts/enumivo.bios/enumivo.bios.abi
+ecmd set contract enumivo contracts/enu.bios contracts/enu.bios/enu.bios.wast contracts/enu.bios/enu.bios.abi
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
 echo ===== Start: $step ============ >> $logfile
@@ -95,7 +95,7 @@ programs/enucli/enucli  --wallet-url $wdurl --url http://$bioshost:$biosport pus
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract enumivo contracts/enumivo.system contracts/enumivo.system/enumivo.system.wast contracts/enumivo.system/enumivo.system.abi
+ecmd set contract enumivo contracts/enu.system contracts/enu.system/enu.system.wast contracts/enu.system/enu.system.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: enucli  --wallet-url $wdurl --url http://$bioshost:$biosport push action enumivo issue '{"to":"enumivo","quantity":"1000000000.0000 ENU","memo":"init"}' -p enumivo@active | tee -a $logfile

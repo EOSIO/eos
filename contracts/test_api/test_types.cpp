@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in enumivo/LICENSE.txt
  */
-#include <enumivolib/enumivo.hpp>
+#include <enulib/enu.hpp>
 
 #include "test_api.hpp"
 

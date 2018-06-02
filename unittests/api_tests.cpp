@@ -44,8 +44,8 @@
 #include <test_api_db/test_api_db.wast.hpp>
 #include <test_api_multi_index/test_api_multi_index.wast.hpp>
 
-#include <enumivo.bios/enumivo.bios.wast.hpp>
-#include <enumivo.bios/enumivo.bios.abi.hpp>
+#include <enu.bios/enu.bios.wast.hpp>
+#include <enu.bios/enu.bios.abi.hpp>
 
 #define DISABLE_ENULIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
@@ -273,10 +273,10 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
       BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
       BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
    }
-   set_code( config::system_account_name, enumivo_bios_wast );
+   set_code( config::system_account_name, enu_bios_wast );
 
-	set_code( N(testapi), enumivo_bios_wast );
-   set_abi(N(testapi), enumivo_bios_abi);
+	set_code( N(testapi), enu_bios_wast );
+   set_abi(N(testapi), enu_bios_abi);
 	set_code( N(testapi), test_api_wast );
 	res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
    BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 4);

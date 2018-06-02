@@ -3,9 +3,9 @@
  * @copyright defined in enumivo/LICENSE.txt
  */
 
-#include <enumivolib/enumivo.hpp>
-#include <enumivolib/crypto.h>
-#include <enumivolib/print.h>
+#include <enulib/enu.hpp>
+#include <enulib/crypto.h>
+#include <enulib/print.h>
 #include "test_api.hpp"
 
 #include <vector>

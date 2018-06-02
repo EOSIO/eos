@@ -1,4 +1,4 @@
-#include <enumivolib/enumivo.hpp>
+#include <enulib/enu.hpp>
 
 using namespace enumivo;
 

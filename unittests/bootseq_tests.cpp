@@ -2,15 +2,15 @@
 #include <enumivo/testing/tester.hpp>
 #include <enumivo/chain/abi_serializer.hpp>
 
-#include <enumivo.system/enumivo.system.wast.hpp>
-#include <enumivo.system/enumivo.system.abi.hpp>
+#include <enu.system/enu.system.wast.hpp>
+#include <enu.system/enu.system.abi.hpp>
 // These contracts are still under dev
-#include <enumivo.bios/enumivo.bios.wast.hpp>
-#include <enumivo.bios/enumivo.bios.abi.hpp>
-#include <enumivo.coin/enumivo.coin.wast.hpp>
-#include <enumivo.coin/enumivo.coin.abi.hpp>
-#include <enumivo.msig/enumivo.msig.wast.hpp>
-#include <enumivo.msig/enumivo.msig.abi.hpp>
+#include <enu.bios/enu.bios.wast.hpp>
+#include <enu.bios/enu.bios.abi.hpp>
+#include <enu.token/enu.token.wast.hpp>
+#include <enu.token/enu.token.abi.hpp>
+#include <enu.msig/enu.msig.wast.hpp>
+#include <enu.msig/enu.msig.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -156,7 +156,7 @@ public:
     }
 
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(enumivo.coin), symbol(CORE_SYMBOL), act);
+         return get_currency_balance(N(enu.token), symbol(CORE_SYMBOL), act);
     }
 
     void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr) {
@@ -181,33 +181,33 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
-        // Create enumivo.msig and enumivo.coin
-        create_accounts({N(enumivo.msig), N(enumivo.coin), N(enumivo.ram), N(enumivo.rfee), N(enumivo.stk), N(enumivo.vpay), N(enumivo.bpay), N(enumivo.save) });
+        // Create enu.msig and enu.token
+        create_accounts({N(enu.msig), N(enu.token), N(enu.ram), N(enu.ramfee), N(enu.stake), N(enu.votepay), N(enu.blockpay), N(enu.savings) });
 
         // Set code for the following accounts:
-        //  - enumivo (code: enumivo.bios) (already set by tester constructor)
-        //  - enumivo.msig (code: enumivo.msig)
-        //  - enumivo.coin (code: enumivo.coin)
-        set_code_abi(N(enumivo.msig), enumivo_msig_wast, enumivo_msig_abi);//, &enumivo_active_pk);
-        set_code_abi(N(enumivo.coin), enumivo_coin_wast, enumivo_coin_abi); //, &enumivo_active_pk);
+        //  - enumivo (code: enu.bios) (already set by tester constructor)
+        //  - enu.msig (code: enu.msig)
+        //  - enu.token (code: enu.token)
+        set_code_abi(N(enu.msig), enu_msig_wast, enu_msig_abi);//, &enumivo_active_pk);
+        set_code_abi(N(enu.token), enu_token_wast, enu_token_abi); //, &enumivo_active_pk);
 
-        // Set privileged for enumivo.msig and enumivo.coin
-        set_privileged(N(enumivo.msig));
-        set_privileged(N(enumivo.coin));
+        // Set privileged for enu.msig and enu.token
+        set_privileged(N(enu.msig));
+        set_privileged(N(enu.token));
 
-        // Verify enumivo.msig and enumivo.coin is privileged
-        const auto& enumivo_msig_acc = get<account_object, by_name>(N(enumivo.msig));
-        BOOST_TEST(enumivo_msig_acc.privileged == true);
-        const auto& enumivo_coin_acc = get<account_object, by_name>(N(enumivo.coin));
-        BOOST_TEST(enumivo_coin_acc.privileged == true);
+        // Verify enu.msig and enu.token is privileged
+        const auto& enu_msig_acc = get<account_object, by_name>(N(enu.msig));
+        BOOST_TEST(enu_msig_acc.privileged == true);
+        const auto& enu_token_acc = get<account_object, by_name>(N(enu.token));
+        BOOST_TEST(enu_token_acc.privileged == true);
 
 
-        // Create ENU tokens in enumivo.coin, set its manager as enumivo
+        // Create ENU tokens in enu.token, set its manager as enumivo
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
-        create_currency(N(enumivo.coin), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion ENU tokens to enumivo.system
-        issue(N(enumivo.coin), config::system_account_name, config::system_account_name, initial_supply);
+        create_currency(N(enu.token), config::system_account_name, max_supply);
+        // Issue the genesis supply of 1 billion ENU tokens to enu.system
+        issue(N(enu.token), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -217,8 +217,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            create_account( a.aname, N(enumivo) );
         }
 
-        // Set enumivo.system to enumivo
-        set_code_abi(N(enumivo), enumivo_system_wast, enumivo_system_abi);
+        // Set enu.system to enumivo
+        set_code_abi(N(enumivo), enu_system_wast, enu_system_abi);
 
         // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(N(enumivo), a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(enumivo.stk), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth(N(enu.stake), a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 

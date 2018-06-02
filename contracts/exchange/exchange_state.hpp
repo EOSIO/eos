@@ -1,6 +1,6 @@
 #pragma once
 
-#include <enumivolib/asset.hpp>
+#include <enulib/asset.hpp>
 
 namespace enumivo {
 

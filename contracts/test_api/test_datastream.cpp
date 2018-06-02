@@ -1,6 +1,6 @@
 
-#include <enumivolib/enumivo.hpp>
-#include <enumivolib/datastream.hpp>
+#include <enulib/enu.hpp>
+#include <enulib/datastream.hpp>
 #include <cmath>
 
 #include "test_api.hpp"

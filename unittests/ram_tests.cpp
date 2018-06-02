@@ -14,7 +14,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 
-#include "enumivo_system_tester.hpp"
+#include "enu_system_tester.hpp"
 
 #include <test_ram_limit/test_ram_limit.abi.hpp>
 #include <test_ram_limit/test_ram_limit.wast.hpp>
@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
 /*************************************************************************************
  * ram_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try {
+BOOST_FIXTURE_TEST_CASE(ram_tests, enu_system::enu_system_tester) { try {
    auto init_request_bytes = 80000;
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;
@@ -42,7 +42,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enumivo_system::enumivo_system_tester) { try 
    create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes);
    create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes + 1150);
    produce_blocks(10);
-   BOOST_REQUIRE_EQUAL( success(), stake( "enumivo.stk", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "enu.stake", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {

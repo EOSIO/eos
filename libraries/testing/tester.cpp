@@ -4,8 +4,8 @@
 #include <enumivo/chain/wast_to_wasm.hpp>
 #include <enumivo/chain/enumivo_contract.hpp>
 
-#include <enumivo.bios/enumivo.bios.wast.hpp>
-#include <enumivo.bios/enumivo.bios.abi.hpp>
+#include <enu.bios/enu.bios.wast.hpp>
+#include <enu.bios/enu.bios.abi.hpp>
 
 enumivo::chain::asset core_from_string(const std::string& s) {
   return enumivo::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
@@ -757,9 +757,9 @@ namespace enumivo { namespace testing {
    }
 
    void base_tester::push_genesis_block() {
-      set_code(config::system_account_name, enumivo_bios_wast);
+      set_code(config::system_account_name, enu_bios_wast);
 
-      set_abi(config::system_account_name, enumivo_bios_abi);
+      set_abi(config::system_account_name, enu_bios_abi);
       //produce_block();
    }
 

@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in enumivo/LICENSE.txt
  */
-#include <enumivo.hpp>
+#include <enu.hpp>
 
 /**
  *  The purpose of this contract is to implement something like Steem on ENU, this
