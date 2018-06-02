@@ -827,7 +827,7 @@ struct create_account_subcommand {
    string active_key_str;
    string stake_net;
    string stake_cpu;
-   uint32_t buy_ram_bytes_in_kbytes = 8;
+   uint32_t buy_ram_bytes_in_kbytes = 0;
    string buy_ram_eos;
    bool transfer;
    bool simple;
@@ -844,9 +844,9 @@ struct create_account_subcommand {
                                    (localized("The amount of EOS delegated for net bandwidth")))->required();
          createAccount->add_option("--stake-cpu", stake_cpu,
                                    (localized("The amount of EOS delegated for CPU bandwidth")))->required();
-         createAccount->add_option("--buy-ram-bytes", buy_ram_bytes_in_kbytes,
+         createAccount->add_option("--buy-ram-kbytes", buy_ram_bytes_in_kbytes,
                                    (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
-         createAccount->add_option("--buy-ram-EOS", buy_ram_eos,
+         createAccount->add_option("--buy-ram", buy_ram_eos,
                                    (localized("The amount of RAM bytes to purchase for the new account in EOS")));
          createAccount->add_flag("--transfer", transfer,
                                  (localized("Transfer voting power and right to unstake EOS to receiver")));
@@ -866,10 +866,20 @@ struct create_account_subcommand {
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
+               if ( buy_ram_eos.empty() && buy_ram_bytes_in_kbytes == 0) {
+                  std::cerr << "ERROR: Either --buy-ram or --buy-ram-kbytes with non-zero value is required" << std::endl;
+                  return;
+               }
                action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
-               action delegate = create_delegate( creator, account_name, to_asset(stake_net), to_asset(stake_cpu), transfer);
-               send_actions( { create, buyram, delegate } );
+               auto net = to_asset(stake_net);
+               auto cpu = to_asset(stake_cpu);
+               if ( net.get_amount() != 0 || cpu.get_amount() != 0 ) {
+                  action delegate = create_delegate( creator, account_name, net, cpu, transfer);
+                  send_actions( { create, buyram, delegate } );
+               } else {
+                  send_actions( { create, buyram } );
+               }
             } else {
                send_actions( { create } );
             }
@@ -2115,12 +2125,31 @@ int main( int argc, char** argv ) {
    });
 
    // list keys
-   auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
+   auto listKeys = wallet->add_subcommand("keys", localized("List of public keys from all unlocked wallets."), false);
    listKeys->set_callback([] {
       // wait for keosd to come up
       try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
 
-      const auto& v = call(wallet_url, wallet_list_keys);
+      const auto& v = call(wallet_url, wallet_public_keys);
+      std::cout << fc::json::to_pretty_string(v) << std::endl;
+   });
+
+   // list private keys
+   auto listPrivKeys = wallet->add_subcommand("private_keys", localized("List of private keys from an unlocked wallet in wif or PVT_R1 format."), false);
+   listPrivKeys->add_option("-n,--name", wallet_name, localized("The name of the wallet to list keys from"), true);
+   listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+   listPrivKeys->set_callback([&wallet_name, &wallet_pw] {
+      if( wallet_pw.size() == 0 ) {
+         std::cout << localized("password: ");
+         fc::set_console_echo(false);
+         std::getline( std::cin, wallet_pw, '\n' );
+         fc::set_console_echo(true);
+      }
+      // wait for keosd to come up
+      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
+
+      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
+      const auto& v = call(wallet_url, wallet_list_keys, vs);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 

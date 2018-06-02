@@ -327,6 +327,16 @@ void wallet_api::unlock(string password)
 } EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
+void wallet_api::check_password(string password)
+{ try {
+   FC_ASSERT(password.size() > 0);
+   auto pw = fc::sha512::hash(password.c_str(), password.size());
+   vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+   auto pk = fc::raw::unpack<plain_keys>(decrypted);
+   FC_ASSERT(pk.checksum == pw);
+} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+                          "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
+
 void wallet_api::set_password( string password )
 {
    if( !is_new() )

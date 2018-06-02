@@ -73,9 +73,25 @@ namespace eosiosystem {
       _global.set( _gstate, _self );
    }
 
+   void system_contract::setparams( const eosio::blockchain_parameters& params ) {
+      require_auth( N(eosio) );
+      (eosio::blockchain_parameters&)(_gstate) = params;
+      eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
+      set_blockchain_parameters( params );
+   }
+
    void system_contract::setpriv( account_name account, uint8_t ispriv ) {
       require_auth( _self );
       set_privileged( account, ispriv );
+   }
+
+   void system_contract::rmvproducer( account_name producer ) {
+      require_auth( _self );
+      auto prod = _producers.find( producer );
+      eosio_assert( prod != _producers.end(), "producer not found" );
+      _producers.modify( prod, 0, [&](auto& p) {
+            p.deactivate();
+         });
    }
 
    void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
@@ -101,7 +117,7 @@ namespace eosiosystem {
       } else {
          eosio_assert( current->high_bid > 0, "this auction has already closed" );
          eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
-         eosio_assert( current->high_bidder != bidder, "account is already high bidder" );
+         eosio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.names),N(active)},
                                                        { N(eosio.names), current->high_bidder, asset(current->high_bid),
@@ -119,13 +135,10 @@ namespace eosiosystem {
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
     *
-    *  1. accounts cannot contain '.' symbols which forces all acccounts to be 12
-    *  characters long without '.' until a future account auction process is implemented
-    *  which prevents name squatting.
+    *  Account names containing '.' symbols must have a suffix equal to the name of the creator.
+    *  This allows users who buy a premium name (shorter than 12 characters with no dots) to be the only ones
+    *  who can create accounts with the creator's name as a suffix.
     *
-    *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
-    *     therefore, this method will execute an inline buyram from receiver for newacnt in
-    *     an amount equal to the current new account creation fee.
     */
    void native::newaccount( account_name     creator,
                             account_name     newact
@@ -141,13 +154,13 @@ namespace eosiosystem {
            has_dot |= !(tmp & 0x1f);
            tmp >>= 5;
          }
-         auto suffix = eosio::name_suffix(newact);
-         if( has_dot ) {
+         if( has_dot ) { // or is less than 12 characters
+            auto suffix = eosio::name_suffix(newact);
             if( suffix == newact ) {
                name_bid_table bids(_self,_self);
                auto current = bids.find( newact );
                eosio_assert( current != bids.end(), "no active bid for name" );
-               eosio_assert( current->high_bidder == creator, "only high bidder can claim" );
+               eosio_assert( current->high_bidder == creator, "only highest bidder can claim" );
                eosio_assert( current->high_bid < 0, "auction for name is not closed yet" );
                bids.erase( current );
             } else {
@@ -165,30 +178,18 @@ namespace eosiosystem {
       set_resource_limits( newact, 0, 0, 0 );
    }
 
-   void system_contract::setparams( const eosio_parameters& params ) {
-      require_auth( N(eosio) );
-      (eosiosystem::eosio_parameters&)(_gstate) = params;
-      eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
-      set_blockchain_parameters( params );
-   }
-
 } /// eosio.system
 
 
 EOSIO_ABI( eosiosystem::system_contract,
-     (setram)
-     // delegate_bandwith.cpp
-     (delegatebw)(undelegatebw)(refund)
-     (buyram)(buyrambytes)(sellram)
+     // native.hpp (newaccount definition is actually in eosio.system.cpp)
+     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
+     // eosio.system.cpp
+     (setram)(setparams)(setpriv)(rmvproducer)(bidname)
+     // delegate_bandwidth.cpp
+     (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
      // voting.cpp
+     (regproducer)(unregprod)(voteproducer)(regproxy)
      // producer_pay.cpp
-     (regproxy)(regproducer)(unregprod)(voteproducer)
-     (claimrewards)
-     // native.hpp
-     (onblock)
-     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
-     //this file
-     (bidname)
-     (setpriv)
-     (setparams)
+     (onblock)(claimrewards)
 )

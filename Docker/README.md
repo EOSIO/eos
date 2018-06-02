@@ -20,10 +20,10 @@ cd eos/Docker
 docker build . -t eosio/eos
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the dawn-v4.0.0 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.0 tag, you could do the following:
 
 ```bash
-docker build -t eosio/eos:dawn-v4.0.0 --build-arg branch=dawn-v4.0.0 .
+docker build -t eosio/eos:v1.0.0 --build-arg branch=v1.0.0 .
 ```
 
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
@@ -35,7 +35,7 @@ docker build -t eosio/eos --build-arg symbol=<symbol> .
 ## Start nodeos docker container only
 
 ```bash
-docker run --name nodeos -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
+docker run --name nodeos -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e arg1 arg2
 ```
 
 By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
@@ -49,7 +49,7 @@ $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5
 Alternately, you can directly mount host directory into the container
 
 ```bash
-docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
+docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e arg1 arg2
 ```
 
 ## Get chain info
@@ -142,7 +142,7 @@ version: "3"
 services:
   nodeosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh
+    command: /opt/eosio/bin/nodeosd.sh -e
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -173,28 +173,27 @@ run `docker pull eosio/eos:latest`
 
 run `docker-compose up`
 
-### Dawn 4.2 Testnet
+### EOSIO 1.0 Testnet
 
-We can easily set up a Dawn 4.2 local testnet using docker images. Just run the following commands:
+We can easily set up a EOSIO 1.0 local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 
 ```
 # pull images
-docker pull eosio/eos:20180528
-docker pull mongo:latest
+docker pull eosio/eos:v1.0.0
+
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
-docker volume create --name=mongo-data-volume
 # start containers
-docker-compose -f docker-compose-dawn4.2.yaml up -d
+docker-compose -f docker-compose-eosio1.0.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs -f nodeosd
 # stop containers
-docker-compose -f docker-compose-dawn4.2.yaml down
+docker-compose -f docker-compose-eosio1.0.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.

@@ -140,7 +140,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Contract account added to contract blacklist (may specify multiple times)")
          ;
 
-#warning TODO: rate limiting
+// TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
          ("per-authorized-account-transaction-msg-rate-limit", bpo::value<uint32_t>()->default_value(default_per_auth_account),
@@ -294,9 +294,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                                           my->chain_config->reversible_cache_size,
                                           my->chain_config->blocks_dir/config::reversible_blocks_dir_name ) ) {
             ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
-            fc::copy( backup_dir/config::reversible_blocks_dir_name, my->chain_config->blocks_dir/config::reversible_blocks_dir_name );
-            fc::copy( backup_dir/"reversible/shared_memory.bin", my->chain_config->blocks_dir/"reversible/shared_memory.bin" );
-            fc::copy( backup_dir/"reversible/shared_memory.meta", my->chain_config->blocks_dir/"reversible/shared_memory.meta" );
+            fc::copy( backup_dir / config::reversible_blocks_dir_name,
+                      my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
+            fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
+                      my->chain_config->blocks_dir/ config::reversible_blocks_dir_name / "shared_memory.bin" );
+            fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
+                      my->chain_config->blocks_dir/ config::reversible_blocks_dir_name / "shared_memory.meta" );
          }
       }
    } else if( options.at("replay-blockchain").as<bool>() ) {
@@ -970,7 +973,11 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    transaction pretty_input;
-   from_variant(params.transaction, pretty_input);
+   auto resolver = make_resolver(this);
+   try {
+      abi_serializer::from_variant(params.transaction, pretty_input, resolver);
+   } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
+
    auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);
    get_required_keys_result result;
    result.required_keys = required_keys_set;

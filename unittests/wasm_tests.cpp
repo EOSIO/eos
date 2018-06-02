@@ -589,7 +589,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
 
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
-#warning This test does not appear to be very robust.
+// TODO Increase the robustness of this test.
    resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
    create_accounts( {N(f_tests)} );
    create_accounts( {N(acc2)} );
@@ -1558,6 +1558,37 @@ BOOST_FIXTURE_TEST_CASE( protect_injected, TESTER ) try {
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( mem_growth_memset, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(grower)} );
+   produce_block();
+
+   action act;
+   act.account = N(grower);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(grower),config::active_name}};
+
+   set_code(N(grower), memory_growth_memset_store);
+   {
+      signed_transaction trx;
+      trx.actions.push_back(act);
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(grower), "active" ), control->get_chain_id());
+      push_transaction(trx);
+   }
+
+   produce_blocks(1);
+   set_code(N(grower), memory_growth_memset_test);
+   {
+      signed_transaction trx;
+      trx.actions.push_back(act);
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(grower), "active" ), control->get_chain_id());
+      push_transaction(trx);
+   }
+} FC_LOG_AND_RETHROW()
+
 INCBIN(fuzz1, "fuzz1.wasm");
 INCBIN(fuzz2, "fuzz2.wasm");
 INCBIN(fuzz3, "fuzz3.wasm");
@@ -1570,7 +1601,21 @@ INCBIN(fuzz9, "fuzz9.wasm");
 INCBIN(fuzz10, "fuzz10.wasm");
 INCBIN(fuzz11, "fuzz11.wasm");
 INCBIN(fuzz12, "fuzz12.wasm");
+INCBIN(fuzz13, "fuzz13.wasm");
+INCBIN(fuzz14, "fuzz14.wasm");
+INCBIN(fuzz15, "fuzz15.wasm");
 //INCBIN(fuzz13, "fuzz13.wasm");
+INCBIN(big_allocation, "big_allocation.wasm");
+INCBIN(crash_section_size_too_big, "crash_section_size_too_big.wasm");
+INCBIN(leak_no_destructor, "leak_no_destructor.wasm");
+INCBIN(leak_readExports, "leak_readExports.wasm");
+INCBIN(leak_readFunctions, "leak_readFunctions.wasm");
+INCBIN(leak_readFunctions_2, "leak_readFunctions_2.wasm");
+INCBIN(leak_readFunctions_3, "leak_readFunctions_3.wasm");
+INCBIN(leak_readGlobals, "leak_readGlobals.wasm");
+INCBIN(leak_readImports, "leak_readImports.wasm");
+INCBIN(leak_wasm_binary_cpp_L1249, "leak_wasm_binary_cpp_L1249.wasm");
+INCBIN(readFunctions_slowness_out_of_memory, "readFunctions_slowness_out_of_memory.wasm");
 
 BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    produce_blocks(2);
@@ -1626,6 +1671,18 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
       vector<uint8_t> wasm(gfuzz12Data, gfuzz12Data + gfuzz12Size);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
    }
+   {
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz14Data, gfuzz14Data + gfuzz14Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+      {
+      vector<uint8_t> wasm(gfuzz15Data, gfuzz15Data + gfuzz15Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
    /*  TODO: update wasm to have apply(...) then call, claim is that this
     *  takes 1.6 seconds under wavm...
    {
@@ -1638,11 +1695,56 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    }
    */
 
+   {
+      vector<uint8_t> wasm(gbig_allocationData, gbig_allocationData + gbig_allocationSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gcrash_section_size_too_bigData, gcrash_section_size_too_bigData + gcrash_section_size_too_bigSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_no_destructorData, gleak_no_destructorData + gleak_no_destructorSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readExportsData, gleak_readExportsData + gleak_readExportsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctionsData, gleak_readFunctionsData + gleak_readFunctionsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctions_2Data, gleak_readFunctions_2Data + gleak_readFunctions_2Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctions_3Data, gleak_readFunctions_3Data + gleak_readFunctions_3Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readGlobalsData, gleak_readGlobalsData + gleak_readGlobalsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readImportsData, gleak_readImportsData + gleak_readImportsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_wasm_binary_cpp_L1249Data, gleak_wasm_binary_cpp_L1249Data + gleak_wasm_binary_cpp_L1249Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(greadFunctions_slowness_out_of_memoryData, greadFunctions_slowness_out_of_memoryData + greadFunctions_slowness_out_of_memorySize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
 
-#warning restore net_usage_tests
+// TODO: restore net_usage_tests
 #if 0
 BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
    int count = 0;

@@ -776,12 +776,7 @@ struct controller_impl {
    void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback, bool trust  ) {
       auto p = pending->_pending_block_state;
 
-      try {
-         p->sign( signer_callback, false); //trust );
-      } catch ( ... ) {
-         edump(( fc::json::to_pretty_string( p->header ) ) );
-         throw;
-      }
+      p->sign( signer_callback, false); //trust );
 
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
@@ -876,13 +871,14 @@ struct controller_impl {
             if (except) {
                elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
 
-               while (ritr != branches.first.rend() ) {
-                  fork_db.set_validity( *ritr, false );
-                  ++ritr;
-               }
+               // ritr currently points to the block that threw
+               // if we mark it invalid it will automatically remove all forks built off it.
+               fork_db.set_validity( *ritr, false );
 
                // pop all blocks from the bad fork
-               for( auto itr = (ritr + 1).base(); itr != branches.second.end(); ++itr ) {
+               // ritr base is a forward itr to the last block successfully applied
+               auto applied_itr = ritr.base();
+               for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
                   fork_db.mark_in_current_chain( *itr , false );
                   pop_block();
                }
@@ -1047,7 +1043,7 @@ struct controller_impl {
          vector<account_name> blacklisted;
          blacklisted.reserve( actors.size() );
          set_intersection( actors.begin(), actors.end(),
-                           conf.actor_blacklist.begin(), conf.actor_whitelist.end(),
+                           conf.actor_blacklist.begin(), conf.actor_blacklist.end(),
                            std::back_inserter(blacklisted)
                          );
          EOS_ASSERT( blacklisted.size() == 0, actor_blacklist_exception,
