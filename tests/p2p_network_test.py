@@ -156,12 +156,12 @@ for i in range(len(hosts)):
     Print("host %s: %s" % (hosts[i], trans))
 
 
-wastFile="contracts/enumivo.system/enumivo.system.wast"
-abiFile="contracts/enumivo.system/enumivo.system.abi"
+wastFile="contracts/enu.system/enu.system.wast"
+abiFile="contracts/enu.system/enu.system.abi"
 Print("\nPush system contract %s %s" % (wastFile, abiFile))
 trans=node0.publishContract(enumivo.name, wastFile, abiFile, waitForTransBlock=True)
 if trans is None:
-    Utils.errorExit("Failed to publish enumivo.system.")
+    Utils.errorExit("Failed to publish enu.system.")
 else:
     Print("transaction id %s" % (node0.getTransId(trans)))
 

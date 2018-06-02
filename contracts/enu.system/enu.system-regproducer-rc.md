@@ -1,4 +1,4 @@
-# enumivo.system regproducer
+# enu.system regproducer
 
 I, {{producer}}, hereby nominate myself for consideration as an elected block producer. 
 

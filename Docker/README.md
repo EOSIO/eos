@@ -26,7 +26,7 @@ The above will build off the most recent commit to the master branch by default.
 docker build -t enumivo/enumivo:v1.0.0 --build-arg branch=v1.0.0 .
 ```
 
-By default, the symbol in enumivo.system is set to ENU. You can override this using the symbol argument while building the docker image.
+By default, the symbol in enu.system is set to ENU. You can override this using the symbol argument while building the docker image.
 
 ```bash
 docker build -t enumivo/enumivo --build-arg symbol=<symbol> .

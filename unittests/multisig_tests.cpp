@@ -11,8 +11,8 @@
 
 #include <test_api/test_api.wast.hpp>
 
-#include <enumivo.system/enumivo.system.wast.hpp>
-#include <enumivo.system/enumivo.system.abi.hpp>
+#include <enu.system/enu.system.wast.hpp>
+#include <enu.system/enu.system.abi.hpp>
 
 #include <enu.token/enu.token.wast.hpp>
 #include <enu.token/enu.token.abi.hpp>
@@ -423,8 +423,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, enu_msig_tester ) t
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
                         get_balance("enumivo") + get_balance("enumivo.rfee") + get_balance("enumivo.stk") + get_balance("enumivo.ram") );
 
-   set_code( config::system_account_name, enumivo_system_wast );
-   set_abi( config::system_account_name, enumivo_system_abi );
+   set_code( config::system_account_name, enu_system_wast );
+   set_abi( config::system_account_name, enu_system_abi );
 
    produce_blocks();
 
@@ -534,8 +534,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, enu_msig_tester )
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) );
 
-   set_code( config::system_account_name, enumivo_system_wast );
-   set_abi( config::system_account_name, enumivo_system_abi );
+   set_code( config::system_account_name, enu_system_wast );
+   set_abi( config::system_account_name, enu_system_abi );
 
    produce_blocks();
 

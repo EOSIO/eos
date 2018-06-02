@@ -17,9 +17,9 @@ vector<type_def> common_type_defs() {
    return types;
 }
 
-abi_def enumivo_contract_abi(const abi_def& enumivo_system_abi)
+abi_def enumivo_contract_abi(const abi_def& enu_system_abi)
 {
-   abi_def enu_abi(enumivo_system_abi);
+   abi_def enu_abi(enu_system_abi);
 
    if( enu_abi.version.size() == 0 ) {
       enu_abi.version = "enumivo::abi/1.0";

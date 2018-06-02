@@ -2,8 +2,8 @@
 #include <enumivo/testing/tester.hpp>
 #include <enumivo/chain/abi_serializer.hpp>
 
-#include <enumivo.system/enumivo.system.wast.hpp>
-#include <enumivo.system/enumivo.system.abi.hpp>
+#include <enu.system/enu.system.wast.hpp>
+#include <enu.system/enu.system.abi.hpp>
 // These contracts are still under dev
 #include <enu.bios/enu.bios.wast.hpp>
 #include <enu.bios/enu.bios.abi.hpp>
@@ -206,7 +206,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
         create_currency(N(enu.token), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion ENU tokens to enumivo.system
+        // Issue the genesis supply of 1 billion ENU tokens to enu.system
         issue(N(enu.token), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
@@ -217,8 +217,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            create_account( a.aname, N(enumivo) );
         }
 
-        // Set enumivo.system to enumivo
-        set_code_abi(N(enumivo), enumivo_system_wast, enumivo_system_abi);
+        // Set enu.system to enumivo
+        set_code_abi(N(enumivo), enu_system_wast, enu_system_abi);
 
         // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {

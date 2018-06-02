@@ -3,8 +3,8 @@
 #include <enumivo/chain/producer_object.hpp>
 #include <enumivo/chain/global_property_object.hpp>
 #include <enumivo/chain/generated_transaction_object.hpp>
-#include <enumivo.system/enumivo.system.wast.hpp>
-#include <enumivo.system/enumivo.system.abi.hpp>
+#include <enu.system/enu.system.wast.hpp>
+#include <enu.system/enu.system.abi.hpp>
 #include <enu.token/enu.token.wast.hpp>
 #include <enu.token/enu.token.abi.hpp>
 

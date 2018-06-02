@@ -7,8 +7,8 @@
 #include <enumivo/testing/tester.hpp>
 #include <enumivo/chain/abi_serializer.hpp>
 
-#include <enumivo.system/enumivo.system.wast.hpp>
-#include <enumivo.system/enumivo.system.abi.hpp>
+#include <enu.system/enu.system.wast.hpp>
+#include <enu.system/enu.system.abi.hpp>
 
 #include <enu.token/enu.token.wast.hpp>
 #include <enu.token/enu.token.abi.hpp>
@@ -32,16 +32,16 @@ using mvo = fc::mutable_variant_object;
 #endif
 #endif
 
-namespace enumivo_system {
+namespace enu_system {
 
-class enumivo_system_tester : public TESTER {
+class enu_system_tester : public TESTER {
 public:
 
-   enumivo_system_tester()
-   : enumivo_system_tester([](TESTER& ) {}){}
+   enu_system_tester()
+   : enu_system_tester([](TESTER& ) {}){}
 
    template<typename Lambda>
-   enumivo_system_tester(Lambda setup) {
+   enu_system_tester(Lambda setup) {
       setup(*this);
 
       produce_blocks( 2 );
@@ -66,8 +66,8 @@ public:
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "enumivo" ) );
 
-      set_code( config::system_account_name, enumivo_system_wast );
-      set_abi( config::system_account_name, enumivo_system_abi );
+      set_code( config::system_account_name, enu_system_wast );
+      set_abi( config::system_account_name, enu_system_abi );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );

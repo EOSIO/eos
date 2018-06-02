@@ -1,4 +1,4 @@
-# enumivo.system undelegatebw
+# enu.system undelegatebw
 
 ## undelegatebw 
     (account_name-from; 

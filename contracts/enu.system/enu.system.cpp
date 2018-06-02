@@ -1,4 +1,4 @@
-#include "enumivo.system.hpp"
+#include "enu.system.hpp"
 #include <enulib/dispatcher.hpp>
 
 #include "producer_pay.cpp"
@@ -178,13 +178,13 @@ namespace enumivosystem {
       set_resource_limits( newact, 0, 0, 0 );
    }
 
-} /// enumivo.system
+} /// enu.system
 
 
 ENUMIVO_ABI( enumivosystem::system_contract,
-     // native.hpp (newaccount definition is actually in enumivo.system.cpp)
+     // native.hpp (newaccount definition is actually in enu.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
-     // enumivo.system.cpp
+     // enu.system.cpp
      (setram)(setparams)(setpriv)(rmvproducer)(bidname)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)

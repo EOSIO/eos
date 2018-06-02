@@ -1,4 +1,4 @@
-# enumivo.system delegatebw
+# enu.system delegatebw
 
 ## delegatebw
     (account_name-from; 
