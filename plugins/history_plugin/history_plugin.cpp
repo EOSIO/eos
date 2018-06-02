@@ -158,7 +158,9 @@ namespace eosio {
 
             result.insert( act.receipt.receiver );
             for( const auto& a : act.act.authorization )
-               if( bypass_filter || filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
+               if( bypass_filter ||
+                   filter_on.find({ act.receipt.receiver, act.act.name, 0}) != filter_on.end() ||
+                   filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
                   result.insert( a.actor );
             return result;
          }
