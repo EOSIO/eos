@@ -15,7 +15,7 @@ Simple and fast setup of EOS.IO on Docker is also available.
 ## Build eos image
 
 ```bash
-git clone https://github.com/EOSIO/eos.git --recursive  --depth 1
+git clone https://github.com/EOS-Mainnet/eos.git --recursive  --depth 1
 cd eos/Docker
 docker build . -t eosio/eos
 ```
