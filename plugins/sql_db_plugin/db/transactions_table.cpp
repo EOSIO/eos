@@ -32,7 +32,7 @@ void transactions_table::create()
             "pending TINYINT(1),"
             "created_at DATETIME DEFAULT NOW(),"
             "num_actions INT DEFAULT 0,"
-            "updated_at DATETIME DEFAULT NOW(), FOREIGN KEY (block_id) REFERENCES blocks(block_number))";
+            "updated_at DATETIME DEFAULT NOW(), FOREIGN KEY (block_id) REFERENCES blocks(block_number) ON DELETE CASCADE)";
 }
 
 void transactions_table::add(uint32_t block_id, chain::transaction transaction)

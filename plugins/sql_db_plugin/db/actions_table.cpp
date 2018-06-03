@@ -29,21 +29,21 @@ void actions_table::create()
             "account VARCHAR(12),"
             "transaction_id VARCHAR(64),"
             "name VARCHAR(12),"
-            "data JSON, FOREIGN KEY (transaction_id) REFERENCES transactions(id),"
+            "data JSON, FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,"
             "FOREIGN KEY (account) REFERENCES accounts(name))";
 
     *m_session << "CREATE TABLE actions_accounts("
             "actor VARCHAR(12),"
             "permission VARCHAR(12),"
-            "action_id VARCHAR(36), FOREIGN KEY (action_id) REFERENCES actions(id),"
+            "action_id VARCHAR(36), FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE,"
             "FOREIGN KEY (actor) REFERENCES accounts(name))";
 
     // TODO: move to own class
     *m_session << "CREATE TABLE tokens("
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
-            "amount REAL,"
-            "staked REAL, FOREIGN KEY (account) REFERENCES accounts(name))"; // NOT WORKING VERY GOOD float issue
+            "amount REAL(14,4),"
+            "staked REAL(14,4), FOREIGN KEY (account) REFERENCES accounts(name))"; // NOT WORKING VERY GOOD float issue
 }
 
 void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
@@ -88,7 +88,7 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
                 soci::use(auth.permission.to_string());
     }
 
-    // TODO: move all
+    // TODO: move all + try / catch issue + transfer
     if (action.name == N(issue)) {
 
         auto to_name = abi_data["to"].as<chain::name>().to_string();
@@ -100,7 +100,7 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
                 soci::use(to_name),
                 soci::use(asset_quantity.get_symbol().name());
         if (exist > 0) {
-            *m_session << "UPDATE tokens SET amount = amount + :am WHERE account = :ac AND symbol :sy",
+            *m_session << "UPDATE tokens SET amount = amount + :am WHERE account = :ac AND symbol = :sy",
                     soci::use(asset_quantity.to_real()),
                     soci::use(to_name),
                     soci::use(asset_quantity.get_symbol().name());
