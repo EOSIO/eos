@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/wallet_plugin/wallet_manager.hpp>
+#include <eosio/wallet_plugin/wallet.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/algorithm/string.hpp>
 namespace eosio {
@@ -43,7 +44,7 @@ std::string wallet_manager::create(const std::string& name) {
    }
    
    wallet_data d;
-   auto wallet = make_unique<wallet_api>(d);
+   auto wallet = make_unique<soft_wallet>(d);
    wallet->set_password(password);
    wallet->set_wallet_filename(wallet_filename.string());
    wallet->unlock(password);
@@ -66,7 +67,7 @@ std::string wallet_manager::create(const std::string& name) {
 void wallet_manager::open(const std::string& name) {
    check_timeout();
    wallet_data d;
-   auto wallet = std::make_unique<wallet_api>(d);
+   auto wallet = std::make_unique<soft_wallet>(d);
    auto wallet_filename = dir / (name + file_ext);
    wallet->set_wallet_filename(wallet_filename.string());
    if (!wallet->load_wallet_file()) {
@@ -114,10 +115,7 @@ flat_set<public_key_type> wallet_manager::get_public_keys() {
    bool is_all_wallet_locked = true;
    for (const auto& i : wallets) {
       if (!i.second->is_locked()) {
-         const auto& keys = i.second->list_keys();
-         for (const auto& i : keys) {
-            result.emplace(i.first);
-         }
+         result.merge(i.second->list_public_keys());
       }
       is_all_wallet_locked &= i.second->is_locked();
    }
@@ -129,7 +127,7 @@ flat_set<public_key_type> wallet_manager::get_public_keys() {
 void wallet_manager::lock_all() {
    // no call to check_timeout since we are locking all anyway
    for (auto& i : wallets) {
-      if (!i.second->is_locked()) {
+      if (i.second->is_lockable() && !i.second->is_locked()) {
          i.second->lock();
       }
    }

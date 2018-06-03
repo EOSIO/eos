@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/transaction.hpp>
-#include <eosio/wallet_plugin/wallet.hpp>
+#include <eosio/wallet_plugin/wallet_api.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 
@@ -15,7 +15,7 @@ namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.
 ///
-/// The name of the wallet is also used as part of the file name by wallet_api. See wallet_manager::create.
+/// The name of the wallet is also used as part of the file name by soft_wallet. See wallet_manager::create.
 /// No const methods because timeout may cause lock_all() to be called.
 class wallet_manager {
 public:
