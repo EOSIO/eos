@@ -565,13 +565,13 @@ BOOST_FIXTURE_TEST_CASE( stake_from_refund, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try {
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
 
-   fc::variant params = producer_parameters_example(1);
+   //fc::variant params = producer_parameters_example(1);
    auto key =  fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(regproducer), mvo()
                                                ("producer",  "alice1111111")
                                                ("producer_key", key )
                                                ("url", "http://block.one")
-                                               ("location", "0")
+                                               ("location", 1)
                         )
    );
 
@@ -580,13 +580,34 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_double() );
    BOOST_REQUIRE_EQUAL( "http://block.one", info["url"].as_string() );
 
-   //call regproducer again to change parameters
-   fc::variant params2 = producer_parameters_example(2);
-
+   //change parameters one by one to check for things like #3783
+   //fc::variant params2 = producer_parameters_example(2);
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(regproducer), mvo()
+                                               ("producer",  "alice1111111")
+                                               ("producer_key", key )
+                                               ("url", "http://block.two")
+                                               ("location", 1)
+                        )
+   );
    info = get_producer_info( "alice1111111" );
    BOOST_REQUIRE_EQUAL( "alice1111111", info["owner"].as_string() );
-   BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_double() );
-   BOOST_REQUIRE_EQUAL( "http://block.one", info["url"].as_string() );
+   BOOST_REQUIRE_EQUAL( key, fc::crypto::public_key(info["producer_key"].as_string()) );
+   BOOST_REQUIRE_EQUAL( "http://block.two", info["url"].as_string() );
+   BOOST_REQUIRE_EQUAL( 1, info["location"].as_int64() );
+
+   auto key2 =  fc::crypto::public_key( std::string("EOS5jnmSKrzdBHE9n8hw58y7yxFWBC8SNiG7m8S1crJH3KvAnf9o6") );
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(regproducer), mvo()
+                                               ("producer",  "alice1111111")
+                                               ("producer_key", key2 )
+                                               ("url", "http://block.two")
+                                               ("location", 2)
+                        )
+   );
+   info = get_producer_info( "alice1111111" );
+   BOOST_REQUIRE_EQUAL( "alice1111111", info["owner"].as_string() );
+   BOOST_REQUIRE_EQUAL( key2, fc::crypto::public_key(info["producer_key"].as_string()) );
+   BOOST_REQUIRE_EQUAL( "http://block.two", info["url"].as_string() );
+   BOOST_REQUIRE_EQUAL( 2, info["location"].as_int64() );
 
    //unregister producer
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(unregprod), mvo()
@@ -595,12 +616,11 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    );
    info = get_producer_info( "alice1111111" );
    //key should be empty
-   wdump((info));
    BOOST_REQUIRE_EQUAL( fc::crypto::public_key(), fc::crypto::public_key(info["producer_key"].as_string()) );
    //everything else should stay the same
    BOOST_REQUIRE_EQUAL( "alice1111111", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_double() );
-   BOOST_REQUIRE_EQUAL( "http://block.one", info["url"].as_string() );
+   BOOST_REQUIRE_EQUAL( "http://block.two", info["url"].as_string() );
 
    //unregister bob111111111 who is not a producer
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "producer not found" ),
