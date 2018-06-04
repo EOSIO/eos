@@ -1,4 +1,8 @@
-# eosio.system regproducer
+# Action - `{{ regproducer }}`
+
+## Description
+
+The intent of the `{{ regproducer }}` action is to register an account as a BP candidate.
 
 I, {{producer}}, hereby nominate myself for consideration as an elected block producer.
 
@@ -14,8 +18,8 @@ pre-confirming a block produced by another producer in the schedule when I find 
 confirming a block for which {{producer}} has received 2/3+ pre-confirmation messages from other producers
 
 I hereby accept liability for any and all provable damages that result from my:
-signing two different block proposals with the same timestamp with {{producer_key}
-signing two different block proposals with the same block number with {{producer_key}
+signing two different block proposals with the same timestamp with {{producer_key}}
+signing two different block proposals with the same block number with {{producer_key}}
 signing any block proposal which builds off of an objectively invalid block
 signing a pre-confirmation for an objectively invalid block
 signing a confirmation for a block for which I do not possess pre-confirmation messages from 2/3+ other producers

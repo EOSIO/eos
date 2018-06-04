@@ -1,19 +1,14 @@
-# eosio.system delegatebw
+# Action - `{{ delegatebw }}`
 
-## delegatebw
-    (account_name-from; 
-     account_name-to; 
-     asset-stake_net_quantity; 
-     asset-stake_cpu_quantity; 
-     bool:transfer)
+## Description
 
-_Intent: stake tokens for bandwidth and/or CPU and optionally transfer ownership_
+The intent of the `{{ delegatebw }}` action is to stake tokens for bandwidth and/or CPU and optionally transfer ownership.
 
-As an authorized party I {{ signer }} wish to stake {{ asset-stake_cpu_quantity }} for CPU and {{ asset-stake_net_quantity }} for bandwidth from the liquid tokens of {{ account_name-from }} for the use of delegatee {{ account_name-to }}. 
+As an authorized party I {{ signer }} wish to stake {{ stake_cpu_quantity }} for CPU and {{ stake_net_quantity }} for bandwidth from the liquid tokens of {{ from }} for the use of delegatee {{ to }}. 
   
-    {{if bool:transfer }}
+    {{if transfer }}
     
-It is {{ bool:transfer }} that I wish these tokens to become immediately owned by the delegatee.
+It is {{ transfer }} that I wish these tokens to become immediately owned by the delegatee.
  
     {{/if}}
 

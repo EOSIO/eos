@@ -1,10 +1,10 @@
-# Ricardian Contract for *voteproducer*
+# Action - `{{ voteproducer }}`
 
-## VOTEPRODUCER (voter; array:producers)
+## Description
 
-_Intent: cast a valid vote for up to 30 BP candidates_
+The intent of the `{{ voteproducer }}` action is to cast a valid vote for up to 30 BP candidates. 
 
-As an authorized party I {{ signer }} wish to vote on behalf of {{ voter }} in favor of the block producer candidates {{ array:producers }} with a voting weight equal to all tokens currently owned by {{ voter }} and staked for CPU or bandwidth. 
+As an authorized party I {{ signer }} wish to vote on behalf of {{ voter }} in favor of the block producer candidates {{ producers }} with a voting weight equal to all tokens currently owned by {{ voter }} and staked for CPU or bandwidth. 
 
 If I am not the beneficial owner of these shares I stipulate I have proof that I’ve been authorized to vote these shares by their beneficial owner(s). 
 

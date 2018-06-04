@@ -1,13 +1,9 @@
-# eosio.system undelegatebw
+# Action - `{{ undelegatebw }}`
 
-## undelegatebw 
-    (account_name-from; 
-     account_name-to; 
-     asset-unstake_net_quantity; 
-     asset-unstake_cpu_quantity)
+## Description
 
-_Intent: unstake tokens from bandwidth_
+The intent of the `{{ undelegatebw }}` action is to unstake tokens from CPU and/or bandwidth. 
 
-As an authorized party I {{ signer }} wish to unstake {{ asset-unstake_cpu_quantity }} from CPU and {{ asset-unstake_net_quantity }} from bandwidth from the tokens owned by {{ account_name-from }} previously delegated for the use of delegatee {{ account_name-to }}. 
+As an authorized party I {{ signer }} wish to unstake {{ unstake_cpu_quantity }} from CPU and {{ unstake_net_quantity }} from bandwidth from the tokens owned by {{ from }} previously delegated for the use of delegatee {{ to }}. 
 
 If I as signer am not the beneficial owner of these tokens I stipulate I have proof that I’ve been authorized to take this action by their beneficial owner(s). 
