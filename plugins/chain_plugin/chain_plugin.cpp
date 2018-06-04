@@ -167,6 +167,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
          ("delete-all-blocks", bpo::bool_switch()->default_value(false),
           "clear chain state database and block log")
+         ("stop-at-block", bpo::value<uint32_t>()->default_value(0),
+          "stop hard replay / block log recovery at this block number (if set to non-zero number)")
          ;
 }
 
@@ -287,12 +289,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    } else if( options.at("hard-replay-blockchain").as<bool>() ) {
       ilog("Hard replay requested: deleting state database");
       fc::remove_all( my->chain_config->state_dir );
-      auto backup_dir = block_log::repair_log( my->blocks_dir );
+      auto backup_dir = block_log::repair_log( my->blocks_dir, options.at("stop-at-block").as<uint32_t>() );
       if( fc::exists(backup_dir/config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>() ) {
          // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-         if( !recover_reversible_blocks( backup_dir/config::reversible_blocks_dir_name,
+         if( !recover_reversible_blocks(  backup_dir/config::reversible_blocks_dir_name,
                                           my->chain_config->reversible_cache_size,
-                                          my->chain_config->blocks_dir/config::reversible_blocks_dir_name ) ) {
+                                          my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
+                                          options.at("stop-at-block").as<uint32_t>() ) ) {
             ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
             fc::copy( backup_dir / config::reversible_blocks_dir_name,
                       my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
@@ -304,16 +307,22 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    } else if( options.at("replay-blockchain").as<bool>() ) {
       ilog("Replay requested: deleting state database");
+      if( options.at("stop-at-block").as<uint32_t>() > 0 )
+         wlog("The stop-at-block option does not work for regular replay of blockchain.");
       fc::remove_all( my->chain_config->state_dir );
       if( options.at("fix-reversible-blocks").as<bool>() ) {
-         if( !recover_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
-                                          my->chain_config->reversible_cache_size ) ) {
+         if( !recover_reversible_blocks(  my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
+                                          my->chain_config->reversible_cache_size,
+                                          optional<fc::path>(),
+                                          0 ) ) {
             ilog("Reversible blocks database was not corrupted.");
          }
       }
    } else if( options.at("fix-reversible-blocks").as<bool>() ) {
-      if( !recover_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
-                                       my->chain_config->reversible_cache_size ) ) {
+      if( !recover_reversible_blocks(  my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
+                                       my->chain_config->reversible_cache_size,
+                                       optional<fc::path>(),
+                                       options.at("stop-at-block").as<uint32_t>() ) ) {
          ilog("Reversible blocks database verified to not be corrupted. Now exiting...");
       } else {
          ilog("Exiting after fixing reversible blocks database...");
@@ -443,10 +452,21 @@ bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
    return b && b->id() == block_id;
 }
 
-bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir )const {
+bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
+                                              optional<fc::path> new_db_dir, uint32_t stop_at_block )const {
    try {
       chainbase::database reversible( db_dir, database::read_only); // Test if dirty
-      return false; // If it reaches here, then the reversible database is not dirty
+      // If it reaches here, then the reversible database is not dirty
+
+      if( stop_at_block == 0 )
+         return false;
+
+      reversible.add_index<reversible_block_index>();
+      const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
+
+      auto itr1 = ubi.rbegin();
+      if( itr1 != ubi.rend() && itr1->blocknum <= stop_at_block )
+         return false; // Because we are not going to be truncating the reversible database at all.
    } catch( const std::runtime_error& ) {
    } catch( ... ) {
       throw;
@@ -496,6 +516,10 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
          start = itr->blocknum;
          end = start - 1;
       }
+      if( stop_at_block > 0 && start > stop_at_block ) {
+         ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", stop_at_block)("start", start) );
+         return true;
+      }
       for( ; itr != ubi.end(); ++itr ) {
          FC_ASSERT( itr->blocknum == end + 1, "gap in reversible block database" );
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
@@ -504,8 +528,13 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
          });
          end = itr->blocknum;
          ++num;
+         if( end == stop_at_block )
+            break;
       }
    } catch( ... ) {}
+
+   if( end == stop_at_block )
+      ilog( "Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", stop_at_block) );
 
    if( num == 0 )
       ilog( "There were no recoverable blocks in the reversible block database" );
