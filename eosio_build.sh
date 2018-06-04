@@ -62,7 +62,7 @@
 	txtrst=$(tput sgr0)
 
 	if [ $# -ne 0 ]; then
-		while getopts ":cdos:" opt; do
+		while getopts ":cdo:s:" opt; do
 			case "${opt}" in
 				o )
 					options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
