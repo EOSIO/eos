@@ -70,35 +70,34 @@ try:
     Print("Kill cluster nodes.")
     cluster.killall()
 
-    def runNodeosAndGetOutput(nodeId, waitTime=3):
-        """Startup nodeos, wait for waitTime (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary.
-        Large waittimes have potential to deadlock as the popen PIPE buffer can get filled up."""
+    def runNodeosAndGetOutput(nodeId, timeout=3):
+        """Startup nodeos, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
         Print("Launching nodeos process id: %d" % (nodeId))
         dataDir="var/lib/node_%02d" % (nodeId)
         cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios"
         Print("cmd: %s" % (cmd))
         proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
+        output={}
         try:
-            proc.wait(waitTime)
+            outs,errs = proc.communicate(timeout=timeout)
+            output["stdout"] = outs.decode("utf-8")
+            output["stderr"] = errs.decode("utf-8")
+            output["returncode"] = proc.returncode
         except (subprocess.TimeoutExpired) as _:
             Print("ERROR: Nodeos is running beyond the defined wait time. Hard killing nodeos instance.")
             proc.send_signal(signal.SIGKILL)
             return (False, None)
 
-        output={}
-        output["stdout"] = proc.stdout.read().decode("utf-8")
-        output["stderr"] = proc.stderr.read().decode("utf-8")
-        output["returncode"] = proc.returncode
         return (True, output)
     
     Print("Restart nodeos repeatedly to ensure dirty database flag sticks.")
     nodeId=0
-    waitTime=3
+    timeout=3
     
     for i in range(0,3):
         Print("Attempt %d." % (i))
-        ret = runNodeosAndGetOutput(nodeId, waitTime)
+        ret = runNodeosAndGetOutput(nodeId, timeout)
         if not ret or not ret[0]:
             exit(1)
 
