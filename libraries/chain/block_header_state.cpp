@@ -228,8 +228,16 @@ namespace eosio { namespace chain {
   void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer, bool trust ) {
      auto d = sig_digest();
      header.producer_signature = signer( d );
+
+     edump((*this));
+
      if( !trust ) {
+        if (block_signing_key != fc::crypto::public_key( header.producer_signature, d ) ) {
+           edump((block_signing_key)(fc::crypto::public_key( header.producer_signature, d )));
+           edump((active_schedule));
+        }
         FC_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ) );
+
      }
   }
 
