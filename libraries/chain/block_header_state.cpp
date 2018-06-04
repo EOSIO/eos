@@ -244,7 +244,11 @@ namespace eosio { namespace chain {
      auto key = active_schedule.get_producer_key( conf.producer );
      FC_ASSERT( key != public_key_type(), "producer not in current schedule" );
      auto signer = fc::crypto::public_key( conf.producer_signature, sig_digest(), true );
-     FC_ASSERT( signer == key, "confirmation not signed by expected key" );
+     if( signer != key ) {
+        edump((signer)(key));
+        edump((active_schedule));
+        FC_ASSERT(signer == key, "confirmation not signed by expected key" );
+     }
 
      confirmations.emplace_back( conf );
   }
