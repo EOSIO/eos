@@ -1172,7 +1172,7 @@ class WalletMgr(object):
         p = re.compile(r'\n\"(\w+)\"\n', re.MULTILINE)
         cmd="%s %s wallet create --name %s" % (Utils.EosClientPath, self.endpointArgs, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        retStr=subprocess.check_output(cmd.split()).decode("utf-8")
+        retStr=Utils.checkOutput(cmd.split())
         #Utils.Print("create: %s" % (retStr))
         m=p.search(retStr)
         if m is None:
@@ -1190,7 +1190,7 @@ class WalletMgr(object):
             Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
-            subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+            Utils.checkOutput(cmd.split())
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             if warningMsg in msg:
@@ -1206,7 +1206,7 @@ class WalletMgr(object):
                 Utils.EosClientPath, self.endpointArgs, wallet.name, account.activePrivateKey)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
-                subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+                Utils.checkOutput(cmd.split())
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
                 if warningMsg in msg:
@@ -1253,7 +1253,7 @@ class WalletMgr(object):
         p = re.compile(r'\s+\"(\w+)\s\*\",?\n', re.MULTILINE)
         cmd="%s %s wallet list" % (Utils.EosClientPath, self.endpointArgs)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        retStr=subprocess.check_output(cmd.split()).decode("utf-8")
+        retStr=Utils.checkOutput(cmd.split())
         #Utils.Print("retStr: %s" % (retStr))
         m=p.findall(retStr)
         if m is None:
@@ -1269,7 +1269,7 @@ class WalletMgr(object):
         p = re.compile(r'\n\s+\"(\w+)\"\n', re.MULTILINE)
         cmd="%s %s wallet private_keys --name %s --password %s " % (Utils.EosClientPath, self.endpointArgs, wallet.name, wallet.password)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        retStr=subprocess.check_output(cmd.split()).decode("utf-8")
+        retStr=Utils.checkOutput(cmd.split())
         #Utils.Print("retStr: %s" % (retStr))
         m=p.findall(retStr)
         if m is None:
@@ -1564,7 +1564,7 @@ class Cluster(object):
             try:
                 cmd="%s create key" % (Utils.EosClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-                keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+                keyStr=Utils.checkOutput(cmd.split())
                 m=p.search(keyStr)
                 if m is None:
                     Utils.Print("ERROR: Owner key creation regex mismatch")
@@ -1575,7 +1575,7 @@ class Cluster(object):
 
                 cmd="%s create key" % (Utils.EosClientPath)
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-                keyStr=subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+                keyStr=Utils.checkOutput(cmd.split())
                 m=p.match(keyStr)
                 if m is None:
                     Utils.Print("ERROR: Active key creation regex mismatch")
@@ -2135,7 +2135,7 @@ class Cluster(object):
             psOut=None
             try:
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-                psOut=subprocess.check_output(cmd.split()).decode("utf-8")
+                psOut=Utils.checkOutput(cmd.split())
                 return psOut
             except subprocess.CalledProcessError as _:
                 pass
