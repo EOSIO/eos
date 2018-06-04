@@ -1519,11 +1519,17 @@ int main( int argc, char** argv ) {
 
    // get block
    string blockArg;
+   bool get_bhs = false;
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
-   getBlock->set_callback([&blockArg] {
+   getBlock->add_flag("--header-state", get_bhs, localized("Get block header state from fork database instead") );
+   getBlock->set_callback([&blockArg,&get_bhs] {
       auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
-      std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+      if( get_bhs ) {
+         std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
+      } else {
+         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+      }
    });
 
    // get account
