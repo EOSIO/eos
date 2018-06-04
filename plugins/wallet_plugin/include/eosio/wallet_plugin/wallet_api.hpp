@@ -5,6 +5,7 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/transaction.hpp>
 
 using namespace std;
 using namespace eosio::chain;
@@ -21,11 +22,6 @@ class wallet_api
        * private key must already be in the wallet.
        */
       virtual private_key_type get_private_key( public_key_type pubkey ) const = 0;
-
-      /**
-       * Get the private key corresponding to a public key or nothing.
-       */
-      virtual optional<private_key_type> try_get_private_key(const public_key_type& id) const = 0;
 
       /**
        * Checks if this wallet is lockable
@@ -99,6 +95,13 @@ class wallet_api
        * @param key_type the key type to create. May be empty to allow wallet to pick appropriate/"best" key type
        */
       virtual string create_key( string key_type ) = 0;
+
+      /** Returns a functor that can be used to sign a digest based on the given public key (provided the
+       *
+       * wallet can sign with that key)
+       * @param public_key the key type to create. May be empty to allow wallet to pick appropriate/"best" key type
+       */
+      virtual optional<signed_transaction::sign_digest_functor> sign_digest( public_key_type public_key ) = 0;
 };
 
 }}

@@ -55,11 +55,6 @@ class soft_wallet final : public wallet_api
       private_key_type get_private_key( public_key_type pubkey )const override;
 
       /**
-       * Get the private key corresponding to a public key or nothing.
-       */
-      optional<private_key_type>    try_get_private_key(const public_key_type& id)const override;
-
-      /**
        *  @param role - active | owner | posting | memo
        */
       pair<public_key_type,private_key_type>  get_private_key_from_password( string account, string role, string password )const;
@@ -177,6 +172,10 @@ class soft_wallet final : public wallet_api
        * @param key_type the key type to create. May be empty to allow wallet to pick appropriate/"best" key type
        */
       string create_key( string key_type ) override;
+
+      /* Returns a fuctor to sign a digest via the given public_key
+      */
+      optional<signed_transaction::sign_digest_functor> sign_digest( public_key_type public_key ) override;
 
       std::shared_ptr<detail::soft_wallet_impl> my;
       void encrypt_keys();

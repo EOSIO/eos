@@ -193,9 +193,9 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
       bool found = false;
       for (const auto& i : wallets) {
          if (!i.second->is_locked()) {
-            const auto& k = i.second->try_get_private_key(pk);
-            if (k) {
-               stxn.sign(*k, id);
+            auto f = i.second->sign_digest(pk);
+            if (f) {
+               stxn.sign(*f, id);
                found = true;
                break; // inner for
             }
@@ -216,9 +216,9 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
    try {
       for (const auto& i : wallets) {
          if (!i.second->is_locked()) {
-            const auto& k = i.second->try_get_private_key(key);
-            if (k) {
-               return k->sign(digest);
+            auto f = i.second->sign_digest(key);
+            if (f) {
+               return (*f)(digest);
             }
          }
       }

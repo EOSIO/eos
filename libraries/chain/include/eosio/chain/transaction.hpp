@@ -76,6 +76,8 @@ namespace eosio { namespace chain {
 
    struct signed_transaction : public transaction
    {
+      using sign_digest_functor = std::function<signature_type(digest_type)>;
+
       signed_transaction() = default;
 //      signed_transaction( const signed_transaction& ) = default;
 //      signed_transaction( signed_transaction&& ) = default;
@@ -90,6 +92,7 @@ namespace eosio { namespace chain {
       vector<bytes>             context_free_data; ///< for each context-free action, there is an entry here
 
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
+      const signature_type&     sign(sign_digest_functor signature_request, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
       flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id, bool allow_duplicate_keys = false )const;
    };

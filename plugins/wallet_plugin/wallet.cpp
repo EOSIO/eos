@@ -128,6 +128,15 @@ public:
       return optional<private_key_type>();
    }
 
+   optional<signed_transaction::sign_digest_functor> sign_digest( public_key_type public_key ) {
+      auto it = _keys.find(public_key);
+      if( it == _keys.end() )
+         return optional<signed_transaction::sign_digest_functor>{};
+      return [priv_key = it->second](digest_type d) {
+         return priv_key.sign(d);
+      };
+   }
+
    private_key_type get_private_key(const public_key_type& id)const
    {
       auto has_key = try_get_private_key( id );
@@ -372,11 +381,9 @@ private_key_type soft_wallet::get_private_key( public_key_type pubkey )const
    return my->get_private_key( pubkey );
 }
 
-optional<private_key_type> soft_wallet::try_get_private_key(const public_key_type& id)const
-{
-   return my->try_get_private_key(id);
+optional<signed_transaction::sign_digest_functor> soft_wallet::sign_digest( public_key_type public_key ) {
+   return my->sign_digest(public_key);
 }
-
 
 pair<public_key_type,private_key_type> soft_wallet::get_private_key_from_password( string account, string role, string password )const {
    auto seed = account + role + password;
