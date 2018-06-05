@@ -37,11 +37,6 @@ namespace eosio {
          inline asset get_balance( account_name owner, symbol_name sym )const;
 
       private:
-
-         friend eosiosystem::system_contract;
-
-
-      private:
          struct account {
             asset    balance;
 
