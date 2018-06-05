@@ -21,6 +21,11 @@ namespace eosio {
       EOSLIB_SERIALIZE( margin_position, (owner)(borrowed)(collateral)(call_price) )
    };
 
+   /*
+    * 定义了一个用户借贷信息表,可用价格作为索引
+    * callprice是索引标签
+    * eosio::const_mem_fun函数是把类或结构的成员变量提取作为索引成员
+    * */
    typedef eosio::multi_index<N(margins), margin_position,
            indexed_by<N(callprice), eosio::const_mem_fun<margin_position, uint64_t, &margin_position::get_call> >
    > margins;
