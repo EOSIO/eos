@@ -57,4 +57,10 @@ void blocks_table::add(chain::signed_block_ptr block)
             soci::use(num_transactions);
 }
 
+void blocks_table::remove(chain::signed_block_ptr block)
+{
+    const auto block_id_str = block->id().str();
+    *m_session << "DELETE FROM blocks WHERE id = :id", soci::use(block_id_str);
+}
+
 } // namespace

@@ -38,12 +38,11 @@ void actions_table::create()
             "action_id VARCHAR(36), FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE,"
             "FOREIGN KEY (actor) REFERENCES accounts(name))";
 
-    // TODO: move to own class
     *m_session << "CREATE TABLE tokens("
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
             "amount REAL(14,4),"
-            "staked REAL(14,4), FOREIGN KEY (account) REFERENCES accounts(name))"; // NOT WORKING VERY GOOD float issue
+            "staked REAL(14,4), FOREIGN KEY (account) REFERENCES accounts(name))"; // TODO: other tokens could have diff format.
 }
 
 void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
@@ -87,8 +86,16 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
                 soci::use(auth.actor.to_string()),
                 soci::use(auth.permission.to_string());
     }
+    try {
+        parse_actions(action, abi_data);
+    } catch(std::exception& e){
+        wlog(e.what());
+    }
+}
 
-    // TODO: move all + try / catch issue + transfer
+void actions_table::parse_actions(chain::action action, fc::variant abi_data)
+{
+    // TODO: move all  + catch // public keys update // stake / voting
     if (action.name == N(issue)) {
 
         auto to_name = abi_data["to"].as<chain::name>().to_string();
@@ -179,8 +186,6 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
         }
 
     }
-
-    // TODO: catch issue (tokens) // public keys update // stake / voting
 }
 
 } // namespace

@@ -33,6 +33,9 @@ public:
 
 private:
     std::shared_ptr<soci::session> m_session;
+
+    void
+    parse_actions(chain::action action, fc::variant variant);
 };
 
 } // namespace

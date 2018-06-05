@@ -18,6 +18,7 @@ public:
     void drop();
     void create();
     void add(chain::signed_block_ptr block);
+    void remove(chain::signed_block_ptr block);
 
 private:
     std::shared_ptr<soci::session> m_session;
