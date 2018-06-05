@@ -102,7 +102,7 @@ namespace eosio { namespace client { namespace http {
 
    fc::variant do_http_call( const connection_param& cp,
                              const fc::variant& postdata,
-                             bool verbose ) {
+                             bool print_request ) {
    std::string postjson;
    if( !postdata.is_null() )
       postjson = fc::json::to_string( postdata );
@@ -126,15 +126,20 @@ namespace eosio { namespace client { namespace http {
    for (itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
       request_stream << *itr << "\r\n";
    }
-   request_stream << "\r\n";
-   request_stream << postjson;
 
-   if ( verbose ) {
+   if ( print_request ) {
       string s(request.size(), '\0');
       buffer_copy(boost::asio::buffer(s), request.data());
       std::cerr << "REQUEST:" << std::endl
                 << "---------------------" << std::endl
-                << s << std::endl
+                << s << std::endl;
+   }
+
+   request_stream << "\r\n";
+   request_stream << postjson;
+
+   if ( print_request ) {
+      std::cerr << fc::json::to_pretty_string( postdata ) << std::endl
                 << "---------------------" << std::endl;
    }
 

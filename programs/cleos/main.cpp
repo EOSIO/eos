@@ -207,8 +207,6 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    return accountPermissions;
 }
 
-static bool verbose = true;
-
 template<typename T>
 fc::variant call( const std::string& url,
                   const std::string& path,
