@@ -30,7 +30,8 @@ namespace eosio { namespace client { namespace http {
    parsed_url parse_url( const string& server_url );
 
    fc::variant do_http_call( const connection_param& cp,
-                             const fc::variant& postdata = fc::variant() );
+                             const fc::variant& postdata = fc::variant(),
+                             bool print_request = false );
 
    const string chain_func_base = "/v1/chain";
    const string get_info_func = chain_func_base + "/get_info";
