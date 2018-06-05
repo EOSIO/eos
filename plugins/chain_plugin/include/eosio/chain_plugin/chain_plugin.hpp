@@ -374,7 +374,7 @@ public:
    bool recover_reversible_blocks( const fc::path& db_dir,
                                    uint32_t cache_size,
                                    optional<fc::path> new_db_dir = optional<fc::path>(),
-                                   uint32_t stop_at_block = 0
+                                   uint32_t truncate_at_block = 0
                                  )const;
 
    // Only call this in plugin_initialize() to modify controller constructor configuration
