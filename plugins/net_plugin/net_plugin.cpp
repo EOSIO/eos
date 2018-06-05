@@ -198,7 +198,7 @@ namespace enumivo {
 
       void connect( connection_ptr c );
       void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
-      void start_session( connection_ptr c );
+      bool start_session( connection_ptr c );
       void start_listen_loop( );
       void start_read_message( connection_ptr c);
 
@@ -1944,8 +1944,9 @@ namespace enumivo {
             auto c = weak_conn.lock();
             if (!c) return;
             if( !err && c->socket->is_open() ) {
-               start_session( c );
-               c->send_handshake ();
+               if (start_session( c )) {
+                  c->send_handshake ();
+               }
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
                   close(c);
@@ -1961,15 +1962,25 @@ namespace enumivo {
          } );
    }
 
-   void net_plugin_impl::start_session( connection_ptr con ) {
+   bool net_plugin_impl::start_session( connection_ptr con ) {
       boost::asio::ip::tcp::no_delay nodelay( true );
-      con->socket->set_option( nodelay );
-      start_read_message( con );
-      ++started_sessions;
-
-      // for now, we can just use the application main loop.
-      //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
-      //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
+      boost::system::error_code ec;
+      con->socket->set_option( nodelay, ec );
+      if (ec) {
+         elog( "connection failed to ${peer}: ${error}",
+               ( "peer", con->peer_name())("error",ec.message()));
+         con->connecting = false;
+         close(con);
+         return false;
+      }
+      else {
+         start_read_message( con );
+         ++started_sessions;
+         return true;
+         // for now, we can just use the application main loop.
+         //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
+         //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
+      }
    }
 
 
@@ -2004,6 +2015,7 @@ namespace enumivo {
                   connection_ptr c = std::make_shared<connection>( socket );
                   connections.insert( c );
                   start_session( c );
+
                }
                else {
                   if (from_addr >= max_nodes_per_host) {

@@ -40,6 +40,7 @@ function build_contract {
         filePath=`dirname $file`
 
         ($PRINT_CMDS; @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -nostdinc \
+                                   -DBOOST_DISABLE_ASSERTS -DBOOST_EXCEPTION_DISABLE \
                                    -nostdlib -nostdlibinc -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti \
                                    -fno-exceptions -I ${ENUMIVO_INSTALL_DIR}/include \
                                    -I${ENUMIVO_INSTALL_DIR}/include/libc++/upstream/include \

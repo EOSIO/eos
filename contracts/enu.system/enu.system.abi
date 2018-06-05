@@ -398,6 +398,15 @@
         {"name":"base", "type":"connector"},
         {"name":"quote", "type":"connector"}
       ]
+    }, {
+       "name": "namebid_info",
+       "base": "",
+       "fields": [
+          {"name":"newname", "type":"account_name"},
+          {"name":"high_bidder", "type":"account_name"},
+          {"name":"high_bid", "type":"int64"},
+          {"name":"last_bid_time", "type":"uint64"}
+       ]
     }
    ],
    "actions": [{
@@ -559,6 +568,12 @@
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
+    },{
+       "name": "namebids",
+       "type": "namebid_info",
+       "index_type": "i64",
+       "key_names" : ["newname"],
+       "key_types" : ["account_name"]
     }
    ],
    "ricardian_clauses": [],
