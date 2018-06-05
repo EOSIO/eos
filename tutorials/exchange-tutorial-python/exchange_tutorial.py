@@ -30,7 +30,7 @@ def main():
 
 def monitor_exchange():
     action_num = get_last_action() + 1
-    results = cleos('get actions exchange {} 0 -j'.format(action_num))
+    results = cleos('get actions tokenxchange {} 0 -j'.format(action_num))
 
     results = json.loads(results.stdout)
     action_list = results['actions']
@@ -52,7 +52,7 @@ def update_balance(action, to):
     transfer_quantity = action['action_trace']['act']['data']['quantity'].split()[0]
     transfer_quantity = float(transfer_quantity)
 
-    if to == 'exchange':
+    if to == 'tokenxchange':
         if is_valid_deposit(action):
             new_balance = current_balance + transfer_quantity
             set_balance(new_balance)
@@ -62,9 +62,9 @@ def update_balance(action, to):
 
 
 def transfer(to, quantity):
-    if quantity[:-4] != ' EOS':
-        quantity += ' EOS'
-    results = cleos('transfer exchange {} "{}" {} -j'.format(to, quantity, KEY_TO_INTERNAL_ACCOUNT))
+    if quantity[:-4] != ' SYS':
+        quantity += ' SYS'
+    results = cleos('transfer tokenxchange {} "{}" {} -j'.format(to, quantity, KEY_TO_INTERNAL_ACCOUNT))
     transaction_info = json.loads(str(results.stdout, 'utf-8'))
     transaction_id = transaction_info['transaction_id']
 
@@ -87,11 +87,11 @@ def is_valid_deposit(action):
     receiver = action['action_trace']['receipt']['receiver']
     token = action['action_trace']['act']['data']['quantity'].split()[1]
 
-    valid_user = action['action_trace']['act']['data']['to'] == 'exchange'
+    valid_user = action['action_trace']['act']['data']['to'] == 'tokenxchange'
     from_user = action['action_trace']['act']['data']['from']
 
-    # Filter only to actions that notify the exchange account.
-    if receiver != 'exchange':
+    # Filter only to actions that notify the tokenxchange account.
+    if receiver != 'tokenxchange':
         return False
 
     if (account == 'eosio.token' and
@@ -99,7 +99,7 @@ def is_valid_deposit(action):
             memo == KEY_TO_INTERNAL_ACCOUNT and
             valid_user and
             from_user == DEMO_USER and
-            token == 'EOS'):
+            token == 'SYS'):
         return True
 
     print('Invalid deposit')
@@ -114,11 +114,11 @@ def is_valid_withdrawal(action):
 
     transaction_id = action['action_trace']['trx_id']
 
-    valid_user = action['action_trace']['act']['data']['from'] == 'exchange'
+    valid_user = action['action_trace']['act']['data']['from'] == 'tokenxchange'
     to_user = action['action_trace']['act']['data']['to']
 
     # Filter only to actions that notify the exchange account.
-    if receiver != 'exchange':
+    if receiver != 'tokenxchange':
         return False
 
     if (account == 'eosio.token' and
@@ -127,7 +127,7 @@ def is_valid_withdrawal(action):
             valid_user and
             to_user == DEMO_USER and
             transaction_id in get_transactions() and
-            token == 'EOS'):
+            token == 'SYS'):
         return True
 
     print('Invalid withdrawal')
@@ -135,10 +135,10 @@ def is_valid_withdrawal(action):
 
 def cleos(args):
     if isinstance(args, list):
-        command = ['./cleos']
+        command = ['cleos']
         command.extend(args)
     else:
-        command = './cleos ' + args
+        command = 'cleos ' + args
 
     results = subprocess.run(command, stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True, check=True)
     return results
