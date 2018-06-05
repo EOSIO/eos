@@ -1645,7 +1645,7 @@ int main( int argc, char** argv ) {
    getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
    getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
    getAbi->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", accountName));
 
       auto abi  = fc::json::to_pretty_string( result["abi"] );
       if( filename.size() ) {
