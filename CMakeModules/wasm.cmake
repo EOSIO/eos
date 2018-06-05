@@ -54,7 +54,7 @@ macro(compile_wast)
     endif()
 
     set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 ${STDFLAG} --target=wasm32 -ffreestanding
-              -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions  
+              -nostdlib -nostdlibinc -DBOOST_DISABLE_ASSERTS -DBOOST_EXCEPTION_DISABLE -fno-threadsafe-statics -fno-rtti -fno-exceptions
               -c ${infile} -o ${outfile}.bc
     )
     if (${ARG_NOWARNINGS})
