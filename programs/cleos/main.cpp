@@ -1288,7 +1288,8 @@ void get_account( const string& accountName, bool json_format ) {
    auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
 
    if (!json_format) {
-      std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
+      if(res.privileged) std::cout << "privileged: true" << std::endl;
+
 
       constexpr size_t indent_size = 5;
       const string indent(indent_size, ' ');
@@ -1335,21 +1336,26 @@ void get_account( const string& accountName, bool json_format ) {
          dfs_print( r, 0 );
       }
 
-      auto to_pretty_net = []( double bytes ) {
-         string unit = "bytes";
+      auto to_pretty_net = []( int64_t nbytes ) {
+         if(nbytes == -1) {
+             // special case. Treat it as unlimited
+             return std::string("unlimited");
+         }
 
-         if( bytes >= 1024*1024*1024*1024ll ){
-            unit = "Tb";
-            bytes /= 1024*1024*1024*1024ll;
-         }else if( bytes >= 1024*1024*1024 ){
-            unit = "Gb";
-            bytes /= 1024*1024*1024;
-         } else if( bytes >= 1024*1024 ){
-            unit = "Mb";
-            bytes /= 1024*1024;
-         } else if( bytes >= 1024 ) {
-            unit = "Kb";
-            bytes /= 1024;
+         string unit = "bytes";
+         double bytes = static_cast<double> (nbytes);
+         if (bytes >= 1024 * 1024 * 1024 * 1024ll) {
+             unit = "Tb";
+             bytes /= 1024 * 1024 * 1024 * 1024ll;
+         } else if (bytes >= 1024 * 1024 * 1024) {
+             unit = "Gb";
+             bytes /= 1024 * 1024 * 1024;
+         } else if (bytes >= 1024 * 1024) {
+             unit = "Mb";
+             bytes /= 1024 * 1024;
+         } else if (bytes >= 1024) {
+             unit = "Kb";
+             bytes /= 1024;
          }
          std::stringstream ss;
          ss << setprecision(4);
@@ -1373,8 +1379,13 @@ void get_account( const string& accountName, bool json_format ) {
       }
 
 
-      auto to_pretty_time = []( double micro ) {
+      auto to_pretty_time = []( int64_t nmicro ) {
+         if(nmicro == -1) {
+             // special case. Treat it as unlimited
+             return std::string("unlimited");
+         }
          string unit = "us";
+         double micro = static_cast<double>(nmicro);
 
          if( micro > 1000000*60 ) {
             micro /= 1000000*60*60ll;
