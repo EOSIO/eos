@@ -21,8 +21,8 @@
 	printf "\\tDisk space total: %sG\\n" "${DISK_TOTAL%.*}"
 	printf "\\tDisk space available: %sG\\n" "${DISK_AVAIL%.*}"
 
-	if [ "${MEM_MEG}" -lt 7000 ]; then
-		printf "\\tYour system must have 7 or more Gigabytes of physical memory installed.\\n"
+	if [ "${MEM_MEG}" -lt 4000 ]; then
+		printf "\\tYour system must have 4 or more Gigabytes of physical memory installed.\\n"
 		printf "\\tExiting now.\\n"
 		exit 1;
 	fi
@@ -38,16 +38,16 @@
 		printf "\\tExiting now.\\n"
 		exit 1;
 	fi
-	
+
 	printf "\\n\\tChecking Yum installation\\n"
-	
+
 	YUM=$( command -v yum 2>/dev/null )
 	if [ -z "${YUM}" ]; then
 		printf "\\n\\tYum must be installed to compile EOS.IO.\\n"
 		printf "\\n\\tExiting now.\\n"
 		exit 1;
 	fi
-	
+
 	printf "\\tYum installation found at %s.\\n" "${YUM}"
 	printf "\\tUpdating YUM.\\n"
 	if ! sudo yum -y update
@@ -56,7 +56,7 @@
 		printf "\\n\\tExiting now.\\n"
 		exit 1;
 	fi
-	
+
 	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
 	bzip2.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
 	python2-devel.x86_64 python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
@@ -80,7 +80,7 @@
 			printf "\\tPackage %s found.\\n" "${DEP_ARRAY[$i]}"
 			continue
 		fi
-	done		
+	done
 
 	if [ ${COUNT} -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
@@ -88,7 +88,7 @@
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					printf "\\n\\n\\tInstalling dependencies\\n\\n"
 					if ! sudo yum -y install ${DEP}
 					then
@@ -103,7 +103,7 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required YUM dependencies to install.\\n"
 	fi
 

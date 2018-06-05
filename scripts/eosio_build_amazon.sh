@@ -17,8 +17,8 @@
 	printf "\\tDisk space total: %sGb\\n" "${DISK_TOTAL}"
 	printf "\\tDisk space available: %sG\\n" "${DISK_AVAIL}"
 
-	if [ "${MEM_MEG}" -lt 7000 ]; then
-		printf "\\tYour system must have 7 or more Gigabytes of physical memory installed.\\n"
+	if [ "${MEM_MEG}" -lt 4000 ]; then
+		printf "\\tYour system must have 4 or more Gigabytes of physical memory installed.\\n"
 		printf "\\texiting now.\\n"
 		exit 1
 	fi
@@ -42,7 +42,7 @@
 		printf "\\n\\tExiting now.\\n"
 		exit 1
 	fi
-	
+
 	printf "\\tYum installation found at %s.\\n" "${YUM}"
 	printf "\\tUpdating YUM.\\n"
 	if ! UPDATE=$( sudo "$YUM" -y update )
@@ -75,7 +75,7 @@
 			printf "\\tPackage %s found.\\n" "${DEP_ARRAY[$i]}"
 			continue
 		fi
-	done		
+	done
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
@@ -83,7 +83,7 @@
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					printf "\\n\\n\\tInstalling dependencies.\\n\\n"
 					if ! sudo "${YUM}" -y install ${DEP}
 					then
@@ -98,7 +98,7 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required YUM dependencies to install.\\n"
 	fi
 
@@ -227,7 +227,7 @@
 			fi
 		fi
 	fi
-	
+
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep "BOOST_LIB_VERSION" "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI' )
@@ -356,7 +356,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		
+
 if ! tee > "/dev/null" "${MONGOD_CONF}" <<mongodconf
 systemLog:
  destination: file
@@ -456,7 +456,7 @@ fi
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
-		
+
 		if ! "${CMAKE}" -DBUILD_SHARED_LIBS="OFF" -DCMAKE_BUILD_TYPE="Release" -DCMAKE_INSTALL_PREFIX="/usr/local" "${TEMP_DIR}/mongo-cxx-driver"
 		then
 			printf "\\tCmake has encountered the above errors building the MongoDB C++ driver.\\n"

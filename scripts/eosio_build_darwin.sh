@@ -25,8 +25,8 @@
 	printf "\\tDisk space total: %sG\\n" "${DISK_TOTAL}"
 	printf "\\tDisk space available: %sG\\n\\n" "${DISK_AVAIL}"
 
-	if [ "${MEM_GIG}" -lt 7 ]; then
-		echo "Your system must have 7 or more Gigabytes of physical memory installed."
+	if [ "${MEM_GIG}" -lt 4 ]; then
+		echo "Your system must have 4 or more Gigabytes of physical memory installed."
 		echo "Exiting now."
 		exit 1
 	fi
@@ -72,7 +72,7 @@
 		printf "\\tDo you wish to install Home Brew?\\n"
 		select yn in "Yes" "No"; do
 			case "${yn}" in
-				[Yy]* ) 
+				[Yy]* )
 				"${XCODESELECT}" --install 2>/dev/null;
 				if ! "${RUBY}" -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 				then
@@ -91,7 +91,7 @@
 
 	printf "\\tHome Brew installation found @\\n"
 	printf "\\t%s\\n\\n" "${BREW}"
-	
+
 	COUNT=1
 	PERMISSION_GETTEXT=0
 	DISPLAY=""
@@ -123,7 +123,7 @@
 		(( COUNT++ ))
 	done < scripts/eosio_build_dep
 	IFS="${var_ifs}"
-		
+
 	printf "\\tChecking Python3 ... "
 	if [  -z "$( python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null )" ]; then
 		DEP=$DEP"python@3 "
@@ -140,7 +140,7 @@
 		echo "Do you wish to install these packages?"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					if [ $PERMISSION_GETTEXT -eq 1 ]; then
 						sudo chown -R "$(whoami)" /usr/local/share
 					fi
@@ -170,11 +170,11 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required Home Brew dependencies to install.\\n"
 	fi
 
-		
+
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep "#define BOOST_VERSION" "/usr/local/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 	if [ "${BVERSION}" != "106700" ]; then
@@ -186,7 +186,7 @@
 				case $yn in
 					[Yy]* )
 						if "${BREW}" list | grep "boost"
-						then 
+						then
 							printf "\\tUninstalling Boost Version %s.\\n" "${BVERSION}"
 							if ! "${BREW}" uninstall --force boost
 							then
@@ -418,7 +418,7 @@
 	else
 		printf "\\tsecp256k1 found at /usr/local/lib/.\\n"
 	fi
-  
+
 	printf "\\n\\tChecking LLVM with WASM support.\\n"
 	if [ ! -d /usr/local/wasm/bin ]; then
 		if ! cd "${TEMP_DIR}"

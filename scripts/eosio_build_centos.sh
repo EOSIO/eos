@@ -22,8 +22,8 @@
 	printf "\\tDisk space total: %sG\\n" "${DISK_TOTAL%.*}"
 	printf "\\tDisk space available: %sG\\n" "${DISK_AVAIL%.*}"
 
-	if [ "${MEM_MEG}" -lt 7000 ]; then
-		printf "\\n\\tYour system must have 7 or more Gigabytes of physical memory installed.\\n"
+	if [ "${MEM_MEG}" -lt 4000 ]; then
+		printf "\\n\\tYour system must have 4 or more Gigabytes of physical memory installed.\\n"
 		printf "\\tExiting now.\\n\\n"
 		exit 1;
 	fi
@@ -47,17 +47,17 @@
 		printf "\\tExiting now.\\n\\n"
 		exit 1;
 	fi
-	
+
 	printf "\\tYum installation found at %s.\\n" "${YUM}"
 	printf "\\n\\tChecking installation of Centos Software Collections Repository.\\n"
-	
+
 	SCL=$( command -v scl 2>/dev/null )
 	if [ -z "${SCL}" ]; then
 		printf "\\n\\tThe Centos Software Collections Repository, devtoolset-7 and Python3 are required to install EOSIO.\\n"
 		printf "\\tDo you wish to install and enable this repository, devtoolset-7 and Python3 packages?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					printf "\\n\\n\\tInstalling SCL.\\n\\n"
 					if ! sudo "${YUM}" -y --enablerepo=extras install centos-release-scl 2>/dev/null
 					then
@@ -90,7 +90,7 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\tCentos Software Collections Repository found.\\n\\n"
 	fi
 
@@ -113,7 +113,7 @@
 # 		exit 1;
 # 	fi
 # 	printf "\\tCentos python3 successfully enabled.\\n"
-	
+
 	printf "\\n\\tUpdating YUM repository.\\n\\n"
 
 	if ! sudo "${YUM}" -y update 2>/dev/null
@@ -146,7 +146,7 @@
 			printf "\\tPackage %s found.\\n" "${DEP_ARRAY[$i]}"
 			continue
 		fi
-	done		
+	done
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
@@ -154,7 +154,7 @@
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					printf "\\n\\n\\tInstalling dependencies\\n\\n"
 					if ! sudo "${YUM}" -y install ${DEP}
 					then
@@ -169,7 +169,7 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required YUM dependencies to install.\\n"
 	fi
 
@@ -447,7 +447,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		
+
 if ! tee > /dev/null "${MONGOD_CONF}" <<mongodconf
 systemLog:
  destination: file
@@ -546,7 +546,7 @@ mongodconf
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
-		
+
 		if ! "${CMAKE}" -DBUILD_SHARED_LIBS="OFF" -DCMAKE_BUILD_TYPE="Release" -DCMAKE_INSTALL_PREFIX="/usr/local" "${TEMP_DIR}/mongo-cxx-driver"
 		then
 			printf "\\tCmake has encountered the above errors building the MongoDB C++ driver.\\n"
@@ -637,7 +637,7 @@ mongodconf
 		printf "\\n\\tsecp256k1 successfully installed @ /usr/local/lib.\\n\\n"
 	else
 		printf "\\tsecp256k1 found @ /usr/local/lib.\\n"
-	fi	
+	fi
 
 	printf "\\n\\tChecking LLVM with WASM support installation.\\n"
 	if [ ! -d "${HOME}/opt/wasm/bin" ]; then
