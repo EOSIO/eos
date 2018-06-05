@@ -161,6 +161,7 @@ bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   print_request = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
@@ -206,6 +207,8 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    return accountPermissions;
 }
 
+static bool verbose = true;
+
 template<typename T>
 fc::variant call( const std::string& url,
                   const std::string& path,
@@ -214,7 +217,7 @@ fc::variant call( const std::string& url,
       eosio::client::http::connection_param *cp = new eosio::client::http::connection_param((std::string&)url, (std::string&)path,
               no_verify ? false : true, headers);
 
-      return eosio::client::http::do_http_call( *cp, fc::variant(v) );
+      return eosio::client::http::do_http_call( *cp, fc::variant(v), print_request );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -1548,6 +1551,7 @@ int main( int argc, char** argv ) {
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
+   app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
 
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
