@@ -320,7 +320,7 @@ namespace eosio { namespace chain {
       }
    } // construct_index
 
-   fc::path block_log::repair_log( const fc::path& data_dir ) {
+   fc::path block_log::repair_log( const fc::path& data_dir, uint32_t truncate_at_block ) {
       ilog("Recovering Block Log...");
       FC_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"),
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
@@ -419,6 +419,8 @@ namespace eosio { namespace chain {
          new_block_stream.write( reinterpret_cast<char*>(&pos), sizeof(pos) );
          block_num = tmp.block_num();
          pos = new_block_stream.tellp();
+         if( block_num == truncate_at_block )
+            break;
       }
 
       if( bad_block.valid() ) {
@@ -451,6 +453,8 @@ namespace eosio { namespace chain {
                   "has been written out to '${tail_path}'.",
                   ("num", block_num+1)("tail_path", tail_path) );
          }
+      } else if( block_num == truncate_at_block && pos < end_pos ) {
+         ilog( "Stopped recovery of block log early at specified block number: ${stop}.", ("stop", truncate_at_block) );
       } else {
          ilog( "Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.", ("num", block_num) );
       }

@@ -63,7 +63,7 @@ namespace eosio { namespace chain {
 
          static const uint32_t supported_version;
 
-         static fc::path repair_log( const fc::path& data_dir );
+         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = 0 );
 
          static genesis_state extract_genesis_state( const fc::path& data_dir );
 
