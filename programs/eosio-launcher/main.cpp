@@ -1029,7 +1029,6 @@ launcher_def::write_config_file (tn_node_def &node) {
      }
   }
   if (instance.has_db || node.producers.size()) {
-    cfg << "required-participation = 33\n";
     for (const auto &kp : node.keys ) {
        cfg << "private-key = [\"" << string(kp.get_public_key())
            << "\",\"" << string(kp) << "\"]\n";
