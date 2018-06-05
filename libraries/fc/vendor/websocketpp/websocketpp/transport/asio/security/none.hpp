@@ -142,7 +142,7 @@ public:
         lib::asio::ip::tcp::endpoint ep = m_socket->remote_endpoint(aec);
 
         if (aec) {
-            ec = error::make_error_code(error::pass_through);
+            ec = aec;
             s << "Error getting remote endpoint: " << aec
                << " (" << aec.message() << ")";
             return s.str();

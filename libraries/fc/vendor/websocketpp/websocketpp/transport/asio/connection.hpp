@@ -354,7 +354,7 @@ public:
                 callback(make_error_code(transport::error::operation_aborted));
             } else {
                 log_err(log::elevel::info,"asio handle_timer",ec);
-                callback(make_error_code(error::pass_through));
+                callback(ec);
             }
         } else {
             callback(lib::error_code());
@@ -688,7 +688,7 @@ protected:
         if (ec) {
             log_err(log::elevel::info,"asio handle_proxy_write",ec);
             m_proxy_data->timer->cancel();
-            callback(make_error_code(error::pass_through));
+            callback(ec);
             return;
         }
 
@@ -763,7 +763,7 @@ protected:
         if (ec) {
             m_elog.write(log::elevel::info,
                 "asio handle_proxy_read error: "+ec.message());
-            callback(make_error_code(error::pass_through));
+            callback(ec);
         } else {
             if (!m_proxy_data) {
                 m_elog.write(log::elevel::library,
@@ -982,7 +982,7 @@ protected:
         lib::error_code tec;
         if (ec) {
             log_err(log::elevel::info,"asio async_write",ec);
-            tec = make_error_code(transport::error::pass_through);
+            tec = ec;
         }
         if (handler) {
             handler(tec);
