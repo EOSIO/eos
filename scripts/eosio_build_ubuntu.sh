@@ -24,8 +24,8 @@
 	printf "\\tDisk space total: %sG\\n" "${DISK_TOTAL%.*}"
 	printf "\\tDisk space available: %sG\\n" "${DISK_AVAIL%.*}"
 
-	if [ "${MEM_MEG}" -lt 7000 ]; then
-		printf "\\tYour system must have 7 or more Gigabytes of physical memory installed.\\n"
+	if [ "${MEM_MEG}" -lt 4000 ]; then
+		printf "\\tYour system must have 4 or more Gigabytes of physical memory installed.\\n"
 		printf "\\tExiting now.\\n"
 		exit 1
 	fi
@@ -78,15 +78,15 @@
 			printf "\\tPackage %s found.\\n" "${DEP_ARRAY[$i]}"
 			continue
 		fi
-	done		
+	done
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
-		printf "\\n\\t${DISPLAY}\\n\\n" 
+		printf "\\n\\t${DISPLAY}\\n\\n"
 		printf "\\tDo you wish to install these packages?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					printf "\\n\\n\\tInstalling dependencies\\n\\n"
 					sudo apt-get update
 					if ! sudo apt-get -y install ${DEP}
@@ -102,7 +102,7 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required dpkg dependencies to install.\\n"
 	fi
 
