@@ -129,7 +129,7 @@
 		DEP=$DEP"python@3 "
 		DISPLAY="${DISPLAY}${COUNT}. Python 3\\n\\t"
 		printf "\\t\\t python3 ${bldred}NOT${txtrst} found.\\n"
-		(( DCOUNT++ ))
+		(( COUNT++ ))
 	else
 		printf "\\t\\t Python3 found\\n"
 	fi
