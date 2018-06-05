@@ -38,6 +38,7 @@ namespace enumivo { namespace client { namespace http {
    const string push_txns_func = chain_func_base + "/push_transactions";
    const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
    const string get_block_func = chain_func_base + "/get_block";
+   const string get_block_header_state_func = chain_func_base + "/get_block_header_state";
    const string get_account_func = chain_func_base + "/get_account";
    const string get_table_func = chain_func_base + "/get_table_rows";
    const string get_code_func = chain_func_base + "/get_code";
