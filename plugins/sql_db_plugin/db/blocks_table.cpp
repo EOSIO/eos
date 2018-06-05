@@ -44,7 +44,7 @@ void blocks_table::add(chain::signed_block_ptr block)
     const auto timestamp = std::chrono::seconds{block->timestamp.operator fc::time_point().sec_since_epoch()}.count();
     const auto num_transactions = (int)block->transactions.size();
 
-    *m_session << "INSERT INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root, action_merkle_root,"
+    *m_session << "REPLACE INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root, action_merkle_root,"
                   "producer, confirmed, num_transactions) VALUES (:id, :in, :pb, FROM_UNIXTIME(:ti), :tr, :ar, :pa, :pe, :nt)",
             soci::use(block_id_str),
             soci::use(block->block_num()),
@@ -55,12 +55,6 @@ void blocks_table::add(chain::signed_block_ptr block)
             soci::use(block->producer.to_string()),
             soci::use(block->confirmed),
             soci::use(num_transactions);
-}
-
-void blocks_table::remove(chain::signed_block_ptr block)
-{
-    const auto block_id_str = block->id().str();
-    *m_session << "DELETE FROM blocks WHERE id = :id", soci::use(block_id_str);
 }
 
 } // namespace

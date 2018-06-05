@@ -17,13 +17,7 @@ void database::consume(const std::vector<chain::block_state_ptr> &blocks)
 {
     for (const auto& block : blocks)
     {
-        try {
-            m_blocks_table->add(block->block);
-        } catch(std::exception& e){
-            wlog(e.what());
-            m_blocks_table->remove(block->block); // fork?
-            m_blocks_table->add(block->block);
-        }
+        m_blocks_table->add(block->block);
         for (const auto& transaction : block->trxs) {
             m_transactions_table->add(block->block_num, transaction->trx);
             for (const auto& action : transaction->trx.actions) {
