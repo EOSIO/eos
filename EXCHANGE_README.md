@@ -45,7 +45,7 @@ Accepting Deposits
 When designing this tutorial we assume that an exchange will poll `enunode` for incoming
 transactions and will want to know when a transfer is considered irreversible or final. 
 
-With enumivo based chains, finality of a transaction occurs once 2/3+1 of block produers have
+With enumivo based chains, finality of a transaction occurs once 2/3+1 of block producers have
 either directly or indirectly confirmed the block. This could take from less than a second to
 a couple of minutes, but either way enunode will keep you posted on the status.
 
