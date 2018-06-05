@@ -356,6 +356,7 @@ namespace eosio {
 
         void on_connect( boost::system::error_code ec ) {
            if( ec ) return on_fail( ec, "connect" );
+           if( !_ws->is_open() ) return on_fail( ec, "connect, not open");
 
            set_socket_options();
 
