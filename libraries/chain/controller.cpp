@@ -791,10 +791,13 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
                push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
-            }
-            else if( receipt.trx.contains<transaction_id_type>() ) {
+            } else if( receipt.trx.contains<transaction_id_type>() ) {
                push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
             }
+            const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+            FC_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
+                       "receipt does not match",
+                       ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
 
          finalize_block();
