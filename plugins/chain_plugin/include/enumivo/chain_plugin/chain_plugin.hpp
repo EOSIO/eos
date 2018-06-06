@@ -126,7 +126,19 @@ public:
       name account_name;
       bool code_as_wasm = false;
    };
+
+   struct get_abi_results {
+      name                   account_name;
+      optional<abi_def>      abi;
+   };
+
+   struct get_abi_params {
+      name account_name;
+   };
+
+
    get_code_results get_code( const get_code_params& params )const;
+   get_abi_results get_abi( const get_abi_params& params )const;
 
 
 
@@ -419,8 +431,10 @@ FC_REFLECT( enumivo::chain_apis::read_only::get_producers_result, (rows)(total_p
 
 FC_REFLECT( enumivo::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
 FC_REFLECT( enumivo::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( enumivo::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( enumivo::chain_apis::read_only::get_code_params, (account_name)(code_as_wasm) )
+FC_REFLECT( enumivo::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( enumivo::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( enumivo::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( enumivo::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
