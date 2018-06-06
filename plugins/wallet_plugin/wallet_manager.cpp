@@ -19,7 +19,7 @@ std::string gen_password() {
 
 bool valid_filename(const string& name) {
    if (name.empty()) return false;
-   if (std::find_if(name.begin(), name.end(), !boost::algorithm::is_alnum() && !boost::algorithm::is_any_of("._")) != name.end()) return false;
+   if (std::find_if(name.begin(), name.end(), !boost::algorithm::is_alnum() && !boost::algorithm::is_any_of("._-")) != name.end()) return false;
    return boost::filesystem::path(name).filename().string() == name;
 }
 
