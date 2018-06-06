@@ -7,6 +7,9 @@
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 
+#include <deferred_test/deferred_test.wast.hpp>
+#include <deferred_test/deferred_test.abi.hpp>
+
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -303,7 +306,56 @@ BOOST_AUTO_TEST_CASE( blacklist_eosio ) { try {
       auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
       tester2.chain->push_block( b );
    }
+} FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( deferred_blacklist_failure ) { try {
+   whitelist_blacklist_tester<tester> tester1;
+   tester1.init();
+   tester1.chain->produce_blocks();
+   tester1.chain->set_code( N(bob), deferred_test_wast );
+   tester1.chain->set_abi( N(bob),  deferred_test_abi );
+   tester1.chain->set_code( N(charlie), deferred_test_wast );
+   tester1.chain->set_abi( N(charlie),  deferred_test_abi );
+   tester1.chain->produce_blocks();
+
+   tester1.chain->push_action( N(bob), N(defercall), N(alice), mvo()
+      ( "payer", "alice" )
+      ( "sender_id", 0 )
+      ( "contract", "charlie" )
+      ( "payload", 10 )
+   );
+
+   tester1.chain->produce_blocks(2);
+
+   tester1.shutdown();
+
+   tester1.contract_blacklist = {N(charlie)};
+   tester1.init(false);
+
+   whitelist_blacklist_tester<tester> tester2;
+   tester2.init(false);
+
+   while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
+      auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
+      tester2.chain->push_block( b );
+   }
+
+   tester1.chain->push_action( N(bob), N(defercall), N(alice), mvo()
+      ( "payer", "alice" )
+      ( "sender_id", 1 )
+      ( "contract", "charlie" )
+      ( "payload", 10 )
+   );
+
+   tester1.chain->produce_blocks(2);
+
+   // Comment out to trigger bug
+   /*
+   while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
+      auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
+      tester2.chain->push_block( b );
+   }
+   */
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
