@@ -161,6 +161,7 @@ bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   print_request = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
@@ -214,7 +215,7 @@ fc::variant call( const std::string& url,
       eosio::client::http::connection_param *cp = new eosio::client::http::connection_param((std::string&)url, (std::string&)path,
               no_verify ? false : true, headers);
 
-      return eosio::client::http::do_http_call( *cp, fc::variant(v) );
+      return eosio::client::http::do_http_call( *cp, fc::variant(v), print_request );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -1133,6 +1134,59 @@ struct undelegate_bandwidth_subcommand {
    }
 };
 
+struct bidname_subcommand {
+   string bidder_str;
+   string newname_str;
+   string bid_amount;
+   bidname_subcommand(CLI::App *actionRoot) {
+      auto bidname = actionRoot->add_subcommand("bidname", localized("Name bidding"));
+      bidname->add_option("bidder", bidder_str, localized("The bidding account"))->required();
+      bidname->add_option("newname", newname_str, localized("The bidding name"))->required();
+      bidname->add_option("bid", bid_amount, localized("The amount of EOS to bid"))->required();
+      add_standard_transaction_options(bidname);
+      bidname->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("bidder", bidder_str)
+                  ("newname", newname_str)
+                  ("bid", to_asset(bid_amount));
+         send_actions({create_action({permission_level{bidder_str, config::active_name}}, config::system_account_name, N(bidname), act_payload)});
+      });
+   }
+};
+
+struct bidname_info_subcommand {
+   bool print_json = false;
+   string newname_str;
+   bidname_info_subcommand(CLI::App* actionRoot) {
+      auto list_producers = actionRoot->add_subcommand("bidnameinfo", localized("Get bidname info"));
+      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
+      list_producers->add_option("newname", newname_str, localized("The bidding name"))->required();
+      list_producers->set_callback([this] {
+         auto rawResult = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", "eosio")("scope", "eosio")("table", "namebids")
+                               ("lower_bound", eosio::chain::string_to_name(newname_str.c_str()))("limit", 1));
+         if ( print_json ) {
+            std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
+            return;
+         }
+         auto result = rawResult.as<eosio::chain_apis::read_only::get_table_rows_result>();
+         if ( result.rows.empty() ) {
+            std::cout << "No bidname record found" << std::endl;
+            return;
+         }
+         for ( auto& row : result.rows ) {
+            fc::time_point time(fc::microseconds(row["last_bid_time"].as_uint64()));
+            int64_t bid = row["high_bid"].as_int64();
+            std::cout << std::left << std::setw(18) << "bidname:" << std::right << std::setw(24) << row["newname"].as_string() << "\n"
+                      << std::left << std::setw(18) << "highest bidder:" << std::right << std::setw(24) << row["high_bidder"].as_string() << "\n"
+                      << std::left << std::setw(18) << "highest bid:" << std::right << std::setw(24) << (bid > 0 ? bid : -bid) << "\n"
+                      << std::left << std::setw(18) << "last bid time:" << std::right << std::setw(24) << ((std::string)time).c_str() << std::endl;
+            if (bid < 0) std::cout << "This auction has already closed" << std::endl;
+         }
+      });
+   }
+};
+
 struct list_bw_subcommand {
    eosio::name account;
    bool print_json = false;
@@ -1288,7 +1342,8 @@ void get_account( const string& accountName, bool json_format ) {
    auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
 
    if (!json_format) {
-      std::cout << "privileged: " << ( res.privileged ? "true" : "false") << std::endl;
+      if(res.privileged) std::cout << "privileged: true" << std::endl;
+
 
       constexpr size_t indent_size = 5;
       const string indent(indent_size, ' ');
@@ -1335,21 +1390,26 @@ void get_account( const string& accountName, bool json_format ) {
          dfs_print( r, 0 );
       }
 
-      auto to_pretty_net = []( double bytes ) {
-         string unit = "bytes";
+      auto to_pretty_net = []( int64_t nbytes ) {
+         if(nbytes == -1) {
+             // special case. Treat it as unlimited
+             return std::string("unlimited");
+         }
 
-         if( bytes >= 1024*1024*1024*1024ll ){
-            unit = "Tb";
-            bytes /= 1024*1024*1024*1024ll;
-         }else if( bytes >= 1024*1024*1024 ){
-            unit = "Gb";
-            bytes /= 1024*1024*1024;
-         } else if( bytes >= 1024*1024 ){
-            unit = "Mb";
-            bytes /= 1024*1024;
-         } else if( bytes >= 1024 ) {
-            unit = "Kb";
-            bytes /= 1024;
+         string unit = "bytes";
+         double bytes = static_cast<double> (nbytes);
+         if (bytes >= 1024 * 1024 * 1024 * 1024ll) {
+             unit = "Tb";
+             bytes /= 1024 * 1024 * 1024 * 1024ll;
+         } else if (bytes >= 1024 * 1024 * 1024) {
+             unit = "Gb";
+             bytes /= 1024 * 1024 * 1024;
+         } else if (bytes >= 1024 * 1024) {
+             unit = "Mb";
+             bytes /= 1024 * 1024;
+         } else if (bytes >= 1024) {
+             unit = "Kb";
+             bytes /= 1024;
          }
          std::stringstream ss;
          ss << setprecision(4);
@@ -1373,8 +1433,13 @@ void get_account( const string& accountName, bool json_format ) {
       }
 
 
-      auto to_pretty_time = []( double micro ) {
+      auto to_pretty_time = []( int64_t nmicro ) {
+         if(nmicro == -1) {
+             // special case. Treat it as unlimited
+             return std::string("unlimited");
+         }
          string unit = "us";
+         double micro = static_cast<double>(nmicro);
 
          if( micro > 1000000*60 ) {
             micro /= 1000000*60*60ll;
@@ -1484,6 +1549,7 @@ int main( int argc, char** argv ) {
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
+   app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
 
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
@@ -1519,11 +1585,17 @@ int main( int argc, char** argv ) {
 
    // get block
    string blockArg;
+   bool get_bhs = false;
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
-   getBlock->set_callback([&blockArg] {
+   getBlock->add_flag("--header-state", get_bhs, localized("Get block header state from fork database instead") );
+   getBlock->set_callback([&blockArg,&get_bhs] {
       auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
-      std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+      if( get_bhs ) {
+         std::cout << fc::json::to_pretty_string(call(get_block_header_state_func, arg)) << std::endl;
+      } else {
+         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
+      }
    });
 
    // get account
@@ -1575,7 +1647,7 @@ int main( int argc, char** argv ) {
    getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
    getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
    getAbi->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", accountName));
 
       auto abi  = fc::json::to_pretty_string( result["abi"] );
       if( filename.size() ) {
@@ -2555,6 +2627,8 @@ int main( int argc, char** argv ) {
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
    auto listBandWidth = list_bw_subcommand(system);
+   auto bidname = bidname_subcommand(system);
+   auto bidnameinfo = bidname_info_subcommand(system);
 
    auto biyram = buyram_subcommand(system);
    auto sellram = sellram_subcommand(system);
