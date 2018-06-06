@@ -247,6 +247,9 @@ BOOST_AUTO_TEST_CASE(wallet_manager_create_test) {
       wm.create("__test_test");
       BOOST_CHECK(fc::exists("__test_test.wallet"));
       fc::remove("__test_test.wallet");
+      wm.create("t-t");
+      BOOST_CHECK(fc::exists("t-t.wallet"));
+      fc::remove("t-t.wallet");
 
    } FC_LOG_AND_RETHROW()
 }
