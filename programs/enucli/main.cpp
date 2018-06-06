@@ -161,6 +161,7 @@ bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   print_request = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
@@ -214,7 +215,7 @@ fc::variant call( const std::string& url,
       enumivo::client::http::connection_param *cp = new enumivo::client::http::connection_param((std::string&)url, (std::string&)path,
               no_verify ? false : true, headers);
 
-      return enumivo::client::http::do_http_call( *cp, fc::variant(v) );
+      return enumivo::client::http::do_http_call( *cp, fc::variant(v), print_request );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -1548,6 +1549,7 @@ int main( int argc, char** argv ) {
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
+   app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
 
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
@@ -1645,7 +1647,7 @@ int main( int argc, char** argv ) {
    getAbi->add_option("name", accountName, localized("The name of the account whose abi should be retrieved"))->required();
    getAbi->add_option("-f,--file",filename, localized("The name of the file to save the contract .abi to instead of writing to console") );
    getAbi->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", accountName));
 
       auto abi  = fc::json::to_pretty_string( result["abi"] );
       if( filename.size() ) {
