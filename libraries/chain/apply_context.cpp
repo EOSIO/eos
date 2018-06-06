@@ -39,7 +39,7 @@ action_trace apply_context::exec_one()
       privileged = a.privileged;
       auto native = control.find_apply_handler(receiver, act.account, act.name);
       if( native ) {
-         if( control.is_producing_block() ) {
+         if( !trx_context.cannot_subjectively_fail && control.is_producing_block() ) {
             control.check_contract_list( receiver );
          }
          (*native)(*this);
@@ -48,7 +48,7 @@ action_trace apply_context::exec_one()
       if( a.code.size() > 0
           && !(act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name) )
       {
-         if( control.is_producing_block() ) {
+         if( !trx_context.cannot_subjectively_fail && control.is_producing_block() ) {
             control.check_contract_list( receiver );
          }
          try {
@@ -375,8 +375,8 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
          return -1;
       act_ptr = &trx.actions[index];
    }
-   
-   FC_ASSERT(act_ptr, "action is not found" ); 
+
+   FC_ASSERT(act_ptr, "action is not found" );
 
    auto ps = fc::raw::pack_size( *act_ptr );
    if( ps <= buffer_size ) {

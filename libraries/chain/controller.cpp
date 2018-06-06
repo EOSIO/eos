@@ -633,13 +633,14 @@ struct controller_impl {
          try {
             if( implicit ) {
                trx_context.init_for_implicit_trx();
+               trx_context.cannot_subjectively_fail = true;
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
                                                trx->trx.signatures.size() );
             }
 
-            if( !implicit && pending->_block_status == controller::block_status::incomplete ) {
+            if( !trx_context.cannot_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
                check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
             }
 

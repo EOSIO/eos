@@ -299,13 +299,10 @@ BOOST_AUTO_TEST_CASE( blacklist_eosio ) { try {
 
    tester1.chain->produce_blocks(2);
 
-   // Comment out to trigger bug
-   /*
    while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
       auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
       tester2.chain->push_block( b );
    }
-   */
 
 } FC_LOG_AND_RETHROW() }
 
