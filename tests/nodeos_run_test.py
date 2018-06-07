@@ -24,7 +24,6 @@ def cmdError(name, cmdCode=0, exitNow=False):
     else:
         Print(msg)
 
-TEST_OUTPUT_DEFAULT="test_output_0.txt"
 LOCAL_HOST="localhost"
 DEFAULT_PORT=8888
 
@@ -32,7 +31,6 @@ parser = argparse.ArgumentParser(add_help=False)
 # Override default help argument so that only --help (and not -h) can call help
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
-parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
 parser.add_argument("-h", "--host", type=str, help="%s host name" % (testUtils.Utils.EosServerName),
                     default=LOCAL_HOST)
 parser.add_argument("-p", "--port", type=int, help="%s host port" % testUtils.Utils.EosServerName,
@@ -54,7 +52,6 @@ parser.add_argument("--only-bios", help="Limit testing to bios node.", action='s
 parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
-testOutputFile=args.output
 server=args.host
 port=args.port
 debug=args.v
@@ -83,7 +80,6 @@ ClientName="cleos"
 
 try:
     Print("BEGIN")
-    Print("TEST_OUTPUT: %s" % (testOutputFile))
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
 
@@ -130,7 +126,7 @@ try:
     exchangeAccount.ownerPrivateKey=PRV_KEY2
     exchangeAccount.ownerPublicKey=PUB_KEY2
 
-    Print("Stand up walletd")
+    Print("Stand up %s" % (WalletdName))
     walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
     if walletMgr.launch() is False:
