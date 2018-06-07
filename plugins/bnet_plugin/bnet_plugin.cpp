@@ -148,6 +148,14 @@ namespace eosio {
 
   class bnet_plugin_impl;
 
+  template <typename Strand>
+  void verify_strand_in_this_thread(const Strand& strand, const char* func, int line) {
+     if( !strand.running_in_this_thread() ) {
+        elog( "wrong strand: ${f} : line ${n}, exiting", ("f", func)("n", line) );
+        app().quit();
+     }
+  }
+
   /**
    *  Each session is presumed to operate in its own strand so that
    *  operations can execute in parallel.
@@ -427,7 +435,7 @@ namespace eosio {
          *  the LIB or up to the last block known by the remote peer.
          */
         void on_new_lib( block_state_ptr s ) {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
            _local_lib = s->block_num;
            _local_lib_id = s->id;
 
@@ -444,7 +452,7 @@ namespace eosio {
 
 
         void on_bad_block( signed_block_ptr b ) {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
            try {
               auto id = b->id();
               auto itr = _block_status.find( id );
@@ -459,7 +467,7 @@ namespace eosio {
         }
 
         void on_accepted_block_header( const block_state_ptr& s ) {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
           // ilog( "accepted block header ${n}", ("n",s->block_num) );
            if( fc::time_point::now() - s->block->timestamp  < fc::seconds(6) ) {
            //   ilog( "queue notice to peer that we have this block so hopefully they don't send it to us" );
@@ -471,7 +479,7 @@ namespace eosio {
         }
 
         void on_accepted_block( const block_state_ptr& s ) {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
            //idump((_block_status.size())(_transaction_status.size()));
            auto id = s->id;
            //ilog( "accepted block ${n}", ("n",s->block_num) );
@@ -558,7 +566,7 @@ namespace eosio {
 
 
         void send( const bnet_message& msg ) { try {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
 
            auto ps = fc::raw::pack_size(msg);
            _out_buffer.resize(ps);
@@ -604,7 +612,7 @@ namespace eosio {
          *  message to send.
          */
         void maybe_send_next_message() {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
            if( _state == sending_state ) return; /// in process of sending
            if( _out_buffer.size() ) return; /// in process of sending
            if( !_recv_remote_hello || !_sent_remote_hello ) return;
@@ -709,7 +717,7 @@ namespace eosio {
         } FC_LOG_AND_RETHROW() }
 
         void on_async_get_block( const signed_block_ptr& nextblock ) {
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
             if( !nextblock)  {
                _state = idle_state;
                maybe_send_next_message();
@@ -777,7 +785,7 @@ namespace eosio {
 
         void on_fail( boost::system::error_code ec, const char* what ) {
            try {
-              if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+              verify_strand_in_this_thread(_strand, __func__, __LINE__);
               elog( "${w}: ${m}", ("w", what)("m", ec.message() ) );
               _ws->next_layer().close();
            } catch ( ... ) {
@@ -993,7 +1001,7 @@ namespace eosio {
 
         void on_write( boost::system::error_code ec, std::size_t bytes_transferred ) {
            boost::ignore_unused(bytes_transferred);
-           if( !_strand.running_in_this_thread() ) { elog( "wrong strand" ); }
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
            if( ec ) {
               _ws->next_layer().close();
               return on_fail( ec, "write" );
@@ -1087,7 +1095,7 @@ namespace eosio {
          }
 
          void on_session_close( const session* s ) {
-            if( !app().get_io_service().get_executor().running_in_this_thread() ) { elog( "wrong strand"); }
+            verify_strand_in_this_thread(app().get_io_service().get_executor(), __func__, __LINE__);
             auto itr = _sessions.find(s);
             if( _sessions.end() != itr )
                _sessions.erase(itr);
@@ -1151,7 +1159,7 @@ namespace eosio {
          };
 
          void on_reconnect_peers() {
-             if( !app().get_io_service().get_executor().running_in_this_thread() ) { elog( "wrong strand"); }
+             verify_strand_in_this_thread(app().get_io_service().get_executor(), __func__, __LINE__);
              for( const auto& peer : _connect_to_peers ) {
                 bool found = false;
                 for( const auto& con : _sessions ) {
