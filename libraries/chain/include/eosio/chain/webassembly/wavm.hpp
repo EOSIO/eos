@@ -630,6 +630,7 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(running_instance_context& ctx, Params... params) {
+      class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
       return (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
    }
 
@@ -648,6 +649,7 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
 
    template<MethodSig Method>
    static void_type wrapper(running_instance_context& ctx, Params... params) {
+      class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
       (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
       return void_type();
    }
