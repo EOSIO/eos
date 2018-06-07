@@ -721,6 +721,8 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
    t.control->get_resource_limits_manager().get_account_limits( N(testapi), x, net, cpu );
    wdump((net)(cpu));
 
+#warning TODO call the contract before testing to cache it, and validate that it was cached
+
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
                                      5000 ),
                           deadline_exception, is_deadline_exception );
@@ -795,6 +797,8 @@ BOOST_FIXTURE_TEST_CASE(checktime_intrinsic, TESTER) { try {
                                           5000, 10 ),
                                deadline_exception, is_deadline_exception );
 
+#warning TODO validate that the contract was successfully cached
+
         //it will always call
         BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
                                           5000, 10 ),
@@ -812,6 +816,8 @@ BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
         BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("test_checktime", "checktime_sha1_failure")>{},
                                           5000, 10 ),
                                deadline_exception, is_deadline_exception );
+
+#warning TODO validate that the contract was successfully cached
 
         //the contract should be cached, now we should get deadline_exception because of calls to checktime() from hashing function
         BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("test_checktime", "checktime_sha1_failure")>{},
