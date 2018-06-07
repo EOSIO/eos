@@ -642,14 +642,14 @@ struct controller_impl {
                                                trx->trx.signatures.size() );
             }
 
-            if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
+            if( !self.skip_checks_onreplay() && trx_context.can_subjectively_fail &&& pending->_block_status == controller::block_status::incomplete ) {
                check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
             }
 
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
 
-            if( !self.skip_auth_check() && !implicit ) {
+            if( !self.skip_checks_onreplay() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
                        trx->recover_keys( chain_id ),
@@ -1380,7 +1380,7 @@ optional<producer_schedule_type> controller::proposed_producers()const {
    return gpo.proposed_schedule;
 }
 
-bool controller::skip_auth_check()const {
+bool controller::skip_checks_onreplay()const {
    return my->replaying && !my->conf.force_all_checks;
 }
 

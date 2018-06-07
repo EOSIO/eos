@@ -172,7 +172,7 @@ namespace eosio { namespace chain {
 
          int64_t set_proposed_producers( vector<producer_key> producers );
 
-         bool skip_auth_check()const;
+         bool skip_checks_onreplay()const;
 
          bool contracts_console()const;
 
