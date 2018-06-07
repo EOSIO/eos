@@ -39,7 +39,7 @@ action_trace apply_context::exec_one()
       privileged = a.privileged;
       auto native = control.find_apply_handler(receiver, act.account, act.name);
       if( native ) {
-         if( !trx_context.cannot_subjectively_fail && control.is_producing_block() ) {
+         if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
             control.check_contract_list( receiver );
          }
          (*native)(*this);
@@ -48,7 +48,7 @@ action_trace apply_context::exec_one()
       if( a.code.size() > 0
           && !(act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name) )
       {
-         if( !trx_context.cannot_subjectively_fail && control.is_producing_block() ) {
+         if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
             control.check_contract_list( receiver );
          }
          try {

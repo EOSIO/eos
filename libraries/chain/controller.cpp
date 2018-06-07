@@ -637,14 +637,14 @@ struct controller_impl {
          try {
             if( implicit ) {
                trx_context.init_for_implicit_trx();
-               trx_context.cannot_subjectively_fail = true;
+               trx_context.can_subjectively_fail = false;
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
                                                trx->trx.signatures.size() );
             }
 
-            if( !trx_context.cannot_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
+            if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
                check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
             }
 
@@ -800,9 +800,9 @@ struct controller_impl {
                push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
             }
             const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
-            FC_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
-                       "receipt does not match",
-                       ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
+            EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
+                        block_validate_exception, "receipt does not match",
+                        ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
 
          finalize_block();
