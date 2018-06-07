@@ -11,6 +11,7 @@ include( GNUInstallDirs )
 include( VersionMacros )
 include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
+include( MASSigning )
 
 set( BLOCKCHAIN_NAME "EOSIO" )
 set( CMAKE_CXX_STANDARD 14 )
