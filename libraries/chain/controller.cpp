@@ -492,10 +492,14 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return (code == block_net_usage_exceeded::code_value) ||
-             (code == block_cpu_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value)       ||
-             (code == leeway_deadline_exception::code_value);
+      return    (code == block_net_usage_exceeded::code_value)
+             || (code == block_cpu_usage_exceeded::code_value)
+             || (code == deadline_exception::code_value)
+             || (code == leeway_deadline_exception::code_value)
+             || (code == actor_whitelist_exception::code_value)
+             || (code == actor_blacklist_exception::code_value)
+             || (code == contract_whitelist_exception::code_value)
+             || (code == contract_blacklist_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -633,13 +637,14 @@ struct controller_impl {
          try {
             if( implicit ) {
                trx_context.init_for_implicit_trx();
+               trx_context.can_subjectively_fail = false;
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
                                                trx->trx.signatures.size() );
             }
 
-            if( !implicit && pending->_block_status == controller::block_status::incomplete ) {
+            if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
                check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
             }
 
@@ -791,10 +796,13 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
                push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
-            }
-            else if( receipt.trx.contains<transaction_id_type>() ) {
+            } else if( receipt.trx.contains<transaction_id_type>() ) {
                push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
             }
+            const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+            ENU_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
+                        block_validate_exception, "receipt does not match",
+                        ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
 
          finalize_block();
