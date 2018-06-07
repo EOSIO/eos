@@ -59,7 +59,7 @@ class StressNetwork:
         if trid is None:
             return ([], "", 0.0, "failed to issue currency0000")
         print("transaction id %s" % (trid))
-        node.waitForTransIdOnNode(trid)
+        node.waitForTransInBlock(trid)
 
         self.trList = []
         expBal = 0
@@ -97,7 +97,7 @@ class StressNetwork:
         for tr in self.trList:
             trid = node.getTransId(tr)
             transIdlist.append(trid)
-            node.waitForTransIdOnNode(trid)
+            node.waitForTransInBlock(trid)
         return (transIdlist, acc2.name, expBal, "")
     
     def on_exit(self):

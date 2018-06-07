@@ -89,7 +89,7 @@ class Utils:
     def checkOutput(cmd):
         assert(isinstance(cmd, list))
         popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (output,error)=popen.communicate();
+        (output,error)=popen.communicate()
         if popen.returncode != 0:
             raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=error)
         return output.decode("utf-8")
@@ -305,9 +305,9 @@ class Node(object):
     # pylint: disable=too-many-branches
     def getBlock(self, blockNum, retry=True, silentErrors=False):
         """Given a blockId will return block details."""
-        assert(isinstance(blockNum, str))
+        assert(isinstance(blockNum, int))
         if not self.enableMongo:
-            cmd="%s %s get block %s" % (Utils.EosClientPath, self.endpointArgs, blockNum)
+            cmd="%s %s get block %d" % (Utils.EosClientPath, self.endpointArgs, blockNum)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
                 trans=Utils.runCmdReturnJson(cmd)
@@ -320,7 +320,7 @@ class Node(object):
         else:
             for _ in range(2):
                 cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-                subcommand='db.Blocks.findOne( { "block_num": %s } )' % (blockNum)
+                subcommand='db.Blocks.findOne( { "block_num": %d } )' % (blockNum)
                 if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
                 try:
                     trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
@@ -361,21 +361,56 @@ class Node(object):
 
         return None
 
-    def doesNodeHaveBlockNum(self, blockNum):
+    # def doesNodeHaveBlockNum(self, blockNum):
+    #     """Does node have head_block_num >= blockNum"""
+    #     assert isinstance(blockNum, int)
+    #     assert (blockNum > 0)
+
+    #     info=self.getInfo(silentErrors=True)
+    #     assert(info)
+    #     head_block_num=0
+    #     try:
+    #         head_block_num=int(info["head_block_num"])
+    #     except (TypeError, KeyError) as _:
+    #         Utils.Print("Failure in get info parsing. %s" % (info))
+    #         raise
+
+    #     return True if blockNum <= head_block_num else False
+
+    def isBlockPresent(self, blockNum):
+        """Does node have head_block_num >= blockNum"""
         assert isinstance(blockNum, int)
         assert (blockNum > 0)
 
         info=self.getInfo(silentErrors=True)
         assert(info)
-        last_irreversible_block_num=0
+        node_block_num=0
         try:
-            last_irreversible_block_num=int(info["last_irreversible_block_num"])
+            node_block_num=int(info["head_block_num"])
         except (TypeError, KeyError) as _:
             Utils.Print("Failure in get info parsing. %s" % (info))
             raise
 
-        return True if blockNum <= last_irreversible_block_num else True
+        return True if blockNum <= node_block_num else False
 
+    def isBlockFinalized(self, blockNum):
+        """Is blockNum finalized"""
+        assert(blockNum)
+        assert isinstance(blockNum, int)
+        assert (blockNum > 0)
+
+        info=self.getInfo(silentErrors=True)
+        assert(info)
+        node_block_num=0
+        try:
+            node_block_num=int(info["last_irreversible_block_num"])
+        except (TypeError, KeyError) as _:
+            Utils.Print("Failure in get info parsing. %s" % (info))
+            raise
+
+        return True if blockNum <= node_block_num else False
+
+    
     # pylint: disable=too-many-branches
     def getTransaction(self, transId, retry=True, silentErrors=False):
         if not self.enableMongo:
@@ -418,7 +453,7 @@ class Node(object):
         assert(transId)
         assert(isinstance(transId, str))
         assert(blockId)
-        assert(isinstance(blockId, str))
+        assert(isinstance(blockId, int))
 
         block=self.getBlock(blockId)
         transactions=None
@@ -441,7 +476,7 @@ class Node(object):
         return False
 
     def getBlockIdByTransId(self, transId):
-        """Given a transaction Id (string), will return block id (string) containing the transaction"""
+        """Given a transaction Id (string), will return block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
         trans=self.getTransaction(transId)
@@ -463,17 +498,28 @@ class Node(object):
             Utils.Print("Info parsing failed. %s" % (headBlockNum))
 
         for blockNum in range(refBlockNum, headBlockNum+1):
-            if self.isTransInBlock(str(transId), str(blockNum)):
-                return str(blockNum)
+            if self.isTransInBlock(str(transId), blockNum):
+                return blockNum
 
         return None
 
-    def doesNodeHaveTransId(self, transId):
+    def isTransInAnyBlock(self, transId):
+        """Check if transaction (transId) is in a block."""
+        assert(transId)
+        assert(isinstance(transId, str))
+        blockId=self.getBlockIdByTransId(transId)
+        return True if blockId else False
+
+    def isTransFinalized(self, transId):
         """Check if transaction (transId) has been finalized."""
         assert(transId)
         assert(isinstance(transId, str))
         blockId=self.getBlockIdByTransId(transId)
-        return True if blockId else None
+        if not blockId:
+            return False
+
+        assert(isinstance(blockId, int))
+        return self.isBlockFinalized(blockId)
 
     # Disabling MongodDB funbction
     # def getTransByBlockId(self, blockId, retry=True, silentErrors=False):
@@ -560,11 +606,11 @@ class Node(object):
             return None
 
         if stakedDeposit > 0:
-            self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
+            self.waitForTransInBlock(transId) # seems like account creation needs to be finalized before transfer can happen
             trans = self.transferFunds(creatorAccount, account, Node.currencyIntToStr(stakedDeposit, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
-        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
             return None
 
         return trans
@@ -587,11 +633,11 @@ class Node(object):
             return None
 
         if stakedDeposit > 0:
-            self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
+            self.waitForTransInBlock(transId) # seems like account creation needs to be finlized before transfer can happen
             trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
-        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
             return None
 
         return trans
@@ -702,13 +748,16 @@ class Node(object):
 
         return None
 
-    def waitForBlockNumOnNode(self, blockNum, timeout=None):
-        lam = lambda: self.doesNodeHaveBlockNum(blockNum)
+    def waitForTransInBlock(self, transId, timeout=None):
+        """Wait for trans id to be finalized."""
+        lam = lambda: self.isTransInAnyBlock(transId)
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForTransIdOnNode(self, transId, timeout=None):
-        lam = lambda: self.doesNodeHaveTransId(transId)
+    def waitForTransFinalization(self, transId, timeout=None):
+        """Wait for trans id to be finalized."""
+        assert(isinstance(transId, str))
+        lam = lambda: self.isTransFinalized(transId)
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
@@ -745,7 +794,7 @@ class Node(object):
 
         assert(trans)
         transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
             return None
 
         return trans
@@ -940,7 +989,7 @@ class Node(object):
 
         Node.validateTransaction(trans)
         transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
             return None
         return trans
 
@@ -999,7 +1048,7 @@ class Node(object):
             return None
 
         transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
             return None
         return trans
 
@@ -1086,12 +1135,30 @@ class Node(object):
         return True
 
     # TBD: make nodeId an internal property
-    def relaunch(self, nodeId, chainArg, timeout=Utils.systemWaitTimeout):
+    # pylint: disable=too-many-locals
+    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout):
 
         assert(self.pid is None)
         assert(self.killed)
 
         if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
+
+        cmdArr=[]
+        myCmd=self.cmd
+        if not newChain:
+            skip=False
+            for i in self.cmd.split():
+                Utils.Print("\"%s\"" % (i))
+                if skip:
+                    skip=False
+                    continue
+                if "--genesis-json" == i or "--genesis-timestamp" == i:
+                    skip=True
+                    continue
+
+                cmdArr.append(i)
+            myCmd=" ".join(cmdArr)
+
         dataDir="var/lib/node_%02d" % (nodeId)
         dt = datetime.datetime.now()
         dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
@@ -1099,7 +1166,8 @@ class Node(object):
         stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
         stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
         with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-            cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
+            #cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
+            cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
             Utils.Print("cmd: %s" % (cmd))
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.pid=popen.pid
@@ -1288,15 +1356,10 @@ class WalletMgr(object):
             with open(WalletMgr.__walletLogFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
 
-    # @staticmethod
-    # def killall():
-    #     cmd="pkill -9 %s" % (Utils.EosWalletName)
-    #     if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-    #     subprocess.call(cmd.split())
-
     def killall(self, allInstances=False):
         """Kill keos instances. allInstances will kill all keos instances running on the system."""
         if self.__walletPid:
+            Utils.Print("Killing wallet manager process %d:" % (self.__walletPid))
             os.kill(self.__walletPid, signal.SIGKILL)
 
         if allInstances:
@@ -1384,7 +1447,7 @@ class Cluster(object):
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontKill=False, dontBootstrap=False):
+    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontKill=False, dontBootstrap=False):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
@@ -1400,13 +1463,13 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin bnet" % (
-            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3])
+        cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin %s" % (
+            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3], p2pPlugin)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 5000 --filter-on *"
+        nodeosArgs="--max-transaction-time 5000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
@@ -1533,13 +1596,14 @@ class Cluster(object):
         self.nodes=nodes
         return True
 
-    # manually set nodes, alternative to explicit launch
     def setNodes(self, nodes):
+        """manually set nodes, alternative to explicit launch"""
         self.nodes=nodes
 
-    # If a last transaction exists wait for it on root node, then collect its head block number.
-    #  Wait on this block number on each cluster node
     def waitOnClusterSync(self, timeout=None):
+        """Get head block on node 0, then ensure the block is present on every cluster node."""
+        assert(self.nodes)
+        assert(len(self.nodes) > 0)
         targetHeadBlockNum=self.nodes[0].getHeadBlockNum() #get root nodes head block num
         if Utils.Debug: Utils.Print("Head block number on root node: %d" % (targetHeadBlockNum))
         if targetHeadBlockNum == -1:
@@ -1547,16 +1611,23 @@ class Cluster(object):
 
         return self.waitOnClusterBlockNumSync(targetHeadBlockNum, timeout)
 
-    def waitOnClusterBlockNumSync(self, targetHeadBlockNum, timeout=None):
+    def waitOnClusterBlockNumSync(self, targetBlockNum, timeout=None):
+        """Wait for all nodes to have targetBlockNum finalized."""
+        assert(self.nodes)
 
-        def doNodesHaveBlockNum(nodes, targetHeadBlockNum):
+        def doNodesHaveBlockNum(nodes, targetBlockNum):
             for node in nodes:
-                if (not node.killed) and (not node.doesNodeHaveBlockNum(targetHeadBlockNum)):
+                try:
+                    if (not node.killed) and (not node.isBlockPresent(targetBlockNum)):
+                    #if (not node.killed) and (not node.isBlockFinalized(targetBlockNum)):
+                        return False
+                except (TypeError) as _:
+                    # This can happen if client connects before server is listening
                     return False
 
             return True
 
-        lam = lambda: doNodesHaveBlockNum(self.nodes, targetHeadBlockNum)
+        lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum)
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
@@ -1692,8 +1763,8 @@ class Cluster(object):
 
             #Utils.Print("nextEosIdx: %d, count: %d" % (nextEosIdx, count))
             node=self.nodes[nextEosIdx]
-            if Utils.Debug: Utils.Print("Wait for trasaction id %s on node port %d" % (transId, node.port))
-            if node.waitForTransIdOnNode(transId) is False:
+            if Utils.Debug: Utils.Print("Wait for transaction id %s on node port %d" % (transId, node.port))
+            if node.waitForTransInBlock(transId) is False:
                 Utils.Print("ERROR: Selected node never received transaction id %s" % (transId))
                 return False
 
@@ -1713,8 +1784,8 @@ class Cluster(object):
 
         # As an extra step wait for last transaction on the root node
         node=self.nodes[0]
-        if Utils.Debug: Utils.Print("Wait for trasaction id %s on node port %d" % (transId, node.port))
-        if node.waitForTransIdOnNode(transId) is False:
+        if Utils.Debug: Utils.Print("Wait for transaction id %s on node port %d" % (transId, node.port))
+        if node.waitForTransInBlock(transId) is False:
             Utils.Print("ERROR: Selected node never received transaction id %s" % (transId))
             return False
 
@@ -1946,7 +2017,7 @@ class Cluster(object):
                 accounts.append(initx)
 
             transId=Node.getTransId(trans)
-            biosNode.waitForTransIdOnNode(transId)
+            biosNode.waitForTransInBlock(transId)
 
             Utils.Print("Validating system accounts within bootstrap")
             biosNode.validateAccounts(accounts)
@@ -1993,7 +2064,7 @@ class Cluster(object):
 
                 trans=trans[1]
                 transId=Node.getTransId(trans)
-                if not biosNode.waitForTransIdOnNode(transId):
+                if not biosNode.waitForTransInBlock(transId):
                     return False
 
                 # wait for block production handover (essentially a block produced by anyone but eosio).
@@ -2033,7 +2104,7 @@ class Cluster(object):
 
             Node.validateTransaction(trans)
             transId=Node.getTransId(trans)
-            biosNode.waitForTransIdOnNode(transId)
+            biosNode.waitForTransInBlock(transId)
 
             contract="eosio.token"
             contractDir="contracts/%s" % (contract)
@@ -2058,7 +2129,7 @@ class Cluster(object):
 
             Node.validateTransaction(trans[1])
             transId=Node.getTransId(trans[1])
-            biosNode.waitForTransIdOnNode(transId)
+            biosNode.waitForTransInBlock(transId)
 
             contract=eosioTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))
@@ -2073,7 +2144,8 @@ class Cluster(object):
             Node.validateTransaction(trans[1])
             Utils.Print("Wait for issue action transaction to become finalized.")
             transId=Node.getTransId(trans[1])
-            biosNode.waitForTransIdOnNode(transId)
+            # biosNode.waitForTransInBlock(transId)
+            biosNode.waitForTransFinalization(transId)
 
             expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
@@ -2112,7 +2184,7 @@ class Cluster(object):
 
             Utils.Print("Wait for last transfer transaction to become finalized.")
             transId=Node.getTransId(trans[1])
-            if not biosNode.waitForTransIdOnNode(transId):
+            if not biosNode.waitForTransInBlock(transId):
                 return False
 
             Utils.Print("Cluster bootstrap done.")
@@ -2152,7 +2224,7 @@ class Cluster(object):
 
         if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOut)
         for i in range(0, totalNodes):
-            pattern=r"[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
+            pattern=r"[\n]?(\d+) (.* --data-dir var/lib/node_%02d .*)\n" % (i)
             m=re.search(pattern, psOut, re.MULTILINE)
             if m is None:
                 Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
@@ -2187,9 +2259,10 @@ class Cluster(object):
 
         chainArg=self.__chainSyncStrategy.arg
 
+        newChain= False if self.__chainSyncStrategy.name == Utils.SyncHardReplayTag else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if node.killed and not node.relaunch(i, chainArg):
+            if node.killed and not node.relaunch(i, chainArg, newChain=newChain):
                 return False
 
         return True
@@ -2288,7 +2361,7 @@ class Cluster(object):
         if waitForTransBlock and transId is not None:
             node=self.nodes[0]
             if Utils.Debug: Utils.Print("Wait for transaction id %s on server port %d." % ( transId, node.port))
-            if node.waitForTransIdOnNode(transId) is False:
+            if node.waitForTransInBlock(transId) is False:
                 Utils.Print("ERROR: Failed waiting for transaction id %s on server port %d." % (
                     transId, node.port))
                 return False
