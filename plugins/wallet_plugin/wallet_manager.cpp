@@ -18,6 +18,12 @@ std::string gen_password() {
 
 }
 
+bool valid_filename(const string& name) {
+   if (name.empty()) return false;
+   if (std::find_if(name.begin(), name.end(), !boost::algorithm::is_alnum() && !boost::algorithm::is_any_of("._-")) != name.end()) return false;
+   return boost::filesystem::path(name).filename().string() == name;
+}
+
 void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
    timeout_time = std::chrono::system_clock::now() + timeout;
@@ -35,14 +41,16 @@ void wallet_manager::check_timeout() {
 
 std::string wallet_manager::create(const std::string& name) {
    check_timeout();
-   std::string password = gen_password();
+
+   EOS_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
    auto wallet_filename = dir / (name + file_ext);
 
    if (fc::exists(wallet_filename)) {
       EOS_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
    }
-   
+
+   std::string password = gen_password();
    wallet_data d;
    auto wallet = make_unique<soft_wallet>(d);
    wallet->set_password(password);
@@ -52,7 +60,7 @@ std::string wallet_manager::create(const std::string& name) {
       wallet->import_key(eosio_key);
    wallet->lock();
    wallet->unlock(password);
-   
+
    // If we have name in our map then remove it since we want the emplace below to replace.
    // This can happen if the wallet file is removed while eos-walletd is running.
    auto it = wallets.find(name);
@@ -66,6 +74,9 @@ std::string wallet_manager::create(const std::string& name) {
 
 void wallet_manager::open(const std::string& name) {
    check_timeout();
+
+   EOS_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+
    wallet_data d;
    auto wallet = std::make_unique<soft_wallet>(d);
    auto wallet_filename = dir / (name + file_ext);

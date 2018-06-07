@@ -126,7 +126,19 @@ public:
       name account_name;
       bool code_as_wasm = false;
    };
+
+   struct get_abi_results {
+      name                   account_name;
+      optional<abi_def>      abi;
+   };
+
+   struct get_abi_params {
+      name account_name;
+   };
+
+
    get_code_results get_code( const get_code_params& params )const;
+   get_abi_results get_abi( const get_abi_params& params )const;
 
 
 
@@ -170,6 +182,12 @@ public:
    };
 
    fc::variant get_block(const get_block_params& params) const;
+
+   struct get_block_header_state_params {
+      string block_num_or_id;
+   };
+
+   fc::variant get_block_header_state(const get_block_header_state_params& params) const;
 
    struct get_table_rows_params {
       bool        json = false;
@@ -371,7 +389,11 @@ public:
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
-   bool recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir = optional<fc::path>() )const;
+   bool recover_reversible_blocks( const fc::path& db_dir,
+                                   uint32_t cache_size,
+                                   optional<fc::path> new_db_dir = optional<fc::path>(),
+                                   uint32_t truncate_at_block = 0
+                                 )const;
 
    // Only call this in plugin_initialize() to modify controller constructor configuration
    controller::config& chain_config();
@@ -393,6 +415,7 @@ FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
 (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
@@ -408,8 +431,10 @@ FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_pro
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
+FC_REFLECT( eosio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name)(code_as_wasm) )
+FC_REFLECT( eosio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
