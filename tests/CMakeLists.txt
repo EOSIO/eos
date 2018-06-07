@@ -47,7 +47,7 @@ add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_
 #endif()
 
 # TODO: Tests removed until working again on master.
-add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -d 5 -p 1 -n 4 -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME distributed-transactions-remote-test COMMAND tests/distributed-transactions-remote-test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO removed on slim: add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p4 -v --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
