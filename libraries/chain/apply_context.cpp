@@ -41,6 +41,7 @@ action_trace apply_context::exec_one()
       if( native ) {
          if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
             control.check_contract_list( receiver );
+            control.check_action_list( act.account, act.name );
          }
          (*native)(*this);
       }
@@ -50,6 +51,7 @@ action_trace apply_context::exec_one()
       {
          if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
             control.check_contract_list( receiver );
+            control.check_action_list( act.account, act.name );
          }
          try {
             control.get_wasm_interface().apply(a.code_version, a.code, *this);
