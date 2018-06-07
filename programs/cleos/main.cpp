@@ -1424,8 +1424,8 @@ void get_account( const string& accountName, bool json_format ) {
 
       std::cout << "net bandwidth: " << std::endl;
       if ( res.total_resources.is_object() ) {
-         if( res.delegated_bandwidth.is_object() ) {
-            asset net_own =  asset::from_string( res.delegated_bandwidth.get_object()["net_weight"].as_string() );
+         if( res.self_delegated_bandwidth.is_object() ) {
+            asset net_own =  asset::from_string( res.self_delegated_bandwidth.get_object()["net_weight"].as_string() );
             auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
 
             std::cout << indent << "staked:" << std::setw(20) << net_own
@@ -1481,8 +1481,8 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << "cpu bandwidth:" << std::endl;
 
       if ( res.total_resources.is_object() ) {
-         if( res.delegated_bandwidth.is_object() ) {
-            asset cpu_own = asset::from_string( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() );
+         if( res.self_delegated_bandwidth.is_object() ) {
+            asset cpu_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cpu_weight"].as_string() );
             auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
             std::cout << indent << "staked:" << std::setw(20) << cpu_own
                       << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
