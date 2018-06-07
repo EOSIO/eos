@@ -189,7 +189,8 @@ string wallet_manager::create_key(const std::string& name, const std::string& ke
 chain::signed_transaction
 wallet_manager::sign_transaction(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys, const chain::chain_id_type& id) {
    check_timeout();
-   chain::signed_transaction stxn(txn);
+   auto packed_value = chain::signed_transaction stxn(txn);
+   ilog("transaction packed: ${packed_value}",("packed_value",packed_value));
 
    for (const auto& pk : keys) {
       bool found = false;
