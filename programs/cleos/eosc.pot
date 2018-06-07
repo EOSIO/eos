@@ -103,7 +103,7 @@ msgstr ""
 msgid "force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"
 msgstr ""
 
-msgid "set parmaters dealing with account permissions"
+msgid "set parameters dealing with account permissions"
 msgstr ""
 
 msgid "The account to set/delete a permission authority for"
