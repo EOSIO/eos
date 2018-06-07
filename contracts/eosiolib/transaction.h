@@ -58,17 +58,20 @@ extern "C" {
     *
     * @{
     */
+   void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
 
-   void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size);
-
-   void cancel_deferred(const uint128_t& sender_id);
+   /**
+    * cancel deferred transaction
+    * @return 1 if transaction was canceled, 0 if transaction was not found
+    */
+   int cancel_deferred(const uint128_t& sender_id);
 
    /**
     * access a copy of the currently executing transaction
     *
     * @param buffer - a buffer to write the current transaction to
-    * @param size - the size of the buffer
-    * @return the size of the transaction written to the buffer
+    * @param size - the size of the buffer, 0 to return required size
+    * @return the size of the transaction written to the buffer, or number of bytes that can be copied if size==0 passed
     */
    size_t read_transaction(char *buffer, size_t size);
 
@@ -107,15 +110,10 @@ extern "C" {
     * Retrieve the signed_transaction.context_free_data[index].
     * @param index - the index of the context_free_data entry to retrieve
     * @param buff - output buff of the context_free_data entry
-    * @param size - amount of context_free_data[index] to retrieve into buff
-    * @return signed_transaction.context_free_data[index].size() or -1 if index not valid
+    * @param size - amount of context_free_data[index] to retrieve into buff, 0 to report required size
+    * @return size copied, or context_free_data[index].size() if 0 passed for size, or -1 if index not valid
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
-
-   /**
-    * Check that prodived authorizations is enough to execute the transaction
-    */
-   void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
 
    ///@ } transactioncapi
 }

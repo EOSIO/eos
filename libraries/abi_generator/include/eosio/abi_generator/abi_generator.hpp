@@ -8,8 +8,8 @@
 #include <fstream>
 #include <sstream>
 
-#include <eosio/chain/contracts/abi_serializer.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/contract_types.hpp>
 #include <fc/io/json.hpp>
 
 //clashes with something deep in the AST includes in clang 6 and possibly other versions of clang
@@ -40,10 +40,10 @@
 using namespace clang;
 using namespace std;
 using namespace clang::tooling;
-using namespace eosio::chain::contracts;
 namespace cl = llvm::cl;
 
 namespace eosio {
+   using namespace eosio::chain;
 
    FC_DECLARE_EXCEPTION( abi_generation_exception, 999999, "Unable to generate abi" );
 
@@ -159,7 +159,8 @@ namespace eosio {
      * @brief Generates eosio::abi_def struct handling events from ASTConsumer
      */
    class abi_generator {
-      private: 
+      private:
+         static constexpr size_t max_recursion_depth = 25; // arbitrary depth to prevent infinite recursion
          bool                   verbose;
          int                    optimizations;
          abi_def*               output;
@@ -171,6 +172,7 @@ namespace eosio {
          string                 target_contract;
          vector<string>         target_actions;
          ricardian_contracts    rc;
+
       public:
 
          enum optimization {
@@ -178,7 +180,8 @@ namespace eosio {
          };
 
          abi_generator()
-         :optimizations(0)
+         : verbose(false)
+         , optimizations(0)
          , output(nullptr)
          , compiler_instance(nullptr)
          , ast_context(nullptr)
@@ -283,17 +286,17 @@ namespace eosio {
          string decl_to_string(clang::Decl* d);
 
          bool is_typedef(const clang::QualType& qt);
-         QualType add_typedef(const clang::QualType& qt);
+         QualType add_typedef(const clang::QualType& qt, size_t recursion_depth);
 
          bool is_vector(const clang::QualType& qt);
          bool is_vector(const string& type_name);
-         string add_vector(const clang::QualType& qt);
+         string add_vector(const clang::QualType& qt, size_t recursion_depth);
 
          bool is_struct(const clang::QualType& qt);
-         string add_struct(const clang::QualType& qt, string full_type_name="");
+         string add_struct(const clang::QualType& qt, string full_type_name, size_t recursion_depth);
 
          string get_type_name(const clang::QualType& qt, bool no_namespace);
-         string add_type(const clang::QualType& tqt);
+         string add_type(const clang::QualType& tqt, size_t recursion_depth);
 
          bool is_elaborated(const clang::QualType& qt);
          bool is_struct_specialization(const clang::QualType& qt);

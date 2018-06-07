@@ -91,6 +91,15 @@ class wallet_api
        */
       void    unlock(string password);
 
+      /** Checks the password of the wallet
+       *
+       * Validates the password on a wallet even if the wallet is already unlocked,
+       * throws if bad password given.
+       * @param password the password previously set with \c set_password()
+       * @ingroup Wallet Management
+       */
+      void    check_password(string password);
+
       /** Sets a new password on the wallet.
        *
        * The wallet must be either 'new' or 'unlocked' to
@@ -150,6 +159,14 @@ class wallet_api
        * @param wif_key the WIF Private Key to import
        */
       bool import_key( string wif_key );
+
+       /** Creates a key within the wallet to be used to sign transactions by an account.
+       *
+       * example: create_key K1
+       *
+       * @param key_type the key type to create. May be empty to allow wallet to pick appropriate/"best" key type
+       */
+      string create_key( string key_type );
 
       std::shared_ptr<detail::wallet_api_impl> my;
       void encrypt_keys();

@@ -5,6 +5,8 @@
 #include <eosio/chain/webassembly/binaryen.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
+#include <eosio/chain/transaction_context.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include "IR/Module.h"
 #include "Runtime/Intrinsics.h"
@@ -28,7 +30,7 @@ namespace eosio { namespace chain {
          else
             FC_THROW("wasm_interface_impl fall through");
       }
-      
+
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
 
@@ -47,29 +49,40 @@ namespace eosio { namespace chain {
          return mem_image;
       }
 
-      std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module(const digest_type& code_id, const shared_vector<char>& code) {
+      std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const digest_type& code_id,
+                                                                                    const shared_string& code,
+                                                                                    transaction_context& trx_context )
+      {
          auto it = instantiation_cache.find(code_id);
          if(it == instantiation_cache.end()) {
+            auto timer_pause = fc::make_scoped_exit([&](){
+               trx_context.resume_billing_timer();
+            });
+            trx_context.pause_billing_timer();
             IR::Module module;
             try {
                Serialization::MemoryInputStream stream((const U8*)code.data(), code.size());
                WASM::serialize(stream, module);
-            } catch(Serialization::FatalSerializationException& e) {
+               module.userSections.clear();
+            } catch(const Serialization::FatalSerializationException& e) {
+               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+            } catch(const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
             wasm_injections::wasm_binary_injection injector(module);
             injector.inject();
-            
+
             std::vector<U8> bytes;
             try {
                Serialization::ArrayOutputStream outstream;
                WASM::serialize(outstream, module);
                bytes = outstream.getBytes();
-            } catch(Serialization::FatalSerializationException& e) {
+            } catch(const Serialization::FatalSerializationException& e) {
+               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+            } catch(const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
          }
          return it->second;

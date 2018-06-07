@@ -43,7 +43,7 @@ class binaryen_instantiated_module : public wasm_instantiated_module_interface {
          memset(_shared_linear_memory.data, 0, initial_memory_size);
          //copy back in the initial data
          memcpy(_shared_linear_memory.data, _initial_memory.data(), _initial_memory.size());
-
+         
          //be aware that construction of the ModuleInstance implictly fires the start function
          ModuleInstance instance(*_module.get(), &local_interface);
          instance.callExport(Name(entry_point), args);
@@ -73,7 +73,7 @@ std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiat
       table.resize(module->table.initial);
       for (auto& segment : module->table.segments) {
          Address offset = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(segment.offset).value.geti32();
-         assert(offset + segment.data.size() <= module->table.initial);
+         FC_ASSERT( uint64_t(offset) + segment.data.size() <= module->table.initial);
          for (size_t i = 0; i != segment.data.size(); ++i) {
             table[offset + i] = segment.data[i];
          }

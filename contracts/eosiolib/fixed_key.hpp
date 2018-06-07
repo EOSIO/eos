@@ -83,7 +83,7 @@ namespace eosio {
          *
          * @details Default constructor to fixed_key object which initializes all bytes to zero
          */
-         fixed_key() : _data() {}
+         constexpr fixed_key() : _data() {}
 
          /**
          * @brief Constructor to fixed_key object from std::array of num_words() words
@@ -203,7 +203,7 @@ namespace eosio {
     * @return if c1 > c2, return true, otherwise false
     */
    template<size_t Size>
-   bool operator>(const fixed_key<Size> &c1, const fixed_key<Size> &c2) {
+   bool operator>(const fixed_key<Size>& c1, const fixed_key<Size>& c2) {
       return c1._data > c2._data;
    }
 

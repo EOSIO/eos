@@ -150,6 +150,23 @@ public:
       FC_ASSERT( !"Key already in wallet" );
    }
 
+   string create_key(string key_type)
+   {
+      if(key_type.empty())
+         key_type = _default_key_type;
+
+      private_key_type priv_key;
+      if(key_type == "K1")
+         priv_key = fc::crypto::private_key::generate<fc::ecc::private_key_shim>();
+      else if(key_type == "R1")
+         priv_key = fc::crypto::private_key::generate<fc::crypto::r1::private_key_shim>();
+      else
+         FC_THROW_EXCEPTION(chain::wallet_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
+
+      import_key((string)priv_key);
+      return (string)priv_key.get_public_key();
+   }
+
    bool load_wallet_file(string wallet_filename = "")
    {
       // TODO:  Merge imported wallet with existing wallet,
@@ -218,6 +235,7 @@ public:
    mode_t                  _old_umask;
 #endif
    const string _wallet_filename_extension = ".wallet";
+   const string _default_key_type = "K1";
 };
 
 } } } // eosio::wallet::detail
@@ -250,6 +268,15 @@ bool wallet_api::import_key(string wif_key)
       return true;
    }
    return false;
+}
+
+string wallet_api::create_key(string key_type)
+{
+   FC_ASSERT(!is_locked());
+
+   string ret = my->create_key(key_type);
+   save_wallet_file();
+   return ret;
 }
 
 bool wallet_api::load_wallet_file( string wallet_filename )
@@ -297,6 +324,16 @@ void wallet_api::unlock(string password)
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
    my->_checksum = pk.checksum;
+} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+                          "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
+
+void wallet_api::check_password(string password)
+{ try {
+   FC_ASSERT(password.size() > 0);
+   auto pw = fc::sha512::hash(password.c_str(), password.size());
+   vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+   auto pk = fc::raw::unpack<plain_keys>(decrypted);
+   FC_ASSERT(pk.checksum == pw);
 } EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 

@@ -32,7 +32,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <eosio/chain/contracts/genesis_state.hpp>
+#include <eosio/chain/genesis_state.hpp>
 
 #include "config.hpp"
 
@@ -48,7 +48,7 @@ using public_key_type = fc::crypto::public_key;
 using private_key_type = fc::crypto::private_key;
 
 const string block_dir = "blocks";
-const string shared_mem_dir = "shared_mem";
+const string shared_mem_dir = "state";
 
 struct local_identity {
   vector <fc::ip::address> addrs;
@@ -291,8 +291,7 @@ struct prodkey_def {
 };
 
 struct producer_set_def {
-  uint32_t version;
-  vector<prodkey_def> producers;
+  vector<prodkey_def> schedule;
 };
 
 struct server_name_def {
@@ -323,6 +322,11 @@ struct last_run_def {
 };
 
 
+enum class p2p_plugin {
+   NET,
+   BNET
+};
+
 enum launch_modes {
   LM_NONE,
   LM_LOCAL,
@@ -346,6 +350,7 @@ struct launcher_def {
   size_t producers;
   size_t next_node;
   string shape;
+  p2p_plugin p2p;
   allowed_connection allowed_connections = PC_NONE;
   bfs::path genesis;
   bfs::path output;
@@ -430,6 +435,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios producer instances in this network")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
+    ("p2p-plugin", bpo::value<string>()->default_value("net"),"select a p2p plugin to use (either net or bnet). Defaults to net.")
     ("genesis,g",bpo::value<bfs::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
     ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg in quotes")
@@ -489,6 +495,20 @@ launcher_def::initialize (const variables_map &vmap) {
        host_map_file.empty()) {
     bfs::path src = shape;
     host_map_file = src.stem().string() + "_hosts.json";
+  }
+
+  string nc = vmap["p2p-plugin"].as<string>();
+  if ( !nc.empty() ) {
+     if (boost::iequals(nc,"net"))
+        p2p = p2p_plugin::NET;
+     else if (boost::iequals(nc,"bnet"))
+        p2p = p2p_plugin::BNET;
+     else {
+        p2p = p2p_plugin::NET;
+     }
+  }
+  else {
+     p2p = p2p_plugin::NET;
   }
 
   if( !host_map_file.empty() ) {
@@ -745,7 +765,6 @@ launcher_def::bind_nodes () {
    int non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
-   producer_set.version = 1;
    unsigned int i = 0;
    for (auto &h : bindings) {
       for (auto &inst : h.instances) {
@@ -761,7 +780,7 @@ launcher_def::bind_nodes () {
          if (is_bios) {
             string prodname = "eosio";
             node.producers.push_back(prodname);
-            producer_set.producers.push_back({prodname,pubkey});
+            producer_set.schedule.push_back({prodname,pubkey});
          }
         else {
            if (i < non_bios) {
@@ -771,11 +790,11 @@ launcher_def::bind_nodes () {
                  --extra;
               }
               char ext = 'a' + i;
-              string pname = "init";
+              string pname = "defproducer";
               while (count--) {
                  string prodname = pname+ext;
                  node.producers.push_back(prodname);
-                 producer_set.producers.push_back({prodname,pubkey});
+                 producer_set.schedule.push_back({prodname,pubkey});
                  ext += non_bios;
               }
            }
@@ -959,13 +978,18 @@ launcher_def::write_config_file (tn_node_def &node) {
       exit (-1);
    }
 
-   cfg << "genesis-json = " << host->genesis << "\n";
-   cfg << "block-log-dir = " << block_dir << "\n";
+   cfg << "blocks-dir = " << block_dir << "\n";
    cfg << "readonly = 0\n";
    cfg << "send-whole-blocks = true\n";
    cfg << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n";
-   cfg << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n";
-   cfg << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
+   if (p2p == p2p_plugin::NET) {
+      cfg << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n";
+      cfg << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
+   } else {
+      cfg << "bnet-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n";
+      // Include the net_plugin endpoint, because the plugin is always loaded (even if not used).
+      cfg << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port + 1000 << "\n";
+   }
 
    if (is_bios) {
     cfg << "enable-stale-production = true\n";
@@ -991,13 +1015,20 @@ launcher_def::write_config_file (tn_node_def &node) {
 
   if(!is_bios) {
      auto &bios_node = network.nodes["bios"];
-     cfg << "p2p-peer-address = " << bios_node.instance->p2p_endpoint<< "\n";
+     if (p2p == p2p_plugin::NET) {
+        cfg << "p2p-peer-address = " << bios_node.instance->p2p_endpoint<< "\n";
+     } else {
+        cfg << "bnet-connect = " << bios_node.instance->p2p_endpoint<< "\n";
+     }
   }
   for (const auto &p : node.peers) {
-    cfg << "p2p-peer-address = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
+     if (p2p == p2p_plugin::NET) {
+        cfg << "p2p-peer-address = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
+     } else {
+        cfg << "bnet-connect = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
+     }
   }
   if (instance.has_db || node.producers.size()) {
-    cfg << "required-participation = 33\n";
     for (const auto &kp : node.keys ) {
        cfg << "private-key = [\"" << string(kp.get_public_key())
            << "\",\"" << string(kp) << "\"]\n";
@@ -1010,8 +1041,13 @@ launcher_def::write_config_file (tn_node_def &node) {
   if( instance.has_db ) {
     cfg << "plugin = eosio::mongo_db_plugin\n";
   }
+  if ( p2p == p2p_plugin::NET ) {
+    cfg << "plugin = eosio::net_plugin\n";
+  } else {
+    cfg << "plugin = eosio::bnet_plugin\n";
+  }
   cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::account_history_api_plugin\n";
+      << "plugin = eosio::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1042,6 +1078,11 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
                   ( "host", instance.name )
              ) );
     log_config.loggers.front().appenders.push_back("net");
+    fc::logger_config p2p ("net_plugin_impl");
+    p2p.level=fc::log_level::debug;
+    p2p.appenders.push_back ("stderr");
+    p2p.appenders.push_back ("net");
+    log_config.loggers.emplace_back(p2p);
   }
 
   auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );
@@ -1055,7 +1096,7 @@ launcher_def::init_genesis () {
    bfs::ifstream src(genesis_path);
    if (!src.good()) {
       cout << "generating default genesis file " << genesis_path << endl;
-      eosio::chain::contracts::genesis_state_type default_genesis;
+      eosio::chain::genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
       src.open(genesis_path);
    }
@@ -1100,11 +1141,10 @@ launcher_def::write_setprods_file() {
     exit (9);
   }
    producer_set_def no_bios;
-   for (auto &p : producer_set.producers) {
+   for (auto &p : producer_set.schedule) {
       if (p.producer_name != "eosio")
-         no_bios.producers.push_back(p);
+         no_bios.schedule.push_back(p);
    }
-   no_bios.version = 1;
   auto str = fc::json::to_pretty_string( no_bios, fc::json::stringify_large_ints_and_doubles );
   psfile.write( str.c_str(), str.size() );
   psfile.close();
@@ -1142,7 +1182,7 @@ launcher_def::write_bios_boot () {
             }
          }
          else if (key == "cacmd") {
-            for (auto &p : producer_set.producers) {
+            for (auto &p : producer_set.schedule) {
                if (p.producer_name == "eosio") {
                   continue;
                }
@@ -1290,12 +1330,11 @@ void
 launcher_def::make_custom () {
   bfs::path source = shape;
   fc::json::from_file(source).as<testnet_def>(network);
-  producer_set.version = 1;
   for (auto &h : bindings) {
     for (auto &inst : h.instances) {
       tn_node_def *node = &network.nodes[inst.name];
       for (auto &p : node->producers) {
-         producer_set.producers.push_back({p,node->keys[0].get_public_key()});
+         producer_set.schedule.push_back({p,node->keys[0].get_public_key()});
       }
       node->instance = &inst;
       inst.node = node;
@@ -1421,6 +1460,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   }
 
   eosdcmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
+  eosdcmd += " --genesis-json " + genesis.string();
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
@@ -1812,6 +1852,7 @@ int main (int argc, char *argv[]) {
                                            cfg, true), vmap);
 
 
+
     if (vmap.count("launch")) {
       string l = vmap["launch"].as<string>();
       if (boost::iequals(l,"all"))
@@ -1871,7 +1912,7 @@ FC_REFLECT( prodkey_def,
             (producer_name)(block_signing_key))
 
 FC_REFLECT( producer_set_def,
-            (version)(producers))
+            (schedule))
 
 FC_REFLECT( host_def,
             (genesis)(ssh_identity)(ssh_args)(eosio_home)

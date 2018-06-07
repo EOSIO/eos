@@ -76,8 +76,6 @@ err:
     return ret;
 }
 
-SSL_TYPE(ec_key, EC_KEY, EC_KEY_free)
-
 fc::crypto::r1::compact_signature compact_r1(fc::crypto::r1::public_key_data& pubkey, fc::ecdsa_sig& sig, fc::sha256& digest) {
    fc::crypto::r1::compact_signature csig;
    ec_key key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );

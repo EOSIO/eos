@@ -12,6 +12,8 @@
 
 namespace eosio {
 
+   using chain::uint128_t;
+
    template<size_t Size>
    class fixed_key;
 

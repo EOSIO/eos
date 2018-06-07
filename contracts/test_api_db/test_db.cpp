@@ -4,6 +4,7 @@
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
 #include <eosiolib/memory.hpp>
+#include <eosiolib/fixed_key.hpp>
 #include "../test_api/test_api.hpp"
 
 int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};
@@ -153,14 +154,15 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
       auto len = db_get_i64(itr, value, buffer_len);
       value[buffer_len] = '\0';
       std::string s(value);
-      eosio_assert(uint32_t(len) == strlen("bob's info"), "primary_i64_general - db_get_i64");
-      eosio_assert(s == "bob's", "primary_i64_general - db_get_i64");
+      eosio_assert(uint32_t(len) == buffer_len, "primary_i64_general - db_get_i64");
+      eosio_assert(s == "bob's", "primary_i64_general - db_get_i64  - 5");
 
       buffer_len = 20;
-      db_get_i64(itr, value, buffer_len);
-      value[buffer_len] = '\0';
+      len = db_get_i64(itr, value, 0);
+      len = db_get_i64(itr, value, (uint32_t)len);
+      value[len] = '\0';
       std::string sfull(value);
-      eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64");
+      eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64 - full");
    }
 
    // update
@@ -446,7 +448,7 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
    uint64_t pk    = scope;
 
    int32_t itr = -1;
-   uint64_t value;
+   uint64_t value = 0;
    switch( ia.index ) {
       case 1:
          itr = db_idx64_find_primary(ia.code, scope, table, &value, pk);
@@ -495,3 +497,56 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
       eosio_assert( value == ia.val, "test_invalid_access: value did not match" );
    }
 }
+
+void test_db::idx_double_nan_create_fail(uint64_t receiver, uint64_t, uint64_t) {
+   double x = 0.0;
+   x = x / x; // create a NaN
+   db_idx_double_store( N(nan), N(nan), receiver, 0, &x); // should fail
+}
+
+void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) {
+   double x = 0.0;
+   db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
+   auto itr = db_idx_double_find_primary(receiver, N(nan), N(nan), &x, 0);
+   x = 0.0;
+   x = x / x; // create a NaN
+   db_idx_double_update(itr, 0, &x); // should fail
+}
+
+void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) {
+   auto act = eosio::get_action(1, 0);
+   auto lookup_type = eosio::unpack<uint32_t>(act.data);
+
+   uint64_t pk;
+   double x = 0.0;
+   db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
+   x = x / x; // create a NaN
+   switch( lookup_type ) {
+      case 0: // find
+         db_idx_double_find_secondary(receiver, N(nan), N(nan), &x, &pk);
+      break;
+      case 1: // lower bound
+         db_idx_double_lowerbound(receiver, N(nan), N(nan), &x, &pk);
+      break;
+      case 2: // upper bound
+         db_idx_double_upperbound(receiver, N(nan), N(nan), &x, &pk);
+      break;
+      default:
+         eosio_assert( false, "idx_double_nan_lookup_fail: unexpected lookup_type" );
+   }
+}
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
+
+void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_t, uint64_t) {
+   auto key = eosio::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
+   char* ptr = (char*)(&key);
+   ptr += 1;
+   // test that store doesn't crash on unaligned data
+   db_idx256_store( N(testapi), N(testtable), N(testapi), 1, (eosio::key256*)(ptr), 2 );
+   // test that find_primary doesn't crash on unaligned data
+   db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (eosio::key256*)(ptr), 2, 0);
+}
+
+#pragma clang diagnostic pop
