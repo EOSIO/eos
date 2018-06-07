@@ -347,15 +347,15 @@ BOOST_AUTO_TEST_CASE( deferred_blacklist_failure ) { try {
       ( "payload", 10 )
    );
 
-   tester1.chain->produce_blocks(2);
+   BOOST_CHECK_EXCEPTION( tester1.chain->produce_blocks(), fc::exception,
+                          fc_exception_message_is("account 'charlie' is on the contract blacklist")
+                        );
+   tester1.chain->produce_blocks(2, true); // Produce 2 empty blocks (other than onblock of course).
 
-   // Comment out to trigger bug
-   /*
    while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
       auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
       tester2.chain->push_block( b );
    }
-   */
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
