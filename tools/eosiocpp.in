@@ -47,6 +47,7 @@ function build_contract {
                                    -I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
                                    -I${BOOST_INCLUDE_DIR} \
                                    -I $filePath \
+                                   ${EOSIOCPP_CFLAGS} \
                                    -c $file -o $workdir/built/$name
         )
 
