@@ -49,9 +49,9 @@ parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is
 parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
                     action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
-parser.add_argument("--kill-all", help="Kill all nodeos and kleos instances", action='store_true')
+parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -64,10 +64,10 @@ defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
-dontKill=args.dont_kill
+dontKill=args.leave_running
 prodCount=args.prod_count
 onlyBios=args.only_bios
-killAll=args.kill_all
+killAll=args.clean_run
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
@@ -374,7 +374,7 @@ try:
     #     errorExit("FAILURE - %s servants. Expected: [], Actual: %s" % (
     #         testeraAccount.name, actualServants), raw=True)
 
-    node.waitForTransIdOnNode(transId)
+    node.waitForTransInBlock(transId)
 
     transaction=None
     if not enableMongo:
@@ -518,7 +518,7 @@ try:
         errorExit("Failed to reject duplicate message for currency1111 contract")
 
     Print("verify transaction exists")
-    if not node.waitForTransIdOnNode(transId):
+    if not node.waitForTransInBlock(transId):
         cmdError("%s get transaction trans_id" % (ClientName))
         errorExit("Failed to verify push message transaction id.")
 
@@ -748,7 +748,7 @@ try:
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(str(blockNum), retry=False, silentErrors=False)
+        block=node.getBlock(blockNum, retry=False, silentErrors=False)
         if block is None:
             cmdError("%s get block" % (ClientName))
             errorExit("get block by num %d" % blockNum)
@@ -769,7 +769,7 @@ try:
 
 
     Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
-    block=node.getBlock(str(currentBlockNum+1000), silentErrors=True, retry=False)
+    block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
     else:
