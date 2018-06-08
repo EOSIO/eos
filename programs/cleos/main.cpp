@@ -1549,14 +1549,24 @@ int main( int argc, char** argv ) {
    auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"), false);
    create->require_subcommand();
 
+   bool r1 = false;
    // create key
-   create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [](){
-      auto pk    = private_key_type::generate();
-      auto privs = string(pk);
-      auto pubs  = string(pk.get_public_key());
-      std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
-      std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
+   auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [&r1](){
+      if( r1 ) {
+         auto pk    = private_key_type::generate_r1();
+         auto privs = string(pk);
+         auto pubs  = string(pk.get_public_key());
+         std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
+         std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
+      } else {
+         auto pk    = private_key_type::generate();
+         auto privs = string(pk);
+         auto pubs  = string(pk.get_public_key());
+         std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
+         std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
+      }
    });
+   create_key->add_flag( "--r1", r1, "Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)"  );
 
    // create account
    auto createAccount = create_account_subcommand( create, true /*simple*/ );
