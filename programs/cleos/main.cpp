@@ -1397,14 +1397,22 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << "memory: " << std::endl
                 << indent << "quota: " << std::setw(15) << to_pretty_net(res.ram_quota) << "  used: " << std::setw(15) << to_pretty_net(res.ram_usage) << std::endl << std::endl;
 
-      std::cout << "net bandwidth: (averaged over 3 days)" << std::endl;
+      std::cout << "net bandwidth: " << std::endl;
       if ( res.total_resources.is_object() ) {
-         asset net_own = res.delegated_bandwidth.is_object() ? asset::from_string( res.delegated_bandwidth.get_object()["net_weight"].as_string() ) : asset(0) ;
-         auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
-         std::cout << indent << "staked:" << std::setw(20) << net_own
-                   << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
-                   << indent << "delegated:" << std::setw(17) << net_others
-                   << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         if( res.self_delegated_bandwidth.is_object() ) {
+            asset net_own =  asset::from_string( res.self_delegated_bandwidth.get_object()["net_weight"].as_string() );
+            auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+
+            std::cout << indent << "staked:" << std::setw(20) << net_own
+                      << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                      << indent << "delegated:" << std::setw(17) << net_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         }
+         else {
+            auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string());
+            std::cout << indent << "delegated:" << std::setw(17) << net_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         }
       }
 
 
@@ -1445,17 +1453,21 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_net( res.net_limit.max ) << "\n";
       std::cout << std::endl;
 
-
-      std::cout << "cpu bandwidth: (averaged over 3 days)" << std::endl;
-
+      std::cout << "cpu bandwidth:" << std::endl;
 
       if ( res.total_resources.is_object() ) {
-         asset cpu_own = res.delegated_bandwidth.is_object() ? asset::from_string( res.delegated_bandwidth.get_object()["cpu_weight"].as_string() ) : asset(0) ;
-         auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
-         std::cout << indent << "staked:" << std::setw(20) << cpu_own
-                   << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
-                   << indent << "delegated:" << std::setw(17) << cpu_others
-                   << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         if( res.self_delegated_bandwidth.is_object() ) {
+            asset cpu_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cpu_weight"].as_string() );
+            auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+            std::cout << indent << "staked:" << std::setw(20) << cpu_own
+                      << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                      << indent << "delegated:" << std::setw(17) << cpu_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         } else {
+            auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string());
+            std::cout << indent << "delegated:" << std::setw(17) << cpu_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         }
       }
 
 
