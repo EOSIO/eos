@@ -138,6 +138,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Contract account added to contract whitelist (may specify multiple times)")
          ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Contract account added to contract blacklist (may specify multiple times)")
+         ("action-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Action (in the form code::action) added to action blacklist (may specify multiple times)")
          ;
 
 // TODO: rate limiting
@@ -215,6 +217,18 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    LOAD_VALUE_SET(options, "actor-blacklist", my->chain_config->actor_blacklist);
    LOAD_VALUE_SET(options, "contract-whitelist", my->chain_config->contract_whitelist);
    LOAD_VALUE_SET(options, "contract-blacklist", my->chain_config->contract_blacklist);
+
+   if( options.count("action-blacklist") ) {
+      const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();
+      auto& list = my->chain_config->action_blacklist;
+      for( const auto& a : acts ) {
+         auto pos = a.find("::");
+         FC_ASSERT( pos != std::string::npos, "Invalid entry in action-blacklist: '${a}'", ("a", a) );
+         account_name code(a.substr(0, pos));
+         action_name  act(a.substr(pos+2));
+         list.emplace( code.value, act.value );
+      }
+   }
 
    if( options.count("blocks-dir") )
    {
@@ -979,7 +993,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
+            result.self_delegated_bandwidth = abis.binary_to_variant( "self_delegated_bandwidth", data );
          }
       }
 
