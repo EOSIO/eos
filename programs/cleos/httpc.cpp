@@ -13,6 +13,7 @@
 #include <ostream>
 #include <string>
 #include <regex>
+#include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <fc/variant.hpp>

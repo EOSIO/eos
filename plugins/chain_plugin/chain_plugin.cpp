@@ -21,6 +21,8 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <boost/signals2/connection.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -598,6 +600,35 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
       //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
    };
+}
+
+template<>
+uint64_t convert_to_type(const string& str, const string& desc) {
+   uint64_t value = 0;
+   try {
+      name s(str);
+      value = s.value;
+   } catch( ... ) {
+      try {
+         auto trimmed_str = str;
+         boost::trim(trimmed_str);
+         value = boost::lexical_cast<uint64_t>(trimmed_str.c_str(), trimmed_str.size());
+      } catch( ... ) {
+         try {
+            auto symb = eosio::chain::symbol::from_string(str);
+            value = symb.value();
+         } catch( ... ) {
+            try {
+               value = ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
+            } catch( ... ) {
+               FC_ASSERT( false, "Could not convert ${desc} string '${str}' to any of the following: "
+                                 "uint64_t, valid name, or valid symbol (with or without the precision)",
+                          ("desc", desc)("str", str));
+            }
+         }
+      }
+   }
+   return value;
 }
 
 abi_def get_abi( const controller& db, const name& account ) {
