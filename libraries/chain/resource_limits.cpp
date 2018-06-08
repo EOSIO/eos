@@ -357,7 +357,7 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
       arl.available = 0;
    } else {
       auto delta_ex = max_usage_ex - current_usage_ex;
-      arl.available = impl::downgrade_cast<int64_t>(delta_ex * (uint128_t)window_size);
+      arl.available = impl::downgrade_cast<int64_t>(delta_ex * (uint128_t)window_size  / (uint128_t)usage_accumulator::precision );
    }
 
    arl.used = impl::downgrade_cast<int64_t>(current_usage_ex * (uint128_t)window_size / (uint128_t)usage_accumulator::precision);
@@ -400,7 +400,7 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
       arl.available = 0;
    } else {
       auto delta_ex = max_usage_ex - current_usage_ex;
-      arl.available = impl::downgrade_cast<int64_t>(delta_ex * (uint128_t)window_size);
+      arl.available = impl::downgrade_cast<int64_t>(delta_ex * (uint128_t)window_size / (uint128_t)usage_accumulator::precision);
    }
 
    arl.used = impl::downgrade_cast<int64_t>(current_usage_ex * (uint128_t)window_size / (uint128_t)usage_accumulator::precision);
