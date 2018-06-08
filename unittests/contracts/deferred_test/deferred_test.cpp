@@ -31,7 +31,8 @@ class deferred_test : public enumivo::contract {
 
       //@abi action
       void deferfunc( uint64_t payload ) {
-         print("deferfunc called on ", name{_self}, "\n");
+         print("deferfunc called on ", name{_self}, " with payload = ", payload, "\n");
+         enumivo_assert( payload != 13, "value 13 not allowed in payload" );
       }
 
    private:
