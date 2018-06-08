@@ -793,13 +793,25 @@ struct controller_impl {
          start_block( b->timestamp, b->confirmed, s );
 
          for( const auto& receipt : b->transactions ) {
+            auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
                push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+            } else {
+               EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
+
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() > 0,
+                        block_validate_exception, "expected a receipt",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+                        block_validate_exception, "expected receipt was not added",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
             const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
                         block_validate_exception, "receipt does not match",
