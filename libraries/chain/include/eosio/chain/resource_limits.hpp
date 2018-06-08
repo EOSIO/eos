@@ -45,7 +45,6 @@ namespace eosio { namespace chain { namespace resource_limits {
          void initialize_account( const account_name& account );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
-         void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );
          void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
 
          void add_pending_ram_usage( const account_name account, int64_t ram_delta );
@@ -65,11 +64,11 @@ namespace eosio { namespace chain { namespace resource_limits {
          uint64_t get_block_cpu_limit() const;
          uint64_t get_block_net_limit() const;
 
-         int64_t get_account_cpu_limit( const account_name& name ) const;
-         int64_t get_account_net_limit( const account_name& name ) const;
+         int64_t get_account_cpu_limit( const account_name& name, uint32_t time_slot ) const;
+         int64_t get_account_net_limit( const account_name& name, uint32_t time_slot ) const;
 
-         account_resource_limit get_account_cpu_limit_ex( const account_name& name ) const;
-         account_resource_limit get_account_net_limit_ex( const account_name& name ) const;
+         account_resource_limit get_account_cpu_limit_ex( const account_name& name, uint32_t time_slot ) const;
+         account_resource_limit get_account_net_limit_ex( const account_name& name, uint32_t time_slot ) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
 

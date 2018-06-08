@@ -82,16 +82,16 @@ namespace eosio { namespace chain {
       validate_ram_usage.reserve( bill_to_accounts.size() );
 
       // Update usage values of accounts to reflect new time
-      rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot );
-
+      auto time_slot = block_timestamp_type(control.pending_block_time()).slot;
+      
       // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
       for( const auto& a : bill_to_accounts ) {
-         auto net_limit = rl.get_account_net_limit(a);
+         auto net_limit = rl.get_account_net_limit(a, time_slot);
          if( net_limit >= 0 )
             account_net_limit = std::min( account_net_limit, net_limit );
-         auto cpu_limit = rl.get_account_cpu_limit(a);
+         auto cpu_limit = rl.get_account_cpu_limit(a, time_slot);
          if( cpu_limit >= 0 )
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
       }
@@ -219,13 +219,14 @@ namespace eosio { namespace chain {
       }
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
+      auto time_slot = block_timestamp_type(control.pending_block_time()).slot;
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
       for( const auto& a : bill_to_accounts ) {
-         auto net_limit = rl.get_account_net_limit(a);
+         auto net_limit = rl.get_account_net_limit(a, time_slot);
          if( net_limit >= 0 )
             account_net_limit = std::min( account_net_limit, net_limit );
-         auto cpu_limit = rl.get_account_cpu_limit(a);
+         auto cpu_limit = rl.get_account_cpu_limit(a, time_slot);
          if( cpu_limit >= 0 )
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
       }

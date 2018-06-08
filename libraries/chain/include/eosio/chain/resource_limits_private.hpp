@@ -69,6 +69,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       {
          static_assert( Precision > 0, "Precision must be positive" );
          static constexpr uint64_t max_raw_value = std::numeric_limits<uint64_t>::max() / Precision;
+         static constexpr uint64_t precision = Precision;
 
          exponential_moving_average_accumulator()
          : last_ordinal(0)
