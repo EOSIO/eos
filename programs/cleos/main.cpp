@@ -457,37 +457,12 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
                         config::system_account_name, N(delegatebw), act_payload);
 }
 
-fc::variant regproducer_variant(const account_name& producer,
-                                public_key_type key,
-                                string url, uint16_t location = 0) {
-   /*
-   fc::variant_object params = fc::mutable_variant_object()
-         ("max_block_net_usage", config::default_max_block_net_usage)
-         ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
-         ("max_transaction_net_usage", config::default_max_transaction_net_usage)
-         ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
-         ("net_usage_leeway", config::default_net_usage_leeway)
-         ("context_free_discount_net_usage_num", config::default_context_free_discount_net_usage_num)
-         ("context_free_discount_net_usage_den", config::default_context_free_discount_net_usage_den)
-         ("max_block_cpu_usage", config::default_max_block_cpu_usage)
-         ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
-         ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
-         ("max_transaction_lifetime", config::default_max_trx_lifetime)
-         ("deferred_trx_expiration_window", config::default_deferred_trx_expiration_window)
-         ("max_transaction_delay", config::default_max_trx_delay)
-         ("max_inline_action_size", config::default_max_inline_action_size)
-         ("max_inline_depth", config::default_max_inline_action_depth)
-         ("max_authority_depth", config::default_max_auth_depth)
-         ("max_storage_size", max_storage_size)
-         ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
-         ("storage_reserve_ratio", storage_reserve_ratio);
-         */
-
+fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, uint16_t location) {
    return fc::mutable_variant_object()
             ("producer", producer)
             ("producer_key", key)
             ("url", url)
-            ("location", 0)
+            ("location", location)
             ;
 }
 
@@ -623,7 +598,7 @@ struct set_account_permission_subcommand {
    string parentStr;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
-      auto permissions = accountCmd->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
+      auto permissions = accountCmd->add_subcommand("permission", localized("set parameters dealing with account permissions"));
       permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
       permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
       permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] public key, JSON string, or filename defining the authority"))->required();
@@ -805,7 +780,7 @@ struct register_producer_subcommand {
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
-      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), 0);
+      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
       add_standard_transaction_options(register_producer);
 
 
