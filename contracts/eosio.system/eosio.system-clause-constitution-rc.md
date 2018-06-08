@@ -25,7 +25,7 @@ Each Member who makes available a smart contract on this blockchain shall be a D
 Multi-lingual contracts must specify one prevailing language in case of dispute and the author of any translation shall be liable for losses due to their false, misleading, or ambiguous attested translations.
 
 # Article IX - Dispute Resolution
-All disputes arising out of or in connection with this Constitution shall be finally settled under the Rules of Arbitration of the International Chamber of Commerce by one or more arbitrators appointed in accordance with the said Rules.
+All disputes arising out of or in connection with this Constitution shall be finally settled under the Rules of Dispute Resolution of the EOS Core Arbitration Forum by one or more arbitrators appointed in accordance with the said Rules.
 
 # Article X - Choice of Law
 Choice of law for disputes shall be, in order of precedence, this Constitution and the Maxims of Equity.
