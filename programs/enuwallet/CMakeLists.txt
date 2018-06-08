@@ -15,6 +15,8 @@ target_link_libraries( enuwallet
         PRIVATE http_plugin
         PRIVATE enumivo_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
+mas_sign(enuwallet)
+
 install( TARGETS
    enuwallet
 

@@ -721,6 +721,8 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
    t.control->get_resource_limits_manager().get_account_limits( N(testapi), x, net, cpu );
    wdump((net)(cpu));
 
+#warning TODO call the contract before testing to cache it, and validate that it was cached
+
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
                                      5000 ),
                           deadline_exception, is_deadline_exception );
@@ -744,6 +746,65 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 } FC_LOG_AND_RETHROW() }
 
 
+BOOST_FIXTURE_TEST_CASE(checktime_intrinsic, TESTER) { try {
+	produce_blocks(2);
+	create_account( N(testapi) );
+	produce_blocks(10);
+
+        std::stringstream ss;
+        ss << R"CONTRACT(
+(module
+  (type $FUNCSIG$vij (func (param i32 i64)))
+  (type $FUNCSIG$j (func  (result i64)))
+  (type $FUNCSIG$vjj (func (param i64 i64)))
+  (type $FUNCSIG$vii (func (param i32 i32)))
+  (type $FUNCSIG$i (func  (result i32)))
+  (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
+  (type $FUNCSIG$iiii (func (param i32 i32 i32) (result i32)))
+  (type $FUNCSIG$vi (func (param i32)))
+  (type $FUNCSIG$v (func ))
+  (type $_1 (func (param i64 i64 i64)))
+  (export "apply" (func $apply))
+   (import "env" "memmove" (func $memmove (param i32 i32 i32) (result i32)))
+   (import "env" "printui" (func $printui (param i64)))
+  (memory $0 1)
+
+  (func $apply (type $_1)
+    (param $0 i64)
+    (param $1 i64)
+    (param $2 i64)
+    (drop (grow_memory (i32.const 527)))
+
+    (call $printui (i64.const 11))
+)CONTRACT";
+
+        for(unsigned int i = 0; i < 5000; ++i) {
+           ss << R"CONTRACT(
+(drop (call $memmove
+    (i32.const 1)
+    (i32.const 9)
+    (i32.const 33554432)
+    ))
+
+)CONTRACT";
+        }
+        ss<< "))";
+	set_code( N(testapi), ss.str().c_str() );
+	produce_blocks(1);
+
+        //initialize cache
+        BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
+                                          5000, 10 ),
+                               deadline_exception, is_deadline_exception );
+
+#warning TODO validate that the contract was successfully cached
+
+        //it will always call
+        BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
+                                          5000, 10 ),
+                               deadline_exception, is_deadline_exception );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
@@ -755,6 +816,8 @@ BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
         BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("test_checktime", "checktime_sha1_failure")>{},
                                           5000, 10 ),
                                deadline_exception, is_deadline_exception );
+
+#warning TODO validate that the contract was successfully cached
 
         //the contract should be cached, now we should get deadline_exception because of calls to checktime() from hashing function
         BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("test_checktime", "checktime_sha1_failure")>{},

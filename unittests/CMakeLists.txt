@@ -12,8 +12,11 @@ link_directories(${LLVM_LIBRARY_DIR})
 
 set( CMAKE_CXX_STANDARD 14 )
 
+add_subdirectory(contracts)
+
 include_directories("${CMAKE_BINARY_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/contracts")
+include_directories("${CMAKE_BINARY_DIR}/unittests/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/unittests/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/libraries/testing/include")
 

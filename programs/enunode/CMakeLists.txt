@@ -95,3 +95,5 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/enumivo
                               WORLD_READ
                               WORLD_EXECUTE
 			)
+
+mas_sign(enunode)
