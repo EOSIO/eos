@@ -139,7 +139,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Contract account added to contract blacklist (may specify multiple times)")
          ("action-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Action account (in the form code::action) added to action blacklist (may specify multiple times)")
+          "Action (in the form code::action) added to action blacklist (may specify multiple times)")
          ;
 
 // TODO: rate limiting
