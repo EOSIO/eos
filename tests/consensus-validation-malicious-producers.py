@@ -333,7 +333,7 @@ def myTest(transWillEnterBlock):
             transId=testUtils.Node.getTransId(trans[1])
 
             Print("verify transaction exists")
-            if not node2.waitForTransIdOnNode(transId):
+            if not node2.waitForTransInBlock(transId):
                 error("Transaction never made it to node2")
                 return False
 

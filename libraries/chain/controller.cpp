@@ -499,7 +499,8 @@ struct controller_impl {
              || (code == actor_whitelist_exception::code_value)
              || (code == actor_blacklist_exception::code_value)
              || (code == contract_whitelist_exception::code_value)
-             || (code == contract_blacklist_exception::code_value);
+             || (code == contract_blacklist_exception::code_value)
+             || (code == action_blacklist_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -1075,6 +1076,16 @@ struct controller_impl {
       }
    }
 
+   void check_action_list( account_name code, action_name action )const {
+      if( conf.action_blacklist.size() > 0 ) {
+         ENU_ASSERT( conf.action_blacklist.find( std::make_pair(code, action) ) == conf.action_blacklist.end(),
+                     action_blacklist_exception,
+                     "action '${code}::${action}' is on the action blacklist",
+                     ("code", code)("action", action)
+                   );
+      }
+   }
+
    /*
    bool should_check_tapos()const { return true; }
 
@@ -1415,6 +1426,10 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
 
 void controller::check_contract_list( account_name code )const {
    my->check_contract_list( code );
+}
+
+void controller::check_action_list( account_name code, action_name action )const {
+   my->check_action_list( code, action );
 }
 
 bool controller::is_producing_block()const {
