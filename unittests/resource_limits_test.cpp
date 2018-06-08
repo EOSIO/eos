@@ -140,13 +140,8 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
     */
 
 
-// TODO: restore weighted capacity cpu tests
-#if 0
    BOOST_FIXTURE_TEST_CASE(weighted_capacity_cpu, resource_limits_fixture) try {
       const vector<int64_t> weights = { 234, 511, 672, 800, 1213 };
-      const int64_t total = std::accumulate(std::begin(weights), std::end(weights), 0LL);
-      vector<int64_t> expected_limits;
-      std::transform(std::begin(weights), std::end(weights), std::back_inserter(expected_limits), [total](const auto& v){ return v * config::default_max_block_cpu_usage / total; });
 
       for (int64_t idx = 0; idx < weights.size(); idx++) {
          const account_name account(idx + 100);
@@ -156,18 +151,22 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       process_account_limit_updates();
 
-      for (int64_t idx = 0; idx < weights.size(); idx++) {
-         const account_name account(idx + 100);
-         BOOST_CHECK_EQUAL(get_account_cpu_limit(account), expected_limits.at(idx));
+      for( uint32_t period = 0; period < 100; period++) {
+         for (int64_t idx = 0; idx < weights.size(); idx++) {
+            const account_name account(idx + 100);
+            auto calculated_limit = get_account_cpu_limit(account, period);
 
-         {  // use the expected limit, should succeed ... roll it back
-            auto s = start_session();
-            add_transaction_usage({account}, expected_limits.at(idx), 0, 0);
-            s.undo();
+            {  // use the calculated limit + 1, should throw ... roll it back
+               auto s = start_session();
+               BOOST_REQUIRE_THROW(add_transaction_usage({account}, calculated_limit + 1, 0, period), tx_cpu_usage_exceeded);
+               s.undo();
+            }
+
+            // use the exact amount and expect success;
+            add_transaction_usage({account}, calculated_limit, 0, period);
          }
 
-         // use too much, and expect failure;
-         BOOST_REQUIRE_THROW(add_transaction_usage({account}, expected_limits.at(idx) + 1, 0, 0), tx_cpu_usage_exceeded);
+         process_block_usage(period);
       }
    } FC_LOG_AND_RETHROW();
 
@@ -176,9 +175,6 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
     */
    BOOST_FIXTURE_TEST_CASE(weighted_capacity_net, resource_limits_fixture) try {
       const vector<int64_t> weights = { 234, 511, 672, 800, 1213 };
-      const int64_t total = std::accumulate(std::begin(weights), std::end(weights), 0LL);
-      vector<int64_t> expected_limits;
-      std::transform(std::begin(weights), std::end(weights), std::back_inserter(expected_limits), [total](const auto& v){ return v * config::default_max_block_net_usage / total; });
 
       for (int64_t idx = 0; idx < weights.size(); idx++) {
          const account_name account(idx + 100);
@@ -188,21 +184,24 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       process_account_limit_updates();
 
-      for (int64_t idx = 0; idx < weights.size(); idx++) {
-         const account_name account(idx + 100);
-         BOOST_CHECK_EQUAL(get_account_net_limit(account), expected_limits.at(idx));
+      for( uint32_t period = 0; period < 100; period++) {
+         for (int64_t idx = 0; idx < weights.size(); idx++) {
+            const account_name account(idx + 100);
+            auto calculated_limit = get_account_net_limit(account, period);
 
-         {  // use the expected limit, should succeed ... roll it back
-            auto s = start_session();
-            add_transaction_usage({account}, 0, expected_limits.at(idx), 0);
-            s.undo();
+            {  // use the calculated limit + 1, should throw ... roll it back
+               auto s = start_session();
+               BOOST_REQUIRE_THROW(add_transaction_usage({account}, 0, calculated_limit + 1, period), tx_cpu_usage_exceeded);
+               s.undo();
+            }
+
+            // use the exact amount and expect success;
+            add_transaction_usage({account}, 0, calculated_limit, period);
          }
 
-         // use too much, and expect failure;
-         BOOST_REQUIRE_THROW(add_transaction_usage({account}, 0, expected_limits.at(idx) + 1, 0), tx_net_usage_exceeded);
+         process_block_usage(period);
       }
    } FC_LOG_AND_RETHROW();
-#endif
 
    BOOST_FIXTURE_TEST_CASE(enforce_block_limits_cpu, resource_limits_fixture) try {
       const account_name account(1);

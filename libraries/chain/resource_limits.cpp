@@ -79,17 +79,6 @@ void resource_limits_manager::set_block_parameters(const elastic_limit_parameter
    });
 }
 
-void resource_limits_manager::update_account_usage(const flat_set<account_name>& accounts, uint32_t time_slot ) {
-   const auto& config = _db.get<resource_limits_config_object>();
-   for( const auto& a : accounts ) {
-      const auto& usage = _db.get<resource_usage_object,by_owner>( a );
-      _db.modify( usage, [&]( auto& bu ){
-          bu.net_usage.add( 0, time_slot, config.account_net_usage_average_window );
-          bu.cpu_usage.add( 0, time_slot, config.account_cpu_usage_average_window );
-      });
-   }
-}
-
 void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
@@ -108,9 +97,9 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       });
 
       if( cpu_weight >= 0 && state.total_cpu_weight > 0 ) {
-         uint128_t window_size = config.account_cpu_usage_average_window;
-         auto virtual_network_capacity_in_window = (uint128_t)state.virtual_cpu_limit * window_size;
-         auto cpu_used_in_window                 = ((uint128_t)usage.cpu_usage.value_ex * window_size) / (uint128_t)config::rate_limiting_precision;
+         // move the virtual limit into the precision of the accumulated average
+         auto virtual_network_capacity_in_window = (uint128_t)state.virtual_cpu_limit * usage_accumulator::precision;
+         auto cpu_used_in_window                 = (uint128_t)usage.cpu_usage.value_ex;
 
          uint128_t user_weight     = (uint128_t)cpu_weight;
          uint128_t all_user_weight = state.total_cpu_weight;
@@ -126,10 +115,9 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       }
 
       if( net_weight >= 0 && state.total_net_weight > 0) {
-
-         uint128_t window_size = config.account_net_usage_average_window;
-         auto virtual_network_capacity_in_window = (uint128_t)state.virtual_net_limit * window_size;
-         auto net_used_in_window                 = ((uint128_t)usage.net_usage.value_ex * window_size) / (uint128_t)config::rate_limiting_precision;
+         // move the virtual limit into the precision of the accumulated average
+         auto virtual_network_capacity_in_window = (uint128_t)state.virtual_net_limit * usage_accumulator::precision;
+         auto net_used_in_window                 = (uint128_t)usage.net_usage.value_ex;
 
          uint128_t user_weight     = (uint128_t)net_weight;
          uint128_t all_user_weight = state.total_net_weight;
@@ -334,16 +322,20 @@ uint64_t resource_limits_manager::get_block_net_limit() const {
    return config.net_limit_parameters.max - state.pending_net_usage;
 }
 
-int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name ) const {
-   auto arl = get_account_cpu_limit_ex(name);
+int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name, uint32_t time_slot ) const {
+   auto arl = get_account_cpu_limit_ex(name, time_slot);
    return arl.available;
 }
 
-account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const account_name& name ) const {
-
+account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t time_slot ) const {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
    const auto& config = _db.get<resource_limits_config_object>();
+   const auto window_size = config.account_cpu_usage_average_window;
+
+   // create a local copy and decay to this time_slot if necessary
+   auto accumulator_copy = usage.cpu_usage;
+   accumulator_copy.add(0, time_slot, window_size);
 
    int64_t cpu_weight, x, y;
    get_account_limits( name, x, y, cpu_weight );
@@ -354,61 +346,65 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
 
    account_resource_limit arl;
 
-   uint128_t window_size = config.account_cpu_usage_average_window;
+   uint128_t virtual_cpu_capacity = (uint128_t)state.virtual_cpu_limit * usage_accumulator::precision;
+   uint128_t user_weight          = (uint128_t)cpu_weight;
+   uint128_t all_user_weight      = (uint128_t)state.total_cpu_weight;
+   uint128_t current_usage_ex     = (uint128_t)accumulator_copy.value_ex;
 
-   uint128_t virtual_cpu_capacity_in_window = (uint128_t)state.virtual_cpu_limit * window_size;
-   uint128_t user_weight     = (uint128_t)cpu_weight;
-   uint128_t all_user_weight = (uint128_t)state.total_cpu_weight;
+   auto max_usage_ex = (virtual_cpu_capacity * user_weight) / all_user_weight;
 
-   auto max_user_use_in_window = (virtual_cpu_capacity_in_window * user_weight) / all_user_weight;
-   auto cpu_used_in_window  = impl::integer_divide_ceil((uint128_t)usage.cpu_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision);
-
-   if( max_user_use_in_window <= cpu_used_in_window )
+   if( max_usage_ex <= current_usage_ex ) {
       arl.available = 0;
-   else
-      arl.available = impl::downgrade_cast<int64_t>(max_user_use_in_window - cpu_used_in_window);
+   } else {
+      auto delta_ex = max_usage_ex - current_usage_ex;
+      arl.available = impl::downgrade_cast<int64_t>(delta_ex * (uint128_t)window_size);
+   }
 
-   arl.used = impl::downgrade_cast<int64_t>(cpu_used_in_window);
-   arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
+   arl.used = impl::downgrade_cast<int64_t>(current_usage_ex * (uint128_t)window_size / (uint128_t)usage_accumulator::precision);
+   arl.max = impl::downgrade_cast<int64_t>(max_usage_ex * (uint128_t)window_size / (uint128_t)usage_accumulator::precision );
    return arl;
 }
 
-int64_t resource_limits_manager::get_account_net_limit( const account_name& name ) const {
-   auto arl = get_account_net_limit_ex(name);
+int64_t resource_limits_manager::get_account_net_limit( const account_name& name, uint32_t time_slot ) const {
+   auto arl = get_account_net_limit_ex(name, time_slot);
    return arl.available;
 }
 
-account_resource_limit resource_limits_manager::get_account_net_limit_ex( const account_name& name ) const {
+account_resource_limit resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t time_slot ) const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   const auto& usage = _db.get<resource_usage_object, by_owner>(name);
    const auto& config = _db.get<resource_limits_config_object>();
-   const auto& state  = _db.get<resource_limits_state_object>();
-   const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
+   const auto window_size = config.account_net_usage_average_window;
+
+   // create a local copy and decay to this time_slot if necessary
+   auto accumulator_copy = usage.net_usage;
+   accumulator_copy.add(0, time_slot, window_size);
 
    int64_t net_weight, x, y;
    get_account_limits( name, x, net_weight, y );
 
-   if( net_weight < 0 || state.total_net_weight == 0) {
+   if( net_weight < 0 || state.total_net_weight == 0 ) {
       return { -1, -1, -1 };
    }
 
    account_resource_limit arl;
 
-   uint128_t window_size = config.account_net_usage_average_window;
+   uint128_t virtual_net_capacity = (uint128_t)state.virtual_net_limit * usage_accumulator::precision;
+   uint128_t user_weight          = (uint128_t)net_weight;
+   uint128_t all_user_weight      = (uint128_t)state.total_net_weight;
+   uint128_t current_usage_ex     = (uint128_t)accumulator_copy.value_ex;
 
-   uint128_t virtual_network_capacity_in_window = state.virtual_net_limit * window_size;
-   uint128_t user_weight     = (uint128_t)net_weight;
-   uint128_t all_user_weight = (uint128_t)state.total_net_weight;
+   auto max_usage_ex = (virtual_net_capacity * user_weight) / all_user_weight;
 
-
-   auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
-   auto net_used_in_window  = impl::integer_divide_ceil((uint128_t)usage.net_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision);
-
-   if( max_user_use_in_window <= net_used_in_window )
+   if( max_usage_ex <= current_usage_ex ) {
       arl.available = 0;
-   else
-      arl.available = impl::downgrade_cast<int64_t>(max_user_use_in_window - net_used_in_window);
+   } else {
+      auto delta_ex = max_usage_ex - current_usage_ex;
+      arl.available = impl::downgrade_cast<int64_t>(delta_ex * (uint128_t)window_size);
+   }
 
-   arl.used = impl::downgrade_cast<int64_t>(net_used_in_window);
-   arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
+   arl.used = impl::downgrade_cast<int64_t>(current_usage_ex * (uint128_t)window_size / (uint128_t)usage_accumulator::precision);
+   arl.max = impl::downgrade_cast<int64_t>(max_usage_ex * (uint128_t)window_size / (uint128_t)usage_accumulator::precision );
    return arl;
 }
 
