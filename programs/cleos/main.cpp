@@ -162,6 +162,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 bool   print_request = false;
+bool   print_response = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
@@ -215,7 +216,7 @@ fc::variant call( const std::string& url,
       eosio::client::http::connection_param *cp = new eosio::client::http::connection_param((std::string&)url, (std::string&)path,
               no_verify ? false : true, headers);
 
-      return eosio::client::http::do_http_call( *cp, fc::variant(v), print_request );
+      return eosio::client::http::do_http_call( *cp, fc::variant(v), print_request, print_response );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -1537,6 +1538,7 @@ int main( int argc, char** argv ) {
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
    app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
+   app.add_flag("--print-response", print_response, localized("print HTTP response to STDERR"));
 
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
@@ -2289,9 +2291,11 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
       fc::variant action_args_var;
-      try {
-         action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
-      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data",data))
+      if( !data.empty() ) {
+         try {
+            action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
+         } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", data))
+      }
 
       auto arg= fc::mutable_variant_object
                 ("code", contract_account)

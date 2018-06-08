@@ -102,7 +102,8 @@ namespace eosio { namespace client { namespace http {
 
    fc::variant do_http_call( const connection_param& cp,
                              const fc::variant& postdata,
-                             bool print_request ) {
+                             bool print_request,
+                             bool print_response ) {
    std::string postjson;
    if( !postdata.is_null() ) {
       postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata );
@@ -170,6 +171,12 @@ namespace eosio { namespace client { namespace http {
    }
 
    const auto response_result = fc::json::from_string(re);
+   if( print_response ) {
+      std::cerr << "RESPONSE:" << std::endl
+                << "---------------------" << std::endl
+                << fc::json::to_pretty_string( response_result ) << std::endl
+                << "---------------------" << std::endl;
+   }
    if( status_code == 200 || status_code == 201 || status_code == 202 ) {
       return response_result;
    } else if( status_code == 404 ) {
