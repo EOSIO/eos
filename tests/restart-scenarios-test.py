@@ -36,7 +36,8 @@ parser.add_argument("-s", type=str, help="topology", choices=["mesh"], default="
 parser.add_argument("-c", type=str, help="chain strategy",
                     choices=[testUtils.Utils.SyncResyncTag, testUtils.Utils.SyncNoneTag, testUtils.Utils.SyncHardReplayTag],
                     default=testUtils.Utils.SyncResyncTag)
-parser.add_argument("--kill-sig", type=str, choices=[testUtils.Utils.SigKillTag, testUtils.Utils.SigTermTag], help="kill signal.")
+parser.add_argument("--kill-sig", type=str, choices=[testUtils.Utils.SigKillTag, testUtils.Utils.SigTermTag], help="kill signal.",
+                    default=testUtils.Utils.SigKillTag)
 parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
