@@ -52,7 +52,7 @@ template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
    try {
       return fc::variant(str).as<Type>();
-   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert {desc} string '${str}' to key type.", ("desc", desc)("str",str) )
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to key type.", ("desc", desc)("str",str) )
 }
 
 template<>
