@@ -16,12 +16,21 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       template<typename T>
       T operator* (T value, const ratio<T>& r) {
+         EOS_ASSERT(std::numeric_limits<T>::max() / r.numerator >= value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
          return (value * r.numerator) / r.denominator;
       }
 
-      constexpr uint64_t integer_divide_ceil(uint64_t num, uint64_t den ) {
+      template<typename UnsignedIntType>
+      constexpr UnsignedIntType integer_divide_ceil(UnsignedIntType num, UnsignedIntType den ) {
          return (num / den) + ((num % den) > 0 ? 1 : 0);
       }
+
+      template<typename LesserIntType, typename GreaterIntType>
+      constexpr LesserIntType downgrade_cast(GreaterIntType val) {
+         const auto max = std::numeric_limits<LesserIntType>::max();
+         EOS_ASSERT( val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, max is ${m}", ("v", val)("m", max) );
+         return LesserIntType(val);
+      };
 
       /**
        *  This class accumulates and exponential moving average based on inputs
@@ -59,7 +68,7 @@ namespace eosio { namespace chain { namespace resource_limits {
             EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
             EOS_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
 
-            auto value_ex_contrib = integer_divide_ceil(units * Precision, (uint64_t)window_size);
+            auto value_ex_contrib = downgrade_cast<uint64_t>(integer_divide_ceil((uint128_t)units * Precision, (uint128_t)window_size));
             EOS_ASSERT(std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib, rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
 
             if( last_ordinal != ordinal ) {
