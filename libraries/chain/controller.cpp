@@ -570,7 +570,7 @@ struct controller_impl {
 
       if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-         edump((trace->except->to_detail_string()));
+         dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trx_context.start, trx_context.billed_cpu_time_us );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
