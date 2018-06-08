@@ -16,8 +16,6 @@
 #include <eosio/chain/plugin_interface.hpp>
 
 #include <boost/container/flat_set.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <fc/static_variant.hpp>
 
@@ -49,6 +47,16 @@ struct permission {
 
 template<typename>
 struct resolver_factory;
+
+template<typename Type>
+Type convert_to_type(const string& str, const string& desc) {
+   try {
+      return fc::variant(str).as<Type>();
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert {desc} string '${str}' to key type.", ("desc", desc)("str",str) )
+}
+
+template<>
+uint64_t convert_to_type(const string& str, const string& desc);
 
 class read_only {
    const controller& db;
@@ -266,35 +274,6 @@ public:
             }
          }
       }
-   }
-
-   template<typename Type>
-   static Type convert_to_type(const string& str, const string& desc) {
-      Type value = 0;
-      try {
-         name s(str);
-         value = s.value;
-      } catch( ... ) {
-         try {
-            auto trimmed_str = str;
-            boost::trim(trimmed_str);
-            value = boost::lexical_cast<Type>(trimmed_str.c_str(), trimmed_str.size());
-         } catch( ... ) {
-            try {
-               auto symb = eosio::chain::symbol::from_string(str);
-               value = symb.value();
-            } catch( ... ) {
-               try {
-                  value = ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
-               } catch( ... ) {
-                  FC_ASSERT( false, "Could not convert " + desc +
-                                    " string '" + str +
-                                    "' to any of the following: key_type, valid name, or valid symbol (with or without the precision)" );
-               }
-            }
-         }
-      }
-      return value;
    }
 
    template <typename IndexType, typename Scope>
