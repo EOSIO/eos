@@ -492,13 +492,15 @@ namespace WASM
       constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_code_size;
       if (numBodyBytes >= max_size)
          throw FatalSerializationException(std::string("Function body too large"));
+      if (numLocalSets >= 1024)
+         throw FatalSerializationException(std::string("too many locals"));
 
 		for(Uptr setIndex = 0;setIndex < numLocalSets;++setIndex)
 		{
 			LocalSet localSet;
 			serialize(bodyStream,localSet);
 
-			if( localSet.num > 1024*1024 )
+			if( localSet.num > 8024 )
 				throw FatalSerializationException( "localSet.num too large" );
 
 			for(Uptr index = 0;index < localSet.num;++index) { functionDef.nonParameterLocalTypes.push_back(localSet.type); }
