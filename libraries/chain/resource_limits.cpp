@@ -345,9 +345,8 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
    const auto& config = _db.get<resource_limits_config_object>();
 
-   int64_t unused;
-   int64_t cpu_weight;
-   get_account_limits( name, unused, unused, cpu_weight );
+   int64_t cpu_weight, x, y;
+   get_account_limits( name, x, y, cpu_weight );
 
    if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
       return { -1, -1, -1 };

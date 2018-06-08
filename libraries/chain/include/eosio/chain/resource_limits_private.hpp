@@ -16,7 +16,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       template<typename T>
       T operator* (T value, const ratio<T>& r) {
-         EOS_ASSERT(std::numeric_limits<T>::max() / r.numerator >= value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+         EOS_ASSERT(r.numerator == T(0) || std::numeric_limits<T>::max() / r.numerator >= value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
          return (value * r.numerator) / r.denominator;
       }
 
@@ -25,14 +25,20 @@ namespace eosio { namespace chain { namespace resource_limits {
          return (num / den) + ((num % den) > 0 ? 1 : 0);
       }
 
+
+      template<typename LesserIntType, typename GreaterIntType>
+      constexpr bool is_valid_downgrade_cast =
+         std::is_integral<LesserIntType>::value &&  // remove overloads where type is not integral
+         std::is_integral<GreaterIntType>::value && // remove overloads where type is not integral
+         (std::numeric_limits<LesserIntType>::max() <= std::numeric_limits<GreaterIntType>::max()); // remove overloads which are upgrades not downgrades
+
       /**
        * Specialization for Signedness matching integer types
        */
       template<typename LesserIntType, typename GreaterIntType>
       constexpr auto downgrade_cast(GreaterIntType val) ->
-         std::enable_if_t<std::is_signed<LesserIntType>::value == std::is_signed<GreaterIntType>::value, LesserIntType>
+         std::enable_if_t<is_valid_downgrade_cast<LesserIntType,GreaterIntType> && std::is_signed<LesserIntType>::value == std::is_signed<GreaterIntType>::value, LesserIntType>
       {
-         static_assert(std::numeric_limits<LesserIntType>::max() <= std::numeric_limits<GreaterIntType>::max(), "downgrade is actually upgrade");
          const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
          const GreaterIntType min = std::numeric_limits<LesserIntType>::min();
          EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
@@ -44,9 +50,8 @@ namespace eosio { namespace chain { namespace resource_limits {
        */
       template<typename LesserIntType, typename GreaterIntType>
       constexpr auto downgrade_cast(GreaterIntType val) ->
-         std::enable_if_t<std::is_signed<LesserIntType>::value != std::is_signed<GreaterIntType>::value, LesserIntType>
+         std::enable_if_t<is_valid_downgrade_cast<LesserIntType,GreaterIntType> && std::is_signed<LesserIntType>::value != std::is_signed<GreaterIntType>::value, LesserIntType>
       {
-         static_assert(std::numeric_limits<LesserIntType>::max() <= std::numeric_limits<GreaterIntType>::max(), "downgrade is actually upgrade");
          const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
          const GreaterIntType min = 0;
          EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
