@@ -28,7 +28,8 @@ namespace eosio { namespace chain { namespace resource_limits {
       template<typename LesserIntType, typename GreaterIntType>
       constexpr LesserIntType downgrade_cast(GreaterIntType val) {
          const auto max = std::numeric_limits<LesserIntType>::max();
-         EOS_ASSERT( val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, max is ${m}", ("v", val)("m", max) );
+         const auto min = std::numeric_limits<LesserIntType>::min();
+         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
          return LesserIntType(val);
       };
 
