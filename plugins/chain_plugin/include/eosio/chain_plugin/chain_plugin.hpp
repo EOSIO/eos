@@ -268,33 +268,41 @@ public:
       }
    }
 
+   template<typename Type>
+   static Type convert_to_type(const string& str, const string& desc) {
+      Type value = 0;
+      try {
+         name s(str);
+         value = s.value;
+      } catch( ... ) {
+         try {
+            auto trimmed_str = str;
+            boost::trim(trimmed_str);
+            value = boost::lexical_cast<Type>(trimmed_str.c_str(), trimmed_str.size());
+         } catch( ... ) {
+            try {
+               auto symb = eosio::chain::symbol::from_string(str);
+               value = symb.value();
+            } catch( ... ) {
+               try {
+                  value = ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
+               } catch( ... ) {
+                  FC_ASSERT( false, "Could not convert " + desc +
+                                    " string '" + str +
+                                    "' to any of the following: key_type, valid name, or valid symbol (with or without the precision)" );
+               }
+            }
+         }
+      }
+      return value;
+   }
+
    template <typename IndexType, typename Scope>
    read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.db();
 
-      uint64_t scope = 0;
-      try {
-         name s(p.scope);
-         scope = s.value;
-      } catch( ... ) {
-         try {
-            auto trimmed_scope_str = p.scope;
-            boost::trim(trimmed_scope_str);
-            scope = boost::lexical_cast<uint64_t>(trimmed_scope_str.c_str(), trimmed_scope_str.size());
-         } catch( ... ) {
-            try {
-               auto symb = eosio::chain::symbol::from_string(p.scope);
-               scope = symb.value();
-            } catch( ... ) {
-               try {
-                  scope = ( eosio::chain::string_to_symbol( 0, p.scope.c_str() ) >> 8 );
-               } catch( ... ) {
-                  FC_ASSERT( false, "could not convert scope string to any of the following: uint64_t, valid name, or valid symbol (with or without the precision)" );
-               }
-            }
-         }
-      }
+      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
 
       abi_serializer abis;
       abis.set_abi(abi);
@@ -306,12 +314,12 @@ public:
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
 
          if (p.lower_bound.size()) {
-            lower = idx.lower_bound(boost::make_tuple(t_id->id, fc::variant(
-               p.lower_bound).as<typename IndexType::value_type::key_type>()));
+            auto lv = convert_to_type<typename IndexType::value_type::key_type>(p.lower_bound, "lower_bound");
+            lower = idx.lower_bound(boost::make_tuple(t_id->id, lv));
          }
          if (p.upper_bound.size()) {
-            upper = idx.lower_bound(boost::make_tuple(t_id->id, fc::variant(
-               p.upper_bound).as<typename IndexType::value_type::key_type>()));
+            auto uv = convert_to_type<typename IndexType::value_type::key_type>(p.upper_bound, "upper_bound");
+            upper = idx.lower_bound(boost::make_tuple(t_id->id, uv));
          }
 
          vector<char> data;
