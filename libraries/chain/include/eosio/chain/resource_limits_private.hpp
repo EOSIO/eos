@@ -25,10 +25,30 @@ namespace eosio { namespace chain { namespace resource_limits {
          return (num / den) + ((num % den) > 0 ? 1 : 0);
       }
 
+      /**
+       * Specialization for Signedness matching integer types
+       */
       template<typename LesserIntType, typename GreaterIntType>
-      constexpr LesserIntType downgrade_cast(GreaterIntType val) {
-         const auto max = std::numeric_limits<LesserIntType>::max();
-         const auto min = std::numeric_limits<LesserIntType>::min();
+      constexpr auto downgrade_cast(GreaterIntType val) ->
+         std::enable_if_t<std::is_signed<LesserIntType>::value == std::is_signed<GreaterIntType>::value, LesserIntType>
+      {
+         static_assert(std::numeric_limits<LesserIntType>::max() <= std::numeric_limits<GreaterIntType>::max(), "downgrade is actually upgrade");
+         const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
+         const GreaterIntType min = std::numeric_limits<LesserIntType>::min();
+         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
+         return LesserIntType(val);
+      };
+
+      /**
+       * Specialization for Signedness mismatching integer types
+       */
+      template<typename LesserIntType, typename GreaterIntType>
+      constexpr auto downgrade_cast(GreaterIntType val) ->
+         std::enable_if_t<std::is_signed<LesserIntType>::value != std::is_signed<GreaterIntType>::value, LesserIntType>
+      {
+         static_assert(std::numeric_limits<LesserIntType>::max() <= std::numeric_limits<GreaterIntType>::max(), "downgrade is actually upgrade");
+         const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
+         const GreaterIntType min = 0;
          EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
          return LesserIntType(val);
       };
