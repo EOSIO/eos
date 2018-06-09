@@ -447,7 +447,7 @@ struct controller_impl {
                                         uint32_t billed_cpu_time_us) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
-      etrx.actions.emplace_back( vector<permission_level>{},
+      etrx.actions.emplace_back( vector<permission_level>{{gto.sender, config::active_name}},
                                  onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
@@ -570,7 +570,7 @@ struct controller_impl {
 
       if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-         edump((trace->except->to_detail_string()));
+         dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trx_context.start, trx_context.billed_cpu_time_us );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
@@ -792,14 +792,33 @@ struct controller_impl {
          FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
          start_block( b->timestamp, b->confirmed, s );
 
+         transaction_trace_ptr trace;
+
          for( const auto& receipt : b->transactions ) {
+            auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
-               push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
+               trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
-               push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+            } else {
+               ENU_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
+
+            if( trace && trace->except ) {
+               edump((*trace));
+               throw *trace->except;
+            }
+
+            ENU_ASSERT( pending->_pending_block_state->block->transactions.size() > 0,
+                        block_validate_exception, "expected a receipt",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
+            ENU_ASSERT( pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+                        block_validate_exception, "expected receipt was not added",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
             const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
             ENU_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
                         block_validate_exception, "receipt does not match",
