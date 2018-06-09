@@ -9,7 +9,7 @@ Tag:  mainnet-1.0.2.2
 
 
 Peer List Location:  https://docs.google.com/spreadsheets/d/1K_un5Vak3eDh_b4Wdh43sOersuhs0A76HMCfeQplDOY/edit#gid=0  
-Genesis:  https://github.com/EOS-Mainnet/eos/blob/master/mainnet-genesis.json  
+Genesis:  https://github.com/EOS-Mainnet/eos/blob/launch-rc-1.0.2/mainnet-genesis.json  
 Chain ID: aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906
 
 Status: Chain is frozen, please mesh and verify chain contents ASAP.  Report findings to EMLG channel
