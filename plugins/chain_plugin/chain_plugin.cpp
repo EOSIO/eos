@@ -606,13 +606,13 @@ template<>
 uint64_t convert_to_type(const string& str, const string& desc) {
    uint64_t value = 0;
    try {
-      name s(str);
-      value = s.value;
+      value = boost::lexical_cast<uint64_t>(str.c_str(), str.size());
    } catch( ... ) {
       try {
          auto trimmed_str = str;
          boost::trim(trimmed_str);
-         value = boost::lexical_cast<uint64_t>(trimmed_str.c_str(), trimmed_str.size());
+         name s(trimmed_str);
+         value = s.value;
       } catch( ... ) {
          try {
             auto symb = eosio::chain::symbol::from_string(str);
