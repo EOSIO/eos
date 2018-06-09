@@ -391,7 +391,7 @@
       ]
     },
     {
-      "name": "self_delegated_bandwidth",
+      "name": "delegated_bandwidth",
       "base": "",
       "fields": [
         {
@@ -1123,7 +1123,7 @@
     },
     {
       "name": "delband",
-      "type": "self_delegated_bandwidth",
+      "type": "delegated_bandwidth",
       "index_type": "i64",
       "key_names": [
         "to"
