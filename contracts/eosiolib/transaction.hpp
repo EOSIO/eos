@@ -42,14 +42,14 @@ namespace eosio {
    public:
       transaction(time_point_sec exp = time_point_sec(now() + 60)) : transaction_header( exp ) {}
 
-      void send(uint64_t sender_id, account_name payer, bool replace_existing = false) const {
+      void send(const uint128_t& sender_id, account_name payer, bool replace_existing = false) const {
          auto serialize = pack(*this);
          send_deferred(sender_id, payer, serialize.data(), serialize.size(), replace_existing);
       }
 
       vector<action>  context_free_actions;
       vector<action>  actions;
-      extensions_type transaction_extensions; 
+      extensions_type transaction_extensions;
 
       EOSLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions)(transaction_extensions) )
    };

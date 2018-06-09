@@ -40,12 +40,14 @@ function build_contract {
         filePath=`dirname $file`
 
         ($PRINT_CMDS; @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -nostdinc \
+                                   -DBOOST_DISABLE_ASSERTS -DBOOST_EXCEPTION_DISABLE \
                                    -nostdlib -nostdlibinc -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti \
                                    -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include \
                                    -I${EOSIO_INSTALL_DIR}/include/libc++/upstream/include \
                                    -I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
                                    -I${BOOST_INCLUDE_DIR} \
                                    -I $filePath \
+                                   ${EOSIOCPP_CFLAGS} \
                                    -c $file -o $workdir/built/$name
         )
 
@@ -80,6 +82,7 @@ function generate_abi {
         -extra-arg=-I${EOSIO_INSTALL_DIR}/include/libc++/upstream/include \
         -extra-arg=-I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
         -extra-arg=-I${BOOST_INCLUDE_DIR} \
+        -extra-arg=${EOSIOCPP_CFLAGS}  \
         -extra-arg=-I${EOSIO_INSTALL_DIR}/include -extra-arg=-I$context_folder \
         -extra-arg=-fparse-all-comments -destination-file=${outname} -verbose=0 \
         -context=$context_folder $1 --

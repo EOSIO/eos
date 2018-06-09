@@ -201,6 +201,9 @@ namespace eosio { namespace testing {
 
          vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
 
+         map<account_name, block_id_type> get_last_produced_block_map()const { return last_produced_block; };
+         void set_last_produced_block_map( const map<account_name, block_id_type>& lpb ) { last_produced_block = lpb; }
+
          static vector<uint8_t> to_uint8_vector(const string& s);
 
          static vector<uint8_t> to_uint8_vector(uint64_t x);
@@ -303,7 +306,8 @@ namespace eosio { namespace testing {
    public:
       virtual ~validating_tester() {
          try {
-            produce_block();
+            if( num_blocks_to_producer_before_shutdown > 0 )
+               produce_blocks( num_blocks_to_producer_before_shutdown );
             BOOST_REQUIRE_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
@@ -385,7 +389,8 @@ namespace eosio { namespace testing {
         return ok;
       }
 
-      unique_ptr<controller>                  validating_node;
+      unique_ptr<controller>   validating_node;
+      uint32_t                 num_blocks_to_producer_before_shutdown = 0;
    };
 
    /**

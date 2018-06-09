@@ -13,6 +13,7 @@
 #include <ostream>
 #include <string>
 #include <regex>
+#include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <fc/variant.hpp>
@@ -101,10 +102,13 @@ namespace eosio { namespace client { namespace http {
    }
 
    fc::variant do_http_call( const connection_param& cp,
-                             const fc::variant& postdata ) {
+                             const fc::variant& postdata,
+                             bool print_request,
+                             bool print_response ) {
    std::string postjson;
-   if( !postdata.is_null() )
-      postjson = fc::json::to_string( postdata );
+   if( !postdata.is_null() ) {
+      postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata );
+   }
 
    boost::asio::io_service io_service;
 
@@ -120,13 +124,22 @@ namespace eosio { namespace client { namespace http {
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
    request_stream << "Connection: close\r\n";
+   request_stream << "\r\n";
    // append more customized headers
    std::vector<string>::iterator itr;
    for (itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
       request_stream << *itr << "\r\n";
    }
-   request_stream << "\r\n";
    request_stream << postjson;
+
+   if ( print_request ) {
+      string s(request.size(), '\0');
+      buffer_copy(boost::asio::buffer(s), request.data());
+      std::cerr << "REQUEST:" << std::endl
+                << "---------------------" << std::endl
+                << s << std::endl
+                << "---------------------" << std::endl;
+   }
 
    unsigned int status_code;
    std::string re;
@@ -159,6 +172,12 @@ namespace eosio { namespace client { namespace http {
    }
 
    const auto response_result = fc::json::from_string(re);
+   if( print_response ) {
+      std::cerr << "RESPONSE:" << std::endl
+                << "---------------------" << std::endl
+                << fc::json::to_pretty_string( response_result ) << std::endl
+                << "---------------------" << std::endl;
+   }
    if( status_code == 200 || status_code == 201 || status_code == 202 ) {
       return response_result;
    } else if( status_code == 404 ) {

@@ -30,7 +30,9 @@ namespace eosio { namespace client { namespace http {
    parsed_url parse_url( const string& server_url );
 
    fc::variant do_http_call( const connection_param& cp,
-                             const fc::variant& postdata = fc::variant() );
+                             const fc::variant& postdata = fc::variant(),
+                             bool print_request = false,
+                             bool print_response = false);
 
    const string chain_func_base = "/v1/chain";
    const string get_info_func = chain_func_base + "/get_info";
@@ -38,9 +40,11 @@ namespace eosio { namespace client { namespace http {
    const string push_txns_func = chain_func_base + "/push_transactions";
    const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
    const string get_block_func = chain_func_base + "/get_block";
+   const string get_block_header_state_func = chain_func_base + "/get_block_header_state";
    const string get_account_func = chain_func_base + "/get_account";
    const string get_table_func = chain_func_base + "/get_table_rows";
    const string get_code_func = chain_func_base + "/get_code";
+   const string get_abi_func = chain_func_base + "/get_abi";
    const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
    const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
    const string get_producers_func = chain_func_base + "/get_producers";
