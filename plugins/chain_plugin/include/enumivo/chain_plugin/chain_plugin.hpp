@@ -16,8 +16,6 @@
 #include <enumivo/chain/plugin_interface.hpp>
 
 #include <boost/container/flat_set.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <fc/static_variant.hpp>
 
@@ -49,6 +47,16 @@ struct permission {
 
 template<typename>
 struct resolver_factory;
+
+template<typename Type>
+Type convert_to_type(const string& str, const string& desc) {
+   try {
+      return fc::variant(str).as<Type>();
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to key type.", ("desc", desc)("str",str) )
+}
+
+template<>
+uint64_t convert_to_type(const string& str, const string& desc);
 
 class read_only {
    const controller& db;
@@ -273,28 +281,7 @@ public:
       read_only::get_table_rows_result result;
       const auto& d = db.db();
 
-      uint64_t scope = 0;
-      try {
-         name s(p.scope);
-         scope = s.value;
-      } catch( ... ) {
-         try {
-            auto trimmed_scope_str = p.scope;
-            boost::trim(trimmed_scope_str);
-            scope = boost::lexical_cast<uint64_t>(trimmed_scope_str.c_str(), trimmed_scope_str.size());
-         } catch( ... ) {
-            try {
-               auto symb = enumivo::chain::symbol::from_string(p.scope);
-               scope = symb.value();
-            } catch( ... ) {
-               try {
-                  scope = ( enumivo::chain::string_to_symbol( 0, p.scope.c_str() ) >> 8 );
-               } catch( ... ) {
-                  FC_ASSERT( false, "could not convert scope string to any of the following: uint64_t, valid name, or valid symbol (with or without the precision)" );
-               }
-            }
-         }
-      }
+      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
 
       abi_serializer abis;
       abis.set_abi(abi);
@@ -306,12 +293,12 @@ public:
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
 
          if (p.lower_bound.size()) {
-            lower = idx.lower_bound(boost::make_tuple(t_id->id, fc::variant(
-               p.lower_bound).as<typename IndexType::value_type::key_type>()));
+            auto lv = convert_to_type<typename IndexType::value_type::key_type>(p.lower_bound, "lower_bound");
+            lower = idx.lower_bound(boost::make_tuple(t_id->id, lv));
          }
          if (p.upper_bound.size()) {
-            upper = idx.lower_bound(boost::make_tuple(t_id->id, fc::variant(
-               p.upper_bound).as<typename IndexType::value_type::key_type>()));
+            auto uv = convert_to_type<typename IndexType::value_type::key_type>(p.upper_bound, "upper_bound");
+            upper = idx.lower_bound(boost::make_tuple(t_id->id, uv));
          }
 
          vector<char> data;
