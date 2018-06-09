@@ -126,6 +126,8 @@ namespace _multi_index_detail {
  *  @tparam Extractor - is a function call operator that takes a const reference to the table object type and returns either a secondary key type or a reference to a secondary key type. It is recommended to use the `eosio::const_mem_fun` template, which is a type alias to the `boost::multi_index::const_mem_fun`. See the documentation for the Boost `const_mem_fun` key extractor for more details.
  *
  *  Example:
+       *
+*
  *  @code
  *  #include <eosiolib/eosio.hpp>
  *  using namespace eosio;
@@ -177,6 +179,7 @@ struct indexed_by {
  *  @tparam Indices - secondary indices for the table, up to 16 indices is supported here
  *
  *  Example:
+       *
  *  @code
  *  #include <eosiolib/eosio.hpp>
  *  using namespace eosio;
@@ -601,6 +604,7 @@ class multi_index
        *  - It is recommended to use the eosio::const_mem_fun template, which is a type alias to the boost::multi_index::const_mem_fun.  See the documentation for the Boost const_mem_fun key extractor for more details.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -637,6 +641,7 @@ class multi_index
        *  @return Account name of the Code that owns the Primary Table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -672,6 +677,7 @@ class multi_index
        *  @return Scope id of the Scope within the Code of the Current Receiver under which the desired Primary Table instance can be found.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -770,6 +776,7 @@ class multi_index
        *  @return An iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -817,6 +824,7 @@ class multi_index
        *  @return An iterator pointing to the object_type with the lowest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -862,6 +870,7 @@ class multi_index
        *  @return An iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -907,6 +916,7 @@ class multi_index
        *  @return An iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -952,6 +962,7 @@ class multi_index
        *  @return A reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1007,6 +1018,7 @@ class multi_index
        *  @return A reverse iterator pointing to the `object_type` with the highest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1062,6 +1074,7 @@ class multi_index
        *  @return An iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1118,6 +1131,7 @@ class multi_index
        *  @return An iterator pointing to the `object_type` with the lowest primary key value in the Multi-Index table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1176,6 +1190,7 @@ class multi_index
        *  @return An iterator pointing to the `object_type` that has the lowest primary key that is greater than or equal to `primary`. If an object could not be found, it will return the `end` iterator. If the table does not exist** it will return `-1`.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1246,6 +1261,7 @@ class multi_index
        *  @return An iterator pointing to the `object_type` that has the highest primary key that is less than or equal to `primary`. If an object could not be found, it will return the `end` iterator. If the table does not exist** it will return `-1`.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1317,6 +1333,7 @@ class multi_index
        *  Ideally this method would only be used to determine the appropriate primary key to use within new objects added to a table in which the primary keys of the table are strictly intended from the beginning to be autoincrementing and thus will not ever be set to custom arbitrary values by the contract. Violating this agreement could result in the table appearing full when in reality there is plenty of space left.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1379,6 +1396,7 @@ class multi_index
        *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1442,6 +1460,7 @@ class multi_index
        *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1516,6 +1535,7 @@ class multi_index
        *  @return An iterator to the given object
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1587,6 +1607,7 @@ class multi_index
        *  Exception - The account is not authorized to write to the table.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1687,6 +1708,7 @@ class multi_index
        *  If called with an invalid precondition, execution is aborted.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1755,6 +1777,7 @@ class multi_index
        *  If called with an invalid precondition, execution is aborted.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1862,6 +1885,7 @@ class multi_index
        *  Exception - No object matches the given key
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1912,6 +1936,7 @@ class multi_index
        *  @return An iterator to the found object which has a primary key equal to `primary` OR the `end` iterator of the referenced table if an object with primary key `primary` is not found.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -1981,6 +2006,7 @@ class multi_index
        *  The given iterator is invalid.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;
@@ -2047,6 +2073,7 @@ class multi_index
        *  The given iterator is invalid.
        *
        *  Example:
+       *
        *  @code
        *  #include <eosiolib/eosio.hpp>
        *  using namespace eosio;

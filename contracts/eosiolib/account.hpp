@@ -16,6 +16,7 @@ namespace eosio { namespace account {
 *  @brief The binary structure expected and populated by native balance function.
 *  @details
 *  Example:
+*
 *  @code
 *  account_balance test1_balance;
 *  test1_balance.account = N(test1);

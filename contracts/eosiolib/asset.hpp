@@ -8,6 +8,25 @@
 
 namespace eosio {
 
+  /**
+   *  @defgroup assetapi Asset API
+   *  @brief Defines API for managing assets
+   *  @ingroup contractdev
+   */
+
+  /**
+   *  @defgroup assetcppapi Asset CPP API
+   *  @brief Defines %CPP API for managing assets
+   *  @ingroup assetapi
+   *  @{
+   */
+
+   /**
+    * \struct Stores information for owner of asset
+    *
+    * @brief Stores information for owner of asset
+    */
+
    struct asset {
       /**
        * The amount of the asset
@@ -15,6 +34,7 @@ namespace eosio {
        * @brief The amount of the asset
        */
       int64_t      amount;
+
       /**
        * The symbol name of the asset
        *
@@ -350,11 +370,11 @@ namespace eosio {
       EOSLIB_SERIALIZE( asset, (amount)(symbol) )
    };
 
-    /**
-     * Extended asset which stores the information of the owner of the asset
-     *
-     * @brief Extended asset which stores the information of the owner of the asset
-     */
+  /**
+   * \struct Extended asset which stores the information of the owner of the asset
+   *
+   * @brief Extended asset which stores the information of the owner of the asset
+   */
    struct extended_asset : public asset {
       /**
        * The owner of the asset

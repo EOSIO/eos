@@ -7,16 +7,18 @@
 extern "C" {
 
 /**
- *  @defgroup chainapi Chain API
+ *  @defgroup cryptoapi Chain API
  *  @brief Defines API for calculating and checking hash
  *  @ingroup contractdev
  */
 
 /**
- *  @defgroup chaincapi Chain C API
+ *  @defgroup cryptocapi Chain C API
  *  @brief Defines %C API for calculating and checking hash
  *  @ingroup chainapi
+ *  @{
  */
+
 /**
  *  Tests if the sha256 hash generated from data matches the provided checksum.
  *  This method is optimized to a NO-OP when in fast evaluation mode.
@@ -28,11 +30,12 @@ extern "C" {
  *
  *  @pre **assert256 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum hash;
- *  char data; 
+ *  char data;
  *  uint32_t length;
  *  assert_sha256( data, length, hash )
  *  //If the sha256 hash generated from data does not equal provided hash, anything below will never fire.
@@ -52,11 +55,12 @@ void assert_sha256( char* data, uint32_t length, const checksum256* hash );
  *
  *  @pre **sha1 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum hash;
- *  char data; 
+ *  char data;
  *  uint32_t length;
  *  assert_sha1( data, length, hash )
  *  //If the sha1 hash generated from data does not equal provided hash, anything below will never fire.
@@ -76,11 +80,12 @@ void assert_sha1( char* data, uint32_t length, const checksum160* hash );
  *
  *  @pre **assert512 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum hash;
- *  char data; 
+ *  char data;
  *  uint32_t length;
  *  assert_sha512( data, length, hash )
  *  //If the sha512 hash generated from data does not equal provided hash, anything below will never fire.
@@ -99,11 +104,12 @@ void assert_sha512( char* data, uint32_t length, const checksum512* hash );
  *
  *  @pre **assert160 hash** of `data` equals provided `hash` parameter.
  *  @post Executes next statement. If was not `true`, hard return.
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum hash;
- *  char data; 
+ *  char data;
  *  uint32_t length;
  *  assert_ripemod160( data, length, hash )
  *  //If the ripemod160 hash generated from data does not equal provided hash, anything below will never fire.
@@ -119,8 +125,9 @@ void assert_ripemd160( char* data, uint32_t length, const checksum160* hash );
  *  @param data - Data you want to hash
  *  @param length - Data length
  *  @param hash - Hash pointer
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum calc_hash;
  *  sha256( data, length, &calc_hash );
@@ -136,8 +143,9 @@ void sha256( char* data, uint32_t length, checksum256* hash );
  *  @param data - Data you want to hash
  *  @param length - Data length
  *  @param hash - Hash pointer
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum calc_hash;
  *  sha1( data, length, &calc_hash );
@@ -153,8 +161,9 @@ void sha1( char* data, uint32_t length, checksum160* hash );
  *  @param data - Data you want to hash
  *  @param length - Data length
  *  @param hash - Hash pointer
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum calc_hash;
  *  sha512( data, length, &calc_hash );
@@ -170,8 +179,9 @@ void sha512( char* data, uint32_t length, checksum512* hash );
  *  @param data - Data you want to hash
  *  @param length - Data length
  *  @param hash - Hash pointer
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum calc_hash;
  *  ripemod160( data, length, &calc_hash );
@@ -189,8 +199,9 @@ void ripemd160( char* data, uint32_t length, checksum160* hash );
  *  @param siglen - Signature length
  *  @param pub - Public key
  *  @param publen - Public key length
- * 
+ *
  *  Example:
+*
  *  @code
  *  @endcode
  */
@@ -208,11 +219,12 @@ int recover_key( const checksum256* digest, const char* sig, size_t siglen, char
  *
  *  @pre **assert recovery key** of `pub` equals the key generated from the `digest` parameter
  *  @post Executes next statement. If was not `true`, hard return.
- * 
+ *
  *  Example:
+*
  *  @code
  *  checksum digest;
- *  char sig; 
+ *  char sig;
  *  size_t siglen;
  *  char pub;
  *  size_t publen;
@@ -222,5 +234,7 @@ int recover_key( const checksum256* digest, const char* sig, size_t siglen, char
  *  @endcode
  */
 void assert_recover_key( const checksum256* digest, const char* sig, size_t siglen, const char* pub, size_t publen );
+
+/// }@cryptocapi
 
 }

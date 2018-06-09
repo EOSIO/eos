@@ -20,12 +20,13 @@ extern "C" {
     * @pre *((uint64_t*)balance) stores the primary key
     *
     *  Example:
+    *
     *  @code
     *  balance b;
     *  b.account = N(myaccount);
     *  balance(b, sizeof(balance));
     *  @endcode
-    *  
+    *
     *  @deprecated This is deprecated in Dawn 3.0
     */
 
