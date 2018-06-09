@@ -198,7 +198,7 @@ namespace eosio {
 
       void connect( connection_ptr c );
       void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
-      void start_session( connection_ptr c );
+      bool start_session( connection_ptr c );
       void start_listen_loop( );
       void start_read_message( connection_ptr c);
 
@@ -1944,8 +1944,9 @@ namespace eosio {
             auto c = weak_conn.lock();
             if (!c) return;
             if( !err && c->socket->is_open() ) {
-               start_session( c );
-               c->send_handshake ();
+               if (start_session( c )) {
+                  c->send_handshake ();
+               }
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
                   close(c);
@@ -1961,15 +1962,25 @@ namespace eosio {
          } );
    }
 
-   void net_plugin_impl::start_session( connection_ptr con ) {
+   bool net_plugin_impl::start_session( connection_ptr con ) {
       boost::asio::ip::tcp::no_delay nodelay( true );
-      con->socket->set_option( nodelay );
-      start_read_message( con );
-      ++started_sessions;
-
-      // for now, we can just use the application main loop.
-      //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
-      //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
+      boost::system::error_code ec;
+      con->socket->set_option( nodelay, ec );
+      if (ec) {
+         elog( "connection failed to ${peer}: ${error}",
+               ( "peer", con->peer_name())("error",ec.message()));
+         con->connecting = false;
+         close(con);
+         return false;
+      }
+      else {
+         start_read_message( con );
+         ++started_sessions;
+         return true;
+         // for now, we can just use the application main loop.
+         //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
+         //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
+      }
    }
 
 
@@ -1982,44 +1993,58 @@ namespace eosio {
                auto paddr = socket->remote_endpoint(ec).address().to_v4();
                if (ec) {
                   fc_elog(logger,"Error getting remote endpoint: ${m}",("m", ec.message()));
-                  return;
                }
-               for (auto &conn : connections) {
-                  if(conn->socket->is_open()) {
-                     if (conn->peer_addr.empty()) {
-                        visitors++;
-                        boost::system::error_code ec;
-                        if (paddr == conn->socket->remote_endpoint(ec).address().to_v4()) {
-                           from_addr++;
+               else {
+                  for (auto &conn : connections) {
+                     if(conn->socket->is_open()) {
+                        if (conn->peer_addr.empty()) {
+                           visitors++;
+                           boost::system::error_code ec;
+                           if (paddr == conn->socket->remote_endpoint(ec).address().to_v4()) {
+                              from_addr++;
+                           }
                         }
                      }
                   }
-               }
-               if (num_clients != visitors) {
-                  ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
-                  num_clients = visitors;
-               }
-               if( from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count )) {
-                  ++num_clients;
-                  connection_ptr c = std::make_shared<connection>( socket );
-                  connections.insert( c );
-                  start_session( c );
-               }
-               else {
-                  if (from_addr >= max_nodes_per_host) {
-                     fc_elog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
-                             ("n", from_addr+1)("ra",paddr.to_string()));
+                  if (num_clients != visitors) {
+                     ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
+                     num_clients = visitors;
+                  }
+                  if( from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count )) {
+                     ++num_clients;
+                     connection_ptr c = std::make_shared<connection>( socket );
+                     connections.insert( c );
+                     start_session( c );
+
                   }
                   else {
-                     fc_elog(logger, "Error max_client_count ${m} exceeded",
-                             ( "m", max_client_count) );
+                     if (from_addr >= max_nodes_per_host) {
+                        fc_elog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
+                                ("n", from_addr+1)("ra",paddr.to_string()));
+                     }
+                     else {
+                        fc_elog(logger, "Error max_client_count ${m} exceeded",
+                                ( "m", max_client_count) );
+                     }
+                     socket->close( );
                   }
-                  socket->close( );
                }
-               start_listen_loop();
             } else {
                elog( "Error accepting connection: ${m}",( "m", ec.message() ) );
+               // For the listed error codes below, recall start_listen_loop()
+               switch (ec.value()) {
+                  case ECONNABORTED:
+                  case EMFILE:
+                  case ENFILE:
+                  case ENOBUFS:
+                  case ENOMEM:
+                  case EPROTO:
+                     break;
+                  default:
+                     return;
+               }
             }
+            start_listen_loop();
          });
    }
 

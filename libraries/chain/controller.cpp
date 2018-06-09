@@ -447,7 +447,7 @@ struct controller_impl {
                                         uint32_t billed_cpu_time_us) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
-      etrx.actions.emplace_back( vector<permission_level>{},
+      etrx.actions.emplace_back( vector<permission_level>{{gto.sender, config::active_name}},
                                  onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
@@ -492,10 +492,15 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return (code == block_net_usage_exceeded::code_value) ||
-             (code == block_cpu_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value)       ||
-             (code == leeway_deadline_exception::code_value);
+      return    (code == block_net_usage_exceeded::code_value)
+             || (code == block_cpu_usage_exceeded::code_value)
+             || (code == deadline_exception::code_value)
+             || (code == leeway_deadline_exception::code_value)
+             || (code == actor_whitelist_exception::code_value)
+             || (code == actor_blacklist_exception::code_value)
+             || (code == contract_whitelist_exception::code_value)
+             || (code == contract_blacklist_exception::code_value)
+             || (code == action_blacklist_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -565,7 +570,7 @@ struct controller_impl {
 
       if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-         edump((trace->except->to_detail_string()));
+         dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trx_context.start, trx_context.billed_cpu_time_us );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
@@ -633,13 +638,14 @@ struct controller_impl {
          try {
             if( implicit ) {
                trx_context.init_for_implicit_trx();
+               trx_context.can_subjectively_fail = false;
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
                                                trx->trx.signatures.size() );
             }
 
-            if( !implicit && pending->_block_status == controller::block_status::incomplete ) {
+            if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
                check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
             }
 
@@ -786,15 +792,37 @@ struct controller_impl {
          FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
          start_block( b->timestamp, b->confirmed, s );
 
+         transaction_trace_ptr trace;
+
          for( const auto& receipt : b->transactions ) {
+            auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
-               push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
+               trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
+            } else if( receipt.trx.contains<transaction_id_type>() ) {
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+            } else {
+               EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
-            else if( receipt.trx.contains<transaction_id_type>() ) {
-               push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+
+            if( trace && trace->except ) {
+               edump((*trace));
+               throw *trace->except;
             }
+
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() > 0,
+                        block_validate_exception, "expected a receipt",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+                        block_validate_exception, "expected receipt was not added",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
+            const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+            EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
+                        block_validate_exception, "receipt does not match",
+                        ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
 
          finalize_block();
@@ -1067,6 +1095,16 @@ struct controller_impl {
       }
    }
 
+   void check_action_list( account_name code, action_name action )const {
+      if( conf.action_blacklist.size() > 0 ) {
+         EOS_ASSERT( conf.action_blacklist.find( std::make_pair(code, action) ) == conf.action_blacklist.end(),
+                     action_blacklist_exception,
+                     "action '${code}::${action}' is on the action blacklist",
+                     ("code", code)("action", action)
+                   );
+      }
+   }
+
    /*
    bool should_check_tapos()const { return true; }
 
@@ -1253,6 +1291,16 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
    return my->blog.read_block_by_num(block_num);
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
+block_state_ptr controller::fetch_block_state_by_id( block_id_type id )const {
+   auto state = my->fork_db.get_block(id);
+   return state;
+}
+
+block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )const  { try {
+   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
+   return blk_state;
+} FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
 block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
    auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
    if( blk_state ) {
@@ -1397,6 +1445,10 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
 
 void controller::check_contract_list( account_name code )const {
    my->check_contract_list( code );
+}
+
+void controller::check_action_list( account_name code, action_name action )const {
+   my->check_action_list( code, action );
 }
 
 bool controller::is_producing_block()const {
