@@ -47,7 +47,7 @@ namespace eosiosystem {
    /**
     *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
     */
-   struct delegated_bandwidth {
+   struct self_delegated_bandwidth {
       account_name  from;
       account_name  to;
       asset         net_weight;
@@ -56,7 +56,7 @@ namespace eosiosystem {
       uint64_t  primary_key()const { return to; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
+      EOSLIB_SERIALIZE( self_delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
 
    };
 
@@ -77,7 +77,7 @@ namespace eosiosystem {
     *  facilitates simpler API for per-user queries
     */
    typedef eosio::multi_index< N(userres), user_resources>      user_resources_table;
-   typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
+   typedef eosio::multi_index< N(delband), self_delegated_bandwidth> del_bandwidth_table;
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
 
