@@ -1024,7 +1024,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "self_delegated_bandwidth", data );
+            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
          }
       }
 
