@@ -909,15 +909,28 @@
           "type": "connector"
         }
       ]
-    }, {
-       "name": "namebid_info",
-       "base": "",
-       "fields": [
-          {"name":"newname", "type":"account_name"},
-          {"name":"high_bidder", "type":"account_name"},
-          {"name":"high_bid", "type":"int64"},
-          {"name":"last_bid_time", "type":"uint64"}
-       ]
+    },
+    {
+      "name": "namebid_info",
+      "base": "",
+      "fields": [
+        {
+          "name": "newname",
+          "type": "account_name"
+        },
+        {
+          "name": "high_bidder",
+          "type": "account_name"
+        },
+        {
+          "name": "high_bid",
+          "type": "int64"
+        },
+        {
+          "name": "last_bid_time",
+          "type": "uint64"
+        }
+      ]
     }
   ],
   "actions": [
@@ -1134,14 +1147,23 @@
       "name": "refunds",
       "type": "refund_request",
       "index_type": "i64",
-      "key_names" : ["owner"],
-      "key_types" : ["uint64"]
-    },{
-       "name": "namebids",
-       "type": "namebid_info",
-       "index_type": "i64",
-       "key_names" : ["newname"],
-       "key_types" : ["account_name"]
+      "key_names": [
+        "owner"
+      ],
+      "key_types": [
+        "uint64"
+      ]
+    },
+    {
+      "name": "namebids",
+      "type": "namebid_info",
+      "index_type": "i64",
+      "key_names": [
+        "newname"
+      ],
+      "key_types": [
+        "account_name"
+      ]
     }
   ],
   "ricardian_clauses": [
