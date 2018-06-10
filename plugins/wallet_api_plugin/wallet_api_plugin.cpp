@@ -74,6 +74,8 @@ void wallet_api_plugin::plugin_startup() {
             INVOKE_V_R(wallet_mgr, set_timeout, int64_t), 200),
        CALL(wallet, wallet_mgr, sign_transaction,
             INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
+       CALL(wallet, wallet_mgr, sign_digest,
+            INVOKE_R_R_R(wallet_mgr, sign_digest, chain::digest_type, public_key_type), 201),
        CALL(wallet, wallet_mgr, create,
             INVOKE_R_R(wallet_mgr, create, std::string), 201),
        CALL(wallet, wallet_mgr, open,
@@ -91,7 +93,7 @@ void wallet_api_plugin::plugin_startup() {
        CALL(wallet, wallet_mgr, list_wallets,
             INVOKE_R_V(wallet_mgr, list_wallets), 200),
        CALL(wallet, wallet_mgr, list_keys,
-            INVOKE_R_V(wallet_mgr, list_keys), 200),
+            INVOKE_R_R_R(wallet_mgr, list_keys, std::string, std::string), 200),
        CALL(wallet, wallet_mgr, get_public_keys,
             INVOKE_R_V(wallet_mgr, get_public_keys), 200)
    });

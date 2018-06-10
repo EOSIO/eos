@@ -48,10 +48,14 @@ namespace eosio { namespace chain {
          WASM::serialize(stream,module);
          return stream.getBytes();
       }
-      catch(Serialization::FatalSerializationException exception)
+      catch(const Serialization::FatalSerializationException& exception)
       {
          ss << "Error serializing WebAssembly binary file:" << std::endl;
          ss << exception.message << std::endl;
+         FC_ASSERT( !"error converting to wasm", "${msg}", ("msg",ss.get()) );
+      } catch(const IR::ValidationException& e) {
+         ss << "Error validating WebAssembly binary file:" << std::endl;
+         ss << e.message << std::endl;
          FC_ASSERT( !"error converting to wasm", "${msg}", ("msg",ss.get()) );
       }
 

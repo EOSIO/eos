@@ -978,7 +978,6 @@ launcher_def::write_config_file (tn_node_def &node) {
       exit (-1);
    }
 
-   cfg << "genesis-json = " << host->genesis << "\n";
    cfg << "blocks-dir = " << block_dir << "\n";
    cfg << "readonly = 0\n";
    cfg << "send-whole-blocks = true\n";
@@ -1030,7 +1029,6 @@ launcher_def::write_config_file (tn_node_def &node) {
      }
   }
   if (instance.has_db || node.producers.size()) {
-    cfg << "required-participation = 33\n";
     for (const auto &kp : node.keys ) {
        cfg << "private-key = [\"" << string(kp.get_public_key())
            << "\",\"" << string(kp) << "\"]\n";
@@ -1462,6 +1460,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   }
 
   eosdcmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
+  eosdcmd += " --genesis-json " + genesis.string();
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }

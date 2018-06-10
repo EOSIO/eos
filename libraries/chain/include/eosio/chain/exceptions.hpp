@@ -293,5 +293,7 @@ namespace eosio { namespace chain {
                                     3130003, "Contract to execute is not on the whitelist" )
       FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, chain_exception,
                                     3130004, "Contract to execute is on the blacklist" )
+      FC_DECLARE_DERIVED_EXCEPTION( action_blacklist_exception, chain_exception,
+                                    3130005, "Action to execute is on the blacklist" )
 
 } } // eosio::chain

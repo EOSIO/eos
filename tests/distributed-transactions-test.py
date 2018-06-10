@@ -21,10 +21,11 @@ parser.add_argument("-s", type=str, help="topology", default="mesh")
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.")
 parser.add_argument("--seed", type=int, help="random seed", default=seed)
-parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
+parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
@@ -34,8 +35,9 @@ total_nodes = pnodes if args.n == 0 else args.n
 debug=args.v
 nodesFile=args.nodes_file
 seed=args.seed
-dontKill=args.dont_kill
+dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
+killAll=args.clean_run
 
 killWallet=not dontKill
 killEosInstances=not dontKill
@@ -60,9 +62,9 @@ try:
             errorExit("Failed to initilize nodes from Json string.")
         total_nodes=len(cluster.getNodes())
     else:
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
-        walletMgr.killall()
+        walletMgr.killall(allInstances=killAll)
         walletMgr.cleanup()
 
         Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
@@ -78,7 +80,7 @@ try:
             errorExit("Cluster never stabilized")
 
     Print("Stand up EOS wallet keosd")
-    walletMgr.killall()
+    walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         errorExit("Failed to stand up keosd.")
@@ -116,11 +118,11 @@ finally:
 
     if killEosInstances:
         Print("Shut down the cluster and cleanup.")
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
     if killWallet:
         Print("Shut down the wallet and cleanup.")
-        walletMgr.killall()
+        walletMgr.killall(allInstances=killAll)
         walletMgr.cleanup()
 
 exit(0)

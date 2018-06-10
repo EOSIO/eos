@@ -49,8 +49,9 @@ parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is
 parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
                     action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
+parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -63,9 +64,10 @@ defproducerbPrvtKey=args.defproducerb_prvt_key
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
-dontKill=args.dont_kill
+dontKill=args.leave_running
 prodCount=args.prod_count
 onlyBios=args.only_bios
+killAll=args.clean_run
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
@@ -88,11 +90,11 @@ try:
     if enableMongo and not cluster.isMongodDbRunning():
         errorExit("MongoDb doesn't seem to be running.")
 
-    walletMgr.killall()
+    walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
 
     if localTest and not dontLaunch:
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
         if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill) is False:
@@ -129,7 +131,7 @@ try:
     exchangeAccount.ownerPublicKey=PUB_KEY2
 
     Print("Stand up walletd")
-    walletMgr.killall()
+    walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         cmdError("%s" % (WalletdName))
@@ -156,6 +158,8 @@ try:
     if defproduceraWallet is None:
         cmdError("eos wallet create")
         errorExit("Failed to create wallet %s." % (defproduceraWalletName))
+
+    Print("Wallet \"%s\" password=%s." % (defproduceraWalletName, defproduceraWallet.password.encode("utf-8")))
 
     defproduceraAccount=cluster.defproduceraAccount
     defproducerbAccount=cluster.defproducerbAccount
@@ -192,7 +196,7 @@ try:
         errorExit("Unexpected wallet list: %s" % (wallets))
 
     Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys()
+    actualKeys=walletMgr.getKeys(testWallet)
     expectedkeys=[]
     for account in accounts:
         expectedkeys.append(account.ownerPrivateKey)
@@ -217,7 +221,7 @@ try:
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
     Print("Getting wallet keys.")
-    actualKeys=walletMgr.getKeys()
+    actualKeys=walletMgr.getKeys(defproduceraWallet)
     expectedkeys=[defproduceraAccount.ownerPrivateKey]
     noMatch=list(set(expectedkeys) - set(actualKeys))
     if len(noMatch) > 0:
@@ -370,7 +374,7 @@ try:
     #     errorExit("FAILURE - %s servants. Expected: [], Actual: %s" % (
     #         testeraAccount.name, actualServants), raw=True)
 
-    node.waitForTransIdOnNode(transId)
+    node.waitForTransInBlock(transId)
 
     transaction=None
     if not enableMongo:
@@ -503,8 +507,18 @@ try:
         errorExit("Failed to push message to currency1111 contract")
     transId=testUtils.Node.getTransId(trans[1])
 
+    Print("push duplicate transfer action to currency1111 contract")
+    transDuplicate=node.pushMessage(contract, action, data, opts, True)
+    if transDuplicate is not None and transDuplicate[0]:
+        transDuplicateId=testUtils.Node.getTransId(transDuplicate[1])
+        if transId != transDuplicateId:
+            cmdError("%s push message currency1111 duplicate transfer incorrectly accepted, but they were generated with different transaction ids, it is likely a timing issue, report if problem persists, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+        else:
+            cmdError("%s push message currency1111 transfer, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+        errorExit("Failed to reject duplicate message for currency1111 contract")
+
     Print("verify transaction exists")
-    if not node.waitForTransIdOnNode(transId):
+    if not node.waitForTransInBlock(transId):
         cmdError("%s get transaction trans_id" % (ClientName))
         errorExit("Failed to verify push message transaction id.")
 
@@ -572,6 +586,99 @@ try:
     except (AssertionError, TypeError, KeyError) as _:
         Print("FAILURE - Failed to parse block transaction. %s" % (myTrans))
         raise
+
+    Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
+    if not walletMgr.unlockWallet(defproduceraWallet):
+        cmdError("%s wallet unlock" % (ClientName))
+        errorExit("Failed to unlock wallet %s" % (defproduceraWallet.name))
+
+    Print("push transfer action to currency1111 contract that would go negative")
+    contract="currency1111"
+    action="transfer"
+    data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
+    data +="\"00.0051 CUR\",\"memo\":\"test\"}"
+    opts="--permission defproducera@active"
+    trans=node.pushMessage(contract, action, data, opts, True)
+    if trans is None or trans[0]:
+        cmdError("%s push message currency1111 transfer should have failed" % (ClientName))
+        errorExit("Failed to reject invalid transfer message to currency1111 contract")
+
+    Print("read current contract balance")
+    amountStr=node.getTableAccountBalance("currency1111", defproduceraAccount.name)
+
+    expected="0.0050 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="99999.9950 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("push another transfer action to currency1111 contract")
+    contract="currency1111"
+    action="transfer"
+    data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
+    data +="\"00.0050 CUR\",\"memo\":\"test\"}"
+    opts="--permission defproducera@active"
+    trans=node.pushMessage(contract, action, data, opts)
+    if trans is None or not trans[0]:
+        cmdError("%s push message currency1111 transfer" % (ClientName))
+        errorExit("Failed to push message to currency1111 contract")
+    transId=testUtils.Node.getTransId(trans[1])
+
+    Print("read current contract balance")
+    amountStr=node.getCurrencyBalance("currency1111", defproduceraAccount.name, "CUR")
+    expected="0.0000 CUR"
+    try:
+        actual=amountStr.strip()
+        assert(expected == actual or not actual)
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Failed get currecy balance assertion. (expected=<%s>, actual=<%s>)" % (str(expected), str(actual)))
+        raise
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="100000.0000 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("push transfer action to currency1111 contract that would go negative")
+    contract="currency1111"
+    action="transfer"
+    data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
+    data +="\"00.0025 CUR\",\"memo\":\"test\"}"
+    opts="--permission defproducera@active"
+    trans=node.pushMessage(contract, action, data, opts, True)
+    if trans is None or trans[0]:
+        cmdError("%s push message currency1111 transfer should have failed" % (ClientName))
+        errorExit("Failed to reject invalid transfer message to currency1111 contract")
+
+    Print("read current contract balance")
+    amountStr=node.getCurrencyBalance("currency1111", defproduceraAccount.name, "CUR")
+    expected="0.0000 CUR"
+    try:
+        actual=amountStr.strip()
+        assert(expected == actual or not actual)
+    except (AssertionError, KeyError) as _:
+        Print("ERROR: Failed get currecy balance assertion. (expected=<%s>, actual=<%s>)" % (str(expected), str(actual)))
+        raise
+
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+
+    expected="100000.0000 CUR"
+    actual=amountStr
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    Print("Locking wallet \"%s\"." % (defproduceraWallet.name))
+    if not walletMgr.lockWallet(defproduceraWallet):
+        cmdError("%s wallet lock" % (ClientName))
+        errorExit("Failed to lock wallet %s" % (defproduceraWallet.name))
 
 
     Print("Exchange Contract Tests")
@@ -641,7 +748,7 @@ try:
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
     for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(str(blockNum), retry=False, silentErrors=False)
+        block=node.getBlock(blockNum, retry=False, silentErrors=False)
         if block is None:
             cmdError("%s get block" % (ClientName))
             errorExit("get block by num %d" % blockNum)
@@ -662,7 +769,7 @@ try:
 
 
     Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
-    block=node.getBlock(str(currentBlockNum+1000), silentErrors=True, retry=False)
+    block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
     else:
@@ -700,14 +807,14 @@ finally:
 
     if killEosInstances:
         Print("Shut down the cluster.")
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         if testSuccessful and not keepLogs:
             Print("Cleanup cluster data.")
             cluster.cleanup()
 
     if killWallet:
         Print("Shut down the wallet.")
-        walletMgr.killall()
+        walletMgr.killall(allInstances=killAll)
         if testSuccessful and not keepLogs:
             Print("Cleanup wallet data.")
             walletMgr.cleanup()

@@ -122,8 +122,8 @@ namespace eosiosystem {
 
       int64_t bytes_out;
 
-      auto itr = _rammarket.find(S(4,RAMCORE));
-      _rammarket.modify( itr, 0, [&]( auto& es ) {
+      const auto& market = _rammarket.get(S(4,RAMCORE), "ram market does not exist");
+      _rammarket.modify( market, 0, [&]( auto& es ) {
           bytes_out = es.convert( quant_after_fee,  S(0,RAM) ).amount;
       });
 
@@ -169,7 +169,7 @@ namespace eosiosystem {
           tokens_out = es.convert( asset(bytes,S(0,RAM)), CORE_SYMBOL);
       });
 
-      _gstate.total_ram_bytes_reserved -= bytes;
+      _gstate.total_ram_bytes_reserved -= static_cast<decltype(_gstate.total_ram_bytes_reserved)>(bytes); // bytes > 0 is asserted above
       _gstate.total_ram_stake          -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
@@ -190,7 +190,6 @@ namespace eosiosystem {
    }
 
    void validate_b1_vesting( int64_t stake ) {
-      const int64_t seconds_per_year = 60*60*24*365;
       const int64_t base_time = 1527811200; /// 2018-06-01
       const int64_t max_claimable = 100'000'000'0000ll;
       const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
@@ -372,7 +371,8 @@ namespace eosiosystem {
       eosio_assert( asset() <= unstake_cpu_quantity, "must unstake a positive amount" );
       eosio_assert( asset() <= unstake_net_quantity, "must unstake a positive amount" );
       eosio_assert( asset() < unstake_cpu_quantity + unstake_net_quantity, "must unstake a positive amount" );
-      eosio_assert( _gstate.total_activated_stake >= min_activated_stake, "not enough has been staked for users to unstake" );
+      eosio_assert( _gstate.total_activated_stake >= min_activated_stake,
+                    "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
    } // undelegatebw

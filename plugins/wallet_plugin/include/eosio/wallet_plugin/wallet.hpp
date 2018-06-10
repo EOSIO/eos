@@ -91,6 +91,15 @@ class wallet_api
        */
       void    unlock(string password);
 
+      /** Checks the password of the wallet
+       *
+       * Validates the password on a wallet even if the wallet is already unlocked,
+       * throws if bad password given.
+       * @param password the password previously set with \c set_password()
+       * @ingroup Wallet Management
+       */
+      void    check_password(string password);
+
       /** Sets a new password on the wallet.
        *
        * The wallet must be either 'new' or 'unlocked' to
