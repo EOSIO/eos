@@ -73,7 +73,7 @@ After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be s
 You can run the `cleos` commands via a bash alias.
 
 ```bash
-alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888 --wallet-url http://localhost:8888'
+alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888 --wallet-url http://localhost:8900'
 cleos get info
 cleos get account inita
 ```
