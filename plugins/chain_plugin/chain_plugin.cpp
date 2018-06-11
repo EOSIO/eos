@@ -606,13 +606,13 @@ template<>
 uint64_t convert_to_type(const string& str, const string& desc) {
    uint64_t value = 0;
    try {
-      name s(str);
-      value = s.value;
+      value = boost::lexical_cast<uint64_t>(str.c_str(), str.size());
    } catch( ... ) {
       try {
          auto trimmed_str = str;
          boost::trim(trimmed_str);
-         value = boost::lexical_cast<uint64_t>(trimmed_str.c_str(), trimmed_str.size());
+         name s(trimmed_str);
+         value = s.value;
       } catch( ... ) {
          try {
             auto symb = eosio::chain::symbol::from_string(str);
@@ -1024,7 +1024,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "self_delegated_bandwidth", data );
+            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
          }
       }
 
