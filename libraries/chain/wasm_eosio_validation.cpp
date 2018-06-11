@@ -92,4 +92,5 @@ void ensure_apply_exported_visitor::validate( const IR::Module& m ) {
 }
 
 uint16_t nested_validator::depth = 0;
+bool     nested_validator::disabled = false;
 }}} // namespace eosio chain validation
