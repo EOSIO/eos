@@ -536,20 +536,23 @@ struct abi_gen_helper {
 
     std::string contract;
     std::vector<std::string> actions;
-
-    bool res = runToolOnCodeWithArgs(new find_eosio_abi_macro_action(contract, actions, ""), source,
-      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib",
+    
+    auto extra_args = std::vector<std::string>{"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib",
       "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions",
       include_param, boost_include_param, stdcpp_include_param,
-      stdc_include_param, pfr_include_param }
+      stdc_include_param, pfr_include_param };
+
+    bool res = runToolOnCodeWithArgs(
+      new find_eosio_abi_macro_action(contract, actions, ""),
+      source,
+      extra_args      
     );
     FC_ASSERT(res == true);
 
-    res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output, contract, actions), source,
-      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib",
-      "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions",
-      include_param, boost_include_param, stdcpp_include_param,
-      stdc_include_param, pfr_include_param }
+    res = runToolOnCodeWithArgs(
+      new generate_abi_action(false, opt_sfs, "", output, contract, actions),
+      source,
+      extra_args
     );
     FC_ASSERT(res == true);
 
@@ -840,138 +843,38 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
       uint64_t field1;
    };
 
-   //@abi table
-   struct table2 {
-      uint128_t field1;
-      uint128_t field2;
-   };
-
-   //@abi table
-   struct table3 {
-      uint64_t field1;
-      uint64_t field2;
-      uint64_t field3;
-   };
-
-   struct my_complex_value {
-      uint64_t a;
-      name     b;
-   };
-
-   //@abi table
-   struct table4 {
-      std::string key;
-      my_complex_value value;
-   };
-
    )=====";
 
    const char* all_indexes_abi = R"=====(
    {
-       "types": [],
-       "structs": [{
-          "name" : "table1",
-          "base" : "",
-          "fields" : [{
-            "name" : "field1",
-            "type" : "uint64"
-          }]
-       },{
-          "name" : "table2",
-          "base" : "",
-          "fields" : [{
-            "name" : "field1",
-            "type" : "uint128"
-          },{
-            "name" : "field2",
-            "type" : "uint128"
-          }]
-       },{
-          "name" : "table3",
-          "base" : "",
-          "fields" : [{
-            "name" : "field1",
-            "type" : "uint64"
-          },{
-            "name" : "field2",
-            "type" : "uint64"
-          },{
-            "name" : "field3",
-            "type" : "uint64"
-          }]
-       },{
-          "name" : "my_complex_value",
-          "base" : "",
-          "fields" : [{
-            "name" : "a",
-            "type" : "uint64"
-          },{
-            "name" : "b",
-            "type" : "name"
-          }]
-       },{
-          "name" : "table4",
-          "base" : "",
-          "fields" : [{
-            "name" : "key",
-            "type" : "string"
-          },{
-            "name" : "value",
-            "type" : "my_complex_value"
-          }]
-       }],
-       "actions": [],
-       "tables": [
-        {
-          "name": "table1",
-          "type": "table1",
-          "index_type": "i64",
-          "key_names": [
-            "field1"
-          ],
-          "key_types": [
-            "uint64"
-          ]
-        },{
-          "name": "table2",
-          "type": "table2",
-          "index_type": "i128i128",
-          "key_names": [
-            "field1",
-            "field2"
-          ],
-          "key_types": [
-            "uint128",
-            "uint128"
-          ]
-        },{
-          "name": "table3",
-          "type": "table3",
-          "index_type": "i64i64i64",
-          "key_names": [
-            "field1",
-            "field2",
-            "field3"
-          ],
-          "key_types": [
-            "uint64",
-            "uint64",
-            "uint64"
-          ]
-        },{
-          "name": "table4",
-          "type": "table4",
-          "index_type": "str",
-          "key_names": [
-            "key",
-          ],
-          "key_types": [
-            "string",
-          ]
-        },
-
-       ],
-       "ricardian_clauses": []
+     "version": "eosio::abi/1.0",
+     "types": [],
+     "structs": [{
+         "name": "table1",
+         "base": "",
+         "fields": [{
+             "name": "field1",
+             "type": "uint64"
+           }
+         ]
+       }
+     ],
+     "actions": [],
+     "tables": [{
+         "name": "table1",
+         "index_type": "i64",
+         "key_names": [
+           "field1"
+         ],
+         "key_types": [
+           "uint64"
+         ],
+         "type": "table1"
+       }
+     ],
+     "ricardian_clauses": [],
+     "error_messages": [],
+     "abi_extensions": []
    }
    )=====";
 
@@ -1135,57 +1038,6 @@ BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
 
    BOOST_TEST( generate_abi(full_table_decl, full_table_decl_abi) == true );
 
-} FC_LOG_AND_RETHROW() }
-
-BOOST_FIXTURE_TEST_CASE(abigen_str_table_decl, abi_gen_helper)
-{ try {
-
-   const char* str_table_decl = R"=====(
-   #include <eosiolib/types.hpp>
-   #include <string>
-
-   //@abi table
-   class table1 {
-   public:
-      std::string name;
-      uint32_t age;
-   };
-
-   )=====";
-
-   const char* str_table_decl_abi = R"=====(
-   {
-     "types": [],
-     "structs": [{
-         "name": "table1",
-         "base": "",
-         "fields": [{
-            "name" : "name",
-            "type" : "string"
-          },{
-            "name" : "age",
-            "type" : "uint32"
-          }]
-       }
-     ],
-     "actions": [],
-     "tables": [{
-         "name": "table1",
-         "index_type": "str",
-         "key_names": [
-           "name"
-         ],
-         "key_types": [
-           "string"
-         ],
-         "type": "table1"
-       }
-     ],
-     "ricardian_clauses": []
-   }
-   )=====";
-
-   BOOST_TEST( generate_abi(str_table_decl, str_table_decl_abi) == true );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_FIXTURE_TEST_CASE(abigen_union_table, abi_gen_helper)
@@ -1857,6 +1709,91 @@ BOOST_FIXTURE_TEST_CASE(abigen_contract_inheritance, abi_gen_helper)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
+{ try {
+
+   const char* abigen_no_eosioabi_macro = R"=====(
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+      #include <eosiolib/eosio.hpp>
+      #include <eosiolib/print.hpp>
+      #pragma GCC diagnostic pop
+
+      using namespace eosio;
+
+      struct hello : public eosio::contract {
+        public:
+            using contract::contract;
+
+            //@abi action
+            void hi( name user ) {
+               print( "Hello, ", name{user} );
+            }
+
+            //@abi action
+            void bye( name user ) {
+               print( "Bye, ", name{user} );
+            }
+
+           void apply( account_name contract, account_name act ) {
+              auto& thiscontract = *this;
+              switch( act ) {
+                 EOSIO_API( hello, (hi)(bye))
+              };
+           }
+      };
+
+      extern "C" {
+         [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+            hello  h( receiver );
+            h.apply( code, action );
+            eosio_exit(0);
+         }
+      }
+   )=====";
+
+   const char* abigen_no_eosioabi_macro_abi = R"=====(
+   {
+     "version": "eosio::abi/1.0",
+     "types": [],
+     "structs": [{
+         "name": "hi",
+         "base": "",
+         "fields": [{
+             "name": "user",
+             "type": "name"
+           }
+         ]
+       },{
+         "name": "bye",
+         "base": "",
+         "fields": [{
+             "name": "user",
+             "type": "name"
+           }
+         ]
+       }
+     ],
+     "actions": [{
+         "name": "hi",
+         "type": "hi",
+         "ricardian_contract": ""
+       },{
+         "name": "bye",
+         "type": "bye",
+         "ricardian_contract": ""
+       }
+     ],
+     "tables": [],
+     "ricardian_clauses": [],
+     "error_messages": [],
+     "abi_extensions": []
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abigen_no_eosioabi_macro, abigen_no_eosioabi_macro_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(general)
 { try {
