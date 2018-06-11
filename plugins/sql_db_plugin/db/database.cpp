@@ -21,7 +21,11 @@ void database::consume(const std::vector<chain::block_state_ptr> &blocks)
         for (const auto& transaction : block->trxs) {
             m_transactions_table->add(block->block_num, transaction->trx);
             for (const auto& action : transaction->trx.actions) {
-                m_actions_table->add(action, transaction->trx.id());
+                try {
+                    m_actions_table->add(action, transaction->trx.id());
+                } catch (const fc::assert_exception&) { // malformed actions
+                    continue;
+                }
             }
         }
     }

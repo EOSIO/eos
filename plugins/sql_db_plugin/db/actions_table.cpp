@@ -14,6 +14,7 @@ void actions_table::drop()
 {
     try {
         *m_session << "drop table IF EXISTS actions_accounts";
+        *m_session << "drop table IF EXISTS votes";
         *m_session << "drop table IF EXISTS tokens";
         *m_session << "drop table IF EXISTS actions";
     }
@@ -43,6 +44,12 @@ void actions_table::create()
             "symbol VARCHAR(10),"
             "amount REAL(14,4),"
             "staked REAL(14,4), FOREIGN KEY (account) REFERENCES accounts(name))"; // TODO: other tokens could have diff format.
+
+    *m_session << "CREATE TABLE votes("
+            "account VARCHAR(13) PRIMARY KEY,"
+            "votes JSON"
+            ", FOREIGN KEY (account) REFERENCES accounts(name))";
+
 }
 
 void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
@@ -150,6 +157,15 @@ void actions_table::parse_actions(chain::action action, fc::variant abi_data)
 
     if (action.account != chain::name(chain::config::system_account_name)) {
         return;
+    }
+
+    if (action.name == N(voteproducer)) {
+        auto voter = abi_data["voter"].as<chain::name>().to_string();
+        string votes = fc::json::to_string(abi_data["producers"]);
+
+        *m_session << "REPLACE INTO votes(account, votes) VALUES (:ac, :vo) ",
+                soci::use(voter),
+                soci::use(votes);
     }
 
     if (action.name == chain::setabi::get_name()) {
