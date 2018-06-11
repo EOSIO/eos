@@ -31,7 +31,7 @@ namespace eosio { namespace chain {
 
    wasm_interface::~wasm_interface() {}
 
-   void wasm_interface::validate(controller& control, const bytes& code) {
+   void wasm_interface::validate(const controller& control, const bytes& code) {
       Module module;
       try {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());

@@ -59,7 +59,7 @@ namespace eosio { namespace chain {
          ~wasm_interface();
 
          //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
-         static void validate(controller& control, const bytes& code);
+         static void validate(const controller& control, const bytes& code);
 
          //Calls apply or error on a given code
          void apply(const digest_type& code_id, const shared_string& code, apply_context& context);
