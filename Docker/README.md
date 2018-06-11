@@ -81,7 +81,7 @@ cleos get account inita
 Upload sample exchange contract
 
 ```bash
-cleos set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
+cleos set contract exchange contracts/exchange/
 ```
 
 If you don't need keosd afterwards, you can stop the keosd service using

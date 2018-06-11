@@ -17,15 +17,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-p", type=int, help="producing nodes count", default=1)
 parser.add_argument("-n", type=int, help="total nodes", default=0)
 parser.add_argument("-d", type=int, help="delay between nodes startup", default=1)
-parser.add_argument("-s", type=str, help="topology", default="mesh")
+parser.add_argument("-s", type=str, help="topology", choices=["mesh"], default="mesh")
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.")
 parser.add_argument("--seed", type=int, help="random seed", default=seed)
-parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
-parser.add_argument("--kill-all", help="Kill all nodeos and kleos instances", action='store_true')
+parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
@@ -35,9 +35,9 @@ total_nodes = pnodes if args.n == 0 else args.n
 debug=args.v
 nodesFile=args.nodes_file
 seed=args.seed
-dontKill=args.dont_kill
+dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
-killAll=args.kill_all
+killAll=args.clean_run
 
 killWallet=not dontKill
 killEosInstances=not dontKill

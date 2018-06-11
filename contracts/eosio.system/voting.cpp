@@ -42,14 +42,12 @@ namespace eosiosystem {
       auto prod = _producers.find( producer );
 
       if ( prod != _producers.end() ) {
-         if( producer_key != prod->producer_key ) {
-             _producers.modify( prod, producer, [&]( producer_info& info ){
-                  info.producer_key = producer_key;
-                  info.is_active    = true;
-                  info.url          = url;
-                  info.location     = location;
-             });
-         }
+         _producers.modify( prod, producer, [&]( producer_info& info ){
+               info.producer_key = producer_key;
+               info.is_active    = true;
+               info.url          = url;
+               info.location     = location;
+            });
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
