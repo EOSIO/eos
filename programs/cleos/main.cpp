@@ -822,7 +822,7 @@ struct create_account_subcommand {
          createAccount->add_option("--stake-cpu", stake_cpu,
                                    (localized("The amount of EOS delegated for CPU bandwidth")))->required();
          createAccount->add_option("--buy-ram-kbytes", buy_ram_bytes_in_kbytes,
-                                   (localized("The amount of RAM bytes to purchase for the new account in kilobytes KiB, default is 8 KiB")));
+                                   (localized("The amount of RAM bytes to purchase for the new account in kibibytes (KiB), default is 8 KiB")));
          createAccount->add_option("--buy-ram", buy_ram_eos,
                                    (localized("The amount of RAM bytes to purchase for the new account in EOS")));
          createAccount->add_flag("--transfer", transfer,
@@ -1375,16 +1375,16 @@ void get_account( const string& accountName, bool json_format ) {
          string unit = "bytes";
          double bytes = static_cast<double> (nbytes);
          if (bytes >= 1024 * 1024 * 1024 * 1024ll) {
-             unit = "Tb";
+             unit = "TiB";
              bytes /= 1024 * 1024 * 1024 * 1024ll;
          } else if (bytes >= 1024 * 1024 * 1024) {
-             unit = "Gb";
+             unit = "GiB";
              bytes /= 1024 * 1024 * 1024;
          } else if (bytes >= 1024 * 1024) {
-             unit = "Mb";
+             unit = "MiB";
              bytes /= 1024 * 1024;
          } else if (bytes >= 1024) {
-             unit = "Kb";
+             unit = "KiB";
              bytes /= 1024;
          }
          std::stringstream ss;
