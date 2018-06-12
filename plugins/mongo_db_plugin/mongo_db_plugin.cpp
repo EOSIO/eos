@@ -516,6 +516,19 @@ void mongo_db_plugin_impl::process_applied_transaction( const chain::transaction
    }
 }
 
+void mongo_db_plugin_impl::process_transaction( const eosio::chain::transaction_trace_ptr& t ) {
+   try {
+      _process_transaction(t);
+   } catch (fc::exception& e) {
+      elog("FC Exception while processing transaction trace: ${e}", ("e", e.to_detail_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while processing tranasction trace: ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while processing transaction trace");
+   }
+}
+
+
 void mongo_db_plugin_impl::process_irreversible_block(const chain::block_state_ptr& bs) {
   try {
      if( start_block_reached ) {
@@ -782,6 +795,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    if (!blocks.insert_one(block_doc.view())) {
       elog("Failed to insert block ${bid}", ("bid", block_id));
    }
+    */
 }
 
 void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_ptr& bs)
@@ -797,6 +811,10 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    const auto block_id = bs->block->id();
    const auto block_id_str = block_id.str();
    const auto block_num = bs->block->block_num();
+
+   if (block_num == 1153) {
+      std::cout << fc::json::to_pretty_string(bs) << std::endl;
+   }
 
    // genesis block 1 is not signaled to accepted_block
    if (block_num < 2) return;
