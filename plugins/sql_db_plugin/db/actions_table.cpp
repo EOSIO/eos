@@ -126,7 +126,7 @@ void actions_table::parse_actions(chain::action action, fc::variant abi_data)
                     soci::use(to_name),
                     soci::use(asset_quantity.get_symbol().name());
         } else {
-            *m_session << "INSERT INTO tokens(account, amount, staked, symbol) VALUES (:ac, :am, 0, :as) ",
+            *m_session << "INSERT INTO tokens(account, amount, symbol) VALUES (:ac, :am, :as) ",
                     soci::use(to_name),
                     soci::use(asset_quantity.to_real()),
                     soci::use(asset_quantity.get_symbol().name());
