@@ -736,6 +736,10 @@ void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
    auto blocks = mongo_conn[db_name][blocks_col];
    auto trans = mongo_conn[db_name][trans_col];
 
+   if (bs->block->transactions.size() > 1) {
+      std::cout << fc::json::to_pretty_string( *bs ) << std::endl;
+   }
+
    auto block_doc = bsoncxx::builder::basic::document{};
    auto block_state_doc = bsoncxx::builder::basic::document{};
    const auto block_id = bs->id;
