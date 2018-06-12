@@ -12,6 +12,8 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
+#include <boost/chrono.hpp>
+#include <boost/signals2/connection.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
@@ -47,12 +49,17 @@ public:
    mongo_db_plugin_impl();
    ~mongo_db_plugin_impl();
 
-   void applied_block(const block_trace&);
-   void applied_irreversible_block(const signed_block&);
-   void process_block(const block_trace&, const signed_block&);
-   void _process_block(const block_trace&, const signed_block&);
-   void process_irreversible_block(const signed_block&);
-   void _process_irreversible_block(const signed_block&);
+   fc::optional<boost::signals2::scoped_connection> accepted_block_connection;
+   fc::optional<boost::signals2::scoped_connection> irreversible_block_connection;
+   fc::optional<boost::signals2::scoped_connection> accepted_transaction_connection;
+   fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
+
+   void accept_block( const chain::block_state_ptr& );
+   void applied_irreversible_block(const chain::block_state_ptr&);
+   void process_block(const chain::block_state_ptr&);
+   void _process_block(const chain::block_state_ptr&);
+   void process_irreversible_block(const chain::block_state_ptr&);
+   void _process_irreversible_block(const chain::block_state_ptr&);
 
    void init();
    void wipe_database();
@@ -69,10 +76,10 @@ public:
 
    size_t queue_size = 0;
    size_t processed = 0;
-   std::deque<signed_block> signed_block_queue;
-   std::deque<signed_block> signed_block_process_queue;
-   std::deque<std::pair<block_trace, signed_block>> block_trace_queue;
-   std::deque<std::pair<block_trace, signed_block>> block_trace_process_queue;
+   std::deque<chain::block_state_ptr> block_state_queue;
+   std::deque<chain::block_state_ptr> block_state_process_queue;
+   std::deque<chain::block_state_ptr> irreversible_block_state_queue;
+   std::deque<chain::block_state_ptr> irreversible_block_state_process_queue;
    // transaction.id -> actions
    std::map<std::string, std::vector<chain::action>> reversible_actions;
    boost::mutex mtx;
@@ -107,14 +114,20 @@ const std::string mongo_db_plugin_impl::action_traces_col = "ActionTraces";
 const std::string mongo_db_plugin_impl::accounts_col = "Accounts";
 
 
-void mongo_db_plugin_impl::applied_irreversible_block(const signed_block& block) {
+void mongo_db_plugin_impl::applied_irreversible_block(const chain::block_state_ptr& bs) {
    try {
       if (startup) {
          // on startup we don't want to queue, instead push back on caller
-         process_irreversible_block(block);
+         process_irreversible_block(bs);
       } else {
          boost::mutex::scoped_lock lock(mtx);
-         signed_block_queue.push_back(block);
+         if (irreversible_block_state_queue.size() > queue_size) {
+            lock.unlock();
+            condition.notify_one();
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+            lock.lock();
+         }
+         irreversible_block_state_queue.push_back(bs);
          lock.unlock();
          condition.notify_one();
       }
@@ -127,23 +140,29 @@ void mongo_db_plugin_impl::applied_irreversible_block(const signed_block& block)
    }
 }
 
-void mongo_db_plugin_impl::applied_block(const block_trace& bt) {
+void mongo_db_plugin_impl::accept_block( const chain::block_state_ptr& bs ) {
    try {
       if (startup) {
          // on startup we don't want to queue, instead push back on caller
-         process_block(bt, bt.block);
+         process_block(bs);
       } else {
          boost::mutex::scoped_lock lock(mtx);
-         block_trace_queue.emplace_back(std::make_pair(bt, bt.block));
+         if (irreversible_block_state_queue.size() > queue_size) {
+            lock.unlock();
+            condition.notify_one();
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+            lock.lock();
+         }
+         block_state_queue.emplace_back(bs);
          lock.unlock();
          condition.notify_one();
       }
    } catch (fc::exception& e) {
-      elog("FC Exception while applied_block ${e}", ("e", e.to_string()));
+      elog("FC Exception while accept_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
-      elog("STD Exception while applied_block ${e}", ("e", e.what()));
+      elog("STD Exception while accept_block ${e}", ("e", e.what()));
    } catch (...) {
-      elog("Unknown exception while applied_block");
+      elog("Unknown exception while accept_block");
    }
 }
 
@@ -151,19 +170,19 @@ void mongo_db_plugin_impl::consume_blocks() {
    try {
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
-         while (signed_block_queue.empty() && block_trace_queue.empty() && !done) {
+         while (irreversible_block_state_queue.empty() && block_state_queue.empty() && !done) {
             condition.wait(lock);
          }
          // capture blocks for processing
-         size_t block_trace_size = block_trace_queue.size();
+         size_t block_trace_size = block_state_queue.size();
          if (block_trace_size > 0) {
-            block_trace_process_queue = move(block_trace_queue);
-            block_trace_queue.clear();
+            block_state_process_queue = move(block_state_queue);
+            block_state_queue.clear();
          }
-         size_t signed_block_size = signed_block_queue.size();
+         size_t signed_block_size = irreversible_block_state_queue.size();
          if (signed_block_size > 0) {
-            signed_block_process_queue = move(signed_block_queue);
-            signed_block_queue.clear();
+            irreversible_block_state_process_queue = move(irreversible_block_state_queue);
+            irreversible_block_state_queue.clear();
          }
 
          lock.unlock();
@@ -176,17 +195,17 @@ void mongo_db_plugin_impl::consume_blocks() {
          }
 
          // process block traces
-         while (!block_trace_process_queue.empty()) {
-            const auto& bt_pair = block_trace_process_queue.front();
-            process_block(bt_pair.first, bt_pair.second);
-            block_trace_process_queue.pop_front();
+         while (!block_state_process_queue.empty()) {
+            const auto& bs = block_state_process_queue.front();
+            process_block(bs);
+            block_state_process_queue.pop_front();
          }
 
          // process blocks
-         while (!signed_block_process_queue.empty()) {
-            const signed_block& block = signed_block_process_queue.front();
-            process_irreversible_block(block);
-            signed_block_process_queue.pop_front();
+         while (!irreversible_block_state_process_queue.empty()) {
+            const auto& bs = irreversible_block_state_process_queue.front();
+            process_irreversible_block(bs);
+            irreversible_block_state_process_queue.pop_front();
          }
 
          if (signed_block_size == 0 && block_trace_size == 0 && done) break;
@@ -293,21 +312,38 @@ namespace {
    }
 }
 
-void mongo_db_plugin_impl::process_irreversible_block(const signed_block& block) {
+void mongo_db_plugin_impl::process_irreversible_block(const chain::block_state_ptr& bs) {
   try {
-     _process_irreversible_block(block);
+     _process_irreversible_block(bs);
   } catch (fc::exception& e) {
-     elog("FC Exception while processing block ${e}", ("e", e.to_string()));
+     elog("FC Exception while processing block: ${e}", ("e", e.to_detail_string()));
   } catch (std::exception& e) {
-     elog("STD Exception while processing block ${e}", ("e", e.what()));
+     elog("STD Exception while processing block: ${e}", ("e", e.what()));
   } catch (...) {
      elog("Unknown exception while processing block");
   }
 }
 
-void mongo_db_plugin_impl::process_block(const block_trace& bt, const signed_block& block) {
+void mongo_db_plugin_impl::process_block(const chain::block_state_ptr& bs) {
    try {
-      _process_block(bt, block);
+
+      if (processed == 0) {
+         auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
+         auto block_num = bs->block->block_num();
+         if (wipe_database_on_startup) {
+            // verify on start we have no previous blocks
+            verify_no_blocks(blocks);
+            FC_ASSERT(block_num == 2, "Expected start of block, instead received block_num: ${bn}", ("bn", block_num));
+         } else {
+            // verify on restart we have previous block
+            const auto prev_block_id_str = bs->block->previous.str();
+            verify_last_block(blocks, prev_block_id_str);
+         }
+      }
+
+      _process_block(bs);
+
+      ++processed;
    } catch (fc::exception& e) {
       elog("FC Exception while processing block trace ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -317,7 +353,7 @@ void mongo_db_plugin_impl::process_block(const block_trace& bt, const signed_blo
    }
 }
 
-void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_block& block) {
+void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
    // note bt.block is invalid at this point since it is a reference to internal chainbase block
    using namespace bsoncxx::types;
    using namespace bsoncxx::builder;
@@ -332,22 +368,15 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
    auto msgs = mongo_conn[db_name][actions_col]; // Actions
    auto action_traces = mongo_conn[db_name][action_traces_col]; // ActionTraces
 
-   auto block_doc = bsoncxx::builder::basic::document{};
-   const auto block_id = block.id();
-   const auto block_id_str = block_id.str();
-   const auto prev_block_id_str = block.previous.str();
-   auto block_num = block.block_num();
-
-   if (processed == 0) {
-      if (wipe_database_on_startup) {
-         // verify on start we have no previous blocks
-         verify_no_blocks(blocks);
-         FC_ASSERT(block_num < 2, "Expected start of block, instead received block_num: ${bn}", ("bn", block_num));
-      } else {
-         // verify on restart we have previous block
-         verify_last_block(blocks, prev_block_id_str);
-      }
+   if (bs->block->transactions.size() > 1) {
+      std::cout << fc::json::to_pretty_string( *bs ) << std::endl;
    }
+
+   auto block_doc = bsoncxx::builder::basic::document{};
+   const auto block_id = bs->id;
+   const auto block_id_str = block_id.str();
+   const auto prev_block_id_str = bs->block->previous.str();
+   auto block_num = bs->block->block_num();
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
@@ -356,9 +385,9 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                     kvp("block_id", block_id_str),
                     kvp("prev_block_id", prev_block_id_str),
                     kvp("timestamp", b_date{std::chrono::milliseconds{
-                          std::chrono::seconds{block.timestamp.operator fc::time_point().sec_since_epoch()}}}),
-                    kvp("transaction_merkle_root", block.transaction_mroot.str()),
-                    kvp("producer_account_id", block.producer.to_string()),
+                          std::chrono::seconds{bs->block->timestamp.operator fc::time_point().sec_since_epoch()}}}),
+                    kvp("transaction_merkle_root", bs->block->transaction_mroot.str()),
+                    kvp("producer_account_id", bs->block->producer.to_string()),
                     kvp("pending", b_bool{true}));
    block_doc.append(kvp("createdAt", b_date{now}));
 
@@ -403,10 +432,11 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
       auto act_doc = bsoncxx::builder::basic::document{};
       act_doc.append(kvp("_id", b_oid{act_oid}),
                      kvp("transaction_id", trans_id_str),
-                     kvp("receiver", act.receiver.to_string()),
+                     kvp("receiver", act.receipt.receiver.to_string()),
                      kvp("action", b_oid{msg_oid}),
                      kvp("console", act.console));
       act_doc.append(kvp("data_access", [&act](bsoncxx::builder::basic::sub_array subarr) {
+         /* todo
          for (const auto& data : act.data_access) {
             subarr.append([&data](bsoncxx::builder::basic::sub_document subdoc) {
                subdoc.append(kvp("type", data.type == chain::data_access_info::read ? "read" : "write"),
@@ -415,6 +445,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                              kvp("sequence", b_int64{static_cast<int64_t>(data.sequence)}));
             });
          }
+          */
       }));
       act_doc.append(kvp("createdAt", b_date{now}));
       mongocxx::model::insert_one insert_act{act_doc.view()};
@@ -462,6 +493,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
 
    mongocxx::bulk_write bulk_msgs{bulk_opts};
    mongocxx::bulk_write bulk_acts{bulk_opts};
+   /* todo
    trx_num = 1000000;
    for (const auto& rt: bt.region_traces) {
       for (const auto& ct: rt.cycle_traces) {
@@ -537,7 +569,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
       bulk_trans.append(insert_op);
       ++trx_num;
    }
-
+*/
    if (actions_to_write) {
       auto result = msgs.bulk_write(bulk_msgs);
       if (!result) {
@@ -556,11 +588,9 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
          elog("Bulk transaction insert failed for block: ${bid}", ("bid", block_id));
       }
    }
-
-   ++processed;
 }
 
-void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block)
+void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_ptr& bs)
 {
    using namespace bsoncxx::types;
    using namespace bsoncxx::builder;
@@ -574,8 +604,12 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
    auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
    auto trans = mongo_conn[db_name][trans_col]; // Transactions
 
-   const auto block_id = block.id();
+   const auto block_id = bs->block->id();
    const auto block_id_str = block_id.str();
+   const auto block_num = bs->block->block_num();
+
+   // genesis block 1 is not signaled to accepted_block
+   if (block_num < 2) return;
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
@@ -588,7 +622,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
                << close_document;
 
    blocks.update_one(document{} << "_id" << ir_block.view()["_id"].get_oid() << finalize, update_block.view());
-
+/* todo
    for (const auto& r: block.regions) {
       for (const auto& cs: r.cycles_summary) {
          for (const auto& ss: cs) {
@@ -615,7 +649,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
          }
       }
    }
-
+*/
 }
 
 // For now providing some simple account processing to maintain eos_balance
@@ -803,7 +837,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
       ilog("initializing mongo_db_plugin");
       my->configured = true;
 
-      if (options.at("replay-blockchain").as<bool>()) {
+      if (options.at("replay-blockchain").as<bool>() || options.at("hard-replay-blockchain").as<bool>()) {
          ilog("Replay requested: wiping mongo database on startup");
          my->wipe_database_on_startup = true;
       }
@@ -825,13 +859,23 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->db_name = "EOS";
       my->mongo_conn = mongocxx::client{uri};
 
-      // add callback to chain_controller config
+      // hook up to signals on controller
       chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
       FC_ASSERT(chain_plug);
-      chain_plug->chain_config().applied_block_callbacks.emplace_back(
-            [my = my](const chain::block_trace& bt) { my->applied_block(bt); });
-      chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
-            [my = my](const chain::signed_block& b) { my->applied_irreversible_block(b); });
+      auto& chain = chain_plug->chain();
+
+      my->accepted_block_connection.emplace(chain.accepted_block.connect( [&]( const chain::block_state_ptr& bs ){
+         my->accept_block( bs );
+      }));
+      my->irreversible_block_connection.emplace(chain.irreversible_block.connect( [&]( const chain::block_state_ptr& bs ){
+         my->applied_irreversible_block( bs );
+      }));
+      my->accepted_transaction_connection.emplace(chain.accepted_transaction.connect( [&]( const chain::transaction_metadata_ptr& t ){
+         //my->accepted_transaction(t);
+      }));
+      my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ){
+         //my->applied_transaction(t);
+      }));
 
       if (my->wipe_database_on_startup) {
          my->wipe_database();
@@ -857,6 +901,11 @@ void mongo_db_plugin::plugin_startup()
 
 void mongo_db_plugin::plugin_shutdown()
 {
+   my->accepted_block_connection.reset();
+   my->irreversible_block_connection.reset();
+   my->accepted_transaction_connection.reset();
+   my->applied_transaction_connection.reset();
+
    my.reset();
 }
 
