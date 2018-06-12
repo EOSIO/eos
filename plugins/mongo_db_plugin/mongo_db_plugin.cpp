@@ -901,7 +901,7 @@ void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
                                         "unknown";
                trx_status_map[trx_trace.id] = trx_status;
 
-               for (const auto& req : trx_trace.deferred_transaction_requests) {
+ //              for (const auto& req : trx_trace.deferred_transaction_requests) {
                   if ( req.contains<chain::deferred_transaction>() ) {
                      auto trx = req.get<chain::deferred_transaction>();
                      auto doc = process_trx(trx);
