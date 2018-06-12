@@ -1753,8 +1753,10 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transaction_id_str;
+   uint32_t block_num_hint = 0;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
+   getTransaction->add_option( "-b,--block-hint", block_num_hint, localized("the block number this transaction may be in") );
    getTransaction->set_callback([&] {
       transaction_id_type transaction_id;
       try {
@@ -1762,6 +1764,9 @@ int main( int argc, char** argv ) {
          transaction_id = transaction_id_type(transaction_id_str);
       } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
       auto arg= fc::mutable_variant_object( "id", transaction_id);
+      if ( block_num_hint > 0 ) {
+         arg = arg("block_num_hint", block_num_hint);
+      }
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
