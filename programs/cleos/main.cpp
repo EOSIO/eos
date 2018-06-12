@@ -713,6 +713,11 @@ void ensure_keosd_running(CLI::App* app) {
         return;
     if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
        return;
+    if (auto* subapp = app->get_subcommand("system")) {
+       if (subapp->got_subcommand("listproducers") || subapp->get_subcommand("listbw")) // system list* do not require wallet
+         return;
+    }
+
     auto parsed_url = parse_url(wallet_url);
     auto resolved_url = resolve_url(context, parsed_url);
 

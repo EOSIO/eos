@@ -133,7 +133,7 @@ void apply_eosio_setcode(apply_context& context) {
    
    if( act.code.size() > 0 ) {
      code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
-     wasm_interface::validate(act.code);
+     wasm_interface::validate(context.control, act.code);
    }
 
    const auto& account = db.get<account_object,by_name>(act.account);

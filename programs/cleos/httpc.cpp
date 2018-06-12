@@ -205,6 +205,7 @@ namespace eosio { namespace client { namespace http {
 #endif
 
       boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
+      SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
       if(cp.verify_cert)
          socket.set_verify_mode(boost::asio::ssl::verify_peer);
 
