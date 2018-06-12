@@ -1627,6 +1627,12 @@ BOOST_FIXTURE_TEST_CASE( apply_export_and_signature, TESTER ) try {
    BOOST_CHECK_THROW(set_code(N(bbb), no_apply_wast), fc::exception);
    produce_blocks(1);
 
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_2_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_3_wast), fc::exception);
+   produce_blocks(1);
+
    BOOST_CHECK_THROW(set_code(N(bbb), apply_wrong_signature_wast), fc::exception);
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
