@@ -1493,7 +1493,7 @@ void get_account( const string& accountName, bool json_format ) {
          auto obj = res.refund_request.get_object();
          auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
          fc::time_point refund_time = request_time + fc::days(3);
-         auto now = fc::time_point::now();
+         auto now = res.head_block_time;
          std::cout << std::fixed << setprecision(3);
          std::cout << "unstaked tokens:" << std::endl;
          std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);

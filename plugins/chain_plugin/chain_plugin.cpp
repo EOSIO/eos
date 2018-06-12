@@ -969,6 +969,9 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& d = db.db();
    const auto& rm = db.get_resource_limits_manager();
 
+   result.head_block_num  = db.head_block_num();
+   result.head_block_time = db.head_block_time();
+
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
 
    const auto& a = db.get_account(result.account_name);
