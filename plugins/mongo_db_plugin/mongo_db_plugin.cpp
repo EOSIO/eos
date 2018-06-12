@@ -55,9 +55,12 @@ public:
    fc::optional<boost::signals2::scoped_connection> accepted_transaction_connection;
    fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
 
-   void accept_block( const chain::block_state_ptr& );
+   void accepted_block( const chain::block_state_ptr& );
    void applied_irreversible_block(const chain::block_state_ptr&);
+   void accepted_transaction(const chain::transaction_metadata_ptr&);
    void applied_transaction(const chain::transaction_trace_ptr&);
+   void process_transaction(const chain::transaction_metadata_ptr&);
+   void _process_transaction(const chain::transaction_metadata_ptr&);
    void process_transaction(const chain::transaction_trace_ptr&);
    void _process_transaction(const chain::transaction_trace_ptr&);
    void process_block(const chain::block_state_ptr&);
@@ -80,6 +83,8 @@ public:
 
    size_t queue_size = 0;
    size_t processed = 0;
+   std::deque<chain::transaction_metadata_ptr> transaction_metadata_queue;
+   std::deque<chain::transaction_metadata_ptr> transaction_metadata_process_queue;
    std::deque<chain::transaction_trace_ptr> transaction_trace_queue;
    std::deque<chain::transaction_trace_ptr> transaction_trace_process_queue;
    std::deque<chain::block_state_ptr> block_state_queue;
@@ -121,6 +126,32 @@ const std::string mongo_db_plugin_impl::actions_col = "actions";
 const std::string mongo_db_plugin_impl::action_traces_col = "action_traces";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 
+
+void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
+   try {
+      if (startup) {
+         // on startup we don't want to queue, instead push back on caller
+         process_transaction(t);
+      } else {
+         boost::mutex::scoped_lock lock(mtx);
+         if (transaction_metadata_queue.size() > queue_size) {
+            lock.unlock();
+            condition.notify_one();
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+            lock.lock();
+         }
+         transaction_metadata_queue.emplace_back(t);
+         lock.unlock();
+         condition.notify_one();
+      }
+   } catch (fc::exception& e) {
+      elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while accepted_transaction ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while accepted_transaction");
+   }
+}
 
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
@@ -174,14 +205,14 @@ void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_
    }
 }
 
-void mongo_db_plugin_impl::accept_block( const chain::block_state_ptr& bs ) {
+void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
    try {
       if (startup) {
          // on startup we don't want to queue, instead push back on caller
          process_block(bs);
       } else {
          boost::mutex::scoped_lock lock(mtx);
-         if (irreversible_block_state_queue.size() > queue_size) {
+         if (block_state_queue.size() > queue_size) {
             lock.unlock();
             condition.notify_one();
             boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
@@ -192,11 +223,11 @@ void mongo_db_plugin_impl::accept_block( const chain::block_state_ptr& bs ) {
          condition.notify_one();
       }
    } catch (fc::exception& e) {
-      elog("FC Exception while accept_block ${e}", ("e", e.to_string()));
+      elog("FC Exception while accepted_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
-      elog("STD Exception while accept_block ${e}", ("e", e.what()));
+      elog("STD Exception while accepted_block ${e}", ("e", e.what()));
    } catch (...) {
-      elog("Unknown exception while accept_block");
+      elog("Unknown exception while accepted_block");
    }
 }
 
@@ -204,13 +235,22 @@ void mongo_db_plugin_impl::consume_blocks() {
    try {
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
-         while (transaction_trace_queue.empty() && irreversible_block_state_queue.empty() && block_state_queue.empty() && !done) {
+         while ( transaction_metadata_queue.empty() &&
+                 transaction_trace_queue.empty() &&
+                 block_state_queue.empty() &&
+                 irreversible_block_state_queue.empty() &&
+                 !done ) {
             condition.wait(lock);
          }
 
          // capture for processing
-         size_t block_trace_size = transaction_trace_queue.size();
-         if (block_trace_size > 0) {
+         size_t transaction_metadata_size = transaction_metadata_queue.size();
+         if (transaction_metadata_size > 0) {
+            transaction_metadata_process_queue = move(transaction_metadata_queue);
+            transaction_metadata_queue.clear();
+         }
+         size_t transaction_trace_size = transaction_trace_queue.size();
+         if (transaction_trace_size > 0) {
             transaction_trace_process_queue = move(transaction_trace_queue);
             transaction_trace_queue.clear();
          }
@@ -228,13 +268,22 @@ void mongo_db_plugin_impl::consume_blocks() {
          lock.unlock();
 
          // warn if queue size greater than 75%
-         if (block_trace_size > (queue_size * 0.75) || irreversible_block_size > (queue_size * 0.75) || block_state_size > (queue_size * 0.75)) {
-            wlog("queue size: ${q}", ("q", block_trace_size + irreversible_block_size + block_state_size));
+         if( transaction_metadata_size > (queue_size * 0.75) ||
+             transaction_trace_size > (queue_size * 0.75) ||
+             block_state_size > (queue_size * 0.75) ||
+             irreversible_block_size > (queue_size * 0.75)) {
+            wlog("queue size: ${q}", ("q", transaction_metadata_size + transaction_trace_size + block_state_size + irreversible_block_size));
          } else if (done) {
-            ilog("draining queue, size: ${q}", ("q", block_trace_size + irreversible_block_size + block_state_size));
+            ilog("draining queue, size: ${q}", ("q", transaction_metadata_size + transaction_trace_size + block_state_size + irreversible_block_size));
          }
 
          // process transactions
+         while (!transaction_metadata_process_queue.empty()) {
+            const auto& t = transaction_metadata_process_queue.front();
+            process_transaction(t);
+            transaction_metadata_process_queue.pop_front();
+         }
+
          while (!transaction_trace_process_queue.empty()) {
             const auto& t = transaction_trace_process_queue.front();
             process_transaction(t);
@@ -255,7 +304,13 @@ void mongo_db_plugin_impl::consume_blocks() {
             irreversible_block_state_process_queue.pop_front();
          }
 
-         if (irreversible_block_size == 0 && block_state_size == 0 && done) break;
+         if( transaction_metadata_size == 0 &&
+             transaction_trace_size == 0 &&
+             block_state_size == 0 &&
+             irreversible_block_size == 0 &&
+             done ) {
+            break;
+         }
       }
       ilog("mongo_db_plugin consume thread shutdown gracefully");
    } catch (fc::exception& e) {
@@ -359,7 +414,19 @@ namespace {
    }
 }
 
-void mongo_db_plugin_impl::process_transaction( const eosio::chain::transaction_trace_ptr& t ) {
+void mongo_db_plugin_impl::process_transaction( const chain::transaction_metadata_ptr& t ) {
+   try {
+      _process_transaction(t);
+   } catch (fc::exception& e) {
+      elog("FC Exception while processing transaction metadata: ${e}", ("e", e.to_detail_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while processing tranasction metadata: ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while processing transaction metadata");
+   }
+}
+
+void mongo_db_plugin_impl::process_transaction( const chain::transaction_trace_ptr& t ) {
    try {
       _process_transaction(t);
    } catch (fc::exception& e) {
@@ -370,7 +437,6 @@ void mongo_db_plugin_impl::process_transaction( const eosio::chain::transaction_
       elog("Unknown exception while processing transaction trace");
    }
 }
-
 
 void mongo_db_plugin_impl::process_irreversible_block(const chain::block_state_ptr& bs) {
   try {
@@ -413,7 +479,11 @@ void mongo_db_plugin_impl::process_block(const chain::block_state_ptr& bs) {
    }
 }
 
-void mongo_db_plugin_impl::_process_transaction( const eosio::chain::transaction_trace_ptr& ) {
+void mongo_db_plugin_impl::_process_transaction( const chain::transaction_metadata_ptr& ) {
+   // todo
+}
+
+void mongo_db_plugin_impl::_process_transaction( const chain::transaction_trace_ptr& ) {
    // todo
 }
 
@@ -963,13 +1033,13 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
       auto& chain = chain_plug->chain();
 
       my->accepted_block_connection.emplace(chain.accepted_block.connect( [&]( const chain::block_state_ptr& bs ){
-         my->accept_block( bs );
+         my->accepted_block( bs );
       }));
       my->irreversible_block_connection.emplace(chain.irreversible_block.connect( [&]( const chain::block_state_ptr& bs ){
          my->applied_irreversible_block( bs );
       }));
       my->accepted_transaction_connection.emplace(chain.accepted_transaction.connect( [&]( const chain::transaction_metadata_ptr& t ){
-         //my->accepted_transaction(t);
+         my->accepted_transaction(t);
       }));
       my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ){
          my->applied_transaction(t);
