@@ -2259,7 +2259,7 @@ class Cluster(object):
 
         chainArg=self.__chainSyncStrategy.arg
 
-        newChain= False if self.__chainSyncStrategy.name == Utils.SyncHardReplayTag else True
+        newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
             if node.killed and not node.relaunch(i, chainArg, newChain=newChain):
