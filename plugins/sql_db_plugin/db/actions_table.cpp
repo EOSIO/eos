@@ -14,6 +14,7 @@ void actions_table::drop()
 {
     try {
         *m_session << "drop table IF EXISTS actions_accounts";
+        *m_session << "drop table IF EXISTS stakes";
         *m_session << "drop table IF EXISTS votes";
         *m_session << "drop table IF EXISTS tokens";
         *m_session << "drop table IF EXISTS actions";
@@ -43,12 +44,18 @@ void actions_table::create()
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
             "amount REAL(14,4),"
-            "staked REAL(14,4), FOREIGN KEY (account) REFERENCES accounts(name))"; // TODO: other tokens could have diff format.
+            "FOREIGN KEY (account) REFERENCES accounts(name))"; // TODO: other tokens could have diff format.
 
     *m_session << "CREATE TABLE votes("
             "account VARCHAR(13) PRIMARY KEY,"
             "votes JSON"
             ", FOREIGN KEY (account) REFERENCES accounts(name))";
+
+    *m_session << "CREATE TABLE stakes("
+            "account VARCHAR(13),"
+            "cpu REAL(14,4),"
+            "net REAL(14,4),"
+            "FOREIGN KEY (account) REFERENCES accounts(name))";
 
 }
 
@@ -143,7 +150,7 @@ void actions_table::parse_actions(chain::action action, fc::variant abi_data)
                     soci::use(to_name),
                     soci::use(asset_quantity.get_symbol().name());
         } else {
-            *m_session << "INSERT INTO tokens(account, amount, staked, symbol) VALUES (:ac, :am, 0, :as) ",
+            *m_session << "INSERT INTO tokens(account, amount, symbol) VALUES (:ac, :am, :as) ",
                     soci::use(to_name),
                     soci::use(asset_quantity.to_real()),
                     soci::use(asset_quantity.get_symbol().name());
@@ -166,6 +173,18 @@ void actions_table::parse_actions(chain::action action, fc::variant abi_data)
         *m_session << "REPLACE INTO votes(account, votes) VALUES (:ac, :vo) ",
                 soci::use(voter),
                 soci::use(votes);
+    }
+
+
+    if (action.name == N(delegatebw)) {
+        auto account = abi_data["receiver"].as<chain::name>().to_string();
+        auto cpu = abi_data["stake_cpu_quantity"].as<chain::asset>();
+        auto net = abi_data["stake_net_quantity"].as<chain::asset>();
+
+        *m_session << "REPLACE INTO stakes(account, cpu, net) VALUES (:ac, :cp, :ne) ",
+                soci::use(account),
+                soci::use(cpu.to_real()),
+                soci::use(net.to_real());
     }
 
     if (action.name == chain::setabi::get_name()) {
