@@ -165,6 +165,32 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
    }
 }
 
+void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
+   try {
+      if (startup) {
+         // on startup we don't want to queue, instead push back on caller
+         process_transaction(t);
+      } else {
+         boost::mutex::scoped_lock lock(mtx);
+         if (transaction_metadata_queue.size() > queue_size) {
+            lock.unlock();
+            condition.notify_one();
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+            lock.lock();
+         }
+         transaction_metadata_queue.emplace_back(t);
+         lock.unlock();
+         condition.notify_one();
+      }
+   } catch (fc::exception& e) {
+      elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while accepted_transaction ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while accepted_transaction");
+   }
+}
+
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
       if( startup ) {
@@ -516,7 +542,19 @@ void mongo_db_plugin_impl::process_applied_transaction( const chain::transaction
    }
 }
 
-void mongo_db_plugin_impl::process_transaction( const eosio::chain::transaction_trace_ptr& t ) {
+void mongo_db_plugin_impl::process_transaction( const chain::transaction_metadata_ptr& t ) {
+   try {
+      _process_transaction(t);
+   } catch (fc::exception& e) {
+      elog("FC Exception while processing transaction metadata: ${e}", ("e", e.to_detail_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while processing tranasction metadata: ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while processing transaction metadata");
+   }
+}
+
+void mongo_db_plugin_impl::process_transaction( const chain::transaction_trace_ptr& t ) {
    try {
       _process_transaction(t);
    } catch (fc::exception& e) {
@@ -527,7 +565,6 @@ void mongo_db_plugin_impl::process_transaction( const eosio::chain::transaction_
       elog("Unknown exception while processing transaction trace");
    }
 }
-
 
 void mongo_db_plugin_impl::process_irreversible_block(const chain::block_state_ptr& bs) {
   try {
