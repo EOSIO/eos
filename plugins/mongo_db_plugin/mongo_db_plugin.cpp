@@ -1001,6 +1001,10 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    const auto block_id_str = block_id.str();
    const auto block_num = bs->block->block_num();
 
+   if (block_num == 1153) {
+      std::cout << fc::json::to_pretty_string(bs) << std::endl;
+   }
+
    // genesis block 1 is not signaled to accepted_block
    if (block_num < 2) return;
 
