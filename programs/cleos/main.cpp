@@ -169,6 +169,8 @@ uint32_t tx_max_net_usage = 0;
 
 vector<string> tx_permission;
 
+eosio::client::http::http_context context;
+
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
    CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
       double value_s;
@@ -213,7 +215,7 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      eosio::client::http::connection_param *cp = new eosio::client::http::connection_param((std::string&)url, (std::string&)path,
+      eosio::client::http::connection_param *cp = new eosio::client::http::connection_param(context, parse_url(url) + path,
               no_verify ? false : true, headers);
 
       return eosio::client::http::do_http_call( *cp, fc::variant(v), print_request, print_response );
@@ -679,11 +681,11 @@ struct set_action_permission_subcommand {
 };
 
 
-bool port_used(uint16_t port) {
+bool local_port_used(const string& lo_address, uint16_t port) {
     using namespace boost::asio;
 
     io_service ios;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(lo_address), port);
     boost::asio::ip::tcp::socket socket(ios);
     boost::system::error_code ec = error::would_block;
     //connecting/failing to connect to localhost should be always fast - don't care about timeouts
@@ -694,10 +696,10 @@ bool port_used(uint16_t port) {
     return !ec;
 }
 
-void try_port( uint16_t port, uint32_t duration ) {
+void try_local_port( const string& lo_address, uint16_t port, uint32_t duration ) {
    using namespace std::chrono;
    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-   while ( !port_used(port)) {
+   while ( !local_port_used(lo_address, port)) {
       if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
          std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
          throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
@@ -712,22 +714,19 @@ void ensure_keosd_running(CLI::App* app) {
     if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
        return;
     if (auto* subapp = app->get_subcommand("system")) {
-       if (subapp->got_subcommand("listproducers") || subapp->get_subcommand("listbw")) // system list* do not require wallet
+       if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw")) // system list* do not require wallet
          return;
     }
 
     auto parsed_url = parse_url(wallet_url);
-    if (parsed_url.server != "localhost" && parsed_url.server != "127.0.0.1")
+    auto resolved_url = resolve_url(context, parsed_url);
+
+    if (!resolved_url.is_loopback)
         return;
 
-    auto wallet_port = std::stoi(parsed_url.port);
-    if (wallet_port < 0 || wallet_port > 65535) {
-        FC_THROW("port is not in valid range");
-    }
-
-    if (port_used(uint16_t(wallet_port)))  // Hopefully taken by keosd
-        return;
-
+    for (const auto& addr: resolved_url.resolved_addresses)
+       if (local_port_used(addr, resolved_url.resolved_port))  // Hopefully taken by keosd
+          return;
 
     boost::filesystem::path binPath = boost::dll::program_location();
     binPath.remove_filename();
@@ -739,12 +738,13 @@ void ensure_keosd_running(CLI::App* app) {
         binPath.remove_filename().remove_filename().append("keosd").append("keosd");
     }
 
+    const auto& lo_address = resolved_url.resolved_addresses.front();
     if (boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
 
         vector<std::string> pargs;
-        pargs.push_back("--http-server-address=127.0.0.1:" + parsed_url.port);
+        pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
         if (wallet_unlock_timeout > 0) {
             pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
         }
@@ -756,13 +756,13 @@ void ensure_keosd_running(CLI::App* app) {
         if (keos.running()) {
             std::cerr << binPath << " launched" << std::endl;
             keos.detach();
-            sleep(1);
+            try_local_port(lo_address, resolved_url.resolved_port, 2000);
         } else {
-            std::cerr << "No wallet service listening on 127.0.0.1:"
-                      << std::to_string(wallet_port) << ". Failed to launch " << binPath << std::endl;
+            std::cerr << "No wallet service listening on " << lo_address << ":"
+                      << std::to_string(resolved_url.resolved_port) << ". Failed to launch " << binPath << std::endl;
         }
     } else {
-        std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port)
+        std::cerr << "No wallet service listening on " << lo_address << ":" << std::to_string(resolved_url.resolved_port)
                   << ". Cannot automatically start keosd because keosd was not found." << std::endl;
     }
 }
@@ -1552,6 +1552,7 @@ int main( int argc, char** argv ) {
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
+   context = eosio::client::http::create_http_context();
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
@@ -2121,9 +2122,6 @@ int main( int argc, char** argv ) {
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
    createWallet->set_callback([&wallet_name] {
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       const auto& v = call(wallet_url, wallet_create, wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
@@ -2135,9 +2133,6 @@ int main( int argc, char** argv ) {
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       call(wallet_url, wallet_open, wallet_name);
       std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
@@ -2146,9 +2141,6 @@ int main( int argc, char** argv ) {
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       call(wallet_url, wallet_lock, wallet_name);
       std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
@@ -2156,9 +2148,6 @@ int main( int argc, char** argv ) {
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
    locakAllWallets->set_callback([] {
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       call(wallet_url, wallet_lock_all);
       std::cout << localized("Locked All Wallets") << std::endl;
    });
@@ -2176,9 +2165,6 @@ int main( int argc, char** argv ) {
          std::getline( std::cin, wallet_pw, '\n' );
          fc::set_console_echo(true);
       }
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       call(wallet_url, wallet_unlock, vs);
@@ -2219,9 +2205,6 @@ int main( int argc, char** argv ) {
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
    listWallet->set_callback([] {
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       std::cout << localized("Wallets:") << std::endl;
       const auto& v = call(wallet_url, wallet_list);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -2230,9 +2213,6 @@ int main( int argc, char** argv ) {
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of public keys from all unlocked wallets."), false);
    listKeys->set_callback([] {
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       const auto& v = call(wallet_url, wallet_public_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
@@ -2248,9 +2228,6 @@ int main( int argc, char** argv ) {
          std::getline( std::cin, wallet_pw, '\n' );
          fc::set_console_echo(true);
       }
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       const auto& v = call(wallet_url, wallet_list_keys, vs);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -2258,9 +2235,6 @@ int main( int argc, char** argv ) {
 
    auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
    stopKeosd->set_callback([] {
-      // wait for keosd to come up
-      try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
       const auto& v = call(wallet_url, keosd_stop);
       if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
          std::cerr << fc::json::to_pretty_string(v) << std::endl;
