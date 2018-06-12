@@ -1771,6 +1771,7 @@ int main( int argc, char** argv ) {
    string lower;
    string upper;
    string table_key;
+   string sec_key_type;
    bool binary = false;
    uint32_t limit = 10;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
@@ -1782,6 +1783,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-k,--key", table_key, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
+   getTable->add_option( "-t,--seckeytype", sec_key_type, localized("Secondary key type(i64,i128,i256,float64,float128)"));
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
@@ -1792,6 +1794,7 @@ int main( int argc, char** argv ) {
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)
+                         ("sec_key_type",sec_key_type)
                          );
 
       std::cout << fc::json::to_pretty_string(result)

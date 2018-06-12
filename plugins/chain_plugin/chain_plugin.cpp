@@ -817,13 +817,48 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   auto table_type = get_table_type( abi, p.table );
 
-   if( table_type == KEYi64 ) {
-      return get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
+   if (p.sec_key_type.length()) {
+      if (p.sec_key_type == "i64") {
+         return get_table_rows_by_seckey<index64_index, by_secondary, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
+            return v;
+         });
+      }
+      else if (p.sec_key_type == "i128") {
+         return get_table_rows_by_seckey<index128_index, by_secondary, uint128_t>(p, abi, [](uint128_t v)->uint128_t {
+            return v;
+         });
+      }
+      else if (p.sec_key_type == "i256") {
+         return get_table_rows_by_seckey<index256_index, by_secondary, uint256_t>(p, abi, [](uint256_t v)->key256_t {
+            key256_t k;
+            k[0] = ((uint128_t *)&v)[0];
+            k[1] = ((uint128_t *)&v)[1];
+            return k;
+         });
+      }
+      else if (p.sec_key_type == "float64") {
+         return get_table_rows_by_seckey<index_double_index, by_secondary, double>(p, abi, [](double v)->float64_t {
+            float64_t f = *(float64_t *)&v;
+            return f;
+         });
+      }
+      else if (p.sec_key_type == "float128") {
+         return get_table_rows_by_seckey<index_long_double_index, by_secondary, double>(p, abi, [](double v)->float128_t{
+            float64_t f = *(float64_t *)&v;
+            float128_t f128;
+            f64_to_f128M(f, &f128);
+            return f128;
+         });
+      }
+      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type");
+   } else {
+      auto table_type = get_table_type( abi, p.table );
+      if( table_type == KEYi64 ) {
+         return get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
+      }
+      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
    }
-
-   EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {

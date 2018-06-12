@@ -213,6 +213,7 @@ public:
       string      lower_bound;
       string      upper_bound;
       uint32_t    limit = 10;
+      string      sec_key_type;  // type of secondary key if table_key is not primary
     };
 
    struct get_table_rows_result {
@@ -291,6 +292,61 @@ public:
             }
          }
       }
+   }
+
+
+   template <typename IndexType, typename Scope, typename SecKeyType, typename ConvFn>
+   read_only::get_table_rows_result get_table_rows_by_seckey( const read_only::get_table_rows_params& p, const abi_def& abi, ConvFn conv )const {
+      read_only::get_table_rows_result result;
+      const auto& d = db.db();
+
+      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
+
+      abi_serializer abis;
+      abis.set_abi(abi);
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
+      if (t_id != nullptr) {
+         const auto &secidx = d.get_index<IndexType, Scope>();
+         decltype(t_id->id) next_tid(t_id->id._id + 1);
+         auto lower = secidx.lower_bound(boost::make_tuple(t_id->id));
+         auto upper = secidx.lower_bound(boost::make_tuple(next_tid));
+
+         if (p.lower_bound.size()) {
+            SecKeyType lv = convert_to_type<SecKeyType>(p.lower_bound, "lower_bound");
+            lower = secidx.lower_bound(boost::make_tuple(t_id->id, conv(lv)));
+         }
+         if (p.upper_bound.size()) {
+            SecKeyType uv = convert_to_type<SecKeyType>(p.upper_bound, "upper_bound");
+            upper = secidx.lower_bound(boost::make_tuple(t_id->id, conv(uv)));
+         }
+
+         vector<char> data;
+
+         auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+
+         unsigned int count = 0;
+         auto itr = lower;
+         for (itr = lower; itr != upper; ++itr) {
+
+            const auto *itr2 = d.find<chain::key_value_object, chain::by_scope_primary>(boost::make_tuple(t_id->id, itr->primary_key));
+            if (itr2 == nullptr) continue;
+            copy_inline_row(*itr2, data);
+
+            if (p.json) {
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data));
+            } else {
+               result.rows.emplace_back(fc::variant(data));
+            }
+
+            if (++count == p.limit || fc::time_point::now() > end) {
+               break;
+            }
+         }
+         if (itr != upper) {
+            result.more = true;
+         }
+      }
+      return result;
    }
 
    template <typename IndexType, typename Scope>
@@ -428,7 +484,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(sec_key_type) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
