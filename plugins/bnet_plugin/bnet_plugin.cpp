@@ -87,7 +87,7 @@ struct hello {
    public_key_type               peer_id;
    string                        network_version;
    string                        meta;
-   string                        protocol_version = "1.0.0";
+   string                        protocol_version = "1.0.1";
    string                        user;
    string                        password;
    chain_id_type                 chain_id;
@@ -233,7 +233,7 @@ namespace eosio {
         uint32_t           _remote_lib            = 0;
         block_id_type      _remote_lib_id;
         bool               _remote_request_trx    = false;
-        bool               _remote_request_irreversable_only = false;
+        bool               _remote_request_irreversible_only = false;
 
         uint32_t           _last_sent_block_num   = 0;
         block_id_type      _last_sent_block_id; /// the id of the last block sent
@@ -452,7 +452,7 @@ namespace eosio {
            }
 
            auto bitr = _block_status.find(s->id);
-           if( _remote_request_irreversable_only && ( bitr == _block_status.end() || !bitr->received_from_peer ) ) {
+           if( _remote_request_irreversible_only && ( bitr == _block_status.end() || !bitr->received_from_peer ) ) {
               _block_header_notices.insert(s->id);
            }
 
@@ -481,7 +481,7 @@ namespace eosio {
            if( fc::time_point::now() - s->block->timestamp  < fc::seconds(6) ) {
            //   ilog( "queue notice to peer that we have this block so hopefully they don't send it to us" );
               auto itr = _block_status.find(s->id);
-              if( !_remote_request_irreversable_only && ( itr == _block_status.end() || !itr->received_from_peer ) ) {
+              if( !_remote_request_irreversible_only && ( itr == _block_status.end() || !itr->received_from_peer ) ) {
                  _block_header_notices.insert(s->id);
               }
            }
@@ -779,7 +779,7 @@ namespace eosio {
          */
         bool send_next_block() {
 
-           if ( _remote_request_irreversable_only && _last_sent_block_id == _local_lib_id ) {
+           if ( _remote_request_irreversible_only && _last_sent_block_id == _local_lib_id ) {
               return false;
            }
 
@@ -1062,7 +1062,7 @@ namespace eosio {
          string                                                 _bnet_endpoint_address = "0.0.0.0";
          uint16_t                                               _bnet_endpoint_port = 4321;
          bool                                                   _request_trx = true;
-         bool                                                   _follow_irreversable = false;
+         bool                                                   _follow_irreversible = false;
 
          std::vector<std::string>                               _connect_to_peers; /// list of peers to connect to
          std::vector<std::thread>                               _socket_threads;
@@ -1210,6 +1210,7 @@ namespace eosio {
    void bnet_plugin::set_program_options(options_description& cli, options_description& cfg) {
       cfg.add_options()
          ("bnet-endpoint", bpo::value<string>()->default_value("0.0.0.0:4321"), "the endpoint upon which to listen for incoming connections" )
+         ("bnet-follow-irreversible", bpo::value<bool>()->default_value(false), "this peer will request only irreversible blocks from other nodes" )
          ("bnet-threads", bpo::value<uint32_t>(), "the number of threads to use to process network messages" )
          ("bnet-connect", bpo::value<vector<string>>()->composing(), "remote endpoint of other node to connect to; Use multiple bnet-connect options as needed to compose a network" )
          ("bnet-no-trx", bpo::bool_switch()->default_value(false), "this peer will request no pending transactions from other nodes" )
@@ -1227,9 +1228,12 @@ namespace eosio {
         auto host = ip_port.substr( 0, ip_port.find(':') );
         my->_bnet_endpoint_address = host;
         my->_bnet_endpoint_port = std::stoi( port );
-        my->_follow_irreversable = options.at("bnet-follow-irreversable").as< bool >();
-        idump((ip_port)(host)(port)(my->_follow_irreversable));
+        idump((ip_port)(host)(port)(my->_follow_irreversible));
       }
+      if ( options.count( "bnet-follow-irreversible" )) {
+         my->_follow_irreversible = options.at("bnet-follow-irreversible").as< bool >();
+      }
+
 
       if( options.count( "bnet-connect" ) ) {
          my->_connect_to_peers = options.at( "bnet-connect" ).as<vector<string>>();
@@ -1347,8 +1351,8 @@ namespace eosio {
           hello_msg.pending_block_ids  = ids;
           hello_msg.request_transactions = self->_net_plugin->_request_trx;
           hello_msg.chain_id = app().get_plugin<chain_plugin>().get_chain_id(); // TODO: Quick fix in a rush. Maybe a better solution is needed.
-          if ( self->_net_plugin->_follow_irreversable ) {
-             hello_msg.meta = "irreversable_only";
+          if ( self->_net_plugin->_follow_irreversible ) {
+             hello_msg.meta = "irreversible_only";
           }
 
           self->_local_lib = lib;
@@ -1378,14 +1382,14 @@ namespace eosio {
          return do_goodbye( "connected to self" );
       }
 
-      if ( _net_plugin->_follow_irreversable && hi.protocol_version <= "1.0.0") {
-         return do_goodbye( "need newer protocol version that supports sending only irreversable blocks" );
+      if ( _net_plugin->_follow_irreversible && hi.protocol_version <= "1.0.0") {
+         return do_goodbye( "need newer protocol version that supports sending only irreversible blocks" );
       }
 
       if ( hi.protocol_version >= "1.0.1" ) {
          vector<string> params;
          boost::split( params, hi.meta, boost::is_any_of(","));
-         _remote_request_irreversable_only = ( find( params.begin(), params.end(), "irreversable_only" ) != params.end() );
+         _remote_request_irreversible_only = ( find( params.begin(), params.end(), "irreversible_only" ) != params.end() );
       }
 
       _last_sent_block_num   = hi.last_irr_block_num;
