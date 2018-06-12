@@ -1028,6 +1028,17 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          }
       }
 
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.refund_request = abis.binary_to_variant( "refund_request", data );
+         }
+      }
+
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();

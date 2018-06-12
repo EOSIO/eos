@@ -1366,7 +1366,7 @@ void get_account( const string& accountName, bool json_format ) {
          dfs_print( r, 0 );
       }
 
-      auto to_pretty_net = []( int64_t nbytes ) {
+      auto to_pretty_net = []( int64_t nbytes, uint8_t width_for_units = 5 ) {
          if(nbytes == -1) {
              // special case. Treat it as unlimited
              return std::string("unlimited");
@@ -1389,7 +1389,10 @@ void get_account( const string& accountName, bool json_format ) {
          }
          std::stringstream ss;
          ss << setprecision(4);
-         ss << bytes << " " << std::left << setw(5) << unit;
+         ss << bytes << " ";
+         if( width_for_units > 0 )
+            ss << std::left << setw( width_for_units );
+         ss << unit;
          return ss.str();
       };
 
@@ -1417,7 +1420,7 @@ void get_account( const string& accountName, bool json_format ) {
       }
 
 
-      auto to_pretty_time = []( int64_t nmicro ) {
+      auto to_pretty_time = []( int64_t nmicro, uint8_t width_for_units = 5 ) {
          if(nmicro == -1) {
              // special case. Treat it as unlimited
              return std::string("unlimited");
@@ -1425,7 +1428,7 @@ void get_account( const string& accountName, bool json_format ) {
          string unit = "us";
          double micro = static_cast<double>(nmicro);
 
-         if( micro > 1000000*60 ) {
+         if( micro > 1000000*60*60ll ) {
             micro /= 1000000*60*60ll;
             unit = "hr";
          }
@@ -1443,7 +1446,10 @@ void get_account( const string& accountName, bool json_format ) {
          }
          std::stringstream ss;
          ss << setprecision(4);
-         ss << micro<< " " << std::left << setw(5) << unit;
+         ss << micro << " ";
+         if( width_for_units > 0 )
+            ss << std::left << setw( width_for_units );
+         ss << unit;
          return ss.str();
       };
 
@@ -1478,6 +1484,27 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
       std::cout << std::endl;
 
+      if( res.refund_request.is_object() ) {
+         auto obj = res.refund_request.get_object();
+         auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
+         fc::time_point refund_time = request_time + fc::days(3);
+         auto now = fc::time_point::now();
+         std::cout << std::fixed << setprecision(3);
+         std::cout << "unstaked tokens:" << std::endl;
+         std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);
+         if( now >= refund_time ) {
+            std::cout << " (available to claim now with 'eosio::refund' action)\n";
+         } else {
+            std::cout << " (funds will be available in " << to_pretty_time( (refund_time - now).count(), 0 ) << ")\n";
+
+            asset net = asset::from_string( obj["net_amount"].as_string() );
+            asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
+            std::cout << indent << std::left << std::setw(25) << "from net bandwidth:" << std::right << std::setw(18) << net << std::endl;
+            std::cout << indent << std::left << std::setw(25) << "from cpu bandwidth:" << std::right << std::setw(18) << cpu << std::endl;
+            std::cout << indent << std::left << std::setw(25) << "total:" << std::right << std::setw(18) << (cpu + net) << std::endl;
+         }
+         std::cout << std::endl;
+      }
 
       if ( res.voter_info.is_object() ) {
          auto& obj = res.voter_info.get_object();
