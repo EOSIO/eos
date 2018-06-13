@@ -79,14 +79,13 @@ namespace eosiosystem {
           *
           *  2. new accounts must stake a minimal number of tokens (as set in system parameters)
           *     therefore, this method will execute an inline buyram from receiver for newacnt in
-          *     an amount equal to the current new account creation fee. 
+          *     an amount equal to the current new account creation fee.
           */
          void newaccount( account_name     creator,
                           account_name     newact
-                                 /*  no need to parse authorites 
-                                 const authority& owner,
-                                 const authority& active,
-                                 const authority& recovery*/ );
+                          /*  no need to parse authorites
+                          const authority& owner,
+                          const authority& active*/ );
 
 
          void updateauth( /*account_name     account,
@@ -105,18 +104,9 @@ namespace eosiosystem {
                                  account_name code,
                                  action_name  type*/ ) {}
 
-         void postrecovery( /*account_name       account,
-                                   const authority&   data,
-                                   const std::string& memo*/ ) {}
-
-         void passrecovery( /*account_name account*/ ) {}
-
-         void vetorecovery( /*account_name account*/ ) {}
-
-         void onerror( /*const bytes&*/ ) {}
-
          void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
 
+         void onerror( /*const bytes&*/ ) {}
 
    };
 }

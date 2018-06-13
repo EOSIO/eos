@@ -51,6 +51,14 @@ public:
    chain::signed_transaction sign_transaction(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
                                              const chain::chain_id_type& id);
 
+
+   /// Sign digest with the private keys specified via their public keys.
+   /// @param digest the digest to sign.
+   /// @param key the public key of the corresponding private key to sign the digest with
+   /// @return signature over the digest
+   /// @throws fc::exception if corresponding private keys not found in unlocked wallets
+   chain::signature_type sign_digest(const chain::digest_type& digest, const public_key_type& key);
+
    /// Create a new wallet.
    /// A new wallet is created in file dir/{name}.wallet see set_dir.
    /// The new wallet is unlocked after creation.
@@ -69,8 +77,8 @@ public:
    /// @return A list of wallet names with " *" appended if the wallet is unlocked.
    std::vector<std::string> list_wallets();
 
-   /// @return A list of private keys from all unlocked wallets in wif format.
-   map<public_key_type,private_key_type> list_keys();
+   /// @return A list of private keys from a wallet provided password is correct to said wallet
+   map<public_key_type,private_key_type> list_keys(const string& name, const string& pw);
 
    /// @return A set of public keys from all unlocked wallets, use with chain_controller::get_required_keys.
    flat_set<public_key_type> get_public_keys();

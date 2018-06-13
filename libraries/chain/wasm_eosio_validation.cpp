@@ -77,7 +77,9 @@ void ensure_apply_exported_visitor::validate( const IR::Module& m ) {
    bool found_it = false;
 
    for(const Export& exprt : m.exports) {
-      if(exprt.name != "apply" && exprt.kind != ObjectKind::function)
+      if(exprt.kind != ObjectKind::function)
+         continue;
+      if(exprt.name != "apply")
          continue;
       if(m.types[m.functions.getType(exprt.index).index] == FunctionType::get(ResultType::none, {ValueType::i64, ValueType::i64, ValueType::i64})) {
          found_it = true;
@@ -89,4 +91,6 @@ void ensure_apply_exported_visitor::validate( const IR::Module& m ) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract's apply function not exported; non-existent; or wrong type");
 }
 
+uint16_t nested_validator::depth = 0;
+bool     nested_validator::disabled = false;
 }}} // namespace eosio chain validation

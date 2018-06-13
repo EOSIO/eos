@@ -7,28 +7,36 @@ import subprocess
 import tempfile
 import os
 
+###############################################################
+# distributed-transactions-remote-test
+#  Tests remote capability of the distributed-transactions-test. Test will setup cluster and pass nodes info to distributed-transactions-test. E.g.
+#  distributed-transactions-remote-test.py -v --clean-run --dump-error-detail
+###############################################################
+
 Print=testUtils.Utils.Print
 
 def errorExit(msg="", errorCode=1):
     Print("ERROR:", msg)
     exit(errorCode)
 
-pnodes=3
+pnodes=1
 # nodesFile="tests/sample-cluster-map.json"
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", type=int, help="producing nodes count", default=pnodes)
 parser.add_argument("-v", help="verbose", action='store_true')
-parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
+parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
 # nodesFile=args.nodes_file
 debug=args.v
-dontKill=args.dont_kill
+dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
+killAll=args.clean_run
 
 testUtils.Utils.Debug=debug
 
@@ -36,14 +44,14 @@ killEosInstances=not dontKill
 topo="mesh"
 delay=1
 prodCount=1 # producers per producer node
-total_nodes=pnodes
+total_nodes=pnodes+3
 actualTest="tests/distributed-transactions-test.py"
 testSuccessful=False
 
 clusterMapJsonTemplate="""{
     "keys": {
-        "initaPrivateKey": "%s",
-        "initbPrivateKey": "%s"
+        "defproduceraPrivateKey": "%s",
+        "defproducerbPrivateKey": "%s"
     },
     "nodes": [
         {"port": 8888, "host": "localhost"},
@@ -58,7 +66,7 @@ cluster=testUtils.Cluster()
 (fd, nodesFile) = tempfile.mkstemp()
 try:
     Print("BEGIN")
-    cluster.killall()
+    cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
@@ -73,10 +81,10 @@ try:
         errorExit("Cluster never stabilized")
 
     producerKeys=testUtils.Cluster.parseClusterKeys(total_nodes)
-    initaPrvtKey=producerKeys["inita"]["private"]
-    initbPrvtKey=producerKeys["initb"]["private"]
+    defproduceraPrvtKey=producerKeys["defproducera"]["private"]
+    defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
 
-    clusterMapJson = clusterMapJsonTemplate % (initaPrvtKey, initbPrvtKey)
+    clusterMapJson = clusterMapJsonTemplate % (defproduceraPrvtKey, defproducerbPrvtKey)
 
     tfile = os.fdopen(fd, "w")
     tfile.write(clusterMapJson)
@@ -98,7 +106,7 @@ finally:
 
     if killEosInstances:
         Print("Shut down the cluster and cleanup.")
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
 
 exit(0)

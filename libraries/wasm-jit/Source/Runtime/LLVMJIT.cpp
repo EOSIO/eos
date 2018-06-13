@@ -3,6 +3,7 @@
 #include "Inline/Timing.h"
 #include "Logging/Logging.h"
 #include "RuntimePrivate.h"
+#include "IR/Validate.h"
 
 #ifdef _DEBUG
 	// This needs to be 1 to allow debuggers such as Visual Studio to place breakpoints and step through the JITed code.
@@ -88,6 +89,7 @@ namespace LLVMJIT
 	{
 		UnitMemoryManager()
 		: imageBaseAddress(nullptr)
+		, numAllocatedImagePages(0)
 		, isFinalized(false)
 		, codeSection({0})
 		, readOnlySection({0})
@@ -100,11 +102,12 @@ namespace LLVMJIT
 			if(hasRegisteredEHFrames)
 			{
 				hasRegisteredEHFrames = false;
-				deregisterEHFrames(ehFramesAddr,ehFramesLoadAddr,ehFramesNumBytes);
+            llvm::RTDyldMemoryManager::deregisterEHFrames(ehFramesAddr,ehFramesLoadAddr,ehFramesNumBytes);
 			}
 
 			// Decommit the image pages, but leave them reserved to catch any references to them that might erroneously remain.
-			Platform::decommitVirtualPages(imageBaseAddress,numAllocatedImagePages);
+			if(numAllocatedImagePages)
+				Platform::decommitVirtualPages(imageBaseAddress,numAllocatedImagePages);
 		}
 		
 		void registerEHFrames(U8* addr, U64 loadAddr,uintptr_t numBytes) override
@@ -150,7 +153,7 @@ namespace LLVMJIT
 		}
 		virtual bool finalizeMemory(std::string* ErrMsg = nullptr) override
 		{
-			assert(!isFinalized);
+			WAVM_ASSERT_THROW(!isFinalized);
 			isFinalized = true;
 			// Set the requested final memory access for each section's pages.
 			const Platform::MemoryAccess codeAccess = USE_WRITEABLE_JIT_CODE_PAGES ? Platform::MemoryAccess::ReadWriteExecute : Platform::MemoryAccess::Execute;
@@ -190,13 +193,13 @@ namespace LLVMJIT
 
 		U8* allocateBytes(Uptr numBytes,Uptr alignment,Section& section)
 		{
-			assert(section.baseAddress);
-			assert(!(alignment & (alignment - 1)));
-			assert(!isFinalized);
+			WAVM_ASSERT_THROW(section.baseAddress);
+			WAVM_ASSERT_THROW(!(alignment & (alignment - 1)));
+			WAVM_ASSERT_THROW(!isFinalized);
 			
 			// Allocate the section at the lowest uncommitted byte of image memory.
 			U8* allocationBaseAddress = section.baseAddress + align(section.numCommittedBytes,alignment);
-			assert(!(reinterpret_cast<Uptr>(allocationBaseAddress) & (alignment-1)));
+			WAVM_ASSERT_THROW(!(reinterpret_cast<Uptr>(allocationBaseAddress) & (alignment-1)));
 			section.numCommittedBytes = align(section.numCommittedBytes,alignment) + align(numBytes,alignment);
 
 			// Check that enough space was reserved in the section.
@@ -228,7 +231,8 @@ namespace LLVMJIT
 		}
 		~JITUnit()
 		{
-			compileLayer->removeModuleSet(handle);
+			if(handleIsValid)
+				compileLayer->removeModuleSet(handle);
 			#ifdef _WIN64
 				if(pdataCopy) { Platform::deregisterSEHUnwindInfo(reinterpret_cast<Uptr>(pdataCopy)); }
 			#endif
@@ -266,6 +270,7 @@ namespace LLVMJIT
 		std::unique_ptr<ObjectLayer> objectLayer;
 		std::unique_ptr<CompileLayer> compileLayer;
 		CompileLayer::ModuleSetHandleT handle;
+		bool handleIsValid = false;
 		bool shouldLogMetrics;
 
 		struct LoadedObject
@@ -306,8 +311,8 @@ namespace LLVMJIT
 			Uptr functionDefIndex;
 			if(getFunctionIndexFromExternalName(name,functionDefIndex))
 			{
-				assert(moduleInstance);
-				assert(functionDefIndex < moduleInstance->functionDefs.size());
+				WAVM_ASSERT_THROW(moduleInstance);
+				WAVM_ASSERT_THROW(functionDefIndex < moduleInstance->functionDefs.size());
 				FunctionInstance* functionInstance = moduleInstance->functionDefs[functionDefIndex];
 				auto symbol = new JITSymbol(functionInstance,baseAddress,numBytes,std::move(offsetToOpIndexMap));
 				functionDefSymbols.push_back(symbol);
@@ -333,9 +338,9 @@ namespace LLVMJIT
 		void notifySymbolLoaded(const char* name,Uptr baseAddress,Uptr numBytes,std::map<U32,U32>&& offsetToOpIndexMap) override
 		{
 			#if defined(_WIN32) && !defined(_WIN64)
-				assert(!strcmp(name,"_invokeThunk"));
+				WAVM_ASSERT_THROW(!strcmp(name,"_invokeThunk"));
 			#else
-				assert(!strcmp(name,"invokeThunk"));
+				WAVM_ASSERT_THROW(!strcmp(name,"invokeThunk"));
 			#endif
 			symbol = new JITSymbol(functionType,baseAddress,numBytes,std::move(offsetToOpIndexMap));
 		}
@@ -395,7 +400,7 @@ namespace LLVMJIT
 		const std::vector<std::unique_ptr<llvm::RuntimeDyld::LoadedObjectInfo>>& loadedObjects
 		)
 	{
-		assert(objectSet.size() == loadedObjects.size());
+		WAVM_ASSERT_THROW(objectSet.size() == loadedObjects.size());
 		for(Uptr objectIndex = 0;objectIndex < loadedObjects.size();++objectIndex)
 		{
 			llvm::object::ObjectFile* object = objectSet[objectIndex].get()->getBinary();
@@ -474,8 +479,8 @@ namespace LLVMJIT
 				instructionBuffer,
 				sizeof(instructionBuffer)
 				);
-			assert(numInstructionBytes > 0);
-			assert(numInstructionBytes <= numBytesRemaining);
+			WAVM_ASSERT_THROW(numInstructionBytes > 0);
+			WAVM_ASSERT_THROW(numInstructionBytes <= numBytesRemaining);
 			numBytesRemaining -= numInstructionBytes;
 			nextByte += numInstructionBytes;
 
@@ -507,7 +512,7 @@ namespace LLVMJIT
 				&&	address)
 				{
 					// Compute the address the functions was loaded at.
-					assert(*address <= UINTPTR_MAX);
+					WAVM_ASSERT_THROW(*address <= UINTPTR_MAX);
 					Uptr loadedAddress = Uptr(*address);
 					auto symbolSection = symbol.getSection();
 					if(symbolSection)
@@ -526,7 +531,7 @@ namespace LLVMJIT
 					#endif
 
 					// Notify the JIT unit that the symbol was loaded.
-					assert(symbolSizePair.second <= UINTPTR_MAX);
+					WAVM_ASSERT_THROW(symbolSizePair.second <= UINTPTR_MAX);
 					jitUnit->notifySymbolLoaded(
 						name->data(),loadedAddress,
 						Uptr(symbolSizePair.second),
@@ -576,6 +581,7 @@ namespace LLVMJIT
 		fpm->add(llvm::createJumpThreadingPass());
 		fpm->add(llvm::createConstantPropagationPass());
 		fpm->doInitialization();
+
 		for(auto functionIt = llvmModule->begin();functionIt != llvmModule->end();++functionIt)
 		{ fpm->run(*functionIt); }
 		delete fpm;
@@ -593,6 +599,7 @@ namespace LLVMJIT
 			std::vector<llvm::Module*>{llvmModule},
 			&memoryManager,
 			&NullResolver::singleton);
+		handleIsValid = true;
 		compileLayer->emitAndFinalize(handle);
 
 		if(shouldLogMetrics)
@@ -618,7 +625,7 @@ namespace LLVMJIT
 
 	std::string getExternalFunctionName(ModuleInstance* moduleInstance,Uptr functionDefIndex)
 	{
-		assert(functionDefIndex < moduleInstance->functionDefs.size());
+		WAVM_ASSERT_THROW(functionDefIndex < moduleInstance->functionDefs.size());
 		return "wasmFunc" + std::to_string(functionDefIndex)
 			+ "_" + moduleInstance->functionDefs[functionDefIndex]->debugName;
 	}
@@ -729,7 +736,7 @@ namespace LLVMJIT
 		auto jitUnit = new JITInvokeThunkUnit(functionType);
 		jitUnit->compile(llvmModule);
 
-		assert(jitUnit->symbol);
+		WAVM_ASSERT_THROW(jitUnit->symbol);
 		invokeThunkTypeToSymbolMap[functionType] = jitUnit->symbol;
 
 		{

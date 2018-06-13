@@ -477,8 +477,8 @@ class apply_context {
       void execute_inline( action&& a );
       void execute_context_free_inline( action&& a );
       void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing );
-      void cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
-      void cancel_deferred_transaction( const uint128_t& sender_id ) { cancel_deferred_transaction(sender_id, receiver); }
+      bool cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
+      bool cancel_deferred_transaction( const uint128_t& sender_id ) { return cancel_deferred_transaction(sender_id, receiver); }
 
 
    /// Authorization methods:
@@ -567,8 +567,6 @@ class apply_context {
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
       vector<account_name> get_active_producers() const;
       bytes  get_packed_transaction();
-
-      void checktime(uint32_t instruction_count);
 
       uint64_t next_global_sequence();
       uint64_t next_recv_sequence( account_name receiver );

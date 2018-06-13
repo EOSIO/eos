@@ -23,10 +23,10 @@ running_instance_context the_running_instance_context;
 
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
-      wavm_instantiated_module(ModuleInstance* instance, Module* module, std::vector<uint8_t> initial_mem) :
+      wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem) :
          _initial_memory(initial_mem),
          _instance(instance),
-         _module(module)
+         _module(std::move(module))
       {}
 
       void apply(apply_context& context) override {
@@ -35,11 +35,6 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
                                Value(uint64_t(context.act.name))};
 
          call("apply", args, context);
-      }
-
-      ~wavm_instantiated_module() {
-         delete _module;
-         //_instance is deleted via WAVM's object garbage collection when wavm_rutime is deleted
       }
 
    private:
@@ -79,10 +74,11 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       }
 
 
-      std::vector<uint8_t> _initial_memory;
-      //naked pointers because ModuleInstance is opaque
-      ModuleInstance*      _instance;
-      Module*              _module;
+      std::vector<uint8_t>     _initial_memory;
+      //naked pointer because ModuleInstance is opaque
+      //_instance is deleted via WAVM's object garbage collection when wavm_rutime is deleted
+      ModuleInstance*          _instance;
+      std::unique_ptr<Module>  _module;
 };
 
 
@@ -113,11 +109,13 @@ wavm_runtime::~wavm_runtime() {
 }
 
 std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
-   Module* module = new Module();
+   std::unique_ptr<Module> module = std::make_unique<Module>();
    try {
       Serialization::MemoryInputStream stream((const U8*)code_bytes, code_size);
       WASM::serialize(stream, *module);
-   } catch(Serialization::FatalSerializationException& e) {
+   } catch(const Serialization::FatalSerializationException& e) {
+      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+   } catch(const IR::ValidationException& e) {
       EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
    }
 
@@ -126,7 +124,7 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
    ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
    FC_ASSERT(instance != nullptr);
 
-   return std::make_unique<wavm_instantiated_module>(instance, module, initial_memory);
+   return std::make_unique<wavm_instantiated_module>(instance, std::move(module), initial_memory);
 }
 
 }}}}

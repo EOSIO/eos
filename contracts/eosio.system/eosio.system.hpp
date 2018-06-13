@@ -6,6 +6,7 @@
 
 #include <eosio.system/native.hpp>
 #include <eosiolib/asset.hpp>
+#include <eosiolib/time.hpp>
 #include <eosiolib/privileged.hpp>
 #include <eosiolib/singleton.hpp>
 #include <eosio.system/exchange_state.hpp>
@@ -17,54 +18,67 @@ namespace eosiosystem {
    using eosio::asset;
    using eosio::indexed_by;
    using eosio::const_mem_fun;
+   using eosio::block_timestamp;
 
-   struct eosio_parameters : eosio::blockchain_parameters {
-      uint64_t          max_ram_size = 64ll*1024 * 1024 * 1024;
+   struct name_bid {
+     account_name            newname;
+     account_name            high_bidder;
+     int64_t                 high_bid = 0; ///< negative high_bid == closed auction waiting to be claimed
+     uint64_t                last_bid_time = 0;
 
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (max_ram_size) )
+     auto     primary_key()const { return newname;                          }
+     uint64_t by_high_bid()const { return static_cast<uint64_t>(-high_bid); }
    };
 
-   struct eosio_global_state : eosio_parameters {
+   typedef eosio::multi_index< N(namebids), name_bid,
+                               indexed_by<N(highbid), const_mem_fun<name_bid, uint64_t, &name_bid::by_high_bid>  >
+                               >  name_bid_table;
+
+
+   struct eosio_global_state : eosio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
+      uint64_t             max_ram_size = 64ll*1024 * 1024 * 1024;
       uint64_t             total_ram_bytes_reserved = 0;
-      eosio::asset         total_ram_stake;
+      int64_t              total_ram_stake = 0;
 
-      block_timestamp      last_producer_schedule_update = 0;
+      block_timestamp      last_producer_schedule_update;
       uint64_t             last_pervote_bucket_fill = 0;
-      eosio::asset         pervote_bucket;
-      eosio::asset         savings;
-      checksum160          last_producer_schedule_id;
-
+      int64_t              pervote_bucket = 0;
+      int64_t              perblock_bucket = 0;
+      uint32_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
+      uint64_t             thresh_activated_stake_time = 0;
+      uint16_t             last_producer_schedule_size = 0;
+      double               total_producer_vote_weight = 0; /// the sum of all producer votes
+      block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_ram_bytes_reserved)(total_ram_stake)
-                                (last_producer_schedule_update)
-                                (last_pervote_bucket_fill)
-                                (pervote_bucket)(savings)(last_producer_schedule_id)(total_activated_stake) )
+      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters,
+                                (max_ram_size)(total_ram_bytes_reserved)(total_ram_stake)
+                                (last_producer_schedule_update)(last_pervote_bucket_fill)
+                                (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
+                                (last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
    };
 
    struct producer_info {
       account_name          owner;
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
+      bool                  is_active = true;
       std::string           url;
-      uint32_t              produced_blocks;
+      uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
-      block_timestamp       time_became_active = 0;
-      block_timestamp       last_produced_block_time = 0;
 
-      uint64_t    primary_key()const { return owner;                        }
-      double      by_votes()const    { return -total_votes;                 }
-      bool        active() const     { return producer_key != public_key(); }
+      uint64_t primary_key()const { return owner;                                   }
+      double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
+      bool     active()const      { return is_active;                               }
+      void     deactivate()       { producer_key = public_key(); is_active = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(url)
-                        (produced_blocks)(last_claim_time)(location)
-                        (time_became_active)(last_produced_block_time) )
+      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
+                        (unpaid_blocks)(last_claim_time)(location) )
    };
 
    struct voter_info {
@@ -109,7 +123,7 @@ namespace eosiosystem {
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
-   static constexpr uint64_t     system_token_symbol = S(4,EOS);
+   static constexpr uint64_t     system_token_symbol = CORE_SYMBOL;
 
    class system_contract : public native {
       private:
@@ -125,13 +139,13 @@ namespace eosiosystem {
          ~system_contract();
 
          // Actions:
-         void onblock( uint32_t timestamp_slot, account_name producer );
+         void onblock( block_timestamp timestamp, account_name producer );
                       // const block_header& header ); /// only parse first 3 fields of block header
 
          // functions defined in delegate_bandwidth.cpp
 
          /**
-          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'. 
+          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'.
           *  If transfer == true, then 'receiver' can unstake to their account
           *  Else 'from' can unstake at any time.
           */
@@ -145,7 +159,7 @@ namespace eosiosystem {
           *  left to delegate.
           *
           *  This will cause an immediate reduction in net/cpu bandwidth of the
-          *  receiver. 
+          *  receiver.
           *
           *  A transaction is scheduled to send the tokens back to 'from' after
           *  the staking period has passed. If existing transaction is scheduled, it
@@ -171,7 +185,7 @@ namespace eosiosystem {
           *  Reduces quota my bytes and then performs an inline transfer of tokens
           *  to receiver based upon the average purchase price of the original quota.
           */
-         void sellram( account_name receiver, uint64_t bytes );
+         void sellram( account_name receiver, int64_t bytes );
 
          /**
           *  This action is called after the delegation-period to claim all pending
@@ -181,7 +195,7 @@ namespace eosiosystem {
 
          // functions defined in voting.cpp
 
-         void regproducer( const account_name producer, const public_key& producer_key, const std::string& url );
+         void regproducer( const account_name producer, const public_key& producer_key, const std::string& url, uint16_t location );
 
          void unregprod( const account_name producer );
 
@@ -191,22 +205,29 @@ namespace eosiosystem {
 
          void regproxy( const account_name proxy, bool isproxy );
 
+         void setparams( const eosio::blockchain_parameters& params );
+
          // functions defined in producer_pay.cpp
          void claimrewards( const account_name& owner );
 
+         void setpriv( account_name account, uint8_t ispriv );
+
+         void rmvproducer( account_name producer );
+
+         void bidname( account_name bidder, account_name newname, asset bid );
       private:
-         eosio::asset payment_per_block( double rate, const eosio::asset& token_supply,  uint32_t num_blocks );
-
-         eosio::asset payment_per_vote( const account_name& owner, double owners_votes, const eosio::asset& pervote_bucket );
-         
-         eosio::asset supply_growth( double rate, const eosio::asset& token_supply, time seconds );
-
          void update_elected_producers( block_timestamp timestamp );
 
          // Implementation details:
 
+         //defind in delegate_bandwidth.cpp
+         void changebw( account_name from, account_name receiver,
+                        asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
+
          //defined in voting.hpp
          static eosio_global_state get_default_parameters();
+
+         void update_votes( const account_name voter, const account_name proxy, const std::vector<account_name>& producers, bool voting );
 
          // defined in voting.cpp
          void propagate_weight_change( const voter_info& voter );

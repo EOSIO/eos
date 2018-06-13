@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -135,8 +135,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab137ce27cf64b60cd796dbe7704d4670"><td class="memTemplParams" colspan="2">template&lt;typename Lambda &gt; </td></tr>
 <tr class="memitem:ab137ce27cf64b60cd796dbe7704d4670"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classeosio_1_1multi__index.html#ab137ce27cf64b60cd796dbe7704d4670">modify</a> (const <a class="el" href="struct_t.html">T</a> &amp;obj, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> payer, Lambda &amp;&amp;updater)</td></tr>
 <tr class="separator:ab137ce27cf64b60cd796dbe7704d4670"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af5d8ff04881aeb2187973b4ef37f0430"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="struct_t.html">T</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1multi__index.html#af5d8ff04881aeb2187973b4ef37f0430">get</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>) const</td></tr>
-<tr class="separator:af5d8ff04881aeb2187973b4ef37f0430"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af05dfe7b56cf37179f76632cf619f0d1"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="struct_t.html">T</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1multi__index.html#af05dfe7b56cf37179f76632cf619f0d1">get</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>, const char *error_msg=&quot;unable to <a class="el" href="classeosio_1_1multi__index.html#a40a65cdfcc298b85e0e4ddf4c3581c1c">find</a> key&quot;) const</td></tr>
+<tr class="separator:af05dfe7b56cf37179f76632cf619f0d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a40a65cdfcc298b85e0e4ddf4c3581c1c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structeosio_1_1multi__index_1_1const__iterator.html">const_iterator</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1multi__index.html#a40a65cdfcc298b85e0e4ddf4c3581c1c">find</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>) const</td></tr>
 <tr class="separator:a40a65cdfcc298b85e0e4ddf4c3581c1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad28ac8d91e9af22cbbc12962a805d253"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structeosio_1_1multi__index_1_1const__iterator.html">const_iterator</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1multi__index.html#ad28ac8d91e9af22cbbc12962a805d253">erase</a> (<a class="el" href="structeosio_1_1multi__index_1_1const__iterator.html">const_iterator</a> itr)</td></tr>
@@ -515,8 +515,8 @@ template&lt;uint64_t TableName, typename T, typename... Indices&gt; </div>
 
 </div>
 </div>
-<a id="af5d8ff04881aeb2187973b4ef37f0430"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af5d8ff04881aeb2187973b4ef37f0430">&#9670;&nbsp;</a></span>get()</h2>
+<a id="af05dfe7b56cf37179f76632cf619f0d1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af05dfe7b56cf37179f76632cf619f0d1">&#9670;&nbsp;</a></span>get()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -530,8 +530,18 @@ template&lt;uint64_t TableName, typename T, typename... Indices&gt; </div>
           <td class="memname">const <a class="el" href="struct_t.html">T</a>&amp; <a class="el" href="classeosio_1_1multi__index.html">eosio::multi_index</a>&lt; TableName, <a class="el" href="struct_t.html">T</a>, Indices &gt;::get </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
-          <td class="paramname"><em>primary</em></td><td>)</td>
-          <td> const</td>
+          <td class="paramname"><em>primary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>error_msg</em> = <code>&quot;unable&#160;to&#160;<a class="el" href="classeosio_1_1multi__index.html#a40a65cdfcc298b85e0e4ddf4c3581c1c">find</a>&#160;key&quot;</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>

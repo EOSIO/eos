@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -75,11 +75,11 @@ $(function() {
 <li>parse_config_site_and_add_features()
 : <a class="el" href="classlibcxx_1_1test_1_1config_1_1_configuration.html#a98e4c6f60edb18c1aa8afc4fd130422f">libcxx.test.config.Configuration</a>
 </li>
+<li>passrecovery()
+: <a class="el" href="classeosiosystem_1_1native.html#ad22073c59f49f38b88d90bbd0f5580d3">eosiosystem::native</a>
+</li>
 <li>PauseTiming()
 : <a class="el" href="classbenchmark_1_1_state.html#a79b5da5d87a307d04f1402457953c158">benchmark::State</a>
-</li>
-<li>payment_per_block()
-: <a class="el" href="classeosiosystem_1_1voting.html#a35faac909bcdf10acf4c1ee667f51068">eosiosystem::voting&lt; SystemAccount &gt;</a>
 </li>
 <li>pbackfail()
 : <a class="el" href="structtest.html#a3466016f58b7734c41b2f3e3874534f5">test&lt; T &gt;</a>
@@ -131,6 +131,9 @@ $(function() {
 <li>post_record()
 : <a class="el" href="structpost__record.html#ae01d1c2fc4ec9db327590bcffd8f2a53">post_record</a>
 </li>
+<li>postrecovery()
+: <a class="el" href="classeosiosystem_1_1native.html#a14a7044f7848eb445a17a16d1b2f4240">eosiosystem::native</a>
+</li>
 <li>POSType()
 : <a class="el" href="struct_p_o_s_type.html#a1554a7f33ab5dd68609579267ddc6a91">POSType</a>
 </li>
@@ -152,9 +155,6 @@ $(function() {
 <li>PreventUnusedPrivateMemberWarning()
 : <a class="el" href="struct_has_priv.html#a387f2dbe96198f6619077fdaee35892d">HasPriv</a>
 </li>
-<li>price()
-: <a class="el" href="structeosio_1_1price.html#a1883a4c7ea7945e3b9adc6e0ad935fa6">eosio::price&lt; BaseToken, QuoteToken &gt;</a>
-</li>
 <li>primary_i64_general()
 : <a class="el" href="structtest__db.html#a872993979655083e6966f3c02f1b5b38">test_db</a>
 </li>
@@ -169,25 +169,26 @@ $(function() {
 , <a class="el" href="struct__test__multi__index_1_1record__idx256.html#a7b734e78473e78d7ac1a6356acbe9cf9">_test_multi_index::record_idx256</a>
 , <a class="el" href="struct__test__multi__index_1_1record__idx64.html#a8153c5523206271caf52d57d3a51c8a3">_test_multi_index::record_idx64</a>
 , <a class="el" href="struct__test__multi__index_1_1record__idx__double.html#a972779c01e0650b1f5ef914809c60970">_test_multi_index::record_idx_double</a>
+, <a class="el" href="struct__test__multi__index_1_1record__idx__long__double.html#a316304f5a9024a9402d15234755b831b">_test_multi_index::record_idx_long_double</a>
 , <a class="el" href="structeosio_1_1currency_1_1account.html#a961614c34a7e9cd1eae2cc9c01551841">eosio::currency::account</a>
 , <a class="el" href="structeosio_1_1currency_1_1currency__stats.html#acc106a134576840ef15bd84f3fd89cb1">eosio::currency::currency_stats</a>
 , <a class="el" href="structeosio_1_1currency_1_1fee__schedule.html#a5c5ca1fb48711b82667bf9f3694a07e3">eosio::currency::fee_schedule</a>
 , <a class="el" href="structeosio_1_1exaccount.html#ab2ed7e8403a9108e04eb962d7cdad44b">eosio::exaccount</a>
 , <a class="el" href="structeosio_1_1exchange__state.html#a962eb5ae2f354cf80058dc8243b3885c">eosio::exchange_state</a>
-, <a class="el" href="structeosio_1_1generic__currency_1_1account.html#ac86b106a0f47ea0e1794e893b90c96ab">eosio::generic_currency&lt; Token &gt;::account</a>
-, <a class="el" href="structeosio_1_1generic__currency_1_1currency__stats.html#aab733f9e5d1919463e7ffa2fd438ae1f">eosio::generic_currency&lt; Token &gt;::currency_stats</a>
 , <a class="el" href="structeosio_1_1loan__position.html#af4aa063307e5672a3ad7e0f152f24220">eosio::loan_position</a>
 , <a class="el" href="structeosio_1_1margin__position.html#a871384c1ee7e08e5ba95ba4f23b025b0">eosio::margin_position</a>
-, <a class="el" href="structeosiosystem_1_1delegate__bandwidth_1_1delegated__bandwidth.html#aaa107ab0c51867bf2eba07631c09a6ed">eosiosystem::delegate_bandwidth&lt; SystemAccount &gt;::delegated_bandwidth</a>
-, <a class="el" href="structeosiosystem_1_1delegate__bandwidth_1_1refund__request.html#ae0829b1e13a0d88bc2a5c31e739dcf3c">eosiosystem::delegate_bandwidth&lt; SystemAccount &gt;::refund_request</a>
-, <a class="el" href="structeosiosystem_1_1delegate__bandwidth_1_1total__resources.html#aed23d1ce365c8526c7cdf3530d657b6f">eosiosystem::delegate_bandwidth&lt; SystemAccount &gt;::total_resources</a>
-, <a class="el" href="structeosiosystem_1_1voting_1_1producer__info.html#a901f14da6d4ba9ba14cfba227d234ffb">eosiosystem::voting&lt; SystemAccount &gt;::producer_info</a>
-, <a class="el" href="structeosiosystem_1_1voting_1_1voter__info.html#a6489ba40ad00d1f396f3193af1d9aa4f">eosiosystem::voting&lt; SystemAccount &gt;::voter_info</a>
-, <a class="el" href="structidentity_1_1contract_1_1certrow.html#a96e316c6e38fed226269f1ebab598c2c">identity::contract&lt; DeployToAccount &gt;::certrow</a>
-, <a class="el" href="structidentity_1_1contract_1_1identrow.html#a18be646e5b77388f65aa5d05fd4c1958">identity::contract&lt; DeployToAccount &gt;::identrow</a>
-, <a class="el" href="structidentity_1_1contract_1_1trustrow.html#a45bf8950f44137814130c2791c9cec94">identity::contract&lt; DeployToAccount &gt;::trustrow</a>
+, <a class="el" href="structeosiosystem_1_1delegated__bandwidth.html#acc330b16cef3555d2b8bb1a1547f58dc">eosiosystem::delegated_bandwidth</a>
+, <a class="el" href="structeosiosystem_1_1exchange__state.html#a124e84f589746ad2bada2ea98af5b5e2">eosiosystem::exchange_state</a>
+, <a class="el" href="structeosiosystem_1_1producer__info.html#a9a9423735c7e495e3e244a92719c5606">eosiosystem::producer_info</a>
+, <a class="el" href="structeosiosystem_1_1refund__request.html#a527ccee1812739017b22d69139b2e40b">eosiosystem::refund_request</a>
+, <a class="el" href="structeosiosystem_1_1user__resources.html#a8c06a7e1b3e4a3cc22af7fd677b09542">eosiosystem::user_resources</a>
+, <a class="el" href="structeosiosystem_1_1voter__info.html#a1fdb370974b4c33380e8114ff52a7d8f">eosiosystem::voter_info</a>
+, <a class="el" href="structidentity_1_1certrow.html#ab3cc092f3d6466a1383286ab3b27bedd">identity::certrow</a>
+, <a class="el" href="structidentity_1_1identrow.html#ab44464a0e654a42d74848e7101cef54a">identity::identrow</a>
+, <a class="el" href="structidentity_1_1trustrow.html#a61cc91248564379ffadb262936a855d4">identity::trustrow</a>
 , <a class="el" href="structmulti__index__test_1_1limit__order.html#adc5afb7feab55c1cd7b6c5c549d9d132">multi_index_test::limit_order</a>
 , <a class="el" href="structmulti__index__test_1_1test__k256.html#a4c287817cb1786bb34642b2eedc52ac0">multi_index_test::test_k256</a>
+, <a class="el" href="structtic__tac__toe_1_1game.html#a5ab3d69113b7372efa381d19983bf54a">tic_tac_toe::game</a>
 </li>
 <li>print()
 : <a class="el" href="struct_checkpoint.html#a57ba938da450f857fba9947ceeee1969">Checkpoint</a>

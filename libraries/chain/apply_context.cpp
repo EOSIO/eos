@@ -16,18 +16,16 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
-   if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
-      if (!ar.console.empty()) {
-         auto prefix = fc::format_string(
-                                         "\n[(${a},${n})->${r}]",
-                                         fc::mutable_variant_object()
-                                         ("a", ar.act.account)
-                                         ("n", ar.act.name)
-                                         ("r", receiver));
-         dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
-              + ar.console
-              + prefix + ": CONSOLE OUTPUT END   =====================" );
-      }
+   if (!ar.console.empty()) {
+      auto prefix = fc::format_string(
+                                      "\n[(${a},${n})->${r}]",
+                                      fc::mutable_variant_object()
+                                      ("a", ar.act.account)
+                                      ("n", ar.act.name)
+                                      ("r", receiver));
+      dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+           + ar.console
+           + prefix + ": CONSOLE OUTPUT END   =====================" );
    }
 }
 
@@ -40,12 +38,21 @@ action_trace apply_context::exec_one()
       const auto &a = control.get_account(receiver);
       privileged = a.privileged;
       auto native = control.find_apply_handler(receiver, act.account, act.name);
-      if (native) {
+      if( native ) {
+         if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+            control.check_contract_list( receiver );
+            control.check_action_list( act.account, act.name );
+         }
          (*native)(*this);
       }
 
       if( a.code.size() > 0
-          && !(act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name) ) {
+          && !(act.account == config::system_account_name && act.name == N(setcode) && receiver == config::system_account_name) )
+      {
+         if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+            control.check_contract_list( receiver );
+            control.check_action_list( act.account, act.name );
+         }
          try {
             control.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
@@ -55,10 +62,14 @@ action_trace apply_context::exec_one()
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
    action_receipt r;
-   r.receiver        = receiver;
-   r.act_digest      = digest_type::hash(act);
-   r.global_sequence = next_global_sequence();
-   r.recv_sequence   = next_recv_sequence( receiver );
+   r.receiver         = receiver;
+   r.act_digest       = digest_type::hash(act);
+   r.global_sequence  = next_global_sequence();
+   r.recv_sequence    = next_recv_sequence( receiver );
+
+   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+   r.code_sequence    = account_sequence.code_sequence;
+   r.abi_sequence     = account_sequence.abi_sequence;
 
    for( const auto& auth : act.authorization ) {
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
@@ -71,7 +82,9 @@ action_trace apply_context::exec_one()
 
    trx_context.executed.emplace_back( move(r) );
 
-   print_debug(receiver, t);
+   if ( control.contracts_console() ) {
+      print_debug(receiver, t);
+   }
 
    reset_console();
 
@@ -182,21 +195,20 @@ void apply_context::execute_inline( action&& a ) {
                   ("permission", auth) );
    }
 
-   if ( !privileged ) {
-      if( a.account != receiver ) { // if a contract is calling itself then there is no need to check permissions
-         control.get_authorization_manager()
-                .check_authorization( {a},
-                                      {},
-                                      {{receiver, config::eosio_code_name}},
-                                      control.pending_block_time() - trx_context.published,
-                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
-                                      false
-                                    );
+   // No need to check authorization if: replaying irreversible blocks; contract is privileged; or, contract is calling itself.
+   if( !control.skip_auth_check() && !privileged && a.account != receiver ) {
+      control.get_authorization_manager()
+             .check_authorization( {a},
+                                   {},
+                                   {{receiver, config::eosio_code_name}},
+                                   control.pending_block_time() - trx_context.published,
+                                   std::bind(&transaction_context::checktime, &this->trx_context),
+                                   false
+                                 );
 
-         //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
-         //          with sending an inline action that requires a delay even though the decision to send that inline
-         //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
-      }
+      //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
+      //          with sending an inline action that requires a delay even though the decision to send that inline
+      //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
    }
 
    _inline_actions.emplace_back( move(a) );
@@ -228,8 +240,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    auto delay = fc::seconds(trx.delay_sec);
 
-   if( !privileged ) {
-      if (payer != receiver) {
+   if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
+      if( payer != receiver ) {
          require_authorization(payer); /// uses payer's storage
       }
 
@@ -248,7 +260,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                                       {},
                                       {{receiver, config::eosio_code_name}},
                                       delay,
-                                      std::bind(&apply_context::checktime, this, std::placeholders::_1),
+                                      std::bind(&transaction_context::checktime, &this->trx_context),
                                       false
                                     );
       }
@@ -283,19 +295,16 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    trx_context.add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
-   checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
 }
 
-void apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
+bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
    const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
-   EOS_ASSERT( gto != nullptr, transaction_exception,
-               "there is no generated transaction created by account ${sender} with sender id ${sender_id}",
-               ("sender", sender)("sender_id", sender_id) );
-
-   trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
-   generated_transaction_idx.remove(*gto);
-   checktime( 100 );
+   if ( gto ) {
+      trx_context.add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
+      generated_transaction_idx.remove(*gto);
+   }
+   return gto;
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {
@@ -338,13 +347,8 @@ void apply_context::reset_console() {
    _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
 }
 
-void apply_context::checktime(uint32_t instruction_count) {
-   trx_context.check_time();
-}
-
 bytes apply_context::get_packed_transaction() {
    auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
-   checktime( r.size() );
    return r;
 }
 
@@ -373,6 +377,8 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
          return -1;
       act_ptr = &trx.actions[index];
    }
+
+   FC_ASSERT(act_ptr, "action is not found" );
 
    auto ps = fc::raw::pack_size( *act_ptr );
    if( ps <= buffer_size ) {
@@ -593,7 +599,6 @@ int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
 
    return keyval_cache.cache_table( *tab );
 }
-
 
 uint64_t apply_context::next_global_sequence() {
    const auto& p = control.get_dynamic_global_properties();

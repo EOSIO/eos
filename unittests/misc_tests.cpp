@@ -25,12 +25,64 @@
 using namespace eosio::chain;
 using namespace eosio::testing;
 
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
 namespace eosio
 {
 using namespace chain;
 using namespace std;
 
+static constexpr uint64_t name_suffix( uint64_t n ) {
+   uint32_t remaining_bits_after_last_actual_dot = 0;
+   uint32_t tmp = 0;
+   for( int32_t remaining_bits = 59; remaining_bits >= 4; remaining_bits -= 5 ) { // Note: remaining_bits must remain signed integer
+      // Get characters one-by-one in name in order from left to right (not including the 13th character)
+      auto c = (n >> remaining_bits) & 0x1Full;
+      if( !c ) { // if this character is a dot
+         tmp = static_cast<uint32_t>(remaining_bits);
+      } else { // if this character is not a dot
+         remaining_bits_after_last_actual_dot = tmp;
+      }
+   }
+
+   uint64_t thirteenth_character = n & 0x0Full;
+   if( thirteenth_character ) { // if 13th character is not a dot
+      remaining_bits_after_last_actual_dot = tmp;
+   }
+
+   if( remaining_bits_after_last_actual_dot == 0 ) // there is no actual dot in the name other than potentially leading dots
+      return n;
+
+   // At this point remaining_bits_after_last_actual_dot has to be within the range of 4 to 59 (and restricted to increments of 5).
+
+   // Mask for remaining bits corresponding to characters after last actual dot, except for 4 least significant bits (corresponds to 13th character).
+   uint64_t mask = (1ull << remaining_bits_after_last_actual_dot) - 16;
+   uint32_t shift = 64 - remaining_bits_after_last_actual_dot;
+
+   return ( ((n & mask) << shift) + (thirteenth_character << (shift-1)) );
+}
+
 BOOST_AUTO_TEST_SUITE(misc_tests)
+
+BOOST_AUTO_TEST_CASE(name_suffix_tests)
+{
+   BOOST_CHECK_EQUAL( name{name_suffix(0)}, name{0} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn))}, name{N(abcdehijklmn)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn1))}, name{N(abcdehijklmn1)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(.abc.def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(..abc.def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abc..def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def.ghi))}, name{N(ghi)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij))}, name{N(abcdefghij)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij.1))}, name{N(1)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij))}, name{N(bcdefghij)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij.1))}, name{N(1)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(......a.b.c))}, name{N(c)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhi.123))}, name{N(123)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhij.123))}, name{N(123)} );
+}
 
 /// Test processing of unbalanced strings
 BOOST_AUTO_TEST_CASE(json_from_string_test)
@@ -59,23 +111,23 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 19, magnitude < 2^61
    BOOST_CHECK_EXCEPTION( asset::from_string("0.1000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-0.1000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("1.0000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-1.0000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 19 should be <= 18");
    });
 
    // precision = 18, magnitude < 2^58
    a = asset::from_string("0.100000000000000000 CUR");
-   BOOST_CHECK_EQUAL(a.amount, 100000000000000000L);
+   BOOST_CHECK_EQUAL(a.get_amount(), 100000000000000000L);
    a = asset::from_string("-0.100000000000000000 CUR");
-   BOOST_CHECK_EQUAL(a.amount, -100000000000000000L);
+   BOOST_CHECK_EQUAL(a.get_amount(), -100000000000000000L);
 
    // precision = 18, magnitude = 2^62
    BOOST_CHECK_EXCEPTION( asset::from_string("4.611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
@@ -93,9 +145,9 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 18, magnitude = 2^62-1
    a = asset::from_string("4.611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, 4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), 4611686018427387903L);
    a = asset::from_string("-4.611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, -4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), -4611686018427387903L);
 
    // precision = 0, magnitude = 2^62
    BOOST_CHECK_EXCEPTION( asset::from_string("4611686018427387904 CUR") , asset_type_exception, [](const asset_type_exception& e) {
@@ -107,9 +159,9 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 0, magnitude = 2^62-1
    a = asset::from_string("4611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, 4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), 4611686018427387903L);
    a = asset::from_string("-4611686018427387903 CUR");
-   BOOST_CHECK_EQUAL(a.amount, -4611686018427387903L);
+   BOOST_CHECK_EQUAL(a.get_amount(), -4611686018427387903L);
 
    // precision = 18, magnitude = 2^65
    BOOST_CHECK_EXCEPTION( asset::from_string("36.893488147419103232 CUR") , overflow_exception, [](const overflow_exception& e) {
@@ -137,10 +189,10 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 20, magnitude > 2^142
    BOOST_CHECK_EXCEPTION( asset::from_string("100000000000000000000000.00000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 20 should be <= 18");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-100000000000000000000000.00000000000000000000 CUR") , assert_exception, [](const assert_exception& e) {
-      return expect_assert_message(e, "precision should be <= 18");
+      return expect_assert_message(e, "precision 20 should be <= 18");
    });
 }
 
@@ -529,6 +581,67 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
   for(int i = 0; i < words.size(); ++i ) {
     BOOST_TEST(tmp[i] == words[i]);
   }
+
+} FC_LOG_AND_RETHROW() }
+
+
+BOOST_AUTO_TEST_CASE(transaction_test) { try {
+
+   testing::TESTER test;
+   signed_transaction trx;
+
+   variant pretty_trx = fc::mutable_variant_object()
+      ("actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "reqauth")
+            ("authorization", fc::variants({
+               fc::mutable_variant_object()
+                  ("actor", "eosio")
+                  ("permission", "active")
+            }))
+            ("data", fc::mutable_variant_object()
+               ("from", "eosio")
+            )
+         })
+      )
+      // lets also push a context free action, the multi chain test will then also include a context free action
+      ("context_free_actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "nonce")
+            ("data", fc::raw::pack(std::string("dummy")))
+         })
+      );
+
+   abi_serializer::from_variant(pretty_trx, trx, test.get_resolver());
+
+   test.set_transaction_headers(trx);
+
+   trx.expiration = fc::time_point::now();
+   trx.validate();
+   BOOST_CHECK_EQUAL(0, trx.signatures.size());
+   ((const signed_transaction &)trx).sign( test.get_private_key( N(eosio), "active" ), test.control->get_chain_id());
+   BOOST_CHECK_EQUAL(0, trx.signatures.size());
+   trx.sign( test.get_private_key( N(eosio), "active" ), test.control->get_chain_id()  );
+   BOOST_CHECK_EQUAL(1, trx.signatures.size());
+   trx.validate();
+
+   packed_transaction pkt;
+   pkt.set_transaction(trx, packed_transaction::none);
+
+   packed_transaction pkt2;
+   pkt2.set_transaction(trx, packed_transaction::zlib);
+
+   BOOST_CHECK_EQUAL(true, trx.expiration ==  pkt.expiration());
+   BOOST_CHECK_EQUAL(true, trx.expiration == pkt2.expiration());
+
+   BOOST_CHECK_EQUAL(trx.id(), pkt.id());
+   BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
+
+   bytes raw = pkt.get_raw_transaction();
+   bytes raw2 = pkt2.get_raw_transaction();
+   BOOST_CHECK_EQUAL(raw.size(), raw2.size());
 
 } FC_LOG_AND_RETHROW() }
 

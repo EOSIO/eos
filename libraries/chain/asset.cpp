@@ -4,11 +4,9 @@
  */
 #include <eosio/chain/asset.hpp>
 #include <boost/rational.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <fc/reflect/variant.hpp>
 
 namespace eosio { namespace chain {
-typedef boost::multiprecision::int128_t  int128_t;
 
 uint8_t asset::decimals()const {
    return sym.decimals();
@@ -23,13 +21,15 @@ int64_t asset::precision()const {
 }
 
 string asset::to_string()const {
-   string result = fc::to_string( static_cast<int64_t>(amount) / precision());
+   string sign = amount < 0 ? "-" : "";
+   int64_t abs_amount = std::abs(amount);
+   string result = fc::to_string( static_cast<int64_t>(abs_amount) / precision());
    if( decimals() )
    {
-      auto fract = static_cast<int64_t>(amount) % precision();
+      auto fract = static_cast<int64_t>(abs_amount) % precision();
       result += "." + fc::to_string(precision() + fract).erase(0,1);
    }
-   return result + " " + symbol_name();
+   return sign + result + " " + symbol_name();
 }
 
 asset asset::from_string(const string& from)

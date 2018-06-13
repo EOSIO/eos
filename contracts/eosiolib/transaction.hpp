@@ -5,8 +5,8 @@
 #pragma once
 #include <eosiolib/transaction.h>
 #include <eosiolib/action.hpp>
-#include <eosiolib/print.hpp>
 #include <eosiolib/types.hpp>
+#include <eosiolib/time.hpp>
 #include <eosiolib/serialize.hpp>
 #include <vector>
 
@@ -24,11 +24,11 @@ namespace eosio {
 
    class transaction_header {
    public:
-      transaction_header( time exp = now() + 60 )
+      transaction_header( time_point_sec exp = time_point_sec(now() + 60) )
          :expiration(exp)
-      { eosio::print("now=", now(), " exp=", expiration, "\n"); }
+      {}
 
-      time            expiration;
+      time_point_sec  expiration;
       uint16_t        ref_block_num;
       uint32_t        ref_block_prefix;
       unsigned_int    net_usage_words = 0UL; /// number of 8 byte words this transaction can serialize into after compressions
@@ -40,16 +40,16 @@ namespace eosio {
 
    class transaction : public transaction_header {
    public:
-      transaction(time exp = now() + 60) : transaction_header( exp ) {}
+      transaction(time_point_sec exp = time_point_sec(now() + 60)) : transaction_header( exp ) {}
 
-      void send(uint64_t sender_id, account_name payer, bool replace_existing = false) const {
+      void send(const uint128_t& sender_id, account_name payer, bool replace_existing = false) const {
          auto serialize = pack(*this);
          send_deferred(sender_id, payer, serialize.data(), serialize.size(), replace_existing);
       }
 
       vector<action>  context_free_actions;
       vector<action>  actions;
-      extensions_type transaction_extensions; 
+      extensions_type transaction_extensions;
 
       EOSLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions)(transaction_extensions) )
    };
@@ -76,12 +76,14 @@ namespace eosio {
     * @return the indicated action
     */
    inline action get_action( uint32_t type, uint32_t index ) {
-      auto size = ::get_action(type, index, nullptr, 0);
-      eosio_assert( size > 0, "get_action size failed" );
-      char buf[size];
-      auto size2 = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
-      eosio_assert( size == size2, "get_action failed" );
-      return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
+      constexpr size_t max_stack_buffer_size = 512;
+      int s = ::get_action( type, index, nullptr, 0 );
+      eosio_assert( s > 0, "get_action size failed" );
+      size_t size = static_cast<size_t>(s);
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      auto size2 = ::get_action( type, index, buffer, size );
+      eosio_assert( size == static_cast<size_t>(size2), "get_action failed" );
+      return eosio::unpack<eosio::action>( buffer, size );
    }
 
    ///@} transactioncpp api

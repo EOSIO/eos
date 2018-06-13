@@ -39,7 +39,7 @@
 		   fi
 		;;
 		"Ubuntu")
-			if [ "${OS_MIN}" -lt 4 ]; then
+			if [ "${OS_MAJ}" -lt 16 ]; then
 				printf "\\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\\n"
 				printf "\\tExiting now.\\n"
 				exit 1
@@ -55,7 +55,7 @@
 
 	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make automake libbz2-dev libssl-dev \
 	libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
-	autoconf libtool curl zlib1g-dev doxygen graphviz)
+    autoconf libtool curl zlib1g-dev doxygen graphviz)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -106,12 +106,29 @@
 		printf "\\n\\tNo required dpkg dependencies to install.\\n"
 	fi
 
+	if [ -d "${HOME}/opt/boost_1_67_0" ]; then
+		if ! mv "${HOME}/opt/boost_1_67_0" "$BOOST_ROOT"
+		then
+			printf "\\n\\tUnable to move directory %s/opt/boost_1_67_0 to %s.\\n" "${HOME}" "${BOOST_ROOT}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1
+		fi
+		if [ -d "$BUILD_DIR" ]; then
+			if ! rm -rf "$BUILD_DIR"
+			then
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "$BUILD_DIR" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+			fi
+		fi
+	fi
+
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep BOOST_LIB_VERSION "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI')
-	if [ "${BVERSION}" != "1_66" ]; then
+	if [ "${BVERSION}" != "1_67" ]; then
 		printf "\\tRemoving existing boost libraries in %s/opt/boost* .\\n" "${HOME}"
-		if ! rm -rf "${HOME}/opt/boost*"
+		if ! rm -rf "${HOME}"/opt/boost*
 		then
 			printf "\\n\\tUnable to remove deprecated boost libraries at this time.\\n"
 			printf "\\n\\tExiting now.\\n\\n"
@@ -124,27 +141,27 @@
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2)
+		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2)
 		if [ "${STATUS}" -ne 200 ]; then
 			printf "\\tUnable to download Boost libraries at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		if ! tar xf "${TEMP_DIR}/boost_1_67_0.tar.bz2"
 		then
-			printf "\\n\\tUnable to unarchive file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to unarchive file %s/boost_1_67_0.tar.bz2.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/boost_1_66_0.tar.bz2"
+		if ! rm -f "${TEMP_DIR}/boost_1_67_0.tar.bz2"
 		then
-			printf "\\n\\tUnable to remove file %s/boost_1_66_0.tar.bz2.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to remove file %s/boost_1_67_0.tar.bz2.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}/boost_1_66_0/"
+		if ! cd "${TEMP_DIR}/boost_1_67_0/"
 		then
-			printf "\\n\\tUnable to enter directory %s/boost_1_66_0.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to enter directory %s/boost_1_67_0.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -160,15 +177,23 @@
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1
 		fi
-		if ! rm -rf "${TEMP_DIR}/boost_1_66_0"
+		if ! rm -rf "${TEMP_DIR}"/boost_1_67_0
 		then
-			printf "\\n\\tUnable to remove %s/boost_1_66_0.\\n" "${TEMP_DIR}"
+			printf "\\n\\tUnable to remove %s/boost_1_67_0.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1
 		fi
-		printf "\\tBoost 1.66.0 successfully installed @ %s/opt/boost_1_66_0.\\n" "${HOME}"
+		if [ -d "$BUILD_DIR" ]; then
+			if ! rm -rf "$BUILD_DIR"
+			then
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "$BUILD_DIR" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+			fi
+		fi
+		printf "\\tBoost successfully installed @ %s.\\n" "${BOOST_ROOT}"
 	else
-		printf "\\tBoost 1.66.0 found at %s/opt/boost_1_66_0.\\n\\n" "${HOME}"
+		printf "\\tBoost found at %s.\\n" "${BOOST_ROOT}"
 	fi
 
 	printf "\\n\\tChecking MongoDB installation.\\n"
@@ -410,9 +435,9 @@ mongodconf
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		printf "\\n\\tsecp256k1 successfully installed @ /usr/local/lib/libsecp256k1.a.\\n\\n"
+		printf "\\n\\tsecp256k1 successfully installed @ /usr/local/lib.\\n\\n"
 	else
-		printf "\\tsecp256k1 found @ /usr/local/lib/libsecp256k1.a.\\n"
+		printf "\\tsecp256k1 found @ /usr/local/lib.\\n"
 	fi
 
 	printf "\\n\\tChecking for LLVM with WASM support.\\n"

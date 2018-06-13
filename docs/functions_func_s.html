@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN 3.0</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -72,6 +72,10 @@ $(function() {
 <li>schedule()
 : <a class="el" href="structgoroutine.html#a83c9ca0224005d5822a1da5f11ac2adc">goroutine</a>
 </li>
+<li>sec_since_epoch()
+: <a class="el" href="classeosio_1_1time__point.html#aedda68d4c06c12b9dcf27a8964f2c6a9">eosio::time_point</a>
+, <a class="el" href="classeosio_1_1time__point__sec.html#a9f061ae99cc49726e27ac9c29a460b5f">eosio::time_point_sec</a>
+</li>
 <li>seekoff()
 : <a class="el" href="structtestbuf.html#aab9d58dd2cdeeb90e9ccb54290cedaa5">testbuf&lt; CharT &gt;</a>
 </li>
@@ -86,8 +90,11 @@ $(function() {
 : <a class="el" href="struct_b.html#af25c423a9ca4c1a6be9e210fb6e7bd3d">B&lt; T &gt;</a>
 , <a class="el" href="classother__allocator.html#ac31a571b8b6daa53aaccb083f43c14f3">other_allocator&lt; T &gt;</a>
 </li>
+<li>sellram()
+: <a class="el" href="classeosiosystem_1_1system__contract.html#a24b5376f6eb86db6c61022f739af6834">eosiosystem::system_contract</a>
+</li>
 <li>send()
-: <a class="el" href="classeosio_1_1transaction.html#a720c4a0394973cde33d608c239d58455">eosio::transaction</a>
+: <a class="el" href="classeosio_1_1transaction.html#ab47631fd60c662f7b5307cbbab9f06dd">eosio::transaction</a>
 </li>
 <li>send_action()
 : <a class="el" href="structtest__transaction.html#ac46b9f22b6a30fb81051789d0ba2b53a">test_transaction</a>
@@ -122,14 +129,17 @@ $(function() {
 <li>send_deferred_transaction()
 : <a class="el" href="structtest__transaction.html#a9ecd22ac57a37f65d2e77feeaa59ede0">test_transaction</a>
 </li>
+<li>send_deferred_transaction_replace()
+: <a class="el" href="structtest__transaction.html#a89e6124b31869b9befaeab2d654469c7">test_transaction</a>
+</li>
+<li>send_deferred_tx_with_dtt_action()
+: <a class="el" href="structtest__transaction.html#ab47b5c2d43617404fcfc330184740172">test_transaction</a>
+</li>
 <li>send_transaction()
 : <a class="el" href="structtest__transaction.html#a0fb16ed6614c7a6c7b0863aa3d356a59">test_transaction</a>
 </li>
 <li>send_transaction_empty()
 : <a class="el" href="structtest__transaction.html#ae391adbe7a3b664ce561cff8ba9a079e">test_transaction</a>
-</li>
-<li>send_transaction_expiring_late()
-: <a class="el" href="structtest__transaction.html#aecfa42f5de6473aa74a9d4ad055bdc67">test_transaction</a>
 </li>
 <li>send_transaction_large()
 : <a class="el" href="structtest__transaction.html#ab7633912e3a2c483ab0a6bfc987789a0">test_transaction</a>
@@ -141,14 +151,11 @@ $(function() {
 : <a class="el" href="structtest__transaction.html#afdf03fc0e6d27537b27ddebc66bf3e9c">test_transaction</a>
 </li>
 <li>set()
-: <a class="el" href="classeosio_1_1singleton.html#ae0bd9ead0bd82a29bfb8cf25b0f65591">eosio::singleton&lt; Code, SingletonName, BillToAccount, T &gt;</a>
+: <a class="el" href="classeosio_1_1singleton.html#ac8d8f06373592ea6c87267796eeda52a">eosio::singleton&lt; SingletonName, T &gt;</a>
 , <a class="el" href="class_x.html#aa5c67f82786a60094794e60feedb38a2">X&lt; T &gt;</a>
 </li>
 <li>set_amount()
 : <a class="el" href="structeosio_1_1asset.html#a0b6c8ba10eedc0129364fc910e840d7f">eosio::asset</a>
-</li>
-<li>set_balance()
-: <a class="el" href="classeosio_1_1generic__currency.html#aefd79db4c3ef00e6757d7eb2361896ce">eosio::generic_currency&lt; Token &gt;</a>
 </li>
 <li>set_call()
 : <a class="el" href="struct_forwarding_call_object.html#a407d319171ade5ec63770cf712ca0b83">ForwardingCallObject</a>
@@ -211,9 +218,16 @@ $(function() {
 </li>
 <li>setpriv()
 : <a class="el" href="classeosio_1_1bios.html#a3b2bf66b5f3ad0220785a1ee93927a84">eosio::bios</a>
+, <a class="el" href="classeosiosystem_1_1system__contract.html#a49dd1af3b2358e2536851814f5ddb3bd">eosiosystem::system_contract</a>
 </li>
 <li>setprods()
-: <a class="el" href="classeosio_1_1bios.html#a5a301da26fdcf530a5eee70543b3a649">eosio::bios</a>
+: <a class="el" href="classeosio_1_1bios.html#afbe3ec1e3250efe1bea8d8252a50a711">eosio::bios</a>
+</li>
+<li>setram()
+: <a class="el" href="classeosiosystem_1_1system__contract.html#ad8a6eb47fd97c9f243019d93916ff78f">eosiosystem::system_contract</a>
+</li>
+<li>settrust()
+: <a class="el" href="classidentity_1_1contract.html#a6e75dbb5fa7d1d47b2b838cfdb16a102">identity::contract</a>
 </li>
 <li>setUncheckedCall()
 : <a class="el" href="struct_function_ptr_i_d.html#a9e850930593ccb88d974a63a88a4804d">FunctionPtrID&lt; T, &gt;</a>
@@ -249,6 +263,9 @@ $(function() {
 <li>simpletoken()
 : <a class="el" href="classsimpletoken.html#a23831a91fc400e48320a4e5ce50a12fb">simpletoken</a>
 </li>
+<li>singleton()
+: <a class="el" href="classeosio_1_1singleton.html#a427908e820e5a87ecc804842ff411a15">eosio::singleton&lt; SingletonName, T &gt;</a>
+</li>
 <li>size()
 : <a class="el" href="classnasty__list.html#abaac063c39486a4f0d43e6394644301a">nasty_list&lt; T &gt;</a>
 , <a class="el" href="classnasty__vector.html#a2cd77153abf9fe4d31800a727caed187">nasty_vector&lt; T &gt;</a>
@@ -265,7 +282,7 @@ $(function() {
 : <a class="el" href="structsmall__throws__on__copy.html#a1ceefbd4caea7dfc6b7b0dc3769081dc">small_throws_on_copy</a>
 </li>
 <li>small_tracked_t()
-: <a class="el" href="structsmall__tracked__t.html#a725dba5382294c9363f17f4fe560ee3f">small_tracked_t</a>
+: <a class="el" href="structsmall__tracked__t.html#af3a6b85a7172a062ecc48419ed4b2311">small_tracked_t</a>
 </li>
 <li>small_type()
 : <a class="el" href="structsmall__type.html#a352d135ce0ef82c0b3e76997b7297946">small_type&lt; Dummy &gt;</a>
@@ -289,7 +306,7 @@ $(function() {
 : <a class="el" href="structsome__comp.html#aa6c8f965ce224dbd7e6479a6b9e25e2e">some_comp&lt; T &gt;</a>
 </li>
 <li>some_comp2()
-: <a class="el" href="structsome__comp2.html#a3330b4fc42b8f18c320fc5608db36e7a">some_comp2&lt; T &gt;</a>
+: <a class="el" href="structsome__comp2.html#a2c0954b461c474a4e8db9e1118686006">some_comp2&lt; T &gt;</a>
 </li>
 <li>some_hash()
 : <a class="el" href="structsome__hash.html#a723612fc40aa55a03af0ba2a04ba66c2">some_hash&lt; T &gt;</a>
@@ -310,10 +327,10 @@ $(function() {
 : <a class="el" href="classbenchmark_1_1internal_1_1_thread_timer.html#a32ae8d6d63cc1df671f3285007df6f61">benchmark::internal::ThreadTimer</a>
 </li>
 <li>Stat1()
-: <a class="el" href="classbenchmark_1_1_stat1.html#a7d29d83872c6092d590997b781a257e4">benchmark::Stat1&lt; VType, NumType &gt;</a>
+: <a class="el" href="classbenchmark_1_1_stat1.html#a18e5a355228d6efc70fde0ae57ecf553">benchmark::Stat1&lt; VType, NumType &gt;</a>
 </li>
 <li>Stat1MinMax()
-: <a class="el" href="classbenchmark_1_1_stat1_min_max.html#a29ff18df79ca4b9ccc500e0d502bb76a">benchmark::Stat1MinMax&lt; VType, NumType &gt;</a>
+: <a class="el" href="classbenchmark_1_1_stat1_min_max.html#a40a246d0c628e8f0e0734eb02135cd4c">benchmark::Stat1MinMax&lt; VType, NumType &gt;</a>
 </li>
 <li>State()
 : <a class="el" href="classbenchmark_1_1_state.html#ac1ad0344afc23e1c017e0ef253186210">benchmark::State</a>
@@ -330,6 +347,9 @@ $(function() {
 , <a class="el" href="class_n_c_deleter.html#a4455c1824f4f1d75e530de28870a97d8">NCDeleter&lt; T &gt;</a>
 , <a class="el" href="class_n_c_deleter_3_01_t[]_4.html#ab6127e95f8b14818b7e6ec45d358e3f7">NCDeleter&lt; T[]&gt;</a>
 , <a class="el" href="classtest__deleter.html#a364c4611876a0f16c6f1a33f9594d3e7">test_deleter&lt; T &gt;</a>
+</li>
+<li>stateful_api()
+: <a class="el" href="structtest__transaction.html#a0b27cceb02e888fff11f49f786e549f8">test_transaction</a>
 </li>
 <li>StdDev()
 : <a class="el" href="classbenchmark_1_1_stat1.html#ae0ca58cf5b61d7c0c4ed9a3fe34055c3">benchmark::Stat1&lt; VType, NumType &gt;</a>
@@ -361,15 +381,21 @@ $(function() {
 , <a class="el" href="structtest__ostream.html#a8466280e7d3fef37b60e750552db4acb">test_ostream&lt; CharT &gt;</a>
 , <a class="el" href="structtestios.html#a3131e199edd89648de25d050d5af9dd4">testios</a>
 </li>
+<li>symbol_type()
+: <a class="el" href="structeosio_1_1symbol__type.html#a0a6b651cb3347b66bb2bb93242095978">eosio::symbol_type</a>
+</li>
 <li>sync()
 : <a class="el" href="structtestbuf1.html#a61c9289b9977ed85645e59d868ba157e">testbuf1&lt; CharT &gt;</a>
-, <a class="el" href="structtestbuf.html#a0b5673fd18dc4f85aff8adbc8142ec79">testbuf&lt; CharT &gt;</a>
+, <a class="el" href="structtestbuf.html#a8e1354905cc9378dad51a032e7b16a35">testbuf&lt; CharT &gt;</a>
 </li>
 <li>sync_pull()
 : <a class="el" href="classchannel.html#a7519b3c101cce8adbeee85207d1785a0">channel</a>
 </li>
 <li>sync_push()
 : <a class="el" href="classchannel.html#a755974a13e7a5804f724d769b4b8b0a1">channel</a>
+</li>
+<li>system_contract()
+: <a class="el" href="classeosiosystem_1_1system__contract.html#a2b471d5a8bf2d84a1cf7e3c52769dbe3">eosiosystem::system_contract</a>
 </li>
 </ul>
 </div><!-- contents -->

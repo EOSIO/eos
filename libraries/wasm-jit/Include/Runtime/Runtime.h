@@ -87,11 +87,11 @@ namespace Runtime
 	RUNTIME_API bool isA(ObjectInstance* object,const IR::ObjectType& type);
 
 	// Casts from object to subclasses, and vice versa.
-	inline FunctionInstance* asFunction(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::function); return (FunctionInstance*)object; }
-	inline TableInstance* asTable(ObjectInstance* object)			{ assert(object && object->kind == IR::ObjectKind::table); return (TableInstance*)object; }
-	inline MemoryInstance* asMemory(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::memory); return (MemoryInstance*)object; }
-	inline GlobalInstance* asGlobal(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::global); return (GlobalInstance*)object; }
-	inline ModuleInstance* asModule(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::module); return (ModuleInstance*)object; }
+	inline FunctionInstance* asFunction(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::function); return (FunctionInstance*)object; }
+	inline TableInstance* asTable(ObjectInstance* object)			{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::table); return (TableInstance*)object; }
+	inline MemoryInstance* asMemory(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::memory); return (MemoryInstance*)object; }
+	inline GlobalInstance* asGlobal(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::global); return (GlobalInstance*)object; }
+	inline ModuleInstance* asModule(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::module); return (ModuleInstance*)object; }
 
 	template<typename Instance> Instance* as(ObjectInstance* object);
 	template<> inline FunctionInstance* as<FunctionInstance>(ObjectInstance* object) { return asFunction(object); }

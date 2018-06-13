@@ -19,6 +19,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
+#include <fc/io/fstream.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -29,6 +31,8 @@
 
 #include <array>
 #include <utility>
+
+#include "incbin.h"
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -91,7 +95,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       trx.actions[0].authorization = {{N(asserter),config::active_name}};
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
+      trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
       auto result = push_transaction( trx );
       BOOST_CHECK_EQUAL(result->receipt->status, transaction_receipt::executed);
       BOOST_CHECK_EQUAL(result->action_traces.size(), 1);
@@ -117,10 +121,10 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
                                 assertdef {0, "Should Assert!"} );
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
+      trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(push_transaction( trx ), assert_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), eosio_assert_message_exception);
    }
 
    produce_blocks(1);
@@ -150,7 +154,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, TESTER ) try {
                                 provereset {} );
 
       set_transaction_headers(trx);
-      trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
+      trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
       push_transaction( trx );
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -204,7 +208,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
    signed_transaction trx;
    abi_serializer::from_variant(pretty_trx, trx, resolver);
    set_transaction_headers(trx);
-   trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
+   trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
    push_transaction( trx );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -230,7 +234,7 @@ BOOST_FIXTURE_TEST_CASE( f32_tests, TESTER ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f32_tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -253,7 +257,7 @@ BOOST_FIXTURE_TEST_CASE( f32_test_bitwise, TESTER ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f32_tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -276,7 +280,7 @@ BOOST_FIXTURE_TEST_CASE( f32_test_cmp, TESTER ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f32_tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -301,7 +305,7 @@ BOOST_FIXTURE_TEST_CASE( f64_tests, TESTER ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -324,7 +328,7 @@ BOOST_FIXTURE_TEST_CASE( f64_test_bitwise, TESTER ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -347,7 +351,7 @@ BOOST_FIXTURE_TEST_CASE( f64_test_cmp, TESTER ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -373,7 +377,7 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -402,7 +406,7 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests)+count, "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f_tests)+count, "active" ), control->get_chain_id());
 
       try {
          push_transaction(trx);
@@ -500,7 +504,7 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(aligncheck), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(aligncheck), "active" ), control->get_chain_id());
       push_transaction(trx);
       produce_block();
 
@@ -565,7 +569,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
 
       set_transaction_headers(trx);
       trx.max_cpu_usage_ms = limit++;
-      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
 
       try {
          push_transaction(trx);
@@ -585,7 +589,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
 
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
-#warning This test does not appear to be very robust.
+// TODO Increase the robustness of this test.
    resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
    create_accounts( {N(f_tests)} );
    create_accounts( {N(acc2)} );
@@ -616,7 +620,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
    while (count < 4) {
       signed_transaction trx;
 
-      for (int i = 0; i < 10; ++i) {
+      for (int i = 0; i < 2; ++i) {
          action act;
          act.account = N(f_tests);
          act.name = N() + (i * 16);
@@ -625,11 +629,11 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
       }
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
 
       try {
          push_transaction(trx, fc::time_point::maximum(), 0);
-         produce_blocks(1);
+         produce_block();
          BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
          pass = true;
          count++;
@@ -640,7 +644,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
       BOOST_REQUIRE_EQUAL(true, validate());
 
       if (count == 2) { // add a big weight on acc2, making f_tests out of resource
-        mgr.set_account_limits(N(acc2), -1, -1, 1000);
+        mgr.set_account_limits(N(acc2), -1, -1, 100000000);
       }
    }
    BOOST_REQUIRE_EQUAL(count, 3);
@@ -665,7 +669,7 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior, TESTER ) try {
    trx.actions.push_back(act);
 
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(entrycheck), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(entrycheck), "active" ), control->get_chain_id());
    push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -689,7 +693,7 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior_2, TESTER ) try {
    trx.actions.push_back(act);
 
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(entrycheck), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(entrycheck), "active" ), control->get_chain_id());
    push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -719,7 +723,7 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, TESTER ) try {
    trx.actions.push_back(act);
    trx.expiration = control->head_block_time();
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(nomem), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(nomem), "active" ), control->get_chain_id());
    BOOST_CHECK_THROW(push_transaction( trx ), wasm_execution_error);
 } FC_LOG_AND_RETHROW()
 
@@ -750,7 +754,7 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, TESTER ) try {
    }
 
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(globalreset), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(globalreset), "active" ), control->get_chain_id());
    push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -788,7 +792,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
         trx.actions.push_back(std::move(msg_act));
 
         set_transaction_headers(trx);
-        trx.sign(get_private_key(N(stltest), "active"), chain_id_type());
+        trx.sign(get_private_key(N(stltest), "active"), control->get_chain_id());
         push_transaction(trx);
         produce_block();
 
@@ -818,7 +822,7 @@ BOOST_FIXTURE_TEST_CASE( big_memory, TESTER ) try {
    trx.actions.push_back(act);
 
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(bigmem), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(bigmem), "active" ), control->get_chain_id());
    //but should not be able to grow beyond largest page
    push_transaction(trx);
 
@@ -875,6 +879,113 @@ BOOST_FIXTURE_TEST_CASE( imports, TESTER ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(nested)} );
+   produce_block();
+
+   // nested loops
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << ")";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << ")";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+
+   // nested blocks
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << ")";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << ")";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+   // nested ifs
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "))";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "))";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+   // mixed nested
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 223; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 800; ++i)
+         ss << ")";
+      for(unsigned int i = 0; i < 223; ++i)
+         ss << "))";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 224; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 800; ++i)
+         ss << ")";
+      for(unsigned int i = 0; i < 224; ++i)
+         ss << "))";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+
+} FC_LOG_AND_RETHROW()
+
+
 BOOST_FIXTURE_TEST_CASE( lotso_globals, TESTER ) try {
    produce_blocks(2);
 
@@ -900,7 +1011,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, TESTER ) try {
    //1028 should fail
    BOOST_CHECK_THROW(set_code(N(globals),
       string(ss.str() + "(global $z (mut i64) (i64.const -12)))")
-   .c_str()), eosio::chain::wasm_execution_error);;
+   .c_str()), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -998,7 +1109,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
       trx.actions.emplace_back(std::move(act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(noop), "active"), chain_id_type());
+      trx.sign(get_private_key(N(noop), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
 
@@ -1022,7 +1133,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
       trx.actions.emplace_back(std::move(act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
+      trx.sign(get_private_key(N(alice), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
 
@@ -1054,7 +1165,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
                                    .active   = authority( get_public_key( a, "active" ) )
                              });
    set_transaction_headers(trx);
-   trx.sign( get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+   trx.sign( get_private_key( config::system_account_name, "active" ), control->get_chain_id()  );
    auto result = push_transaction( trx );
 
    fc::variant pretty_output;
@@ -1067,8 +1178,81 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_block();
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_table_key_validation, TESTER ) try {
+BOOST_FIXTURE_TEST_CASE( check_big_deserialization, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {N(cbd)} );
+   produce_block();
+
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements-2; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_section_elements; i++)
+      ss << "  (func " << "$AA_" << i << ")";
+   ss << ")";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_code_size; i++)
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), fc::assert_exception); // this is caught first by MAX_SIZE_OF_ARRAYS check
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes-1; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   set_code(N(cbd), ss.str().c_str());
+   produce_blocks(1);
+
+   ss.str("");
+   ss << "(module ";
+   ss << "(memory $0 1)";
+   ss << "(data (i32.const 20) \"";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i++)
+      ss << 'a';
+   ss << "\")";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
+   ss << "  (func $aa ";
+      ss << "  (drop (i32.const 3))";
+   ss << "))";
+
+   BOOST_CHECK_THROW(set_code(N(cbd), ss.str().c_str()), wasm_serialization_error);
+   produce_blocks(1);
+
 } FC_LOG_AND_RETHROW()
+
 
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    produce_blocks(2);
@@ -1085,7 +1269,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
    push_transaction(trx);
    }
 
@@ -1099,7 +1283,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
    push_transaction(trx);
    }
 
@@ -1113,7 +1297,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
    push_transaction(trx);
    }
 
@@ -1127,10 +1311,10 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //should fail, a check to make sure assert() in wasm is being evaluated correctly
-   BOOST_CHECK_THROW(push_transaction(trx), assert_exception);
+   BOOST_CHECK_THROW(push_transaction(trx), eosio_assert_message_exception);
    }
 
    produce_blocks(1);
@@ -1143,7 +1327,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //should fail, this element index (5) does not exist
    BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
@@ -1159,7 +1343,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //should fail, this element index is out of range
    BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
@@ -1179,7 +1363,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
    push_transaction(trx);
    }
 
@@ -1192,7 +1376,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
    push_transaction(trx);
    }
    set_code(N(tbl), table_checker_small_wast);
@@ -1206,7 +1390,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
    trx.actions.push_back(act);
    set_transaction_headers(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //an element that is out of range and has no mmap access permission either (should be a trapped segv)
    BOOST_CHECK_EXCEPTION(push_transaction(trx), eosio::chain::wasm_execution_error, [](const eosio::chain::wasm_execution_error &e) {return true;});
@@ -1306,7 +1490,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack_3, TESTER ) try {
    trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(stackz), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(stackz), "active" ), control->get_chain_id());
    push_transaction(trx);
    }
 } FC_LOG_AND_RETHROW()
@@ -1368,7 +1552,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack_6, TESTER ) try {
    trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-   trx.sign(get_private_key( N(stackz), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(stackz), "active" ), control->get_chain_id());
    push_transaction(trx);
    }
 } FC_LOG_AND_RETHROW()
@@ -1443,6 +1627,12 @@ BOOST_FIXTURE_TEST_CASE( apply_export_and_signature, TESTER ) try {
    BOOST_CHECK_THROW(set_code(N(bbb), no_apply_wast), fc::exception);
    produce_blocks(1);
 
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_2_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_3_wast), fc::exception);
+   produce_blocks(1);
+
    BOOST_CHECK_THROW(set_code(N(bbb), apply_wrong_signature_wast), fc::exception);
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
@@ -1481,8 +1671,193 @@ BOOST_FIXTURE_TEST_CASE( protect_injected, TESTER ) try {
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( mem_growth_memset, TESTER ) try {
+   produce_blocks(2);
 
-#warning restore net_usage_tests
+   create_accounts( {N(grower)} );
+   produce_block();
+
+   action act;
+   act.account = N(grower);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(grower),config::active_name}};
+
+   set_code(N(grower), memory_growth_memset_store);
+   {
+      signed_transaction trx;
+      trx.actions.push_back(act);
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(grower), "active" ), control->get_chain_id());
+      push_transaction(trx);
+   }
+
+   produce_blocks(1);
+   set_code(N(grower), memory_growth_memset_test);
+   {
+      signed_transaction trx;
+      trx.actions.push_back(act);
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(grower), "active" ), control->get_chain_id());
+      push_transaction(trx);
+   }
+} FC_LOG_AND_RETHROW()
+
+INCBIN(fuzz1, "fuzz1.wasm");
+INCBIN(fuzz2, "fuzz2.wasm");
+INCBIN(fuzz3, "fuzz3.wasm");
+INCBIN(fuzz4, "fuzz4.wasm");
+INCBIN(fuzz5, "fuzz5.wasm");
+INCBIN(fuzz6, "fuzz6.wasm");
+INCBIN(fuzz7, "fuzz7.wasm");
+INCBIN(fuzz8, "fuzz8.wasm");
+INCBIN(fuzz9, "fuzz9.wasm");
+INCBIN(fuzz10, "fuzz10.wasm");
+INCBIN(fuzz11, "fuzz11.wasm");
+INCBIN(fuzz12, "fuzz12.wasm");
+INCBIN(fuzz13, "fuzz13.wasm");
+INCBIN(fuzz14, "fuzz14.wasm");
+INCBIN(fuzz15, "fuzz15.wasm");
+//INCBIN(fuzz13, "fuzz13.wasm");
+INCBIN(big_allocation, "big_allocation.wasm");
+INCBIN(crash_section_size_too_big, "crash_section_size_too_big.wasm");
+INCBIN(leak_no_destructor, "leak_no_destructor.wasm");
+INCBIN(leak_readExports, "leak_readExports.wasm");
+INCBIN(leak_readFunctions, "leak_readFunctions.wasm");
+INCBIN(leak_readFunctions_2, "leak_readFunctions_2.wasm");
+INCBIN(leak_readFunctions_3, "leak_readFunctions_3.wasm");
+INCBIN(leak_readGlobals, "leak_readGlobals.wasm");
+INCBIN(leak_readImports, "leak_readImports.wasm");
+INCBIN(leak_wasm_binary_cpp_L1249, "leak_wasm_binary_cpp_L1249.wasm");
+INCBIN(readFunctions_slowness_out_of_memory, "readFunctions_slowness_out_of_memory.wasm");
+
+BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(fuzzy)} );
+   produce_block();
+
+   {
+      vector<uint8_t> wasm(gfuzz1Data, gfuzz1Data + gfuzz1Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz2Data, gfuzz2Data + gfuzz2Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz3Data, gfuzz3Data + gfuzz3Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz4Data, gfuzz4Data + gfuzz4Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz5Data, gfuzz5Data + gfuzz5Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz6Data, gfuzz6Data + gfuzz6Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz7Data, gfuzz7Data + gfuzz7Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz8Data, gfuzz8Data + gfuzz8Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz9Data, gfuzz9Data + gfuzz9Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz10Data, gfuzz10Data + gfuzz10Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz11Data, gfuzz11Data + gfuzz11Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz12Data, gfuzz12Data + gfuzz12Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   {
+      vector<uint8_t> wasm(gfuzz14Data, gfuzz14Data + gfuzz14Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+      {
+      vector<uint8_t> wasm(gfuzz15Data, gfuzz15Data + gfuzz15Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+   }
+   /*  TODO: update wasm to have apply(...) then call, claim is that this
+    *  takes 1.6 seconds under wavm...
+   {
+      auto start = fc::time_point::now();
+      vector<uint8_t> wasm(gfuzz13Data, gfuzz13Data + gfuzz13Size);
+      set_code(N(fuzzy), wasm);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), fc::exception);
+      auto end = fc::time_point::now();
+      edump((end-start));
+   }
+   */
+
+   {
+      vector<uint8_t> wasm(gbig_allocationData, gbig_allocationData + gbig_allocationSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gcrash_section_size_too_bigData, gcrash_section_size_too_bigData + gcrash_section_size_too_bigSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_no_destructorData, gleak_no_destructorData + gleak_no_destructorSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readExportsData, gleak_readExportsData + gleak_readExportsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctionsData, gleak_readFunctionsData + gleak_readFunctionsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctions_2Data, gleak_readFunctions_2Data + gleak_readFunctions_2Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readFunctions_3Data, gleak_readFunctions_3Data + gleak_readFunctions_3Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readGlobalsData, gleak_readGlobalsData + gleak_readGlobalsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_readImportsData, gleak_readImportsData + gleak_readImportsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gleak_wasm_binary_cpp_L1249Data, gleak_wasm_binary_cpp_L1249Data + gleak_wasm_binary_cpp_L1249Size);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(greadFunctions_slowness_out_of_memoryData, greadFunctions_slowness_out_of_memoryData + greadFunctions_slowness_out_of_memorySize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
+
+// TODO: restore net_usage_tests
 #if 0
 BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
    int count = 0;
@@ -1517,7 +1892,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
                               });
       set_transaction_headers(trx);
       if (max_net_usage) trx.max_net_usage_words = max_net_usage;
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
       try {
          packed_transaction ptrx(trx);
          push_transaction(ptrx);
@@ -1569,7 +1944,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
                                  .code       = bytes(wasm.begin(), wasm.end())
                               });
       set_transaction_headers(trx);
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( account, "active" ), control->get_chain_id()  );
       try {
          packed_transaction ptrx(trx);
          push_transaction(ptrx );

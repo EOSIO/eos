@@ -5,7 +5,7 @@
 
 	MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
 
-	CPU_SPEED=$(bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^6) / 10")
+	CPU_SPEED=$(bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^8) / 10")
 	CPU_CORE=$( sysctl -in machdep.cpu.core_count )
 
 	DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
@@ -78,6 +78,8 @@
 				then
 					echo "Unable to install homebrew at this time. Exiting now."
 					exit 1;
+				else
+					BREW=$( command -v brew )
 				fi
 				break;;
 				[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
@@ -127,7 +129,7 @@
 		DEP=$DEP"python@3 "
 		DISPLAY="${DISPLAY}${COUNT}. Python 3\\n\\t"
 		printf "\\t\\t python3 ${bldred}NOT${txtrst} found.\\n"
-		(( DCOUNT++ ))
+		(( COUNT++ ))
 	else
 		printf "\\t\\t Python3 found\\n"
 	fi
@@ -151,13 +153,13 @@
 						exit 1;
 					fi
 					printf "\\tInstalling Dependencies.\\n"
-					if ! "${BREW}" install --force "${DEP}"
+					if ! "${BREW}" install --force ${DEP}
 					then
 						printf "\\tHomebrew exited with the above errors.\\n"
 						printf "\\tExiting now.\\n\\n"
 						exit 1;
 					fi
-					if ! "${BREW}" unlink "{DEP}" && "${BREW}" link --force "${DEP}"
+					if ! "${BREW}" unlink {DEP} && "${BREW}" link --force ${DEP}
 					then
 						printf "\\tHomebrew exited with the above errors.\\n"
 						printf "\\tExiting now.\\n\\n"
@@ -175,19 +177,18 @@
 		
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep "#define BOOST_VERSION" "/usr/local/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
-	if [ "${BVERSION}" != "106600" ]; then
+	if [ "${BVERSION}" != "106700" ]; then
 		if [ ! -z "${BVERSION}" ]; then
 			printf "\\tFound Boost Version %s.\\n" "${BVERSION}"
-			printf "\\tEOS.IO requires Boost version 1.66.\\n"
-			printf "\\tWould you like to uninstall version %s and install Boost version 1.66.\\n" "${BVERSION}"
+			printf "\\tEOS.IO requires Boost version 1.67.\\n"
+			printf "\\tWould you like to uninstall version %s and install Boost version 1.67.\\n" "${BVERSION}"
 			select yn in "Yes" "No"; do
 				case $yn in
 					[Yy]* )
-						if brew list | grep "boost"
+						if "${BREW}" list | grep "boost"
 						then 
-							printf "\\tUnlinking Boost Version %s.\\n" "${BVERSION}"
-							printff "\\tunlinking boost %s\\n" "${BVERSION}"				
-							if ! "${BREW}" unlink boost
+							printf "\\tUninstalling Boost Version %s.\\n" "${BVERSION}"
+							if ! "${BREW}" uninstall --force boost
 							then
 								printf "\\tUnable to remove boost libraries at this time. 0\\n"
 								printf "\\tExiting now.\\n\\n"
@@ -195,13 +196,13 @@
 							fi
 						else
 							printf "\\tRemoving Boost Version %s.\\n" "${BVERSION}"
-							if ! sudo rm -rf "${BOOST_ROOT}/include/boost"
+							if ! sudo rm -rf "/usr/local/include/boost"
 							then
 								printf "\\tUnable to remove boost libraries at this time. 1\\n"
 								printf "\\tExiting now.\\n\\n"
 								exit 1;
 							fi
-							if ! sudo rm -rf "${BOOST_ROOT}/lib/libboost*"
+							if ! sudo rm -rf /usr/local/lib/libboost*
 							then
 								printf "\\tUnable to remove boost libraries at this time. 2\\n"
 								printf "\\tExiting now.\\n\\n"
@@ -215,31 +216,23 @@
 			done
 		fi
 		printf "\\tInstalling boost libraries.\\n"
-		if [ ! -d "/usr/local/Cellar/boost/1.66.0" ]; then
-			if ! brew install "https://raw.githubusercontent.com/Homebrew/homebrew-core/76a83d798d76aa43459ceb145b721ba4a16a54a6/Formula/boost.rb"
+		if ! "${BREW}" install boost
+		then
+			printf "\\tUnable to install boost 1.67 libraries at this time. 0\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if [ -d "$BUILD_DIR" ]; then
+			if ! rm -rf "$BUILD_DIR"
 			then
-				printf "\\tUnable to install boost 1.66 libraries at this time. 0\\n"
-				printf "\\tExiting now.\\n\\n"
-				exit 1;
-			fi
-			printf "\\tPinning boost libraries.\\n"
-			if ! brew pin boost
-			then
-				printf "\\tUnable to pin boost libraries at this time. 2\\n"
-				printf "\\tExiting now.\\n\\n"
-				exit 1;
-			fi
-		else
-			if ! brew switch boost 1.66.0
-			then
-				printf "\\tUnable to swtich boost libraries to 1.66.0 at this time. 1\\n"
-				printf "\\tExiting now.\\n\\n"
-				exit;
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "$BUILD_DIR" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
 			fi
 		fi
-		printf "\\tBoost 1.66.0 successfully installed @ /usr/local.\\n"
+		printf "\\tBoost 1.67.0 successfully installed @ /usr/local.\\n"
 	else
-		printf "\\tBoost 1.66.0 found at /usr/local.\\n"
+		printf "\\tBoost 1.67.0 found at /usr/local.\\n"
 	fi
 
 	printf "\\n\\tChecking MongoDB C++ driver installation.\\n"

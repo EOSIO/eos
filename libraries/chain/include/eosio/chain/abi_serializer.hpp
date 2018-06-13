@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
@@ -29,6 +29,7 @@ struct abi_serializer {
    map<type_name, struct_def> structs;
    map<name,type_name>        actions;
    map<name,type_name>        tables;
+   map<uint64_t, string>      error_messages;
 
    typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
    typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
@@ -36,7 +37,6 @@ struct abi_serializer {
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
 
-   bool has_cycle(const vector<pair<string, string>>& sedges)const;
    void validate()const;
 
    type_name resolve_type(const type_name& t)const;
@@ -53,6 +53,8 @@ struct abi_serializer {
 
    type_name get_action_type(name action)const;
    type_name get_table_type(name action)const;
+
+   optional<string>  get_error_message( uint64_t error_code )const;
 
    fc::variant binary_to_variant(const type_name& type, const bytes& binary)const;
    bytes       variant_to_binary(const type_name& type, const fc::variant& var)const;
@@ -97,8 +99,10 @@ namespace impl {
       return std::is_base_of<transaction, T>::value ||
              std::is_same<T, packed_transaction>::value ||
              std::is_same<T, transaction_trace>::value ||
+             std::is_same<T, transaction_receipt>::value ||
              std::is_same<T, action_trace>::value ||
              std::is_same<T, signed_transaction>::value ||
+             std::is_same<T, signed_block>::value ||
              std::is_same<T, action>::value;
    }
 
@@ -187,10 +191,28 @@ namespace impl {
          mvo(name, std::move(obj_mvo["_"]));
       }
 
+      template<typename Resolver>
+      struct add_static_variant
+      {
+         mutable_variant_object& obj_mvo;
+         Resolver& resolver;
+         add_static_variant( mutable_variant_object& o, Resolver& r)
+               :obj_mvo(o), resolver(r){}
+
+         typedef void result_type;
+         template<typename T> void operator()( T& v )const
+         {
+            add(obj_mvo, "_", v, resolver);
+         }
+      };
+
       template<typename Resolver, typename... Args>
       static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver )
       {
-         //TODO: implement deserialization for static_variant
+         mutable_variant_object obj_mvo;
+         add_static_variant<Resolver> adder(obj_mvo, resolver);
+         v.visit(adder);
+         mvo(name, std::move(obj_mvo["_"]));
       }
 
       /**
@@ -210,8 +232,12 @@ namespace impl {
          auto abi = resolver(act.account);
          if (abi.valid()) {
             auto type = abi->get_action_type(act.name);
-            mvo("data", abi->binary_to_variant(type, act.data));
-            mvo("hex_data", act.data);
+            if (!type.empty()) {
+               mvo("data", abi->binary_to_variant(type, act.data));
+               mvo("hex_data", act.data);
+            } else {
+               mvo("data", act.data);
+            }
          } else {
             mvo("data", act.data);
          }
@@ -248,12 +274,14 @@ namespace impl {
       template<typename Resolver>
       static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver) {
          mutable_variant_object mvo;
+         auto trx = ptrx.get_transaction();
+         mvo("id", trx.id());
          mvo("signatures", ptrx.signatures);
          mvo("compression", ptrx.compression);
          mvo("packed_context_free_data", ptrx.packed_context_free_data);
          mvo("context_free_data", ptrx.get_context_free_data());
          mvo("packed_trx", ptrx.packed_trx);
-         add(mvo, "transaction", ptrx.get_transaction(), resolver);
+         add(mvo, "transaction", trx, resolver);
 
          out(name, std::move(mvo));
       }
@@ -361,20 +389,25 @@ namespace impl {
             from_variant(vo["authorization"], act.authorization);
          }
 
+         bool valid_empty_data = false;
          if( vo.contains( "data" ) ) {
             const auto& data = vo["data"];
             if( data.is_string() ) {
                from_variant(data, act.data);
+               valid_empty_data = act.data.empty();
             } else if ( data.is_object() ) {
                auto abi = resolver(act.account);
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
-                  act.data = std::move(abi->variant_to_binary(type, data));
+                  if (!type.empty()) {
+                     act.data = std::move( abi->variant_to_binary( type, data ));
+                     valid_empty_data = act.data.empty();
+                  }
                }
             }
          }
 
-         if (act.data.empty()) {
+         if( !valid_empty_data && act.data.empty() ) {
             if( vo.contains( "hex_data" ) ) {
                const auto& data = vo["hex_data"];
                if( data.is_string() ) {
@@ -383,7 +416,7 @@ namespace impl {
             }
          }
 
-         EOS_ASSERT(!act.data.empty(), packed_transaction_type_exception,
+         EOS_ASSERT(valid_empty_data || !act.data.empty(), packed_transaction_type_exception,
                     "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
       }
 
@@ -430,12 +463,12 @@ namespace impl {
     * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
     */
    template<typename T, typename Resolver>
-   class abi_from_variant_visitor
+   class abi_from_variant_visitor : reflector_verifier_visitor<T>
    {
       public:
          abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver )
-         :_vo(_vo)
-         ,_val(v)
+         : reflector_verifier_visitor<T>(v)
+         ,_vo(_vo)
          ,_resolver(_resolver)
          {}
 
@@ -451,12 +484,11 @@ namespace impl {
          {
             auto itr = _vo.find(name);
             if( itr != _vo.end() )
-               abi_from_variant::extract( itr->value(), _val.*member, _resolver );
+               abi_from_variant::extract( itr->value(), this->obj.*member, _resolver );
          }
 
       private:
          const variant_object& _vo;
-         T& _val;
          Resolver _resolver;
    };
 
