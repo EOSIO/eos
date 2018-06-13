@@ -879,6 +879,113 @@ BOOST_FIXTURE_TEST_CASE( imports, TESTER ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(nested)} );
+   produce_block();
+
+   // nested loops
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << ")";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << ")";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+
+   // nested blocks
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << ")";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << ")";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+   // nested ifs
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "))";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "))";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+   // mixed nested
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 223; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 800; ++i)
+         ss << ")";
+      for(unsigned int i = 0; i < 223; ++i)
+         ss << "))";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 224; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 800; ++i)
+         ss << ")";
+      for(unsigned int i = 0; i < 224; ++i)
+         ss << "))";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+
+} FC_LOG_AND_RETHROW()
+
+
 BOOST_FIXTURE_TEST_CASE( lotso_globals, TESTER ) try {
    produce_blocks(2);
 
@@ -1518,6 +1625,12 @@ BOOST_FIXTURE_TEST_CASE( apply_export_and_signature, TESTER ) try {
    produce_block();
 
    BOOST_CHECK_THROW(set_code(N(bbb), no_apply_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_2_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_3_wast), fc::exception);
    produce_blocks(1);
 
    BOOST_CHECK_THROW(set_code(N(bbb), apply_wrong_signature_wast), fc::exception);

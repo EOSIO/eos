@@ -21,6 +21,8 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <boost/signals2/connection.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -138,6 +140,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Contract account added to contract whitelist (may specify multiple times)")
          ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Contract account added to contract blacklist (may specify multiple times)")
+         ("action-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Action (in the form code::action) added to action blacklist (may specify multiple times)")
          ;
 
 // TODO: rate limiting
@@ -215,6 +219,18 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    LOAD_VALUE_SET(options, "actor-blacklist", my->chain_config->actor_blacklist);
    LOAD_VALUE_SET(options, "contract-whitelist", my->chain_config->contract_whitelist);
    LOAD_VALUE_SET(options, "contract-blacklist", my->chain_config->contract_blacklist);
+
+   if( options.count("action-blacklist") ) {
+      const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();
+      auto& list = my->chain_config->action_blacklist;
+      for( const auto& a : acts ) {
+         auto pos = a.find("::");
+         FC_ASSERT( pos != std::string::npos, "Invalid entry in action-blacklist: '${a}'", ("a", a) );
+         account_name code(a.substr(0, pos));
+         action_name  act(a.substr(pos+2));
+         list.emplace( code.value, act.value );
+      }
+   }
 
    if( options.count("blocks-dir") )
    {
@@ -586,6 +602,35 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
+template<>
+uint64_t convert_to_type(const string& str, const string& desc) {
+   uint64_t value = 0;
+   try {
+      value = boost::lexical_cast<uint64_t>(str.c_str(), str.size());
+   } catch( ... ) {
+      try {
+         auto trimmed_str = str;
+         boost::trim(trimmed_str);
+         name s(trimmed_str);
+         value = s.value;
+      } catch( ... ) {
+         try {
+            auto symb = eosio::chain::symbol::from_string(str);
+            value = symb.value();
+         } catch( ... ) {
+            try {
+               value = ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
+            } catch( ... ) {
+               FC_ASSERT( false, "Could not convert ${desc} string '${str}' to any of the following: "
+                                 "uint64_t, valid name, or valid symbol (with or without the precision)",
+                          ("desc", desc)("str", str));
+            }
+         }
+      }
+   }
+   return value;
+}
+
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
@@ -924,6 +969,9 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& d = db.db();
    const auto& rm = db.get_resource_limits_manager();
 
+   result.head_block_num  = db.head_block_num();
+   result.head_block_time = db.head_block_time();
+
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
 
    const auto& a = db.get_account(result.account_name);
@@ -979,7 +1027,18 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
+            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
+         }
+      }
+
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.refund_request = abis.binary_to_variant( "refund_request", data );
          }
       }
 

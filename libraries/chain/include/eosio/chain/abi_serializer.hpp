@@ -389,22 +389,25 @@ namespace impl {
             from_variant(vo["authorization"], act.authorization);
          }
 
+         bool valid_empty_data = false;
          if( vo.contains( "data" ) ) {
             const auto& data = vo["data"];
             if( data.is_string() ) {
                from_variant(data, act.data);
+               valid_empty_data = act.data.empty();
             } else if ( data.is_object() ) {
                auto abi = resolver(act.account);
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
                      act.data = std::move( abi->variant_to_binary( type, data ));
+                     valid_empty_data = act.data.empty();
                   }
                }
             }
          }
 
-         if (act.data.empty()) {
+         if( !valid_empty_data && act.data.empty() ) {
             if( vo.contains( "hex_data" ) ) {
                const auto& data = vo["hex_data"];
                if( data.is_string() ) {
@@ -413,7 +416,7 @@ namespace impl {
             }
          }
 
-         EOS_ASSERT(!act.data.empty(), packed_transaction_type_exception,
+         EOS_ASSERT(valid_empty_data || !act.data.empty(), packed_transaction_type_exception,
                     "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
       }
 
