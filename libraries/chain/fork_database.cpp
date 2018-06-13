@@ -90,8 +90,6 @@ namespace eosio { namespace chain {
          fc::raw::pack( out, my->head->id );
       else
          fc::raw::pack( out, block_id_type() );
-      idump((num_blocks_in_fork_db));
-
 
       /// we don't normally indicate the head block as irreversible
       /// we cannot normally prune the lib if it is the head block because
