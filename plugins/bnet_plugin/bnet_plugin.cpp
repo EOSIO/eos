@@ -1519,9 +1519,6 @@ namespace eosio {
             }
             ds.skip(size); //move to next extension
          }
-         //vector<string> params;
-         //boost::split( params, hi.meta, boost::is_any_of("\n"));
-         //_remote_request_irreversible_only = ( find( params.begin(), params.end(), "irreversible_only" ) != params.end() );
       }
 
       _last_sent_block_num   = hi.last_irr_block_num;
