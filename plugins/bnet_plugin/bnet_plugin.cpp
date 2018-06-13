@@ -1475,7 +1475,7 @@ namespace eosio {
 
       if ( hi.protocol_version >= "1.0.1" ) {
          vector<string> params;
-         boost::split( params, hi.meta, boost::is_any_of(","));
+         boost::split( params, hi.meta, boost::is_any_of("\n"));
          _remote_request_irreversible_only = ( find( params.begin(), params.end(), "irreversible_only" ) != params.end() );
       }
 
