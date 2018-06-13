@@ -71,6 +71,39 @@ namespace enumivo {
 
 } /// namespace enumivo
 
+namespace fc {
+   extern std::unordered_map<std::string,logger>& get_logger_map();
+}
+
+const fc::string logger_name("bnet_plugin");
+fc::logger plugin_logger;
+std::string peer_log_format;
+
+#define peer_dlog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( plugin_logger.is_enabled( fc::log_level::debug ) ) \
+      plugin_logger.log( FC_LOG_MESSAGE( debug, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_ilog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( plugin_logger.is_enabled( fc::log_level::info ) ) \
+      plugin_logger.log( FC_LOG_MESSAGE( info, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_wlog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( plugin_logger.is_enabled( fc::log_level::warn ) ) \
+      plugin_logger.log( FC_LOG_MESSAGE( warn, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_elog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( plugin_logger.is_enabled( fc::log_level::error ) ) \
+      plugin_logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
+  FC_MULTILINE_MACRO_END
+
+
 using enumivo::public_key_type;
 using enumivo::chain_id_type;
 using enumivo::block_id_type;
@@ -264,6 +297,8 @@ namespace enumivo {
         //boost::beast::multi_buffer                                  _in_buffer;
         boost::beast::flat_buffer                                     _in_buffer;
         flat_set<block_id_type>                                       _block_header_notices;
+        fc::optional<fc::variant_object>                              _logger_variant;
+
 
         int next_session_id()const {
            static int session_count = 0;
@@ -458,6 +493,7 @@ namespace enumivo {
               auto itr = _block_status.find( id );
               if( itr == _block_status.end() ) return;
               if( itr->received_from_peer ) {
+                 peer_elog(this, "bad signed_block_ptr : unknown" );
                  elog( "peer sent bad block #${b} ${i}, disconnect", ("b", b->block_num())("i",b->id())  );
                  _ws->next_layer().close();
               }
@@ -892,6 +928,7 @@ namespace enumivo {
         }
 
         void on( const block_notice& notice ) {
+           peer_ilog(this, "received block_notice");
            for( const auto& id : notice.block_ids ) {
               status( "received notice " + std::to_string( block_header::num_from_id(id) ) );
               mark_block_known_by_peer( id );
@@ -899,9 +936,11 @@ namespace enumivo {
         }
 
         void on( const hello& hi ) {
+           peer_ilog(this, "received hello");
            _recv_remote_hello     = true;
 
            if( hi.chain_id != app().get_plugin<chain_plugin>().get_chain_id() ) { // TODO: Quick fix in a rush. Maybe a better solution is needed.
+              peer_elog(this, "bad hello : wrong chain id");
               return do_goodbye( "disconnecting due to wrong chain id" );
            }
 
@@ -922,13 +961,16 @@ namespace enumivo {
 
 
         void on( const ping& p ) {
+           peer_ilog(this, "received ping");
            _last_recv_ping = p;
            _remote_lib     = p.lib;
            _last_recv_ping_time = fc::time_point::now();
         }
 
         void on( const pong& p ) {
+           peer_ilog(this, "received pong");
            if( p.code != _last_sent_ping.code ) {
+              peer_elog(this, "bad ping : invalid pong code");
               return do_goodbye( "invalid pong code" );
            }
            _last_sent_ping.code = fc::sha256();
@@ -946,7 +988,11 @@ namespace enumivo {
         void check_for_redundant_connection();
 
         void on( const signed_block_ptr& b ) {
-           FC_ASSERT( b, "bad block" );
+           peer_ilog(this, "received signed_block_ptr");
+           if (!b) {
+              peer_elog(this, "bad signed_block_ptr : null pointer");
+              FC_THROW("bad block" );
+           }
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
            auto id = b->id();
@@ -987,7 +1033,11 @@ namespace enumivo {
         }
 
         void on( const packed_transaction_ptr& p ) {
-           FC_ASSERT( p, "bad transaction" );
+           peer_ilog(this, "received packed_transaction_ptr");
+           if (!p) {
+              peer_elog(this, "bad packed_transaction_ptr : null pointer");
+              FC_THROW("bad transaction");
+           }
 
            auto id = p->id();
           // ilog( "recv trx ${n}", ("n", id) );
@@ -1013,6 +1063,29 @@ namespace enumivo {
 
         void status( const string& msg ) {
         //   ilog( "${remote_peer}: ${msg}", ("remote_peer",fc::variant(_remote_peer_id).as_string().substr(3,5) )("msg",msg) );
+        }
+
+        const fc::variant_object& get_logger_variant()  {
+           if (!_logger_variant) {
+              boost::system::error_code ec;
+              auto rep = _ws->lowest_layer().remote_endpoint(ec);
+              string ip = ec ? "<unknown>" : rep.address().to_string();
+              string port = ec ? "<unknown>" : std::to_string(rep.port());
+
+              auto lep = _ws->lowest_layer().local_endpoint(ec);
+              string lip = ec ? "<unknown>" : lep.address().to_string();
+              string lport = ec ? "<unknown>" : std::to_string(lep.port());
+
+              _logger_variant.emplace(fc::mutable_variant_object()
+                 ("_name", _peer)
+                 ("_id", _remote_peer_id)
+                 ("_ip", ip)
+                 ("_port", port)
+                 ("_lip", lip)
+                 ("_lport", lport)
+              );
+           }
+           return *_logger_variant;
         }
   };
 
@@ -1220,11 +1293,22 @@ namespace enumivo {
          ("bnet-threads", bpo::value<uint32_t>(), "the number of threads to use to process network messages" )
          ("bnet-connect", bpo::value<vector<string>>()->composing(), "remote endpoint of other node to connect to; Use multiple bnet-connect options as needed to compose a network" )
          ("bnet-no-trx", bpo::bool_switch()->default_value(false), "this peer will request no pending transactions from other nodes" )
+         ("bnet-peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
+           "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
+           "Available Variables:\n"
+           "   _name  \tself-reported name\n\n"
+           "   _id    \tself-reported ID (Public Key)\n\n"
+           "   _ip    \tremote IP address of peer\n\n"
+           "   _port  \tremote port number of peer\n\n"
+           "   _lip   \tlocal IP address connected to peer\n\n"
+           "   _lport \tlocal port number connected to peer\n\n")
          ;
    }
 
    void bnet_plugin::plugin_initialize(const variables_map& options) {
       ilog( "Initialize bnet plugin" );
+
+      peer_log_format = options.at("bnet-peer-log-format").as<string>();
 
       if( options.count( "bnet-endpoint" ) ) {
          auto ip_port = options.at("bnet-endpoint").as< string >();
@@ -1249,6 +1333,9 @@ namespace enumivo {
    }
 
    void bnet_plugin::plugin_startup() {
+      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
+         plugin_logger = fc::get_logger_map()[logger_name];
+
       wlog( "bnet startup " );
 
       my->_on_appled_trx_handle = app().get_channel<channels::accepted_transaction>()
