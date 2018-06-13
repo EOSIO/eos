@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+#from testUtils import Utils
 import testUtils
+from TestHelper import TestHelper
 
 import decimal
-import argparse
 import re
 
 ###############################################################
@@ -24,34 +25,8 @@ def cmdError(name, cmdCode=0, exitNow=False):
     else:
         Print(msg)
 
-LOCAL_HOST="localhost"
-DEFAULT_PORT=8888
-
-parser = argparse.ArgumentParser(add_help=False)
-# Override default help argument so that only --help (and not -h) can call help
-parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
-                    help=argparse._('show this help message and exit'))
-parser.add_argument("-h", "--host", type=str, help="%s host name" % (testUtils.Utils.EosServerName),
-                    default=LOCAL_HOST)
-parser.add_argument("-p", "--port", type=int, help="%s host port" % testUtils.Utils.EosServerName,
-                    default=DEFAULT_PORT)
-parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
-parser.add_argument("--defproducera_prvt_key", type=str, help="defproducera private key.")
-parser.add_argument("--defproducerb_prvt_key", type=str, help="defproducerb private key.")
-parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
-parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
-                    action='store_true')
-parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is already running.",
-                    action='store_true')
-parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
-                    action='store_true')
-parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
-parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
-parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
-
-args = parser.parse_args()
+args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
+                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"})
 server=args.host
 port=args.port
 debug=args.v
@@ -67,7 +42,7 @@ onlyBios=args.only_bios
 killAll=args.clean_run
 
 testUtils.Utils.Debug=debug
-localTest=True if server == LOCAL_HOST else False
+localTest=True if server == TestHelper.LOCAL_HOST else False
 cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=testUtils.WalletMgr(True)
 testSuccessful=False
@@ -792,27 +767,6 @@ try:
 
     testSuccessful=True
 finally:
-    if testSuccessful:
-        Print("Test succeeded.")
-    else:
-        Print("Test failed.")
-    if not testSuccessful and dumpErrorDetails:
-        cluster.dumpErrorDetails()
-        walletMgr.dumpErrorDetails()
-        Print("== Errors see above ==")
-
-    if killEosInstances:
-        Print("Shut down the cluster.")
-        cluster.killall(allInstances=killAll)
-        if testSuccessful and not keepLogs:
-            Print("Cleanup cluster data.")
-            cluster.cleanup()
-
-    if killWallet:
-        Print("Shut down the wallet.")
-        walletMgr.killall(allInstances=killAll)
-        if testSuccessful and not keepLogs:
-            Print("Cleanup wallet data.")
-            walletMgr.cleanup()
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)
