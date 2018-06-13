@@ -303,10 +303,6 @@ void soft_wallet::save_wallet_file( string wallet_filename )
    my->save_wallet_file( wallet_filename );
 }
 
-bool soft_wallet::is_lockable() const {
-   return true;
-}
-
 bool soft_wallet::is_locked() const
 {
    return my->is_locked();

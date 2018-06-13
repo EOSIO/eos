@@ -23,11 +23,6 @@ class wallet_api
        */
       virtual private_key_type get_private_key( public_key_type pubkey ) const = 0;
 
-      /**
-       * Checks if this wallet is lockable
-       */
-      virtual bool is_lockable() const = 0;
-
       /** Checks whether the wallet is locked (is unable to use its private keys).
        *
        * This state can be changed by calling \c lock() or \c unlock().
@@ -36,7 +31,7 @@ class wallet_api
        */
       virtual bool    is_locked() const = 0;
 
-      /** Locks the wallet immediately if it is_lockable()
+      /** Locks the wallet immediately
        * @ingroup Wallet Management
        */
       virtual void    lock() = 0;

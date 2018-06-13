@@ -138,7 +138,7 @@ flat_set<public_key_type> wallet_manager::get_public_keys() {
 void wallet_manager::lock_all() {
    // no call to check_timeout since we are locking all anyway
    for (auto& i : wallets) {
-      if (i.second->is_lockable() && !i.second->is_locked()) {
+      if (!i.second->is_locked()) {
          i.second->lock();
       }
    }

@@ -67,8 +67,6 @@ class soft_wallet final : public wallet_api
        */
       bool    is_new()const;
 
-      bool is_lockable() const override;
-
       /** Checks whether the wallet is locked (is unable to use its private keys).
        *
        * This state can be changed by calling \c lock() or \c unlock().
