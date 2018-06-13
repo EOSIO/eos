@@ -1774,6 +1774,7 @@ int main( int argc, char** argv ) {
    string sec_key_type;
    bool binary = false;
    uint32_t limit = 10;
+   uint32_t sec_index_position = 0;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
    getTable->add_option( "contract", code, localized("The contract who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
@@ -1784,6 +1785,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
    getTable->add_option( "-t,--seckeytype", sec_key_type, localized("Secondary key type(i64,i128,i256,float64,float128)"));
+   getTable->add_option( "-p,--secindexposition", sec_index_position, localized("Secondary index position, default to 0(first secondary index)"));
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
@@ -1795,6 +1797,7 @@ int main( int argc, char** argv ) {
                          ("upper_bound",upper)
                          ("limit",limit)
                          ("sec_key_type",sec_key_type)
+                         ("sec_index_position", sec_index_position)
                          );
 
       std::cout << fc::json::to_pretty_string(result)

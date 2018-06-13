@@ -214,6 +214,7 @@ public:
       string      upper_bound;
       uint32_t    limit = 10;
       string      sec_key_type;  // type of secondary key if table_key is not primary
+      uint32_t    sec_index_position = 0; // secondary index position, 0-first secondary index
     };
 
    struct get_table_rows_result {
@@ -307,17 +308,18 @@ public:
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto &secidx = d.get_index<IndexType, Scope>();
-         decltype(t_id->id) next_tid(t_id->id._id + 1);
-         auto lower = secidx.lower_bound(boost::make_tuple(t_id->id));
+         decltype(t_id->id) low_tid(t_id->id._id + p.sec_index_position);
+         decltype(t_id->id) next_tid(t_id->id._id + p.sec_index_position + 1);
+         auto lower = secidx.lower_bound(boost::make_tuple(low_tid));
          auto upper = secidx.lower_bound(boost::make_tuple(next_tid));
 
          if (p.lower_bound.size()) {
             SecKeyType lv = convert_to_type<SecKeyType>(p.lower_bound, "lower_bound");
-            lower = secidx.lower_bound(boost::make_tuple(t_id->id, conv(lv)));
+            lower = secidx.lower_bound(boost::make_tuple(low_tid, conv(lv)));
          }
          if (p.upper_bound.size()) {
             SecKeyType uv = convert_to_type<SecKeyType>(p.upper_bound, "upper_bound");
-            upper = secidx.lower_bound(boost::make_tuple(t_id->id, conv(uv)));
+            upper = secidx.lower_bound(boost::make_tuple(low_tid, conv(uv)));
          }
 
          vector<char> data;
@@ -484,7 +486,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(sec_key_type) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(sec_key_type)(sec_index_position) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
