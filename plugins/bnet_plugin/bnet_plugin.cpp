@@ -119,7 +119,7 @@ using std::vector;
 struct hello {
    public_key_type               peer_id;
    string                        network_version;
-   string                        meta;
+   string                        agent;
    string                        protocol_version = "1.0.1";
    string                        user;
    string                        password;
@@ -128,8 +128,13 @@ struct hello {
    uint32_t                      last_irr_block_num = 0;
    vector<block_id_type>         pending_block_ids;
 };
-FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(meta)(protocol_version)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
+FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(protocol_version)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
 
+struct hello_extension_irreversible_only {};
+
+FC_REFLECT( hello_extension_irreversible_only, BOOST_PP_SEQ_NIL )
+
+using hello_extension = fc::static_variant<hello_extension_irreversible_only>;
 
 /**
  * This message is sent upon successful speculative application of a transaction
@@ -486,9 +491,11 @@ namespace eosio {
               itr = idx.begin();
            }
 
-           auto bitr = _block_status.find(s->id);
-           if( _remote_request_irreversible_only && ( bitr == _block_status.end() || !bitr->received_from_peer ) ) {
-              _block_header_notices.insert(s->id);
+           if( _remote_request_irreversible_only ) {
+              auto bitr = _block_status.find(s->id);
+              if ( bitr == _block_status.end() || !bitr->received_from_peer ) {
+                 _block_header_notices.insert(s->id);
+              }
            }
 
            maybe_send_next_message();
@@ -611,12 +618,27 @@ namespace eosio {
 
 
         void send( const bnet_message& msg ) { try {
-           verify_strand_in_this_thread(_strand, __func__, __LINE__);
-
            auto ps = fc::raw::pack_size(msg);
            _out_buffer.resize(ps);
            fc::datastream<char*> ds(_out_buffer.data(), ps);
            fc::raw::pack(ds, msg);
+           send();
+        } FC_LOG_AND_RETHROW() }
+
+        template<class T>
+        void send( const bnet_message& msg, const T& ex ) { try {
+           auto ex_size = fc::raw::pack_size(ex);
+           auto ps = fc::raw::pack_size(msg) + fc::raw::pack_size(unsigned_int(ex_size)) + ex_size;
+           _out_buffer.resize(ps);
+           fc::datastream<char*> ds(_out_buffer.data(), ps);
+           fc::raw::pack( ds, msg );
+           fc::raw::pack( ds, unsigned_int(ex_size) );
+           fc::raw::pack( ds, ex );
+           send();
+        } FC_LOG_AND_RETHROW() }
+
+        void send() { try {
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
 
            _state = sending_state;
            _ws->async_write( boost::asio::buffer(_out_buffer),
@@ -878,8 +900,8 @@ namespace eosio {
 
               bnet_message msg;
               fc::raw::unpack( ds, msg );
+              on_message( msg, ds );
               _in_buffer.consume( ds.tellp() );
-              on_message( msg );
 
               wait_on_app();
               return;
@@ -907,11 +929,11 @@ namespace eosio {
             );
         }
 
-        void on_message( const bnet_message& msg ) {
+     void on_message( const bnet_message& msg, fc::datastream<const char*>& ds ) {
            try {
               switch( msg.which() ) {
                  case bnet_message::tag<hello>::value:
-                    on( msg.get<hello>() );
+                    on( msg.get<hello>(), ds );
                     break;
                  case bnet_message::tag<block_notice>::value:
                     on( msg.get<block_notice>() );
@@ -948,7 +970,7 @@ namespace eosio {
            }
         }
 
-        void on( const hello& hi );
+     void on( const hello& hi, fc::datastream<const char*>& ds );
 
         void on( const ping& p ) {
            peer_ilog(this, "received ping");
@@ -1436,12 +1458,13 @@ namespace eosio {
           hello_msg.pending_block_ids  = ids;
           hello_msg.request_transactions = self->_net_plugin->_request_trx;
           hello_msg.chain_id = app().get_plugin<chain_plugin>().get_chain_id(); // TODO: Quick fix in a rush. Maybe a better solution is needed.
-          if ( self->_net_plugin->_follow_irreversible ) {
-             hello_msg.meta = "irreversible_only";
-          }
 
           self->_local_lib = lib;
-          self->send( hello_msg );
+          if ( self->_net_plugin->_follow_irreversible ) {
+             self->send( hello_msg, hello_extension(hello_extension_irreversible_only()) );
+          } else {
+             self->send( hello_msg );
+          }
           self->_sent_remote_hello = true;
       });
    }
@@ -1456,7 +1479,7 @@ namespace eosio {
      });
    }
 
-   void session::on( const hello& hi ) {
+   void session::on( const hello& hi, fc::datastream<const char*>& ds ) {
       peer_ilog(this, "received hello");
       _recv_remote_hello     = true;
 
@@ -1474,9 +1497,31 @@ namespace eosio {
       }
 
       if ( hi.protocol_version >= "1.0.1" ) {
-         vector<string> params;
-         boost::split( params, hi.meta, boost::is_any_of("\n"));
-         _remote_request_irreversible_only = ( find( params.begin(), params.end(), "irreversible_only" ) != params.end() );
+         //optional extensions
+         while ( 0 < ds.remaining() ) {
+            unsigned_int size;
+            fc::raw::unpack( ds, size ); // next extension size
+            auto ex_start = ds.pos();
+            fc::datastream<const char*> dsw( ex_start, size );
+            unsigned_int wich;
+            fc::raw::unpack( dsw, wich );
+            hello_extension ex;
+            if ( wich < ex.count() ) { //know extension
+               fc::datastream<const char*> dsx( ex_start, size ); //unpack needs to read static_variant _tag again
+               fc::raw::unpack( dsx, ex );
+               if ( ex.which() == hello_extension::tag<hello_extension_irreversible_only>::value ) {
+                  _remote_request_irreversible_only = true;
+               }
+            } else {
+               //unsupported extension, we just ignore it
+               //another side does know our protocol version, i.e. it know which extensions we support
+               //so, it some extensions were crucial, another side will close the connection
+            }
+            ds.skip(size); //move to next extension
+         }
+         //vector<string> params;
+         //boost::split( params, hi.meta, boost::is_any_of("\n"));
+         //_remote_request_irreversible_only = ( find( params.begin(), params.end(), "irreversible_only" ) != params.end() );
       }
 
       _last_sent_block_num   = hi.last_irr_block_num;
