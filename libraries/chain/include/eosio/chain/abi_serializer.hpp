@@ -42,7 +42,9 @@ struct abi_serializer {
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
    bool      is_optional(const type_name& type)const;
-   bool      is_type(const type_name& type)const;
+   bool      is_type(const type_name& type)const {
+      return _is_type(type, 0);
+   }
    bool      is_builtin_type(const type_name& type)const;
    bool      is_integer(const type_name& type) const;
    int       get_integer_size(const type_name& type) const;
@@ -104,6 +106,8 @@ private:
    void        _variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, size_t recursion_depth)const;
 
    void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj, size_t recursion_depth)const;
+
+   bool _is_type(const type_name& type, size_t recursion_depth)const;
 };
 
 namespace impl {

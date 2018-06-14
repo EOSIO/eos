@@ -174,10 +174,11 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool abi_serializer::is_type(const type_name& rtype)const {
+   bool abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth)const {
+      if( ++recursion_depth > max_recursion_depth) return false;
       auto type = fundamental_type(rtype);
       if( built_in_types.find(type) != built_in_types.end() ) return true;
-      if( typedefs.find(type) != typedefs.end() ) return is_type(typedefs.find(type)->second);
+      if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth);
       if( structs.find(type) != structs.end() ) return true;
       return false;
    }
