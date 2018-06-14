@@ -478,6 +478,12 @@ mongodconf
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
+		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.9.3"
+		then
+			printf "\\n\\tUnable to remove  directory %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
 		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 \
 		"https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz" )
 		if [ "${STATUS}" -ne 200 ]; then
@@ -531,6 +537,12 @@ mongodconf
 		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.9.3"
 		then
 			printf "\\n\\tUnable to remove  directory %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! sudo rm -rf "${TEMP_DIR}/mongo-cxx-driver"
+		then
+			printf "\\n\\tUnable to remove directory %s/mongo-cxx-driver.\\n" "${TEMP_DIR}"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
