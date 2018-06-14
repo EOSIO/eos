@@ -21,14 +21,14 @@ from core_symbol import CORE_SYMBOL
 testState=testUtils.TestState("--mongodb")
 
 args = testState.parse_args()
-testState.cluster=testUtils.Cluster(walletd=True)
+testState.cluster=testUtils.Cluster(enuwalletd=True)
 testState.pnodes=4
 testState.totalNodes=4
 testState.totalProducers=testState.pnodes*21
 
 
 try:
-    testState.start(testUtils.Cluster(walletd=True))
+    testState.start(testUtils.Cluster(enuwalletd=True))
 
     testState.success()
 finally:
