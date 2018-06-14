@@ -34,11 +34,11 @@ RUN wget https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.
        --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=clang link=static install \
     && cd .. && rm -rf boost_1_67_0
 
-RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
-    && cd mongo-c-driver-1.9.3 \
+RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.10.1/mongo-c-driver-1.10.1.tar.gz -O - | tar -xz \
+    && cd mongo-c-driver-1.10.1 \
     && ./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local \
     && make -j$(nproc) install \
-    && cd .. && rm -rf mongo-c-driver-1.9.3
+    && cd .. && rm -rf mongo-c-driver-1.10.1
 
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git \
     && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git llvm/tools/clang \

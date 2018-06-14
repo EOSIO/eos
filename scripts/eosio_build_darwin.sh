@@ -258,31 +258,31 @@
 				exit 1;
 			fi
 		fi
-		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz)
+		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.10.1/mongo-c-driver-1.10.1.tar.gz)
 		if [ "${STATUS}" -ne 200 ]; then
-			if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
+			if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.1.tar.gz"
 			then
-				printf "\\tUnable to remove file %s/mongo-c-driver-1.9.3.tar.gz.\\n" "${TEMP_DIR}"
+				printf "\\tUnable to remove file %s/mongo-c-driver-1.10.1.tar.gz.\\n" "${TEMP_DIR}"
 			fi
 			printf "\\tUnable to download MongoDB C driver at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf mongo-c-driver-1.9.3.tar.gz
+		if ! tar xf mongo-c-driver-1.10.1.tar.gz
 		then
-			printf "\\tUnable to unarchive file mongo-c-driver-1.9.3.tar.gz.\\n"
+			printf "\\tUnable to unarchive file mongo-c-driver-1.10.1.tar.gz.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz"
+		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.1.tar.gz"
 		then
-			printf "\\tUnable to remove file mongo-c-driver-1.9.3.tar.gz.\\n"
+			printf "\\tUnable to remove file mongo-c-driver-1.10.1.tar.gz.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! cd mongo-c-driver-1.9.3
+		if ! cd mongo-c-driver-1.10.1
 		then
-			printf "\\tUnable to cd into directory %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to cd into directory %s/mongo-c-driver-1.10.1.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -310,9 +310,9 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.9.3"
+		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.10.1"
 		then
-			printf "\\tUnable to remove directory %s/mongo-c-driver-1.9.3.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to remove directory %s/mongo-c-driver-1.10.1.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
