@@ -196,7 +196,7 @@ void apply_context::execute_inline( action&& a ) {
    }
 
    // No need to check authorization if: replaying irreversible blocks; contract is privileged; or, contract is calling itself.
-   if( !control.skip_checks_onreplay() && !privileged && a.account != receiver ) {
+   if( !control.skip_auth_check() && !privileged && a.account != receiver ) {
       control.get_authorization_manager()
              .check_authorization( {a},
                                    {},
@@ -240,7 +240,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    auto delay = fc::seconds(trx.delay_sec);
 
-   if( !control.skip_checks_onreplay() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
+   if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
       if( payer != receiver ) {
          require_authorization(payer); /// uses payer's storage
       }
