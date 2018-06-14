@@ -2403,11 +2403,11 @@ class TestState(object):
     __ignoreArgs=set()
     walletMgr=None
     __testSuccessful=False
-    __killEosInstances=False
+    __killEnuInstances=False
     __killWallet=False
     __testSuccessful=False
-    WalletdName="keosd"
-    ClientName="cleos"
+    WalletdName="enuwallet"
+    ClientName="enucli"
     cluster=None
     __args=None
     localTest=False
@@ -2423,10 +2423,10 @@ class TestState(object):
         self.parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                                  help=argparse._('show this help message and exit'))
         if "--host" not in self.__ignoreArgs:
-            self.parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.EosServerName),
+            self.parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.EnuServerName),
                                      default=self.__LOCAL_HOST)
         if "--port" not in self.__ignoreArgs:
-            self.parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EosServerName,
+            self.parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EnuServerName,
                                      default=self.__DEFAULT_PORT)
         if "--prod-count" not in self.__ignoreArgs:
             self.parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
@@ -2434,7 +2434,7 @@ class TestState(object):
             self.parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
         if "--dump-error-details" not in self.__ignoreArgs:
             self.parser.add_argument("--dump-error-details",
-                                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                                     help="Upon error print etc/enumivo/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                                      action='store_true')
         if "--dont-launch" not in self.__ignoreArgs:
             self.parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is already running.",
@@ -2447,7 +2447,7 @@ class TestState(object):
         if "--leave-running" not in self.__ignoreArgs:
             self.parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
         if "--clean-run" not in self.__ignoreArgs:
-            self.parser.add_argument("--clean-run", help="Kill all enunode and kleos instances", action='store_true')
+            self.parser.add_argument("--clean-run", help="Kill all enunode and enuwallet instances", action='store_true')
 
     def parse_args(self):
         args = self.parser.parse_args()
@@ -2492,7 +2492,7 @@ class TestState(object):
             Utils.Print("Stand up cluster")
             if self.cluster.launch(prodCount=self.__prodCount, dontKill=self.__dontKill, pnodes=self.pnodes, totalNodes=self.totalNodes, totalProducers=self.totalProducers) is False:
                 Utils.cmdError("launcher")
-                Utils.errorExit("Failed to stand up eos cluster.")
+                Utils.errorExit("Failed to stand up enu cluster.")
 
     def end(self):
         if self.__testSuccessful:

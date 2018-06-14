@@ -1415,7 +1415,7 @@ void get_account( const string& accountName, bool json_format ) {
             staked = net_own;
 
             if( staked.get_symbol() != unstaking.get_symbol() ) {
-               // Core symbol of enunode responding to the request is different than core symbol built into cleos
+               // Core symbol of enunode responding to the request is different than core symbol built into enucli
                unstaking = asset( 0, staked.get_symbol() ); // Correct core symbol for unstaking asset.
             }
 

@@ -139,6 +139,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killEnuInstances, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEnuInstances, killEnuInstances, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

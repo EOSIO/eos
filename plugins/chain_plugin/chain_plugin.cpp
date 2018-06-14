@@ -1010,7 +1010,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       abi_serializer abis( abi );
       //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
 
-      const auto token_code = N(eosio.token);
+      const auto token_code = N(enu.token);
 
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
       if( t_id != nullptr ) {
