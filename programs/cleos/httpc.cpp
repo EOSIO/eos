@@ -25,11 +25,30 @@
 
 using boost::asio::ip::tcp;
 namespace eosio { namespace client { namespace http {
-   void do_connect(tcp::socket& sock, const std::string& server, const std::string& port) {
+
+   namespace detail {
+      class http_context_impl {
+         public:
+            boost::asio::io_service ios;
+      };
+
+      void http_context_deleter::operator()(http_context_impl* p) const {
+         delete p;
+      }
+   }
+
+   http_context create_http_context() {
+      return http_context(new detail::http_context_impl, detail::http_context_deleter());
+   }
+
+   void do_connect(tcp::socket& sock, const resolved_url& url) {
       // Get a list of endpoints corresponding to the server name.
-      tcp::resolver resolver(sock.get_io_service());
-      tcp::resolver::query query(server, port);
-      boost::asio::connect(sock, resolver.resolve(query));
+      vector<tcp::endpoint> endpoints;
+      endpoints.reserve(url.resolved_addresses.size());
+      for (const auto& addr: url.resolved_addresses) {
+         endpoints.emplace_back(boost::asio::ip::make_address(addr), url.resolved_port);
+      }
+      boost::asio::connect(sock, endpoints);
    }
 
    template<class T>
@@ -89,7 +108,7 @@ namespace eosio { namespace client { namespace http {
          res.scheme = match[2];
          res.server = match[4];
          res.port = match[6];
-         res.path_prefix = match[7];
+         res.path = match[7];
       }
       if(res.scheme != "http" && res.scheme != "https")
          FC_THROW("Unrecognized URL scheme (${s}) in URL \"${u}\"", ("s", res.scheme)("u", server_url));
@@ -97,8 +116,38 @@ namespace eosio { namespace client { namespace http {
          FC_THROW("No server parsed from URL \"${u}\"", ("u", server_url));
       if(res.port.empty())
          res.port = res.scheme == "http" ? "80" : "443";
-      boost::trim_right_if(res.path_prefix, boost::is_any_of("/"));
+      boost::trim_right_if(res.path, boost::is_any_of("/"));
       return res;
+   }
+
+   resolved_url resolve_url( const http_context& context, const parsed_url& url ) {
+      tcp::resolver resolver(context->ios);
+      boost::system::error_code ec;
+      auto result = resolver.resolve(url.server, url.port, ec);
+      if (ec) {
+         FC_THROW("Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
+      }
+
+      // non error results are guaranteed to return a non-empty range
+      vector<string> resolved_addresses;
+      resolved_addresses.reserve(result.size());
+      optional<uint16_t> resolved_port;
+      bool is_loopback = true;
+
+      for(const auto& r : result) {
+         const auto& addr = r.endpoint().address();
+         uint16_t port = r.endpoint().port();
+         resolved_addresses.emplace_back(addr.to_string());
+         is_loopback = is_loopback && addr.is_loopback();
+
+         if (resolved_port) {
+            FC_ASSERT(*resolved_port == port, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port",url.port));
+         } else {
+            resolved_port = port;
+         }
+      }
+
+      return resolved_url(url, std::move(resolved_addresses), *resolved_port, is_loopback);
    }
 
    fc::variant do_http_call( const connection_param& cp,
@@ -110,16 +159,11 @@ namespace eosio { namespace client { namespace http {
       postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata );
    }
 
-   boost::asio::io_service io_service;
-
-   const string& server_url = cp.url;
-   const string& path = cp.path;
-
-   auto url = parse_url( server_url );
+   const auto& url = cp.url;
 
    boost::asio::streambuf request;
    std::ostream request_stream(&request);
-   request_stream << "POST " << url.path_prefix + path << " HTTP/1.0\r\n";
+   request_stream << "POST " << url.path << " HTTP/1.0\r\n";
    request_stream << "Host: " << url.server << "\r\n";
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
@@ -145,8 +189,8 @@ namespace eosio { namespace client { namespace http {
    std::string re;
 
    if(url.scheme == "http") {
-      tcp::socket socket(io_service);
-      do_connect(socket, url.server, url.port);
+      tcp::socket socket(cp.context->ios);
+      do_connect(socket, url);
       re = do_txrx(socket, request, status_code);
    }
    else { //https
@@ -160,11 +204,12 @@ namespace eosio { namespace client { namespace http {
       ssl_context.set_default_verify_paths();
 #endif
 
-      boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(io_service, ssl_context);
+      boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
+      SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
       if(cp.verify_cert)
          socket.set_verify_mode(boost::asio::ssl::verify_peer);
 
-      do_connect(socket.next_layer(), url.server, url.port);
+      do_connect(socket.next_layer(), url);
       socket.handshake(boost::asio::ssl::stream_base::client);
       re = do_txrx(socket, request, status_code);
       //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
@@ -182,13 +227,13 @@ namespace eosio { namespace client { namespace http {
       return response_result;
    } else if( status_code == 404 ) {
       // Unknown endpoint
-      if (path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
+      if (url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
          throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
-      } else if (path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
+      } else if (url.path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
          throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
-      } else if (path.compare(0, account_history_func_base.size(), account_history_func_base) == 0) {
+      } else if (url.path.compare(0, account_history_func_base.size(), account_history_func_base) == 0) {
          throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
-      } else if (path.compare(0, net_func_base.size(), net_func_base) == 0) {
+      } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
          throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
       }
    } else {
