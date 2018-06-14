@@ -128,13 +128,11 @@ public:
       return optional<private_key_type>();
    }
 
-   optional<signed_transaction::sign_digest_functor> sign_digest( public_key_type public_key ) {
+   optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
       auto it = _keys.find(public_key);
       if( it == _keys.end() )
-         return optional<signed_transaction::sign_digest_functor>{};
-      return [priv_key = it->second](digest_type d) {
-         return priv_key.sign(d);
-      };
+         return optional<signature_type>{};
+      return it->second.sign(digest);
    }
 
    private_key_type get_private_key(const public_key_type& id)const
@@ -377,8 +375,8 @@ private_key_type soft_wallet::get_private_key( public_key_type pubkey )const
    return my->get_private_key( pubkey );
 }
 
-optional<signed_transaction::sign_digest_functor> soft_wallet::sign_digest( public_key_type public_key ) {
-   return my->sign_digest(public_key);
+optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+   return my->try_sign_digest(digest, public_key);
 }
 
 pair<public_key_type,private_key_type> soft_wallet::get_private_key_from_password( string account, string role, string password )const {

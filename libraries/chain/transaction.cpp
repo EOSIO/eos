@@ -119,11 +119,6 @@ const signature_type& signed_transaction::sign(const private_key_type& key, cons
    return signatures.back();
 }
 
-const signature_type& signed_transaction::sign(sign_digest_functor signature_request, const chain_id_type& chain_id) {
-   signatures.push_back(signature_request(sig_digest(chain_id, context_free_data)));
-   return signatures.back();
-}
-
 signature_type signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
    return key.sign(sig_digest(chain_id, context_free_data));
 }

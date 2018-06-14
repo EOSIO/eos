@@ -171,9 +171,9 @@ class soft_wallet final : public wallet_api
        */
       string create_key( string key_type ) override;
 
-      /* Returns a fuctor to sign a digest via the given public_key
+      /* Attempts to sign a digest via the given public_key
       */
-      optional<signed_transaction::sign_digest_functor> sign_digest( public_key_type public_key ) override;
+      optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) override;
 
       std::shared_ptr<detail::soft_wallet_impl> my;
       void encrypt_keys();

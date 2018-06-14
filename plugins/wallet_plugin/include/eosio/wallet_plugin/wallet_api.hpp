@@ -91,12 +91,9 @@ class wallet_api
        */
       virtual string create_key( string key_type ) = 0;
 
-      /** Returns a functor that can be used to sign a digest based on the given public key (provided the
-       *
-       * wallet can sign with that key)
-       * @param public_key the key type to create. May be empty to allow wallet to pick appropriate/"best" key type
+      /** Returns a signature given the digest and public_key, if this wallet can sign via that public key
        */
-      virtual optional<signed_transaction::sign_digest_functor> sign_digest( public_key_type public_key ) = 0;
+      virtual optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) = 0;
 };
 
 }}
