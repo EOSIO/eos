@@ -306,10 +306,11 @@ public:
       abi_serializer abis;
       abis.set_abi(abi);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-      if (t_id != nullptr) {
+      const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, (((uint64_t)p.table & 0xFFFFFFFFFFFFFFF0ULL) | (p.sec_index_position & 0x000000000000000FULL))));
+      if (t_id != nullptr && index_t_id != nullptr) {
          const auto &secidx = d.get_index<IndexType, Scope>();
-         decltype(t_id->id) low_tid(t_id->id._id + p.sec_index_position);
-         decltype(t_id->id) next_tid(t_id->id._id + p.sec_index_position + 1);
+         decltype(index_t_id->id) low_tid(index_t_id->id._id);
+         decltype(index_t_id->id) next_tid(index_t_id->id._id + 1);
          auto lower = secidx.lower_bound(boost::make_tuple(low_tid));
          auto upper = secidx.lower_bound(boost::make_tuple(next_tid));
 
