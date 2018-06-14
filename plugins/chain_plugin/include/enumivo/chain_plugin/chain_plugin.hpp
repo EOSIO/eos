@@ -100,10 +100,11 @@ public:
       uint32_t                   head_block_num = 0;
       fc::time_point             head_block_time;
 
-
       bool                       privileged = false;
       fc::time_point             last_code_update;
       fc::time_point             created;
+
+      optional<asset>            core_liquid_balance;
 
       int64_t                    ram_quota  = 0;
       int64_t                    net_weight = 0;
@@ -423,7 +424,7 @@ FC_REFLECT( enumivo::chain_apis::read_only::get_producers_result, (rows)(total_p
 
 FC_REFLECT( enumivo::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
-            (ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
+            (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
             (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info) )
 FC_REFLECT( enumivo::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( enumivo::chain_apis::read_only::get_abi_results, (account_name)(abi) )

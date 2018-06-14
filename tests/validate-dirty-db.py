@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import testUtils
+from TestHelper import TestHelper
 
-import argparse
 import random
 import subprocess
 import signal
@@ -18,17 +18,7 @@ def errorExit(msg="", errorCode=1):
     Print("ERROR:", msg)
     exit(errorCode)
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
-parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/enumivo/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
-                    action='store_true')
-parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
-                    action='store_true')
-parser.add_argument("--clean-run", help="Kill all enunode and enuwallet instances", action='store_true')
-
-args = parser.parse_args()
+args = TestHelper.parse_args({"--keep-logs","--dump-error-details","-v","--leave-running","--clean-run"})
 debug=args.v
 pnodes=1
 topo="mesh"
@@ -112,20 +102,6 @@ try:
 
     testSuccessful=True
 finally:
-    if testSuccessful:
-        Print("Test succeeded.")
-    else:
-        Print("Test failed.")
-
-    if not testSuccessful and dumpErrorDetails:
-        cluster.dumpErrorDetails()
-        Print("== Errors see above ==")
-
-    if killEnuInstances:
-        Print("Shut down the cluster.")
-        cluster.killall(allInstances=killAll)
-        if testSuccessful and not keepLogs:
-            Print("Cleanup cluster data.")
-            cluster.cleanup()
+    TestHelper.shutdown(cluster, None, testSuccessful, killEnuInstances, False, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)
