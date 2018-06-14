@@ -1232,7 +1232,7 @@ class WalletMgr(object):
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
             return False
 
-        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d" % (
+        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
