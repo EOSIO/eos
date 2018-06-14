@@ -2509,9 +2509,10 @@ namespace eosio {
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
             auto e_ptr = result.get<fc::exception_ptr>();
-            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value) {
                elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
                peer_elog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
+            }
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
