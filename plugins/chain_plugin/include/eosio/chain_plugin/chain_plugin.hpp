@@ -309,7 +309,7 @@ public:
 
          vector<char> data;
 
-         auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+         auto end = fc::time_point::now() + fc::microseconds(1000 * 100); /// 100ms max time TODO fix?
 
          unsigned int count = 0;
          auto itr = lower;
