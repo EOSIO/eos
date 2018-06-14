@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(wallet_test)
    using namespace eosio::utilities;
 
    wallet_data d;
-   wallet_api wallet(d);
+   soft_wallet wallet(d);
    BOOST_CHECK(wallet.is_locked());
 
    wallet.set_password("pass");
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(wallet_test)
    BOOST_CHECK(fc::exists("wallet_test.json"));
 
    wallet_data d2;
-   wallet_api wallet2(d2);
+   soft_wallet wallet2(d2);
 
    BOOST_CHECK(wallet2.is_locked());
    wallet2.load_wallet_file("wallet_test.json");
