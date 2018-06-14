@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    // key3 was not automatically imported
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key3)) == keys.cend());
 
-   wm.remove_key("test", key2);
+   wm.remove_key("test", pw, key2);
    BOOST_CHECK_EQUAL(1, wm.get_public_keys().size());
    keys = wm.list_keys("test", pw);
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) == keys.cend());
@@ -130,8 +130,9 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    BOOST_CHECK_EQUAL(2, wm.get_public_keys().size());
    keys = wm.list_keys("test", pw);
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) != keys.cend());
-   wm.remove_key("test", key3);
+   wm.remove_key("test", pw, key3);
    BOOST_CHECK_EQUAL(2, wm.get_public_keys().size());
+   BOOST_CHECK_THROW(wm.remove_key("test2", "PWnogood", key2), wallet_invalid_password_exception);
 
    wm.lock("test");
    BOOST_CHECK_THROW(wm.list_keys("test", pw), wallet_locked_exception);

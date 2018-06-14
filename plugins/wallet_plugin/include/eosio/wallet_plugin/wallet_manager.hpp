@@ -110,9 +110,10 @@ public:
    /// Removes a key from the specified wallet.
    /// Wallet must be opened and unlocked.
    /// @param name the name of the wallet to import into.
+   /// @param password the plaintext password returned from ::create.
    /// @param key the Public Key to remove, e.g. EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
-   /// @throws fc::exception if wallet not found or locked or key is not imported.
-   void remove_key(const std::string& name, const std::string& key);
+   /// @throws fc::exception if wallet not found or locked or key is not removed.
+   void remove_key(const std::string& name, const std::string& password, const std::string& key);
 
    /// Creates a key within the specified wallet.
    /// Wallet must be opened and unlocked

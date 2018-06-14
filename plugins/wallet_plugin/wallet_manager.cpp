@@ -184,7 +184,7 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
    w->import_key(wif_key);
 }
 
-void wallet_manager::remove_key(const std::string& name, const std::string& key) {
+void wallet_manager::remove_key(const std::string& name, const std::string& password, const std::string& key) {
    check_timeout();
    if (wallets.count(name) == 0) {
       EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
@@ -193,6 +193,7 @@ void wallet_manager::remove_key(const std::string& name, const std::string& key)
    if (w->is_locked()) {
       EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
+   w->check_password(password); //throws if bad password
    w->remove_key(key);
 }
 
