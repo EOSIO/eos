@@ -969,6 +969,9 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& d = db.db();
    const auto& rm = db.get_resource_limits_manager();
 
+   result.head_block_num  = db.head_block_num();
+   result.head_block_time = db.head_block_time();
+
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
 
    const auto& a = db.get_account(result.account_name);
@@ -1006,7 +1009,25 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );
       //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
+
+      const auto token_code = N(eosio.token);
+
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
+      if( t_id != nullptr ) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.find(boost::make_tuple( t_id->id, symbol().to_symbol_code() ));
+         if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
+            asset bal;
+            fc::datastream<const char *> ds(it->value.data(), it->value.size());
+            fc::raw::unpack(ds, bal);
+
+            if( bal.get_symbol().valid() && bal.get_symbol() == symbol() ) {
+               result.core_liquid_balance = bal;
+            }
+         }
+      }
+
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
@@ -1025,6 +1046,17 @@ read_only::get_account_results read_only::get_account( const get_account_params&
             vector<char> data;
             copy_inline_row(*it, data);
             result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
+         }
+      }
+
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         if ( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.refund_request = abis.binary_to_variant( "refund_request", data );
          }
       }
 
