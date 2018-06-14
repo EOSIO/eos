@@ -2185,7 +2185,7 @@ int main( int argc, char** argv ) {
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    unlockWallet->add_option( "--unlock-timeout", wallet_unlock_timeout, localized("The timeout for unlocked wallet in seconds"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
+      if( wallet_pw.size() == 0 && wallet_name != "SecureEnclave") {
          std::cout << localized("password: ");
          fc::set_console_echo(false);
          std::getline( std::cin, wallet_pw, '\n' );

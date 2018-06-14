@@ -19,7 +19,7 @@ namespace wallet {
 /// No const methods because timeout may cause lock_all() to be called.
 class wallet_manager {
 public:
-   wallet_manager() = default;
+   wallet_manager();
    wallet_manager(const wallet_manager&) = delete;
    wallet_manager(wallet_manager&&) = delete;
    wallet_manager& operator=(const wallet_manager&) = delete;

@@ -4,6 +4,7 @@
  */
 #include <eosio/wallet_plugin/wallet_manager.hpp>
 #include <eosio/wallet_plugin/wallet.hpp>
+#include <eosio/wallet_plugin/se_wallet.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/algorithm/string.hpp>
 namespace eosio {
@@ -22,6 +23,14 @@ bool valid_filename(const string& name) {
    if (name.empty()) return false;
    if (std::find_if(name.begin(), name.end(), !boost::algorithm::is_alnum() && !boost::algorithm::is_any_of("._-")) != name.end()) return false;
    return boost::filesystem::path(name).filename().string() == name;
+}
+
+wallet_manager::wallet_manager() {
+#ifdef __APPLE__
+   try {
+      wallets.emplace("SecureEnclave", std::make_unique<se_wallet>());
+   } catch(fc::exception& ) {}
+#endif
 }
 
 void wallet_manager::set_timeout(const std::chrono::seconds& t) {

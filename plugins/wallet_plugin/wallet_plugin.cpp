@@ -16,9 +16,7 @@ namespace eosio {
 
 static appbase::abstract_plugin& _wallet_plugin = app().register_plugin<wallet_plugin>();
 
-wallet_plugin::wallet_plugin()
-  : wallet_manager_ptr(new wallet_manager()) {
-}
+wallet_plugin::wallet_plugin() {}
 
 wallet_manager& wallet_plugin::get_wallet_manager() {
    return *wallet_manager_ptr;
@@ -39,6 +37,8 @@ void wallet_plugin::set_program_options(options_description& cli, options_descri
 
 void wallet_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing wallet plugin");
+
+   wallet_manager_ptr = std::make_unique<wallet_manager>();
 
    if (options.count("wallet-dir")) {
       auto dir = options.at("wallet-dir").as<boost::filesystem::path>();
