@@ -806,8 +806,9 @@ auto make_resolver(const Api *api) {
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
    signed_block_ptr block;
+   EOS_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters" );
    try {
-      block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
+      block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
       if (!block) {
          block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
       }
@@ -839,7 +840,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
       b = db.fetch_block_state_by_number(*block_num);
    } else {
       try {
-         b = db.fetch_block_state_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
+         b = db.fetch_block_state_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
       } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
    }
 
