@@ -2063,11 +2063,14 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    transfer( config::system_account_name, "dan", core_from_string( "10000.0000" ) );
    transfer( config::system_account_name, "sam", core_from_string( "10000.0000" ) );
    stake_with_transfer( config::system_account_name, "sam", core_from_string( "80000000.0000" ), core_from_string( "80000000.0000" ) );
+   stake_with_transfer( config::system_account_name, "dan", core_from_string( "80000000.0000" ), core_from_string( "80000000.0000" ) );
 
    regproducer( config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), vote( N(sam), { config::system_account_name } ) );
    // wait 14 days after min required amount has been staked
-   produce_block( fc::days(14) );
+   produce_block( fc::days(7) );
+   BOOST_REQUIRE_EQUAL( success(), vote( N(dan), { config::system_account_name } ) );
+   produce_block( fc::days(7) );
    produce_block();
 
    BOOST_REQUIRE_EXCEPTION( create_accounts_with_resources( { N(fail) }, N(dan) ), // dan shouldn't be able to create fail
