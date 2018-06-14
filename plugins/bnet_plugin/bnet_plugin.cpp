@@ -58,6 +58,8 @@
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 #include <eosio/chain/plugin_interface.hpp>
 
@@ -118,7 +120,7 @@ struct hello {
    public_key_type               peer_id;
    string                        network_version;
    string                        agent;
-   string                        protocol_version = "1.0.0";
+   string                        protocol_version = "1.0.1";
    string                        user;
    string                        password;
    chain_id_type                 chain_id;
@@ -128,6 +130,11 @@ struct hello {
 };
 FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(protocol_version)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
 
+struct hello_extension_irreversible_only {};
+
+FC_REFLECT( hello_extension_irreversible_only, BOOST_PP_SEQ_NIL )
+
+using hello_extension = fc::static_variant<hello_extension_irreversible_only>;
 
 /**
  * This message is sent upon successful speculative application of a transaction
@@ -264,6 +271,7 @@ namespace eosio {
         uint32_t           _remote_lib            = 0;
         block_id_type      _remote_lib_id;
         bool               _remote_request_trx    = false;
+        bool               _remote_request_irreversible_only = false;
 
         uint32_t           _last_sent_block_num   = 0;
         block_id_type      _last_sent_block_id; /// the id of the last block sent
@@ -482,6 +490,14 @@ namespace eosio {
               idx.erase(itr);
               itr = idx.begin();
            }
+
+           if( _remote_request_irreversible_only ) {
+              auto bitr = _block_status.find(s->id);
+              if ( bitr == _block_status.end() || !bitr->received_from_peer ) {
+                 _block_header_notices.insert(s->id);
+              }
+           }
+
            maybe_send_next_message();
         }
 
@@ -508,7 +524,7 @@ namespace eosio {
            if( fc::time_point::now() - s->block->timestamp  < fc::seconds(6) ) {
            //   ilog( "queue notice to peer that we have this block so hopefully they don't send it to us" );
               auto itr = _block_status.find(s->id);
-              if( itr == _block_status.end() || !itr->received_from_peer ) {
+              if( !_remote_request_irreversible_only && ( itr == _block_status.end() || !itr->received_from_peer ) ) {
                  _block_header_notices.insert(s->id);
               }
            }
@@ -602,12 +618,27 @@ namespace eosio {
 
 
         void send( const bnet_message& msg ) { try {
-           verify_strand_in_this_thread(_strand, __func__, __LINE__);
-
            auto ps = fc::raw::pack_size(msg);
            _out_buffer.resize(ps);
            fc::datastream<char*> ds(_out_buffer.data(), ps);
            fc::raw::pack(ds, msg);
+           send();
+        } FC_LOG_AND_RETHROW() }
+
+        template<class T>
+        void send( const bnet_message& msg, const T& ex ) { try {
+           auto ex_size = fc::raw::pack_size(ex);
+           auto ps = fc::raw::pack_size(msg) + fc::raw::pack_size(unsigned_int(ex_size)) + ex_size;
+           _out_buffer.resize(ps);
+           fc::datastream<char*> ds(_out_buffer.data(), ps);
+           fc::raw::pack( ds, msg );
+           fc::raw::pack( ds, unsigned_int(ex_size) );
+           fc::raw::pack( ds, ex );
+           send();
+        } FC_LOG_AND_RETHROW() }
+
+        void send() { try {
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
 
            _state = sending_state;
            _ws->async_write( boost::asio::buffer(_out_buffer),
@@ -806,6 +837,10 @@ namespace eosio {
          */
         bool send_next_block() {
 
+           if ( _remote_request_irreversible_only && _last_sent_block_id == _local_lib_id ) {
+              return false;
+           }
+
            if( _last_sent_block_id == _local_head_block_id ) /// we are caught up
               return false;
 
@@ -865,8 +900,8 @@ namespace eosio {
 
               bnet_message msg;
               fc::raw::unpack( ds, msg );
+              on_message( msg, ds );
               _in_buffer.consume( ds.tellp() );
-              on_message( msg );
 
               wait_on_app();
               return;
@@ -894,11 +929,11 @@ namespace eosio {
             );
         }
 
-        void on_message( const bnet_message& msg ) {
+     void on_message( const bnet_message& msg, fc::datastream<const char*>& ds ) {
            try {
               switch( msg.which() ) {
                  case bnet_message::tag<hello>::value:
-                    on( msg.get<hello>() );
+                    on( msg.get<hello>(), ds );
                     break;
                  case bnet_message::tag<block_notice>::value:
                     on( msg.get<block_notice>() );
@@ -935,30 +970,7 @@ namespace eosio {
            }
         }
 
-        void on( const hello& hi ) {
-           peer_ilog(this, "received hello");
-           _recv_remote_hello     = true;
-
-           if( hi.chain_id != app().get_plugin<chain_plugin>().get_chain_id() ) { // TODO: Quick fix in a rush. Maybe a better solution is needed.
-              peer_elog(this, "bad hello : wrong chain id");
-              return do_goodbye( "disconnecting due to wrong chain id" );
-           }
-
-           if( hi.peer_id == _local_peer_id ) {
-              return do_goodbye( "connected to self" );
-           }
-
-           _last_sent_block_num   = hi.last_irr_block_num;
-           _remote_request_trx    = hi.request_transactions;
-           _remote_peer_id        = hi.peer_id;
-           _remote_lib            = hi.last_irr_block_num;
-
-           for( const auto& id : hi.pending_block_ids )
-              mark_block_known_by_peer( id );
-
-           check_for_redundant_connection();
-        }
-
+     void on( const hello& hi, fc::datastream<const char*>& ds );
 
         void on( const ping& p ) {
            peer_ilog(this, "received ping");
@@ -1143,6 +1155,7 @@ namespace eosio {
          string                                                 _bnet_endpoint_address = "0.0.0.0";
          uint16_t                                               _bnet_endpoint_port = 4321;
          bool                                                   _request_trx = true;
+         bool                                                   _follow_irreversible = false;
 
          std::vector<std::string>                               _connect_to_peers; /// list of peers to connect to
          std::vector<std::thread>                               _socket_threads;
@@ -1290,6 +1303,7 @@ namespace eosio {
    void bnet_plugin::set_program_options(options_description& cli, options_description& cfg) {
       cfg.add_options()
          ("bnet-endpoint", bpo::value<string>()->default_value("0.0.0.0:4321"), "the endpoint upon which to listen for incoming connections" )
+         ("bnet-follow-irreversible", bpo::value<bool>()->default_value(false), "this peer will request only irreversible blocks from other nodes" )
          ("bnet-threads", bpo::value<uint32_t>(), "the number of threads to use to process network messages" )
          ("bnet-connect", bpo::value<vector<string>>()->composing(), "remote endpoint of other node to connect to; Use multiple bnet-connect options as needed to compose a network" )
          ("bnet-no-trx", bpo::bool_switch()->default_value(false), "this peer will request no pending transactions from other nodes" )
@@ -1318,8 +1332,12 @@ namespace eosio {
         auto host = ip_port.substr( 0, ip_port.find(':') );
         my->_bnet_endpoint_address = host;
         my->_bnet_endpoint_port = std::stoi( port );
-        idump((ip_port)(host)(port));
+        idump((ip_port)(host)(port)(my->_follow_irreversible));
       }
+      if ( options.count( "bnet-follow-irreversible" )) {
+         my->_follow_irreversible = options.at("bnet-follow-irreversible").as< bool >();
+      }
+
 
       if( options.count( "bnet-connect" ) ) {
          my->_connect_to_peers = options.at( "bnet-connect" ).as<vector<string>>();
@@ -1442,7 +1460,11 @@ namespace eosio {
           hello_msg.chain_id = app().get_plugin<chain_plugin>().get_chain_id(); // TODO: Quick fix in a rush. Maybe a better solution is needed.
 
           self->_local_lib = lib;
-          self->send( hello_msg );
+          if ( self->_net_plugin->_follow_irreversible ) {
+             self->send( hello_msg, hello_extension(hello_extension_irreversible_only()) );
+          } else {
+             self->send( hello_msg );
+          }
           self->_sent_remote_hello = true;
       });
    }
@@ -1455,6 +1477,60 @@ namespace eosio {
          }
        });
      });
+   }
+
+   void session::on( const hello& hi, fc::datastream<const char*>& ds ) {
+      peer_ilog(this, "received hello");
+      _recv_remote_hello     = true;
+
+      if( hi.chain_id != app().get_plugin<chain_plugin>().get_chain_id() ) { // TODO: Quick fix in a rush. Maybe a better solution is needed.
+         peer_elog(this, "bad hello : wrong chain id");
+         return do_goodbye( "disconnecting due to wrong chain id" );
+      }
+
+      if( hi.peer_id == _local_peer_id ) {
+         return do_goodbye( "connected to self" );
+      }
+
+      if ( _net_plugin->_follow_irreversible && hi.protocol_version <= "1.0.0") {
+         return do_goodbye( "need newer protocol version that supports sending only irreversible blocks" );
+      }
+
+      if ( hi.protocol_version >= "1.0.1" ) {
+         //optional extensions
+         while ( 0 < ds.remaining() ) {
+            unsigned_int size;
+            fc::raw::unpack( ds, size ); // next extension size
+            auto ex_start = ds.pos();
+            fc::datastream<const char*> dsw( ex_start, size );
+            unsigned_int wich;
+            fc::raw::unpack( dsw, wich );
+            hello_extension ex;
+            if ( wich < ex.count() ) { //know extension
+               fc::datastream<const char*> dsx( ex_start, size ); //unpack needs to read static_variant _tag again
+               fc::raw::unpack( dsx, ex );
+               if ( ex.which() == hello_extension::tag<hello_extension_irreversible_only>::value ) {
+                  _remote_request_irreversible_only = true;
+               }
+            } else {
+               //unsupported extension, we just ignore it
+               //another side does know our protocol version, i.e. it know which extensions we support
+               //so, it some extensions were crucial, another side will close the connection
+            }
+            ds.skip(size); //move to next extension
+         }
+      }
+
+      _last_sent_block_num   = hi.last_irr_block_num;
+      _remote_request_trx    = hi.request_transactions;
+      _remote_peer_id        = hi.peer_id;
+      _remote_lib            = hi.last_irr_block_num;
+
+      for( const auto& id : hi.pending_block_ids )
+         mark_block_known_by_peer( id );
+
+      check_for_redundant_connection();
+
    }
 
 } /// namespace eosio
