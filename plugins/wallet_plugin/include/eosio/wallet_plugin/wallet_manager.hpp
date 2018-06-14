@@ -107,6 +107,13 @@ public:
    /// @throws fc::exception if wallet not found or locked.
    void import_key(const std::string& name, const std::string& wif_key);
 
+   /// Removes a key from the specified wallet.
+   /// Wallet must be opened and unlocked.
+   /// @param name the name of the wallet to import into.
+   /// @param key the Public Key to remove, e.g. EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+   /// @throws fc::exception if wallet not found or locked or key is not imported.
+   void remove_key(const std::string& name, const std::string& key);
+
    /// Creates a key within the specified wallet.
    /// Wallet must be opened and unlocked
    /// @param name of the wallet to create key in
@@ -126,7 +133,7 @@ private:
    std::chrono::seconds timeout = std::chrono::seconds::max(); ///< how long to wait before calling lock_all()
    mutable timepoint_t timeout_time = timepoint_t::max(); ///< when to call lock_all()
    boost::filesystem::path dir = ".";
-   std::string eosio_key = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+   std::string eosio_key;
 };
 
 } // namespace wallet
