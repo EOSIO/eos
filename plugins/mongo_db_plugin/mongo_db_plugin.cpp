@@ -456,18 +456,18 @@ namespace {
       act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
    }
 
-void verify_last_block(mongocxx::collection& blocks, const std::string& prev_block_id) {
-     mongocxx::options::find opts;
-     opts.sort(bsoncxx::from_json(R"xxx({ "_id" : -1 })xxx"));
-     auto last_block = blocks.find_one({}, opts);
-     if (!last_block) {
-        FC_THROW("No blocks found in database");
-     }
-     const auto id = last_block->view()["block_id"].get_utf8().value.to_string();
-     if (id != prev_block_id) {
-        FC_THROW("Did not find expected block ${pid}, instead found ${id}", ("pid", prev_block_id)("id", id));
-     }
-  }
+   void verify_last_block(mongocxx::collection& blocks, const std::string& prev_block_id) {
+      mongocxx::options::find opts;
+      opts.sort( bsoncxx::from_json( R"xxx({ "_id" : -1 })xxx" ));
+      auto last_block = blocks.find_one( {}, opts );
+      if( !last_block ) {
+         FC_THROW( "No blocks found in database" );
+      }
+      const auto id = last_block->view()["block_id"].get_utf8().value.to_string();
+      if( id != prev_block_id ) {
+         FC_THROW( "Did not find expected block ${pid}, instead found ${id}", ("pid", prev_block_id)( "id", id ));
+      }
+   }
 
    void verify_no_blocks(mongocxx::collection& blocks) {
       if (blocks.count(bsoncxx::from_json("{}")) > 0) {
