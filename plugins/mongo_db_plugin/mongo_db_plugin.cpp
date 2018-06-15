@@ -360,13 +360,19 @@ namespace {
         auto from_account = find_account(accounts, act.account);
         abi_def abi;
         if (from_account.view().find("abi") != from_account.view().end()) {
-           abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
+           try {
+              abi = fc::json::from_string( bsoncxx::to_json( from_account.view()["abi"].get_document())).as<abi_def>();
+           } catch(...) {
+              ilog( "Unable to convert account abi to abi_def for ${s}::${n}", ("s", act.account)( "n", act.name ) );
+           }
         }
-        abi_serializer abis;
-        abis.set_abi(abi);
-        auto v = abis.binary_to_variant(abis.get_action_type(act.name), act.data);
-        auto json = fc::json::to_string(v);
+        string json;
         try {
+           abi_serializer abis;
+           abis.set_abi( abi );
+           auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data );
+           json = fc::json::to_string( v );
+
            const auto& value = bsoncxx::from_json(json);
            act_doc.append(kvp("data", value));
            return;
