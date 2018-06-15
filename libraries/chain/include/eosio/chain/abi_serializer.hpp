@@ -16,6 +16,11 @@ using std::function;
 using std::pair;
 using namespace fc;
 
+namespace impl {
+  struct abi_from_variant;
+  struct abi_to_variant;
+}
+
 /**
  *  Describes the binary representation message and table contents so that it can
  *  be converted to and from JSON.
@@ -108,6 +113,9 @@ private:
    void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj, size_t recursion_depth)const;
 
    bool _is_type(const type_name& type, size_t recursion_depth)const;
+
+   friend struct impl::abi_from_variant;
+   friend struct impl::abi_to_variant;
 };
 
 namespace impl {
@@ -261,7 +269,7 @@ namespace impl {
             auto type = abi->get_action_type(act.name);
             if (!type.empty()) {
                try {
-                  mvo( "data", abi->binary_to_variant( type, act.data ));
+                  mvo( "data", abi->_binary_to_variant( type, act.data, recursion_depth ));
                   mvo("hex_data", act.data);
                } catch(...) {
                   // any failure to serialize data, then leave as not serailzed
@@ -419,7 +427,7 @@ namespace impl {
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
-                     act.data = std::move( abi->variant_to_binary( type, data ));
+                     act.data = std::move( abi->_variant_to_binary( type, data, recursion_depth ));
                      valid_empty_data = act.data.empty();
                   }
                }
