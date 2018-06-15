@@ -109,7 +109,7 @@ const char* error_advice_authority_type_exception = R"=====(Ensure that your aut
     ...
     {
       "key":        <STRING: EOS.IO compatible Public Key>,
-      "weight":     <INTEGER [1-2^32): a signature from this key contributes this to satisfying the threshold>
+      "weight":     <INTEGER [1-2^16): a signature from this key contributes this to satisfying the threshold>
     }
     ...
   ],
@@ -120,7 +120,7 @@ const char* error_advice_authority_type_exception = R"=====(Ensure that your aut
         "actor":      <STRING: account name of the delegated signer>,
         "permission": <STRING: permission level on the account that must be satisfied>,
       },
-      "weight":     <INTEGER [1-2^32): satisfying the delegation contributes this to satisfying the threshold>
+      "weight":     <INTEGER [1-2^16): satisfying the delegation contributes this to satisfying the threshold>
     }
     ...
   ],
@@ -128,7 +128,7 @@ const char* error_advice_authority_type_exception = R"=====(Ensure that your aut
     ...
     {
       "wait_sec":   <INTEGER [1-2^32): seconds of delay which qualifies as passing this wait>
-      "weight":     <INTEGER [1-2^32): satisfying the delay contributes this to satisfying the threshold>
+      "weight":     <INTEGER [1-2^16): satisfying the delay contributes this to satisfying the threshold>
     }
     ...
   ]
@@ -242,12 +242,12 @@ const std::map<int64_t, std::string> error_advice = {
    { account_query_exception::code_value, error_advice_account_query_exception },
    { contract_table_query_exception::code_value, error_advice_contract_table_query_exception },
    { contract_query_exception::code_value, error_advice_contract_query_exception },
-   
+
    { tx_irrelevant_sig::code_value, error_advice_tx_irrelevant_sig },
    { unsatisfied_authorization::code_value, error_advice_unsatisfied_authorization },
    { missing_auth_exception::code_value, error_advice_missing_auth_exception },
    { irrelevant_auth_exception::code_value, error_advice_irrelevant_auth_exception },
-   
+
    { missing_chain_api_plugin_exception::code_value, error_advice_missing_chain_api_plugin_exception },
    { missing_wallet_api_plugin_exception::code_value, error_advice_missing_wallet_api_plugin_exception },
    { missing_history_api_plugin_exception::code_value, error_advice_missing_history_api_plugin_exception },
@@ -264,7 +264,7 @@ const std::map<int64_t, std::string> error_advice = {
 namespace eosio { namespace client { namespace help {
 
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
-   // eos recognized error code is from 3000000 
+   // eos recognized error code is from 3000000
    // refer to libraries/chain/include/eosio/chain/exceptions.hpp
    if (e.code() >= chain_exception::code_value) {
       std::string advice, explanation, stack_trace;
