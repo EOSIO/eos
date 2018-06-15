@@ -823,7 +823,7 @@ void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
                                    const chain::action_trace& act,
                                    const auto& msg_oid)
    {
-      auto act_oid = bsoncxx::oid{};
+//      auto act_oid = bsoncxx::oid{};
       auto act_doc = bsoncxx::builder::basic::document{};
       act_doc.append(kvp("_id", b_oid{act_oid}),
                      kvp("transaction_id", trans_id_str),
