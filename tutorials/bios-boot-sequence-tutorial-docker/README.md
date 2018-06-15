@@ -1,47 +1,47 @@
 # Bios Boot Sequence Tutorial Docker Compose Implementaion 
-Docker Compose를 사용하여 Bios Boot Sequence Tutorial(https://github.com/EOSIO/eos/wiki/Tutorial-Bios-Boot-Sequence) 구현
+Create an automatic imitation of a Bios boot sequence using Docker Compose. (https://github.com/EOSIO/eos/wiki/Tutorial-Bios-Boot-Sequence)
 
 ## Docker Compose Network Diagram
 ![Docker Compose Network Diagram](./images/figure1.jpeg)
 
 ## Boot Sequence
-1. [bios_tool] 중요한 system account들을 생성한다
+1. [bios_tool] Create core system accounts.
 ```
 eosio.bpay, eosio.msig, eosio.names, eosio.ram, eosio.ramfee, eosio.saving, eosio.stake, eosio.token, eosio.vpay
 ```
-2. [bios_tool] eosio.token과 eosio.msig contract를 생성한다
-3. [bios_tool] SYS 토큰을 생성하고, eosio가 1000000000.0000 SYS을 발행
-3. [bios_tool] BP 계정들을 생성하고, SYS 토큰을 각 계정에 전송한다
+2. [bios_tool] Create and publish eosio.token and eosio.msig contracts.
+3. [bios_tool] Create SYS tokens, and eosio issues 1,000,000,000.0000 SYS tokens
+3. [bios_tool] Create BP Accounts and send SYS tokens to each BP.
 ```
 bp1, bp2, bp3
 ```
-4. [bios_tool] voting을 할 계정들을 생성하고, SYS 토큰을 각 계정에 전송한다
+4. [bios_tool] Create voting accounts, and send SYS tokens to each voters.
 ```
 voter1, voter2, voter3, voter4
 ```
-5. [bp1_tool] bp1 account를 BP로 등록한다.
-6. [bp2_tool] bp2 account를 BP로 등록한다.
-7. [bp3_tool] bp3 account를 BP로 등록한다.
-8. [voter_tool] voter1 account가 bp1 bp2 bp3 에 투표
-9. [voter_tool] voter2 account가 bp1 bp2 에 투표
-10. [voter_tool] voter3 account가 bp1 bp2 에 투표
-11. [voter_tool] voter4 account가 bp1 에 투표
-12. [bios_tool] eosio가 블록을 생성하지 않고 BP들이 블록을 생성하도록 owner와 active key를 삭제
-13. [bp1_tool, bp2_tool, bp3_tool] BP들은 블록 생성 후 60초가 지난 후에 첫 reward를 요청하고, 이후 24시간마다 1번씩 블록 생성에 대한 reward를 요청한다
+5. [bp1_tool] Register bp1 account as a BP.
+6. [bp2_tool] Register bp2 account as a BP.
+7. [bp3_tool] Register bp3 account as a BP.
+8. [voter_tool] voter1 votes for bp1, bp2, and bp3.
+9. [voter_tool] voter2 votes for bp1 and bp2.
+10. [voter_tool] voter3 votes for bp1 and bp2.
+11. [voter_tool] voter4 votes for bp1.
+12. [bios_tool] Remove eosio owner and active keys to allow block production of the BPs.
+13. [bp1_tool, bp2_tool, bp3_tool] BP claims their initial reward after 60 seconds since the first block, then claims rewards every 24hours.
 
-## 처음 수행하는 경우
+## Initial Setup
 ```bash
-# datas 디렉토리를 생성한다
+# Creates the datas directory
 ./init.sh
 ```
 
-## 수행하는 방법
+## How to Start the sequence tutorial
 ```bash
 docker-compose up
 ```
 
-## 재 수행하는 방법
+## Restart Sequence
 ```bash
-# datas 안의 파일들을 모두 삭제하고 처음부터 다시 시작한다
+# Removes all the files in the datas directory
 ./restart.sh 
 ```
