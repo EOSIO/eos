@@ -151,7 +151,7 @@ struct se_wallet_impl {
          kSecAttrTokenIDSecureEnclave,
          keyAttrDic
       };
-      CFDictionaryRef attributesDic = CFDictionaryCreate(NULL, attrKeys, atrrValues, sizeof(attrKeys)/sizeof(atrrValues[0]), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+      CFDictionaryRef attributesDic = CFDictionaryCreate(NULL, attrKeys, atrrValues, sizeof(attrKeys)/sizeof(attrKeys[0]), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
       CFErrorRef error = NULL;
       SecKeyRef privateKey = SecKeyCreateRandomKey(attributesDic, &error);
@@ -294,7 +294,7 @@ void se_wallet::unlock(string password) {
    my->locked = false;
 }
 void se_wallet::check_password(string password) {
-   FC_THROW_EXCEPTION(chain::wallet_exception, "Secure Enclave wallet has no password");
+   //just leave this as a noop for now; remove_key from wallet_mgr calls through here
 }
 void se_wallet::set_password(string password) {
    FC_THROW_EXCEPTION(chain::wallet_exception, "Secure Enclave wallet cannot have a password set");
@@ -315,6 +315,10 @@ bool se_wallet::import_key(string wif_key) {
 
 string se_wallet::create_key(string key_type) {
    return (string)my->create();
+}
+
+bool se_wallet::remove_key(string key) {
+   FC_THROW_EXCEPTION(chain::wallet_exception, "Secure Enclave wallet does not support removing keys yet");
 }
 
 optional<signature_type> se_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {

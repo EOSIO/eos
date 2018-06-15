@@ -30,6 +30,7 @@ class se_wallet final : public wallet_api {
 
       bool import_key(string wif_key) override;
       string create_key(string key_type) override;
+      bool remove_key(string key) override;
 
       optional<signature_type> try_sign_digest(const digest_type digest, const public_key_type public_key) override;
 
