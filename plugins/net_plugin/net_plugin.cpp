@@ -3121,4 +3121,5 @@ namespace eosio {
       }
       return 0;
    }
+
 }

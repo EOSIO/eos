@@ -422,4 +422,12 @@ namespace eosio {
       }
    }
 
+   bool http_plugin::is_on_loopback() const {
+      return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback()) && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());
+   }
+
+   bool http_plugin::is_secure() const {
+      return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback());
+   }
+
 }
