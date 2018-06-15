@@ -1,0 +1,270 @@
+version: "3"
+
+services:
+
+  ####################
+  #     BIOS
+  ####################
+  bios_nodeos:
+    image: eosio/eos:v1.0.1
+    command: nodeos --genesis-json /opt/eosio/bin/configs/genesis.json --data-dir /opt/eosio/bin/data-dir -e --http-server-address=0.0.0.0:8888  --p2p-listen-endpoint=0.0.0.0:9876 -p eosio --private-key '[ "EOS8VJybqtm41PMmXL1QUUDSfCrs9umYN4U1ZNa34JhPZ9mU5r2Cm","5JGxnezvp3N4V1NxBo8LPBvCrdR85bZqZUFvBZ8ACrbRC3ZWNYv" ]' --max-transaction-time 1000 --plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin --plugin eosio::history_api_plugin 
+
+    hostname: bios_nodeos
+    ports:
+      - 8888:8888
+      - 9876:9876
+
+    volumes:
+      - ./datas/bios/nodeos/:/opt/eosio/bin/data-dir
+      - ./configs/:/opt/eosio/bin/configs
+
+  bios_keosd:
+    image: eosio/eos:v1.0.1
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8900
+    hostname: bios_keosd
+    ports:
+      - 8900:8900
+    volumes:
+      - ./datas/bios/keosd/:/opt/eosio/bin/data-dir
+
+  bios_tool:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c 
+      - |
+        sleep 5
+        /opt/eosio/bin/scripts/boot.sh http://bios_nodeos:8888 http://bios_keosd:8900 
+        sleep 100000000
+    hostname: bios_tool
+    volumes:
+      - ./scripts/:/opt/eosio/bin/scripts
+    depends_on:
+      - bios_nodeos
+      - bios_keosd
+
+
+  ####################
+  #     BP 1
+  ####################
+  bp1_nodeos:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 10
+        nodeos --genesis-json /opt/eosio/bin/configs/genesis.json --blocks-dir /opt/eosio/bin/blocks --data-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8888 --p2p-listen-endpoint=0.0.0.0:9876 -e -p bp1  --signature-provider=EOS8b5mTfstQxMri2vUrpWaUQK3Gqhr7X5EEFCdRpsz7Zj1MrTw5g=KEY:5JCPzRJYX6AJgpgshtbVVUWnn3vEdkNmidTZRYatMXYmzAeSreV --max-transaction-time 1000 --plugin eosio::producer_plugin  --plugin eosio::chain_api_plugin  --plugin eosio::http_plugin  --plugin eosio::history_api_plugin --p2p-peer-address bp2_nodeos:9876 --p2p-peer-address bp3_nodeos:9876 --p2p-peer-address bios_nodeos:9876
+    hostname: bp1_nodeos
+    ports:
+      - 18888:8888
+      - 19876:9876
+
+    volumes:
+      - ./datas/bp1/nodeos/:/opt/eosio/bin/data-dir
+      - ./datas/bp1/blocks/:/opt/eosio/bin/blocks
+      - ./configs/:/opt/eosio/bin/configs
+
+    depends_on:
+      - bios_tool
+
+  bp1_keosd:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 10
+        /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8900
+    hostname: bp1_keosd
+    ports:
+      - 18900:8900
+    volumes:
+      - ./datas/bp1/keosd/:/opt/eosio/bin/data-dir
+    depends_on:
+      - bios_tool
+
+  bp1_tool:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 15
+        /opt/eosio/bin/scripts/regbp.sh http://bp1_nodeos:8888 http://bp1_keosd:8900 bp1 http://bp1.com EOS8b5mTfstQxMri2vUrpWaUQK3Gqhr7X5EEFCdRpsz7Zj1MrTw5g 5JCPzRJYX6AJgpgshtbVVUWnn3vEdkNmidTZRYatMXYmzAeSreV
+        sleep 100000000
+    hostname: bp1_tool
+    volumes:
+      - ./scripts/:/opt/eosio/bin/scripts
+    depends_on:
+      - bp1_nodeos
+      - bp1_keosd
+
+  ####################
+  #     BP 2
+  ####################
+  bp2_nodeos:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 10
+        nodeos --genesis-json /opt/eosio/bin/configs/genesis.json --blocks-dir /opt/eosio/bin/blocks --data-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8888 --p2p-listen-endpoint=0.0.0.0:9876 -e -p bp2 --signature-provider=EOS5jMZUD1BB698jmq2PxMzbgULyhj37pRBr3cqi9vpmGyUk7aZgc=KEY:5JfQVn89D5DP74LnGA3LWYECUx6RXWvPhd9HJ59xnbCVQqFwjoT --max-transaction-time 1000 --plugin eosio::producer_plugin  --plugin eosio::chain_api_plugin  --plugin eosio::http_plugin  --plugin eosio::history_api_plugin --p2p-peer-address bp1_nodeos:9876 --p2p-peer-address bp3_nodeos:9876 --p2p-peer-address bios_nodeos:9876
+    hostname: bp2_nodeos
+    ports:
+      - 28888:8888
+      - 29876:9876
+
+    volumes:
+      - ./datas/bp2/nodeos/:/opt/eosio/bin/data-dir
+      - ./datas/bp2/blocks/:/opt/eosio/bin/blocks
+      - ./configs/:/opt/eosio/bin/configs
+
+    depends_on:
+      - bios_tool
+
+  bp2_keosd:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 10
+        /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8900
+    hostname: bp2_keosd
+    ports:
+      - 28900:8900
+    volumes:
+      - ./datas/bp2/keosd/:/opt/eosio/bin/data-dir
+    depends_on:
+      - bios_tool
+
+  bp2_tool:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 15
+        /opt/eosio/bin/scripts/regbp.sh http://bp2_nodeos:8888 http://bp2_keosd:8900 bp2 http://bp2.com EOS5jMZUD1BB698jmq2PxMzbgULyhj37pRBr3cqi9vpmGyUk7aZgc 5JfQVn89D5DP74LnGA3LWYECUx6RXWvPhd9HJ59xnbCVQqFwjoT 
+        sleep 100000000
+    hostname: bp2_tool
+    volumes:
+      - ./scripts/:/opt/eosio/bin/scripts
+    depends_on:
+      - bp2_nodeos
+      - bp2_keosd
+
+  ####################
+  #     BP 3
+  ####################
+  bp3_nodeos:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 10
+        nodeos --genesis-json /opt/eosio/bin/configs/genesis.json --blocks-dir /opt/eosio/bin/blocks --data-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8888 --p2p-listen-endpoint=0.0.0.0:9876 -e -p bp3 --signature-provider=EOS7XZ6WdHWAt8FzaESQJB6yU7sPFtZ3tt3kHCdPMgdNWKxwf8GYH=KEY:5J7amfNJh4ztb5RxxywVgpXyUAGv6spdm4hyRq9AaGshv9eCY4Y --max-transaction-time 1000 --plugin eosio::producer_plugin  --plugin eosio::chain_api_plugin  --plugin eosio::http_plugin  --plugin eosio::history_api_plugin --p2p-peer-address bp1_nodeos:9876 --p2p-peer-address bp2_nodeos:9876 --p2p-peer-address bios_nodeos:9876
+    hostname: bp3_nodeos
+    ports:
+      - 38888:8888
+      - 39876:9876
+
+    volumes:
+      - ./datas/bp3/nodeos/:/opt/eosio/bin/data-dir
+      - ./datas/bp3/blocks/:/opt/eosio/bin/blocks
+      - ./configs/:/opt/eosio/bin/configs
+
+    depends_on:
+      - bios_tool
+
+  bp3_keosd:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 10
+        /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8900
+    hostname: bp3_keosd
+    ports:
+      - 38900:8900
+    volumes:
+      - ./datas/bp3/keosd/:/opt/eosio/bin/data-dir
+    depends_on:
+      - bios_tool
+
+  bp3_tool:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 15
+        /opt/eosio/bin/scripts/regbp.sh http://bp3_nodeos:8888 http://bp3_keosd:8900 bp3 http://bp3.com EOS7XZ6WdHWAt8FzaESQJB6yU7sPFtZ3tt3kHCdPMgdNWKxwf8GYH 5J7amfNJh4ztb5RxxywVgpXyUAGv6spdm4hyRq9AaGshv9eCY4Y       
+        sleep 100000000
+    hostname: bp3_tool
+    volumes:
+      - ./scripts/:/opt/eosio/bin/scripts
+    depends_on:
+      - bp3_nodeos
+      - bp3_keosd
+
+  ####################
+  #     Voter
+  ####################
+  voter_nodeos:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 20
+        nodeos --genesis-json /opt/eosio/bin/configs/genesis.json --blocks-dir /opt/eosio/bin/blocks --data-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8888 --p2p-listen-endpoint=0.0.0.0:9876 -e --plugin eosio::producer_plugin  --plugin eosio::chain_api_plugin  --plugin eosio::http_plugin  --plugin eosio::history_api_plugin --p2p-peer-address bp2_nodeos:9876 
+    hostname: voter_nodeos
+    ports:
+      - 48888:8888
+      - 49876:9876
+
+    volumes:
+      - ./datas/voter/nodeos/:/opt/eosio/bin/data-dir
+      - ./datas/voter/blocks/:/opt/eosio/bin/blocks
+      - ./configs/:/opt/eosio/bin/configs
+
+    depends_on:
+      - bp1_tool
+
+  voter_keosd:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 20
+        /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=0.0.0.0:8900
+    hostname: voter_keosd
+    ports:
+      - 48900:8900
+    volumes:
+      - ./datas/voter/keosd/:/opt/eosio/bin/data-dir
+    depends_on:
+      - bp1_tool
+
+  voter_tool:
+    image: eosio/eos:v1.0.1
+    command: 
+      - bash 
+      - -c
+      - |
+        sleep 25
+        /opt/eosio/bin/scripts/vote.sh http://voter_nodeos:8888 http://voter_keosd:8900 
+        sleep 100000000
+    hostname: voter_tool
+    volumes:
+      - ./scripts/:/opt/eosio/bin/scripts
+    depends_on:
+      - voter_nodeos
+      - voter_keosd
+
