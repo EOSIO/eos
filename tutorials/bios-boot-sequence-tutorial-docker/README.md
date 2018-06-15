@@ -15,7 +15,7 @@ eosio.bpay, eosio.msig, eosio.names, eosio.ram, eosio.ramfee, eosio.saving, eosi
 ```
 bp1, bp2, bp3
 ```
-4. [bios_tool] Create voting accounts, and send SYS tokens to each voters.
+4. [bios_tool] Create voting accounts, and send SYS tokens to each voter.
 ```
 voter1, voter2, voter3, voter4
 ```
@@ -27,7 +27,7 @@ voter1, voter2, voter3, voter4
 10. [voter_tool] voter3 votes for bp1 and bp2.
 11. [voter_tool] voter4 votes for bp1.
 12. [bios_tool] Remove eosio owner and active keys to allow block production of the BPs.
-13. [bp1_tool, bp2_tool, bp3_tool] BP claims their initial reward after 60 seconds since the first block, then claims rewards every 24hours.
+13. [bp1_tool, bp2_tool, bp3_tool] BPs claim their initial reward after 60 seconds since the first block, then claim rewards every 24hours.
 
 ## Initial Setup
 ```bash
