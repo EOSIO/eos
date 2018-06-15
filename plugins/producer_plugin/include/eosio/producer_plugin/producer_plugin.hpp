@@ -21,6 +21,7 @@ public:
    struct runtime_options {
       fc::optional<int32_t> max_transaction_time;
       fc::optional<int32_t> max_irreversible_block_age;
+      fc::optional<int32_t> produce_time_offset_us;
    };
 
    producer_plugin();
@@ -51,4 +52,4 @@ private:
 
 } //eosio
 
-FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age));
+FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us));

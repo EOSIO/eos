@@ -131,6 +131,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       int32_t                                                   _max_transaction_time_ms;
       fc::microseconds                                          _max_irreversible_block_age_us;
+      int32_t                                                   _produce_time_offset_us = 0;
       fc::time_point                                            _irreversible_block_time;
       fc::microseconds                                          _keosd_provider_timeout_us;
 
@@ -647,6 +648,10 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
       check_speculating = true;
    }
 
+   if (options.produce_time_offset_us) {
+      my->_produce_time_offset_us = *options.produce_time_offset_us;
+   }
+
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = app().get_plugin<chain_plugin>().chain();
       chain.abort_block();
@@ -657,7 +662,8 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
 producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
    return {
       my->_max_transaction_time_ms,
-      my->_max_irreversible_block_age_us.count() < 0 ? -1 : my->_max_irreversible_block_age_us.count() / 1'000'000
+      my->_max_irreversible_block_age_us.count() < 0 ? -1 : my->_max_irreversible_block_age_us.count() / 1'000'000,
+      my->_produce_time_offset_us
    };
 }
 
@@ -946,7 +952,7 @@ void producer_plugin_impl::schedule_production_loop() {
       if (result == start_block_result::succeeded) {
          // ship this block off no later than its deadline
          static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
-         _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count()));
+         _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count() + _produce_time_offset_us));
          fc_dlog(_log, "Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.pending_block_state()->block_num)("time",chain.pending_block_time()));
       } else {
          // ship this block off immediately
