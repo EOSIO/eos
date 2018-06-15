@@ -110,7 +110,7 @@ try:
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
-    testWallet=walletMgr.create(testWalletName)
+    testWallet=walletMgr.create(testWalletName, [cluster.enumivoAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
     if testWallet is None:
         cmdError("enu wallet create")
         errorExit("Failed to create wallet %s." % (testWalletName))
