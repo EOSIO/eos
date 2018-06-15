@@ -108,7 +108,7 @@ namespace eosiosystem {
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
       auto fee = quant;
-      fee.amount /= 200; /// .5% fee
+      fee.amount = ( fee.amount + 199 ) / 200; /// .5% fee
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
 

@@ -76,6 +76,9 @@ namespace eosio {
         // standard exception handling for api handlers
         static void handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb );
 
+        bool is_on_loopback() const;
+        bool is_secure() const;
+
       private:
         std::unique_ptr<class http_plugin_impl> my;
    };
@@ -105,19 +108,21 @@ namespace eosio {
 
          error_info() {};
 
-         error_info(const fc::exception& exc) {
+         error_info(const fc::exception& exc, bool include_log) {
             code = exc.code();
             name = exc.name();
             what = exc.what();
-            for (auto itr = exc.get_log().begin(); itr != exc.get_log().end(); ++itr) {
-               // Prevent sending trace that are too big
-               if (details.size() >= details_limit) break;
-               // Append error
-               error_detail detail = {
-                       itr->get_message(), itr->get_context().get_file(),
-                       itr->get_context().get_line_number(), itr->get_context().get_method()
-               };
-               details.emplace_back(detail);
+            if (include_log) {
+               for (auto itr = exc.get_log().begin(); itr != exc.get_log().end(); ++itr) {
+                  // Prevent sending trace that are too big
+                  if (details.size() >= details_limit) break;
+                  // Append error
+                  error_detail detail = {
+                          itr->get_message(), itr->get_context().get_file(),
+                          itr->get_context().get_line_number(), itr->get_context().get_method()
+                  };
+                  details.emplace_back(detail);
+               }
             }
          }
       };
