@@ -39,8 +39,8 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enu_system::enu_system_tester) { try {
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
    buyrambytes(N(enumivo), N(enumivo), 70000);
    produce_blocks(10);
-   create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes);
-   create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes + 1150);
+   create_account_with_resources(N(testram11111),N(enumivo), init_request_bytes + 40);
+   create_account_with_resources(N(testram22222),N(enumivo), init_request_bytes + 1190);
    produce_blocks(10);
    BOOST_REQUIRE_EQUAL( success(), stake( "enu.stake", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
