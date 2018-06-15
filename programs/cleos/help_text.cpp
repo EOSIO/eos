@@ -102,8 +102,38 @@ auto smatch_to_variant(const std::smatch& smatch) {
 const char* error_advice_name_type_exception = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
 const char* error_advice_public_key_type_exception = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
 const char* error_advice_private_key_type_exception = R"=====(Private key should be encoded in base58 WIF)=====";
-const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON follows the right authority structure!
-You can refer to contracts/eosiolib/native.hpp for reference)=====";
+const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON is valid follows the following format!
+{
+  "threshold":      <INTEGER [1-2^32): the threshold that must be met to satisfy this authority>,
+  "keys": [         <keys must be alpha-numerically sorted by their string representations and unique>
+    ...
+    {
+      "key":        <STRING: EOS.IO compatible Public Key>,
+      "weight":     <INTEGER [1-2^16): a signature from this key contributes this to satisfying the threshold>
+    }
+    ...
+  ],
+  "accounts": [     <accounts must be alpha-numerically sorted by their permission (actor, then permission) and unique>
+    ...
+    {
+      "permission": {
+        "actor":      <STRING: account name of the delegated signer>,
+        "permission": <STRING: permission level on the account that must be satisfied>,
+      },
+      "weight":     <INTEGER [1-2^16): satisfying the delegation contributes this to satisfying the threshold>
+    }
+    ...
+  ],
+  "waits": [        <waits must be sorted by wait_sec, largest first, and be unique>
+    ...
+    {
+      "wait_sec":   <INTEGER [1-2^32): seconds of delay which qualifies as passing this wait>
+      "weight":     <INTEGER [1-2^16): satisfying the delay contributes this to satisfying the threshold>
+    }
+    ...
+  ]
+}
+)=====";
 const char* error_advice_action_type_exception = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
 const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!
 You can refer to contracts/eosiolib/transaction.hpp for reference)=====";
@@ -212,12 +242,12 @@ const std::map<int64_t, std::string> error_advice = {
    { account_query_exception::code_value, error_advice_account_query_exception },
    { contract_table_query_exception::code_value, error_advice_contract_table_query_exception },
    { contract_query_exception::code_value, error_advice_contract_query_exception },
-   
+
    { tx_irrelevant_sig::code_value, error_advice_tx_irrelevant_sig },
    { unsatisfied_authorization::code_value, error_advice_unsatisfied_authorization },
    { missing_auth_exception::code_value, error_advice_missing_auth_exception },
    { irrelevant_auth_exception::code_value, error_advice_irrelevant_auth_exception },
-   
+
    { missing_chain_api_plugin_exception::code_value, error_advice_missing_chain_api_plugin_exception },
    { missing_wallet_api_plugin_exception::code_value, error_advice_missing_wallet_api_plugin_exception },
    { missing_history_api_plugin_exception::code_value, error_advice_missing_history_api_plugin_exception },
@@ -234,7 +264,7 @@ const std::map<int64_t, std::string> error_advice = {
 namespace eosio { namespace client { namespace help {
 
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
-   // eos recognized error code is from 3000000 
+   // eos recognized error code is from 3000000
    // refer to libraries/chain/include/eosio/chain/exceptions.hpp
    if (e.code() >= chain_exception::code_value) {
       std::string advice, explanation, stack_trace;
