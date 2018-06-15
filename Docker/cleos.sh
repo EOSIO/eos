@@ -8,7 +8,7 @@ PREFIX="docker-compose exec nodeosd cleos"
 if [ -z $1 ] ; then
   while :
   do
-    read -e -p "cleos " cmd
+    read -e -p "$(echo -e '\033[41;37m cleos >> \033[0m ')" cmd
     history -s "$cmd"
     $PREFIX $cmd
   done
