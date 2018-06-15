@@ -151,7 +151,6 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 
 string url = "http://localhost:8888/";
 string wallet_url = "http://localhost:8900/";
-int64_t wallet_unlock_timeout = 0;
 bool no_verify = false;
 vector<string> headers;
 
@@ -745,9 +744,6 @@ void ensure_keosd_running(CLI::App* app) {
 
         vector<std::string> pargs;
         pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
-        if (wallet_unlock_timeout > 0) {
-            pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
-        }
 
         ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
@@ -2183,7 +2179,6 @@ int main( int argc, char** argv ) {
    auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-   unlockWallet->add_option( "--unlock-timeout", wallet_unlock_timeout, localized("The timeout for unlocked wallet in seconds"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
       if( wallet_pw.size() == 0 ) {
          std::cout << localized("password: ");
