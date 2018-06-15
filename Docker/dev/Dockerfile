@@ -10,7 +10,7 @@ RUN git clone -b $branch https://github.com/EOSIO/eos.git --recursive \
     && mv /eos/Docker/config.ini / && mv /opt/eosio/contracts /contracts && mv /eos/Docker/nodeosd.sh /opt/eosio/bin/nodeosd.sh && mv tutorials /tutorials \
     && rm -rf /eos
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl vim psmisc python3-pip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates vim psmisc python3-pip && rm -rf /var/lib/apt/lists/*
 RUN pip3 install numpy
 ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/nodeosd.sh

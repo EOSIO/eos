@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/transaction.hpp>
-#include <eosio/wallet_plugin/wallet.hpp>
+#include <eosio/wallet_plugin/wallet_api.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 
@@ -15,7 +15,7 @@ namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.
 ///
-/// The name of the wallet is also used as part of the file name by wallet_api. See wallet_manager::create.
+/// The name of the wallet is also used as part of the file name by soft_wallet. See wallet_manager::create.
 /// No const methods because timeout may cause lock_all() to be called.
 class wallet_manager {
 public:
@@ -39,8 +39,6 @@ public:
    /// @param secs The timeout in seconds.
    void set_timeout(int64_t secs) { set_timeout(std::chrono::seconds(secs)); }
       
-   void set_eosio_key(const std::string& key) { eosio_key = key; }
-
    /// Sign transaction with the private keys specified via their public keys.
    /// Use chain_controller::get_required_keys to determine which keys are needed for txn.
    /// @param txn the transaction to sign.
@@ -107,6 +105,14 @@ public:
    /// @throws fc::exception if wallet not found or locked.
    void import_key(const std::string& name, const std::string& wif_key);
 
+   /// Removes a key from the specified wallet.
+   /// Wallet must be opened and unlocked.
+   /// @param name the name of the wallet to remove the key from.
+   /// @param password the plaintext password returned from ::create.
+   /// @param key the Public Key to remove, e.g. EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+   /// @throws fc::exception if wallet not found or locked or key is not removed.
+   void remove_key(const std::string& name, const std::string& password, const std::string& key);
+
    /// Creates a key within the specified wallet.
    /// Wallet must be opened and unlocked
    /// @param name of the wallet to create key in
@@ -126,7 +132,6 @@ private:
    std::chrono::seconds timeout = std::chrono::seconds::max(); ///< how long to wait before calling lock_all()
    mutable timepoint_t timeout_time = timepoint_t::max(); ///< when to call lock_all()
    boost::filesystem::path dir = ".";
-   std::string eosio_key = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
 };
 
 } // namespace wallet

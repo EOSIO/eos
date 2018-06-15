@@ -152,7 +152,7 @@ namespace eosiosystem {
        */
       if( voter->last_vote_weight <= 0.0 ) {
          _gstate.total_activated_stake += voter->staked;
-         if( _gstate.total_activated_stake >= min_activated_stake ) {
+         if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
             _gstate.thresh_activated_stake_time = current_time();
          }
       }
