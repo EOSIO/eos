@@ -83,6 +83,14 @@ class wallet_api
        */
       virtual bool import_key( string wif_key ) = 0;
 
+      /** Removes a key from the wallet.
+       *
+       * example: remove_key EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+       *
+       * @param key the Public Key to remove
+       */
+      virtual bool remove_key( string key ) = 0;
+
        /** Creates a key within the wallet to be used to sign transactions by an account.
        *
        * example: create_key K1

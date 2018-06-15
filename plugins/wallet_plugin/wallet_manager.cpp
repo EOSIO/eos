@@ -65,10 +65,11 @@ std::string wallet_manager::create(const std::string& name) {
    wallet->set_password(password);
    wallet->set_wallet_filename(wallet_filename.string());
    wallet->unlock(password);
-   if(eosio_key.size())
-      wallet->import_key(eosio_key);
    wallet->lock();
    wallet->unlock(password);
+
+   // Explicitly save the wallet file here, to ensure it now exists.
+   wallet->save_wallet_file();
 
    // If we have name in our map then remove it since we want the emplace below to replace.
    // This can happen if the wallet file is removed while eos-walletd is running.
@@ -188,6 +189,19 @@ void wallet_manager::import_key(const std::string& name, const std::string& wif_
       EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
    w->import_key(wif_key);
+}
+
+void wallet_manager::remove_key(const std::string& name, const std::string& password, const std::string& key) {
+   check_timeout();
+   if (wallets.count(name) == 0) {
+      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+   }
+   auto& w = wallets.at(name);
+   if (w->is_locked()) {
+      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+   }
+   w->check_password(password); //throws if bad password
+   w->remove_key(key);
 }
 
 string wallet_manager::create_key(const std::string& name, const std::string& key_type) {

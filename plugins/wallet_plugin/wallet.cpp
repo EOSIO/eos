@@ -160,6 +160,20 @@ public:
       FC_ASSERT( !"Key already in wallet" );
    }
 
+   // Removes a key from the wallet
+   // @returns true if the key matches a current active/owner/memo key for the named
+   //          account, false otherwise (but it is removed either way)
+   bool remove_key(string key)
+   {
+      public_key_type pub(key);
+      auto itr = _keys.find(pub);
+      if( itr != _keys.end() ) {
+         _keys.erase(pub);
+         return true;
+      }
+      FC_ASSERT( !"Key not in wallet" );
+   }
+
    string create_key(string key_type)
    {
       if(key_type.empty())
@@ -275,6 +289,18 @@ bool soft_wallet::import_key(string wif_key)
    FC_ASSERT(!is_locked());
 
    if( my->import_key(wif_key) )
+   {
+      save_wallet_file();
+      return true;
+   }
+   return false;
+}
+
+bool soft_wallet::remove_key(string key)
+{
+   FC_ASSERT(!is_locked());
+
+   if( my->remove_key(key) )
    {
       save_wallet_file();
       return true;
