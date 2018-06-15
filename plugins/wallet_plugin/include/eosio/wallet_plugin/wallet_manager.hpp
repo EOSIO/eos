@@ -39,8 +39,6 @@ public:
    /// @param secs The timeout in seconds.
    void set_timeout(int64_t secs) { set_timeout(std::chrono::seconds(secs)); }
       
-   void set_eosio_key(const std::string& key) { eosio_key = key; }
-
    /// Sign transaction with the private keys specified via their public keys.
    /// Use chain_controller::get_required_keys to determine which keys are needed for txn.
    /// @param txn the transaction to sign.
@@ -109,7 +107,7 @@ public:
 
    /// Removes a key from the specified wallet.
    /// Wallet must be opened and unlocked.
-   /// @param name the name of the wallet to import into.
+   /// @param name the name of the wallet to remove the key from.
    /// @param password the plaintext password returned from ::create.
    /// @param key the Public Key to remove, e.g. EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
    /// @throws fc::exception if wallet not found or locked or key is not removed.
@@ -134,7 +132,6 @@ private:
    std::chrono::seconds timeout = std::chrono::seconds::max(); ///< how long to wait before calling lock_all()
    mutable timepoint_t timeout_time = timepoint_t::max(); ///< when to call lock_all()
    boost::filesystem::path dir = ".";
-   std::string eosio_key;
 };
 
 } // namespace wallet

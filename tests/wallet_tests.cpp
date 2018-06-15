@@ -188,8 +188,6 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    wm.set_timeout(chrono::seconds(15));
 
-   wm.set_eosio_key("");
-
    wm.create("testgen");
    BOOST_CHECK_THROW(wm.create_key("testgen", "xxx"), chain::wallet_exception);
    wm.lock("testgen");
