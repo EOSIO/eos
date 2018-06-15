@@ -624,6 +624,11 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    bulk_opts.ordered(false);
    mongocxx::bulk_write bulk_actions = actions.create_bulk_write(bulk_opts);
 
+   bool actions_to_write = false;
+   mongocxx::options::bulk_write bulk_opts;
+   bulk_opts.ordered(false);
+   mongocxx::bulk_write bulk_actions{bulk_opts};
+
    int32_t act_num = 0;
    auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bbb::array& act_array, bool cfa) -> auto {
       auto act_doc = bsoncxx::builder::basic::document();
@@ -655,6 +660,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          actions_to_write = true;
       }
       ++act_num;
+      actions_to_write = true;
       return act_num;
    };
 
@@ -749,6 +755,14 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
             elog( "Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
          }
       }
+
+      if (actions_to_write) {
+         auto result = actions.bulk_write(bulk_actions);
+         if (!result) {
+            elog("Bulk actions insert failed for transaction: ${id}", ("id", trans_id_str));
+         }
+      }
+
    }
 }
 
