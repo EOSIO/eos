@@ -838,7 +838,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                continue;
             }
 
-            if (trx->packed_trx.expiration() > pbs->header.timestamp.to_time_point()) {
+            if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
                // expired, drop it
                chain.drop_unapplied_transaction(trx);
                continue;

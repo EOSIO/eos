@@ -552,9 +552,6 @@ inline fc::mutable_variant_object voter( account_name acct ) {
       //("last_vote_weight", double(0))
       ("proxied_vote_weight", double(0))
       ("is_proxy", 0)
-      ("deferred_trx_id", 0)
-      ("last_unstake_time", fc::time_point_sec() )
-      ("unstaking", asset() )
       ;
 }
 

@@ -35,5 +35,5 @@ Enumivo currently supports the following operating systems:
 
 # Resources
 1. [Enumivo Website](https://enumivo.org)
-2. [Enumivo Blog](https://enumivo.com/blogs/blog/4-enumivo-community-blog/)
+2. [Enumivo Forum](https://enumivo.com)
 3. [Community Telegram Group](https://t.me/enumivochat)
