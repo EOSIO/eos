@@ -108,9 +108,14 @@ namespace eosiosystem {
       eosio_assert( quant.amount > 0, "must purchase a positive amount" );
 
       auto fee = quant;
-      fee.amount = ( fee.amount + 199 ) / 200; /// .5% fee
+      fee.amount = ( fee.amount + 199 ) / 200; /// .5% fee (round up)
+      // fee.amount cannot be 0 since that is only possible if quant.amount is 0 which is not allowed by the assert above.
+      // If quant.amount == 1, then fee.amount == 1,
+      // otherwise if quant.amount > 1, then 0 < fee.amount < quant.amount.
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
+      // quant_after_fee.amount should be > 0 if quant.amount > 1.
+      // If quant.amount == 1, then quant_after_fee.amount == 0 and the next inline transfer will fail causing the buyram action to fail.
 
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
          { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
