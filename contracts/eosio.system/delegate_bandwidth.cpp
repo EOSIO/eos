@@ -154,9 +154,10 @@ namespace eosiosystem {
 
 
    /**
-    *  While buying ram uses the current market price according to the bancor-algorithm, selling ram only
-    *  refunds the purchase price to the account. In this way there is no profit to be made through buying
-    *  and selling ram.
+    *  The system contract now buys and sells RAM allocations at prevailing market prices. 
+    *  This may result in traders buying RAM today in anticipation of potential shortages 
+    *  tomorrow. Overall this will result in the market balancing the supply and demand 
+    *  for RAM over time.
     */
    void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
@@ -187,7 +188,8 @@ namespace eosiosystem {
 
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
-      auto fee = tokens_out.amount / 200;
+
+      auto fee = ( fee.amount + 199 ) / 200; /// .5% fee (round up)            
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
             { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
