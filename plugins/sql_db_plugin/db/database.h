@@ -22,7 +22,7 @@ namespace eosio {
 class database : public consumer_core<chain::block_state_ptr>
 {
 public:
-    database(const std::string& uri);
+    database(const std::string& uri, uint32_t block_num_start);
 
     void consume(const std::vector<chain::block_state_ptr>& blocks) override;
 
@@ -36,6 +36,7 @@ private:
     std::unique_ptr<blocks_table> m_blocks_table;
     std::unique_ptr<transactions_table> m_transactions_table;
     std::string system_account;
+    uint32_t m_block_num_start;
 };
 
 } // namespace
