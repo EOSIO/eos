@@ -804,7 +804,9 @@ struct controller_impl {
                ENU_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
-            if( trace && trace->except ) {
+            bool transaction_failed =  trace && trace->except;
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            if( transaction_failed && !transaction_can_fail) {
                edump((*trace));
                throw *trace->except;
             }
