@@ -805,7 +805,8 @@ struct controller_impl {
             }
 
             bool transaction_failed =  trace && trace->except;
-            if( transaction_failed && receipt.status != transaction_receipt_header::hard_fail ) {
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            if( transaction_failed && !transaction_can_fail) {
                edump((*trace));
                throw *trace->except;
             }
