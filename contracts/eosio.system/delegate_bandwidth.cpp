@@ -189,7 +189,7 @@ namespace eosiosystem {
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
 
-      auto fee = ( fee.amount + 199 ) / 200; /// .5% fee (round up)            
+      auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)            
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
             { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
