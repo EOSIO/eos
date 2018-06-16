@@ -804,7 +804,8 @@ struct controller_impl {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
-            if( trace && trace->except ) {
+            bool transaction_failed =  trace && trace->except;
+            if( transaction_failed && receipt.status != transaction_receipt_header::hard_fail ) {
                edump((*trace));
                throw *trace->except;
             }
