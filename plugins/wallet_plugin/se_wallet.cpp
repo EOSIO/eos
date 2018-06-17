@@ -263,7 +263,25 @@ static void check_signed() {
 
 se_wallet::se_wallet() : my(new detail::se_wallet_impl()) {
    detail::check_signed();
-   my->populate_existing_keys();
+
+   //How to figure out of SE is available?! Totally bogus. But no other blessed way?!?!
+   char model[256];
+   size_t model_size = sizeof(model);
+   if(sysctlbyname("hw.model", model, &model_size, nullptr, 0) == 0) {
+      if(strncmp(model, "iMacPro", strlen("iMacPro")) == 0) {
+         my->populate_existing_keys();
+         return;
+      }
+      unsigned int major, minor;
+      if(sscanf(model, "MacBookPro%u,%u", &major, &minor) == 2) {
+         if(major >= 13 && minor >= 2) {
+            my->populate_existing_keys();
+            return;
+         }
+      }
+   }
+
+   FC_THROW("Secure Enclave not supported on this hardware");
 }
 
 se_wallet::~se_wallet() {
