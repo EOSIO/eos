@@ -26,7 +26,11 @@ bool valid_filename(const string& name) {
 
 void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
-   timeout_time = std::chrono::system_clock::now() + timeout;
+   auto now = std::chrono::system_clock::now();
+   timeout_time = now + timeout;
+   FC_ASSERT(timeout_time > std::chrono::system_clock::now(),
+             "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+             ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 
 void wallet_manager::check_timeout() {
