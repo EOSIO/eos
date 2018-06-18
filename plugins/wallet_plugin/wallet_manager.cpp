@@ -28,8 +28,7 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
    auto now = std::chrono::system_clock::now();
    timeout_time = now + timeout;
-   FC_ASSERT(timeout_time > std::chrono::system_clock::now(),
-             "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+   FC_ASSERT(timeout_time >= now, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
              ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 
