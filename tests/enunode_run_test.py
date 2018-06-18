@@ -108,7 +108,7 @@ try:
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up enu walletd.")
+        errorExit("Failed to stand up enuwalletd.")
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
