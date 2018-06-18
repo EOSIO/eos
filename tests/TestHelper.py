@@ -1,6 +1,6 @@
 from testUtils import Utils
-from testUtils import Cluster
-from testUtils import WalletMgr
+from Cluster import Cluster
+from WalletMgr import WalletMgr
 
 import argparse
 
