@@ -37,18 +37,21 @@ void wallet_plugin::set_program_options(options_description& cli, options_descri
 
 void wallet_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing wallet plugin");
-
-   if (options.count("wallet-dir")) {
-      auto dir = options.at("wallet-dir").as<boost::filesystem::path>();
-      if (dir.is_relative())
-         wallet_manager_ptr->set_dir(app().data_dir() / dir);
-      else
-         wallet_manager_ptr->set_dir(dir);
-   }
-   if (options.count("unlock-timeout")) {
-      auto timeout = options.at("unlock-timeout").as<int64_t>();
-      std::chrono::seconds t(timeout);
-      wallet_manager_ptr->set_timeout(t);
-   }
+   try {
+      if (options.count("wallet-dir")) {
+         auto dir = options.at("wallet-dir").as<boost::filesystem::path>();
+         if (dir.is_relative())
+            wallet_manager_ptr->set_dir(app().data_dir() / dir);
+         else
+            wallet_manager_ptr->set_dir(dir);
+      }
+      if (options.count("unlock-timeout")) {
+         auto timeout = options.at("unlock-timeout").as<int64_t>();
+         FC_ASSERT(timeout > 0, "Please specify a positive timeout ${t}", ("t", timeout));
+         std::chrono::seconds t(timeout);
+         wallet_manager_ptr->set_timeout(t);
+      }
+   } FC_LOG_AND_RETHROW()
 }
+
 } // namespace eosio
