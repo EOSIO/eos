@@ -16,6 +16,11 @@ using std::function;
 using std::pair;
 using namespace fc;
 
+namespace impl {
+  struct abi_from_variant;
+  struct abi_to_variant;
+}
+
 /**
  *  Describes the binary representation message and table contents so that it can
  *  be converted to and from JSON.
@@ -42,7 +47,9 @@ struct abi_serializer {
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
    bool      is_optional(const type_name& type)const;
-   bool      is_type(const type_name& type)const;
+   bool      is_type(const type_name& type)const {
+      return _is_type(type, 0);
+   }
    bool      is_builtin_type(const type_name& type)const;
    bool      is_integer(const type_name& type) const;
    int       get_integer_size(const type_name& type) const;
@@ -56,11 +63,19 @@ struct abi_serializer {
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
-   fc::variant binary_to_variant(const type_name& type, const bytes& binary)const;
-   bytes       variant_to_binary(const type_name& type, const fc::variant& var)const;
+   fc::variant binary_to_variant(const type_name& type, const bytes& binary)const {
+      return _binary_to_variant(type, binary, 0);
+   }
+   bytes       variant_to_binary(const type_name& type, const fc::variant& var)const {
+      return _variant_to_binary(type, var, 0);
+   }
 
-   fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary)const;
-   void        variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds)const;
+   fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary)const {
+      return _binary_to_variant(type, binary, 0);
+   }
+   void        variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds)const {
+      _variant_to_binary(type, var, ds, 0);
+   }
 
    template<typename T, typename Resolver>
    static void to_variant( const T& o, fc::variant& vo, Resolver resolver );
@@ -85,8 +100,22 @@ struct abi_serializer {
       return false;
    }
 
-   private:
-   void binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj)const;
+   static constexpr size_t max_recursion_depth = 128; // arbitrary depth to prevent infinite recursion
+
+private:
+
+   fc::variant _binary_to_variant(const type_name& type, const bytes& binary, size_t recursion_depth)const;
+   bytes       _variant_to_binary(const type_name& type, const fc::variant& var, size_t recursion_depth)const;
+
+   fc::variant _binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, size_t recursion_depth)const;
+   void        _variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, size_t recursion_depth)const;
+
+   void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj, size_t recursion_depth)const;
+
+   bool _is_type(const type_name& type, size_t recursion_depth)const;
+
+   friend struct impl::abi_from_variant;
+   friend struct impl::abi_to_variant;
 };
 
 namespace impl {
@@ -148,8 +177,9 @@ namespace impl {
        * and can be degraded to the normal ::to_variant(...) processing
        */
       template<typename M, typename Resolver, not_require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver )
+      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          mvo(name,v);
       }
 
@@ -158,21 +188,22 @@ namespace impl {
        * for these types we create new ABI aware visitors
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver );
+      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver, size_t recursion_depth );
 
       /**
        * template which overloads add for vectors of types which contain ABI information in their trees
        * for these members we call ::add in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver )
+      static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          vector<variant> array;
          array.reserve(v.size());
 
          for (const auto& iter: v) {
             mutable_variant_object elem_mvo;
-            add(elem_mvo, "_", iter, resolver);
+            add(elem_mvo, "_", iter, resolver, recursion_depth);
             array.emplace_back(std::move(elem_mvo["_"]));
          }
          mvo(name, std::move(array));
@@ -183,11 +214,12 @@ namespace impl {
        * for these members we call ::add in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const std::shared_ptr<M>& v, Resolver resolver )
+      static void add( mutable_variant_object &mvo, const char* name, const std::shared_ptr<M>& v, Resolver resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          if( !v ) return;
          mutable_variant_object obj_mvo;
-         add(obj_mvo, "_", *v, resolver);
+         add(obj_mvo, "_", *v, resolver, recursion_depth);
          mvo(name, std::move(obj_mvo["_"]));
       }
 
@@ -196,21 +228,23 @@ namespace impl {
       {
          mutable_variant_object& obj_mvo;
          Resolver& resolver;
-         add_static_variant( mutable_variant_object& o, Resolver& r)
-               :obj_mvo(o), resolver(r){}
+         size_t recursion_depth;
+         add_static_variant( mutable_variant_object& o, Resolver& r, size_t recursion_depth)
+               :obj_mvo(o), resolver(r), recursion_depth(recursion_depth){}
 
          typedef void result_type;
          template<typename T> void operator()( T& v )const
          {
-            add(obj_mvo, "_", v, resolver);
+            add(obj_mvo, "_", v, resolver, recursion_depth);
          }
       };
 
       template<typename Resolver, typename... Args>
-      static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver )
+      static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          mutable_variant_object obj_mvo;
-         add_static_variant<Resolver> adder(obj_mvo, resolver);
+         add_static_variant<Resolver> adder(obj_mvo, resolver, recursion_depth);
          v.visit(adder);
          mvo(name, std::move(obj_mvo["_"]));
       }
@@ -223,7 +257,8 @@ namespace impl {
        * @return
        */
       template<typename Resolver>
-      static void add(mutable_variant_object &out, const char* name, const action& act, Resolver resolver) {
+      static void add(mutable_variant_object &out, const char* name, const action& act, Resolver resolver, size_t recursion_depth) {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          mutable_variant_object mvo;
          mvo("account", act.account);
          mvo("name", act.name);
@@ -233,8 +268,13 @@ namespace impl {
          if (abi.valid()) {
             auto type = abi->get_action_type(act.name);
             if (!type.empty()) {
-               mvo("data", abi->binary_to_variant(type, act.data));
-               mvo("hex_data", act.data);
+               try {
+                  mvo( "data", abi->_binary_to_variant( type, act.data, recursion_depth ));
+                  mvo("hex_data", act.data);
+               } catch(...) {
+                  // any failure to serialize data, then leave as not serailzed
+                  mvo("data", act.data);
+               }
             } else {
                mvo("data", act.data);
             }
@@ -245,26 +285,6 @@ namespace impl {
       }
 
       /**
-       * overload of to_variant_object for actions
-       * @tparam Resolver
-       * @param act
-       * @param resolver
-       * @return
-      template<typename Resolver>
-      static void add(mutable_variant_object &out, const char* name, const action_trace& act, Resolver resolver) {
-         mutable_variant_object mvo;
-         mvo("receipt", act.receipt);
-         mvo("elapsed", act.elapsed);
-         mvo("cpu_usage", act.cpu_usage);
-         mvo("console", act.console);
-         mvo("total_cpu_usage", act.total_inline_cpu_usage);
-         mvo("inline_traces", act.inline_traces);
-         out(name, std::move(mvo));
-      }
-       */
-
-
-      /**
        * overload of to_variant_object for packed_transaction
        * @tparam Resolver
        * @param act
@@ -272,7 +292,8 @@ namespace impl {
        * @return
        */
       template<typename Resolver>
-      static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver) {
+      static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver, size_t recursion_depth) {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          mutable_variant_object mvo;
          auto trx = ptrx.get_transaction();
          mvo("id", trx.id());
@@ -281,7 +302,7 @@ namespace impl {
          mvo("packed_context_free_data", ptrx.packed_context_free_data);
          mvo("context_free_data", ptrx.get_context_free_data());
          mvo("packed_trx", ptrx.packed_trx);
-         add(mvo, "transaction", trx, resolver);
+         add(mvo, "transaction", trx, resolver, recursion_depth);
 
          out(name, std::move(mvo));
       }
@@ -298,10 +319,11 @@ namespace impl {
    class abi_to_variant_visitor
    {
       public:
-         abi_to_variant_visitor( mutable_variant_object& _mvo, const T& _val, Resolver _resolver )
+         abi_to_variant_visitor( mutable_variant_object& _mvo, const T& _val, Resolver _resolver, size_t _recursion_depth )
          :_vo(_mvo)
          ,_val(_val)
          ,_resolver(_resolver)
+         ,_recursion_depth(_recursion_depth)
          {}
 
          /**
@@ -314,13 +336,14 @@ namespace impl {
          template<typename Member, class Class, Member (Class::*member) >
          void operator()( const char* name )const
          {
-            abi_to_variant::add(_vo, name, (_val.*member), _resolver);
+            abi_to_variant::add(_vo, name, (_val.*member), _resolver, _recursion_depth);
          }
 
       private:
          mutable_variant_object& _vo;
          const T& _val;
          Resolver _resolver;
+         size_t _recursion_depth;
    };
 
    struct abi_from_variant {
@@ -329,8 +352,9 @@ namespace impl {
        * and can be degraded to the normal ::from_variant(...) processing
        */
       template<typename M, typename Resolver, not_require_abi_t<M> = 1>
-      static void extract( const variant& v, M& o, Resolver )
+      static void extract( const variant& v, M& o, Resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          from_variant(v, o);
       }
 
@@ -339,21 +363,22 @@ namespace impl {
        * for these types we create new ABI aware visitors
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, M& o, Resolver resolver );
+      static void extract( const variant& v, M& o, Resolver resolver, size_t recursion_depth );
 
       /**
        * template which overloads extract for vectors of types which contain ABI information in their trees
        * for these members we call ::extract in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, vector<M>& o, Resolver resolver )
+      static void extract( const variant& v, vector<M>& o, Resolver resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          const variants& array = v.get_array();
          o.clear();
          o.reserve( array.size() );
          for( auto itr = array.begin(); itr != array.end(); ++itr ) {
             M o_iter;
-            extract(*itr, o_iter, resolver);
+            extract(*itr, o_iter, resolver, recursion_depth);
             o.emplace_back(std::move(o_iter));
          }
       }
@@ -363,11 +388,12 @@ namespace impl {
        * for these members we call ::extract in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, std::shared_ptr<M>& o, Resolver resolver )
+      static void extract( const variant& v, std::shared_ptr<M>& o, Resolver resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          const variant_object& vo = v.get_object();
          M obj;
-         extract(vo, obj, resolver);
+         extract(vo, obj, resolver, recursion_depth);
          o = std::make_shared<M>(obj);
       }
 
@@ -377,8 +403,9 @@ namespace impl {
        * exploded and processed explicitly
        */
       template<typename Resolver>
-      static void extract( const variant& v, action& act, Resolver resolver )
+      static void extract( const variant& v, action& act, Resolver resolver, size_t recursion_depth )
       {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          const variant_object& vo = v.get_object();
          EOS_ASSERT(vo.contains("account"), packed_transaction_type_exception, "Missing account");
          EOS_ASSERT(vo.contains("name"), packed_transaction_type_exception, "Missing name");
@@ -400,7 +427,7 @@ namespace impl {
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
-                     act.data = std::move( abi->variant_to_binary( type, data ));
+                     act.data = std::move( abi->_variant_to_binary( type, data, recursion_depth ));
                      valid_empty_data = act.data.empty();
                   }
                }
@@ -421,7 +448,8 @@ namespace impl {
       }
 
       template<typename Resolver>
-      static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver ) {
+      static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver, size_t recursion_depth ) {
+         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
          const variant_object& vo = v.get_object();
          EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
          EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
@@ -443,7 +471,7 @@ namespace impl {
             EOS_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
             transaction trx;
             vector<bytes> context_free_data;
-            extract(vo["transaction"], trx, resolver);
+            extract(vo["transaction"], trx, resolver, recursion_depth);
             if( vo.contains("packed_context_free_data") && vo["packed_context_free_data"].is_string() && !vo["packed_context_free_data"].as_string().empty() ) {
                from_variant(vo["packed_context_free_data"], ptrx.packed_context_free_data );
                context_free_data = ptrx.get_context_free_data();
@@ -466,10 +494,11 @@ namespace impl {
    class abi_from_variant_visitor : reflector_verifier_visitor<T>
    {
       public:
-         abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver )
+         abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver, size_t _recursion_depth )
          : reflector_verifier_visitor<T>(v)
          ,_vo(_vo)
          ,_resolver(_resolver)
+         ,_recursion_depth(_recursion_depth)
          {}
 
          /**
@@ -484,38 +513,41 @@ namespace impl {
          {
             auto itr = _vo.find(name);
             if( itr != _vo.end() )
-               abi_from_variant::extract( itr->value(), this->obj.*member, _resolver );
+               abi_from_variant::extract( itr->value(), this->obj.*member, _resolver, _recursion_depth );
          }
 
       private:
          const variant_object& _vo;
          Resolver _resolver;
+         size_t _recursion_depth;
    };
 
    template<typename M, typename Resolver, require_abi_t<M>>
-   void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver ) {
+   void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver, size_t recursion_depth ) {
+      FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
       mutable_variant_object member_mvo;
-      fc::reflector<M>::visit( impl::abi_to_variant_visitor<M, Resolver>( member_mvo, v, resolver ) );
+      fc::reflector<M>::visit( impl::abi_to_variant_visitor<M, Resolver>( member_mvo, v, resolver, recursion_depth ) );
       mvo(name, std::move(member_mvo));
    }
 
    template<typename M, typename Resolver, require_abi_t<M>>
-   void abi_from_variant::extract( const variant& v, M& o, Resolver resolver ) {
+   void abi_from_variant::extract( const variant& v, M& o, Resolver resolver, size_t recursion_depth ) {
+      FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth" );
       const variant_object& vo = v.get_object();
-      fc::reflector<M>::visit( abi_from_variant_visitor<M, decltype(resolver)>( vo, o, resolver ) );
+      fc::reflector<M>::visit( abi_from_variant_visitor<M, decltype(resolver)>( vo, o, resolver, recursion_depth ) );
    }
 }
 
 template<typename T, typename Resolver>
 void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver ) try {
    mutable_variant_object mvo;
-   impl::abi_to_variant::add(mvo, "_", o, resolver);
+   impl::abi_to_variant::add(mvo, "_", o, resolver, 0);
    vo = std::move(mvo["_"]);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to serialize type", ("object",o))
 
 template<typename T, typename Resolver>
 void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver ) try {
-   impl::abi_from_variant::extract(v, o, resolver);
+   impl::abi_from_variant::extract(v, o, resolver, 0);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
 
 
