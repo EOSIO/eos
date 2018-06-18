@@ -107,31 +107,33 @@ void wallet_api_plugin::plugin_startup() {
 }
 
 void wallet_api_plugin::plugin_initialize(const variables_map& options) {
-   const auto& _http_plugin = app().get_plugin<http_plugin>();
-   if (!_http_plugin.is_on_loopback()) {
-      if (!_http_plugin.is_secure()) {
-         elog("\n"
-              "********!!!SECURITY ERROR!!!********\n"
-              "*                                  *\n"
-              "* --       Wallet API           -- *\n"
-              "* - EXPOSED to the LOCAL NETWORK - *\n"
-              "* -  HTTP RPC is NOT encrypted   - *\n"
-              "* - Password and/or Private Keys - *\n"
-              "* - are at HIGH risk of exposure - *\n"
-              "*                                  *\n"
-              "************************************\n");
-      } else {
-         wlog("\n"
-              "**********SECURITY WARNING**********\n"
-              "*                                  *\n"
-              "* --       Wallet API           -- *\n"
-              "* - EXPOSED to the LOCAL NETWORK - *\n"
-              "* - Password and/or Private Keys - *\n"
-              "* -   are at risk of exposure    - *\n"
-              "*                                  *\n"
-              "************************************\n");
+   try {
+      const auto& _http_plugin = app().get_plugin<http_plugin>();
+      if( !_http_plugin.is_on_loopback()) {
+         if( !_http_plugin.is_secure()) {
+            elog( "\n"
+                  "********!!!SECURITY ERROR!!!********\n"
+                  "*                                  *\n"
+                  "* --       Wallet API           -- *\n"
+                  "* - EXPOSED to the LOCAL NETWORK - *\n"
+                  "* -  HTTP RPC is NOT encrypted   - *\n"
+                  "* - Password and/or Private Keys - *\n"
+                  "* - are at HIGH risk of exposure - *\n"
+                  "*                                  *\n"
+                  "************************************\n" );
+         } else {
+            wlog( "\n"
+                  "**********SECURITY WARNING**********\n"
+                  "*                                  *\n"
+                  "* --       Wallet API           -- *\n"
+                  "* - EXPOSED to the LOCAL NETWORK - *\n"
+                  "* - Password and/or Private Keys - *\n"
+                  "* -   are at risk of exposure    - *\n"
+                  "*                                  *\n"
+                  "************************************\n" );
+         }
       }
-   }
+   } FC_LOG_AND_RETHROW()
 }
 
 

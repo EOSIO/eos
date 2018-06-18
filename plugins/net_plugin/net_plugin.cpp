@@ -2946,105 +2946,104 @@ namespace eosio {
 
    void net_plugin::plugin_initialize( const variables_map& options ) {
       ilog("Initialize net plugin");
-      peer_log_format = options.at("peer-log-format").as<string>();
+      try {
+         peer_log_format = options.at( "peer-log-format" ).as<string>();
 
-      my->network_version_match = options.at("network-version-match").as<bool>();
+         my->network_version_match = options.at( "network-version-match" ).as<bool>();
 
-      my->sync_master.reset( new sync_manager(options.at("sync-fetch-span").as<uint32_t>() ) );
-      my->dispatcher.reset( new dispatch_manager );
+         my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
+         my->dispatcher.reset( new dispatch_manager );
 
-      my->connector_period = std::chrono::seconds(options.at("connection-cleanup-period").as<int>());
-      my->txn_exp_period = def_txn_expire_wait;
-      my->resp_expected_period = def_resp_expected_wait;
-      my->dispatcher->just_send_it_max = options.at("max-implicit-request").as<uint32_t>();
-      my->max_client_count = options.at("max-clients").as<int>();
-      my->max_nodes_per_host = options.at("p2p-max-nodes-per-host").as<int>();
-      my->num_clients = 0;
-      my->started_sessions = 0;
+         my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
+         my->txn_exp_period = def_txn_expire_wait;
+         my->resp_expected_period = def_resp_expected_wait;
+         my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
+         my->max_client_count = options.at( "max-clients" ).as<int>();
+         my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
+         my->num_clients = 0;
+         my->started_sessions = 0;
 
-      my->use_socket_read_watermark = options.at("use-socket-read-watermark").as<bool>();
+         my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
 
-      my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
-      if(options.count("p2p-listen-endpoint")) {
-         my->p2p_address = options.at("p2p-listen-endpoint").as< string >();
-         auto host = my->p2p_address.substr( 0, my->p2p_address.find(':') );
-         auto port = my->p2p_address.substr( host.size()+1, my->p2p_address.size() );
-         idump((host)(port));
-         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-         // Note: need to add support for IPv6 too?
+         my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+         if( options.count( "p2p-listen-endpoint" )) {
+            my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
+            auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
+            auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
+            idump((host)( port ));
+            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+            // Note: need to add support for IPv6 too?
 
-         my->listen_endpoint = *my->resolver->resolve( query);
+            my->listen_endpoint = *my->resolver->resolve( query );
 
-         my->acceptor.reset( new tcp::acceptor( app().get_io_service() ) );
-      }
-      if(options.count("p2p-server-address")) {
-         my->p2p_address = options.at("p2p-server-address").as< string >();
-      }
-      else {
-         if(my->listen_endpoint.address().to_v4() == address_v4::any()) {
-            boost::system::error_code ec;
-            auto host = host_name(ec);
-            if( ec.value() != boost::system::errc::success) {
-
-               FC_THROW_EXCEPTION( fc::invalid_arg_exception,
-                                   "Unable to retrieve host_name. ${msg}",( "msg",ec.message()));
-
-            }
-            auto port = my->p2p_address.substr( my->p2p_address.find(':'), my->p2p_address.size());
-            my->p2p_address = host + port;
+            my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
          }
-      }
+         if( options.count( "p2p-server-address" )) {
+            my->p2p_address = options.at( "p2p-server-address" ).as<string>();
+         } else {
+            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+               boost::system::error_code ec;
+               auto host = host_name( ec );
+               if( ec.value() != boost::system::errc::success ) {
 
-      if(options.count("p2p-peer-address")) {
-         my->supplied_peers = options.at("p2p-peer-address").as<vector<string> >();
-      }
-      if(options.count("agent-name")) {
-         my->user_agent_name = options.at("agent-name").as<string>();
-      }
+                  FC_THROW_EXCEPTION( fc::invalid_arg_exception,
+                                      "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
 
-      if(options.count("allowed-connection")) {
-         const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
-         for(const std::string& allowed_remote : allowed_remotes)
-            {
-               if(allowed_remote == "any")
+               }
+               auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
+               my->p2p_address = host + port;
+            }
+         }
+
+         if( options.count( "p2p-peer-address" )) {
+            my->supplied_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
+         }
+         if( options.count( "agent-name" )) {
+            my->user_agent_name = options.at( "agent-name" ).as<string>();
+         }
+
+         if( options.count( "allowed-connection" )) {
+            const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
+            for( const std::string& allowed_remote : allowed_remotes ) {
+               if( allowed_remote == "any" )
                   my->allowed_connections |= net_plugin_impl::Any;
-               else if(allowed_remote == "producers")
+               else if( allowed_remote == "producers" )
                   my->allowed_connections |= net_plugin_impl::Producers;
-               else if(allowed_remote == "specified")
+               else if( allowed_remote == "specified" )
                   my->allowed_connections |= net_plugin_impl::Specified;
-               else if(allowed_remote == "none")
+               else if( allowed_remote == "none" )
                   my->allowed_connections = net_plugin_impl::None;
             }
-      }
-
-      if(my->allowed_connections & net_plugin_impl::Specified)
-         FC_ASSERT(options.count("peer-key"), "At least one peer-key must accompany 'allowed-connection=specified'");
-
-      if(options.count("peer-key")) {
-         const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
-         for(const std::string& key_string : key_strings)
-            {
-               my->allowed_peers.push_back(dejsonify<chain::public_key_type>(key_string));
-            }
-      }
-
-      if(options.count("peer-private-key"))
-         {
-            const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
-            for(const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
-               {
-                  auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
-                  my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key(key_id_to_wif_pair.second);
-               }
          }
 
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
-      fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
-      ilog("my node_id is ${id}",("id",my->node_id));
+         if( my->allowed_connections & net_plugin_impl::Specified )
+            FC_ASSERT( options.count( "peer-key" ),
+                       "At least one peer-key must accompany 'allowed-connection=specified'" );
 
-      my->keepalive_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
-      my->ticker();
+         if( options.count( "peer-key" )) {
+            const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
+            for( const std::string& key_string : key_strings ) {
+               my->allowed_peers.push_back( dejsonify<chain::public_key_type>( key_string ));
+            }
+         }
+
+         if( options.count( "peer-private-key" )) {
+            const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+            for( const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings ) {
+               auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(
+                     key_id_to_wif_pair_string );
+               my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key( key_id_to_wif_pair.second );
+            }
+         }
+
+         my->chain_plug = app().find_plugin<chain_plugin>();
+         my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
+         fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
+         ilog( "my node_id is ${id}", ("id", my->node_id));
+
+         my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
+         my->ticker();
+      } FC_LOG_AND_RETHROW()
    }
 
    void net_plugin::plugin_startup() {
