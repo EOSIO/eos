@@ -1322,32 +1322,35 @@ namespace eosio {
    void bnet_plugin::plugin_initialize(const variables_map& options) {
       ilog( "Initialize bnet plugin" );
 
-      peer_log_format = options.at("bnet-peer-log-format").as<string>();
+      try {
+         peer_log_format = options.at( "bnet-peer-log-format" ).as<string>();
 
-      if( options.count( "bnet-endpoint" ) ) {
-         auto ip_port = options.at("bnet-endpoint").as< string >();
+         if( options.count( "bnet-endpoint" )) {
+            auto ip_port = options.at( "bnet-endpoint" ).as<string>();
 
-        //auto host = boost::asio::ip::host_name(ip_port);
-        auto port = ip_port.substr( ip_port.find(':')+1, ip_port.size() );
-        auto host = ip_port.substr( 0, ip_port.find(':') );
-        my->_bnet_endpoint_address = host;
-        my->_bnet_endpoint_port = std::stoi( port );
-        idump((ip_port)(host)(port)(my->_follow_irreversible));
-      }
-      if ( options.count( "bnet-follow-irreversible" )) {
-         my->_follow_irreversible = options.at("bnet-follow-irreversible").as< bool >();
-      }
+            //auto host = boost::asio::ip::host_name(ip_port);
+            auto port = ip_port.substr( ip_port.find( ':' ) + 1, ip_port.size());
+            auto host = ip_port.substr( 0, ip_port.find( ':' ));
+            my->_bnet_endpoint_address = host;
+            my->_bnet_endpoint_port = std::stoi( port );
+            idump((ip_port)( host )( port )( my->_follow_irreversible ));
+         }
+         if( options.count( "bnet-follow-irreversible" )) {
+            my->_follow_irreversible = options.at( "bnet-follow-irreversible" ).as<bool>();
+         }
 
 
-      if( options.count( "bnet-connect" ) ) {
-         my->_connect_to_peers = options.at( "bnet-connect" ).as<vector<string>>();
-      }
-      if( options.count( "bnet-threads" ) ) {
-         my->_num_threads = options.at("bnet-threads").as<uint32_t>();
-         if( my->_num_threads > 8 )
-            my->_num_threads = 8;
-      }
-      my->_request_trx = !options.at( "bnet-no-trx" ).as<bool>();
+         if( options.count( "bnet-connect" )) {
+            my->_connect_to_peers = options.at( "bnet-connect" ).as<vector<string>>();
+         }
+         if( options.count( "bnet-threads" )) {
+            my->_num_threads = options.at( "bnet-threads" ).as<uint32_t>();
+            if( my->_num_threads > 8 )
+               my->_num_threads = 8;
+         }
+         my->_request_trx = !options.at( "bnet-no-trx" ).as<bool>();
+
+      } FC_LOG_AND_RETHROW()
    }
 
    void bnet_plugin::plugin_startup() {

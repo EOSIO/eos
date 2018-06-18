@@ -208,233 +208,246 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
    try {
-      genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
-   } catch( const fc::exception& ) {
-      elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
-            ("root_key", genesis_state::eosio_root_key) );
-      throw;
-   }
-
-   my->chain_config = controller::config();
-
-   LOAD_VALUE_SET(options, "actor-whitelist",    my->chain_config->actor_whitelist);
-   LOAD_VALUE_SET(options, "actor-blacklist",    my->chain_config->actor_blacklist);
-   LOAD_VALUE_SET(options, "contract-whitelist", my->chain_config->contract_whitelist);
-   LOAD_VALUE_SET(options, "contract-blacklist", my->chain_config->contract_blacklist);
-
-   if( options.count("action-blacklist") ) {
-      const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();
-      auto& list = my->chain_config->action_blacklist;
-      for( const auto& a : acts ) {
-         auto pos = a.find("::");
-         FC_ASSERT( pos != std::string::npos, "Invalid entry in action-blacklist: '${a}'", ("a", a) );
-         account_name code(a.substr(0, pos));
-         action_name  act(a.substr(pos+2));
-         list.emplace( code.value, act.value );
+      try {
+         genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
+      } catch ( const fc::exception& ) {
+         elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
+               ("root_key", genesis_state::eosio_root_key));
+         throw;
       }
-   }
 
-   if( options.count("key-blacklist") ) {
-      const std::vector<std::string>& keys = options["key-blacklist"].as<std::vector<std::string>>();
-      auto& list = my->chain_config->key_blacklist;
-      for( const auto& key_str : keys ) {
-         list.emplace( key_str );
+      my->chain_config = controller::config();
+
+      LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
+      LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
+      LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );
+      LOAD_VALUE_SET( options, "contract-blacklist", my->chain_config->contract_blacklist );
+
+      if( options.count( "action-blacklist" )) {
+         const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();
+         auto& list = my->chain_config->action_blacklist;
+         for( const auto& a : acts ) {
+            auto pos = a.find( "::" );
+            FC_ASSERT( pos != std::string::npos, "Invalid entry in action-blacklist: '${a}'", ("a", a));
+            account_name code( a.substr( 0, pos ));
+            action_name act( a.substr( pos + 2 ));
+            list.emplace( code.value, act.value );
+         }
       }
-   }
 
-   if( options.count("blocks-dir") )
-   {
-      auto bld = options.at("blocks-dir").as<bfs::path>();
-      if(bld.is_relative())
-         my->blocks_dir = app().data_dir() / bld;
-      else
-         my->blocks_dir = bld;
-   }
-
-   if( options.count("checkpoint") )
-   {
-      auto cps = options.at("checkpoint").as<vector<string>>();
-      my->loaded_checkpoints.reserve(cps.size());
-      for(auto cp : cps)
-      {
-         auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
-         my->loaded_checkpoints[item.first] = item.second;
+      if( options.count( "key-blacklist" )) {
+         const std::vector<std::string>& keys = options["key-blacklist"].as<std::vector<std::string>>();
+         auto& list = my->chain_config->key_blacklist;
+         for( const auto& key_str : keys ) {
+            list.emplace( key_str );
+         }
       }
-   }
 
-   if(options.count("wasm-runtime"))
-      my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
+      if( options.count( "blocks-dir" )) {
+         auto bld = options.at( "blocks-dir" ).as<bfs::path>();
+         if( bld.is_relative())
+            my->blocks_dir = app().data_dir() / bld;
+         else
+            my->blocks_dir = bld;
+      }
 
-   my->chain_config->blocks_dir = my->blocks_dir;
-   my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
-   my->chain_config->read_only = my->readonly;
+      if( options.count( "checkpoint" )) {
+         auto cps = options.at( "checkpoint" ).as<vector<string>>();
+         my->loaded_checkpoints.reserve( cps.size());
+         for( auto cp : cps ) {
+            auto item = fc::json::from_string( cp ).as<std::pair<uint32_t, block_id_type>>();
+            my->loaded_checkpoints[item.first] = item.second;
+         }
+      }
 
-   if (options.count("chain-state-db-size-mb"))
-      my->chain_config->state_size = options.at("chain-state-db-size-mb").as<uint64_t>() * 1024 * 1024;
+      if( options.count( "wasm-runtime" ))
+         my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
 
-   if (options.count("reversible-blocks-db-size-mb"))
-      my->chain_config->reversible_cache_size = options.at("reversible-blocks-db-size-mb").as<uint64_t>() * 1024 * 1024;
+      my->chain_config->blocks_dir = my->blocks_dir;
+      my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
+      my->chain_config->read_only = my->readonly;
 
-   if( my->wasm_runtime )
-      my->chain_config->wasm_runtime = *my->wasm_runtime;
+      if( options.count( "chain-state-db-size-mb" ))
+         my->chain_config->state_size = options.at( "chain-state-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
-   my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
-   my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
+      if( options.count( "reversible-blocks-db-size-mb" ))
+         my->chain_config->reversible_cache_size =
+               options.at( "reversible-blocks-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
-   if( options.count("extract-genesis-json") ||  options.at("print-genesis-json").as<bool>() ) {
-      genesis_state gs;
+      if( my->wasm_runtime )
+         my->chain_config->wasm_runtime = *my->wasm_runtime;
 
-      if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
-         gs = block_log::extract_genesis_state( my->blocks_dir );
+      my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
+      my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
+
+      if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
+         genesis_state gs;
+
+         if( fc::exists( my->blocks_dir / "blocks.log" )) {
+            gs = block_log::extract_genesis_state( my->blocks_dir );
+         } else {
+            wlog( "No blocks.log found at '${p}'. Using default genesis state.",
+                  ("p", (my->blocks_dir / "blocks.log").generic_string()));
+         }
+
+         if( options.at( "print-genesis-json" ).as<bool>()) {
+            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( gs )));
+         }
+
+         if( options.count( "extract-genesis-json" )) {
+            auto p = options.at( "extract-genesis-json" ).as<bfs::path>();
+
+            if( p.is_relative()) {
+               p = bfs::current_path() / p;
+            }
+
+            fc::json::save_to_file( gs, p, true );
+            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()));
+         }
+
+         EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
+      }
+
+      if( options.at( "delete-all-blocks" ).as<bool>()) {
+         ilog( "Deleting state database and blocks" );
+         if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
+            wlog( "The --truncate-at-block option does not make sense when deleting all blocks." );
+         fc::remove_all( my->chain_config->state_dir );
+         fc::remove_all( my->blocks_dir );
+      } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
+         ilog( "Hard replay requested: deleting state database" );
+         fc::remove_all( my->chain_config->state_dir );
+         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
+         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
+             options.at( "fix-reversible-blocks" ).as<bool>()) {
+            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
+            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
+                                            my->chain_config->reversible_cache_size,
+                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
+               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
+               fc::copy( backup_dir / config::reversible_blocks_dir_name,
+                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
+               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
+                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
+               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
+                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.meta" );
+            }
+         }
+      } else if( options.at( "replay-blockchain" ).as<bool>()) {
+         ilog( "Replay requested: deleting state database" );
+         if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
+            wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
+         fc::remove_all( my->chain_config->state_dir );
+         if( options.at( "fix-reversible-blocks" ).as<bool>()) {
+            if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+                                            my->chain_config->reversible_cache_size )) {
+               ilog( "Reversible blocks database was not corrupted." );
+            }
+         }
+      } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
+         if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+                                         my->chain_config->reversible_cache_size,
+                                         optional<fc::path>(),
+                                         options.at( "truncate-at-block" ).as<uint32_t>())) {
+            ilog( "Reversible blocks database verified to not be corrupted. Now exiting..." );
+         } else {
+            ilog( "Exiting after fixing reversible blocks database..." );
+         }
+         EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
+      } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
+         wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
+      }
+
+      if( options.count( "genesis-json" )) {
+         FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                    "Genesis state can only be set on a fresh blockchain." );
+
+         auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
+         if( genesis_file.is_relative()) {
+            genesis_file = bfs::current_path() / genesis_file;
+         }
+
+         FC_ASSERT( fc::is_regular_file( genesis_file ),
+                    "Specified genesis file '${genesis}' does not exist.",
+                    ("genesis", genesis_file.generic_string()));
+
+         my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+
+         ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+
+         if( options.count( "genesis-timestamp" )) {
+            my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
+                  options.at( "genesis-timestamp" ).as<string>());
+         }
+
+         wlog( "Starting up fresh blockchain with provided genesis state." );
+      } else if( options.count( "genesis-timestamp" )) {
+         FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                    "Genesis state can only be set on a fresh blockchain." );
+
+         my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
+               options.at( "genesis-timestamp" ).as<string>());
+
+         wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
+      } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+         my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
       } else {
-         wlog( "No blocks.log found at '${p}'. Using default genesis state.", ("p", (my->blocks_dir / "blocks.log").generic_string()) );
+         wlog( "Starting up fresh blockchain with default genesis state." );
       }
 
-      if( options.at("print-genesis-json").as<bool>() ) {
-         ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string(gs)) );
-      }
+      my->chain.emplace( *my->chain_config );
+      my->chain_id.emplace( my->chain->get_chain_id());
 
-      if( options.count("extract-genesis-json") ) {
-         auto p = options.at("extract-genesis-json").as<bfs::path>();
+      // set up method providers
+      my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
+            [this]( uint32_t block_num ) -> signed_block_ptr {
+               return my->chain->fetch_block_by_number( block_num );
+            } );
 
-         if( p.is_relative() ) {
-            p = bfs::current_path() / p;
-         }
+      my->get_block_by_id_provider = app().get_method<methods::get_block_by_id>().register_provider(
+            [this]( block_id_type id ) -> signed_block_ptr {
+               return my->chain->fetch_block_by_id( id );
+            } );
 
-         fc::json::save_to_file( gs, p, true );
-         ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
-      }
+      my->get_head_block_id_provider = app().get_method<methods::get_head_block_id>().register_provider( [this]() {
+         return my->chain->head_block_id();
+      } );
 
-      EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
-   }
+      my->get_last_irreversible_block_number_provider = app().get_method<methods::get_last_irreversible_block_number>().register_provider(
+            [this]() {
+               return my->chain->last_irreversible_block_num();
+            } );
 
-   if( options.at("delete-all-blocks").as<bool>() ) {
-      ilog("Deleting state database and blocks");
-      if( options.at("truncate-at-block").as<uint32_t>() > 0 )
-         wlog("The --truncate-at-block option does not make sense when deleting all blocks.");
-      fc::remove_all( my->chain_config->state_dir );
-      fc::remove_all(my->blocks_dir);
-   } else if( options.at("hard-replay-blockchain").as<bool>() ) {
-      ilog("Hard replay requested: deleting state database");
-      fc::remove_all( my->chain_config->state_dir );
-      auto backup_dir = block_log::repair_log( my->blocks_dir, options.at("truncate-at-block").as<uint32_t>() );
-      if( fc::exists(backup_dir/config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>() ) {
-         // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-         if( !recover_reversible_blocks(  backup_dir/config::reversible_blocks_dir_name,
-                                          my->chain_config->reversible_cache_size,
-                                          my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
-                                          options.at("truncate-at-block").as<uint32_t>() ) ) {
-            ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
-            fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                      my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
-            fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                      my->chain_config->blocks_dir/ config::reversible_blocks_dir_name / "shared_memory.bin" );
-            fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
-                      my->chain_config->blocks_dir/ config::reversible_blocks_dir_name / "shared_memory.meta" );
-         }
-      }
-   } else if( options.at("replay-blockchain").as<bool>() ) {
-      ilog("Replay requested: deleting state database");
-      if( options.at("truncate-at-block").as<uint32_t>() > 0 )
-         wlog("The --truncate-at-block option does not work for a regular replay of the blockchain.");
-      fc::remove_all( my->chain_config->state_dir );
-      if( options.at("fix-reversible-blocks").as<bool>() ) {
-         if( !recover_reversible_blocks(  my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
-                                          my->chain_config->reversible_cache_size ) ) {
-            ilog("Reversible blocks database was not corrupted.");
-         }
-      }
-   } else if( options.at("fix-reversible-blocks").as<bool>() ) {
-      if( !recover_reversible_blocks(  my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
-                                       my->chain_config->reversible_cache_size,
-                                       optional<fc::path>(),
-                                       options.at("truncate-at-block").as<uint32_t>() ) ) {
-         ilog("Reversible blocks database verified to not be corrupted. Now exiting...");
-      } else {
-         ilog("Exiting after fixing reversible blocks database...");
-      }
-      EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
-   } else if( options.at("truncate-at-block").as<uint32_t>() > 0 ) {
-      wlog("The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain.");
-   }
+      // relay signals to channels
+      my->accepted_block_header_connection = my->chain->accepted_block_header.connect(
+            [this]( const block_state_ptr& blk ) {
+               my->accepted_block_header_channel.publish( blk );
+            } );
 
-   if( options.count("genesis-json") ) {
-      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis state can only be set on a fresh blockchain." );
+      my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
+         my->accepted_block_channel.publish( blk );
+      } );
 
-      auto genesis_file = options.at("genesis-json").as<bfs::path>();
-      if( genesis_file.is_relative() ) {
-         genesis_file = bfs::current_path() / genesis_file;
-      }
+      my->irreversible_block_connection = my->chain->irreversible_block.connect( [this]( const block_state_ptr& blk ) {
+         my->irreversible_block_channel.publish( blk );
+      } );
 
-      FC_ASSERT( fc::is_regular_file( genesis_file ),
-                 "Specified genesis file '${genesis}' does not exist.",
-                 ("genesis", genesis_file.generic_string()) );
+      my->accepted_transaction_connection = my->chain->accepted_transaction.connect(
+            [this]( const transaction_metadata_ptr& meta ) {
+               my->accepted_transaction_channel.publish( meta );
+            } );
 
-      my->chain_config->genesis = fc::json::from_file(genesis_file).as<genesis_state>();
+      my->applied_transaction_connection = my->chain->applied_transaction.connect(
+            [this]( const transaction_trace_ptr& trace ) {
+               my->applied_transaction_channel.publish( trace );
+            } );
 
-      ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()) );
-
-      if( options.count("genesis-timestamp") ) {
-         my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at("genesis-timestamp").as<string>() );
-      }
-
-      wlog( "Starting up fresh blockchain with provided genesis state." );
-   } else if( options.count("genesis-timestamp") ) {
-      FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ), "Genesis state can only be set on a fresh blockchain." );
-
-      my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at("genesis-timestamp").as<string>() );
-
-      wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
-   } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
-      my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-   } else {
-      wlog( "Starting up fresh blockchain with default genesis state." );
-   }
-
-   my->chain.emplace(*my->chain_config);
-   my->chain_id.emplace(my->chain->get_chain_id());
-
-   // set up method providers
-   my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider([this](uint32_t block_num) -> signed_block_ptr {
-      return my->chain->fetch_block_by_number(block_num);
-   });
-
-   my->get_block_by_id_provider = app().get_method<methods::get_block_by_id>().register_provider([this](block_id_type id) -> signed_block_ptr {
-      return my->chain->fetch_block_by_id(id);
-   });
-
-   my->get_head_block_id_provider = app().get_method<methods::get_head_block_id>().register_provider([this](){
-      return my->chain->head_block_id();
-   });
-
-   my->get_last_irreversible_block_number_provider = app().get_method<methods::get_last_irreversible_block_number>().register_provider([this](){
-      return my->chain->last_irreversible_block_num();
-   });
-
-   // relay signals to channels
-   my->accepted_block_header_connection = my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
-      my->accepted_block_header_channel.publish(blk);
-   });
-
-   my->accepted_block_connection = my->chain->accepted_block.connect([this](const block_state_ptr& blk) {
-      my->accepted_block_channel.publish(blk);
-   });
-
-   my->irreversible_block_connection = my->chain->irreversible_block.connect([this](const block_state_ptr& blk) {
-      my->irreversible_block_channel.publish(blk);
-   });
-
-   my->accepted_transaction_connection = my->chain->accepted_transaction.connect([this](const transaction_metadata_ptr& meta){
-      my->accepted_transaction_channel.publish(meta);
-   });
-
-   my->applied_transaction_connection = my->chain->applied_transaction.connect([this](const transaction_trace_ptr& trace){
-      my->applied_transaction_channel.publish(trace);
-   });
-
-   my->accepted_confirmation_connection = my->chain->accepted_confirmation.connect([this](const header_confirmation& conf){
-      my->accepted_confirmation_channel.publish(conf);
-   });
+      my->accepted_confirmation_connection = my->chain->accepted_confirmation.connect(
+            [this]( const header_confirmation& conf ) {
+               my->accepted_confirmation_channel.publish( conf );
+            } );
+   } FC_LOG_AND_RETHROW()
 
 }
 
