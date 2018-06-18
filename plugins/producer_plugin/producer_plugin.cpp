@@ -119,6 +119,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
       bool     _pause_production                   = false;
+      bool     _keep_speculative_state             = true;
       uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
@@ -341,6 +342,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->expiration()});
                }
                send_response(trace);
+               if ( !_keep_speculative_state ) {
+                  chain.abort_block();
+                  chain.start_block();
+               }
             }
 
          } catch ( boost::interprocess::bad_alloc& ) {
@@ -412,6 +417,7 @@ void producer_plugin::set_program_options(
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
+         ("keep-speculative-state,s", boost::program_options::bool_switch()->default_value(true)->notifier([this](bool e){my->_keep_speculative_state = e;}), "Keep results of speculative excution.")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( -1 ),
