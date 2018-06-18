@@ -80,7 +80,42 @@ using transaction_id_with_expiry_index = multi_index_container<
    >
 >;
 
+enum class read_mode {
+   SPECULATIVE,
+   HEAD
+};
 
+std::ostream& operator<<(std::ostream& osm, read_mode m) {
+   if ( m == read_mode::SPECULATIVE ) {
+      osm << "speculative";
+   } else if ( m == read_mode::HEAD ) {
+      osm << "head";
+   }
+   return osm;
+}
+
+void validate(boost::any& v,
+              std::vector<std::string> const& values,
+              read_mode* /* target_type */,
+              int)
+{
+  using namespace boost::program_options;
+
+  // Make sure no previous assignment to 'v' was made.
+  validators::check_first_occurrence(v);
+
+  // Extract the first string from 'values'. If there is more than
+  // one string, it's an error, and exception will be thrown.
+  std::string const& s = validators::get_single_string(values);
+
+  if ( s == "speculative" ) {
+     v = boost::any(read_mode::SPECULATIVE);
+  } else if ( s == "head" ) {
+     v = boost::any(read_mode::HEAD);
+  } else {
+     throw validation_error(validation_error::invalid_option_value);
+  }
+}
 
 enum class pending_block_mode {
    producing,
@@ -117,10 +152,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool maybe_produce_block();
 
       boost::program_options::variables_map _options;
-      bool     _production_enabled                 = false;
-      bool     _pause_production                   = false;
-      bool     _keep_speculative_state             = true;
-      uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
+      bool      _production_enabled                 = false;
+      bool      _pause_production                   = false;
+      read_mode _read_mode                          = read_mode::SPECULATIVE;
+      uint32_t  _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
@@ -342,7 +377,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->expiration()});
                }
                send_response(trace);
-               if ( !_keep_speculative_state ) {
+               if ( _read_mode != read_mode::SPECULATIVE ) {
                   chain.abort_block();
                   chain.start_block();
                }
@@ -405,6 +440,7 @@ producer_plugin::producer_plugin()
 
 producer_plugin::~producer_plugin() {}
 
+
 void producer_plugin::set_program_options(
    boost::program_options::options_description& command_line_options,
    boost::program_options::options_description& config_file_options)
@@ -417,7 +453,7 @@ void producer_plugin::set_program_options(
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
-         ("keep-speculative-state,s", boost::program_options::bool_switch()->default_value(true)->notifier([this](bool e){my->_keep_speculative_state = e;}), "Keep results of speculative excution.")
+      ("read-mode", boost::program_options::value<read_mode>()->default_value(read_mode::SPECULATIVE)->notifier([this](read_mode m){my->_read_mode = m;}), "Database read mode (\"speculative\" or \"head\")")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( -1 ),
