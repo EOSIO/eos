@@ -31,7 +31,7 @@ class Cluster(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is enuwallet running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False
+    def __init__(self, enuwalletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False
                  , mongoHost="localhost", mongoPort=27017, mongoDb="ENUtest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
         walletd [True|False] Is wallet enuwallet running. If not load the wallet plugin
