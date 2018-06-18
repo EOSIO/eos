@@ -32,30 +32,30 @@ void actions_table::create()
             "transaction_id VARCHAR(64),"
             "name VARCHAR(12),"
             "data JSON, FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,"
-            "FOREIGN KEY (account) REFERENCES accounts(name))";
+            "FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
     *m_session << "CREATE TABLE actions_accounts("
             "actor VARCHAR(12),"
             "permission VARCHAR(12),"
             "action_id VARCHAR(36), FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE,"
-            "FOREIGN KEY (actor) REFERENCES accounts(name))";
+            "FOREIGN KEY (actor) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
     *m_session << "CREATE TABLE tokens("
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
             "amount REAL(14,4),"
-            "FOREIGN KEY (account) REFERENCES accounts(name))"; // TODO: other tokens could have diff format.
+            "FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;"; // TODO: other tokens could have diff format.
 
     *m_session << "CREATE TABLE votes("
             "account VARCHAR(13) PRIMARY KEY,"
             "votes JSON"
-            ", FOREIGN KEY (account) REFERENCES accounts(name))";
+            ", FOREIGN KEY (account) REFERENCES accounts(name), UNIQUE KEY account (account)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
     *m_session << "CREATE TABLE stakes("
             "account VARCHAR(13),"
             "cpu REAL(14,4),"
             "net REAL(14,4),"
-            "FOREIGN KEY (account) REFERENCES accounts(name))";
+            "FOREIGN KEY (account) REFERENCES accounts(name), UNIQUE KEY account (account)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
 }
 

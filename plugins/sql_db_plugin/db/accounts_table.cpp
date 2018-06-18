@@ -27,12 +27,12 @@ void accounts_table::create()
             "name VARCHAR(12) PRIMARY KEY,"
             "abi JSON DEFAULT NULL,"
             "created_at DATETIME DEFAULT NOW(),"
-            "updated_at DATETIME DEFAULT NOW())";
+            "updated_at DATETIME DEFAULT NOW()) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
     *m_session << "CREATE TABLE accounts_keys("
             "account VARCHAR(12),"
             "public_key VARCHAR(53),"
-            "permission VARCHAR(12), FOREIGN KEY (account) REFERENCES accounts(name))";
+            "permission VARCHAR(12), FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 }
 
 void accounts_table::add(string name)

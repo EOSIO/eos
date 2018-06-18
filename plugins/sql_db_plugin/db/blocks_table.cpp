@@ -32,7 +32,7 @@ void blocks_table::create()
             "action_merkle_root VARCHAR(64),"
             "producer VARCHAR(12),"
             "num_transactions INT DEFAULT 0,"
-            "confirmed INT, FOREIGN KEY (producer) REFERENCES accounts(name), UNIQUE KEY block_number (block_number))";
+            "confirmed INT, FOREIGN KEY (producer) REFERENCES accounts(name), UNIQUE KEY block_number (block_number)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 }
 
 void blocks_table::add(chain::signed_block_ptr block)
