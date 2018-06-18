@@ -12,6 +12,7 @@ import datetime
 import sys
 import random
 import json
+import socket
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -70,9 +71,11 @@ class Cluster(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
         self.staging=staging
         # init accounts
-        self.defproduceraAccount=Account("defproducera")
-        self.defproducerbAccount=Account("defproducerb")
-        self.eosioAccount=Account("eosio")
+        self.defProducerAccounts={}
+        self.defproduceraAccount=self.defProducerAccounts["defproducera"]= Account("defproducera")
+        self.defproducerbAccount=self.defProducerAccounts["defproducerb"]= Account("defproducerb")
+        self.eosioAccount=self.defProducerAccounts["eosio"]= Account("eosio")
+
         self.defproduceraAccount.ownerPrivateKey=defproduceraPrvtKey
         self.defproduceraAccount.activePrivateKey=defproduceraPrvtKey
         self.defproducerbAccount.ownerPrivateKey=defproducerbPrvtKey
@@ -109,10 +112,15 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        if totalProducers!=None:
+        producerFlag=""
+        if totalProducers:
+            assert(isinstance(totalProducers, str))
             producerFlag="--producers %s" % (totalProducers)
-        else:
-            producerFlag=""
+
+        if not Cluster.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
+            Utils.Print("ERROR: Another process is listening on nodeos default port.")
+            return False
+
         cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin %s %s" % (
             Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
             p2pPlugin, producerFlag)
@@ -183,11 +191,44 @@ class Cluster(object):
             account.activePrivateKey=keys["private"]
             account.activePublicKey=keys["public"]
 
-        initAccountKeys(self.eosioAccount, producerKeys["eosio"])
-        initAccountKeys(self.defproduceraAccount, producerKeys["defproducera"])
-        initAccountKeys(self.defproducerbAccount, producerKeys["defproducerb"])
+        for name,initKeys in producerKeys.items():
+            account=Account(name)
+            initAccountKeys(account, producerKeys[name])
+            self.defProducerAccounts[name] = account
+
+        self.eosioAccount=self.defProducerAccounts["eosio"]
+        self.defproduceraAccount=self.defProducerAccounts["defproducera"]
+        self.defproducerbAccount=self.defProducerAccounts["defproducerb"]
 
         return True
+
+    @staticmethod
+    def arePortsAvailable(ports):
+        """Check if specified ports are available for listening on."""
+        assert(ports)
+        assert(isinstance(ports, set))
+
+        for port in ports:
+            if Utils.Debug: Utils.Print("Checking if port %d is available." % (port))
+            assert(isinstance(port, int))
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+            try:
+                s.bind(("127.0.0.1", port))
+            except socket.error as e:
+                if e.errno == errno.EADDRINUSE:
+                    Utils.Print("ERROR: Port %d is already in use" % (port))
+                else:
+                    # something else raised the socket.error exception
+                    Utils.Print("ERROR: Unknown exception while trying to listen on port %d" % (port))
+                    Utils.Print(e)
+                return False
+            finally:
+                s.close()
+
+        return True
+
 
     # Initialize the default nodes (at present just the root node)
     def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
@@ -195,7 +236,7 @@ class Cluster(object):
         host=Cluster.__BiosHost if onlyBios else self.host
         node=Node(host, port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         node.setWalletEndpointArgs(self.walletEndpointArgs)
-        if Utils.Debug: Utils.Print("Node:", node)
+        if Utils.Debug: Utils.Print("Node: %s", str(node))
 
         node.checkPulse()
         self.nodes=[node]
