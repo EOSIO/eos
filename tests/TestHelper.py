@@ -1,6 +1,8 @@
 from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr
+from datetime import datetime
+import platform
 
 import argparse
 
@@ -81,6 +83,17 @@ class TestHelper(object):
         args = parser.parse_args()
         return args
 
+    @staticmethod
+    def printSystemInfo(prefix):
+        """Print system information to stdout. Print prefix first."""
+        if prefix:
+            Utils.Print(str(prefix))
+        clientVersion=Cluster.getClientVersion()
+        Utils.Print("UTC time: %s" % str(datetime.utcnow()))
+        Utils.Print("EOS Client version: %s" % (clientVersion))
+        Utils.Print("Processor: %s" % (platform.processor()))
+        Utils.Print("OS name: %s" % (platform.platform()))
+    
     @staticmethod
     # pylint: disable=too-many-arguments
     def shutdown(cluster, walletMgr, testSuccessful=True, killEosInstances=True, killWallet=True, keepLogs=False, cleanRun=True, dumpErrorDetails=False):
