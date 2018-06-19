@@ -31,6 +31,8 @@ void blocks_table::create()
             "transaction_merkle_root VARCHAR(64),"
             "action_merkle_root VARCHAR(64),"
             "producer VARCHAR(12),"
+            "version INT NOT NULL DEFAULT 0,"
+            "new_producers JSON DEFAULT NULL,"
             "num_transactions INT DEFAULT 0,"
             "confirmed INT, FOREIGN KEY (producer) REFERENCES accounts(name), UNIQUE KEY block_number (block_number)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 }
@@ -44,8 +46,9 @@ void blocks_table::add(chain::signed_block_ptr block)
     const auto timestamp = std::chrono::seconds{block->timestamp.operator fc::time_point().sec_since_epoch()}.count();
     const auto num_transactions = (int)block->transactions.size();
 
+
     *m_session << "REPLACE INTO blocks(id, block_number, prev_block_id, timestamp, transaction_merkle_root, action_merkle_root,"
-                  "producer, confirmed, num_transactions) VALUES (:id, :in, :pb, FROM_UNIXTIME(:ti), :tr, :ar, :pa, :pe, :nt)",
+            "producer, version, confirmed, num_transactions) VALUES (:id, :in, :pb, FROM_UNIXTIME(:ti), :tr, :ar, :pa, :ve, :pe, :nt)",
             soci::use(block_id_str),
             soci::use(block->block_num()),
             soci::use(previous_block_id_str),
@@ -53,8 +56,16 @@ void blocks_table::add(chain::signed_block_ptr block)
             soci::use(transaction_mroot_str),
             soci::use(action_mroot_str),
             soci::use(block->producer.to_string()),
+            soci::use(block->schedule_version),
             soci::use(block->confirmed),
             soci::use(num_transactions);
+
+    if (block->new_producers) {
+        const auto new_producers = fc::json::to_string(block->new_producers->producers);
+        *m_session << "UPDATE blocks SET new_producers = :np WHERE id = :id",
+                soci::use(new_producers),
+                soci::use(block_id_str);
+    }
 }
 
 } // namespace

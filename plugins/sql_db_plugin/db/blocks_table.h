@@ -6,6 +6,9 @@
 
 #include <soci/soci.h>
 
+#include <fc/io/json.hpp>
+#include <fc/variant.hpp>
+
 #include <eosio/chain/block_state.hpp>
 
 namespace eosio {
