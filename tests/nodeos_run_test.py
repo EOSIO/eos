@@ -59,7 +59,7 @@ ClientName="cleos"
 # Utils.setMongoSyncTime(50)
 
 try:
-    Print("BEGIN")
+    TestHelper.printSystemInfo("BEGIN")
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
 
