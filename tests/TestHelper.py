@@ -1,6 +1,6 @@
 from testUtils import Utils
-from testUtils import Cluster
-from testUtils import WalletMgr
+from Cluster import Cluster
+from WalletMgr import WalletMgr
 
 import argparse
 
@@ -77,6 +77,8 @@ class TestHelper(object):
             parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
         if "--clean-run" in includeArgs:
             parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
+        if "--sanity-test" in includeArgs:
+            parser.add_argument("--sanity-test", help="Validates nodeos and kleos are in path and can be started up.", action='store_true')
 
         args = parser.parse_args()
         return args

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-#from testUtils import Utils
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from WalletMgr import WalletMgr
+from Node import Node
 from TestHelper import TestHelper
 
 import decimal
@@ -13,8 +15,8 @@ import re
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
 
-Print=testUtils.Utils.Print
-errorExit=testUtils.Utils.errorExit
+Print=Utils.Print
+errorExit=Utils.errorExit
 
 from core_symbol import CORE_SYMBOL
 
@@ -26,7 +28,8 @@ def cmdError(name, cmdCode=0, exitNow=False):
         Print(msg)
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
-                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"})
+                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
+                              ,"--sanity-test"})
 server=args.host
 port=args.port
 debug=args.v
@@ -40,18 +43,20 @@ dontKill=args.leave_running
 prodCount=args.prod_count
 onlyBios=args.only_bios
 killAll=args.clean_run
+sanityTest=args.sanity_test
 
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
-walletMgr=testUtils.WalletMgr(True)
+cluster=Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+walletMgr=WalletMgr(True)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
+dontBootstrap=sanityTest
 
 WalletdName="keosd"
 ClientName="cleos"
-# testUtils.Utils.setMongoSyncTime(50)
+# Utils.setMongoSyncTime(50)
 
 try:
     Print("BEGIN")
@@ -68,17 +73,21 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill) is False:
+        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill, dontBootstrap=dontBootstrap) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEosInstances=False
 
+    if sanityTest:
+        testSuccessful=True
+        exit(0)
+
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    accounts=testUtils.Cluster.createAccountKeys(3)
+    accounts=Cluster.createAccountKeys(3)
     if accounts is None:
         errorExit("FAILURE - create keys")
     testeraAccount=accounts[0]
@@ -283,7 +292,7 @@ try:
         cmdError("%s transfer" % (ClientName))
         errorExit("Failed to transfer funds %d from account %s to %s" % (
             transferAmount, testeraAccount.name, currencyAccount.name))
-    transId=testUtils.Node.getTransId(trans)
+    transId=Node.getTransId(trans)
 
     expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
     Print("Verify transfer, Expected: %s" % (expectedAmount))
@@ -476,12 +485,12 @@ try:
     if trans is None or not trans[0]:
         cmdError("%s push message currency1111 transfer" % (ClientName))
         errorExit("Failed to push message to currency1111 contract")
-    transId=testUtils.Node.getTransId(trans[1])
+    transId=Node.getTransId(trans[1])
 
     Print("push duplicate transfer action to currency1111 contract")
     transDuplicate=node.pushMessage(contract, action, data, opts, True)
     if transDuplicate is not None and transDuplicate[0]:
-        transDuplicateId=testUtils.Node.getTransId(transDuplicate[1])
+        transDuplicateId=Node.getTransId(transDuplicate[1])
         if transId != transDuplicateId:
             cmdError("%s push message currency1111 duplicate transfer incorrectly accepted, but they were generated with different transaction ids, it is likely a timing issue, report if problem persists, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
         else:
@@ -599,7 +608,7 @@ try:
     if trans is None or not trans[0]:
         cmdError("%s push message currency1111 transfer" % (ClientName))
         errorExit("Failed to push message to currency1111 contract")
-    transId=testUtils.Node.getTransId(trans[1])
+    transId=Node.getTransId(trans[1])
 
     Print("read current contract balance")
     amountStr=node.getCurrencyBalance("currency1111", defproduceraAccount.name, "CUR")
@@ -733,7 +742,7 @@ try:
             # TBD: getTransByBlockId() needs to handle multiple returned transactions
             # trans=node.getTransByBlockId(blockId, retry=False)
             # if trans is not None:
-            #     transId=testUtils.Node.getTransId(trans)
+            #     transId=Node.getTransId(trans)
             #     trans2=node.getMessageFromDb(transId)
             #     if trans2 is None:
             #         errorExit("mongo get messages by transaction id %s" % (transId))
