@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include "tic_tac_toe.hpp"
-#include <math.h>
 
 using namespace eosio;
 
@@ -41,29 +40,29 @@ account_name get_winner(const tic_tac_toe::game& current_game) {
 
    bool is_board_full = true;
    
-   vector<uint32_t> consecutive_column(tic_tac_toe::game::board_width, 1 );
-   vector<uint32_t> consecutive_row(tic_tac_toe::game::board_height, 1 );
-   uint32_t consecutive_diagonal_backslash = 1;
-   uint32_t consecutive_diagonal_slash = 1;
+   
 
-   // Use multiplication to determine the consecutive values of each column, row and diagonal
-   uint32_t host_winning_value = uint32_t(pow(1, tic_tac_toe::game::board_width));
-   uint32_t challenger_winning_value = uint32_t(pow(2, tic_tac_toe::game::board_width));
+   // Use bitwise AND operator to determine the consecutive values of each column, row and diagonal
+   // Since 3 == 0b11, 2 == 0b10, 1 = 0b01, 0 = 0b00
+   vector<uint32_t> consecutive_column(tic_tac_toe::game::board_width, 3 );
+   vector<uint32_t> consecutive_row(tic_tac_toe::game::board_height, 3 );
+   uint32_t consecutive_diagonal_backslash = 3;
+   uint32_t consecutive_diagonal_slash = 3;
    for (uint32_t i = 0; i < board.size(); i++) {
       is_board_full &= is_empty_cell(board[i]);
       uint16_t row = uint16_t(i / tic_tac_toe::game::board_width);
       uint16_t column = uint16_t(i % tic_tac_toe::game::board_width);
 
       // Calculate consecutive row and column value
-      consecutive_row[column] *= board[i]; 
-      consecutive_column[row] *= board[i];
+      consecutive_row[column] = consecutive_row[column] & board[i]; 
+      consecutive_column[row] = consecutive_column[row] & board[i];
       // Calculate consecutive diagonal \ value
       if (row == column) {
-         consecutive_diagonal_backslash *= board[i];
+         consecutive_diagonal_backslash = consecutive_diagonal_backslash & board[i];
       }
       // Calculate consecutive diagonal / value
       if ( row + column == tic_tac_toe::game::board_width - 1) {
-         consecutive_diagonal_slash *= board[i]; 
+         consecutive_diagonal_slash = consecutive_diagonal_slash & board[i]; 
       }
    }
 
@@ -72,9 +71,9 @@ account_name get_winner(const tic_tac_toe::game& current_game) {
    aggregate.insert(aggregate.end(), consecutive_column.begin(), consecutive_column.end());
    aggregate.insert(aggregate.end(), consecutive_row.begin(), consecutive_row.end());
    for (auto value: aggregate) {
-      if (value == host_winning_value) {
+      if (value == 1) {
          return current_game.host;
-      } else if (value == challenger_winning_value) {
+      } else if (value == 2) {
          return current_game.challenger;
       }
    }
