@@ -151,7 +151,6 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 
 string url = "http://localhost:8888/";
 string wallet_url = "http://localhost:8900/";
-int64_t wallet_unlock_timeout = 0;
 bool no_verify = false;
 vector<string> headers;
 
@@ -554,7 +553,9 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
          return authority(public_key_type(authorityJsonOrFile));
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
    } else {
-      return parse_json_authority(authorityJsonOrFile);
+      auto result = parse_json_authority(authorityJsonOrFile);
+      EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
+      return result;
    }
 }
 
@@ -714,7 +715,7 @@ void ensure_keosd_running(CLI::App* app) {
     if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
        return;
     if (auto* subapp = app->get_subcommand("system")) {
-       if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw")) // system list* do not require wallet
+       if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
          return;
     }
 
@@ -745,9 +746,6 @@ void ensure_keosd_running(CLI::App* app) {
 
         vector<std::string> pargs;
         pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
-        if (wallet_unlock_timeout > 0) {
-            pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
-        }
 
         ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
@@ -2183,7 +2181,6 @@ int main( int argc, char** argv ) {
    auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-   unlockWallet->add_option( "--unlock-timeout", wallet_unlock_timeout, localized("The timeout for unlocked wallet in seconds"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
       if( wallet_pw.size() == 0 ) {
          std::cout << localized("password: ");
@@ -2214,6 +2211,30 @@ int main( int argc, char** argv ) {
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       call(wallet_url, wallet_import_key, vs);
       std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
+   });
+
+   // remove keys from wallet
+   string wallet_rm_key_str;
+   auto removeKeyWallet = wallet->add_subcommand("remove_key", localized("Remove key from wallet"), false);
+   removeKeyWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to remove key from"));
+   removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
+   removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+   removeKeyWallet->set_callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
+      if( wallet_pw.size() == 0 ) {
+         std::cout << localized("password: ");
+         fc::set_console_echo(false);
+         std::getline( std::cin, wallet_pw, '\n' );
+         fc::set_console_echo(true);
+      }
+      public_key_type pubkey;
+      try {
+         pubkey = public_key_type( wallet_rm_key_str );
+      } catch (...) {
+         EOS_THROW(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", wallet_rm_key_str))
+      }
+      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw), fc::variant(wallet_rm_key_str)};
+      call(wallet_url, wallet_remove_key, vs);
+      std::cout << localized("removed private key for: ${pubkey}", ("pubkey", wallet_rm_key_str)) << std::endl;
    });
 
    // create a key within wallet

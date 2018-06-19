@@ -1232,7 +1232,7 @@ class WalletMgr(object):
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
             return False
 
-        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d" % (
+        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
@@ -1243,7 +1243,7 @@ class WalletMgr(object):
         time.sleep(1)
         return True
 
-    def create(self, name):
+    def create(self, name, accounts=None):
         wallet=self.wallets.get(name)
         if wallet is not None:
             if Utils.Debug: Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
@@ -1260,6 +1260,13 @@ class WalletMgr(object):
         p=m.group(1)
         wallet=Wallet(name, p, self.host, self.port)
         self.wallets[name] = wallet
+
+        if accounts:
+            for account in accounts:
+                Utils.Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
+                if not self.importKey(account, wallet):
+                    Utils.Print("ERROR: Failed to import key for account %s" % (account.name))
+                    return False
 
         return wallet
 
@@ -1542,19 +1549,15 @@ class Cluster(object):
             Utils.Print("ERROR: Unable to parse cluster info")
             return False
 
-        init1Keys=producerKeys["defproducera"]
-        init2Keys=producerKeys["defproducerb"]
-        if init1Keys is None or init2Keys is None:
-            Utils.Print("ERROR: Failed to parse defproducera or intb private keys from cluster config files.")
-        self.defproduceraAccount.ownerPrivateKey=init1Keys["private"]
-        self.defproduceraAccount.ownerPublicKey=init1Keys["public"]
-        self.defproduceraAccount.activePrivateKey=init1Keys["private"]
-        self.defproduceraAccount.activePublicKey=init1Keys["public"]
-        self.defproducerbAccount.ownerPrivateKey=init2Keys["private"]
-        self.defproducerbAccount.ownerPublicKey=init2Keys["public"]
-        self.defproducerbAccount.activePrivateKey=init2Keys["private"]
-        self.defproducerbAccount.activePublicKey=init2Keys["public"]
-        producerKeys.pop("eosio")
+        def initAccountKeys(account, keys):
+            account.ownerPrivateKey=keys["private"]
+            account.ownerPublicKey=keys["public"]
+            account.activePrivateKey=keys["private"]
+            account.activePublicKey=keys["public"]
+
+        initAccountKeys(self.eosioAccount, producerKeys["eosio"])
+        initAccountKeys(self.defproduceraAccount, producerKeys["defproducera"])
+        initAccountKeys(self.defproducerbAccount, producerKeys["defproducerb"])
 
         return True
 

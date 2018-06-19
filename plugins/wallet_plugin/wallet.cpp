@@ -21,6 +21,9 @@
 #include <fc/crypto/hex.hpp>
 #include <fc/smart_ref_impl.hpp>
 
+#include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/copy.hpp>
+
 #ifndef WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
@@ -40,7 +43,7 @@ private_key_type derive_private_key( const std::string& prefix_string,
    return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(h));
 }
 
-class wallet_api_impl
+class soft_wallet_impl
 {
    private:
       void enable_umask_protection() {
@@ -56,13 +59,13 @@ class wallet_api_impl
       }
 
 public:
-   wallet_api& self;
-   wallet_api_impl( wallet_api& s, const wallet_data& initial_data )
+   soft_wallet& self;
+   soft_wallet_impl( soft_wallet& s, const wallet_data& initial_data )
       : self( s )
    {
    }
 
-   virtual ~wallet_api_impl()
+   virtual ~soft_wallet_impl()
    {}
 
    void encrypt_keys()
@@ -125,6 +128,13 @@ public:
       return optional<private_key_type>();
    }
 
+   optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+      auto it = _keys.find(public_key);
+      if( it == _keys.end() )
+         return optional<signature_type>{};
+      return it->second.sign(digest);
+   }
+
    private_key_type get_private_key(const public_key_type& id)const
    {
       auto has_key = try_get_private_key( id );
@@ -148,6 +158,20 @@ public:
          return true;
       }
       FC_ASSERT( !"Key already in wallet" );
+   }
+
+   // Removes a key from the wallet
+   // @returns true if the key matches a current active/owner/memo key for the named
+   //          account, false otherwise (but it is removed either way)
+   bool remove_key(string key)
+   {
+      public_key_type pub(key);
+      auto itr = _keys.find(pub);
+      if( itr != _keys.end() ) {
+         _keys.erase(pub);
+         return true;
+      }
+      FC_ASSERT( !"Key not in wallet" );
    }
 
    string create_key(string key_type)
@@ -244,21 +268,23 @@ public:
 
 namespace eosio { namespace wallet {
 
-wallet_api::wallet_api(const wallet_data& initial_data)
-   : my(new detail::wallet_api_impl(*this, initial_data))
+soft_wallet::soft_wallet(const wallet_data& initial_data)
+   : my(new detail::soft_wallet_impl(*this, initial_data))
 {}
 
-bool wallet_api::copy_wallet_file(string destination_filename)
+soft_wallet::~soft_wallet() {}
+
+bool soft_wallet::copy_wallet_file(string destination_filename)
 {
    return my->copy_wallet_file(destination_filename);
 }
 
-string wallet_api::get_wallet_filename() const
+string soft_wallet::get_wallet_filename() const
 {
    return my->get_wallet_filename();
 }
 
-bool wallet_api::import_key(string wif_key)
+bool soft_wallet::import_key(string wif_key)
 {
    FC_ASSERT(!is_locked());
 
@@ -270,7 +296,19 @@ bool wallet_api::import_key(string wif_key)
    return false;
 }
 
-string wallet_api::create_key(string key_type)
+bool soft_wallet::remove_key(string key)
+{
+   FC_ASSERT(!is_locked());
+
+   if( my->remove_key(key) )
+   {
+      save_wallet_file();
+      return true;
+   }
+   return false;
+}
+
+string soft_wallet::create_key(string key_type)
 {
    FC_ASSERT(!is_locked());
 
@@ -279,32 +317,32 @@ string wallet_api::create_key(string key_type)
    return ret;
 }
 
-bool wallet_api::load_wallet_file( string wallet_filename )
+bool soft_wallet::load_wallet_file( string wallet_filename )
 {
    return my->load_wallet_file( wallet_filename );
 }
 
-void wallet_api::save_wallet_file( string wallet_filename )
+void soft_wallet::save_wallet_file( string wallet_filename )
 {
    my->save_wallet_file( wallet_filename );
 }
 
-bool wallet_api::is_locked() const
+bool soft_wallet::is_locked() const
 {
    return my->is_locked();
 }
 
-bool wallet_api::is_new() const
+bool soft_wallet::is_new() const
 {
    return my->_wallet.cipher_keys.size() == 0;
 }
 
-void wallet_api::encrypt_keys()
+void soft_wallet::encrypt_keys()
 {
    my->encrypt_keys();
 }
 
-void wallet_api::lock()
+void soft_wallet::lock()
 { try {
    FC_ASSERT( !is_locked() );
    encrypt_keys();
@@ -315,7 +353,7 @@ void wallet_api::lock()
    my->_checksum = fc::sha512();
 } FC_CAPTURE_AND_RETHROW() }
 
-void wallet_api::unlock(string password)
+void soft_wallet::unlock(string password)
 { try {
    FC_ASSERT(password.size() > 0);
    auto pw = fc::sha512::hash(password.c_str(), password.size());
@@ -327,7 +365,7 @@ void wallet_api::unlock(string password)
 } EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
-void wallet_api::check_password(string password)
+void soft_wallet::check_password(string password)
 { try {
    FC_ASSERT(password.size() > 0);
    auto pw = fc::sha512::hash(password.c_str(), password.size());
@@ -337,7 +375,7 @@ void wallet_api::check_password(string password)
 } EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
-void wallet_api::set_password( string password )
+void soft_wallet::set_password( string password )
 {
    if( !is_new() )
       FC_ASSERT( !is_locked(), "The wallet must be unlocked before the password can be set" );
@@ -345,24 +383,29 @@ void wallet_api::set_password( string password )
    lock();
 }
 
-map<public_key_type, private_key_type> wallet_api::list_keys()
+map<public_key_type, private_key_type> soft_wallet::list_keys()
 {
    FC_ASSERT(!is_locked());
    return my->_keys;
 }
 
-private_key_type wallet_api::get_private_key( public_key_type pubkey )const
+flat_set<public_key_type> soft_wallet::list_public_keys() {
+   FC_ASSERT(!is_locked());
+   flat_set<public_key_type> keys;
+   boost::copy(my->_keys | boost::adaptors::map_keys, std::inserter(keys, keys.end()));
+   return keys;
+}
+
+private_key_type soft_wallet::get_private_key( public_key_type pubkey )const
 {
    return my->get_private_key( pubkey );
 }
 
-optional<private_key_type> wallet_api::try_get_private_key(const public_key_type& id)const
-{
-   return my->try_get_private_key(id);
+optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+   return my->try_sign_digest(digest, public_key);
 }
 
-
-pair<public_key_type,private_key_type> wallet_api::get_private_key_from_password( string account, string role, string password )const {
+pair<public_key_type,private_key_type> soft_wallet::get_private_key_from_password( string account, string role, string password )const {
    auto seed = account + role + password;
    FC_ASSERT( seed.size() );
    auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
@@ -370,7 +413,7 @@ pair<public_key_type,private_key_type> wallet_api::get_private_key_from_password
    return std::make_pair(  priv.get_public_key(), priv );
 }
 
-void wallet_api::set_wallet_filename(string wallet_filename)
+void soft_wallet::set_wallet_filename(string wallet_filename)
 {
    my->_wallet_filename = wallet_filename;
 }
