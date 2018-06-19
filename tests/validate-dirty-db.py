@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
 from TestHelper import TestHelper
 
 import random
@@ -12,7 +13,7 @@ import signal
 ###############################################################
 
 
-Print=testUtils.Utils.Print
+Print=Utils.Print
 
 def errorExit(msg="", errorCode=1):
     Print("ERROR:", msg)
@@ -23,10 +24,10 @@ debug=args.v
 pnodes=1
 topo="mesh"
 delay=1
-chainSyncStrategyStr=testUtils.Utils.SyncResyncTag
+chainSyncStrategyStr=Utils.SyncResyncTag
 total_nodes = pnodes
 killCount=1
-killSignal=testUtils.Utils.SigKillTag
+killSignal=Utils.SigKillTag
 
 killEosInstances= not args.leave_running
 dumpErrorDetails=args.dump_error_details
@@ -34,7 +35,7 @@ keepLogs=args.keep_logs
 killAll=args.clean_run
 
 seed=1
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 testSuccessful=False
 
 def runNodeosAndGetOutput(myNodeId, myTimeout=3):
@@ -58,9 +59,11 @@ def runNodeosAndGetOutput(myNodeId, myTimeout=3):
     return (True, output)
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster(walletd=True)
+cluster=Cluster(walletd=True)
 
 try:
+    TestHelper.printSystemInfo("BEGIN")
+
     cluster.setChainStrategy(chainSyncStrategyStr)
 
     cluster.killall(allInstances=killAll)
