@@ -62,6 +62,8 @@ random.seed(seed) # Use a fixed seed for repeatability.
 cluster=Cluster(walletd=True)
 
 try:
+    TestHelper.printSystemInfo("BEGIN")
+
     cluster.setChainStrategy(chainSyncStrategyStr)
 
     cluster.killall(allInstances=killAll)
