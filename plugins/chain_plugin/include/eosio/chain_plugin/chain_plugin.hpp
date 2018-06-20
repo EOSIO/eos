@@ -388,6 +388,11 @@ public:
                                    uint32_t truncate_at_block = 0
                                  )const;
 
+   bool import_reversible_blocks( const fc::path& reversible_dir,
+                                  uint32_t cache_size,
+                                  const fc::path& reversible_blocks_file
+                                )const;
+                                             
    // Only call this in plugin_initialize() to modify controller constructor configuration
    controller::config& chain_config();
    // Only call this after plugin_startup()!
