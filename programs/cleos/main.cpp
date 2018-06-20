@@ -2529,7 +2529,7 @@ int main( int argc, char** argv ) {
    propose_trx->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_trx->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_trx->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
-   propose_action->add_option("proposer", proposer, localized("Account proposing the transaction"));
+   propose_trx->add_option("proposer", proposer, localized("Account proposing the transaction"));
 
    propose_trx->set_callback([&] {
       fc::variant requested_perm_var;
