@@ -497,7 +497,8 @@ struct controller_impl {
              || (code == actor_blacklist_exception::code_value)
              || (code == contract_whitelist_exception::code_value)
              || (code == contract_blacklist_exception::code_value)
-             || (code == action_blacklist_exception::code_value);
+             || (code == action_blacklist_exception::code_value)
+             || (code == key_blacklist_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -803,7 +804,9 @@ struct controller_impl {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
-            if( trace && trace->except ) {
+            bool transaction_failed =  trace && trace->except;
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            if( transaction_failed && !transaction_can_fail) {
                edump((*trace));
                throw *trace->except;
             }
@@ -1098,6 +1101,16 @@ struct controller_impl {
                      action_blacklist_exception,
                      "action '${code}::${action}' is on the action blacklist",
                      ("code", code)("action", action)
+                   );
+      }
+   }
+
+   void check_key_list( const public_key_type& key )const {
+      if( conf.key_blacklist.size() > 0 ) {
+         EOS_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
+                     key_blacklist_exception,
+                     "public key '${key}' is on the key blacklist",
+                     ("key", key)
                    );
       }
    }
@@ -1446,6 +1459,10 @@ void controller::check_contract_list( account_name code )const {
 
 void controller::check_action_list( account_name code, action_name action )const {
    my->check_action_list( code, action );
+}
+
+void controller::check_key_list( const public_key_type& key )const {
+   my->check_key_list( key );
 }
 
 bool controller::is_producing_block()const {
