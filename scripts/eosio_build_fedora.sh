@@ -247,21 +247,24 @@
 
 	printf "\\n\\tChecking MongoDB C++ driver installation.\\n"
 	MONGO_INSTALL=true
-    if [ -e "/usr/local/lib/libmongocxx-static.a" ]; then
+    if [ -e "/usr/local/lib64/libmongocxx-static.a" ]; then
 		MONGO_INSTALL=false
-		if ! version=$( grep "Version:" /usr/local/lib/pkgconfig/libmongocxx-static.pc | tr -s ' ' | awk '{print $2}' )
-		then
-			printf "\\tUnable to determine mongodb-cxx-driver version.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		
-		maj=$( echo "${version}" | cut -d'.' -f1 )
-		min=$( echo "${version}" | cut -d'.' -f2 )
-		if [ "${maj}" -gt 3 ]; then
+		if [ ! -f /usr/local/lib64/pkgconfig/libmongocxx-static.pc ]; then
 			MONGO_INSTALL=true
-		elif [ "${maj}" -eq 3 ] && [ "${min}" -lt 3 ]; then
-			MONGO_INSTALL=true
+		else
+			if ! version=$( grep "Version:" /usr/local/lib64/pkgconfig/libmongocxx-static.pc | tr -s ' ' | awk '{print $2}' )
+			then
+				printf "\\tUnable to determine mongodb-cxx-driver version.\\n"
+				printf "\\tExiting now.\\n\\n"
+				exit 1;
+			fi
+			maj=$( echo "${version}" | cut -d'.' -f1 )
+			min=$( echo "${version}" | cut -d'.' -f2 )
+			if [ "${maj}" -gt 3 ]; then
+				MONGO_INSTALL=true
+			elif [ "${maj}" -eq 3 ] && [ "${min}" -lt 3 ]; then
+				MONGO_INSTALL=true
+			fi
 		fi
 	fi
 
