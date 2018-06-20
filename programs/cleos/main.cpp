@@ -1674,10 +1674,10 @@ int main( int argc, char** argv ) {
    getCode->set_callback([&] {
       auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
 
-      std::cerr << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
+      std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
 
       if( codeFilename.size() ){
-         std::cerr << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
+         std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
          string code;
 
          if(code_as_wasm) {
@@ -1690,7 +1690,7 @@ int main( int argc, char** argv ) {
          out << code;
       }
       if( abiFilename.size() ) {
-         std::cerr << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
+         std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
          auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
