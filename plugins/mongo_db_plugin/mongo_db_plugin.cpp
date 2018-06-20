@@ -353,6 +353,38 @@ namespace {
       return *block;
    }
 
+   optional<abi_serializer> get_abi_serializer( account_name n, mongocxx::collection& accounts ) {
+      using bsoncxx::builder::basic::kvp;
+      using bsoncxx::builder::basic::make_document;
+      if( n.good()) {
+         try {
+            auto account = accounts.find_one( make_document( kvp("name", n.to_string())) );
+            if(account) {
+               auto view = account->view();
+               abi_def abi;
+               if( view.find( "abi" ) != view.end()) {
+                  try {
+                     abi = fc::json::from_string( bsoncxx::to_json( view["abi"].get_document())).as<abi_def>();
+                  } catch (...) {
+                     ilog( "Unable to convert account abi to abi_def for ${n}", ( "n", n ));
+                     return optional<abi_serializer>();
+                  }
+                  return abi_serializer( abi );
+               }
+            }
+         } FC_CAPTURE_AND_LOG((n))
+      }
+      return optional<abi_serializer>();
+   }
+
+   template<typename T>
+   fc::variant to_variant_with_abi( const T& obj, mongocxx::collection& accounts ) {
+      fc::variant pretty_output;
+      abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ) { return get_abi_serializer( n, accounts ); } );
+      return pretty_output;
+   }
+
+
    void update_account(bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act) {
       using bsoncxx::builder::basic::kvp;
       using bsoncxx::builder::basic::make_document;
@@ -705,11 +737,11 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    if (existing) {
       FC_ASSERT("Should only get applied transaction once.");
    } else {
-      string json = fc::json::to_string( t );
+      auto v = to_variant_with_abi( *t, accounts );
+      string json = fc::json::to_string( v );
       try {
          const auto& value = bsoncxx::from_json( json );
-         trans_traces_doc.append( kvp( "trans_id", trans_id_str ),
-                                  kvp( "trace", value ));
+         trans_traces_doc.append(bsoncxx::builder::concatenate_doc{value.view()});
          trans_traces_doc.append( kvp( "createdAt", b_date{now} ));
       } catch (std::exception& e) {
          elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
@@ -769,10 +801,8 @@ void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
       elog("Failed to insert block_state ${bid}", ("bid", block_id));
    }
 
-   fc::variant pretty_output;
-   abi_serializer::to_variant( *bs->block, pretty_output, [&]( account_name n ){ return optional<abi_serializer>(); });
-   json = fc::json::to_string( pretty_output );
-
+   auto v = to_variant_with_abi( *bs->block, accounts );
+   json = fc::json::to_string( v );
    try {
       const auto& value = bsoncxx::from_json(json);
       block_doc.append(kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
