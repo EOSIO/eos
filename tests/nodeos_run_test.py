@@ -28,7 +28,8 @@ def cmdError(name, cmdCode=0, exitNow=False):
         Print(msg)
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
-                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"})
+                              ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
+                              ,"--sanity-test"})
 server=args.host
 port=args.port
 debug=args.v
@@ -42,6 +43,7 @@ dontKill=args.leave_running
 prodCount=args.prod_count
 onlyBios=args.only_bios
 killAll=args.clean_run
+sanityTest=args.sanity_test
 
 Utils.Debug=debug
 localTest=True if server == TestHelper.LOCAL_HOST else False
@@ -50,13 +52,14 @@ walletMgr=WalletMgr(True)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
+dontBootstrap=sanityTest
 
 WalletdName="keosd"
 ClientName="cleos"
 # Utils.setMongoSyncTime(50)
 
 try:
-    Print("BEGIN")
+    TestHelper.printSystemInfo("BEGIN")
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
 
@@ -70,12 +73,16 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill) is False:
+        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill, dontBootstrap=dontBootstrap) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEosInstances=False
+
+    if sanityTest:
+        testSuccessful=True
+        exit(0)
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
