@@ -13,9 +13,11 @@ namespace eosio {
    typedef std::vector<std::tuple<uint16_t,std::vector<char>>> extensions_type;
 
    /**
-    *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
+    *  Converts a base32 symbol into its binary representation, used by string_to_name()
     *
-    *  @details Converts a base32 symbol into its binary representation, used by string_to_name()
+    *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
+    *  @param c - Character to be converted
+    *  @return constexpr char - Converted character
     *  @ingroup types
     */
    static constexpr  char char_to_symbol( char c ) {
@@ -28,11 +30,12 @@ namespace eosio {
 
 
    /**
-    *  @brief Converts a base32 string to a uint64_t.
-    *
-    *  @details Converts a base32 string to a uint64_t. This is a constexpr so that
+    *  Converts a base32 string to a uint64_t. This is a constexpr so that
     *  this method can be used in template arguments as well.
     *
+    *  @brief Converts a base32 string to a uint64_t.
+    *  @param str - String representation of the name
+    *  @return constexpr uint64_t - 64-bit unsigned integer representation of the name
     *  @ingroup types
     */
    static constexpr uint64_t string_to_name( const char* str ) {
@@ -61,7 +64,11 @@ namespace eosio {
    }
 
    /**
-    * @brief used to generate a compile time uint64_t from the base32 encoded string interpretation of X
+    * Used to generate a compile time uint64_t from the base32 encoded string interpretation of X
+    *
+    * @brief Used to generate a compile time uint64_t from the base32 encoded string interpretation of X
+    * @param X - String representation of the name
+    * @return constexpr uint64_t - 64-bit unsigned integer representation of the name
     * @ingroup types
     */
    #define N(X) ::eosio::string_to_name(#X)
@@ -98,15 +105,20 @@ namespace eosio {
    }
 
    /**
-    *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
-    *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and
-    *         that no mathematical operations occur.  It also enables specialization of print
-    *         so that it is printed as a base32 string.
+    *  Wraps a uint64_t to ensure it is only passed to methods that expect a Name and
+    *  that no mathematical operations occur.  It also enables specialization of print
+    *  so that it is printed as a base32 string.
     *
+    *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
     *  @ingroup types
-    *  @{
     */
    struct name {
+      /**
+       * Conversion Operator to convert name to uint64_t
+       *
+       * @brief Conversion Operator
+       * @return uint64_t - Converted result
+       */
       operator uint64_t()const { return value; }
 
       // keep in sync with name::operator string() in eosio source code definition for name
@@ -126,7 +138,22 @@ namespace eosio {
          return str;
       }
 
+      /**
+       * Equality Operator for name
+       *
+       * @brief Equality Operator for name
+       * @param a - First data to be compared
+       * @param b - Second data to be compared
+       * @return true - if equal
+       * @return false - if unequal
+       */
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
+
+      /**
+       * Internal Representation of the account name
+       *
+       * @brief Internal Representation of the account name
+       */
       account_name value = 0;
 
    private:
@@ -136,13 +163,13 @@ namespace eosio {
             str = str.substr(0, last + 1);
       }
    };
-   /// @}
 
 } // namespace eosio
 
 namespace std {
    /**
-    * @brief provide less for checksum256
+    *  Provide less for checksum256
+    *  @brief Provide less for checksum256
     */
    template<>
    struct less<checksum256> : binary_function<checksum256, checksum256, bool> {
@@ -154,14 +181,40 @@ namespace std {
 } // namespace std
 
 /**
- * Provide == for checksum256 in global namespace
+ * Equality Operator for checksum256
+ *
+ * @brief Equality Operator for checksum256
+ * @param lhs - First data to be compared
+ * @param rhs - Second data to be compared
+ * @return true - if equal
+ * @return false - if unequal
  */
 bool operator==(const checksum256& lhs, const checksum256& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
 }
+
+/**
+ * Equality Operator for checksum160
+ *
+ * @brief Equality Operator for checksum256
+ * @param lhs - First data to be compared
+ * @param rhs - Second data to be compared
+ * @return true - if equal
+ * @return false - if unequal
+ */
 bool operator==(const checksum160& lhs, const checksum160& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
 }
+
+/**
+ * Equality Operator for checksum160
+ *
+ * @brief Equality Operator for checksum256
+ * @param lhs - First data to be compared
+ * @param rhs - Second data to be compared
+ * @return true - if unequal
+ * @return false - if equal
+ */
 bool operator!=(const checksum160& lhs, const checksum160& rhs) {
    return memcmp(&lhs, &rhs, sizeof(lhs)) != 0;
 }
