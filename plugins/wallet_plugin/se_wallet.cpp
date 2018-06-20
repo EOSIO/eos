@@ -21,6 +21,11 @@ using namespace fc::crypto::r1;
 
 namespace detail {
 
+static void auth_callback(int success, void* data) {
+   promise<bool>* prom = (promise<bool>*)data;
+   prom->set_value(success);
+}
+
 struct se_wallet_impl {
 
    static public_key_data get_public_key_data(SecKeyRef key) {
@@ -43,7 +48,6 @@ struct se_wallet_impl {
       if(error) {
          string error_string = string_for_cferror(error);
          CFRelease(error);
-         elog("Failed to get public key from Secure Enclave: ${m}", ("m", error_string));
          FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to get public key from Secure Enclave: ${m}", ("m", error_string));
       }
 
@@ -230,6 +234,31 @@ struct se_wallet_impl {
       return final_signature;
    }
 
+   bool remove_key(string public_key) {
+      auto it = _keys.find(public_key_type{public_key});
+      if(it == _keys.end())
+         FC_THROW_EXCEPTION(chain::wallet_exception, "Given key to delete not found in Secure Enclave wallet");
+
+      promise<bool> prom;
+      future<bool> fut = prom.get_future();
+      macos_user_auth(auth_callback, &prom, CFSTR("remove a key from your EOSIO wallet"));
+      if(!fut.get())
+         FC_THROW_EXCEPTION(chain::wallet_invalid_password_exception, "Local user authentication failed");
+
+      CFDictionaryRef deleteDic = CFDictionaryCreate(nullptr, (const void**)&kSecValueRef, (const void**)&it->second, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
+      OSStatus ret = SecItemDelete(deleteDic);
+      CFRelease(deleteDic);
+
+      if(ret)
+         FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to getremove key from Secure Enclave");
+
+      CFRelease(it->second);
+      _keys.erase(it);
+
+      return true;
+   }
+
    ~se_wallet_impl() {
       for(auto& k : _keys)
          CFRelease(k.second);
@@ -264,7 +293,7 @@ static void check_signed() {
 se_wallet::se_wallet() : my(new detail::se_wallet_impl()) {
    detail::check_signed();
 
-   //How to figure out of SE is available?! Totally bogus. But no other blessed way?!?!
+   //How to figure out of SE is available?!
    char model[256];
    size_t model_size = sizeof(model);
    if(sysctlbyname("hw.model", model, &model_size, nullptr, 0) == 0) {
@@ -299,14 +328,10 @@ void se_wallet::lock() {
    my->locked = true;
 }
 
-static void auth_callback(int success, void* data) {
-   promise<bool>* prom = (promise<bool>*)data;
-   prom->set_value(success);
-}
 void se_wallet::unlock(string password) {
    promise<bool> prom;
    future<bool> fut = prom.get_future();
-   macos_user_auth(auth_callback, &prom);
+   macos_user_auth(detail::auth_callback, &prom, CFSTR("unlock your EOSIO wallet"));
    if(!fut.get())
       FC_THROW_EXCEPTION(chain::wallet_invalid_password_exception, "Local user authentication failed");
    my->locked = false;
@@ -336,7 +361,8 @@ string se_wallet::create_key(string key_type) {
 }
 
 bool se_wallet::remove_key(string key) {
-   FC_THROW_EXCEPTION(chain::wallet_exception, "Secure Enclave wallet does not support removing keys yet");
+   FC_ASSERT(!is_locked());
+   return my->remove_key(key);
 }
 
 optional<signature_type> se_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
