@@ -3,18 +3,18 @@ steps:
       echo "--- Creating symbolic link to job directory :file_folder:" && \
       sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
       echo "+++ Building :hammer:" && \
-      echo 1 | ./eosio_build.sh -o Debug && \
+      echo 1 | ./eosio_build.sh && \
       echo "--- Compressing build directory :compression:" && \
       tar -pczf build.tar.gz build/
     label: ":darwin: Build"
     agents:
       - "role=macos-builder"
     artifact_paths: "build.tar.gz"
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./eosio_build.sh && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":ubuntu: Build"
@@ -25,11 +25,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
     
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./eosio_build.sh && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 18.04 Build"
@@ -40,11 +40,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./eosio_build.sh && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":fedora: Build"
@@ -55,11 +55,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:fedora"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
  
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./eosio_build.sh && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":centos: Build"
@@ -70,11 +70,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:centos"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "+++ :hammer: Building" && \
-        echo 1 | ./eosio_build.sh -o Debug && \
+        echo 1 | ./eosio_build.sh && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":aws: Build"
@@ -85,7 +85,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - wait
 
@@ -96,7 +96,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -LE long_runing_tests --output-on-failure
+        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L long_runing_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -107,7 +107,7 @@ steps:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
-    timeout: 30
+    timeout: 60
     
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -116,7 +116,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_runing_tests --output-on-failure
+        cd /data/job/build && ctest -L long_runing_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -131,7 +131,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
   
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -140,7 +140,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_runing_tests --output-on-failure
+        cd /data/job/build && ctest -L long_runing_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -155,7 +155,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -164,7 +164,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_runing_tests --output-on-failure
+        cd /data/job/build && ctest -L long_runing_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -179,7 +179,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:fedora"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -188,7 +188,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_runing_tests --output-on-failure
+        cd /data/job/build && ctest -L long_runing_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -203,7 +203,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:centos"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -212,7 +212,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_runing_tests --output-on-failure
+        cd /data/job/build && ctest -L long_runing_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -227,4 +227,4 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
