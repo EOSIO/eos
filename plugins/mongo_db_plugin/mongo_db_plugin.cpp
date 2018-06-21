@@ -126,6 +126,32 @@ const std::string mongo_db_plugin_impl::trans_traces_col = "transaction_traces";
 const std::string mongo_db_plugin_impl::actions_col = "actions";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 
+namespace {
+
+template<typename Queue, typename Entry>
+void queue(boost::mutex& mtx, boost::condition_variable& condition, Queue& queue, const Entry& e, size_t queue_size) {
+   int sleep_time = 100;
+   size_t last_queue_size = 0;
+   boost::mutex::scoped_lock lock(mtx);
+   if (queue.size() > queue_size) {
+      lock.unlock();
+      condition.notify_one();
+      if (last_queue_size < queue.size()) {
+         sleep_time += 100;
+      } else {
+         sleep_time -= 100;
+         if (sleep_time < 0) sleep_time = 100;
+      }
+      last_queue_size = queue.size();
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(sleep_time));
+      lock.lock();
+   }
+   queue.emplace_back(e);
+   lock.unlock();
+   condition.notify_one();
+}
+
+}
 
 void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
@@ -133,16 +159,7 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
          // on startup we don't want to queue, instead push back on caller
          process_accepted_transaction(t);
       } else {
-         boost::mutex::scoped_lock lock(mtx);
-         if (transaction_metadata_queue.size() > queue_size) {
-            lock.unlock();
-            condition.notify_one();
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-            lock.lock();
-         }
-         transaction_metadata_queue.emplace_back(t);
-         lock.unlock();
-         condition.notify_one();
+         queue(mtx, condition, transaction_metadata_queue, t, queue_size);
       }
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
@@ -159,16 +176,7 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
          // on startup we don't want to queue, instead push back on caller
          process_applied_transaction(t);
       } else {
-         boost::mutex::scoped_lock lock(mtx);
-         if (transaction_trace_queue.size() > queue_size) {
-            lock.unlock();
-            condition.notify_one();
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-            lock.lock();
-         }
-         transaction_trace_queue.emplace_back(t);
-         lock.unlock();
-         condition.notify_one();
+         queue(mtx, condition, transaction_trace_queue, t, queue_size);
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_transaction ${e}", ("e", e.to_string()));
@@ -185,16 +193,7 @@ void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_
          // on startup we don't want to queue, instead push back on caller
          process_irreversible_block(bs);
       } else {
-         boost::mutex::scoped_lock lock(mtx);
-         if (irreversible_block_state_queue.size() > queue_size) {
-            lock.unlock();
-            condition.notify_one();
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-            lock.lock();
-         }
-         irreversible_block_state_queue.push_back(bs);
-         lock.unlock();
-         condition.notify_one();
+         queue(mtx, condition, irreversible_block_state_queue, bs, queue_size);
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
@@ -211,16 +210,7 @@ void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
          // on startup we don't want to queue, instead push back on caller
          process_block(bs);
       } else {
-         boost::mutex::scoped_lock lock(mtx);
-         if (block_state_queue.size() > queue_size) {
-            lock.unlock();
-            condition.notify_one();
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-            lock.lock();
-         }
-         block_state_queue.emplace_back(bs);
-         lock.unlock();
-         condition.notify_one();
+         queue(mtx, condition, block_state_queue, bs, queue_size);
       }
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_block ${e}", ("e", e.to_string()));
@@ -967,68 +957,80 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
 {
    cfg.add_options()
          ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256),
-         "The queue size between nodeos and MongoDB plugin thread.")
+         "The target queue size between nodeos and MongoDB plugin thread.")
+         ("mongodb-wipe", bpo::bool_switch()->default_value(false),
+         "Required with --replay-blockchain, --hard-replay-blockchain, or --delete-all-blocks to wipe mongo db."
+         "This option required to prevent accidental wipe of mongo db.")
+         ("mongodb-hot-start", bpo::bool_switch()->default_value(false),
+         "Start")
          ("mongodb-uri,m", bpo::value<std::string>(),
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
-               " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.")
+               " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI."
+               " Example: mongodb://127.0.0.1:27017/EOS")
          ;
 }
 
 void mongo_db_plugin::plugin_initialize(const variables_map& options)
 {
-   if (options.count("mongodb-uri")) {
-      ilog("initializing mongo_db_plugin");
-      my->configured = true;
+   try {
+      if( options.count( "mongodb-uri" )) {
+         ilog( "initializing mongo_db_plugin" );
+         my->configured = true;
 
-      if (options.at("replay-blockchain").as<bool>() || options.at("hard-replay-blockchain").as<bool>()) {
-         ilog("Replay requested: wiping mongo database on startup");
-         my->wipe_database_on_startup = true;
+         if( options.at( "replay-blockchain" ).as<bool>() || options.at( "hard-replay-blockchain" ).as<bool>() || options.at( "delete-all-blocks" ).as<bool>() ) {
+            if( options.at( "mongodb-wipe" ).as<bool>()) {
+               ilog( "Wiping mongo database on startup" );
+               my->wipe_database_on_startup = true;
+            } else {
+               FC_ASSERT( false, "--mongodb-wipe required with --replay-blockchain, --hard-replay-blockchain, or --delete-all-blocks"
+                                 " --mongodb-wipe will remove all EOS collections from mongodb." );
+            }
+         }
+
+         if( options.count( "mongodb-queue-size" )) {
+            auto size = options.at( "mongodb-queue-size" ).as<uint>();
+            my->queue_size = size;
+         }
+
+         std::string uri_str = options.at( "mongodb-uri" ).as<std::string>();
+         ilog( "connecting to ${u}", ("u", uri_str));
+         mongocxx::uri uri = mongocxx::uri{uri_str};
+         my->db_name = uri.database();
+         if( my->db_name.empty())
+            my->db_name = "EOS";
+         my->mongo_conn = mongocxx::client{uri};
+
+         // hook up to signals on controller
+         chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
+         FC_ASSERT( chain_plug );
+         auto& chain = chain_plug->chain();
+         my->chain_id.emplace( chain.get_chain_id());
+
+         my->accepted_block_connection.emplace( chain.accepted_block.connect( [&]( const chain::block_state_ptr& bs ) {
+            my->accepted_block( bs );
+         } ));
+         my->irreversible_block_connection.emplace(
+               chain.irreversible_block.connect( [&]( const chain::block_state_ptr& bs ) {
+                  my->applied_irreversible_block( bs );
+               } ));
+         my->accepted_transaction_connection.emplace(
+               chain.accepted_transaction.connect( [&]( const chain::transaction_metadata_ptr& t ) {
+                  my->accepted_transaction( t );
+               } ));
+         my->applied_transaction_connection.emplace(
+               chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ) {
+                  my->applied_transaction( t );
+               } ));
+
+         if( my->wipe_database_on_startup ) {
+            my->wipe_database();
+         }
+         my->init();
+      } else {
+         wlog( "eosio::mongo_db_plugin configured, but no --mongodb-uri specified." );
+         wlog( "mongo_db_plugin disabled." );
       }
-      if (options.at("delete-all-blocks").as<bool>()) {
-         ilog("Resync requested: wiping mongo database on startup");
-         my->wipe_database_on_startup = true;
-      }
-
-      if (options.count("mongodb-queue-size")) {
-         auto size = options.at("mongodb-queue-size").as<uint>();
-         my->queue_size = size;
-      }
-
-      std::string uri_str = options.at("mongodb-uri").as<std::string>();
-      ilog("connecting to ${u}", ("u", uri_str));
-      mongocxx::uri uri = mongocxx::uri{uri_str};
-      my->db_name = uri.database();
-      if (my->db_name.empty())
-         my->db_name = "EOS";
-      my->mongo_conn = mongocxx::client{uri};
-
-      // hook up to signals on controller
-      chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-      FC_ASSERT(chain_plug);
-      auto& chain = chain_plug->chain();
-      my->chain_id.emplace(chain.get_chain_id());
-
-      my->accepted_block_connection.emplace(chain.accepted_block.connect( [&]( const chain::block_state_ptr& bs ){
-         my->accepted_block( bs );
-      }));
-      my->irreversible_block_connection.emplace(chain.irreversible_block.connect( [&]( const chain::block_state_ptr& bs ){
-         my->applied_irreversible_block( bs );
-      }));
-      my->accepted_transaction_connection.emplace(chain.accepted_transaction.connect( [&]( const chain::transaction_metadata_ptr& t ){
-         my->accepted_transaction(t);
-      }));
-      my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ){
-         my->applied_transaction(t);
-      }));
-
-      if (my->wipe_database_on_startup) {
-         my->wipe_database();
-      }
-      my->init();
-   } else {
-      wlog("eosio::mongo_db_plugin configured, but no --mongodb-uri specified.");
-      wlog("mongo_db_plugin disabled.");
-   }
+   } FC_LOG_AND_RETHROW()
 }
 
 void mongo_db_plugin::plugin_startup()
