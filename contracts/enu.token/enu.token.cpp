@@ -50,7 +50,7 @@ void token::issue( account_name to, asset quantity, string memo )
 
     /////////////////////////////////////////////////////////////////////////////
     //don't allow enumivo.prods to be issued tokens
-    enumivo_assert( to != N(enumivo.prods), "enumivo.prods prohibited to be issued tokens");
+    //enumivo_assert( to != N(enumivo.prods), "enumivo.prods prohibited to be issued tokens");
 
     statstable.modify( st, 0, [&]( auto& s ) {
        s.supply += quantity;

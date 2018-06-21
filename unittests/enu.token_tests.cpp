@@ -208,9 +208,9 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, enu_token_tester ) try {
       issue( N(alice), N(alice), asset::from_string("500.001 TKN"), "hola" )
    );
 
-   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "enumivo.prods prohibited to be issued tokens" ),
-      issue( N(alice), N(enumivo.prods), asset::from_string("1.0000 TKN"), "hola" )
-   );
+   //BOOST_REQUIRE_EQUAL( wasm_assert_msg( "enumivo.prods prohibited to be issued tokens" ),
+   //   issue( N(alice), N(enumivo.prods), asset::from_string("1.0000 TKN"), "hola" )
+   //);
 
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "must issue positive quantity" ),
       issue( N(alice), N(alice), asset::from_string("-1.000 TKN"), "hola" )
