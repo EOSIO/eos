@@ -10,7 +10,7 @@ steps:
     agents:
       - "role=macos-builder"
     artifact_paths: "build.tar.gz"
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "+++ :hammer: Building" && \
@@ -25,7 +25,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
     
   - command: |
         echo "+++ :hammer: Building" && \
@@ -40,7 +40,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "+++ :hammer: Building" && \
@@ -55,7 +55,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:fedora"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
  
   - command: |
         echo "+++ :hammer: Building" && \
@@ -70,7 +70,7 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:centos"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "+++ :hammer: Building" && \
@@ -85,13 +85,13 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - wait
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -107,11 +107,11 @@ steps:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
-    timeout: 30
+    timeout: 60
     
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -131,11 +131,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
   
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -155,11 +155,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -179,11 +179,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:fedora"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -203,11 +203,11 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:centos"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -227,4 +227,4 @@ steps:
       docker#v1.1.1:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
-    timeout: 30
+    timeout: 60
