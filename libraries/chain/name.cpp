@@ -9,12 +9,14 @@ namespace enumivo { namespace chain {
    void name::set( const char* str ) {
       const auto len = strnlen(str, 14);
 
+      //////////////////////////////////////////////////////////////////////////////////
+      //the code below is exlusive for enumivo to treat enumivo.prods as a special case
       if (string(str) == "enumivo.prods"){
         value = string_to_name(str);
         return; //allow special account
       }
-
       ENU_ASSERT(string_to_name("enumivo.prods") != string_to_name(str), name_type_exception, "Name will collide with enumivo.prods (${name}) ", ("name", string(str)));
+      //////////////////////////////////////////////////////////////////////////////////
 
       ENU_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
       value = string_to_name(str);
@@ -27,9 +29,12 @@ namespace enumivo { namespace chain {
    name::operator string()const {
       static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
+      //////////////////////////////////////////////////////////////////////////////////
+      //the code below is exlusive for enumivo to treat enumivo.prods as a special case
       if (value == string_to_name("enumivo.prods")){
         return "enumivo.prods";
       }
+      //////////////////////////////////////////////////////////////////////////////////
 
       string str(13,'.');
 
