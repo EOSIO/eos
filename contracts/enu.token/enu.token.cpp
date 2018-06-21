@@ -48,6 +48,10 @@ void token::issue( account_name to, asset quantity, string memo )
     enumivo_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
     enumivo_assert( quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
 
+    /////////////////////////////////////////////////////////////////////////////
+    //don't allow enumivo.prods to be issued tokens
+    enumivo_assert( to != N(enumivo.prods), "enumivo.prods prohibited to be issued tokens");
+
     statstable.modify( st, 0, [&]( auto& s ) {
        s.supply += quantity;
     });
@@ -71,7 +75,7 @@ void token::transfer( account_name from,
     /////////////////////////////////////////////////////////////////////////////
     //don't allow enumivo.prods to recieve tokens
     enumivo_assert( to != N(enumivo.prods), "enumivo.prods prohibited to receive");
-    
+
     auto sym = quantity.symbol.name();
     stats statstable( _self, sym );
     const auto& st = statstable.get( sym );
