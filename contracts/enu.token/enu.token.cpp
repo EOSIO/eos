@@ -67,6 +67,11 @@ void token::transfer( account_name from,
     enumivo_assert( from != to, "cannot transfer to self" );
     require_auth( from );
     enumivo_assert( is_account( to ), "to account does not exist");
+    
+    /////////////////////////////////////////////////////////////////////////////
+    //don't allow enumivo.prods to recieve tokens
+    enumivo_assert( to != N(enumivo.prods), "enumivo.prods prohibited to receive");
+    
     auto sym = quantity.symbol.name();
     stats statstable( _self, sym );
     const auto& st = statstable.get( sym );
