@@ -150,6 +150,7 @@ namespace enumivosystem {
 
          enumivo_assert( newact != N(enumivo.prods), "will cause collision" ); //with enumivo.prods
          //line above not needed if no collision takes place according to @iamveritas
+         //but better safe than sorry
 
          auto tmp = newact >> 4;
          bool has_dot = false;
