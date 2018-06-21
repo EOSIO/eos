@@ -76,7 +76,7 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
     chain::abi_serializer abis;
     soci::indicator ind;
     const auto transaction_id_str = transaction_id.str();
-    const auto expiration = std::chrono::seconds{transaction_time.sec_since_epoch()}.count();
+    const auto expiration = boost::chrono::seconds{transaction_time.sec_since_epoch()}.count();
 
     *m_session << "SELECT abi FROM accounts WHERE name = :name", soci::into(abi_def_account, ind), soci::use(action.account.to_string());
 
