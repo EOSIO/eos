@@ -25,7 +25,7 @@ namespace enumivo { namespace chain {
    name::operator string()const {
       static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
-      if (value == "enumivo.prods"){
+      if (value == string_to_name("enumivo.prods"){
         return "enumivo.prods"
       }
 
