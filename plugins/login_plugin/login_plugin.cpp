@@ -19,13 +19,17 @@ struct login_request {
    chain::time_point_sec expiration_time;
 };
 
+struct login_request_pub_key_index {};
+struct login_request_time_index {};
+
 using login_request_container = boost::multi_index_container<
     login_request,
-    indexed_by<
-        ordered_unique<member<login_request, chain::public_key_type, &login_request::server_ephemeral_pub_key>>, //
-        ordered_unique<member<login_request, chain::time_point_sec, &login_request::expiration_time>>            //
-        >                                                                                                        //
-    >;
+    indexed_by< //
+        ordered_unique<tag<login_request_pub_key_index>,
+                       member<login_request, chain::public_key_type, &login_request::server_ephemeral_pub_key>>,
+        ordered_unique<tag<login_request_time_index>,
+                       member<login_request, chain::time_point_sec, &login_request::expiration_time>> //
+        >>;
 
 class login_plugin_impl {
  public:
@@ -33,6 +37,13 @@ class login_plugin_impl {
 
    controller& db;
    login_request_container requests{};
+
+   void expire_requests() {
+      auto& index = requests.get<login_request_time_index>();
+      auto now = fc::time_point::now();
+      for (auto it = index.begin(); it != index.end() && it->expiration_time < now; it = index.erase(it))
+         ;
+   }
 };
 
 login_plugin::login_plugin() {}
@@ -59,7 +70,11 @@ void login_plugin::plugin_startup() {
    ilog("starting login_plugin");
    my.reset(new login_plugin_impl(app().get_plugin<chain_plugin>().chain()));
    app().get_plugin<http_plugin>().add_api({
-       CALL(start_login_request, 200),
+       CALL(start_login_request, 200), //
+       CALL(finalize_login_request, 200),
+       // CALL(do_not_use_gen_r1_key, 200),  //
+       // CALL(do_not_use_sign, 200),        //
+       // CALL(do_not_use_get_secret, 200),  //
    });
 }
 
@@ -67,6 +82,9 @@ void login_plugin::plugin_shutdown() {}
 
 login_plugin::start_login_request_results
 login_plugin::start_login_request(const login_plugin::start_login_request_params& params) {
+   // todo: limit how far in the future timeout can be
+   // todo: limit number of requests
+   my->expire_requests();
    EOS_ASSERT(params.expiration_time > fc::time_point::now(), fc::timeout_exception,
               "Requested expiration time ${expiration_time} is in the past",
               ("expiration_time", params.expiration_time));
@@ -76,6 +94,52 @@ login_plugin::start_login_request(const login_plugin::start_login_request_params
    request.expiration_time = params.expiration_time;
    my->requests.insert(request);
    return {request.server_ephemeral_pub_key};
+}
+
+login_plugin::finalize_login_request_results
+login_plugin::finalize_login_request(const login_plugin::finalize_login_request_params& params) {
+   my->expire_requests();
+   auto& index = my->requests.get<login_request_pub_key_index>();
+   auto it = index.find(params.server_ephemeral_pub_key);
+   EOS_ASSERT(it != index.end(), fc::timeout_exception, "server_ephemeral_pub_key ${key} expired or not found",
+              ("key", params.server_ephemeral_pub_key));
+   auto request = *it;
+   index.erase(it);
+
+   auto shared_secret = request.server_ephemeral_priv_key.generate_shared_secret(params.client_ephemeral_pub_key);
+
+   chain::bytes combined_data(1024 * 1024);
+   chain::datastream<char*> sig_data_ds{combined_data.data(), combined_data.size()};
+   fc::raw::pack(sig_data_ds, params.permission);
+   fc::raw::pack(sig_data_ds, shared_secret);
+   fc::raw::pack(sig_data_ds, params.data);
+   combined_data.resize(sig_data_ds.tellp());
+
+   auto digest = chain::sha256::hash(combined_data);
+   std::vector<chain::public_key_type> recovered_keys;
+   for (auto& sig : params.signatures)
+      recovered_keys.push_back(chain::public_key_type{sig, digest});
+
+   for (auto& key : recovered_keys)
+      printf("recovered: %s\n", std::string{key}.c_str());
+
+   return {};
+}
+
+login_plugin::do_not_use_gen_r1_key_results
+login_plugin::do_not_use_gen_r1_key(const login_plugin::do_not_use_gen_r1_key_params& params) {
+   auto priv = chain::private_key_type::generate_r1();
+   return {priv.get_public_key(), priv};
+}
+
+login_plugin::do_not_use_sign_results
+login_plugin::do_not_use_sign(const login_plugin::do_not_use_sign_params& params) {
+   return {params.priv_key.sign(chain::sha256::hash(params.data))};
+}
+
+login_plugin::do_not_use_get_secret_results
+login_plugin::do_not_use_get_secret(const login_plugin::do_not_use_get_secret_params& params) {
+   return {params.priv_key.generate_shared_secret(params.pub_key)};
 }
 
 } // namespace eosio
