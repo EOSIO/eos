@@ -147,6 +147,9 @@ namespace enumivosystem {
                             const authority& active*/ ) {
 
       if( creator != _self ) {
+        
+         enumivo_assert( newact != N(enumivo.prods), "will cause collision" ); //with enumivo.prods
+
          auto tmp = newact >> 4;
          bool has_dot = false;
 
