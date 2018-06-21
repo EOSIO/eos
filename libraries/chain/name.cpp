@@ -8,6 +8,8 @@ namespace enumivo { namespace chain {
 
    void name::set( const char* str ) {
       const auto len = strnlen(str, 14);
+      if (string(str) == "enumivo.prods")
+        return; //allow special account
       ENU_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
       value = string_to_name(str);
       ENU_ASSERT(to_string() == string(str), name_type_exception,
