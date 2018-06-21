@@ -171,16 +171,7 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
          // on startup we don't want to queue, instead push back on caller
          process_accepted_transaction(t);
       } else {
-         boost::mutex::scoped_lock lock(mtx);
-         if (transaction_metadata_queue.size() > queue_size) {
-            lock.unlock();
-            condition.notify_one();
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-            lock.lock();
-         }
-         transaction_metadata_queue.emplace_back(t);
-         lock.unlock();
-         condition.notify_one();
+         queue(mtx, condition, transaction_metadata_queue, t, queue_size);
       }
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
