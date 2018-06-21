@@ -39,7 +39,12 @@ class login_plugin : public plugin<login_plugin> {
       std::vector<chain::signature_type> signatures;
    };
 
-   struct finalize_login_request_results {};
+   struct finalize_login_request_results {
+      chain::sha256 digest{};
+      flat_set<chain::public_key_type> recovered_keys{};
+      bool permission_satisfied = false;
+      std::string error{};
+   };
 
    struct do_not_use_gen_r1_key_params {};
 
@@ -83,7 +88,7 @@ FC_REFLECT(eosio::login_plugin::start_login_request_params, (expiration_time))
 FC_REFLECT(eosio::login_plugin::start_login_request_results, (server_ephemeral_pub_key))
 FC_REFLECT(eosio::login_plugin::finalize_login_request_params,
            (server_ephemeral_pub_key)(client_ephemeral_pub_key)(permission)(data)(signatures))
-FC_REFLECT_EMPTY(eosio::login_plugin::finalize_login_request_results)
+FC_REFLECT(eosio::login_plugin::finalize_login_request_results, (digest)(recovered_keys)(permission_satisfied)(error))
 
 FC_REFLECT_EMPTY(eosio::login_plugin::do_not_use_gen_r1_key_params)
 FC_REFLECT(eosio::login_plugin::do_not_use_gen_r1_key_results, (pub_key)(priv_key))

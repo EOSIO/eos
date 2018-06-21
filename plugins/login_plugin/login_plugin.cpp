@@ -2,6 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/login_plugin/login_plugin.hpp>
 
@@ -27,8 +28,8 @@ using login_request_container = boost::multi_index_container<
     indexed_by< //
         ordered_unique<tag<login_request_pub_key_index>,
                        member<login_request, chain::public_key_type, &login_request::server_ephemeral_pub_key>>,
-        ordered_unique<tag<login_request_time_index>,
-                       member<login_request, chain::time_point_sec, &login_request::expiration_time>> //
+        ordered_non_unique<tag<login_request_time_index>,
+                           member<login_request, chain::time_point_sec, &login_request::expiration_time>> //
         >>;
 
 class login_plugin_impl {
@@ -98,11 +99,14 @@ login_plugin::start_login_request(const login_plugin::start_login_request_params
 
 login_plugin::finalize_login_request_results
 login_plugin::finalize_login_request(const login_plugin::finalize_login_request_params& params) {
+   finalize_login_request_results result;
    my->expire_requests();
    auto& index = my->requests.get<login_request_pub_key_index>();
    auto it = index.find(params.server_ephemeral_pub_key);
-   EOS_ASSERT(it != index.end(), fc::timeout_exception, "server_ephemeral_pub_key ${key} expired or not found",
-              ("key", params.server_ephemeral_pub_key));
+   if (it == index.end()) {
+      result.error = "server_ephemeral_pub_key expired or not found";
+      return result;
+   }
    auto request = *it;
    index.erase(it);
 
@@ -115,15 +119,21 @@ login_plugin::finalize_login_request(const login_plugin::finalize_login_request_
    fc::raw::pack(sig_data_ds, params.data);
    combined_data.resize(sig_data_ds.tellp());
 
-   auto digest = chain::sha256::hash(combined_data);
-   std::vector<chain::public_key_type> recovered_keys;
+   result.digest = chain::sha256::hash(combined_data);
    for (auto& sig : params.signatures)
-      recovered_keys.push_back(chain::public_key_type{sig, digest});
+      result.recovered_keys.insert(chain::public_key_type{sig, result.digest});
 
-   for (auto& key : recovered_keys)
-      printf("recovered: %s\n", std::string{key}.c_str());
+   try {
+      auto noop_checktime = [] {};
+      my->db.get_authorization_manager().check_authorization( //
+          params.permission.actor, params.permission.permission, result.recovered_keys, {}, fc::microseconds(0),
+          noop_checktime, true);
+      result.permission_satisfied = true;
+   } catch (...) {
+      result.error = "keys do not satisfy permission";
+   }
 
-   return {};
+   return result;
 }
 
 login_plugin::do_not_use_gen_r1_key_results
