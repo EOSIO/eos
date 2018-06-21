@@ -148,7 +148,7 @@ namespace enumivosystem {
 
       if( creator != _self ) {
 
-         enumivo_assert( newact != N(enumivo.prods), "will cause collision" ); //with enumivo.prods
+         enumivo_assert( string_to_name(newact) != N(enumivo.prods), "will cause collision" ); //with enumivo.prods
          //line above not needed if no collision takes place according to @iamveritas
          //but better safe than sorry
 
