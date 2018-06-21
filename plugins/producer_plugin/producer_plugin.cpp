@@ -80,6 +80,8 @@ using transaction_id_with_expiry_index = multi_index_container<
    >
 >;
 
+
+
 enum class pending_block_mode {
    producing,
    speculating
@@ -115,9 +117,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       bool maybe_produce_block();
 
       boost::program_options::variables_map _options;
-      bool      _production_enabled                 = false;
-      bool      _pause_production                   = false;
-      uint32_t  _production_skip_flags              = 0; //eosio::chain::skip_nothing;
+      bool     _production_enabled                 = false;
+      bool     _pause_production                   = false;
+      uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
@@ -397,7 +399,6 @@ producer_plugin::producer_plugin()
    }
 
 producer_plugin::~producer_plugin() {}
-
 
 void producer_plugin::set_program_options(
    boost::program_options::options_description& command_line_options,
