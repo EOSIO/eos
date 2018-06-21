@@ -28,6 +28,7 @@ namespace enumivo { namespace chain {
       if (value == string_to_name("enumivo.prods")){
         return "enumivo.prods";
       }
+      
       string str(13,'.');
 
       uint64_t tmp = value;
