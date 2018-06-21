@@ -338,7 +338,7 @@ namespace {
    auto find_transaction(mongocxx::collection& trans, const string& id) {
       using bsoncxx::builder::stream::document;
       document find_trans{};
-      find_trans << "trans_id" << id;
+      find_trans << "trx_id" << id;
       return trans.find_one(find_trans.view());
    }
 
@@ -588,23 +588,23 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-   const auto trans_id = t->id;
-   const auto trans_id_str = trans_id.str();
+   const auto trx_id = t->id;
+   const auto trx_id_str = trx_id.str();
    const auto& trx = t->trx;
    const chain::transaction_header& trx_header = trx;
 
-   const auto existing = find_transaction(trans, trans_id_str);
+   const auto existing = find_transaction(trans, trx_id_str);
 
    bool actions_to_write = false;
    mongocxx::options::bulk_write bulk_opts;
    bulk_opts.ordered(false);
-   mongocxx::bulk_write bulk_actions{bulk_opts};
+   mongocxx::bulk_write bulk_actions = actions.create_bulk_write(bulk_opts);
 
    int32_t act_num = 0;
-   auto process_action = [&](const std::string& trans_id_str, const chain::action& act, bsoncxx::builder::basic::array& act_array) -> auto {
+   auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bsoncxx::builder::basic::array& act_array) -> auto {
       auto act_doc = bsoncxx::builder::basic::document();
       act_doc.append(kvp("action_num", b_int32{act_num}),
-                     kvp("trans_id", trans_id_str));
+                     kvp("trx_id", trx_id_str));
       act_doc.append(kvp("account", act.account.to_string()));
       act_doc.append(kvp("name", act.name.to_string()));
       act_doc.append(kvp("authorization", [&act](bsoncxx::builder::basic::sub_array subarr) {
@@ -627,7 +627,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    if (existing) {
       FC_ASSERT("Should only get accept transaction once.");
    } else {
-      trans_doc.append( kvp( "trans_id", trans_id_str ),
+      trans_doc.append( kvp( "trx_id", trx_id_str ),
                         kvp( "irreversible", b_bool{false} ) );
 
       string signing_keys_json;
@@ -657,7 +657,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       if( !trx.actions.empty()) {
          bsoncxx::builder::basic::array action_array;
          for( const auto& act : trx.actions ) {
-            process_action( trans_id_str, act, action_array );
+            process_action( trx_id_str, act, action_array );
          }
          trans_doc.append( kvp( "actions", action_array ) );
       }
@@ -666,7 +666,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       if( !trx.context_free_actions.empty()) {
          bsoncxx::builder::basic::array action_array;
          for( const auto& cfa : trx.context_free_actions ) {
-            process_action( trans_id_str, cfa, action_array );
+            process_action( trx_id_str, cfa, action_array );
          }
          trans_doc.append( kvp( "context_free_actions", action_array ) );
       }
@@ -706,13 +706,13 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       trans_doc.append( kvp( "createdAt", b_date{now} ));
 
       if( !trans.insert_one( trans_doc.view())) {
-         elog( "Failed to insert trans ${id}", ("id", trans_id));
+         elog( "Failed to insert trans ${id}", ("id", trx_id));
       }
 
       if (actions_to_write) {
-         auto result = actions.bulk_write(bulk_actions);
+         auto result = bulk_actions.execute();
          if (!result) {
-            elog("Bulk actions insert failed for transaction: ${id}", ("id", trans_id_str));
+            elog("Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
          }
       }
 
@@ -729,10 +729,10 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-   const auto trans_id = t->id;
-   const auto trans_id_str = trans_id.str();
+   const auto trx_id = t->id;
+   const auto trx_id_str = trx_id.str();
 
-   const auto existing = find_transaction(trans_traces, trans_id_str);
+   const auto existing = find_transaction(trans_traces, trx_id_str);
 
    if (existing) {
       FC_ASSERT("Should only get applied transaction once.");
@@ -749,7 +749,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
       }
 
       if( !trans_traces.insert_one( trans_traces_doc.view())) {
-         elog( "Failed to insert trans ${id}", ("id", trans_id));
+         elog( "Failed to insert trans ${id}", ("id", trx_id));
       }
    }
 }
@@ -759,17 +759,8 @@ void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
    using namespace bsoncxx::builder;
    using bsoncxx::builder::basic::kvp;
 
-   mongocxx::options::bulk_write bulk_opts;
-   bulk_opts.ordered(false);
-   mongocxx::bulk_write bulk_trans{bulk_opts};
-
    auto block_states = mongo_conn[db_name][block_states_col];
    auto blocks = mongo_conn[db_name][blocks_col];
-   auto trans = mongo_conn[db_name][trans_col];
-
-   if (bs->block->transactions.size() > 1) {
-      std::cout << fc::json::to_pretty_string( *bs ) << std::endl;
-   }
 
    auto block_doc = bsoncxx::builder::basic::document{};
    auto block_state_doc = bsoncxx::builder::basic::document{};
@@ -818,202 +809,6 @@ void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
    if (!blocks.insert_one(block_doc.view())) {
       elog("Failed to insert block ${bid}", ("bid", block_id));
    }
-
-/* todo
-   int32_t msg_num = -1;
-   bool actions_to_write = false;
-   auto process_action = [&](const std::string& trans_id_str, mongocxx::bulk_write& bulk_msgs, const chain::action& msg) -> auto {
-      auto msg_oid = bsoncxx::oid{};
-      auto msg_doc = bsoncxx::builder::basic::document{};
-      msg_doc.append(kvp("_id", b_oid{msg_oid}),
-                     kvp("action_id", b_int32{msg_num}),
-                     kvp("transaction_id", trans_id_str));
-      msg_doc.append(kvp("authorization", [&msg](bsoncxx::builder::basic::sub_array subarr) {
-         for (const auto& auth : msg.authorization) {
-            subarr.append([&auth](bsoncxx::builder::basic::sub_document subdoc) {
-               subdoc.append(kvp("actor", auth.actor.to_string()),
-                             kvp("permission", auth.permission.to_string()));
-            });
-         }
-      }));
-      msg_doc.append(kvp("handler_account_name", msg.account.to_string()));
-      msg_doc.append(kvp("name", msg.name.to_string()));
-      add_data(msg_doc, accounts, msg);
-      msg_doc.append(kvp("createdAt", b_date{now}));
-      mongocxx::model::insert_one insert_msg{msg_doc.view()};
-      bulk_msgs.append(insert_msg);
-      actions_to_write = true;
-      ++msg_num;
-      return msg_oid;
-   };
-
-   bool action_traces_to_write = false;
-   auto process_action_trace = [&](const std::string& trans_id_str,
-                                   mongocxx::bulk_write& bulk_acts,
-                                   const chain::action_trace& act,
-                                   const auto& msg_oid)
-   {
-//      auto act_oid = bsoncxx::oid{};
-      auto act_doc = bsoncxx::builder::basic::document{};
-      act_doc.append(kvp("_id", b_oid{act_oid}),
-                     kvp("transaction_id", trans_id_str),
-                     kvp("receiver", act.receipt.receiver.to_string()),
-                     kvp("action", b_oid{msg_oid}),
-                     kvp("console", act.console));
-      act_doc.append(kvp("data_access", [&act](bsoncxx::builder::basic::sub_array subarr) {
-         for (const auto& data : act.data_access) {
-            subarr.append([&data](bsoncxx::builder::basic::sub_document subdoc) {
-               subdoc.append(kvp("type", data.type == chain::data_access_info::read ? "read" : "write"),
-                             kvp("code", data.code.to_string()),
-                             kvp("scope", data.scope.to_string()),
-                             kvp("sequence", b_int64{static_cast<int64_t>(data.sequence)}));
-            });
-         }
-      }));
-      act_doc.append(kvp("createdAt", b_date{now}));
-      mongocxx::model::insert_one insert_act{act_doc.view()};
-      bulk_acts.append(insert_act);
-      action_traces_to_write = true;
-   };
-
-   int32_t trx_num = 0;
-   std::map<chain::transaction_id_type, std::string> trx_status_map;
-   bool transactions_in_block = false;
-
-   auto process_trx = [&](const chain::transaction& trx) -> auto {
-      auto txn_oid = bsoncxx::oid{};
-      auto doc = bsoncxx::builder::basic::document{};
-      auto trx_id = trx.id();
-      const auto trans_id_str = trx_id.str();
-      doc.append(kvp("_id", txn_oid),
-                 kvp("transaction_id", trans_id_str),
-                 kvp("sequence_num", b_int32{trx_num}),
-                 kvp("block_id", block_id_str),
-                 kvp("ref_block_num", b_int32{static_cast<int32_t >(trx.ref_block_num)}),
-                 kvp("ref_block_prefix", b_int32{static_cast<int32_t >(trx.ref_block_prefix)}),
-                 kvp("status", trx_status_map[trx_id]),
-                 kvp("expiration",
-                     b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}),
-                 kvp("pending", b_bool{true})
-      );
-      doc.append(kvp("createdAt", b_date{now}));
-
-      if (!trx.actions.empty()) {
-         mongocxx::bulk_write bulk_msgs{bulk_opts};
-         msg_num = 0;
-         for (const auto& msg : trx.actions) {
-            process_action(trans_id_str, bulk_msgs, msg);
-         }
-         auto result = msgs.bulk_write(bulk_msgs);
-         if (!result) {
-            elog("Bulk action insert failed for block: ${bid}, transaction: ${trx}",
-                 ("bid", block_id)("trx", trx_id));
-         }
-      }
-      transactions_in_block = true;
-      return doc;
-   };
-*/
-   mongocxx::bulk_write bulk_msgs{bulk_opts};
-   mongocxx::bulk_write bulk_acts{bulk_opts};
-
-
-   /* todo
-   trx_num = 1000000;
-   for (const auto& rt: bt.region_traces) {
-      for (const auto& ct: rt.cycle_traces) {
-         for (const auto& st: ct.shard_traces) {
-            for (const auto& trx_trace: st.transaction_traces) {
-               std::string trx_status = (trx_trace.status == chain::transaction_receipt::executed) ? "executed" :
-                                        (trx_trace.status == chain::transaction_receipt::soft_fail) ? "soft_fail" :
-                                        (trx_trace.status == chain::transaction_receipt::hard_fail) ? "hard_fail" :
-                                        "unknown";
-               trx_status_map[trx_trace.id] = trx_status;
-
- //              for (const auto& req : trx_trace.deferred_transaction_requests) {
-                  if ( req.contains<chain::deferred_transaction>() ) {
-                     auto trx = req.get<chain::deferred_transaction>();
-                     auto doc = process_trx(trx);
-                     doc.append(kvp("type", "deferred"),
-                                kvp("sender_id", b_int64{static_cast<int64_t>(trx.sender_id)}),
-                                kvp("sender", trx.sender.to_string()),
-                                kvp("execute_after", b_date{std::chrono::milliseconds{
-                                         std::chrono::seconds{trx.execute_after.sec_since_epoch()}}}));
-                     mongocxx::model::insert_one insert_op{doc.view()};
-                     bulk_trans.append(insert_op);
-                     ++trx_num;
-                  } else {
-                     auto cancel = req.get<chain::deferred_reference>();
-                     auto doc = bsoncxx::builder::basic::document{};
-                     doc.append(kvp("type", "cancel_deferred"),
-                                kvp("sender_id", b_int64{static_cast<int64_t>(cancel.sender_id)}),
-                                kvp("sender", cancel.sender.to_string())
-                     );
-                  }
-               }
-               if (!trx_trace.action_traces.empty()) {
-                  actions_to_write = true;
-                  msg_num = 1000000;
-                  for (const auto& act_trace : trx_trace.action_traces) {
-                     const auto& msg = act_trace.act;
-                     auto msg_oid = process_action(trx_trace.id.str(), bulk_msgs, msg);
-                     if (trx_trace.status == chain::transaction_receipt::executed) {
-                        if (act_trace.receiver == chain::config::system_account_name) {
-                           reversible_actions[trx_trace.id.str()].emplace_back(msg);
-                        }
-                     }
-                     process_action_trace(trx_trace.id.str(), bulk_acts, act_trace, msg_oid);
-                  }
-               }
-
-               // TODO: handle canceled_deferred
-            }
-         }
-      }
-   }
-
-   trx_num = 0;
-   for (const auto& packed_trx : block.input_transactions) {
-      const signed_transaction& trx = packed_trx.get_signed_transaction();
-      auto doc = process_trx(trx);
-      doc.append(kvp("type", "input"));
-      doc.append(kvp("signatures", [&trx](bsoncxx::builder::basic::sub_array subarr) {
-         for (const auto& sig : trx.signatures) {
-            subarr.append(fc::variant(sig).as_string());
-         }
-      }));
-      mongocxx::model::insert_one insert_op{doc.view()};
-      bulk_trans.append(insert_op);
-      ++trx_num;
-   }
-
-   for (const auto& implicit_trx : bt.implicit_transactions ){
-      auto doc = process_trx(implicit_trx);
-      doc.append(kvp("type", "implicit"));
-      mongocxx::model::insert_one insert_op{doc.view()};
-      bulk_trans.append(insert_op);
-      ++trx_num;
-   }
-
-   if (actions_to_write) {
-      auto result = msgs.bulk_write(bulk_msgs);
-      if (!result) {
-         elog("Bulk actions insert failed for block: ${bid}", ("bid", block_id));
-      }
-   }
-   if (action_traces_to_write) {
-      auto result = action_traces.bulk_write(bulk_acts);
-      if (!result) {
-         elog("Bulk action traces insert failed for block: ${bid}", ("bid", block_id));
-      }
-   }
-   if (transactions_in_block) {
-      auto result = trans.bulk_write(bulk_trans);
-      if (!result) {
-         elog("Bulk transaction insert failed for block: ${bid}", ("bid", block_id));
-      }
-   }
-    */
 }
 
 void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_ptr& bs)
@@ -1051,19 +846,19 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    auto bulk = trans.create_bulk_write(bulk_opts);
 
    for (const auto& receipt : bs->block->transactions) {
-      string trans_id_str;
+      string trx_id_str;
       if( receipt.trx.contains<packed_transaction>()) {
          const auto& pt = receipt.trx.get<packed_transaction>();
          // get id via get_raw_transaction() as packed_transaction.id() mutates inernal transaction state
          const auto& raw = pt.get_raw_transaction();
          const auto& id = fc::raw::unpack<transaction>(raw).id();
-         trans_id_str = id.str();
+         trx_id_str = id.str();
       } else {
          const auto& id = receipt.trx.get<transaction_id_type>();
-         trans_id_str = id.str();
+         trx_id_str = id.str();
       }
 
-      auto ir_trans = find_transaction(trans, trans_id_str);
+      auto ir_trans = find_transaction(trans, trx_id_str);
 
       if (ir_trans) {
          auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
@@ -1079,41 +874,11 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    }
 
    if (transactions_in_block) {
-      auto result = trans.bulk_write(bulk);
+      auto result = bulk.execute();
       if (!result) {
          elog("Bulk transaction insert failed for block: ${bid}", ("bid", block_id));
       }
    }
-
-
-/* todo
-   for (const auto& r: block.regions) {
-      for (const auto& cs: r.cycles_summary) {
-         for (const auto& ss: cs) {
-            for (const auto& trx_receipt: ss.transactions) {
-               const auto trans_id_str = trx_receipt.id.str();
-               auto ir_trans = find_transaction(trans, trans_id_str);
-
-               document update_trans{};
-               update_trans << "$set" << open_document << "pending" << b_bool{false}
-                            << "updatedAt" << b_date{now}
-                            << close_document;
-
-               trans.update_one(document{} << "_id" << ir_trans.view()["_id"].get_oid() << finalize,
-                                update_trans.view());
-
-               // actions are irreversible, so update account document
-               if (ir_trans.view()["status"].get_utf8().value.to_string() == "executed") {
-                  for (const auto& msg : reversible_actions[trans_id_str]) {
-                     update_account(msg);
-                  }
-               }
-               reversible_actions.erase(trans_id_str);
-            }
-         }
-      }
-   }
-*/
 }
 
 mongo_db_plugin_impl::mongo_db_plugin_impl()
@@ -1178,10 +943,10 @@ void mongo_db_plugin_impl::init() {
 
       // transactions indexes
       auto trans = mongo_conn[db_name][trans_col]; // Transactions
-      trans.create_index(bsoncxx::from_json(R"xxx({ "trans_id" : 1 })xxx"));
+      trans.create_index(bsoncxx::from_json(R"xxx({ "trx_id" : 1 })xxx"));
 
       auto actions = mongo_conn[db_name][actions_col];
-      actions.create_index(bsoncxx::from_json(R"xxx({ "trans_id" : 1 })xxx"));
+      actions.create_index(bsoncxx::from_json(R"xxx({ "trx_id" : 1 })xxx"));
    }
 }
 
