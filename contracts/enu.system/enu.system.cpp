@@ -1,6 +1,8 @@
 #include "enu.system.hpp"
 #include <enulib/dispatcher.hpp>
 
+#include <enumivo/chain/name.hpp>
+
 #include "producer_pay.cpp"
 #include "delegate_bandwidth.cpp"
 #include "voting.cpp"
