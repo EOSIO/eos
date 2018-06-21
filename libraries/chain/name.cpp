@@ -26,7 +26,7 @@ namespace enumivo { namespace chain {
       static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
       if (value == string_to_name("enumivo.prods")){
-        return "enumivo.prods"
+        return "enumivo.prods";
       }
       string str(13,'.');
 
