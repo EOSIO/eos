@@ -14,6 +14,8 @@ namespace enumivo { namespace chain {
         return; //allow special account
       }
 
+      ENU_ASSERT(string_to_name("enumivo.prods") != string_to_name(str), name_type_exception, "Name will collide with enumivo.prods (${name}) ", ("name", string(str)));
+
       ENU_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
       value = string_to_name(str);
       ENU_ASSERT(to_string() == string(str), name_type_exception,
@@ -28,7 +30,7 @@ namespace enumivo { namespace chain {
       if (value == string_to_name("enumivo.prods")){
         return "enumivo.prods";
       }
-      
+
       string str(13,'.');
 
       uint64_t tmp = value;
