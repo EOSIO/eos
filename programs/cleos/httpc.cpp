@@ -123,7 +123,7 @@ namespace eosio { namespace client { namespace http {
    resolved_url resolve_url( const http_context& context, const parsed_url& url ) {
       tcp::resolver resolver(context->ios);
       boost::system::error_code ec;
-      auto result = resolver.resolve(url.server, url.port, ec);
+      auto result = resolver.resolve(tcp::v4(), url.server, url.port, ec);
       if (ec) {
          FC_THROW("Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
       }
