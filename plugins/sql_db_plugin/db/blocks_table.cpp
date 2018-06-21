@@ -35,7 +35,13 @@ void blocks_table::create()
             "new_producers JSON DEFAULT NULL,"
             "num_transactions INT DEFAULT 0,"
             "confirmed INT, FOREIGN KEY (producer) REFERENCES accounts(name), UNIQUE KEY block_number (block_number)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
+
+    *m_session << "CREATE INDEX idx_blocks_producer ON blocks (producer);";
+    *m_session << "CREATE INDEX idx_blocks_number ON blocks (block_number);";
+
 }
+
+
 
 void blocks_table::add(chain::signed_block_ptr block)
 {

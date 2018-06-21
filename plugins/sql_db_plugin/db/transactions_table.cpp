@@ -33,6 +33,9 @@ void transactions_table::create()
             "created_at DATETIME DEFAULT NOW(),"
             "num_actions INT DEFAULT 0,"
             "updated_at DATETIME DEFAULT NOW(), FOREIGN KEY (block_id) REFERENCES blocks(block_number) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
+
+    *m_session << "CREATE INDEX transactions_block_id ON transactions (block_id);";
+
 }
 
 void transactions_table::add(uint32_t block_id, chain::transaction transaction)

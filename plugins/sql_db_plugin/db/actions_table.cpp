@@ -25,14 +25,19 @@ void actions_table::drop()
 void actions_table::create()
 {
     *m_session << "CREATE TABLE actions("
-            "id INT NOT NULL AUTO_INCREMENT KEY,"
+            "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,"
             "account VARCHAR(12),"
             "transaction_id VARCHAR(64),"
             "seq SMALLINT,"
+            "parent INT DEFAULT NULL,"
             "name VARCHAR(12),"
             "created_at DATETIME DEFAULT NOW(),"
             "data JSON, FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,"
             "FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
+
+    *m_session << "CREATE INDEX idx_actions_account ON actions (account);";
+    *m_session << "CREATE INDEX idx_actions_tx_id ON actions (transaction_id);";
+    *m_session << "CREATE INDEX idx_actions_created ON actions (created_at);";
 
     *m_session << "CREATE TABLE actions_accounts("
             "actor VARCHAR(12),"
@@ -40,11 +45,16 @@ void actions_table::create()
             "action_id INT NOT NULL, FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE,"
             "FOREIGN KEY (actor) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
+    *m_session << "CREATE INDEX idx_actions_actor ON actions_accounts (actor);";
+    *m_session << "CREATE INDEX idx_actions_action_id ON actions_accounts (action_id);";
+
     *m_session << "CREATE TABLE tokens("
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
             "amount REAL(14,4),"
             "FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;"; // TODO: other tokens could have diff format.
+
+    *m_session << "CREATE INDEX idx_tokens_account ON tokens (account);";
 
     *m_session << "CREATE TABLE votes("
             "account VARCHAR(13) PRIMARY KEY,"
@@ -52,11 +62,10 @@ void actions_table::create()
             ", FOREIGN KEY (account) REFERENCES accounts(name), UNIQUE KEY account (account)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
     *m_session << "CREATE TABLE stakes("
-            "account VARCHAR(13),"
+            "account VARCHAR(13) PRIMARY KEY,"
             "cpu REAL(14,4),"
             "net REAL(14,4),"
-            "FOREIGN KEY (account) REFERENCES accounts(name), UNIQUE KEY account (account)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
-
+            "FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 }
 
 void actions_table::add(chain::action action, chain::transaction_id_type transaction_id, fc::time_point_sec transaction_time, uint8_t seq)
