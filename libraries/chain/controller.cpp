@@ -57,6 +57,7 @@ struct controller_impl {
    controller::config             conf;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   read_mode                      read_mode = read_mode::SPECULATIVE;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -77,8 +78,10 @@ struct controller_impl {
          reversible_blocks.remove( *b );
       }
 
-      for( const auto& t : head->trxs )
-         unapplied_transactions[t->signed_id] = t;
+      if ( read_mode == read_mode::SPECULATIVE ) {
+         for( const auto& t : head->trxs )
+            unapplied_transactions[t->signed_id] = t;
+      }
       head = prev;
       db.undo();
 
@@ -103,7 +106,8 @@ struct controller_impl {
     resource_limits( db ),
     authorization( s, db ),
     conf( cfg ),
-    chain_id( cfg.genesis.compute_chain_id() )
+    chain_id( cfg.genesis.compute_chain_id() ),
+    read_mode( cfg.read_mode )
    {
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -446,7 +450,7 @@ struct controller_impl {
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{{gto.sender, config::active_name}},
                                  onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) );
-      etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
+      etrx.expiration = self.pending_block_time() + fc::microseconds(999999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
@@ -692,8 +696,14 @@ struct controller_impl {
 
             emit(self.applied_transaction, trace);
 
-            trx_context.squash();
-            restore.cancel();
+
+            if ( pending->_block_status != controller::block_status::incomplete ) {
+               restore.cancel();
+               trx_context.squash();
+            } else {
+               //this may happen automatically in destructor, but I prefere to be more explicit
+               trx_context.undo();
+            }
 
             if (!implicit) {
                unapplied_transactions.erase( trx->signed_id );
@@ -928,8 +938,10 @@ struct controller_impl {
 
    void abort_block() {
       if( pending ) {
-         for( const auto& t : pending->_pending_block_state->trxs )
-            unapplied_transactions[t->signed_id] = t;
+         if ( read_mode == read_mode::SPECULATIVE ) {
+            for( const auto& t : pending->_pending_block_state->trxs )
+               unapplied_transactions[t->signed_id] = t;
+         }
          pending.reset();
       }
    }
@@ -1426,9 +1438,11 @@ const account_object& controller::get_account( account_name name )const
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
    vector<transaction_metadata_ptr> result;
-   result.reserve(my->unapplied_transactions.size());
-   for ( const auto& entry: my->unapplied_transactions ) {
-      result.emplace_back(entry.second);
+   if ( my->read_mode != read_mode::SPECULATIVE ) {
+      result.reserve(my->unapplied_transactions.size());
+      for ( const auto& entry: my->unapplied_transactions ) {
+         result.emplace_back(entry.second);
+      }
    }
    return result;
 }
