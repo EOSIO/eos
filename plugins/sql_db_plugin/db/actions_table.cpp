@@ -1,7 +1,5 @@
 #include "actions_table.h"
 
-#include <fc/log/logger.hpp>
-
 namespace eosio {
 
 actions_table::actions_table(std::shared_ptr<soci::session> session):
@@ -27,17 +25,19 @@ void actions_table::drop()
 void actions_table::create()
 {
     *m_session << "CREATE TABLE actions("
-            "id VARCHAR(36) PRIMARY KEY,"
+            "id INT NOT NULL AUTO_INCREMENT KEY,"
             "account VARCHAR(12),"
             "transaction_id VARCHAR(64),"
+            "seq SMALLINT,"
             "name VARCHAR(12),"
+            "created_at DATETIME DEFAULT NOW(),"
             "data JSON, FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,"
             "FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
     *m_session << "CREATE TABLE actions_accounts("
             "actor VARCHAR(12),"
             "permission VARCHAR(12),"
-            "action_id VARCHAR(36), FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE,"
+            "action_id INT NOT NULL, FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE,"
             "FOREIGN KEY (actor) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;";
 
     *m_session << "CREATE TABLE tokens("
@@ -59,7 +59,7 @@ void actions_table::create()
 
 }
 
-void actions_table::add(chain::action action, chain::transaction_id_type transaction_id)
+void actions_table::add(chain::action action, chain::transaction_id_type transaction_id, fc::time_point_sec transaction_time, uint8_t seq)
 {
 
     chain::abi_def abi;
@@ -67,6 +67,7 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
     chain::abi_serializer abis;
     soci::indicator ind;
     const auto transaction_id_str = transaction_id.str();
+    const auto expiration = std::chrono::seconds{transaction_time.sec_since_epoch()}.count();
 
     *m_session << "SELECT abi FROM accounts WHERE name = :name", soci::into(abi_def_account, ind), soci::use(action.account.to_string());
 
@@ -87,16 +88,16 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
     boost::uuids::uuid id = gen();
     std::string action_id = boost::uuids::to_string(id);
 
-    *m_session << "INSERT INTO actions(id, account, name, data, transaction_id) VALUES (:id, :ac, :na, :da, :ti) ",
-            soci::use(action_id),
+    *m_session << "INSERT INTO actions(account, seq, created_at, name, data, transaction_id) VALUES (:ac, :se, FROM_UNIXTIME(:ca), :na, :da, :ti) ",
             soci::use(action.account.to_string()),
+            soci::use(seq),
+            soci::use(expiration),
             soci::use(action.name.to_string()),
             soci::use(json),
             soci::use(transaction_id_str);
 
     for (const auto& auth : action.authorization) {
-        *m_session << "INSERT INTO actions_accounts(action_id, actor, permission) VALUES (:id, :ac, :pe) ",
-                soci::use(action_id),
+        *m_session << "INSERT INTO actions_accounts(action_id, actor, permission) VALUES (LAST_INSERT_ID(), :ac, :pe) ",
                 soci::use(auth.actor.to_string()),
                 soci::use(auth.permission.to_string());
     }
