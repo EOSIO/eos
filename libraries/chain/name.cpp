@@ -11,6 +11,7 @@ namespace enumivo { namespace chain {
 
       //////////////////////////////////////////////////////////////////////////////////
       //the code below is exlusive for enumivo to treat enumivo.prods as a special case
+      //as suggested by @fishhan
       if (string(str) == "enumivo.prods"){
         value = string_to_name(str);
         return; //allow special account
