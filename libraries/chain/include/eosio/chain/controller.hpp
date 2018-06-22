@@ -188,6 +188,8 @@ namespace eosio { namespace chain {
 
          chain_id_type get_chain_id()const;
 
+         read_mode get_read_mode()const;
+
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;

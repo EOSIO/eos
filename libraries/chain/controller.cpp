@@ -697,12 +697,12 @@ struct controller_impl {
             emit(self.applied_transaction, trace);
 
 
-            if ( pending->_block_status != controller::block_status::incomplete ) {
+            if ( read_mode != read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
+               //this may happen automatically in destructor, but I prefere make it more explicit
+               trx_context.undo();
+            } else {
                restore.cancel();
                trx_context.squash();
-            } else {
-               //this may happen automatically in destructor, but I prefere to be more explicit
-               trx_context.undo();
             }
 
             if (!implicit) {
@@ -1417,6 +1417,10 @@ chain_id_type controller::get_chain_id()const {
    return my->chain_id;
 }
 
+read_mode controller::get_read_mode()const {
+   return my->read_mode;
+}
+
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
 {
    auto native_handler_scope = my->apply_handlers.find( receiver );
@@ -1438,11 +1442,13 @@ const account_object& controller::get_account( account_name name )const
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
    vector<transaction_metadata_ptr> result;
-   if ( my->read_mode != read_mode::SPECULATIVE ) {
+   if ( my->read_mode == read_mode::SPECULATIVE ) {
       result.reserve(my->unapplied_transactions.size());
       for ( const auto& entry: my->unapplied_transactions ) {
          result.emplace_back(entry.second);
       }
+   } else {
+      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode" ); //should never happen
    }
    return result;
 }
