@@ -267,6 +267,7 @@ void test_transaction::send_deferred_tx_with_dtt_action() {
    auto trx = transaction();
    trx.actions.emplace_back(deferred_act);
    trx.delay_sec = dtt_act.delay_sec;
+   cancel_deferred( 0xffffffffffffffff ); // TODO: Remove this line after fixing deferred trx replacement RAM bug
    trx.send( 0xffffffffffffffff, dtt_act.payer, true );
 }
 
