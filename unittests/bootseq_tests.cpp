@@ -241,6 +241,10 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                 N(runnerup1), N(runnerup2), N(runnerup3)
         };
 
+        //enumivo.prods should not receive ram
+        BOOST_REQUIRE_THROW(buyram(N(enumivo), N(enumivo.prods), 1), enumivo_assert_message_exception);
+
+
         // Register producers
         for( auto pro : producer_candidates ) {
            register_producer(pro);
