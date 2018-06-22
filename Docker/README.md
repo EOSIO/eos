@@ -20,10 +20,10 @@ cd eos/Docker
 docker build . -t eosio/eos
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.4 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.6 tag, you could do the following:
 
 ```bash
-docker build -t eosio/eos:v1.0.4 --build-arg branch=v1.0.4 .
+docker build -t eosio/eos:v1.0.6 --build-arg branch=v1.0.6 .
 ```
 
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
@@ -181,7 +181,7 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 
 ```
 # pull images
-docker pull eosio/eos:v1.0.4
+docker pull eosio/eos:v1.0.6
 
 # create volume
 docker volume create --name=nodeos-data-volume
