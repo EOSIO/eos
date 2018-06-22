@@ -72,6 +72,11 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, enu_system::enu_system_tester) { try {
    set_abi( N(testram22222), test_ram_limit_abi );
    produce_blocks(10);
 
+   // make sure enumivo.prods can't receive ram
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "enumivo.prods prohibited to recieve ram" ),
+      buyrambytes(N(enumivo), N(enumivo.prods), 1)
+   );
+
    auto total = get_total_stake( N(testram11111) );
    const auto init_bytes =  total["ram_bytes"].as_uint64();
 
