@@ -492,30 +492,47 @@ BOOST_FIXTURE_TEST_CASE( stake_from_refund, eosio_system_tester ) try {
    cross_15_percent_threshold();
 
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
-   auto total = get_total_stake( "bob111111111" );
+   auto total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("210.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("110.0000"), total["cpu_weight"].as<asset>());
 
-   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("300.0000") ), get_voter_info( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("50.0000"), core_from_string("50.0000") ) );
+
+   total = get_total_stake( "bob111111111" );
+   BOOST_REQUIRE_EQUAL( core_from_string("60.0000"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( core_from_string("60.0000"), total["cpu_weight"].as<asset>());
+
+   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("400.0000") ), get_voter_info( "alice1111111" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("600.0000"), get_balance( "alice1111111" ) );
 
    //unstake a share
-   BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "bob111111111", core_from_string("100.0000"), core_from_string("50.0000") ) );
-   total = get_total_stake( "bob111111111" );
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "alice1111111", core_from_string("100.0000"), core_from_string("50.0000") ) );
+   total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("110.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("60.0000"), total["cpu_weight"].as<asset>());
-   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("150.0000") ), get_voter_info( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
+   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("250.0000") ), get_voter_info( "alice1111111" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("600.0000"), get_balance( "alice1111111" ) );
    auto refund = get_refund_request( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("100.0000"), refund["net_amount"].as<asset>() );
    BOOST_REQUIRE_EQUAL( core_from_string( "50.0000"), refund["cpu_amount"].as<asset>() );
    //XXX auto request_time = refund["request_time"].as_int64();
 
-   //stake less than pending refund, entire amount should be traken from refund
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("50.0000"), core_from_string("25.0000") ) );
-   total = get_total_stake( "bob111111111" );
+   //alice delegates to bob, should pull from liquid balance not refund
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("50.0000"), core_from_string("50.0000") ) );
+   total = get_total_stake( "alice1111111" );
+   BOOST_REQUIRE_EQUAL( core_from_string("110.0000"), total["net_weight"].as<asset>());
+   BOOST_REQUIRE_EQUAL( core_from_string("60.0000"), total["cpu_weight"].as<asset>());
+   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("350.0000") ), get_voter_info( "alice1111111" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("500.0000"), get_balance( "alice1111111" ) );
+   refund = get_refund_request( "alice1111111" );
+   BOOST_REQUIRE_EQUAL( core_from_string("100.0000"), refund["net_amount"].as<asset>() );
+   BOOST_REQUIRE_EQUAL( core_from_string( "50.0000"), refund["cpu_amount"].as<asset>() );
+
+   //stake less than pending refund, entire amount should be taken from refund
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("50.0000"), core_from_string("25.0000") ) );
+   total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("160.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("85.0000"), total["cpu_weight"].as<asset>());
    refund = get_refund_request( "alice1111111" );
@@ -523,39 +540,40 @@ BOOST_FIXTURE_TEST_CASE( stake_from_refund, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( core_from_string("25.0000"), refund["cpu_amount"].as<asset>() );
    //request time should stay the same
    //BOOST_REQUIRE_EQUAL( request_time, refund["request_time"].as_int64() );
-   //balance shoud stay the same
-   BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
+   //balance should stay the same
+   BOOST_REQUIRE_EQUAL( core_from_string("500.0000"), get_balance( "alice1111111" ) );
 
    //stake exactly pending refund amount
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("50.0000"), core_from_string("25.0000") ) );
-   total = get_total_stake( "bob111111111" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("50.0000"), core_from_string("25.0000") ) );
+   total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("210.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("110.0000"), total["cpu_weight"].as<asset>());
    //pending refund should be removed
    refund = get_refund_request( "alice1111111" );
    BOOST_TEST_REQUIRE( refund.is_null() );
-   //balance shoud stay the same
-   BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
+   //balance should stay the same
+   BOOST_REQUIRE_EQUAL( core_from_string("500.0000"), get_balance( "alice1111111" ) );
 
    //create pending refund again
-   BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "bob111111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
-   total = get_total_stake( "bob111111111" );
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
+   total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("10.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("10.0000"), total["cpu_weight"].as<asset>());
-   BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("500.0000"), get_balance( "alice1111111" ) );
    refund = get_refund_request( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("200.0000"), refund["net_amount"].as<asset>() );
    BOOST_REQUIRE_EQUAL( core_from_string("100.0000"), refund["cpu_amount"].as<asset>() );
 
    //stake more than pending refund
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("300.0000"), core_from_string("200.0000") ) );
-   total = get_total_stake( "bob111111111" );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("300.0000"), core_from_string("200.0000") ) );
+   total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( core_from_string("310.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("210.0000"), total["cpu_weight"].as<asset>());
+   REQUIRE_MATCHING_OBJECT( voter( "alice1111111", core_from_string("700.0000") ), get_voter_info( "alice1111111" ) );
    refund = get_refund_request( "alice1111111" );
    BOOST_TEST_REQUIRE( refund.is_null() );
-   //200 EOS should be taken from alice's account
-   BOOST_REQUIRE_EQUAL( core_from_string("500.0000"), get_balance( "alice1111111" ) );
+   //200 core tokens should be taken from alice's account
+   BOOST_REQUIRE_EQUAL( core_from_string("300.0000"), get_balance( "alice1111111" ) );
 
 } FC_LOG_AND_RETHROW()
 
