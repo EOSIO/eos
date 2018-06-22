@@ -22,7 +22,6 @@
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
-#include <bsoncxx/builder/stream/document.hpp>
 #include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
@@ -104,7 +103,6 @@ public:
    void consume_blocks();
 
    static const account_name newaccount;
-   static const account_name transfer;
    static const account_name setabi;
 
    static const std::string block_states_col;
@@ -116,7 +114,6 @@ public:
 };
 
 const account_name mongo_db_plugin_impl::newaccount = "newaccount";
-const account_name mongo_db_plugin_impl::transfer = "transfer";
 const account_name mongo_db_plugin_impl::setabi = "setabi";
 
 const std::string mongo_db_plugin_impl::block_states_col = "block_states";
@@ -315,32 +312,21 @@ void mongo_db_plugin_impl::consume_blocks() {
 namespace {
 
    auto find_account(mongocxx::collection& accounts, const account_name& name) {
-      using bsoncxx::builder::stream::document;
-      document find_acc{};
-      find_acc << "name" << name.to_string();
-      auto account = accounts.find_one(find_acc.view());
-      if (!account) {
-         FC_THROW("Unable to find account ${n}", ("n", name));
-      }
-      return *account;
+      using bsoncxx::builder::basic::make_document;
+      using bsoncxx::builder::basic::kvp;
+      return accounts.find_one( make_document( kvp( "name", name.to_string())));
    }
 
    auto find_transaction(mongocxx::collection& trans, const string& id) {
-      using bsoncxx::builder::stream::document;
-      document find_trans{};
-      find_trans << "trx_id" << id;
-      return trans.find_one(find_trans.view());
+      using bsoncxx::builder::basic::make_document;
+      using bsoncxx::builder::basic::kvp;
+      return trans.find_one( make_document( kvp( "trx_id", id )));
    }
 
    auto find_block(mongocxx::collection& blocks, const string& id) {
-      using bsoncxx::builder::stream::document;
-      document find_block{};
-      find_block << "block_id" << id;
-      auto block = blocks.find_one(find_block.view());
-      if (!block) {
-         FC_THROW("Unable to find block ${id}", ("id", id));
-      }
-      return *block;
+      using bsoncxx::builder::basic::make_document;
+      using bsoncxx::builder::basic::kvp;
+      return blocks.find_one( make_document( kvp( "block_id", id )));
    }
 
    optional<abi_serializer> get_abi_serializer( account_name n, mongocxx::collection& accounts ) {
@@ -378,56 +364,54 @@ namespace {
    void update_account(bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act) {
       using bsoncxx::builder::basic::kvp;
       using bsoncxx::builder::basic::make_document;
-      using bsoncxx::builder::stream::document;
-      using bsoncxx::builder::stream::open_document;
-      using bsoncxx::builder::stream::close_document;
-      using bsoncxx::builder::stream::finalize;
       using namespace bsoncxx::types;
 
       if (act.account != chain::config::system_account_name)
          return;
 
-      if (act.name == mongo_db_plugin_impl::newaccount) {
-         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-         auto newaccount = act.data_as<chain::newaccount>();
+      try {
+         if( act.name == mongo_db_plugin_impl::newaccount ) {
+            auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+            auto newaccount = act.data_as<chain::newaccount>();
 
-         // create new account
-         bsoncxx::builder::stream::document doc{};
-         doc << "name" << newaccount.name.to_string()
-             << "createdAt" << b_date{now};
-         if (!accounts.insert_one(doc.view())) {
-            elog("Failed to insert account ${n}", ("n", newaccount.name));
-         }
-
-      } else if (act.name == mongo_db_plugin_impl::setabi) {
-         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-         auto setabi = act.data_as<chain::setabi>();
-         auto from_account = find_account(accounts, setabi.account);
-
-         document update_from{};
-         try {
-            const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
-            const string json_str = fc::json::to_string( abi_def );
-
-            // the original keys from document 'view' are kept, "data" here is not replaced by "data" of add_data
-            act_doc.append( kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
-                                                        kvp( "abi_def", bsoncxx::from_json( json_str )))));
-
-            update_from << "$set" << open_document
-                        << "abi" << bsoncxx::from_json( json_str )
-                        << "updatedAt" << b_date{now}
-                        << close_document;
-
-            if( !accounts.update_one( document{} << "_id" << from_account.view()["_id"].get_oid() << finalize,
-                                      update_from.view())) {
-               elog( "Failed to udpdate account ${n}", ("n", setabi.account));
+            // create new account
+            if( !accounts.insert_one( make_document( kvp( "name", newaccount.name.to_string()),
+                                                     kvp( "createdAt", b_date{now} )))) {
+               elog( "Failed to insert account ${n}", ("n", newaccount.name));
             }
-         } catch(fc::exception& e) {
-            // if unable to unpack abi_def then just don't save the abi
-            // users are not required to use abi_def as their abi
+
+         } else if( act.name == mongo_db_plugin_impl::setabi ) {
+            auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+            auto setabi = act.data_as<chain::setabi>();
+            auto from_account = find_account( accounts, setabi.account );
+
+            if( from_account ) {
+               try {
+                  const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
+                  const string json_str = fc::json::to_string( abi_def );
+
+                  // the original keys from document 'view' are kept, "data" here is not replaced by "data" of add_data
+                  act_doc.append(
+                        kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
+                                                    kvp( "abi_def", bsoncxx::from_json( json_str )))));
+
+                  auto update_from = make_document(
+                        kvp( "$set", make_document( kvp( "abi", bsoncxx::from_json( json_str )),
+                                                    kvp( "updatedAt", b_date{now} ))));
+
+                  if( !accounts.update_one( make_document( kvp( "_id", from_account->view()["_id"].get_oid())), update_from.view()) ) {
+                     elog( "Failed to udpdate account ${n}", ("n", setabi.account));
+                  }
+               } catch( fc::exception& e ) {
+                  // if unable to unpack abi_def then just don't save the abi
+                  // users are not required to use abi_def as their abi
+               }
+            }
          }
+      } catch( fc::exception& e ) {
+         // if unable to unpack native type, skip account creation
       }
    }
 
@@ -439,28 +423,31 @@ namespace {
          ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
       }
       try {
-         auto from_account = find_account( accounts, act.account );
-         abi_def abi;
-         if( from_account.view().find( "abi" ) != from_account.view().end()) {
-            try {
-               abi = fc::json::from_string( bsoncxx::to_json( from_account.view()["abi"].get_document())).as<abi_def>();
-            } catch (...) {
-               ilog( "Unable to convert account abi to abi_def for ${s}::${n}", ("s", act.account)( "n", act.name ));
+         auto account = find_account( accounts, act.account );
+         if (account) {
+            auto from_account = *account;
+            abi_def abi;
+            if( from_account.view().find( "abi" ) != from_account.view().end()) {
+               try {
+                  abi = fc::json::from_string( bsoncxx::to_json( from_account.view()["abi"].get_document())).as<abi_def>();
+               } catch( ... ) {
+                  ilog( "Unable to convert account abi to abi_def for ${s}::${n}", ("s", act.account)( "n", act.name ));
+               }
             }
-         }
-         string json;
-         try {
-            abi_serializer abis;
-            abis.set_abi( abi );
-            auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data );
-            json = fc::json::to_string( v );
+            string json;
+            try {
+               abi_serializer abis;
+               abis.set_abi( abi );
+               auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data );
+               json = fc::json::to_string( v );
 
-            const auto& value = bsoncxx::from_json( json );
-            act_doc.append( kvp( "data", value ));
-            return;
-         } catch (std::exception& e) {
-            elog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
-            elog( "  EOS JSON: ${j}", ("j", json));
+               const auto& value = bsoncxx::from_json( json );
+               act_doc.append( kvp( "data", value ));
+               return;
+            } catch( std::exception& e ) {
+               elog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
+               elog( "  EOS JSON: ${j}", ("j", json));
+            }
          }
       } catch (fc::exception& e) {
          if( act.name != "onblock" ) {
@@ -583,8 +570,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    const auto& trx = t->trx;
    const chain::transaction_header& trx_header = trx;
 
-   const auto existing = find_transaction(trans, trx_id_str);
-
    bool actions_to_write = false;
    mongocxx::options::bulk_write bulk_opts;
    bulk_opts.ordered(false);
@@ -614,98 +599,93 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       return act_num;
    };
 
-   if (existing) {
-      FC_ASSERT("Should only get accept transaction once.");
+   trans_doc.append( kvp( "trx_id", trx_id_str ),
+                     kvp( "irreversible", b_bool{false} ));
+
+   string signing_keys_json;
+   if( t->signing_keys.valid()) {
+      signing_keys_json = fc::json::to_string( t->signing_keys->second );
    } else {
-      trans_doc.append( kvp( "trx_id", trx_id_str ),
-                        kvp( "irreversible", b_bool{false} ) );
+      auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+      if( !signing_keys.empty()) {
+         signing_keys_json = fc::json::to_string( signing_keys );
+      }
+   }
+   string trx_header_json = fc::json::to_string( trx_header );
 
-      string signing_keys_json;
-      if( t->signing_keys.valid() ) {
-         signing_keys_json = fc::json::to_string( t->signing_keys->second );
+   try {
+      const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
+      trans_doc.append( kvp( "transaction_header", trx_header_value ));
+      if( !signing_keys_json.empty()) {
+         const auto& keys_value = bsoncxx::from_json( signing_keys_json );
+         trans_doc.append( kvp( "signing_keys", keys_value ));
+      }
+   } catch( std::exception& e ) {
+      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
+      elog( "  JSON: ${j}", ("j", trx_header_json));
+      elog( "  JSON: ${j}", ("j", signing_keys_json));
+   }
+
+   if( !trx.actions.empty()) {
+      bsoncxx::builder::basic::array action_array;
+      for( const auto& act : trx.actions ) {
+         process_action( trx_id_str, act, action_array );
+      }
+      trans_doc.append( kvp( "actions", action_array ));
+   }
+
+   act_num = 0;
+   if( !trx.context_free_actions.empty()) {
+      bsoncxx::builder::basic::array action_array;
+      for( const auto& cfa : trx.context_free_actions ) {
+         process_action( trx_id_str, cfa, action_array );
+      }
+      trans_doc.append( kvp( "context_free_actions", action_array ));
+   }
+
+   string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
+   string trx_signatures_json = fc::json::to_string( trx.signatures );
+   string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
+
+   try {
+      if( !trx_extensions_json.empty()) {
+         const auto& trx_extensions_value = bsoncxx::from_json( trx_extensions_json );
+         trans_doc.append( kvp( "transaction_extensions", trx_extensions_value ));
       } else {
-         auto signing_keys = trx.get_signature_keys(*chain_id, false, false);
-         if( !signing_keys.empty() ) {
-            signing_keys_json = fc::json::to_string( signing_keys );
-         }
-      }
-      string trx_header_json = fc::json::to_string( trx_header );
-
-      try {
-         const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
-         trans_doc.append( kvp( "transaction_header", trx_header_value ));
-         if( !signing_keys_json.empty()) {
-            const auto& keys_value = bsoncxx::from_json( signing_keys_json );
-            trans_doc.append( kvp( "signing_keys", keys_value ));
-         }
-      } catch (std::exception& e) {
-         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-         elog( "  JSON: ${j}", ("j", trx_header_json));
-         elog( "  JSON: ${j}", ("j", signing_keys_json));
+         trans_doc.append( kvp( "transaction_extensions", make_array()));
       }
 
-      if( !trx.actions.empty()) {
-         bsoncxx::builder::basic::array action_array;
-         for( const auto& act : trx.actions ) {
-            process_action( trx_id_str, act, action_array );
-         }
-         trans_doc.append( kvp( "actions", action_array ) );
+      if( !trx_signatures_json.empty()) {
+         const auto& trx_signatures_value = bsoncxx::from_json( trx_signatures_json );
+         trans_doc.append( kvp( "signatures", trx_signatures_value ));
+      } else {
+         trans_doc.append( kvp( "signatures", make_array()));
       }
 
-      act_num = 0;
-      if( !trx.context_free_actions.empty()) {
-         bsoncxx::builder::basic::array action_array;
-         for( const auto& cfa : trx.context_free_actions ) {
-            process_action( trx_id_str, cfa, action_array );
-         }
-         trans_doc.append( kvp( "context_free_actions", action_array ) );
+      if( !trx_context_free_data_json.empty()) {
+         const auto& trx_context_free_data_value = bsoncxx::from_json( trx_context_free_data_json );
+         trans_doc.append( kvp( "context_free_data", trx_context_free_data_value ));
+      } else {
+         trans_doc.append( kvp( "context_free_data", make_array()));
       }
+   } catch( std::exception& e ) {
+      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
+      elog( "  JSON: ${j}", ("j", trx_extensions_json));
+      elog( "  JSON: ${j}", ("j", trx_signatures_json));
+      elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
+   }
 
-      string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
-      string trx_signatures_json = fc::json::to_string( trx.signatures );
-      string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
+   trans_doc.append( kvp( "createdAt", b_date{now} ));
 
-      try {
-         if (!trx_extensions_json.empty()) {
-            const auto& trx_extensions_value = bsoncxx::from_json( trx_extensions_json );
-            trans_doc.append( kvp( "transaction_extensions", trx_extensions_value ));
-         } else {
-            trans_doc.append( kvp( "transaction_extensions", make_array() ));
-         }
+   if( !trans.insert_one( trans_doc.view())) {
+      elog( "Failed to insert trans ${id}", ("id", trx_id));
+   }
 
-         if (!trx_signatures_json.empty()) {
-            const auto& trx_signatures_value = bsoncxx::from_json( trx_signatures_json );
-            trans_doc.append( kvp( "signatures", trx_signatures_value ));
-         } else {
-            trans_doc.append( kvp( "signatures", make_array() ));
-         }
-
-         if (!trx_context_free_data_json.empty()) {
-            const auto& trx_context_free_data_value = bsoncxx::from_json( trx_context_free_data_json );
-            trans_doc.append( kvp( "context_free_data", trx_context_free_data_value ));
-         } else {
-            trans_doc.append( kvp( "context_free_data", make_array() ));
-         }
-      } catch (std::exception& e) {
-         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-         elog( "  JSON: ${j}", ("j", trx_extensions_json));
-         elog( "  JSON: ${j}", ("j", trx_signatures_json));
-         elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
+   if( actions_to_write ) {
+      auto result = bulk_actions.execute();
+      if( !result ) {
+         elog( "Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
       }
-
-      trans_doc.append( kvp( "createdAt", b_date{now} ));
-
-      if( !trans.insert_one( trans_doc.view())) {
-         elog( "Failed to insert trans ${id}", ("id", trx_id));
-      }
-
-      if (actions_to_write) {
-         auto result = bulk_actions.execute();
-         if (!result) {
-            elog("Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
-         }
-      }
-
    }
 }
 
@@ -719,28 +699,19 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-   const auto trx_id = t->id;
-   const auto trx_id_str = trx_id.str();
+   auto v = to_variant_with_abi( *t, accounts );
+   string json = fc::json::to_string( v );
+   try {
+      const auto& value = bsoncxx::from_json( json );
+      trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
+      trans_traces_doc.append( kvp( "createdAt", b_date{now} ));
+   } catch( std::exception& e ) {
+      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
+      elog( "  JSON: ${j}", ("j", json));
+   }
 
-   const auto existing = find_transaction(trans_traces, trx_id_str);
-
-   if (existing) {
-      FC_ASSERT("Should only get applied transaction once.");
-   } else {
-      auto v = to_variant_with_abi( *t, accounts );
-      string json = fc::json::to_string( v );
-      try {
-         const auto& value = bsoncxx::from_json( json );
-         trans_traces_doc.append(bsoncxx::builder::concatenate_doc{value.view()});
-         trans_traces_doc.append( kvp( "createdAt", b_date{now} ));
-      } catch (std::exception& e) {
-         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-         elog( "  JSON: ${j}", ("j", json));
-      }
-
-      if( !trans_traces.insert_one( trans_traces_doc.view())) {
-         elog( "Failed to insert trans ${id}", ("id", trx_id));
-      }
+   if( !trans_traces.insert_one( trans_traces_doc.view())) {
+      elog( "Failed to insert trans ${id}", ("id", t->id));
    }
 }
 
@@ -822,13 +793,18 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    auto ir_block = find_block(blocks, block_id_str);
+   if( !ir_block ) {
+      _process_block( bs );
+      ir_block = find_block( blocks, block_id_str );
+      if( !ir_block ) return; // should never happen
+   }
 
    auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
                                                                 kvp( "validated", b_bool{bs->validated} ),
                                                                 kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
                                                                 kvp( "updatedAt", b_date{now}))));
 
-   blocks.update_one( make_document( kvp( "_id", ir_block.view()["_id"].get_oid())), update_doc.view());
+   blocks.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid())), update_doc.view());
 
    bool transactions_in_block = false;
    mongocxx::options::bulk_write bulk_opts;
@@ -908,16 +884,18 @@ void mongo_db_plugin_impl::wipe_database() {
 
 void mongo_db_plugin_impl::init() {
    using namespace bsoncxx::types;
+   using bsoncxx::builder::basic::make_document;
+   using bsoncxx::builder::basic::kvp;
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
 
    accounts = mongo_conn[db_name][accounts_col];
-   bsoncxx::builder::stream::document doc{};
-   if (accounts.count(doc.view()) == 0) {
+   if (accounts.count(make_document()) == 0) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      doc << "name" << name(chain::config::system_account_name).to_string()
-          << "createdAt" << b_date{now};
+
+      auto doc = make_document( kvp( "name", name( chain::config::system_account_name ).to_string()),
+                                kvp( "createdAt", b_date{now} ));
 
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", name(chain::config::system_account_name).to_string()));
