@@ -169,9 +169,9 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
    try {
       if (startup) {
          // on startup we don't want to queue, instead push back on caller
-         process_accepted_transaction(t);
+         process_accepted_transaction( t );
       } else {
-         queue(mtx, condition, transaction_metadata_queue, t, queue_size);
+         queue( mtx, condition, transaction_metadata_queue, t, queue_size );
       }
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
@@ -546,25 +546,28 @@ void mongo_db_plugin_impl::process_applied_transaction( const chain::transaction
 
 void mongo_db_plugin_impl::process_accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
+      // always call since we need to capture setabi on accounts even if not storing transactions
       _process_accepted_transaction(t);
    } catch (fc::exception& e) {
-      elog("FC Exception while processing transaction metadata: ${e}", ("e", e.to_detail_string()));
+      elog("FC Exception while processing accepted transaction metadata: ${e}", ("e", e.to_detail_string()));
    } catch (std::exception& e) {
-      elog("STD Exception while processing tranasction metadata: ${e}", ("e", e.what()));
+      elog("STD Exception while processing accepted tranasction metadata: ${e}", ("e", e.what()));
    } catch (...) {
-      elog("Unknown exception while processing transaction metadata");
+      elog("Unknown exception while processing accepted transaction metadata");
    }
 }
 
 void mongo_db_plugin_impl::process_applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
-      _process_applied_transaction(t);
+      if( start_block_reached ) {
+         _process_applied_transaction( t );
+      }
    } catch (fc::exception& e) {
-      elog("FC Exception while processing transaction trace: ${e}", ("e", e.to_detail_string()));
+      elog("FC Exception while processing applied transaction trace: ${e}", ("e", e.to_detail_string()));
    } catch (std::exception& e) {
-      elog("STD Exception while processing tranasction trace: ${e}", ("e", e.what()));
+      elog("STD Exception while processing applied transaction trace: ${e}", ("e", e.what()));
    } catch (...) {
-      elog("Unknown exception while processing transaction trace");
+      elog("Unknown exception while processing applied transaction trace");
    }
 }
 
@@ -662,7 +665,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          actions_to_write = true;
       }
       ++act_num;
-      actions_to_write = true;
       return act_num;
    };
 
@@ -679,8 +681,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
             signing_keys_json = fc::json::to_string( signing_keys );
          }
       }
-   }
-   string trx_header_json = fc::json::to_string( trx_header );
+      string trx_header_json = fc::json::to_string( trx_header );
 
       try {
          const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
@@ -713,12 +714,10 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          }
          trans_doc.append( kvp( "context_free_actions", action_array ));
       }
-      trans_doc.append( kvp( "context_free_actions", action_array ));
-   }
 
-   string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
-   string trx_signatures_json = fc::json::to_string( trx.signatures );
-   string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
+      string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
+      string trx_signatures_json = fc::json::to_string( trx.signatures );
+      string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
 
       try {
          if( !trx_extensions_json.empty()) {
@@ -747,18 +746,12 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          elog( "  JSON: ${j}", ("j", trx_signatures_json));
          elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
       }
-   } catch( std::exception& e ) {
-      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-      elog( "  JSON: ${j}", ("j", trx_extensions_json));
-      elog( "  JSON: ${j}", ("j", trx_signatures_json));
-      elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
-   }
 
-   trans_doc.append( kvp( "createdAt", b_date{now} ));
+      trans_doc.append( kvp( "createdAt", b_date{now} ));
 
-   if( !trans.insert_one( trans_doc.view())) {
-      elog( "Failed to insert trans ${id}", ("id", trx_id));
-   }
+      if( !trans.insert_one( trans_doc.view())) {
+         elog( "Failed to insert trans ${id}", ("id", trx_id));
+      }
 
       if( actions_to_write ) {
          auto result = bulk_actions.execute();
