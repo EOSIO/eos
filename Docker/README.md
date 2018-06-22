@@ -182,18 +182,17 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 ```
 # pull images
 docker pull eosio/eos:v1.0.6
-
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
 # start containers
-docker-compose -f docker-compose-eosio1.0.yaml up -d
+docker-compose -f docker-compose-release.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs -f nodeosd
 # stop containers
-docker-compose -f docker-compose-eosio1.0.yaml down
+docker-compose -f docker-compose-release.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.
