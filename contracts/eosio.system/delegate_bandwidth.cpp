@@ -154,9 +154,9 @@ namespace eosiosystem {
 
 
    /**
-    *  The system contract now buys and sells RAM allocations at prevailing market prices. 
-    *  This may result in traders buying RAM today in anticipation of potential shortages 
-    *  tomorrow. Overall this will result in the market balancing the supply and demand 
+    *  The system contract now buys and sells RAM allocations at prevailing market prices.
+    *  This may result in traders buying RAM today in anticipation of potential shortages
+    *  tomorrow. Overall this will result in the market balancing the supply and demand
     *  for RAM over time.
     */
    void system_contract::sellram( account_name account, int64_t bytes ) {
@@ -175,6 +175,8 @@ namespace eosiosystem {
           tokens_out = es.convert( asset(bytes,S(0,RAM)), CORE_SYMBOL);
       });
 
+      eosio_assert( tokens_out.amount > 1, "token amount received from selling ram is too low" );
+
       _gstate.total_ram_bytes_reserved -= static_cast<decltype(_gstate.total_ram_bytes_reserved)>(bytes); // bytes > 0 is asserted above
       _gstate.total_ram_stake          -= tokens_out.amount;
 
@@ -189,7 +191,9 @@ namespace eosiosystem {
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
 
-      auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)            
+      auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
+      // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
+      
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
             { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
