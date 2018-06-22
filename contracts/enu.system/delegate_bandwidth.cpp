@@ -107,6 +107,10 @@ namespace enumivosystem {
       require_auth( payer );
       enumivo_assert( quant.amount > 0, "must purchase a positive amount" );
 
+      /////////////////////////////////////////////////////////////////////////////////////
+      //enumivo.prods is not allowed to get ram
+      enumivo_assert( receiver != N(enumivo.prods) > 0, "enumivo.prods prohibited to recieve ram" );
+
       auto fee = quant;
       fee.amount = ( fee.amount + 199 ) / 200; /// .5% fee (round up)
       // fee.amount cannot be 0 since that is only possible if quant.amount is 0 which is not allowed by the assert above.
