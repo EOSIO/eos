@@ -2094,6 +2094,23 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    create_accounts_with_resources( { N(goodgoodgood) }, N(dan) ); /// 12 char names should succeed
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( bid_invalid_names, eosio_system_tester ) try {
+   create_accounts_with_resources( { N(dan) } );
+
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "you can only bid on top-level suffix" ),
+                        bidname( "dan", "abcdefg.12345", core_from_string( "1.0000" ) ) );
+
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "the empty name is not a valid account name to bid on" ),
+                        bidname( "dan", "", core_from_string( "1.0000" ) ) );
+
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "13 character names are not valid account names to bid on" ),
+                        bidname( "dan", "abcdefgh12345", core_from_string( "1.0000" ) ) );
+
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "accounts with 12 character names and no dots can be created without bidding required" ),
+                        bidname( "dan", "abcdefg12345", core_from_string( "1.0000" ) ) );
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
 
    const std::string not_closed_message("auction for name is not closed yet");
