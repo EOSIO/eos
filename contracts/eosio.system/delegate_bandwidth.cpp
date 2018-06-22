@@ -207,6 +207,9 @@ namespace eosiosystem {
    {
       require_auth( from );
       eosio_assert( stake_net_delta != asset(0) || stake_cpu_delta != asset(0), "should stake non-zero amount" );
+      eosio_assert( std::abs( (stake_net_delta + stake_cpu_delta).amount )
+                     >= std::max( std::abs( stake_net_delta.amount ), std::abs( stake_cpu_delta.amount ) ),
+                    "net and cpu deltas cannot be opposite signs" );
 
       account_name source_stake_from = from;
       if ( transfer ) {
@@ -273,8 +276,16 @@ namespace eosiosystem {
          auto net_balance = stake_net_delta;
          auto cpu_balance = stake_cpu_delta;
          bool need_deferred_trx = false;
-         if ( req != refunds_tbl.end() ) { //need to update refund
-            refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
+
+
+         // net and cpu are same sign by assertions in delegatebw and undelegatebw
+         // redundant assertion also at start of changebw to protect against misuse of changebw
+         bool is_undelegating = (net_balance.amount + cpu_balance.amount ) < 0;
+         bool is_delegating_to_self = (!transfer && from == receiver);
+
+         if( is_delegating_to_self || is_undelegating ) {
+            if ( req != refunds_tbl.end() ) { //need to update refund
+               refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
                   if ( net_balance < asset(0) || cpu_balance < asset(0) ) {
                      r.request_time = now();
                   }
@@ -293,17 +304,19 @@ namespace eosiosystem {
                      cpu_balance = asset(0);
                   }
                });
-            eosio_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
-            eosio_assert( asset(0) <= req->cpu_amount, "negative cpu refund amount" ); //should never happen
 
-            if ( req->net_amount == asset(0) && req->cpu_amount == asset(0) ) {
-               refunds_tbl.erase( req );
-               need_deferred_trx = false;
-            } else {
-               need_deferred_trx = true;
-            }
-         } else if ( net_balance < asset(0) || cpu_balance < asset(0) ) { //need to create refund
-            refunds_tbl.emplace( from, [&]( refund_request& r ) {
+               eosio_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
+               eosio_assert( asset(0) <= req->cpu_amount, "negative cpu refund amount" ); //should never happen
+
+               if ( req->net_amount == asset(0) && req->cpu_amount == asset(0) ) {
+                  refunds_tbl.erase( req );
+                  need_deferred_trx = false;
+               } else {
+                  need_deferred_trx = true;
+               }
+
+            } else if ( net_balance < asset(0) || cpu_balance < asset(0) ) { //need to create refund
+               refunds_tbl.emplace( from, [&]( refund_request& r ) {
                   r.owner = from;
                   if ( net_balance < asset(0) ) {
                      r.net_amount = -net_balance;
@@ -315,8 +328,9 @@ namespace eosiosystem {
                   } // else r.cpu_amount = 0 by default constructor
                   r.request_time = now();
                });
-            need_deferred_trx = true;
-         } // else stake increase requested with no existing row in refunds_tbl -> nothing to do with refunds_tbl
+               need_deferred_trx = true;
+            } // else stake increase requested with no existing row in refunds_tbl -> nothing to do with refunds_tbl
+         } /// end if is_delegating_to_self || is_undelegating
 
          if ( need_deferred_trx ) {
             eosio::transaction out;
