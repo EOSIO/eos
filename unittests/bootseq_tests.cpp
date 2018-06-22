@@ -242,7 +242,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         };
 
         //enumivo.prods should not receive ram
-        BOOST_REQUIRE_THROW(buyram(N(enumivo), N(enumivo.prods), 1), enumivo_assert_message_exception);
+        BOOST_REQUIRE_THROW( buyram(N(enumivo), N(enumivo.prods), asset(1), enumivo_assert_message_exception);
 
 
         // Register producers
