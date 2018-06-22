@@ -62,18 +62,18 @@ public:
    void _process_accepted_transaction(const chain::transaction_metadata_ptr&);
    void process_applied_transaction(const chain::transaction_trace_ptr&);
    void _process_applied_transaction(const chain::transaction_trace_ptr&);
-   void process_block(const chain::block_state_ptr&);
-   void _process_block(const chain::block_state_ptr&);
+   void process_accepted_block( const chain::block_state_ptr& );
+   void _process_accepted_block( const chain::block_state_ptr& );
    void process_irreversible_block(const chain::block_state_ptr&);
    void _process_irreversible_block(const chain::block_state_ptr&);
 
    void init();
    void wipe_database();
 
-   static abi_def eos_abi; // cached for common use
-
    bool configured{false};
    bool wipe_database_on_startup{false};
+   uint32_t start_block_num = 0;
+   bool start_block_reached = false;
 
    std::string db_name;
    mongocxx::instance mongo_inst;
@@ -81,7 +81,6 @@ public:
    mongocxx::collection accounts;
 
    size_t queue_size = 0;
-   size_t processed = 0;
    std::deque<chain::transaction_metadata_ptr> transaction_metadata_queue;
    std::deque<chain::transaction_metadata_ptr> transaction_metadata_process_queue;
    std::deque<chain::transaction_trace_ptr> transaction_trace_queue;
@@ -98,7 +97,6 @@ public:
    boost::atomic<bool> done{false};
    boost::atomic<bool> startup{true};
    fc::optional<chain::chain_id_type> chain_id;
-   abi_serializer abi;
 
    void consume_blocks();
 
@@ -152,11 +150,11 @@ void queue(boost::mutex& mtx, boost::condition_variable& condition, Queue& queue
 
 void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
-      if (startup) {
+      if( startup ) {
          // on startup we don't want to queue, instead push back on caller
-         process_accepted_transaction(t);
+         process_accepted_transaction( t );
       } else {
-         queue(mtx, condition, transaction_metadata_queue, t, queue_size);
+         queue( mtx, condition, transaction_metadata_queue, t, queue_size );
       }
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
@@ -169,11 +167,11 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
 
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
-      if (startup) {
+      if( startup ) {
          // on startup we don't want to queue, instead push back on caller
-         process_applied_transaction(t);
+         process_applied_transaction( t );
       } else {
-         queue(mtx, condition, transaction_trace_queue, t, queue_size);
+         queue( mtx, condition, transaction_trace_queue, t, queue_size );
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_transaction ${e}", ("e", e.to_string()));
@@ -186,11 +184,11 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
 
 void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_ptr& bs ) {
    try {
-      if (startup) {
+      if( startup ) {
          // on startup we don't want to queue, instead push back on caller
-         process_irreversible_block(bs);
+         process_irreversible_block( bs );
       } else {
-         queue(mtx, condition, irreversible_block_state_queue, bs, queue_size);
+         queue( mtx, condition, irreversible_block_state_queue, bs, queue_size );
       }
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
@@ -203,11 +201,11 @@ void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_
 
 void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
    try {
-      if (startup) {
+      if( startup ) {
          // on startup we don't want to queue, instead push back on caller
-         process_block(bs);
+         process_accepted_block( bs );
       } else {
-         queue(mtx, condition, block_state_queue, bs, queue_size);
+         queue( mtx, condition, block_state_queue, bs, queue_size );
       }
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_block ${e}", ("e", e.to_string()));
@@ -280,7 +278,7 @@ void mongo_db_plugin_impl::consume_blocks() {
          // process blocks
          while (!block_state_process_queue.empty()) {
             const auto& bs = block_state_process_queue.front();
-            process_block(bs);
+            process_accepted_block( bs );
             block_state_process_queue.pop_front();
          }
 
@@ -386,7 +384,13 @@ namespace {
                   std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
             auto setabi = act.data_as<chain::setabi>();
             auto from_account = find_account( accounts, setabi.account );
-
+            if( !from_account ) {
+               if( !accounts.insert_one( make_document( kvp( "name", setabi.account.to_string()),
+                                                        kvp( "createdAt", b_date{now} )))) {
+                  elog( "Failed to insert account ${n}", ("n", setabi.account));
+               }
+               from_account = find_account( accounts, setabi.account );
+            }
             if( from_account ) {
                try {
                   const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
@@ -418,11 +422,6 @@ namespace {
    void add_data(bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act) {
       using bsoncxx::builder::basic::kvp;
       try {
-         update_account( act_doc, accounts, act );
-      } catch (...) {
-         ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
-      }
-      try {
          auto account = find_account( accounts, act.account );
          if (account) {
             auto from_account = *account;
@@ -450,7 +449,7 @@ namespace {
             }
          }
       } catch (fc::exception& e) {
-         if( act.name != "onblock" ) {
+         if( act.name != "onblock" ) { // onblock not in original eosio.system contract abi
             ilog( "Unable to convert action.data to ABI: ${s}::${n}, what: ${e}",
                   ("s", act.account)( "n", act.name )( "e", e.to_detail_string()));
          }
@@ -465,88 +464,65 @@ namespace {
       act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
    }
 
-   void verify_last_block(mongocxx::collection& blocks, const std::string& prev_block_id) {
-      mongocxx::options::find opts;
-      opts.sort( bsoncxx::from_json( R"xxx({ "_id" : -1 })xxx" ));
-      auto last_block = blocks.find_one( {}, opts );
-      if( !last_block ) {
-         FC_THROW( "No blocks found in database" );
-      }
-      const auto id = last_block->view()["block_id"].get_utf8().value.to_string();
-      if( id != prev_block_id ) {
-         FC_THROW( "Did not find expected block ${pid}, instead found ${id}", ("pid", prev_block_id)( "id", id ));
-      }
-   }
-
-   void verify_no_blocks(mongocxx::collection& blocks) {
-      if (blocks.count(bsoncxx::from_json("{}")) > 0) {
-         FC_THROW("Existing blocks found in database");
-      }
-   }
 }
 
 void mongo_db_plugin_impl::process_accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
+      // always call since we need to capture setabi on accounts even if not storing transactions
       _process_accepted_transaction(t);
    } catch (fc::exception& e) {
-      elog("FC Exception while processing transaction metadata: ${e}", ("e", e.to_detail_string()));
+      elog("FC Exception while processing accepted transaction metadata: ${e}", ("e", e.to_detail_string()));
    } catch (std::exception& e) {
-      elog("STD Exception while processing tranasction metadata: ${e}", ("e", e.what()));
+      elog("STD Exception while processing accepted tranasction metadata: ${e}", ("e", e.what()));
    } catch (...) {
-      elog("Unknown exception while processing transaction metadata");
+      elog("Unknown exception while processing accepted transaction metadata");
    }
 }
 
 void mongo_db_plugin_impl::process_applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
-      _process_applied_transaction(t);
+      if( start_block_reached ) {
+         _process_applied_transaction( t );
+      }
    } catch (fc::exception& e) {
-      elog("FC Exception while processing transaction trace: ${e}", ("e", e.to_detail_string()));
+      elog("FC Exception while processing applied transaction trace: ${e}", ("e", e.to_detail_string()));
    } catch (std::exception& e) {
-      elog("STD Exception while processing tranasction trace: ${e}", ("e", e.what()));
+      elog("STD Exception while processing applied transaction trace: ${e}", ("e", e.what()));
    } catch (...) {
-      elog("Unknown exception while processing transaction trace");
+      elog("Unknown exception while processing applied transaction trace");
    }
 }
 
 void mongo_db_plugin_impl::process_irreversible_block(const chain::block_state_ptr& bs) {
   try {
-     _process_irreversible_block(bs);
+     if( start_block_reached ) {
+        _process_irreversible_block( bs );
+     }
   } catch (fc::exception& e) {
-     elog("FC Exception while processing block: ${e}", ("e", e.to_detail_string()));
+     elog("FC Exception while processing irreversible block: ${e}", ("e", e.to_detail_string()));
   } catch (std::exception& e) {
-     elog("STD Exception while processing block: ${e}", ("e", e.what()));
+     elog("STD Exception while processing irreversible block: ${e}", ("e", e.what()));
   } catch (...) {
-     elog("Unknown exception while processing block");
+     elog("Unknown exception while processing irreversible block");
   }
 }
 
-void mongo_db_plugin_impl::process_block(const chain::block_state_ptr& bs) {
+void mongo_db_plugin_impl::process_accepted_block( const chain::block_state_ptr& bs ) {
    try {
-
-      if (processed == 0) {
-         auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
-         auto block_num = bs->block->block_num();
-         if (wipe_database_on_startup) {
-            // verify on start we have no previous blocks
-            verify_no_blocks(blocks);
-            FC_ASSERT(block_num == 2, "Expected start of block, instead received block_num: ${bn}", ("bn", block_num));
-         } else {
-            // verify on restart we have previous block
-            const auto prev_block_id_str = bs->block->previous.str();
-            verify_last_block(blocks, prev_block_id_str);
+      if( !start_block_reached ) {
+         if( bs->block_num >= start_block_num ) {
+            start_block_reached = true;
          }
       }
-
-      _process_block(bs);
-
-      ++processed;
+      if( start_block_reached ) {
+         _process_accepted_block( bs );
+      }
    } catch (fc::exception& e) {
-      elog("FC Exception while processing block trace ${e}", ("e", e.to_string()));
+      elog("FC Exception while processing accepted block trace ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
-      elog("STD Exception while processing block trace ${e}", ("e", e.what()));
+      elog("STD Exception while processing accepted block trace ${e}", ("e", e.what()));
    } catch (...) {
-      elog("Unknown exception while processing trace block");
+      elog("Unknown exception while processing accepted block trace");
    }
 }
 
@@ -555,7 +531,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
    using bsoncxx::builder::basic::make_array;
-   using bsoncxx::builder::basic::sub_array;
 
    auto trans = mongo_conn[db_name][trans_col];
    auto actions = mongo_conn[db_name][actions_col];
@@ -578,52 +553,63 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    int32_t act_num = 0;
    auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bsoncxx::builder::basic::array& act_array) -> auto {
       auto act_doc = bsoncxx::builder::basic::document();
-      act_doc.append(kvp("action_num", b_int32{act_num}),
-                     kvp("trx_id", trx_id_str));
-      act_doc.append(kvp("account", act.account.to_string()));
-      act_doc.append(kvp("name", act.name.to_string()));
-      act_doc.append(kvp("authorization", [&act](bsoncxx::builder::basic::sub_array subarr) {
-         for (const auto& auth : act.authorization) {
-            subarr.append([&auth](bsoncxx::builder::basic::sub_document subdoc) {
-               subdoc.append(kvp("actor", auth.actor.to_string()),
-                             kvp("permission", auth.permission.to_string()));
-            });
-         }
-      }));
-      add_data(act_doc, accounts, act);
-      act_array.append(act_doc);
-      mongocxx::model::insert_one insert_op{act_doc.view()};
-      bulk_actions.append(insert_op);
+      if( start_block_reached ) {
+         act_doc.append( kvp( "action_num", b_int32{act_num} ),
+                         kvp( "trx_id", trx_id_str ));
+         act_doc.append( kvp( "account", act.account.to_string()));
+         act_doc.append( kvp( "name", act.name.to_string()));
+         act_doc.append( kvp( "authorization", [&act]( bsoncxx::builder::basic::sub_array subarr ) {
+            for( const auto& auth : act.authorization ) {
+               subarr.append( [&auth]( bsoncxx::builder::basic::sub_document subdoc ) {
+                  subdoc.append( kvp( "actor", auth.actor.to_string()),
+                                 kvp( "permission", auth.permission.to_string()));
+               } );
+            }
+         } ));
+      }
+      try {
+         update_account( act_doc, accounts, act );
+      } catch (...) {
+         ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
+      }
+      if( start_block_reached ) {
+         add_data( act_doc, accounts, act );
+         act_array.append( act_doc );
+         mongocxx::model::insert_one insert_op{act_doc.view()};
+         bulk_actions.append( insert_op );
+         actions_to_write = true;
+      }
       ++act_num;
-      actions_to_write = true;
       return act_num;
    };
 
-   trans_doc.append( kvp( "trx_id", trx_id_str ),
-                     kvp( "irreversible", b_bool{false} ));
+   if( start_block_reached ) {
+      trans_doc.append( kvp( "trx_id", trx_id_str ),
+                        kvp( "irreversible", b_bool{false} ));
 
-   string signing_keys_json;
-   if( t->signing_keys.valid()) {
-      signing_keys_json = fc::json::to_string( t->signing_keys->second );
-   } else {
-      auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
-      if( !signing_keys.empty()) {
-         signing_keys_json = fc::json::to_string( signing_keys );
+      string signing_keys_json;
+      if( t->signing_keys.valid()) {
+         signing_keys_json = fc::json::to_string( t->signing_keys->second );
+      } else {
+         auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+         if( !signing_keys.empty()) {
+            signing_keys_json = fc::json::to_string( signing_keys );
+         }
       }
-   }
-   string trx_header_json = fc::json::to_string( trx_header );
+      string trx_header_json = fc::json::to_string( trx_header );
 
-   try {
-      const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
-      trans_doc.append( kvp( "transaction_header", trx_header_value ));
-      if( !signing_keys_json.empty()) {
-         const auto& keys_value = bsoncxx::from_json( signing_keys_json );
-         trans_doc.append( kvp( "signing_keys", keys_value ));
+      try {
+         const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
+         trans_doc.append( kvp( "transaction_header", trx_header_value ));
+         if( !signing_keys_json.empty()) {
+            const auto& keys_value = bsoncxx::from_json( signing_keys_json );
+            trans_doc.append( kvp( "signing_keys", keys_value ));
+         }
+      } catch( std::exception& e ) {
+         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
+         elog( "  JSON: ${j}", ("j", trx_header_json));
+         elog( "  JSON: ${j}", ("j", signing_keys_json));
       }
-   } catch( std::exception& e ) {
-      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-      elog( "  JSON: ${j}", ("j", trx_header_json));
-      elog( "  JSON: ${j}", ("j", signing_keys_json));
    }
 
    if( !trx.actions.empty()) {
@@ -634,57 +620,59 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       trans_doc.append( kvp( "actions", action_array ));
    }
 
-   act_num = 0;
-   if( !trx.context_free_actions.empty()) {
-      bsoncxx::builder::basic::array action_array;
-      for( const auto& cfa : trx.context_free_actions ) {
-         process_action( trx_id_str, cfa, action_array );
-      }
-      trans_doc.append( kvp( "context_free_actions", action_array ));
-   }
-
-   string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
-   string trx_signatures_json = fc::json::to_string( trx.signatures );
-   string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
-
-   try {
-      if( !trx_extensions_json.empty()) {
-         const auto& trx_extensions_value = bsoncxx::from_json( trx_extensions_json );
-         trans_doc.append( kvp( "transaction_extensions", trx_extensions_value ));
-      } else {
-         trans_doc.append( kvp( "transaction_extensions", make_array()));
+   if( start_block_reached ) {
+      act_num = 0;
+      if( !trx.context_free_actions.empty()) {
+         bsoncxx::builder::basic::array action_array;
+         for( const auto& cfa : trx.context_free_actions ) {
+            process_action( trx_id_str, cfa, action_array );
+         }
+         trans_doc.append( kvp( "context_free_actions", action_array ));
       }
 
-      if( !trx_signatures_json.empty()) {
-         const auto& trx_signatures_value = bsoncxx::from_json( trx_signatures_json );
-         trans_doc.append( kvp( "signatures", trx_signatures_value ));
-      } else {
-         trans_doc.append( kvp( "signatures", make_array()));
+      string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
+      string trx_signatures_json = fc::json::to_string( trx.signatures );
+      string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
+
+      try {
+         if( !trx_extensions_json.empty()) {
+            const auto& trx_extensions_value = bsoncxx::from_json( trx_extensions_json );
+            trans_doc.append( kvp( "transaction_extensions", trx_extensions_value ));
+         } else {
+            trans_doc.append( kvp( "transaction_extensions", make_array()));
+         }
+
+         if( !trx_signatures_json.empty()) {
+            const auto& trx_signatures_value = bsoncxx::from_json( trx_signatures_json );
+            trans_doc.append( kvp( "signatures", trx_signatures_value ));
+         } else {
+            trans_doc.append( kvp( "signatures", make_array()));
+         }
+
+         if( !trx_context_free_data_json.empty()) {
+            const auto& trx_context_free_data_value = bsoncxx::from_json( trx_context_free_data_json );
+            trans_doc.append( kvp( "context_free_data", trx_context_free_data_value ));
+         } else {
+            trans_doc.append( kvp( "context_free_data", make_array()));
+         }
+      } catch( std::exception& e ) {
+         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
+         elog( "  JSON: ${j}", ("j", trx_extensions_json));
+         elog( "  JSON: ${j}", ("j", trx_signatures_json));
+         elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
       }
 
-      if( !trx_context_free_data_json.empty()) {
-         const auto& trx_context_free_data_value = bsoncxx::from_json( trx_context_free_data_json );
-         trans_doc.append( kvp( "context_free_data", trx_context_free_data_value ));
-      } else {
-         trans_doc.append( kvp( "context_free_data", make_array()));
+      trans_doc.append( kvp( "createdAt", b_date{now} ));
+
+      if( !trans.insert_one( trans_doc.view())) {
+         elog( "Failed to insert trans ${id}", ("id", trx_id));
       }
-   } catch( std::exception& e ) {
-      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-      elog( "  JSON: ${j}", ("j", trx_extensions_json));
-      elog( "  JSON: ${j}", ("j", trx_signatures_json));
-      elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
-   }
 
-   trans_doc.append( kvp( "createdAt", b_date{now} ));
-
-   if( !trans.insert_one( trans_doc.view())) {
-      elog( "Failed to insert trans ${id}", ("id", trx_id));
-   }
-
-   if( actions_to_write ) {
-      auto result = bulk_actions.execute();
-      if( !result ) {
-         elog( "Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
+      if( actions_to_write ) {
+         auto result = bulk_actions.execute();
+         if( !result ) {
+            elog( "Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
+         }
       }
    }
 }
@@ -715,26 +703,23 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    }
 }
 
-void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
+void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr& bs ) {
    using namespace bsoncxx::types;
    using namespace bsoncxx::builder;
    using bsoncxx::builder::basic::kvp;
 
-   auto block_states = mongo_conn[db_name][block_states_col];
-   auto blocks = mongo_conn[db_name][blocks_col];
-
-   auto block_doc = bsoncxx::builder::basic::document{};
-   auto block_state_doc = bsoncxx::builder::basic::document{};
+   auto block_num = bs->block_num;
    const auto block_id = bs->id;
    const auto block_id_str = block_id.str();
    const auto prev_block_id_str = bs->block->previous.str();
-   auto block_num = bs->block->block_num();
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    const chain::block_header_state& bhs = *bs;
 
+   auto block_states = mongo_conn[db_name][block_states_col];
+   auto block_state_doc = bsoncxx::builder::basic::document{};
    auto json = fc::json::to_string( bhs );
    try {
       const auto& value = bsoncxx::from_json(json);
@@ -753,6 +738,8 @@ void mongo_db_plugin_impl::_process_block(const chain::block_state_ptr& bs) {
       elog("Failed to insert block_state ${bid}", ("bid", block_id));
    }
 
+   auto blocks = mongo_conn[db_name][blocks_col];
+   auto block_doc = bsoncxx::builder::basic::document{};
    auto v = to_variant_with_abi( *bs->block, accounts );
    json = fc::json::to_string( v );
    try {
@@ -794,7 +781,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
 
    auto ir_block = find_block(blocks, block_id_str);
    if( !ir_block ) {
-      _process_block( bs );
+      _process_accepted_block( bs );
       ir_block = find_block( blocks, block_id_str );
       if( !ir_block ) return; // should never happen
    }
@@ -855,6 +842,7 @@ mongo_db_plugin_impl::mongo_db_plugin_impl()
 
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {
    try {
+      ilog("mongo_db_plugin shutdown in process please be patient this can take a few minutes");
       done = true;
       condition.notify_one();
 
@@ -934,13 +922,13 @@ mongo_db_plugin::~mongo_db_plugin()
 void mongo_db_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
-         ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256),
+         ("mongodb-queue-size,q", bpo::value<uint32_t>()->default_value(256),
          "The target queue size between nodeos and MongoDB plugin thread.")
          ("mongodb-wipe", bpo::bool_switch()->default_value(false),
          "Required with --replay-blockchain, --hard-replay-blockchain, or --delete-all-blocks to wipe mongo db."
          "This option required to prevent accidental wipe of mongo db.")
-         ("mongodb-hot-start", bpo::bool_switch()->default_value(false),
-         "Start")
+         ("mongodb-block-start", bpo::value<uint32_t>()->default_value(0),
+         "If specified then no data pushed to mongodb until accepted block is reached.")
          ("mongodb-uri,m", bpo::value<std::string>(),
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI."
@@ -966,8 +954,13 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
 
          if( options.count( "mongodb-queue-size" )) {
-            auto size = options.at( "mongodb-queue-size" ).as<uint>();
-            my->queue_size = size;
+            my->queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();
+         }
+         if( options.count( "mongodb-block-start" )) {
+            my->start_block_num = options.at( "mongodb-block-start" ).as<uint32_t>();
+         }
+         if( my->start_block_num == 0 ) {
+            my->start_block_reached = true;
          }
 
          std::string uri_str = options.at( "mongodb-uri" ).as<std::string>();
@@ -1018,7 +1011,6 @@ void mongo_db_plugin::plugin_startup()
 
       my->consume_thread = boost::thread([this] { my->consume_blocks(); });
 
-      // chain_controller is created and has resynced or replayed if needed
       my->startup = false;
    }
 }
