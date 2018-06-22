@@ -322,7 +322,8 @@ namespace eosiosystem {
             eosio::transaction out;
             out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
             out.delay_sec = refund_delay;
-            out.send( from, receiver, true );
+            cancel_deferred( from ); // TODO: Remove this line when replacing deferred trxs is fixed
+            out.send( from, from, true );
          } else {
             cancel_deferred( from );
          }
