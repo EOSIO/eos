@@ -679,7 +679,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
             signing_keys_json = fc::json::to_string( signing_keys );
          }
       }
-      string trx_header_json = fc::json::to_string( trx_header );
+   }
+   string trx_header_json = fc::json::to_string( trx_header );
 
       try {
          const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
@@ -712,10 +713,12 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          }
          trans_doc.append( kvp( "context_free_actions", action_array ));
       }
+      trans_doc.append( kvp( "context_free_actions", action_array ));
+   }
 
-      string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
-      string trx_signatures_json = fc::json::to_string( trx.signatures );
-      string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
+   string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
+   string trx_signatures_json = fc::json::to_string( trx.signatures );
+   string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
 
       try {
          if( !trx_extensions_json.empty()) {
@@ -744,12 +747,18 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          elog( "  JSON: ${j}", ("j", trx_signatures_json));
          elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
       }
+   } catch( std::exception& e ) {
+      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
+      elog( "  JSON: ${j}", ("j", trx_extensions_json));
+      elog( "  JSON: ${j}", ("j", trx_signatures_json));
+      elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
+   }
 
-      trans_doc.append( kvp( "createdAt", b_date{now} ));
+   trans_doc.append( kvp( "createdAt", b_date{now} ));
 
-      if( !trans.insert_one( trans_doc.view())) {
-         elog( "Failed to insert trans ${id}", ("id", trx_id));
-      }
+   if( !trans.insert_one( trans_doc.view())) {
+      elog( "Failed to insert trans ${id}", ("id", trx_id));
+   }
 
       if( actions_to_write ) {
          auto result = bulk_actions.execute();
@@ -764,7 +773,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
             elog("Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
          }
       }
-
    }
 }
 
