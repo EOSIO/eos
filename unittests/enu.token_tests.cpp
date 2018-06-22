@@ -253,6 +253,12 @@ BOOST_FIXTURE_TEST_CASE( transfer_tests, enu_token_tester ) try {
       ("frozen", 0)
       ("whitelist", 1)
    );
+  
+   ///////////////////////////////////////////////////////////////////////
+   //don't let enumivo.prods recieve tokens
+   BOOST_REQUIRE_EQUAL( wasm_assert_msg( "enumivo.prods prohibited to receive" ),
+      transfer( N(alice), N(enumivo.prods), asset::from_string("1 CERO"), "hola" )
+   );
 
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "overdrawn balance" ),
       transfer( N(alice), N(bob), asset::from_string("701 CERO"), "hola" )
