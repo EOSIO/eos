@@ -531,6 +531,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
    using bsoncxx::builder::basic::make_array;
+   namespace bbb = bsoncxx::builder::basic;
 
    auto trans = mongo_conn[db_name][trans_col];
    auto actions = mongo_conn[db_name][actions_col];
@@ -551,11 +552,12 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    mongocxx::bulk_write bulk_actions = actions.create_bulk_write(bulk_opts);
 
    int32_t act_num = 0;
-   auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bsoncxx::builder::basic::array& act_array) -> auto {
+   auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bbb::array& act_array, bool cfa) -> auto {
       auto act_doc = bsoncxx::builder::basic::document();
       if( start_block_reached ) {
          act_doc.append( kvp( "action_num", b_int32{act_num} ),
                          kvp( "trx_id", trx_id_str ));
+         act_doc.append( kvp( "cfa", b_bool{cfa} ));
          act_doc.append( kvp( "account", act.account.to_string()));
          act_doc.append( kvp( "name", act.name.to_string()));
          act_doc.append( kvp( "authorization", [&act]( bsoncxx::builder::basic::sub_array subarr ) {
@@ -615,7 +617,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    if( !trx.actions.empty()) {
       bsoncxx::builder::basic::array action_array;
       for( const auto& act : trx.actions ) {
-         process_action( trx_id_str, act, action_array );
+         process_action( trx_id_str, act, action_array, false );
       }
       trans_doc.append( kvp( "actions", action_array ));
    }
@@ -625,7 +627,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       if( !trx.context_free_actions.empty()) {
          bsoncxx::builder::basic::array action_array;
          for( const auto& cfa : trx.context_free_actions ) {
-            process_action( trx_id_str, cfa, action_array );
+            process_action( trx_id_str, cfa, action_array, true );
          }
          trans_doc.append( kvp( "context_free_actions", action_array ));
       }
