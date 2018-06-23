@@ -489,7 +489,8 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return    (code == block_net_usage_exceeded::code_value)
+      return    (code == subjective_block_production_exception::code_value)
+             || (code == block_net_usage_exceeded::code_value)
              || (code == block_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
              || (code == leeway_deadline_exception::code_value)
