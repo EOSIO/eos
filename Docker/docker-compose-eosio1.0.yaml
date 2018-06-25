@@ -2,7 +2,7 @@ version: "3"
 
 services:
   nodeosd:
-    image: eosio/eos:v1.0.4
+    image: eosio/eos:v1.0.6
     command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e
     hostname: nodeosd
     ports:
@@ -14,7 +14,7 @@ services:
       - nodeos-data-volume:/opt/eosio/bin/data-dir
 
   keosd:
-    image: eosio/eos:v1.0.4
+    image: eosio/eos:v1.0.6
     command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: keosd
     links:
