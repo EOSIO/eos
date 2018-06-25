@@ -57,7 +57,7 @@ struct controller_impl {
    controller::config             conf;
    chain_id_type                  chain_id;
    bool                           replaying = false;
-   read_mode                      read_mode = read_mode::SPECULATIVE;
+   chain::read_mode               read_mode = chain::read_mode::SPECULATIVE;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -78,7 +78,7 @@ struct controller_impl {
          reversible_blocks.remove( *b );
       }
 
-      if ( read_mode == read_mode::SPECULATIVE ) {
+      if ( read_mode == chain::read_mode::SPECULATIVE ) {
          for( const auto& t : head->trxs )
             unapplied_transactions[t->signed_id] = t;
       }
@@ -698,7 +698,7 @@ struct controller_impl {
             emit(self.applied_transaction, trace);
 
 
-            if ( read_mode != read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
+            if ( read_mode != chain::read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
                //this may happen automatically in destructor, but I prefere make it more explicit
                trx_context.undo();
             } else {
@@ -939,7 +939,7 @@ struct controller_impl {
 
    void abort_block() {
       if( pending ) {
-         if ( read_mode == read_mode::SPECULATIVE ) {
+         if ( read_mode == chain::read_mode::SPECULATIVE ) {
             for( const auto& t : pending->_pending_block_state->trxs )
                unapplied_transactions[t->signed_id] = t;
          }
@@ -1443,7 +1443,7 @@ const account_object& controller::get_account( account_name name )const
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
    vector<transaction_metadata_ptr> result;
-   if ( my->read_mode == read_mode::SPECULATIVE ) {
+   if ( my->read_mode == chain::read_mode::SPECULATIVE ) {
       result.reserve(my->unapplied_transactions.size());
       for ( const auto& entry: my->unapplied_transactions ) {
          result.emplace_back(entry.second);

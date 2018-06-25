@@ -59,7 +59,7 @@ namespace eosio { namespace chain {
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
-            read_mode                read_mode    = read_mode::SPECULATIVE;
+            read_mode                read_mode    = chain::read_mode::SPECULATIVE;
          };
 
          enum class block_status {
