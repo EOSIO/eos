@@ -55,6 +55,8 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
+   std::vector<uint8_t> read_wasm( const char* fn );
+   std::vector<char> read_abi( const char* fn );
 
    using namespace eosio::chain;
 
