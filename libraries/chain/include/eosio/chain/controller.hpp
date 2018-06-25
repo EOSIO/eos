@@ -33,7 +33,7 @@ namespace eosio { namespace chain {
 
    class fork_database;
 
-   enum class read_mode {
+   enum class db_read_mode {
       SPECULATIVE,
       HEAD
    };
@@ -59,7 +59,7 @@ namespace eosio { namespace chain {
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
-            read_mode                read_mode    = chain::read_mode::SPECULATIVE;
+            db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
          };
 
          enum class block_status {
@@ -188,7 +188,7 @@ namespace eosio { namespace chain {
 
          chain_id_type get_chain_id()const;
 
-         read_mode get_read_mode()const;
+         db_read_mode get_read_mode()const;
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;

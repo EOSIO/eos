@@ -34,10 +34,10 @@ namespace eosio {
 //declare operator<< and validate funciton for read_mode in the same namespace as read_mode itself
 namespace chain {
 
-std::ostream& operator<<(std::ostream& osm, eosio::chain::read_mode m) {
-   if ( m == eosio::chain::read_mode::SPECULATIVE ) {
+std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
+   if ( m == eosio::chain::db_read_mode::SPECULATIVE ) {
       osm << "speculative";
-   } else if ( m == eosio::chain::read_mode::HEAD ) {
+   } else if ( m == eosio::chain::db_read_mode::HEAD ) {
       osm << "head";
    }
    return osm;
@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::read_mode m) {
 
 void validate(boost::any& v,
               std::vector<std::string> const& values,
-              eosio::chain::read_mode* /* target_type */,
+              eosio::chain::db_read_mode* /* target_type */,
               int)
 {
   using namespace boost::program_options;
@@ -58,9 +58,9 @@ void validate(boost::any& v,
   std::string const& s = validators::get_single_string(values);
 
   if ( s == "speculative" ) {
-     v = boost::any(eosio::chain::read_mode::SPECULATIVE);
+     v = boost::any(eosio::chain::db_read_mode::SPECULATIVE);
   } else if ( s == "head" ) {
-     v = boost::any(eosio::chain::read_mode::HEAD);
+     v = boost::any(eosio::chain::db_read_mode::HEAD);
   } else {
      throw validation_error(validation_error::invalid_option_value);
   }
@@ -182,7 +182,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Action (in the form code::action) added to action blacklist (may specify multiple times)")
          ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
-         ("read-mode", boost::program_options::value<eosio::chain::read_mode>()->default_value(eosio::chain::read_mode::SPECULATIVE),
+         ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
           "Database read mode (\"speculative\" or \"head\")")
          ;
 
@@ -433,7 +433,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    if ( options.count("read-mode") ) {
-      my->chain_config->read_mode = options.at("read-mode").as<read_mode>();
+      my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
    }
 
    my->chain.emplace(*my->chain_config);
