@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import testUtils
-from TestHelper import TestHelper
 
+import argparse
 import random
 import subprocess
 import signal
@@ -18,7 +18,17 @@ def errorExit(msg="", errorCode=1):
     Print("ERROR:", msg)
     exit(errorCode)
 
-args = TestHelper.parse_args({"--keep-logs","--dump-error-details","-v","--leave-running","--clean-run"})
+parser = argparse.ArgumentParser()
+parser.add_argument("-v", help="verbose logging", action='store_true')
+parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--dump-error-details",
+                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                    action='store_true')
+parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
+                    action='store_true')
+parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
+
+args = parser.parse_args()
 debug=args.v
 pnodes=1
 topo="mesh"
@@ -40,7 +50,7 @@ testSuccessful=False
 def runNodeosAndGetOutput(myNodeId, myTimeout=3):
     """Startup nodeos, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
     Print("Launching nodeos process id: %d" % (myNodeId))
-    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors"
+    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios"
     Print("cmd: %s" % (cmd))
     proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -102,6 +112,20 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, None, testSuccessful, killEosInstances, False, keepLogs, killAll, dumpErrorDetails)
+    if testSuccessful:
+        Print("Test succeeded.")
+    else:
+        Print("Test failed.")
+
+    if not testSuccessful and dumpErrorDetails:
+        cluster.dumpErrorDetails()
+        Print("== Errors see above ==")
+
+    if killEosInstances:
+        Print("Shut down the cluster.")
+        cluster.killall(allInstances=killAll)
+        if testSuccessful and not keepLogs:
+            Print("Cleanup cluster data.")
+            cluster.cleanup()
 
 exit(0)

@@ -319,7 +319,10 @@
         {"name":"staked",               "type":"int64"},
         {"name":"last_vote_weight",     "type":"float64"},
         {"name":"proxied_vote_weight",  "type":"float64"},
-        {"name":"is_proxy",             "type":"bool"}
+        {"name":"is_proxy",             "type":"bool"},
+        {"name":"deferred_trx_id",      "type":"uint32"},
+        {"name":"last_unstake_time",    "type":"time_point_sec"},
+        {"name":"unstaking",            "type":"asset"}
       ]
     },{
       "name": "claimrewards",
