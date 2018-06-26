@@ -1865,7 +1865,8 @@ namespace eosio {
             peer_block_state entry = {blkid,0,true,true,fc::time_point()};
             try {
                b = cc.fetch_block_by_id(blkid);
-               entry.block_num = b->block_num();
+               if(b)
+                  entry.block_num = b->block_num();
             } catch (const assert_exception &ex) {
                ilog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
                // keep going, client can ask another peer
