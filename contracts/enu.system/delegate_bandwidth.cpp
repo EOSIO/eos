@@ -158,9 +158,10 @@ namespace enumivosystem {
 
 
    /**
-    *  While buying ram uses the current market price according to the bancor-algorithm, selling ram only
-    *  refunds the purchase price to the account. In this way there is no profit to be made through buying
-    *  and selling ram.
+    *  The system contract now buys and sells RAM allocations at prevailing market prices.
+    *  This may result in traders buying RAM today in anticipation of potential shortages
+    *  tomorrow. Overall this will result in the market balancing the supply and demand
+    *  for RAM over time.
     */
    void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
@@ -178,6 +179,8 @@ namespace enumivosystem {
           tokens_out = es.convert( asset(bytes,S(0,RAM)), CORE_SYMBOL);
       });
 
+      enumivo_assert( tokens_out.amount > 1, "token amount received from selling ram is too low" );
+
       _gstate.total_ram_bytes_reserved -= static_cast<decltype(_gstate.total_ram_bytes_reserved)>(bytes); // bytes > 0 is asserted above
       _gstate.total_ram_stake          -= tokens_out.amount;
 
@@ -191,7 +194,10 @@ namespace enumivosystem {
 
       INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {N(enu.ram),N(active)},
                                                        { N(enu.ram), account, asset(tokens_out), std::string("sell ram") } );
-      auto fee = tokens_out.amount / 200;
+
+      auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
+      // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
+      
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(enumivo::token, transfer)( N(enu.token), {account,N(active)},
             { account, N(enu.ramfee), asset(fee), std::string("sell ram fee") } );
@@ -211,6 +217,9 @@ namespace enumivosystem {
    {
       require_auth( from );
       enumivo_assert( stake_net_delta != asset(0) || stake_cpu_delta != asset(0), "should stake non-zero amount" );
+      enumivo_assert( std::abs( (stake_net_delta + stake_cpu_delta).amount )
+                     >= std::max( std::abs( stake_net_delta.amount ), std::abs( stake_cpu_delta.amount ) ),
+                    "net and cpu deltas cannot be opposite signs" );
 
       account_name source_stake_from = from;
       if ( transfer ) {
@@ -277,8 +286,16 @@ namespace enumivosystem {
          auto net_balance = stake_net_delta;
          auto cpu_balance = stake_cpu_delta;
          bool need_deferred_trx = false;
-         if ( req != refunds_tbl.end() ) { //need to update refund
-            refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
+
+
+         // net and cpu are same sign by assertions in delegatebw and undelegatebw
+         // redundant assertion also at start of changebw to protect against misuse of changebw
+         bool is_undelegating = (net_balance.amount + cpu_balance.amount ) < 0;
+         bool is_delegating_to_self = (!transfer && from == receiver);
+
+         if( is_delegating_to_self || is_undelegating ) {
+            if ( req != refunds_tbl.end() ) { //need to update refund
+               refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
                   if ( net_balance < asset(0) || cpu_balance < asset(0) ) {
                      r.request_time = now();
                   }
@@ -297,17 +314,19 @@ namespace enumivosystem {
                      cpu_balance = asset(0);
                   }
                });
-            enumivo_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
-            enumivo_assert( asset(0) <= req->cpu_amount, "negative cpu refund amount" ); //should never happen
 
-            if ( req->net_amount == asset(0) && req->cpu_amount == asset(0) ) {
-               refunds_tbl.erase( req );
-               need_deferred_trx = false;
-            } else {
-               need_deferred_trx = true;
-            }
-         } else if ( net_balance < asset(0) || cpu_balance < asset(0) ) { //need to create refund
-            refunds_tbl.emplace( from, [&]( refund_request& r ) {
+               enumivo_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
+               enumivo_assert( asset(0) <= req->cpu_amount, "negative cpu refund amount" ); //should never happen
+
+               if ( req->net_amount == asset(0) && req->cpu_amount == asset(0) ) {
+                  refunds_tbl.erase( req );
+                  need_deferred_trx = false;
+               } else {
+                  need_deferred_trx = true;
+               }
+
+            } else if ( net_balance < asset(0) || cpu_balance < asset(0) ) { //need to create refund
+               refunds_tbl.emplace( from, [&]( refund_request& r ) {
                   r.owner = from;
                   if ( net_balance < asset(0) ) {
                      r.net_amount = -net_balance;
@@ -319,8 +338,9 @@ namespace enumivosystem {
                   } // else r.cpu_amount = 0 by default constructor
                   r.request_time = now();
                });
-            need_deferred_trx = true;
-         } // else stake increase requested with no existing row in refunds_tbl -> nothing to do with refunds_tbl
+               need_deferred_trx = true;
+            } // else stake increase requested with no existing row in refunds_tbl -> nothing to do with refunds_tbl
+         } /// end if is_delegating_to_self || is_undelegating
 
          if ( need_deferred_trx ) {
             enumivo::transaction out;
@@ -371,6 +391,7 @@ namespace enumivosystem {
       enumivo_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
       enumivo_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );
       enumivo_assert( stake_net_quantity + stake_cpu_quantity > asset(0), "must stake a positive amount" );
+      enumivo_assert( !transfer || from != receiver, "cannot use transfer flag if delegating to self" );
 
       changebw( from, receiver, stake_net_quantity, stake_cpu_quantity, transfer);
    } // delegatebw
