@@ -1,5 +1,7 @@
+import argparse
 import copy
 import decimal
+import errno
 import subprocess
 import time
 import glob
@@ -10,6 +12,7 @@ from collections import namedtuple
 import re
 import string
 import signal
+import socket
 import datetime
 import inspect
 import sys
@@ -98,6 +101,14 @@ class Utils:
     def errorExit(msg="", raw=False, errorCode=1):
         Utils.Print("ERROR:" if not raw else "", msg)
         exit(errorCode)
+
+    @staticmethod
+    def cmdError(name, cmdCode=0, exitNow=False):
+        msg="FAILURE - %s%s" % (name, ("" if cmdCode == 0 else (" returned error code %d" % cmdCode)))
+        if exitNow:
+            Utils.errorExit(msg, True)
+        else:
+            Utils.Print(msg)
 
     @staticmethod
     def waitForObj(lam, timeout=None):
@@ -1221,7 +1232,7 @@ class WalletMgr(object):
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
             return False
 
-        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d" % (
+        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
@@ -1232,7 +1243,7 @@ class WalletMgr(object):
         time.sleep(1)
         return True
 
-    def create(self, name):
+    def create(self, name, accounts=None):
         wallet=self.wallets.get(name)
         if wallet is not None:
             if Utils.Debug: Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
@@ -1249,6 +1260,13 @@ class WalletMgr(object):
         p=m.group(1)
         wallet=Wallet(name, p, self.host, self.port)
         self.wallets[name] = wallet
+
+        if accounts:
+            for account in accounts:
+                Utils.Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
+                if not self.importKey(account, wallet):
+                    Utils.Print("ERROR: Failed to import key for account %s" % (account.name))
+                    return False
 
         return wallet
 
@@ -1447,7 +1465,7 @@ class Cluster(object):
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontKill=False, dontBootstrap=False):
+    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontKill=False, dontBootstrap=False, totalProducers=None):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
@@ -1463,8 +1481,13 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin %s" % (
-            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3], p2pPlugin)
+        if totalProducers!=None:
+            producerFlag="--producers %s" % (totalProducers)
+        else:
+            producerFlag=""
+        cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin %s %s" % (
+            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
+            p2pPlugin, producerFlag)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
@@ -1526,19 +1549,15 @@ class Cluster(object):
             Utils.Print("ERROR: Unable to parse cluster info")
             return False
 
-        init1Keys=producerKeys["defproducera"]
-        init2Keys=producerKeys["defproducerb"]
-        if init1Keys is None or init2Keys is None:
-            Utils.Print("ERROR: Failed to parse defproducera or intb private keys from cluster config files.")
-        self.defproduceraAccount.ownerPrivateKey=init1Keys["private"]
-        self.defproduceraAccount.ownerPublicKey=init1Keys["public"]
-        self.defproduceraAccount.activePrivateKey=init1Keys["private"]
-        self.defproduceraAccount.activePublicKey=init1Keys["public"]
-        self.defproducerbAccount.ownerPrivateKey=init2Keys["private"]
-        self.defproducerbAccount.ownerPublicKey=init2Keys["public"]
-        self.defproducerbAccount.activePrivateKey=init2Keys["private"]
-        self.defproducerbAccount.activePublicKey=init2Keys["public"]
-        producerKeys.pop("eosio")
+        def initAccountKeys(account, keys):
+            account.ownerPrivateKey=keys["private"]
+            account.ownerPublicKey=keys["public"]
+            account.activePrivateKey=keys["private"]
+            account.activePublicKey=keys["public"]
+
+        initAccountKeys(self.eosioAccount, producerKeys["eosio"])
+        initAccountKeys(self.defproduceraAccount, producerKeys["defproducera"])
+        initAccountKeys(self.defproducerbAccount, producerKeys["defproducerb"])
 
         return True
 
@@ -2367,4 +2386,143 @@ class Cluster(object):
                 return False
 
         return True
+
+
+
+###########################################################################################
+class TestState(object):
+    __LOCAL_HOST="localhost"
+    __DEFAULT_PORT=8888
+    parser=None
+    __server=None
+    __port=None
+    __enableMongo=False
+    __dumpErrorDetails=False
+    __keepLogs=False
+    __dontLaunch=False
+    __dontKill=False
+    __prodCount=None
+    __killAll=False
+    __ignoreArgs=set()
+    walletMgr=None
+    __testSuccessful=False
+    __killEosInstances=False
+    __killWallet=False
+    __testSuccessful=False
+    WalletdName="keosd"
+    ClientName="cleos"
+    cluster=None
+    __args=None
+    localTest=False
+
+    def __init__(self, *ignoreArgs):
+        for arg in ignoreArgs:
+            self.__ignoreArgs.add(arg)
+        # Override default help argument so that only --help (and not -h) can call help
+        self.pnodes=1
+        self.totalNodes=1
+        self.totalProducers=None
+        self.parser = argparse.ArgumentParser(add_help=False)
+        self.parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
+                                 help=argparse._('show this help message and exit'))
+        if "--host" not in self.__ignoreArgs:
+            self.parser.add_argument("-h", "--host", type=str, help="%s host name" % (Utils.EosServerName),
+                                     default=self.__LOCAL_HOST)
+        if "--port" not in self.__ignoreArgs:
+            self.parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EosServerName,
+                                     default=self.__DEFAULT_PORT)
+        if "--prod-count" not in self.__ignoreArgs:
+            self.parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
+        if "--mongodb" not in self.__ignoreArgs:
+            self.parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
+        if "--dump-error-details" not in self.__ignoreArgs:
+            self.parser.add_argument("--dump-error-details",
+                                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                                     action='store_true')
+        if "--dont-launch" not in self.__ignoreArgs:
+            self.parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is already running.",
+                                     action='store_true')
+        if "--keep-logs" not in self.__ignoreArgs:
+            self.parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
+                                     action='store_true')
+        if "-v" not in self.__ignoreArgs:
+            self.parser.add_argument("-v", help="verbose logging", action='store_true')
+        if "--leave-running" not in self.__ignoreArgs:
+            self.parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
+        if "--clean-run" not in self.__ignoreArgs:
+            self.parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
+
+    def parse_args(self):
+        args = self.parser.parse_args()
+        if "--host" not in self.__ignoreArgs:
+            self.__server=args.host
+        if "--port" not in self.__ignoreArgs:
+            self.__port=args.port
+        if "-v" not in self.__ignoreArgs:
+            Utils.Debug=args.v
+        if "--mongodb" not in self.__ignoreArgs:
+            self.__enableMongo=args.mongodb
+        if "--dump-error-details" not in self.__ignoreArgs:
+            self.__dumpErrorDetails=args.dump_error_details
+        if "--keep-logs" not in self.__ignoreArgs:
+            self.__keepLogs=args.keep_logs
+        if "--dont-launch" not in self.__ignoreArgs:
+            self.__dontLaunch=args.dont_launch
+        if "--leave-running" not in self.__ignoreArgs:
+            self.__dontKill=args.leave_running
+        if "--prod-count" not in self.__ignoreArgs:
+            self.__prodCount=args.prod_count
+        if "--clean-run" not in self.__ignoreArgs:
+            self.__killAll=args.clean_run
+        self.walletMgr=WalletMgr(True)
+        self.__testSuccessful=False
+        self.__killWallet=not self.__dontKill
+        self.localTest=True if self.__server == self.__LOCAL_HOST else False
+
+    def start(self, cluster):
+        Utils.Print("BEGIN")
+        Utils.Print("SERVER: %s" % (self.__server))
+        Utils.Print("PORT: %d" % (self.__port))
+
+        self.walletMgr.killall(allInstances=self.__killAll)
+        self.walletMgr.cleanup()
+        self.cluster=cluster
+        self.cluster.setWalletMgr(self.walletMgr)
+
+        if self.localTest and not self.__dontLaunch:
+            self.cluster.killall(allInstances=self.__killAll)
+            self.cluster.cleanup()
+            Utils.Print("Stand up cluster")
+            if self.cluster.launch(prodCount=self.__prodCount, dontKill=self.__dontKill, pnodes=self.pnodes, totalNodes=self.totalNodes, totalProducers=self.totalProducers) is False:
+                Utils.cmdError("launcher")
+                Utils.errorExit("Failed to stand up eos cluster.")
+
+    def end(self):
+        if self.__testSuccessful:
+            Utils.Print("Test succeeded.")
+        else:
+            Utils.Print("Test failed.")
+        if not self.__testSuccessful and self.__dumpErrorDetails:
+            self.cluster.dumpErrorDetails()
+            self.walletMgr.dumpErrorDetails()
+            Utils.Print("== Errors see above ==")
+
+        if not self.__dontKill:
+            Utils.Print("Shut down the cluster.")
+            self.cluster.killall(allInstances=self.__killAll)
+            if self.__testSuccessful and not self.__keepLogs:
+                Utils.Print("Cleanup cluster data.")
+                self.cluster.cleanup()
+
+        if self.__killWallet:
+            Utils.Print("Shut down the wallet.")
+            self.walletMgr.killall(allInstances=self.__killAll)
+            if self.__testSuccessful and not self.__keepLogs:
+                Utils.Print("Cleanup wallet data.")
+                self.walletMgr.cleanup()
+
+    def success(self):
+        self.__testSuccessful=True
+
+
 ###########################################################################################

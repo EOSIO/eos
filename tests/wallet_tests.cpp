@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(wallet_test)
    using namespace eosio::utilities;
 
    wallet_data d;
-   wallet_api wallet(d);
+   soft_wallet wallet(d);
    BOOST_CHECK(wallet.is_locked());
 
    wallet.set_password("pass");
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(wallet_test)
    BOOST_CHECK(fc::exists("wallet_test.json"));
 
    wallet_data d2;
-   wallet_api wallet2(d2);
+   soft_wallet wallet2(d2);
 
    BOOST_CHECK(wallet2.is_locked());
    wallet2.load_wallet_file("wallet_test.json");
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    constexpr auto key1 = "5JktVNHnRX48BUdtewU7N1CyL4Z886c42x7wYW7XhNWkDQRhdcS";
    constexpr auto key2 = "5Ju5RTcVDo35ndtzHioPMgebvBM6LkJ6tvuU6LTNQv8yaz3ggZr";
-   constexpr auto key3 = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"; // eosio key
+   constexpr auto key3 = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
 
    wallet_manager wm;
    BOOST_CHECK_EQUAL(0, wm.list_wallets().size());
@@ -95,9 +95,9 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    BOOST_CHECK(!pw.empty());
    BOOST_CHECK_EQUAL(0, pw.find("PW")); // starts with PW
    BOOST_CHECK_EQUAL(1, wm.list_wallets().size());
-   // eosio key is imported automatically when a wallet is created
-   BOOST_CHECK_EQUAL(1, wm.get_public_keys().size());
-   BOOST_CHECK_EQUAL(1, wm.list_keys("test", pw).size());
+   // wallet has no keys when it is created
+   BOOST_CHECK_EQUAL(0, wm.get_public_keys().size());
+   BOOST_CHECK_EQUAL(0, wm.list_keys("test", pw).size());
    BOOST_CHECK(wm.list_wallets().at(0).find("*") != std::string::npos);
    wm.lock("test");
    BOOST_CHECK(wm.list_wallets().at(0).find("*") == std::string::npos);
@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    BOOST_CHECK_THROW(wm.unlock("test", pw), chain::wallet_unlocked_exception);
    BOOST_CHECK(wm.list_wallets().at(0).find("*") != std::string::npos);
    wm.import_key("test", key1);
-   BOOST_CHECK_EQUAL(2, wm.get_public_keys().size());
+   BOOST_CHECK_EQUAL(1, wm.get_public_keys().size());
    auto keys = wm.list_keys("test", pw);
 
    auto pub_pri_pair = [](const char *key) -> auto {
@@ -119,21 +119,37 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    keys = wm.list_keys("test", pw);
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key1)) != keys.cend());
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) != keys.cend());
-   // key3 was automatically imported
-   BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key3)) != keys.cend());
+   // key3 was not automatically imported
+   BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key3)) == keys.cend());
+
+   wm.remove_key("test", pw, string(pub_pri_pair(key2).first));
+   BOOST_CHECK_EQUAL(1, wm.get_public_keys().size());
+   keys = wm.list_keys("test", pw);
+   BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) == keys.cend());
+   wm.import_key("test", key2);
+   BOOST_CHECK_EQUAL(2, wm.get_public_keys().size());
+   keys = wm.list_keys("test", pw);
+   BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) != keys.cend());
+   BOOST_CHECK_THROW(wm.remove_key("test", pw, string(pub_pri_pair(key3).first)), fc::exception);
+   BOOST_CHECK_EQUAL(2, wm.get_public_keys().size());
+   BOOST_CHECK_THROW(wm.remove_key("test", "PWnogood", string(pub_pri_pair(key2).first)), wallet_invalid_password_exception);
+   BOOST_CHECK_EQUAL(2, wm.get_public_keys().size());
+
    wm.lock("test");
    BOOST_CHECK_THROW(wm.list_keys("test", pw), wallet_locked_exception);
    BOOST_CHECK_THROW(wm.get_public_keys(), wallet_locked_exception);
    wm.unlock("test", pw);
-   BOOST_CHECK_EQUAL(3, wm.get_public_keys().size());
-   BOOST_CHECK_EQUAL(3, wm.list_keys("test", pw).size());
+   BOOST_CHECK_EQUAL(2, wm.get_public_keys().size());
+   BOOST_CHECK_EQUAL(2, wm.list_keys("test", pw).size());
    wm.lock_all();
    BOOST_CHECK_THROW(wm.get_public_keys(), wallet_locked_exception);
    BOOST_CHECK(wm.list_wallets().at(0).find("*") == std::string::npos);
 
    auto pw2 = wm.create("test2");
    BOOST_CHECK_EQUAL(2, wm.list_wallets().size());
-   // eosio key is imported automatically when a wallet is created
+   // wallet has no keys when it is created
+   BOOST_CHECK_EQUAL(0, wm.get_public_keys().size());
+   wm.import_key("test2", key3);
    BOOST_CHECK_EQUAL(1, wm.get_public_keys().size());
    BOOST_CHECK_THROW(wm.import_key("test2", key3), fc::exception);
    keys = wm.list_keys("test2", pw2);
@@ -153,20 +169,17 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    private_key_type pkey1{std::string(key1)};
    private_key_type pkey2{std::string(key2)};
-   private_key_type pkey3{std::string(key3)};
 
    chain::signed_transaction trx;
    auto chain_id = genesis_state().compute_chain_id();
    flat_set<public_key_type> pubkeys;
    pubkeys.emplace(pkey1.get_public_key());
    pubkeys.emplace(pkey2.get_public_key());
-   pubkeys.emplace(pkey3.get_public_key());
    trx = wm.sign_transaction(trx, pubkeys, chain_id );
    const auto& pks = trx.get_signature_keys(chain_id);
-   BOOST_CHECK_EQUAL(3, pks.size());
+   BOOST_CHECK_EQUAL(2, pks.size());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey1.get_public_key()) != pks.cend());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey2.get_public_key()) != pks.cend());
-   BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey3.get_public_key()) != pks.cend());
 
    BOOST_CHECK_EQUAL(3, wm.get_public_keys().size());
    wm.set_timeout(chrono::seconds(0));
@@ -175,11 +188,10 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    wm.set_timeout(chrono::seconds(15));
 
-   wm.set_eosio_key("");
-
    wm.create("testgen");
    BOOST_CHECK_THROW(wm.create_key("testgen", "xxx"), chain::wallet_exception);
    wm.lock("testgen");
+   fc::remove("testgen.wallet");
 
    const string test_key_create_types[] = {"K1", "R1", "k1", ""};
    for(const string& key_type_to_create : test_key_create_types) {
@@ -215,6 +227,8 @@ BOOST_AUTO_TEST_CASE(wallet_manager_create_test) {
 
       wallet_manager wm;
       wm.create("test");
+      constexpr auto key1 = "5JktVNHnRX48BUdtewU7N1CyL4Z886c42x7wYW7XhNWkDQRhdcS";
+      wm.import_key("test", key1);
       BOOST_CHECK_THROW(wm.create("test"), wallet_exist_exception);
 
       BOOST_CHECK_THROW(wm.create("./test"), wallet_exception);

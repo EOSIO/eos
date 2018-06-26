@@ -316,7 +316,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v3.2 --depth 1
 		then
 			printf "\\tUnable to clone MongoDB C++ driver at this time.\\n"
 			printf "\\tExiting now.\\n\\n"

@@ -79,6 +79,8 @@ namespace eosio {
    using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
    using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
 
+   static bool verbose_http_errors = false;
+
    class http_plugin_impl {
       public:
          map<string,url_handler>  url_handlers;
@@ -87,6 +89,7 @@ namespace eosio {
          string                   access_control_allow_headers;
          string                   access_control_max_age;
          bool                     access_control_allow_credentials = false;
+         size_t                   max_body_size;
 
          websocket_server_type    server;
 
@@ -142,19 +145,19 @@ namespace eosio {
                   err += e.to_detail_string();
                   elog( "${e}", ("e", err));
                   error_results results{websocketpp::http::status_code::internal_server_error,
-                                        "Internal Service Error", e};
+                                        "Internal Service Error", error_results::error_info(e, verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
                } catch (const std::exception& e) {
                   err += e.what();
                   elog( "${e}", ("e", err));
                   error_results results{websocketpp::http::status_code::internal_server_error,
-                                        "Internal Service Error", fc::exception( FC_LOG_MESSAGE( error, e.what()))};
+                                        "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
                } catch (...) {
                   err += "Unknown Exception";
                   error_results results{websocketpp::http::status_code::internal_server_error,
                                         "Internal Service Error",
-                                        fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" ))};
+                                        error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
                }
             } catch (...) {
@@ -200,7 +203,7 @@ namespace eosio {
                } else {
                   wlog( "404 - not found: ${ep}", ("ep", resource));
                   error_results results{websocketpp::http::status_code::not_found,
-                                        "Not Found", fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" ))};
+                                        "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
                   con->set_status( websocketpp::http::status_code::not_found );
                }
@@ -215,7 +218,7 @@ namespace eosio {
                ws.clear_access_channels(websocketpp::log::alevel::all);
                ws.init_asio(&app().get_io_service());
                ws.set_reuse_addr(true);
-
+               ws.set_max_http_body_size(max_body_size);
                ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<T>(ws.get_con_from_hdl(hdl));
                });
@@ -270,6 +273,8 @@ namespace eosio {
                 if (v) ilog("configured http with Access-Control-Allow-Credentials: true");
              })->default_value(false),
              "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
+            ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
+            ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
             ;
    }
 
@@ -311,6 +316,9 @@ namespace eosio {
             elog("failed to configure https to listen on ${h}:${p} (${m})", ("h",host)("p",port)("m", ec.what()));
          }
       }
+
+      my->max_body_size = options.at("max-body-size").as<uint32_t>();
+      verbose_http_errors = options.at("verbose-http-errors").as<bool>();
 
       //watch out for the returns above when adding new code here
    }
@@ -377,31 +385,34 @@ namespace eosio {
          try {
             throw;
          } catch (chain::unsatisfied_authorization& e) {
-            error_results results{401, "UnAuthorized", e};
+            error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};
             cb( 401, fc::json::to_string( results ));
          } catch (chain::tx_duplicate& e) {
-            error_results results{409, "Conflict", e};
+            error_results results{409, "Conflict", error_results::error_info(e, verbose_http_errors)};
             cb( 409, fc::json::to_string( results ));
          } catch (chain::transaction_exception& e) {
-            error_results results{400, "Bad Request", e};
+            error_results results{400, "Bad Request", error_results::error_info(e, verbose_http_errors)};
             cb( 400, fc::json::to_string( results ));
          } catch (fc::eof_exception& e) {
-            error_results results{400, "Bad Request", e};
+            error_results results{400, "Bad Request", error_results::error_info(e, verbose_http_errors)};
             cb( 400, fc::json::to_string( results ));
-            elog( "Unable to parse arguments: ${args}", ("args", body));
+            elog( "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ));
+            dlog("Bad arguments: ${args}", ("args", body));
          } catch (fc::exception& e) {
-            error_results results{500, "Internal Service Error", e};
+            error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
             cb( 500, fc::json::to_string( results ));
-            elog( "FC Exception encountered while processing ${api}.${call}: ${e}",
-                  ("api", api_name)( "call", call_name )( "e", e.to_detail_string()));
+            elog( "FC Exception encountered while processing ${api}.${call}",
+                  ("api", api_name)( "call", call_name ));
+            dlog( "Exception Details: ${e}", ("e", e.to_detail_string()));
          } catch (std::exception& e) {
-            error_results results{500, "Internal Service Error", fc::exception( FC_LOG_MESSAGE( error, e.what()))};
+            error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
             cb( 500, fc::json::to_string( results ));
-            elog( "STD Exception encountered while processing ${api}.${call}: ${e}",
-                  ("api", api_name)( "call", call_name )( "e", e.what()));
+            elog( "STD Exception encountered while processing ${api}.${call}",
+                  ("api", api_name)( "call", call_name ));
+            dlog( "Exception Details: ${e}", ("e", e.what()));
          } catch (...) {
             error_results results{500, "Internal Service Error",
-                                  fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" ))};
+               error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )), verbose_http_errors)};
             cb( 500, fc::json::to_string( results ));
             elog( "Unknown Exception encountered while processing ${api}.${call}",
                   ("api", api_name)( "call", call_name ));
@@ -409,6 +420,14 @@ namespace eosio {
       } catch (...) {
          std::cerr << "Exception attempting to handle exception for " << api_name << "." << call_name << std::endl;
       }
+   }
+
+   bool http_plugin::is_on_loopback() const {
+      return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback()) && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());
+   }
+
+   bool http_plugin::is_secure() const {
+      return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback());
    }
 
 }

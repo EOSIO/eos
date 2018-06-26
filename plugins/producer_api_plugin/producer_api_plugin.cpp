@@ -80,6 +80,19 @@ void producer_api_plugin::plugin_startup() {
 }
 
 void producer_api_plugin::plugin_initialize(const variables_map& options) {
+   const auto& _http_plugin = app().get_plugin<http_plugin>();
+   if (!_http_plugin.is_on_loopback()) {
+      wlog("\n"
+           "**********SECURITY WARNING**********\n"
+           "*                                  *\n"
+           "* --        Producer API        -- *\n"
+           "* - EXPOSED to the LOCAL NETWORK - *\n"
+           "* - USE ONLY ON SECURE NETWORKS! - *\n"
+           "*                                  *\n"
+           "************************************\n");
+
+   }
+
 }
 
 

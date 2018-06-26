@@ -102,14 +102,14 @@ namespace eosiosystem {
       bool                        is_proxy = 0; /// whether the voter is a proxy for others
 
 
-      uint32_t                    deferred_trx_id = 0; /// the ID of the 3-day delay deferred transaction
-      time                        last_unstake_time = 0; /// the time when the deferred_trx_id was sent
-      eosio::asset                unstaking; /// the total unstaking (pending 3 day delay)
+      uint32_t                    reserved1 = 0;
+      time                        reserved2 = 0;
+      eosio::asset                reserved3;
 
       uint64_t primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(deferred_trx_id)(last_unstake_time)(unstaking) )
+      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(reserved1)(reserved2)(reserved3) )
    };
 
    typedef eosio::multi_index< N(voters), voter_info>  voters_table;

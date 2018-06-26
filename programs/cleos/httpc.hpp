@@ -120,6 +120,7 @@ namespace eosio { namespace client { namespace http {
    const string wallet_lock_all = wallet_func_base + "/lock_all";
    const string wallet_unlock = wallet_func_base + "/unlock";
    const string wallet_import_key = wallet_func_base + "/import_key";
+   const string wallet_remove_key = wallet_func_base + "/remove_key";
    const string wallet_create_key = wallet_func_base + "/create_key";
    const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
    const string keosd_stop = "/v1/keosd/stop";
