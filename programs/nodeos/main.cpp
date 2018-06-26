@@ -119,7 +119,7 @@ int main(int argc, char** argv)
             return DATABASE_DIRTY;
          }
       }
-      elog("${e}", ("e",e.to_detail_string()));
+      elog( "${e}", ("e", e.to_detail_string()));
       return OTHER_FAIL;
    } catch( const boost::interprocess::bad_alloc& e ) {
       elog("bad alloc");
