@@ -208,8 +208,6 @@
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 	fi
 
-   WASM_ROOT=/usr/local/
-
 	. "$FILE"
 
 	printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOSIO\\n\\n"
