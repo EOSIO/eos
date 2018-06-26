@@ -168,6 +168,40 @@ public:
       groups.erase( itr );
    }
 
+   //@abi action
+   void addblacklist( account_name n) {
+      require_auth( _self );
+
+      blacklist_index blacklist( _self, _self );
+
+      auto itr = blacklist.find( n );
+      if( itr != blacklist.end() ) {
+         // found, no need to waste cpu/bandwidth so assert
+         eosio_assert( false, "Already in blacklist" );
+      } else {
+         blacklist.emplace( _self /*payer*/, [&]( auto& b ) {
+            b.account = n;
+         } );
+      }
+   }
+
+   //@abi action
+   void msgnotify( account_name from, uint64_t /*msg_id*/, const checksum256& /*msg_sha*/ ) {
+      require_auth2( from, N( eosio.code ) );
+
+      blacklist_index blacklist( _self, _self );
+
+      // if on blacklist assert
+      auto itr = blacklist.find( from );
+      if( itr != blacklist.end() ) {
+         eosio_assert(false, "Account on blacklist");
+      }
+   }
+
+   //@abi action
+   void sendevery(){}
+   void sendat(){}
+
 private:
 
    //@abi table message i64
@@ -199,12 +233,20 @@ private:
       std::vector<account_name> accounts; /// The accounts that are member of this group
 
       uint64_t primary_key() const { return group_name; }
-
-      EOSLIB_SERIALIZE( group, (group_name)( accounts ))
    };
 
    typedef eosio::multi_index<N( group ), group> group_index;
 
+   //@abi table blacklist i64
+   struct blacklist {
+      account_name account;
+
+      uint64_t primary_key() const { return account; }
+   };
+
+   typedef eosio::multi_index<N( blacklist ), blacklist> blacklist_index;
+
 };
 
-EOSIO_ABI( messenger, (sendmsg)( sendsha )( removemsg )( removesha )( addgroup )( removegroup ))
+EOSIO_ABI( messenger, (sendmsg)( sendsha )( removemsg )( removesha )( addgroup )( removegroup )
+                      ( addblacklist )( msgnotify  ))
