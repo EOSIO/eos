@@ -38,9 +38,9 @@ seed=1
 Utils.Debug=debug
 testSuccessful=False
 
-def runNodeosAndGetOutput(myNodeId, myTimeout=3):
+def runNodeosAndGetOutput(myTimeout=3):
     """Startup nodeos, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
-    Print("Launching nodeos process id: %d" % (myNodeId))
+    Print("Launching nodeos process.")
     cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors"
     Print("cmd: %s" % (cmd))
     proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -84,17 +84,14 @@ try:
     cluster.killall(allInstances=killAll)
     
     Print("Restart nodeos repeatedly to ensure dirty database flag sticks.")
-    nodeId=0
     timeout=3
     
-    for i in range(0,3):
+    for i in range(1,4):
         Print("Attempt %d." % (i))
-        ret = runNodeosAndGetOutput(nodeId, timeout)
+        ret = runNodeosAndGetOutput(timeout)
         assert(ret)
         assert(isinstance(ret, tuple))
-        if not ret or not ret[0]:
-            exit(1)
-
+        assert(ret[0])
         assert(ret[1])
         assert(isinstance(ret[1], dict))
         # pylint: disable=unsubscriptable-object
