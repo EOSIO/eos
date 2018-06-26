@@ -359,7 +359,7 @@ namespace {
    }
 
 
-   void update_account(bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act) {
+   void update_account(mongocxx::collection& accounts, const chain::action& act) {
       using bsoncxx::builder::basic::kvp;
       using bsoncxx::builder::basic::make_document;
       using namespace bsoncxx::types;
@@ -396,11 +396,6 @@ namespace {
                   const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
                   const string json_str = fc::json::to_string( abi_def );
 
-                  // the original keys from document 'view' are kept, "data" here is not replaced by "data" of add_data
-                  act_doc.append(
-                        kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
-                                                    kvp( "abi_def", bsoncxx::from_json( json_str )))));
-
                   auto update_from = make_document(
                         kvp( "$set", make_document( kvp( "abi", bsoncxx::from_json( json_str )),
                                                     kvp( "updatedAt", b_date{now} ))));
@@ -421,7 +416,35 @@ namespace {
 
    void add_data(bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act) {
       using bsoncxx::builder::basic::kvp;
+      using bsoncxx::builder::basic::make_document;
       try {
+         if( act.account == chain::config::system_account_name ) {
+            if( act.name == mongo_db_plugin_impl::newaccount ) {
+               auto newaccount = act.data_as<chain::newaccount>();
+               try {
+                  auto json = fc::json::to_string( newaccount );
+                  const auto& value = bsoncxx::from_json( json );
+                  act_doc.append( kvp( "data", value ));
+                  return;
+               } catch (...) {
+                  ilog( "Unable to convert action newaccount to json for ${n}", ( "n", newaccount.name.to_string() ));
+               }
+            } else if( act.name == mongo_db_plugin_impl::setabi ) {
+               auto setabi = act.data_as<chain::setabi>();
+               try {
+                  const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
+                  const string json_str = fc::json::to_string( abi_def );
+
+                  // the original keys from document 'view' are kept, "data" here is not replaced by "data" of add_data
+                  act_doc.append(
+                        kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
+                                                    kvp( "abi_def", bsoncxx::from_json( json_str )))));
+                  return;
+               } catch( fc::exception& e ) {
+                  ilog( "Unable to convert action abi_def to json for ${n}", ( "n", setabi.account.to_string() ));
+               }
+            }
+         }
          auto account = find_account( accounts, act.account );
          if (account) {
             auto from_account = *account;
@@ -450,7 +473,7 @@ namespace {
          }
       } catch (fc::exception& e) {
          if( act.name != "onblock" ) { // onblock not in original eosio.system contract abi
-            ilog( "Unable to convert action.data to ABI: ${s}::${n}, what: ${e}",
+            dlog( "Unable to convert action.data to ABI: ${s}::${n}, what: ${e}",
                   ("s", act.account)( "n", act.name )( "e", e.to_detail_string()));
          }
       } catch (std::exception& e) {
@@ -570,7 +593,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          } ));
       }
       try {
-         update_account( act_doc, accounts, act );
+         update_account( accounts, act );
       } catch (...) {
          ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
       }
