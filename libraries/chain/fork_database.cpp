@@ -251,7 +251,7 @@ namespace eosio { namespace chain {
 
       auto itr = my->index.find( h->id );
       if( itr != my->index.end() ) {
-         irreversible(*itr);
+         irreversible(*itr); //XXX
          my->index.erase(itr);
       }
 

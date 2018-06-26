@@ -184,6 +184,12 @@ struct controller_impl {
          reversible_blocks.remove( *objitr );
          objitr = ubi.begin();
       }
+      if ( read_mode == db_read_mode::IRREVERSIBLE ) {
+         apply_block( s->block, controller::block_status::complete );
+         fork_db.mark_in_current_chain( s, true );
+         fork_db.set_validity( s, true );
+         head = s;
+      }
    }
 
    void init() {
@@ -862,7 +868,9 @@ struct controller_impl {
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
-         maybe_switch_forks( s );
+         if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+            maybe_switch_forks( s );
+         }
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -870,7 +878,9 @@ struct controller_impl {
       FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
-      maybe_switch_forks();
+      if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+         maybe_switch_forks();
+      }
    }
 
    void maybe_switch_forks( controller::block_status s = controller::block_status::complete ) {
