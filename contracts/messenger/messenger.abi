@@ -168,7 +168,7 @@
           "type": "string"
         },{
           "name": "delay_sec",
-          "type": "unsigned_int"
+          "type": "uint32"
         }
       ]
     },{

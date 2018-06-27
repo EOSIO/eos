@@ -54,7 +54,7 @@ public:
       } );
 
       // send msgnotify to 'to' account
-      eosio::action( std::vector<eosio::permission_level>(),
+      eosio::action( eosio::permission_level{from, N( active )},
                      to, N( msgnotify ), std::make_tuple( from, msg_id, cs) ).send();
    }
 
@@ -90,7 +90,7 @@ public:
       } );
 
       // send msgnotify to 'to' account
-      eosio::action( std::vector<eosio::permission_level>(),
+      eosio::action( eosio::permission_level{from, N( active )},
                      to, N( msgnotify ), std::make_tuple( from, msg_id, msg_sha) ).send();
    }
 
@@ -209,7 +209,7 @@ public:
          for (auto& a : itr->accounts ) {
 
             // send msgnotify to 'to' account
-            eosio::action( std::vector<eosio::permission_level>(),
+            eosio::action( eosio::permission_level{from, N( active )},
                            a, N( msgnotify ), std::make_tuple( from, msg_id, cs) ).send();
          }
       } else {
@@ -250,14 +250,26 @@ public:
    }
 
    //@abi action
-   void spam( account_name from, account_name to, uint64_t msg_id, const string& msg_str, unsigned_int delay_sec ) {
+   void spam( account_name from, account_name to, uint64_t msg_id, const string& msg_str, uint32_t delay_sec ) {
       require_auth( from );
 
-      eosio::transaction out;
-      out.actions.emplace_back(std::vector<eosio::permission_level>(), to, N(sendmsg),
-                               std::make_tuple( from, to, ++msg_id, msg_str));
-      out.delay_sec = delay_sec;
-      out.send(msg_id, _self);
+      if( msg_id > 10 )
+         return;
+
+      {
+         eosio::transaction out;
+         out.actions.emplace_back( eosio::permission_level{from, N( active )}, to, N( sendmsg ),
+                                   std::make_tuple( from, to, ++msg_id, msg_str ));
+         out.delay_sec = delay_sec;
+         out.send( msg_id, _self );
+      }
+      {
+         eosio::transaction out;
+         out.actions.emplace_back( eosio::permission_level{from, N( active )}, to, N( spam ),
+                                   std::make_tuple( from, to, ++msg_id, msg_str, delay_sec ));
+         out.delay_sec = delay_sec;
+         out.send( msg_id, _self );
+      }
    }
 
    //@abi action
