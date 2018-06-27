@@ -431,6 +431,8 @@ void producer_plugin::set_program_options(
           "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
          ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a keosd provider for signing")
+         ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
+          "offset of producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ;
    config_file_options.add(producer_options);
 }
@@ -542,6 +544,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    }
 
    my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
+
+   my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
 
    my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
 
