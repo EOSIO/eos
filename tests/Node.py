@@ -228,7 +228,14 @@ class Node(object):
             Utils.Print("Failure in get info parsing. %s" % (info))
             raise
 
-        return True if blockNum <= node_block_num else False
+        finalized  = True if blockNum <= node_block_num else False
+        if Utils.Debug:
+            if finalized:
+                Utils.Print("Block %d is finalized." % (blockNum))
+            else:
+                Utils.Print("Block %d is not yet finalized." % (blockNum))
+
+        return finalized
 
     # pylint: disable=too-many-branches
     def getTransaction(self, transId, retry=True, silentErrors=False):
@@ -314,10 +321,13 @@ class Node(object):
         try:
             headBlockNum=int(headBlockNum)
         except(ValueError) as _:
-            Utils.Print("Info parsing failed. %s" % (headBlockNum))
+            Utils.Print("ERROR: Block info parsing failed. %s" % (headBlockNum))
+            raise
 
+        if Utils.Debug: Utils.Print("Reference block num %d, Head block num: %d" % (refBlockNum, headBlockNum))
         for blockNum in range(refBlockNum, headBlockNum+1):
             if self.isTransInBlock(str(transId), blockNum):
+                if Utils.Debug: Utils.Print("Found transaction %s in block %d" % (transId, blockNum))
                 return blockNum
 
         return None

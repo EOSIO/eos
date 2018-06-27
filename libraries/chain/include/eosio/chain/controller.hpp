@@ -33,8 +33,14 @@ namespace eosio { namespace chain {
 
    class fork_database;
 
+   enum class db_read_mode {
+      SPECULATIVE,
+      HEAD
+   };
+
    class controller {
       public:
+
          struct config {
             flat_set<account_name>   actor_whitelist;
             flat_set<account_name>   actor_blacklist;
@@ -52,6 +58,8 @@ namespace eosio { namespace chain {
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
+
+            db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
          };
 
          enum class block_status {
@@ -179,6 +187,8 @@ namespace eosio { namespace chain {
          bool contracts_console()const;
 
          chain_id_type get_chain_id()const;
+
+         db_read_mode get_read_mode()const;
 
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;

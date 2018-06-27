@@ -388,9 +388,9 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		printf "\\tMongo C++ driver installed at /usr/local/lib/libmongocxx-static.a.\\n"
+		printf "\\tMongo C++ driver installed at /usr/local/lib64/libmongocxx-static.a.\\n"
 	else
-		printf "\\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\\n"
+		printf "\\tMongo C++ driver found at /usr/local/lib64/libmongocxx-static.a.\\n"
 	fi
 
 	printf "\\n\\tChecking secp256k1-zkp installation.\\n"
