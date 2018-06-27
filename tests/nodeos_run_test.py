@@ -56,7 +56,8 @@ dontBootstrap=sanityTest
 
 WalletdName="keosd"
 ClientName="cleos"
-# Utils.setMongoSyncTime(50)
+timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
+Utils.setIrreversibleTimeout(timeout)
 
 try:
     TestHelper.printSystemInfo("BEGIN")
@@ -305,62 +306,17 @@ try:
     actions=node.getActions(testeraAccount, -1, -1)
     assert(actions)
     try:
-        assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
+        if not enableMongo:
+            assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
+        else:
+            assert(actions["name"] == "transfer")
     except (AssertionError, TypeError, KeyError) as _:
-        Print("Last action validation failed. Actions: %s" % (actions))
+        Print("Action validation failed. Actions: %s" % (actions))
         raise
-
-    # This API (get accounts) is no longer supported (Issue 2876)
-    # expectedAccounts=[testeraAccount.name, currencyAccount.name, exchangeAccount.name]
-    # Print("Get accounts by key %s, Expected: %s" % (PUB_KEY3, expectedAccounts))
-    # actualAccounts=node.getAccountsArrByKey(PUB_KEY3)
-    # if actualAccounts is None:
-    #     cmdError("%s get accounts pub_key3" % (ClientName))
-    #     errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY3))
-    # noMatch=list(set(expectedAccounts) - set(actualAccounts))
-    # if len(noMatch) > 0:
-    #     errorExit("FAILURE - Accounts lookup by key %s. Expected: %s, Actual: %s" % (
-    #         PUB_KEY3, expectedAccounts, actualAccounts), raw=True)
-    #
-    # expectedAccounts=[testeraAccount.name]
-    # Print("Get accounts by key %s, Expected: %s" % (PUB_KEY1, expectedAccounts))
-    # actualAccounts=node.getAccountsArrByKey(PUB_KEY1)
-    # if actualAccounts is None:
-    #     cmdError("%s get accounts pub_key1" % (ClientName))
-    #     errorExit("Failed to retrieve accounts by key %s" % (PUB_KEY1))
-    # noMatch=list(set(expectedAccounts) - set(actualAccounts))
-    # if len(noMatch) > 0:
-    #     errorExit("FAILURE - Accounts lookup by key %s. Expected: %s, Actual: %s" % (
-    #         PUB_KEY1, expectedAccounts, actualAccounts), raw=True)
-
-    # This API (get servants) is no longer supported. (Issue 3160)
-    # expectedServants=[testeraAccount.name, currencyAccount.name]
-    # Print("Get %s servants, Expected: %s" % (defproduceraAccount.name, expectedServants))
-    # actualServants=node.getServantsArr(defproduceraAccount.name)
-    # if actualServants is None:
-    #     cmdError("%s get servants testera11111" % (ClientName))
-    #     errorExit("Failed to retrieve %s servants" % (defproduceraAccount.name))
-    # noMatch=list(set(expectedAccounts) - set(actualAccounts))
-    # if len(noMatch) > 0:
-    #     errorExit("FAILURE - %s servants. Expected: %s, Actual: %s" % (
-    #         defproduceraAccount.name, expectedServants, actualServants), raw=True)
-    #
-    # Print("Get %s servants, Expected: []" % (testeraAccount.name))
-    # actualServants=node.getServantsArr(testeraAccount.name)
-    # if actualServants is None:
-    #     cmdError("%s get servants testera11111" % (ClientName))
-    #     errorExit("Failed to retrieve %s servants" % (testeraAccount.name))
-    # if len(actualServants) > 0:
-    #     errorExit("FAILURE - %s servants. Expected: [], Actual: %s" % (
-    #         testeraAccount.name, actualServants), raw=True)
 
     node.waitForTransInBlock(transId)
 
-    transaction=None
-    if not enableMongo:
-        transaction=node.getTransaction(transId)
-    else:
-        transaction=node.getActionFromDb(transId)
+    transaction=node.getTransaction(transId)
     if transaction is None:
         cmdError("%s get transaction trans_id" % (ClientName))
         errorExit("Failed to retrieve transaction details %s" % (transId))
@@ -368,17 +324,22 @@ try:
     typeVal=None
     amountVal=None
     assert(transaction)
+    key=""
     try:
         if not enableMongo:
+            key="[traces][0][act][name]"
             typeVal=  transaction["traces"][0]["act"]["name"]
+            key="[traces][0][act][data][quantity]"
             amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
             amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
         else:
-            typeVal=  transaction["name"]
-            amountVal=transaction["data"]["quantity"]
+            key="[actions][0][name]"
+            typeVal=  transaction["actions"][0]["name"]
+            key="[actions][0][data][quantity]"
+            amountVal=transaction["actions"][0]["data"]["quantity"]
             amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
     except (TypeError, KeyError) as e:
-        Print("Transaction validation parsing failed. Transaction: %s" % (transaction))
+        Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise
 
     if typeVal != "transfer" or amountVal != 975311:
@@ -534,7 +495,10 @@ try:
     assert(block)
     transactions=None
     try:
-        transactions=block["transactions"]
+        if not enableMongo:
+            transactions=block["transactions"]
+        else:
+            transactions=block["block"]["transactions"]
         assert(transactions)
     except (AssertionError, TypeError, KeyError) as _:
         Print("FAILURE - Failed to parse block. %s" % (block))
@@ -718,38 +682,33 @@ try:
         cmdError("%s get account" % (ClientName))
         errorExit("Failed to get account %s" % (defproduceraAccount.name))
 
-    #
-    # Proxy
-    #
-    # not implemented
+    Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
+    if not walletMgr.unlockWallet(testWallet):
+        cmdError("%s wallet unlock test" % (ClientName))
+        errorExit("Failed to unlock wallet %s" % (testWallet.name))
+
 
     Print("Get head block num.")
     currentBlockNum=node.getHeadBlockNum()
     Print("CurrentBlockNum: %d" % (currentBlockNum))
     Print("Request blocks 1-%d" % (currentBlockNum))
-    for blockNum in range(1, currentBlockNum+1):
-        block=node.getBlock(blockNum, retry=False, silentErrors=False)
+    start=1
+    if enableMongo:
+        start=2 # block 1 (genesis block) is not signaled to the plugins, so not available in DB
+    for blockNum in range(start, currentBlockNum+1):
+        block=node.getBlock(blockNum, silentErrors=False)
         if block is None:
             cmdError("%s get block" % (ClientName))
             errorExit("get block by num %d" % blockNum)
 
         if enableMongo:
             blockId=block["block_id"]
-            block2=node.getBlockById(blockId, retry=False)
+            block2=node.getBlockById(blockId)
             if block2 is None:
                 errorExit("mongo get block by id %s" % blockId)
 
-            # TBD: getTransByBlockId() needs to handle multiple returned transactions
-            # trans=node.getTransByBlockId(blockId, retry=False)
-            # if trans is not None:
-            #     transId=Node.getTransId(trans)
-            #     trans2=node.getMessageFromDb(transId)
-            #     if trans2 is None:
-            #         errorExit("mongo get messages by transaction id %s" % (transId))
-
-
     Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
-    block=node.getBlock(currentBlockNum+1000, silentErrors=True, retry=False)
+    block=node.getBlock(currentBlockNum+1000, silentErrors=True)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
     else:
