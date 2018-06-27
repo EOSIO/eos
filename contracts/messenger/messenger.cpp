@@ -1,4 +1,5 @@
 #include <eosiolib/eosio.hpp>
+#include <eosiolib/transaction.hpp>
 #include <eosiolib/crypto.h>
 #include <string>
 
@@ -15,6 +16,7 @@ public:
 
    //@abi action
    void sendmsg( account_name from, account_name to, uint64_t msg_id, const string& msg_str ) {
+      eosio::print("sendmsg from ", eosio::name{from});
       // if not authorized then this action is aborted and transaction is rolled back
       // any modifications by other actions in same transaction are undone
       require_auth( from ); // make sure authorized by account
@@ -150,7 +152,6 @@ public:
             group.accounts = accounts;
          } );
       }
-
    }
 
    //@abi action
@@ -166,6 +167,55 @@ public:
       }
 
       groups.erase( itr );
+   }
+
+   //@abi action
+   void sendgroup( account_name from, account_name group_name, uint64_t msg_id, const string& msg_str ) {
+      require_auth( from );
+
+      group_index groups( _self, _self ); // code, scope
+
+      // calculate sha256 from msg_str
+      checksum256 cs{};
+      sha256( const_cast<char*>(msg_str.c_str()), msg_str.size(), &cs );
+
+      // print for debugging
+      printhex(&cs, sizeof(cs));
+
+      // message_index is typedef of our multi_index over table address
+      // message table is auto "created" if needed
+      message_index messages( _self, _self ); // code, scope
+
+      // verify does not already exist
+      // multi_index find on primary index which in our case is account
+      if( messages.find( msg_id ) != messages.end() ) {
+         std::string err = "Message id already exists: " + std::to_string(msg_id);
+         eosio_assert( false, err.c_str() );
+      }
+
+      // add to table, first argument is account to bill for storage
+      // each entry will be billed to the associated account
+      // we could have instead chosen to bill _self for all the storage
+      messages.emplace( from /*payer*/, [&]( auto& msg ) {
+         msg.msg_id = msg_id;
+         msg.from = from;
+         msg.to = group_name;
+         msg.msg_sha = cs;
+      } );
+
+      auto itr = groups.find( group_name );
+      if( itr != groups.end() ) {
+         // found, so send
+         for (auto& a : itr->accounts ) {
+
+            // send msgnotify to 'to' account
+            eosio::action( std::vector<eosio::permission_level>(),
+                           a, N( msgnotify ), std::make_tuple( from, msg_id, cs) ).send();
+         }
+      } else {
+         std::string err = "group does not exist: " + eosio::name{group_name}.to_string();
+         eosio_assert( false, err.c_str() );
+      }
    }
 
    //@abi action
@@ -186,9 +236,33 @@ public:
    }
 
    //@abi action
-   void msgnotify( account_name from, uint64_t /*msg_id*/, const checksum256& /*msg_sha*/ ) {
-      require_auth2( from, N( eosio.code ) );
+   void rmblacklist( account_name n ) {
+      require_auth( _self );
 
+      blacklist_index blacklist( _self, _self );
+
+      auto itr = blacklist.find( n );
+      if( itr != blacklist.end() ) {
+         blacklist.erase( itr );
+      } else {
+         eosio_assert( false, "Not in blacklist" );
+      }
+   }
+
+   //@abi action
+   void spam( account_name from, account_name to, uint64_t msg_id, const string& msg_str, unsigned_int delay_sec ) {
+      require_auth( from );
+
+      eosio::transaction out;
+      out.actions.emplace_back(std::vector<eosio::permission_level>(), to, N(sendmsg),
+                               std::make_tuple( from, to, ++msg_id, msg_str));
+      out.delay_sec = delay_sec;
+      out.send(msg_id, _self);
+   }
+
+   //@abi action
+   void msgnotify( account_name from, uint64_t /*msg_id*/, const checksum256& /*msg_sha*/ ) {
+      eosio::print("message from ", eosio::name{from});
       blacklist_index blacklist( _self, _self );
 
       // if on blacklist assert
@@ -197,10 +271,6 @@ public:
          eosio_assert(false, "Account on blacklist");
       }
    }
-
-   //@abi action
-   void sendevery(){}
-   void sendat(){}
 
 private:
 
@@ -248,5 +318,8 @@ private:
 
 };
 
-EOSIO_ABI( messenger, (sendmsg)( sendsha )( removemsg )( removesha )( addgroup )( removegroup )
-                      ( addblacklist )( msgnotify  ))
+EOSIO_ABI( messenger, (sendmsg)( sendsha )( removemsg )( removesha )
+                      ( addgroup )( removegroup )( sendgroup )
+                      ( spam )
+                      ( addblacklist )( rmblacklist )
+                      ( msgnotify  ))
