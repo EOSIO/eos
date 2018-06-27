@@ -44,10 +44,13 @@ def runNodeosAndGetOutput(myTimeout=3):
     cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors"
     Print("cmd: %s" % (cmd))
     proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if debug: Print("Nodeos process launched.")
 
     output={}
     try:
+        if debug: Print("Setting nodeos process timeout.")
         outs,errs = proc.communicate(timeout=myTimeout)
+        if debug: Print("Nodeos process has exited.")
         output["stdout"] = outs.decode("utf-8")
         output["stderr"] = errs.decode("utf-8")
         output["returncode"] = proc.returncode
@@ -56,6 +59,7 @@ def runNodeosAndGetOutput(myTimeout=3):
         proc.send_signal(signal.SIGKILL)
         return (False, None)
 
+    if debug: Print("Returning success status.")
     return (True, output)
 
 random.seed(seed) # Use a fixed seed for repeatability.
@@ -97,11 +101,14 @@ try:
         # pylint: disable=unsubscriptable-object
         stderr= ret[1]["stderr"]
         retCode=ret[1]["returncode"]
-        assert(retCode == 2)
+        assert retCode == 2, "actual return code: %d" % (retCode)
         assert("database dirty flag set" in stderr)
 
+    if debug: Print("Setting test success state.")
     testSuccessful=True
 finally:
+    if debug: Print("Cleanup in finally block.")
     TestHelper.shutdown(cluster, None, testSuccessful, killEosInstances, False, keepLogs, killAll, dumpErrorDetails)
 
+if debug: Print("Exiting test, exit value 0.")
 exit(0)
