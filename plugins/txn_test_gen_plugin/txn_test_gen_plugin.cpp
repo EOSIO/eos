@@ -354,7 +354,7 @@ struct txn_test_gen_plugin_impl {
 
    int32_t txn_reference_block_lag;
 
-   abi_serializer enu_token_serializer = fc::json::from_string(enu_token_abi).as<abi_def>();
+   abi_serializer enu_token_serializer{fc::json::from_string(enu_token_abi).as<abi_def>()};
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}
