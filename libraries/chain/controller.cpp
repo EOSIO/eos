@@ -58,6 +58,7 @@ struct controller_impl {
    chain_id_type                  chain_id;
    bool                           replaying = false;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
+   bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -536,6 +537,11 @@ struct controller_impl {
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
 
+      auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+         in_trx_requiring_checks = old_value;
+      });
+      in_trx_requiring_checks = true;
+
       transaction_context trx_context( self, dtrx, gto.trx_id );
       trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
@@ -771,6 +777,10 @@ struct controller_impl {
 
          try {
             auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+                  in_trx_requiring_checks = old_value;
+               });
+            in_trx_requiring_checks = true;
             push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
          } catch( const boost::interprocess::bad_alloc& e  ) {
             elog( "on block transaction failed due to a bad allocation" );
@@ -779,7 +789,6 @@ struct controller_impl {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
          } catch( ... ) {
-            wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
          }
 
          clear_expired_input_transactions();
@@ -1410,7 +1419,7 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 }
 
 bool controller::skip_auth_check()const {
-   return my->replaying && !my->conf.force_all_checks;
+   return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool controller::contracts_console()const {
