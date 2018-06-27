@@ -110,7 +110,7 @@ try:
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
-    testWallet=walletMgr.create(testWalletName)
+    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
     if testWallet is None:
         cmdError("eos wallet create")
         errorExit("Failed to create wallet %s." % (testWalletName))

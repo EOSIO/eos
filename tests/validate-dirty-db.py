@@ -40,7 +40,7 @@ testSuccessful=False
 def runNodeosAndGetOutput(myNodeId, myTimeout=3):
     """Startup nodeos, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
     Print("Launching nodeos process id: %d" % (myNodeId))
-    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios"
+    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors"
     Print("cmd: %s" % (cmd))
     proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 

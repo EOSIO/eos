@@ -57,6 +57,7 @@ struct controller_impl {
    controller::config             conf;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -489,7 +490,8 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return    (code == block_net_usage_exceeded::code_value)
+      return    (code == subjective_block_production_exception::code_value)
+             || (code == block_net_usage_exceeded::code_value)
              || (code == block_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
              || (code == leeway_deadline_exception::code_value)
@@ -497,7 +499,8 @@ struct controller_impl {
              || (code == actor_blacklist_exception::code_value)
              || (code == contract_whitelist_exception::code_value)
              || (code == contract_blacklist_exception::code_value)
-             || (code == action_blacklist_exception::code_value);
+             || (code == action_blacklist_exception::code_value)
+             || (code == key_blacklist_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -529,6 +532,11 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+
+      auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+         in_trx_requiring_checks = old_value;
+      });
+      in_trx_requiring_checks = true;
 
       transaction_context trx_context( self, dtrx, gto.trx_id );
       trx_context.deadline = deadline;
@@ -758,6 +766,10 @@ struct controller_impl {
 
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+         auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+            in_trx_requiring_checks = old_value;
+         });
+         in_trx_requiring_checks = true;
          push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
       } catch( const boost::interprocess::bad_alloc& e  ) {
          elog( "on block transaction failed due to a bad allocation" );
@@ -803,7 +815,9 @@ struct controller_impl {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
-            if( trace && trace->except ) {
+            bool transaction_failed =  trace && trace->except;
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            if( transaction_failed && !transaction_can_fail) {
                edump((*trace));
                throw *trace->except;
             }
@@ -1102,6 +1116,16 @@ struct controller_impl {
       }
    }
 
+   void check_key_list( const public_key_type& key )const {
+      if( conf.key_blacklist.size() > 0 ) {
+         EOS_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
+                     key_blacklist_exception,
+                     "public key '${key}' is on the key blacklist",
+                     ("key", key)
+                   );
+      }
+   }
+
    /*
    bool should_check_tapos()const { return true; }
 
@@ -1381,7 +1405,7 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 }
 
 bool controller::skip_auth_check()const {
-   return my->replaying && !my->conf.force_all_checks;
+   return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool controller::contracts_console()const {
@@ -1446,6 +1470,10 @@ void controller::check_contract_list( account_name code )const {
 
 void controller::check_action_list( account_name code, action_name action )const {
    my->check_action_list( code, action );
+}
+
+void controller::check_key_list( const public_key_type& key )const {
+   my->check_key_list( key );
 }
 
 bool controller::is_producing_block()const {

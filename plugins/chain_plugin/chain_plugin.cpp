@@ -128,6 +128,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
+         ("abi-serializer-max-time-ms", bpo::value<uint32_t>(), "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
          ("contracts-console", bpo::bool_switch()->default_value(false),
@@ -142,6 +143,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Contract account added to contract blacklist (may specify multiple times)")
          ("action-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Action (in the form code::action) added to action blacklist (may specify multiple times)")
+         ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
          ;
 
 // TODO: rate limiting
@@ -215,8 +218,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->chain_config = controller::config();
 
-   LOAD_VALUE_SET(options, "actor-whitelist", my->chain_config->actor_whitelist);
-   LOAD_VALUE_SET(options, "actor-blacklist", my->chain_config->actor_blacklist);
+   LOAD_VALUE_SET(options, "actor-whitelist",    my->chain_config->actor_whitelist);
+   LOAD_VALUE_SET(options, "actor-blacklist",    my->chain_config->actor_blacklist);
    LOAD_VALUE_SET(options, "contract-whitelist", my->chain_config->contract_whitelist);
    LOAD_VALUE_SET(options, "contract-blacklist", my->chain_config->contract_blacklist);
 
@@ -229,6 +232,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          account_name code(a.substr(0, pos));
          action_name  act(a.substr(pos+2));
          list.emplace( code.value, act.value );
+      }
+   }
+
+   if( options.count("key-blacklist") ) {
+      const std::vector<std::string>& keys = options["key-blacklist"].as<std::vector<std::string>>();
+      auto& list = my->chain_config->key_blacklist;
+      for( const auto& key_str : keys ) {
+         list.emplace( key_str );
       }
    }
 
@@ -254,6 +265,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
+
+   if(options.count("abi-serializer-max-time-ms"))
+      abi_serializer::set_max_serialization_time(fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000));
 
    my->chain_config->blocks_dir = my->blocks_dir;
    my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
@@ -806,8 +820,9 @@ auto make_resolver(const Api *api) {
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
    signed_block_ptr block;
+   EOS_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters" );
    try {
-      block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
+      block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
       if (!block) {
          block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
       }
@@ -839,7 +854,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
       b = db.fetch_block_state_by_number(*block_num);
    } else {
       try {
-         b = db.fetch_block_state_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
+         b = db.fetch_block_state_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
       } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
    }
 

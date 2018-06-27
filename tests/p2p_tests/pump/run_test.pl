@@ -201,7 +201,8 @@ sub launch_nodes {
     for (my $i = 0; $i < $nodes;  $i++) {
         my @cmdline = ($eosd,
                        $gtsarg,
-                       "--data-dir=$data_dir[$i]");
+                       "--data-dir=$data_dir[$i]",
+                       "--verbose-http-errors");
         $pid[$i] = fork;
         if ($pid[$i] > 0) {
             my $pause = $i == 0 ? $first_pause : $launch_pause;
