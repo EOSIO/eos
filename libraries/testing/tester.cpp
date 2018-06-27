@@ -218,7 +218,7 @@ namespace eosio { namespace testing {
    }
 
 
-  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
+  void base_tester::set_transaction_headers( transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 
