@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -436,17 +437,7 @@ namespace {
       using bsoncxx::builder::basic::make_document;
       try {
          if( act.account == chain::config::system_account_name ) {
-            if( act.name == mongo_db_plugin_impl::newaccount ) {
-               auto newaccount = act.data_as<chain::newaccount>();
-               try {
-                  auto json = fc::json::to_string( newaccount );
-                  const auto& value = bsoncxx::from_json( json );
-                  act_doc.append( kvp( "data", value ));
-                  return;
-               } catch (...) {
-                  ilog( "Unable to convert action newaccount to json for ${n}", ( "n", newaccount.name.to_string() ));
-               }
-            } else if( act.name == mongo_db_plugin_impl::setabi ) {
+            if( act.name == mongo_db_plugin_impl::setabi ) {
                auto setabi = act.data_as<chain::setabi>();
                try {
                   const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
@@ -976,7 +967,11 @@ void mongo_db_plugin_impl::init() {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
+      auto abidef = eosio_contract_abi(chain::abi_def());
+      const string json_str = fc::json::to_string( abidef );
+
       auto doc = make_document( kvp( "name", name( chain::config::system_account_name ).to_string()),
+                                kvp( "abi", bsoncxx::from_json( json_str )),
                                 kvp( "createdAt", b_date{now} ));
 
       if (!accounts.insert_one(doc.view())) {
