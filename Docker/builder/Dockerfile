@@ -60,7 +60,7 @@ RUN git clone --depth 1 https://github.com/cryptonomex/secp256k1-zkp \
     && make -j$(nproc) install \
     && cd .. && rm -rf secp256k1-zkp
 
-RUN git clone --depth 1 -b releases/stable https://github.com/mongodb/mongo-cxx-driver \
+RUN git clone --depth 1 -b releases/v3.2 https://github.com/mongodb/mongo-cxx-driver \
     && cd mongo-cxx-driver \
     && cmake -H. -Bbuild -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
     && cmake --build build --target install \

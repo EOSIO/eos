@@ -1,6 +1,8 @@
 from testUtils import Utils
-from testUtils import Cluster
-from testUtils import WalletMgr
+from Cluster import Cluster
+from WalletMgr import WalletMgr
+from datetime import datetime
+import platform
 
 import argparse
 
@@ -77,10 +79,23 @@ class TestHelper(object):
             parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
         if "--clean-run" in includeArgs:
             parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
+        if "--sanity-test" in includeArgs:
+            parser.add_argument("--sanity-test", help="Validates nodeos and kleos are in path and can be started up.", action='store_true')
 
         args = parser.parse_args()
         return args
 
+    @staticmethod
+    def printSystemInfo(prefix):
+        """Print system information to stdout. Print prefix first."""
+        if prefix:
+            Utils.Print(str(prefix))
+        clientVersion=Cluster.getClientVersion()
+        Utils.Print("UTC time: %s" % str(datetime.utcnow()))
+        Utils.Print("EOS Client version: %s" % (clientVersion))
+        Utils.Print("Processor: %s" % (platform.processor()))
+        Utils.Print("OS name: %s" % (platform.platform()))
+    
     @staticmethod
     # pylint: disable=too-many-arguments
     def shutdown(cluster, walletMgr, testSuccessful=True, killEosInstances=True, killWallet=True, keepLogs=False, cleanRun=True, dumpErrorDetails=False):
