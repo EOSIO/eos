@@ -745,44 +745,47 @@ struct controller_impl {
 
       auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
 
+      //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
+      if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
 
+         const auto& gpo = db.get<global_property_object>();
+         if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
+             ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
+             pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
+             !was_pending_promoted // ... and not just because it was promoted to active at the start of this block, then:
+         )
+            {
+               // Promote proposed schedule to pending schedule.
+               if( !replaying ) {
+                  ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                        ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
+                        ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
+                        ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+               }
+               pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
+               db.modify( gpo, [&]( auto& gp ) {
+                     gp.proposed_schedule_block_num = optional<block_num_type>();
+                     gp.proposed_schedule.clear();
+                  });
+            }
 
-      const auto& gpo = db.get<global_property_object>();
-      if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
-          ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
-          pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
-          !was_pending_promoted // ... and not just because it was promoted to active at the start of this block, then:
-        )
-      {
-         // Promote proposed schedule to pending schedule.
-         if( !replaying ) {
-            ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                  ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                  ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
-                  ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+         try {
+            auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+            push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
+         } catch( const boost::interprocess::bad_alloc& e  ) {
+            elog( "on block transaction failed due to a bad allocation" );
+            throw;
+         } catch( const fc::exception& e ) {
+            wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+            edump((e.to_detail_string()));
+         } catch( ... ) {
+            wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
          }
-         pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
-         db.modify( gpo, [&]( auto& gp ) {
-            gp.proposed_schedule_block_num = optional<block_num_type>();
-            gp.proposed_schedule.clear();
-         });
+
+         clear_expired_input_transactions();
+         update_producers_authority();
       }
 
-      try {
-         auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
-         push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
-      } catch( const boost::interprocess::bad_alloc& e  ) {
-         elog( "on block transaction failed due to a bad allocation" );
-         throw;
-      } catch( const fc::exception& e ) {
-         wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-         edump((e.to_detail_string()));
-      } catch( ... ) {
-         wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-      }
-
-      clear_expired_input_transactions();
-      update_producers_authority();
       guard_pending.cancel();
    } // start_block
 
