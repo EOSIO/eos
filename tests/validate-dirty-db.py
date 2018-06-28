@@ -59,7 +59,7 @@ def runNodeosAndGetOutput(myTimeout=3):
         proc.send_signal(signal.SIGKILL)
         return (False, None)
 
-    if debug: Print("Returning success status.")
+    if debug: Print("Returning success.")
     return (True, output)
 
 random.seed(seed) # Use a fixed seed for repeatability.
@@ -101,10 +101,10 @@ try:
         # pylint: disable=unsubscriptable-object
         stderr= ret[1]["stderr"]
         retCode=ret[1]["returncode"]
-        assert retCode == 2, "actual return code: %d" % (retCode)
+        assert retCode == 2, "actual return code: %s" % str(retCode)
         assert("database dirty flag set" in stderr)
 
-    if debug: Print("Setting test success state.")
+    if debug: Print("Setting test result to success.")
     testSuccessful=True
 finally:
     if debug: Print("Cleanup in finally block.")
