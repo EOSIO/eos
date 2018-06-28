@@ -34,10 +34,9 @@ using login_request_container = boost::multi_index_container<
 
 class login_plugin_impl {
  public:
-   login_plugin_impl(controller& db) : db(db) {}
-
-   controller& db;
    login_request_container requests{};
+   uint32_t max_login_requests = 1000000;
+   uint32_t max_login_timeout = 60;
 
    void expire_requests() {
       auto& index = requests.get<login_request_time_index>();
@@ -47,11 +46,21 @@ class login_plugin_impl {
    }
 };
 
-login_plugin::login_plugin() {}
+login_plugin::login_plugin() : my{std::make_unique<login_plugin_impl>()} {}
 login_plugin::~login_plugin() {}
 
-void login_plugin::set_program_options(options_description&, options_description&) {}
-void login_plugin::plugin_initialize(const variables_map&) {}
+void login_plugin::set_program_options(options_description&, options_description& cfg) {
+   cfg.add_options() //
+       ("max-login-requests", bpo::value<uint32_t>()->default_value(1000000),
+        "The maximum number of pending login requests") //
+       ("max-login-timeout", bpo::value<uint32_t>()->default_value(60),
+        "The maximum timeout for pending login requests (in seconds)");
+}
+
+void login_plugin::plugin_initialize(const variables_map& options) {
+   my->max_login_requests = options.at("max-login-requests").as<uint32_t>();
+   my->max_login_timeout = options.at("max-login-timeout").as<uint32_t>();
+}
 
 #define CALL(call_name, http_response_code)                                                                            \
    {                                                                                                                   \
@@ -69,7 +78,6 @@ void login_plugin::plugin_initialize(const variables_map&) {}
 
 void login_plugin::plugin_startup() {
    ilog("starting login_plugin");
-   my.reset(new login_plugin_impl(app().get_plugin<chain_plugin>().chain()));
    app().get_plugin<http_plugin>().add_api({
        CALL(start_login_request, 200), //
        CALL(finalize_login_request, 200),
@@ -83,16 +91,16 @@ void login_plugin::plugin_shutdown() {}
 
 login_plugin::start_login_request_results
 login_plugin::start_login_request(const login_plugin::start_login_request_params& params) {
-   // todo: limit how far in the future timeout can be
-   // todo: limit number of requests
    my->expire_requests();
    EOS_ASSERT(params.expiration_time > fc::time_point::now(), fc::timeout_exception,
               "Requested expiration time ${expiration_time} is in the past",
               ("expiration_time", params.expiration_time));
+   EOS_ASSERT(my->requests.size() < my->max_login_requests, fc::timeout_exception, "Too many pending login requests");
    login_request request;
    request.server_ephemeral_priv_key = chain::private_key_type::generate_r1();
    request.server_ephemeral_pub_key = request.server_ephemeral_priv_key.get_public_key();
-   request.expiration_time = params.expiration_time;
+   request.expiration_time =
+       std::min(params.expiration_time, fc::time_point_sec{fc::time_point::now()} + my->max_login_timeout);
    my->requests.insert(request);
    return {request.server_ephemeral_pub_key};
 }
@@ -125,7 +133,8 @@ login_plugin::finalize_login_request(const login_plugin::finalize_login_request_
 
    try {
       auto noop_checktime = [] {};
-      my->db.get_authorization_manager().check_authorization( //
+      auto& chain = app().get_plugin<chain_plugin>().chain();
+      chain.get_authorization_manager().check_authorization( //
           params.permission.actor, params.permission.permission, result.recovered_keys, {}, fc::microseconds(0),
           noop_checktime, true);
       result.permission_satisfied = true;
