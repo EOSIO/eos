@@ -169,9 +169,9 @@ namespace eosio { namespace chain {
 
    type_name abi_serializer::fundamental_type(const type_name& type)const {
       if( is_array(type) ) {
-         return type_name(string(type).substr(0, type.size()-2));
+         return type_name(string(type).substr(0, type.size()-string("[]").size()));
       } else if ( is_optional(type) ) {
-         return type_name(string(type).substr(0, type.size()-1));
+         return type_name(string(type).substr(0, type.size()-string("?").size()));
       } else {
        return type;
       }
