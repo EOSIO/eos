@@ -152,6 +152,8 @@ namespace eosio { namespace chain {
 
          uint32_t             fork_db_head_block_num()const;
          block_id_type        fork_db_head_block_id()const;
+         time_point           fork_db_head_block_time()const;
+         account_name         fork_db_head_block_producer()const;
 
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;

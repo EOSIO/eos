@@ -166,7 +166,6 @@ struct controller_impl {
       FC_ASSERT( log_head );
       auto lh_block_num = log_head->block_num();
 
-      emit( self.irreversible_block, s );
       db.commit( s->block_num );
 
       if( s->block_num <= lh_block_num ) {
@@ -192,6 +191,7 @@ struct controller_impl {
          fork_db.set_validity( s, true );
          head = s;
       }
+      emit( self.irreversible_block, s );
    }
 
    void init() {
@@ -1296,6 +1296,14 @@ uint32_t controller::fork_db_head_block_num()const {
 
 block_id_type controller::fork_db_head_block_id()const {
    return my->fork_db.head()->id;
+}
+
+time_point controller::fork_db_head_block_time()const {
+   return my->fork_db.head()->header.timestamp;
+}
+
+account_name  controller::fork_db_head_block_producer()const {
+   return my->fork_db.head()->header.producer;
 }
 
 block_state_ptr controller::pending_block_state()const {
