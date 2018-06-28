@@ -39,7 +39,10 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
       osm << "speculative";
    } else if ( m == eosio::chain::db_read_mode::HEAD ) {
       osm << "head";
+   } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
+      osm << "irreversible";
    }
+
    return osm;
 }
 
@@ -61,6 +64,8 @@ void validate(boost::any& v,
      v = boost::any(eosio::chain::db_read_mode::SPECULATIVE);
   } else if ( s == "head" ) {
      v = boost::any(eosio::chain::db_read_mode::HEAD);
+  } else if ( s == "irreversible" ) {
+     v = boost::any(eosio::chain::db_read_mode::IRREVERSIBLE);
   } else {
      throw validation_error(validation_error::invalid_option_value);
   }

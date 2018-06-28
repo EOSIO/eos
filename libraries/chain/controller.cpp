@@ -185,6 +185,7 @@ struct controller_impl {
          reversible_blocks.remove( *objitr );
          objitr = ubi.begin();
       }
+
       if ( read_mode == db_read_mode::IRREVERSIBLE ) {
          apply_block( s->block, controller::block_status::complete );
          fork_db.mark_in_current_chain( s, true );
@@ -880,6 +881,7 @@ struct controller_impl {
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
+
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
             maybe_switch_forks( s );
          }
@@ -1286,6 +1288,14 @@ const block_header& controller::head_block_header()const {
 }
 block_state_ptr controller::head_block_state()const {
    return my->head;
+}
+
+uint32_t controller::fork_db_head_block_num()const {
+   return my->fork_db.head()->block_num;
+}
+
+block_id_type controller::fork_db_head_block_id()const {
+   return my->fork_db.head()->id;
 }
 
 block_state_ptr controller::pending_block_state()const {

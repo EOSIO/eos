@@ -150,6 +150,9 @@ namespace eosio { namespace chain {
          const block_header&  head_block_header()const;
          block_state_ptr      head_block_state()const;
 
+         uint32_t             fork_db_head_block_num()const;
+         block_id_type        fork_db_head_block_id()const;
+
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
 

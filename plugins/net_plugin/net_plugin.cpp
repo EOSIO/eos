@@ -878,7 +878,7 @@ namespace eosio {
 
    void connection::blk_send_branch() {
       controller &cc = my_impl->chain_plug->chain();
-      uint32_t head_num = cc.head_block_num ();
+      uint32_t head_num = cc.fork_db_head_block_num ();
       notice_message note;
       note.known_blocks.mode = normal;
       note.known_blocks.pending = 0;
@@ -893,7 +893,7 @@ namespace eosio {
       try {
          lib_num = cc.last_irreversible_block_num();
          lib_id = cc.last_irreversible_block_id();
-         head_id = cc.head_block_id();
+         head_id = cc.fork_db_head_block_id();
       }
       catch (const assert_exception &ex) {
          elog( "unable to retrieve block info: ${n} for ${p}",("n",ex.to_string())("p",peer_name()));
@@ -1315,7 +1315,7 @@ namespace eosio {
          bool fhset = c->fork_head != block_id_type();
          fc_dlog(logger, "fork_head_num = ${fn} fork_head set = ${s}",
                  ("fn", c->fork_head_num)("s", fhset));
-            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().head_block_num();
+            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().fork_db_head_block_num();
       }
       return state != in_sync;
    }
@@ -1336,14 +1336,14 @@ namespace eosio {
 
    bool sync_manager::sync_required( ) {
       fc_dlog(logger, "last req = ${req}, last recv = ${recv} known = ${known} our head = ${head}",
-              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).head_block_num( )));
+              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).fork_db_head_block_num( )));
 
       return( sync_last_requested_num < sync_known_lib_num ||
-              chain_plug->chain( ).head_block_num( ) < sync_last_requested_num );
+              chain_plug->chain( ).fork_db_head_block_num( ) < sync_last_requested_num );
    }
 
    void sync_manager::request_next_chunk( connection_ptr conn ) {
-      uint32_t head_block = chain_plug->chain().head_block_num();
+      uint32_t head_block = chain_plug->chain().fork_db_head_block_num();
 
       if (head_block < sync_last_requested_num && source && source->current()) {
          fc_ilog (logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
@@ -1444,7 +1444,7 @@ namespace eosio {
 
       if (!sync_required()) {
          uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
-         uint32_t hnum = chain_plug->chain().head_block_num();
+         uint32_t hnum = chain_plug->chain().fork_db_head_block_num();
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b",bnum)("h",hnum)("t",target));
          return;
@@ -1491,8 +1491,8 @@ namespace eosio {
       //
       //-----------------------------
 
-      uint32_t head = cc.head_block_num( );
-      block_id_type head_id = cc.head_block_id();
+      uint32_t head = cc.fork_db_head_block_num( );
+      block_id_type head_id = cc.fork_db_head_block_id();
       if (head_id == msg.head_id) {
          fc_dlog(logger, "sync check state 0");
          // notify peer of our pending transactions
@@ -2879,7 +2879,7 @@ namespace eosio {
       controller& cc = my_impl->chain_plug->chain();
       hello.head_id = fc::sha256();
       hello.last_irreversible_block_id = fc::sha256();
-      hello.head_num = cc.head_block_num();
+      hello.head_num = cc.fork_db_head_block_num();
       hello.last_irreversible_block_num = cc.last_irreversible_block_num();
       if( hello.last_irreversible_block_num ) {
          try {
