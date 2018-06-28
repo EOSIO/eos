@@ -282,7 +282,8 @@ void apply_eosio_deleteauth(apply_context& context) {
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       EOS_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete a linked authority. Unlink the authority first");
+                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.", 
+                 ("code", string(range.first->code))("type", string(range.first->message_type)));
    }
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});
