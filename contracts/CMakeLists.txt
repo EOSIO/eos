@@ -35,6 +35,7 @@ add_subdirectory(tic_tac_toe)
 add_subdirectory(payloadless)
 add_subdirectory(addressbook)
 add_subdirectory(messenger)
+add_subdirectory(message)
 
 
 
