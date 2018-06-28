@@ -149,9 +149,9 @@ namespace eosio { namespace chain {
       string stype = type;
       FC_ASSERT( is_integer(type), "${stype} is not an integer type", ("stype",stype));
       if( boost::starts_with(stype, "uint") ) {
-         return boost::lexical_cast<int>(stype.substr(4));
+         return boost::lexical_cast<int>(stype.substr(string("uint").size()));
       } else {
-         return boost::lexical_cast<int>(stype.substr(3));
+         return boost::lexical_cast<int>(stype.substr(string("int").size()));
       }
    }
 
