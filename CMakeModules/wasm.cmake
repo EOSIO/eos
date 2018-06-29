@@ -75,10 +75,6 @@ macro(compile_wast)
        list(APPEND WASM_COMMAND -isystem ${folder})
     endforeach()
 
-    foreach(folder ${ARG_SYSTEM_INCLUDE_FOLDERS})
-       list(APPEND WASM_COMMAND -isystem ${folder})
-    endforeach()
-
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
       COMMAND ${WASM_COMMAND}
@@ -201,7 +197,11 @@ macro(add_wast_executable)
   set(extra_target_dependency)
 
   # For CLion code insight
-  include_directories(..)
+  foreach(folder ${ARG_INCLUDE_FOLDERS})
+    include_directories(${folder})
+  endforeach()
+  include_directories(${Boost_INCLUDE_DIR})
+
   if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${target}.hpp)
     set(HEADER_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${target}.hpp)
   endif()
