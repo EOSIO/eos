@@ -13,6 +13,20 @@ eosio::chain::asset core_from_string(const std::string& s) {
 }
 
 namespace eosio { namespace testing {
+   std::string read_wast( const char* fn ) {
+      std::ifstream wast_file(fn);
+      FC_ASSERT( wast_file.is_open(), "wast file cannot be found" );
+      wast_file.seekg(0, std::ios::end);
+      std::vector<char> wast; 
+      int len = wast_file.tellg();
+      FC_ASSERT( len >= 0, "wast file length is -1" );
+      wast.resize(len+1);
+      wast_file.seekg(0, std::ios::beg);
+      wast_file.read(wast.data(), wast.size());
+      wast[wast.size()-1] = '\0';
+      wast_file.close();
+      return {wast.data()};
+   }
 
    std::vector<uint8_t> read_wasm( const char* fn ) {
       std::ifstream wasm_file(fn, std::ios::binary);
@@ -247,7 +261,7 @@ namespace eosio { namespace testing {
    }
 
 
-  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
+  void base_tester::set_transaction_headers( transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 
