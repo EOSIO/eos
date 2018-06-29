@@ -267,7 +267,6 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
-      fork_db.close();
 
       db.flush();
       reversible_blocks.flush();
@@ -1214,6 +1213,10 @@ controller::controller( const controller::config& cfg )
 
 controller::~controller() {
    my->abort_block();
+   //close fork_db here, because it can generate "irreversible" signal to this controller,
+   //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
+   //for that we need 'my' to be valid pointer pointing to valid controller_impl.
+   my->fork_db.close();
 }
 
 
