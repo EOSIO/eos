@@ -76,7 +76,7 @@ class WalletMgr(object):
 
     def importKey(self, account, wallet):
         warningMsg="Key already in wallet"
-        cmd="%s %s wallet import --name %s %s" % (
+        cmd="%s %s wallet import --name %s --private-key %s" % (
             Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
@@ -92,7 +92,7 @@ class WalletMgr(object):
         if account.activePrivateKey is None:
             Utils.Print("WARNING: Active private key is not defined for account \"%s\"" % (account.name))
         else:
-            cmd="%s %s wallet import --name %s %s" % (
+            cmd="%s %s wallet import --name %s  --private-key %s" % (
                 Utils.EosClientPath, self.endpointArgs, wallet.name, account.activePrivateKey)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:

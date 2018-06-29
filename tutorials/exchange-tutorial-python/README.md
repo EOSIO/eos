@@ -20,9 +20,9 @@ Deleting the `transactions.txt` file will prevent replay from working.
 
 `cleos create key`
 
-`cleos wallet import <private key from step 1>`
+`cleos wallet import  --private-key <private key from step 1>`
 
-`cleos wallet import <private key from step 2>`
+`cleos wallet import  --private-key <private key from step 2>`
 
 `cleos create account eosio <account_name> <public key from step 1> <public key from step 2>`
 
