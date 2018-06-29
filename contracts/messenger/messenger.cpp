@@ -123,7 +123,6 @@ public:
 
       message_index messages( _self, _self ); // code, scope
 
-
       auto index = messages.get_index<N( msgsha )>();
       auto itr = index.find( message::to_key( msg_sha ));
       if( itr == index.end() ) { // verify already exist
@@ -132,6 +131,15 @@ public:
       }
 
       index.erase( itr );
+   }
+
+   //@abi action
+   void printmsg( account_name other ) {
+      message_index messages( other, other ); // code, scope
+
+      for (auto& msg : messages) {
+         eosio::print("from: ", eosio::name{msg.from}, ", to: ", eosio::name{msg.to}, "\n");
+      }
    }
 
    //@abi action
@@ -330,7 +338,7 @@ private:
 
 };
 
-EOSIO_ABI( messenger, (sendmsg)( sendsha )( removemsg )( removesha )
+EOSIO_ABI( messenger, (sendmsg)( sendsha )( removemsg )( removesha )( printmsg )
                       ( addgroup )( removegroup )( sendgroup )
                       ( spam )
                       ( addblacklist )( rmblacklist )
