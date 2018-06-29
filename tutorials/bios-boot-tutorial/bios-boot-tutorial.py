@@ -199,13 +199,6 @@ def claimRewards():
             times.append(getJsonOutput(args.cleos + 'system claimrewards -j ' + row['owner'])['processed']['elapsed'])
     print('Elapsed time for claimrewards:', times)
 
-def vote(b, e):
-    for i in range(b, e):
-        voter = accounts[i]['name']
-        prods = random.sample(range(firstProducer, firstProducer + numProducers), args.num_producers_vote)
-        prods = ' '.join(map(lambda x: accounts[x]['name'], prods))
-        retry(args.cleos + 'system voteproducer prods ' + voter + ' ' + prods)
-
 def proxyVotes(b, e):
     vote(firstProducer, firstProducer + 1)
     proxy = accounts[firstProducer]['name']
@@ -235,8 +228,8 @@ def resign(account, controller):
     sleep(1)
     run(args.cleos + 'get account ' + account)
 
-def randomTransfer(b, e):
-    for j in range(20):
+def randomTransfer(b, e, t):
+    for j in range(t):
         src = accounts[random.randint(b, e - 1)]['name']
         dest = src
         while dest == src:
@@ -324,7 +317,17 @@ def stepResign():
         resign(a, 'eosio')
 def stepTransfer():
     while True:
-        randomTransfer(0, args.num_senders)
+        randomTransfer(0, args.num_senders,20)
+def stepTPS():
+    start = time.time()
+    numtps = args.num_tps
+    i = 0
+    while i < numtps :
+        print ("on: ",i)
+        randomTransfer(0, args.num_senders,1)
+        i=i+1
+    elapsed = (time.time() - start)
+    print ("Time used:",elapsed,"s tps=",round(numtps/elapsed))
 def stepLog():
     run('tail -n 60 ' + args.nodes_dir + '00-eosio/stderr')
 
@@ -349,6 +352,7 @@ commands = [
     ('q', 'resign',         stepResign,                 True,    "Resign eosio"),
     ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
+    ('A', 'tps',            stepTps,                    False,   "calculate the tps"),
     ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
 ]
 
@@ -372,6 +376,7 @@ parser.add_argument('--producer-limit', metavar='', help="Maximum number of prod
 parser.add_argument('--min-producer-funds', metavar='', help="Minimum producer funds", type=float, default=1000.0000)
 parser.add_argument('--num-producers-vote', metavar='', help="Number of producers for which each user votes", type=int, default=20)
 parser.add_argument('--num-voters', metavar='', help="Number of voters", type=int, default=10)
+parser.add_argument('--num-tps', metavar='', help="Number of trxs for calculating tps", type=int, default=1000)
 parser.add_argument('--num-senders', metavar='', help="Number of users to transfer funds randomly", type=int, default=10)
 parser.add_argument('--producer-sync-delay', metavar='', help="Time (s) to sleep to allow producers to sync", type=int, default=80)
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
