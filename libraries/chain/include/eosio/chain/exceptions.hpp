@@ -283,6 +283,12 @@ namespace eosio { namespace chain {
                                     3120006, "No available wallet" )
       FC_DECLARE_DERIVED_EXCEPTION( wallet_unlocked_exception,         wallet_exception,
                                     3120007, "Already unlocked" )
+      FC_DECLARE_DERIVED_EXCEPTION( key_exist_exception,               wallet_exception,
+                                    3120008, "Key already exists" )
+      FC_DECLARE_DERIVED_EXCEPTION( key_nonexistent_exception,         wallet_exception,
+                                    3120009, "Nonexistent key" )
+      FC_DECLARE_DERIVED_EXCEPTION( unsupported_key_type_exception,    wallet_exception,
+                                    3120009, "Unsupported key type" )
 
    FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
                                  3130000, "actor or contract whitelist/blacklist exception" )

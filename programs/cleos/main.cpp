@@ -2207,7 +2207,7 @@ int main( int argc, char** argv ) {
    importWallet->add_option("--private-key", wallet_key_str, localized("Private key in WIF format to import"));
    importWallet->set_callback([&wallet_name, &wallet_key_str] {
       if( wallet_key_str.size() == 0 ) {
-         std::cout << localized("password: ");
+         std::cout << localized("private key: ");
          fc::set_console_echo(false);
          std::getline( std::cin, wallet_key_str, '\n' );
          fc::set_console_echo(true);
