@@ -265,6 +265,9 @@ namespace eosio { namespace chain {
       undo_session.squash();
    }
 
+   void transaction_context::undo() {
+      undo_session.undo();
+   }
 
    void transaction_context::check_net_usage()const {
       if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
