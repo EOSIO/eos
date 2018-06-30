@@ -100,7 +100,8 @@ using boost::signals2::scoped_connection;
 class chain_plugin_impl {
 public:
    chain_plugin_impl()
-   :accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
+   :pre_accepted_block_channel(app().get_channel<channels::pre_accepted_block>())
+   ,accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
    ,accepted_block_channel(app().get_channel<channels::accepted_block>())
    ,irreversible_block_channel(app().get_channel<channels::irreversible_block>())
    ,accepted_transaction_channel(app().get_channel<channels::accepted_transaction>())
@@ -124,6 +125,7 @@ public:
    fc::optional<vm_type>            wasm_runtime;
 
    // retained references to channels for easy publication
+   channels::pre_accepted_block::channel_type&     pre_accepted_block_channel;
    channels::accepted_block_header::channel_type&  accepted_block_header_channel;
    channels::accepted_block::channel_type&         accepted_block_channel;
    channels::irreversible_block::channel_type&     irreversible_block_channel;
@@ -143,6 +145,7 @@ public:
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
 
    // scoped connections for chain controller
+   fc::optional<scoped_connection>                                   pre_accepted_block_connection;
    fc::optional<scoped_connection>                                   accepted_block_header_connection;
    fc::optional<scoped_connection>                                   accepted_block_connection;
    fc::optional<scoped_connection>                                   irreversible_block_connection;
@@ -300,7 +303,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       for(auto cp : cps)
       {
          auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
-         my->loaded_checkpoints[item.first] = item.second;
+         auto itr = my->loaded_checkpoints.find(item.first);
+         if( itr != my->loaded_checkpoints.end() ) {
+            FC_ASSERT( itr->second == item.second,
+                       "redefining existing checkpoint at block number ${num}: original: ${orig} new: ${new}",
+                       ("num", item.first)("orig", itr->second)("new", item.second)
+            );
+         } else {
+            my->loaded_checkpoints[item.first] = item.second;
+         }
       }
    }
 
@@ -461,6 +472,19 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    });
 
    // relay signals to channels
+   my->pre_accepted_block_connection = my->chain->pre_accepted_block.connect([this](const signed_block_ptr& blk) {
+      auto itr = my->loaded_checkpoints.find( blk->block_num() );
+      if( itr != my->loaded_checkpoints.end() ) {
+         auto id = blk->id();
+         EOS_ASSERT( itr->second == id, checkpoint_exception,
+                     "Checkpoint does not match for block number ${num}: expected: ${expected} actual: ${actual}",
+                     ("num", blk->block_num())("expected", itr->second)("actual", id)
+         );
+      }
+
+      my->pre_accepted_block_channel.publish(blk);
+   });
+
    my->accepted_block_header_connection = my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
       my->accepted_block_header_channel.publish(blk);
    });
@@ -493,7 +517,6 @@ void chain_plugin::plugin_startup()
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
-      /// TODO: my->chain->add_checkpoints(my->loaded_checkpoints);
    }
 
    ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
@@ -503,6 +526,7 @@ void chain_plugin::plugin_startup()
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_plugin::plugin_shutdown() {
+   my->pre_accepted_block_connection.reset();
    my->accepted_block_header_connection.reset();
    my->accepted_block_connection.reset();
    my->irreversible_block_connection.reset();
