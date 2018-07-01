@@ -115,6 +115,8 @@ public:
    bfs::path                        blocks_dir;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
+   flat_set<uint32_t>               explicit_snapshot_block_numbers;
+   map<uint8_t, flat_set<uint32_t>> pattern_snapshot_block_numbers;
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
@@ -153,6 +155,83 @@ public:
    fc::optional<scoped_connection>                                   applied_transaction_connection;
    fc::optional<scoped_connection>                                   accepted_confirmation_connection;
 
+   void modify_snapshot_mark( const string& snap, bool should_exist ) {
+      if( snap.size() > 0 && snap[0] == '*' ) {
+         uint8_t  log10_of_power_of_10_upper_bound = 0;
+         uint64_t power_of_10_upper_bound = 1;
+         uint64_t blk_num_remainder = 0;
+         auto end = snap.rend() - 1;
+         for( auto c = snap.rbegin(); c != end; ++c ) {
+            FC_ASSERT( '0' <= *c && *c <= '9',
+                       "Invalid snapshot pattern: '${pattern}'. Only decimal digits allowed after asterisk.",
+                       ("pattern", snap)
+            );
+            blk_num_remainder += power_of_10_upper_bound * (*c - '0');
+            power_of_10_upper_bound *= 10;
+            ++log10_of_power_of_10_upper_bound;
+            FC_ASSERT( power_of_10_upper_bound <= std::numeric_limits<uint32_t>::max(),
+                       "Invalid snapshot pattern: '${pattern}'. Block number pattern is too large to fit in uint32_t.",
+                       ("pattern", snap)
+            );
+         }
+         if( should_exist ) {
+            auto res = pattern_snapshot_block_numbers.emplace( log10_of_power_of_10_upper_bound, flat_set<uint32_t>() );
+            res.first->second.insert( static_cast<uint32_t>(blk_num_remainder) );
+         } else {
+            auto itr = pattern_snapshot_block_numbers.find( log10_of_power_of_10_upper_bound );
+            if( itr != pattern_snapshot_block_numbers.end() ) {
+               itr->second.erase( static_cast<uint32_t>(blk_num_remainder) );
+            }
+         }
+      } else {
+         try {
+            auto blk_num = boost::lexical_cast<int64_t>(snap.c_str(), snap.size());
+            FC_ASSERT( 0 <= blk_num && blk_num <= std::numeric_limits<uint32_t>::max(),
+                       "Invalid snapshot block number: '${pattern}'. Number must fit into uint32_t.",
+                       ("pattern", snap)
+            );
+            if( should_exist ) {
+               explicit_snapshot_block_numbers.insert( static_cast<uint32_t>(blk_num) );
+            } else {
+               explicit_snapshot_block_numbers.erase( static_cast<uint32_t>(blk_num) );
+            }
+         } catch( const boost::bad_lexical_cast& ) {
+            FC_ASSERT( false, "Invalid snapshot block number: '${pattern}'. Bad lexical cast.", ("pattern", snap) );
+         }
+      }
+   }
+
+   bool matches_snapshot_mark( uint32_t block_num )const {
+      {
+         auto itr = explicit_snapshot_block_numbers.find( block_num );
+         if( itr != explicit_snapshot_block_numbers.end() )
+            return true;
+      }
+
+      if( pattern_snapshot_block_numbers.size() > 0 && pattern_snapshot_block_numbers.begin()->first == 0 )
+         return true; // shortcut for snapshot = "*" case
+
+      uint8_t  exponent = 0;
+      uint32_t value = 1;
+      for( const auto& p : pattern_snapshot_block_numbers ) {
+         while( p.first > exponent ) {
+            value *= 10;
+            ++exponent;
+         }
+
+         uint32_t block_num_remainder = block_num % value;
+         auto itr = p.second.find( block_num_remainder );
+         if( itr != p.second.end() ) {
+            return true;
+         }
+      }
+
+      return false;
+   }
+
+   void generate_snapshot()const {
+      //TODO: Implement code to actually take snapshot of state and save to disk.
+   }
 
 };
 
@@ -168,6 +247,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("snapshot", bpo::value<vector<string>>()->composing()->multitoken(),
+          "Blocks numbers (or block number patterns, e.g. \"*000\") after which to take a snapshot of state (may specify multiple times)")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>(), "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
@@ -300,8 +381,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       auto cps = options.at("checkpoint").as<vector<string>>();
       my->loaded_checkpoints.reserve(cps.size());
-      for(auto cp : cps)
-      {
+      for( const auto& cp : cps) {
          auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
          auto itr = my->loaded_checkpoints.find(item.first);
          if( itr != my->loaded_checkpoints.end() ) {
@@ -312,6 +392,18 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          } else {
             my->loaded_checkpoints[item.first] = item.second;
          }
+      }
+   }
+
+   if( options.count("snapshot") )
+   {
+      auto snaps = options.at("snapshot").as<vector<string>>();
+      for( const auto& snap : snaps ) {
+         my->modify_snapshot_mark( snap, true );
+      }
+      if( snaps.size() > 0 ) {
+         wlog( "Snapshots enabled" );
+         wdump((my->explicit_snapshot_block_numbers)(my->pattern_snapshot_block_numbers));
       }
    }
 
@@ -491,6 +583,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->accepted_block_connection = my->chain->accepted_block.connect([this](const block_state_ptr& blk) {
       my->accepted_block_channel.publish(blk);
+
+      if( my->matches_snapshot_mark( blk->block_num ) ) {
+         // Snapshot was requested at the end of the current block.
+         // The snapshot must be taken right here synchronously before any further state changes.
+         wlog( "Taking snapshot at block ${num}", ("num", blk->block_num) );
+         my->generate_snapshot();
+      };
    });
 
    my->irreversible_block_connection = my->chain->irreversible_block.connect([this](const block_state_ptr& blk) {
