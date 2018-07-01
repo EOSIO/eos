@@ -36,6 +36,8 @@ namespace eosio {
    using chain::abi_def;
    using chain::abi_serializer;
 
+   class chain_plugin;
+
 namespace chain_apis {
 struct empty{};
 
@@ -60,12 +62,13 @@ uint64_t convert_to_type(const string& str, const string& desc);
 
 class read_only {
    const controller& db;
+   const chain_plugin& plugin;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db)
-      : db(db) {}
+   read_only(const controller& db, const chain_plugin& plugin)
+      : db(db), plugin(plugin) {}
 
    using get_info_params = empty;
 
@@ -258,6 +261,15 @@ public:
 
    get_producers_result get_producers( const get_producers_params& params )const;
 
+   using get_snapshot_marks_params = empty;
+
+   struct get_snapshot_marks_result {
+      flat_set<uint32_t>   explicit_snapshot_block_numbers;
+      vector<string>       snapshot_block_patterns;
+   };
+
+   get_snapshot_marks_result get_snapshot_marks( const get_snapshot_marks_params& params )const;
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -374,7 +386,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain()); }
+   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), *this); }
    chain_apis::read_write get_read_write_api();
 
    void accept_block( const chain::signed_block_ptr& block );
@@ -399,6 +411,8 @@ public:
 
 private:
    unique_ptr<class chain_plugin_impl> my;
+
+   friend class chain_apis::read_only;
 };
 
 }
@@ -438,3 +452,5 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+
+FC_REFLECT( eosio::chain_apis::read_only::get_snapshot_marks_result, (explicit_snapshot_block_numbers)(snapshot_block_patterns) );

@@ -964,6 +964,35 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    return result;
 }
 
+read_only::get_snapshot_marks_result read_only::get_snapshot_marks( const read_only::get_snapshot_marks_params& params )const
+{
+   read_only::get_snapshot_marks_result result;
+
+   result.explicit_snapshot_block_numbers = plugin.my->explicit_snapshot_block_numbers;
+
+   uint8_t  exponent = 0;
+   uint32_t value = 1;
+   for( const auto& p : plugin.my->pattern_snapshot_block_numbers ) {
+      while( p.first > exponent ) {
+         value *= 10;
+         ++exponent;
+      }
+
+      for( auto blk_num_remainder : p.second ) {
+         uint64_t temp = value;
+         temp += blk_num_remainder;
+
+         string pattern = std::to_string(temp);
+         FC_ASSERT( pattern.size() > 0, "could not convert number to string: ${n}", ("n", temp) );
+         pattern[0] = '*';
+
+         result.snapshot_block_patterns.push_back( pattern );
+      }
+   }
+
+   return result;
+}
+
 template<typename Api>
 struct resolver_factory {
    static auto make(const Api *api) {

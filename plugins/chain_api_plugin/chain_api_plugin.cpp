@@ -19,14 +19,28 @@ public:
       : db(db) {}
 
    controller& db;
+   bool enabled_snapshot_api = false;
 };
 
 
 chain_api_plugin::chain_api_plugin(){}
 chain_api_plugin::~chain_api_plugin(){}
 
-void chain_api_plugin::set_program_options(options_description&, options_description&) {}
-void chain_api_plugin::plugin_initialize(const variables_map&) {}
+void chain_api_plugin::set_program_options(options_description& cli, options_description& cfg) {
+   cfg.add_options()
+         ("enable-snapshot-api", bpo::bool_switch()->default_value(false),
+          "enables APIs to view and modify active snapshot marks")
+   ;
+}
+
+void chain_api_plugin::plugin_initialize(const variables_map& options) {
+   ilog("initializing chain_api_plugin");
+   my.reset(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
+   my->enabled_snapshot_api = options.at("enable-snapshot-api").as<bool>();
+   if( my->enabled_snapshot_api ) {
+      wlog( "chain_api_plugin configured to allow viewing and modifying snapshot marks" );
+   }
+}
 
 struct async_result_visitor : public fc::visitor<std::string> {
    template<typename T>
@@ -73,7 +87,6 @@ struct async_result_visitor : public fc::visitor<std::string> {
 
 void chain_api_plugin::plugin_startup() {
    ilog( "starting chain_api_plugin" );
-   my.reset(new chain_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
    auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
@@ -95,6 +108,14 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
       CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)
    });
+
+   if( my->enabled_snapshot_api ) {
+      app().get_plugin<http_plugin>().add_api({
+         CHAIN_RO_CALL(get_snapshot_marks, 200)//,
+         //CHAIN_RW_CALL(add_snapshot_marks, 200),
+         //CHAIN_RW_CALL(remove_snapshot_marks, 200)
+      });
+   }
 }
 
 void chain_api_plugin::plugin_shutdown() {}
