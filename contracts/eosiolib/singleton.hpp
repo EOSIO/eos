@@ -46,7 +46,7 @@ namespace  eosio {
          T get_or_create( account_name bill_to_account, const T& def = T() ) {
             auto itr = _t.find( pk_value );
             return itr != _t.end() ? itr->value
-               : _t.emplace(bill_to_account, [&](row& r) { r.value = def; });
+               : _t.emplace(bill_to_account, [&](row& r) { r.value = def; })->value;
          }
 
          void set( const T& value, account_name bill_to_account ) {
