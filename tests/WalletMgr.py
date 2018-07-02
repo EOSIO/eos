@@ -17,7 +17,7 @@ class WalletMgr(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=8899, host="localhost"):
+    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=9899, host="localhost"):
         self.walletd=walletd
         self.nodeosPort=nodeosPort
         self.nodeosHost=nodeosHost
@@ -181,7 +181,7 @@ class WalletMgr(object):
     def killall(self, allInstances=False):
         """Kill keos instances. allInstances will kill all keos instances running on the system."""
         if self.__walletPid:
-            Utils.Print("Killing wallet manager process %d:" % (self.__walletPid))
+            Utils.Print("Killing wallet manager process %d" % (self.__walletPid))
             os.kill(self.__walletPid, signal.SIGKILL)
 
         if allInstances:

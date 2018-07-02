@@ -54,7 +54,7 @@ cluster=Cluster()
 
 (fd, nodesFile) = tempfile.mkstemp()
 try:
-    Print("BEGIN")
+    TestHelper.printSystemInfo("BEGIN")
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
 

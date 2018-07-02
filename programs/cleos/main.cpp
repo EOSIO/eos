@@ -248,6 +248,15 @@ chain::action generate_nonce_action() {
    return chain::action( {}, config::null_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
+void prompt_for_wallet_password(string& pw, const string& name) {
+   if(pw.size() == 0 && name != "SecureEnclave") {
+      std::cout << localized("password: ");
+      fc::set_console_echo(false);
+      std::getline( std::cin, pw, '\n' );
+      fc::set_console_echo(true);
+   }
+}
+
 fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    //wdump((trx));
@@ -284,7 +293,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       trx.context_free_actions.emplace_back( generate_nonce_action() );
    }
 
-   trx.max_cpu_usage_ms = tx_max_net_usage;
+   trx.max_cpu_usage_ms = tx_max_cpu_usage;
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
@@ -548,7 +557,7 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
-   if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
+   if (boost::istarts_with(authorityJsonOrFile, "EOS") || boost::istarts_with(authorityJsonOrFile, "PUB_R1")) {
       try {
          return authority(public_key_type(authorityJsonOrFile));
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
@@ -1408,16 +1417,19 @@ void get_account( const string& accountName, bool json_format ) {
 
       std::cout << "net bandwidth: " << std::endl;
       if ( res.total_resources.is_object() ) {
+         auto net_total = to_asset(res.total_resources.get_object()["net_weight"].as_string());
+
+         if( net_total.get_symbol() != unstaking.get_symbol() ) {
+            // Core symbol of nodeos responding to the request is different than core symbol built into cleos
+            unstaking = asset( 0, net_total.get_symbol() ); // Correct core symbol for unstaking asset.
+            staked = asset( 0, net_total.get_symbol() ); // Correct core symbol for staked asset.
+         }
+
          if( res.self_delegated_bandwidth.is_object() ) {
             asset net_own =  asset::from_string( res.self_delegated_bandwidth.get_object()["net_weight"].as_string() );
             staked = net_own;
 
-            if( staked.get_symbol() != unstaking.get_symbol() ) {
-               // Core symbol of nodeos responding to the request is different than core symbol built into cleos
-               unstaking = asset( 0, staked.get_symbol() ); // Correct core symbol for unstaking asset.
-            }
-
-            auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+            auto net_others = net_total - net_own;
 
             std::cout << indent << "staked:" << std::setw(20) << net_own
                       << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
@@ -1425,7 +1437,7 @@ void get_account( const string& accountName, bool json_format ) {
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          }
          else {
-            auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string());
+            auto net_others = net_total;
             std::cout << indent << "delegated:" << std::setw(17) << net_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          }
@@ -1475,18 +1487,20 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << "cpu bandwidth:" << std::endl;
 
       if ( res.total_resources.is_object() ) {
+         auto cpu_total = to_asset(res.total_resources.get_object()["cpu_weight"].as_string());
+
          if( res.self_delegated_bandwidth.is_object() ) {
             asset cpu_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cpu_weight"].as_string() );
             staked += cpu_own;
 
-            auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+            auto cpu_others = cpu_total - cpu_own;
 
             std::cout << indent << "staked:" << std::setw(20) << cpu_own
                       << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
                       << indent << "delegated:" << std::setw(17) << cpu_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          } else {
-            auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string());
+            auto cpu_others = cpu_total;
             std::cout << indent << "delegated:" << std::setw(17) << cpu_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          }
@@ -1504,23 +1518,24 @@ void get_account( const string& accountName, bool json_format ) {
          auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
          fc::time_point refund_time = request_time + fc::days(3);
          auto now = res.head_block_time;
-         std::cout << std::fixed << setprecision(3);
-         std::cout << "unstaking tokens:" << std::endl;
-         std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);
-         if( now >= refund_time ) {
-            std::cout << " (available to claim now with 'eosio::refund' action)\n";
-         } else {
-            std::cout << " (funds will be available in " << to_pretty_time( (refund_time - now).count(), 0 ) << ")\n";
+         asset net = asset::from_string( obj["net_amount"].as_string() );
+         asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
+         unstaking = net + cpu;
 
-            asset net = asset::from_string( obj["net_amount"].as_string() );
-            asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
-            unstaking = net + cpu;
-
+         if( unstaking > asset( 0, unstaking.get_symbol() ) ) {
+            std::cout << std::fixed << setprecision(3);
+            std::cout << "unstaking tokens:" << std::endl;
+            std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);
+            if( now >= refund_time ) {
+               std::cout << " (available to claim now with 'eosio::refund' action)\n";
+            } else {
+               std::cout << " (funds will be available in " << to_pretty_time( (refund_time - now).count(), 0 ) << ")\n";
+            }
             std::cout << indent << std::left << std::setw(25) << "from net bandwidth:" << std::right << std::setw(18) << net << std::endl;
             std::cout << indent << std::left << std::setw(25) << "from cpu bandwidth:" << std::right << std::setw(18) << cpu << std::endl;
             std::cout << indent << std::left << std::setw(25) << "total:" << std::right << std::setw(18) << unstaking << std::endl;
+            std::cout << std::endl;
          }
-         std::cout << std::endl;
       }
 
       if( res.core_liquid_balance.valid() ) {
@@ -1707,7 +1722,7 @@ int main( int argc, char** argv ) {
 
       auto abi  = fc::json::to_pretty_string( result["abi"] );
       if( filename.size() ) {
-         std::cout << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+         std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
          std::ofstream abiout( filename.c_str() );
          abiout << abi;
       } else {
@@ -2014,23 +2029,23 @@ int main( int argc, char** argv ) {
             wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
       }
 
-      std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
+      std::cerr << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
       FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
-         std::cout << localized("Using already assembled WASM...") << std::endl;
+         std::cerr << localized("Using already assembled WASM...") << std::endl;
          wasm = vector<uint8_t>(wast.begin(), wast.end());
       }
       else {
-         std::cout << localized("Assembling WASM...") << std::endl;
+         std::cerr << localized("Assembling WASM...") << std::endl;
          wasm = wast_to_wasm(wast);
       }
 
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
       if ( shouldSend ) {
-         std::cout << localized("Setting Code...") << std::endl;
+         std::cerr << localized("Setting Code...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
       }
    };
@@ -2050,7 +2065,7 @@ int main( int argc, char** argv ) {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
       if ( shouldSend ) {
-         std::cout << localized("Setting ABI...") << std::endl;
+         std::cerr << localized("Setting ABI...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
       }
    };
@@ -2062,7 +2077,7 @@ int main( int argc, char** argv ) {
       shouldSend = false;
       set_code_callback();
       set_abi_callback();
-      std::cout << localized("Publishing contract...") << std::endl;
+      std::cerr << localized("Publishing contract...") << std::endl;
       send_actions(std::move(actions), 10000, packed_transaction::zlib);
    });
    codeSubcommand->set_callback(set_code_callback);
@@ -2182,12 +2197,7 @@ int main( int argc, char** argv ) {
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       call(wallet_url, wallet_unlock, vs);
@@ -2220,12 +2230,7 @@ int main( int argc, char** argv ) {
    removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
    removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    removeKeyWallet->set_callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       public_key_type pubkey;
       try {
          pubkey = public_key_type( wallet_rm_key_str );
@@ -2269,12 +2274,7 @@ int main( int argc, char** argv ) {
    listPrivKeys->add_option("-n,--name", wallet_name, localized("The name of the wallet to list keys from"), true);
    listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    listPrivKeys->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       const auto& v = call(wallet_url, wallet_list_keys, vs);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -2423,13 +2423,12 @@ int main( int argc, char** argv ) {
       return true;
    };
 
-   auto propose_action = msig->add_subcommand("propose", localized("Propose transaction"));
-   //auto propose_action = msig->add_subcommand("action", localized("Propose action"));
+   auto propose_action = msig->add_subcommand("propose", localized("Propose action"));
    add_standard_transaction_options(propose_action);
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
-   propose_action->add_option("contract", proposed_contract, localized("contract to wich deferred transaction should be delivered"))->required();
+   propose_action->add_option("contract", proposed_contract, localized("contract to which deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
    propose_action->add_option("proposer", proposer, localized("Account proposing the transaction"));
@@ -2450,13 +2449,12 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
       transaction proposed_trx = trx_var.as<transaction>();
 
-      auto arg= fc::mutable_variant_object()
+      auto arg = fc::mutable_variant_object()
          ("code", proposed_contract)
          ("action", proposed_action)
          ("args", trx_var);
 
       auto result = call(json_to_bin_func, arg);
-      //std::cout << "Result: "; fc::json::to_stream(std::cout, result); std::cout << std::endl;
 
       bytes proposed_trx_serialized = result.get_object()["binargs"].as<bytes>();
 
@@ -2519,9 +2517,53 @@ int main( int argc, char** argv ) {
       }
    };
 
+   //multisige propose transaction
+   auto propose_trx = msig->add_subcommand("propose_trx", localized("Propose transaction"));
+   add_standard_transaction_options(propose_trx);
+   propose_trx->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
+   propose_trx->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+   propose_trx->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
+   propose_trx->add_option("proposer", proposer, localized("Account proposing the transaction"));
+
+   propose_trx->set_callback([&] {
+      fc::variant requested_perm_var;
+      try {
+         requested_perm_var = json_from_file_or_string(requested_perm);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(trx_to_push);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
+
+      auto accountPermissions = get_account_permissions(tx_permission);
+      if (accountPermissions.empty()) {
+         if (!proposer.empty()) {
+            accountPermissions = vector<permission_level>{{proposer, config::active_name}};
+         } else {
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
+         }
+      }
+      if (proposer.empty()) {
+         proposer = name(accountPermissions.at(0).actor).to_string();
+      }
+
+      auto arg = fc::mutable_variant_object()
+         ("code", "eosio.msig")
+         ("action", "propose")
+         ("args", fc::mutable_variant_object()
+          ("proposer", proposer )
+          ("proposal_name", proposal_name)
+          ("requested", requested_perm_var)
+          ("trx", trx_var)
+         );
+      auto result = call(json_to_bin_func, arg);
+      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
+   });
+
+
    // multisig review
    auto review = msig->add_subcommand("review", localized("Review transaction"));
-   add_standard_transaction_options(review);
    review->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    review->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
 

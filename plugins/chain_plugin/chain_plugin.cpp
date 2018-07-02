@@ -13,6 +13,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
+#include <eosio/chain/controller.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -29,6 +30,43 @@
 #include <signal.h>
 
 namespace eosio {
+
+//declare operator<< and validate funciton for read_mode in the same namespace as read_mode itself
+namespace chain {
+
+std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
+   if ( m == eosio::chain::db_read_mode::SPECULATIVE ) {
+      osm << "speculative";
+   } else if ( m == eosio::chain::db_read_mode::HEAD ) {
+      osm << "head";
+   }
+   return osm;
+}
+
+void validate(boost::any& v,
+              std::vector<std::string> const& values,
+              eosio::chain::db_read_mode* /* target_type */,
+              int)
+{
+  using namespace boost::program_options;
+
+  // Make sure no previous assignment to 'v' was made.
+  validators::check_first_occurrence(v);
+
+  // Extract the first string from 'values'. If there is more than
+  // one string, it's an error, and exception will be thrown.
+  std::string const& s = validators::get_single_string(values);
+
+  if ( s == "speculative" ) {
+     v = boost::any(eosio::chain::db_read_mode::SPECULATIVE);
+  } else if ( s == "head" ) {
+     v = boost::any(eosio::chain::db_read_mode::HEAD);
+  } else {
+     throw validation_error(validation_error::invalid_option_value);
+  }
+}
+
+}
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -128,6 +166,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
+         ("abi-serializer-max-time-ms", bpo::value<uint32_t>(), "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
          ("contracts-console", bpo::bool_switch()->default_value(false),
@@ -144,6 +183,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Action (in the form code::action) added to action blacklist (may specify multiple times)")
          ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
+         ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
+          "Database read mode (\"speculative\" or \"head\")")
          ;
 
 // TODO: rate limiting
@@ -176,6 +217,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("truncate-at-block", bpo::value<uint32_t>()->default_value(0),
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
          ;
+
 }
 
 #define LOAD_VALUE_SET(options, name, container) \
@@ -259,6 +301,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->loaded_checkpoints[item.first] = item.second;
          }
       }
+     
+      if(options.count("abi-serializer-max-time-ms"))
+         abi_serializer::set_max_serialization_time(fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000));
 
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
@@ -394,6 +439,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
       } else {
          wlog( "Starting up fresh blockchain with default genesis state." );
+      }
+
+      if ( options.count("read-mode") ) {
+         my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
       }
 
       my->chain.emplace( *my->chain_config );
