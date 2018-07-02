@@ -2428,7 +2428,7 @@ int main( int argc, char** argv ) {
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
-   propose_action->add_option("contract", proposed_contract, localized("contract to wich deferred transaction should be delivered"))->required();
+   propose_action->add_option("contract", proposed_contract, localized("contract to which deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
    propose_action->add_option("proposer", proposer, localized("Account proposing the transaction"));
