@@ -1069,8 +1069,10 @@ struct get_schedule_subcommand {
    bool print_json = false;
 
    void print(const char* name, const fc::variant& schedule) {
-      if (schedule.is_null())
+      if (schedule.is_null()) {
+         printf("%s schedule empty\n\n", name);
          return;
+      }
       printf("%s schedule version %s\n", name, schedule["version"].as_string().c_str());
       printf("    %-13s %s\n", "Producer", "Producer key");
       printf("    %-13s %s\n", "=============", "==================");
