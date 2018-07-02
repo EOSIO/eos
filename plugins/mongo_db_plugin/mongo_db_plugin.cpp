@@ -1023,7 +1023,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
             if( options.at( "mongodb-wipe" ).as<bool>()) {
                ilog( "Wiping mongo database on startup" );
                my->wipe_database_on_startup = true;
-            } else {
+            } else if( options.count( "mongodb-block-start" ) == 0 ) {
                FC_ASSERT( false, "--mongodb-wipe required with --replay-blockchain, --hard-replay-blockchain, or --delete-all-blocks"
                                  " --mongodb-wipe will remove all EOS collections from mongodb." );
             }
