@@ -5,7 +5,7 @@ if [ "${EOSIO_BIN_INSTALL_DIR}" == "." ]; then
   EOSIO_BIN_INSTALL_DIR=`pwd`
 fi
 EOSIO_INSTALL_DIR=`dirname ${EOSIO_BIN_INSTALL_DIR}`
-ABIGEN=${EOSIO_INSTALL_DIR}/bin/eosio-abigen
+ABIGEN=${EOSIO_INSTALL_DIR}/programs/eosio-abigen/eosio-abigen
 BOOST_INCLUDE_DIR=@Boost_INCLUDE_DIR@
 function copy_skeleton {
     set -e
