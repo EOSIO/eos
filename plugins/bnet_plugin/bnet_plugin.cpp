@@ -573,7 +573,7 @@ namespace eosio {
            _app_ios.post( [self = shared_from_this(),callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
               auto lib = control.last_irreversible_block_num();
-              auto head = control.head_block_id();
+              auto head = control.fork_db_head_block_id();
               auto head_num = block_header::num_from_id(head);
 
 
