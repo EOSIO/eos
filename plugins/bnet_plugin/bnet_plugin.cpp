@@ -1356,6 +1356,9 @@ namespace eosio {
 
       wlog( "bnet startup " );
 
+      auto& chain = app().get_plugin<chain_plugin>().chain();
+      FC_ASSERT ( chain.get_read_mode() != chain::db_read_mode::IRREVERSIBLE, "bnet is not compatible with \"irreversible\" read_mode");
+
       my->_on_appled_trx_handle = app().get_channel<channels::accepted_transaction>()
                                 .subscribe( [this]( transaction_metadata_ptr t ){
                                        my->on_accepted_transaction(t);
