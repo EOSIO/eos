@@ -110,6 +110,15 @@ int main(int argc, char** argv)
    } catch( const fixed_reversible_db_exception& e ) {
       return FIXED_REVERSIBLE;
    } catch( const fc::exception& e ) {
+      if( e.code() == fc::std_exception_code ) {
+         if( e.top_message().find( "database dirty flag set" ) != std::string::npos ) {
+            elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
+            return DATABASE_DIRTY;
+         } else if( e.top_message().find( "database metadata dirty flag set" ) != std::string::npos ) {
+            elog( "database metadata dirty flag set (likely due to unclean shutdown): replay required" );
+            return DATABASE_DIRTY;
+         }
+      }
       elog("${e}", ("e",e.to_detail_string()));
       return OTHER_FAIL;
    } catch( const boost::interprocess::bad_alloc& e ) {

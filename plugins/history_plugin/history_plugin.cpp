@@ -266,36 +266,38 @@ namespace eosio {
    }
 
    void history_plugin::plugin_initialize(const variables_map& options) {
-      if( options.count("filter-on") )
-      {
-         auto fo = options.at("filter-on").as<vector<string>>();
-         for( auto& s : fo ) {
-            if( s == "*" ) {
-               my->bypass_filter = true;
-               wlog("--filter-on * enabled. This can fill shared_mem, causing nodeos to stop.");
-               break;
+      try {
+         if( options.count( "filter-on" )) {
+            auto fo = options.at( "filter-on" ).as<vector<string>>();
+            for( auto& s : fo ) {
+               if( s == "*" ) {
+                  my->bypass_filter = true;
+                  wlog( "--filter-on * enabled. This can fill shared_mem, causing nodeos to stop." );
+                  break;
+               }
+               std::vector<std::string> v;
+               boost::split( v, s, boost::is_any_of( ":" ));
+               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
+               filter_entry fe{v[0], v[1], v[2]};
+               EOS_ASSERT( fe.receiver.value && fe.action.value, fc::invalid_arg_exception,
+                           "Invalid value ${s} for --filter-on", ("s", s));
+               my->filter_on.insert( fe );
             }
-            std::vector<std::string> v;
-            boost::split(v, s, boost::is_any_of(":"));
-            EOS_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
-            filter_entry fe{ v[0], v[1], v[2] };
-            EOS_ASSERT(fe.receiver.value && fe.action.value, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
-            my->filter_on.insert( fe );
          }
-      }
 
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      auto& chain = my->chain_plug->chain();
+         my->chain_plug = app().find_plugin<chain_plugin>();
+         auto& chain = my->chain_plug->chain();
 
-      chain.db().add_index<account_history_index>();
-      chain.db().add_index<action_history_index>();
-      chain.db().add_index<account_control_history_multi_index>();
-      chain.db().add_index<public_key_history_multi_index>();
+         chain.db().add_index<account_history_index>();
+         chain.db().add_index<action_history_index>();
+         chain.db().add_index<account_control_history_multi_index>();
+         chain.db().add_index<public_key_history_multi_index>();
 
-      my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
-            my->on_applied_transaction(p);
-      }));
-
+         my->applied_transaction_connection.emplace(
+               chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ) {
+                  my->on_applied_transaction( p );
+               } ));
+      } FC_LOG_AND_RETHROW()
    }
 
    void history_plugin::plugin_startup() {
