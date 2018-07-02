@@ -29,7 +29,7 @@ void sudo::exec() {
    require_auth( executer );
 
    size_t trx_pos = ds.tellp();
-   send_deferred( (uint128_t(executer) << 64) | current_time(), executer, buffer+trx_pos, size );
+   send_deferred( (uint128_t(executer) << 64) | current_time(), executer, buffer+trx_pos, size-trx_pos );
 }
 
 } /// namespace eosio
