@@ -279,48 +279,55 @@ namespace eosio {
    }
 
    void http_plugin::plugin_initialize(const variables_map& options) {
-      tcp::resolver resolver(app().get_io_service());
-      if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
-         string lipstr =  options.at("http-server-address").as<string>();
-         string host = lipstr.substr(0, lipstr.find(':'));
-         string port = lipstr.substr(host.size()+1, lipstr.size());
-         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-         try {
-            my->listen_endpoint = *resolver.resolve(query);
-            ilog("configured http to listen on ${h}:${p}", ("h",host)("p",port));
-         } catch(const boost::system::system_error& ec) {
-            elog("failed to configure http to listen on ${h}:${p} (${m})", ("h",host)("p",port)("m", ec.what()));
-         }
-      }
-
-      if(options.count("https-server-address") && options.at("https-server-address").as<string>().length()) {
-         if(!options.count("https-certificate-chain-file") || options.at("https-certificate-chain-file").as<string>().empty()) {
-            elog("https-certificate-chain-file is required for HTTPS");
-            return;
-         }
-         if(!options.count("https-private-key-file") || options.at("https-private-key-file").as<string>().empty()) {
-            elog("https-private-key-file is required for HTTPS");
-            return;
+      try {
+         tcp::resolver resolver( app().get_io_service());
+         if( options.count( "http-server-address" ) && options.at( "http-server-address" ).as<string>().length()) {
+            string lipstr = options.at( "http-server-address" ).as<string>();
+            string host = lipstr.substr( 0, lipstr.find( ':' ));
+            string port = lipstr.substr( host.size() + 1, lipstr.size());
+            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+            try {
+               my->listen_endpoint = *resolver.resolve( query );
+               ilog( "configured http to listen on ${h}:${p}", ("h", host)( "p", port ));
+            } catch ( const boost::system::system_error& ec ) {
+               elog( "failed to configure http to listen on ${h}:${p} (${m})",
+                     ("h", host)( "p", port )( "m", ec.what()));
+            }
          }
 
-         string lipstr =  options.at("https-server-address").as<string>();
-         string host = lipstr.substr(0, lipstr.find(':'));
-         string port = lipstr.substr(host.size()+1, lipstr.size());
-         tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
-         try {
-            my->https_listen_endpoint = *resolver.resolve(query);
-            ilog("configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)", ("h",host)("p",port));
-            my->https_cert_chain = options.at("https-certificate-chain-file").as<string>();
-            my->https_key = options.at("https-private-key-file").as<string>();
-         } catch(const boost::system::system_error& ec) {
-            elog("failed to configure https to listen on ${h}:${p} (${m})", ("h",host)("p",port)("m", ec.what()));
+         if( options.count( "https-server-address" ) && options.at( "https-server-address" ).as<string>().length()) {
+            if( !options.count( "https-certificate-chain-file" ) ||
+                options.at( "https-certificate-chain-file" ).as<string>().empty()) {
+               elog( "https-certificate-chain-file is required for HTTPS" );
+               return;
+            }
+            if( !options.count( "https-private-key-file" ) ||
+                options.at( "https-private-key-file" ).as<string>().empty()) {
+               elog( "https-private-key-file is required for HTTPS" );
+               return;
+            }
+
+            string lipstr = options.at( "https-server-address" ).as<string>();
+            string host = lipstr.substr( 0, lipstr.find( ':' ));
+            string port = lipstr.substr( host.size() + 1, lipstr.size());
+            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+            try {
+               my->https_listen_endpoint = *resolver.resolve( query );
+               ilog( "configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
+                     ("h", host)( "p", port ));
+               my->https_cert_chain = options.at( "https-certificate-chain-file" ).as<string>();
+               my->https_key = options.at( "https-private-key-file" ).as<string>();
+            } catch ( const boost::system::system_error& ec ) {
+               elog( "failed to configure https to listen on ${h}:${p} (${m})",
+                     ("h", host)( "p", port )( "m", ec.what()));
+            }
          }
-      }
 
-      my->max_body_size = options.at("max-body-size").as<uint32_t>();
-      verbose_http_errors = options.at("verbose-http-errors").as<bool>();
+         my->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
+         verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
 
-      //watch out for the returns above when adding new code here
+         //watch out for the returns above when adding new code here
+      } FC_LOG_AND_RETHROW()
    }
 
    void http_plugin::plugin_startup() {
