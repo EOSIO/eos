@@ -2741,6 +2741,40 @@ int main( int argc, char** argv ) {
       }
    );
 
+   // sudo subcommand
+   auto sudo = app.add_subcommand("sudo", localized("Sudo contract commands"), false);
+   sudo->require_subcommand();
+
+   // sudo exec
+   executer = "";
+   string trx_to_exec;
+   auto sudo_exec = sudo->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
+   add_standard_transaction_options(sudo_exec);
+   sudo_exec->add_option("executer", executer, localized("Account executing the transaction and paying for the deferred transaction RAM"))->required();
+   sudo_exec->add_option("transaction", trx_to_exec, localized("The JSON string or filename defining the transaction to execute"))->required();
+
+   sudo_exec->set_callback([&] {
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(trx_to_exec);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_exec))
+
+      auto accountPermissions = get_account_permissions(tx_permission);
+      if( accountPermissions.empty() ) {
+         accountPermissions = vector<permission_level>{{executer, config::active_name}, {"eosio.sudo", config::active_name}};
+      }
+
+      auto arg = fc::mutable_variant_object()
+         ("code", "eosio.sudo")
+         ("action", "exec")
+         ("args", fc::mutable_variant_object()
+            ("executer", executer )
+            ("trx", trx_var)
+         );
+      auto result = call(json_to_bin_func, arg);
+      send_actions({chain::action{accountPermissions, "eosio.sudo", "exec", result.get_object()["binargs"].as<bytes>()}});
+   });
+
    // system subcommand
    auto system = app.add_subcommand("system", localized("Send eosio.system contract action to the blockchain."), false);
    system->require_subcommand();
