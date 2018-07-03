@@ -43,7 +43,7 @@ struct abi_serializer {
    bool      is_array(const type_name& type)const;
    bool      is_optional(const type_name& type)const;
    bool      is_type(const type_name& type)const {
-      return _is_type(type, 0);
+      return _is_type(type, 0, fc::time_point::now() + max_serialization_time);
    }
    bool      is_builtin_type(const type_name& type)const;
    bool      is_integer(const type_name& type) const;
@@ -126,7 +126,7 @@ private:
    void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj,
                            size_t recursion_depth, const fc::time_point& deadline)const;
 
-   bool _is_type(const type_name& type, size_t recursion_depth)const;
+   bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline)const;
 
    friend struct impl::abi_from_variant;
    friend struct impl::abi_to_variant;

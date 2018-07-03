@@ -177,11 +177,12 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth)const {
+   bool abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth, const fc::time_point& deadline)const {
+      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       if( ++recursion_depth > max_recursion_depth) return false;
       auto type = fundamental_type(rtype);
       if( built_in_types.find(type) != built_in_types.end() ) return true;
-      if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth);
+      if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth, deadline);
       if( structs.find(type) != structs.end() ) return true;
       return false;
    }
@@ -193,10 +194,12 @@ namespace eosio { namespace chain {
    }
 
    void abi_serializer::validate()const {
+      const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
       for( const auto& t : typedefs ) { try {
          vector<type_name> types_seen{t.first, t.second};
          auto itr = typedefs.find(t.second);
          while( itr != typedefs.end() ) {
+            FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
             FC_ASSERT( find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), "Circular reference in type ${type}", ("type",t.first) );
             types_seen.emplace_back(itr->second);
             itr = typedefs.find(itr->second);
@@ -210,6 +213,7 @@ namespace eosio { namespace chain {
             struct_def current = s.second;
             vector<type_name> types_seen{current.name};
             while( current.base != type_name() ) {
+               FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
                const auto& base = get_struct(current.base); //<-- force struct to inherit from another struct
                FC_ASSERT( find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), "Circular reference in struct ${type}", ("type",s.second.name) );
                types_seen.emplace_back(base.name);
@@ -217,14 +221,17 @@ namespace eosio { namespace chain {
             }
          }
          for( const auto& field : s.second.fields ) { try {
+            FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
             FC_ASSERT(is_type(field.type) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
+        FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
         FC_ASSERT(is_type(a.second), "", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
 
       for( const auto& t : tables ) { try {
+        FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
         FC_ASSERT(is_type(t.second), "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
