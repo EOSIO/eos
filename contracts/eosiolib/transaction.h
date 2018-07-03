@@ -51,6 +51,7 @@ extern "C" {
      *  @param payer - Account paying for RAM
      *  @param serialized_transaction - Pointer of serialized transaction to be deferred
      *  @param size - Size to reserve
+     *  @param replace_existing - f this is `0` then if the provided sender_id is already in use by an in-flight transaction from this contract, which will be a failing assert. If `1` then transaction will atomically cancel/replace the inflight transaction
      */
      void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
 

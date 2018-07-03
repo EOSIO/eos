@@ -22,14 +22,14 @@ extern "C" {
     * @brief Set the resource limit of an account
     * Set the resource limit of an account
     * @param account - name of the account whose resource limit to be set
-    * @param ram_bytes - ram limit
-    * @param net_weight - net limit
-    * @param cpu_weight - cput limit
+    * @param ram_bytes - ram limit in absolute bytes
+    * @param net_weight - fractionally proportionate net limit of available resources based on (weight / total_weight_of_all_accounts)
+    * @param cpu_weight - fractionally proportionate cpu limit of available resources based on (weight / total_weight_of_all_accounts)
     */
    void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight );
 
    /**
-    * Propose the new active producer schedule
+    * Proposes a schedule change, once the block that contains the proposal becomes irreversible, the schedule is promoted to "pending" automatically. Once the block that promotes the schedule is irreversible, the schedule will become "active"
     * @param producer_data - packed data of produce_keys in the appropriate producer schedule order
     * @param producer_data_size - size of the data buffer
     *

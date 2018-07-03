@@ -261,6 +261,17 @@ public:
 
    get_producers_result get_producers( const get_producers_params& params )const;
 
+   struct get_producer_schedule_params {
+   };
+
+   struct get_producer_schedule_result {
+      fc::variant active;
+      fc::variant pending;
+      fc::variant proposed;
+   };
+
+   get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
+
    using get_snapshot_marks_params = empty;
 
    struct get_snapshot_marks_result {
@@ -436,6 +447,11 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(ma
 FC_REFLECT( eosio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_producer_vote_weight)(more) );
 
+FC_REFLECT_EMPTY( eosio::chain_apis::read_only::get_producer_schedule_params )
+FC_REFLECT( eosio::chain_apis::read_only::get_producer_schedule_result, (active)(pending)(proposed) );
+
+FC_REFLECT( eosio::chain_apis::read_only::get_snapshot_marks_result, (explicit_snapshot_block_numbers)(snapshot_block_patterns) );
+
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
@@ -452,5 +468,3 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
-
-FC_REFLECT( eosio::chain_apis::read_only::get_snapshot_marks_result, (explicit_snapshot_block_numbers)(snapshot_block_patterns) );

@@ -35,7 +35,8 @@ namespace eosio { namespace chain {
 
    enum class db_read_mode {
       SPECULATIVE,
-      HEAD
+      HEAD,
+      IRREVERSIBLE
    };
 
    class controller {
@@ -148,6 +149,11 @@ namespace eosio { namespace chain {
          account_name         head_block_producer()const;
          const block_header&  head_block_header()const;
          block_state_ptr      head_block_state()const;
+
+         uint32_t             fork_db_head_block_num()const;
+         block_id_type        fork_db_head_block_id()const;
+         time_point           fork_db_head_block_time()const;
+         account_name         fork_db_head_block_producer()const;
 
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
