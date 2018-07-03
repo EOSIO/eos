@@ -266,36 +266,38 @@ namespace eosio {
    }
 
    void history_plugin::plugin_initialize(const variables_map& options) {
-      if( options.count("filter-on") )
-      {
-         auto fo = options.at("filter-on").as<vector<string>>();
-         for( auto& s : fo ) {
-            if( s == "*" ) {
-               my->bypass_filter = true;
-               wlog("--filter-on * enabled. This can fill shared_mem, causing nodeos to stop.");
-               break;
+      try {
+         if( options.count( "filter-on" )) {
+            auto fo = options.at( "filter-on" ).as<vector<string>>();
+            for( auto& s : fo ) {
+               if( s == "*" ) {
+                  my->bypass_filter = true;
+                  wlog( "--filter-on * enabled. This can fill shared_mem, causing nodeos to stop." );
+                  break;
+               }
+               std::vector<std::string> v;
+               boost::split( v, s, boost::is_any_of( ":" ));
+               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
+               filter_entry fe{v[0], v[1], v[2]};
+               EOS_ASSERT( fe.receiver.value && fe.action.value, fc::invalid_arg_exception,
+                           "Invalid value ${s} for --filter-on", ("s", s));
+               my->filter_on.insert( fe );
             }
-            std::vector<std::string> v;
-            boost::split(v, s, boost::is_any_of(":"));
-            EOS_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
-            filter_entry fe{ v[0], v[1], v[2] };
-            EOS_ASSERT(fe.receiver.value && fe.action.value, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
-            my->filter_on.insert( fe );
          }
-      }
 
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      auto& chain = my->chain_plug->chain();
+         my->chain_plug = app().find_plugin<chain_plugin>();
+         auto& chain = my->chain_plug->chain();
 
-      chain.db().add_index<account_history_index>();
-      chain.db().add_index<action_history_index>();
-      chain.db().add_index<account_control_history_multi_index>();
-      chain.db().add_index<public_key_history_multi_index>();
+         chain.db().add_index<account_history_index>();
+         chain.db().add_index<action_history_index>();
+         chain.db().add_index<account_control_history_multi_index>();
+         chain.db().add_index<public_key_history_multi_index>();
 
-      my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
-            my->on_applied_transaction(p);
-      }));
-
+         my->applied_transaction_connection.emplace(
+               chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ) {
+                  my->on_applied_transaction( p );
+               } ));
+      } FC_LOG_AND_RETHROW()
    }
 
    void history_plugin::plugin_startup() {
@@ -380,63 +382,105 @@ namespace eosio {
 
       read_only::get_transaction_result read_only::get_transaction( const read_only::get_transaction_params& p )const {
          auto& chain = history->chain_plug->chain();
+         auto short_id = fc::variant(p.id).as_string().substr(0,8);
+
+         const auto& db = chain.db();
+         const auto& idx = db.get_index<action_history_index, by_trx_id>();
+         auto itr = idx.lower_bound( boost::make_tuple(p.id) );
+
+         bool in_history = (itr != idx.end() && fc::variant(itr->trx_id).as_string().substr(0,8) == short_id );
+
+         if( !in_history && !p.block_num_hint ) {
+            FC_THROW("Transaction ${id} not found in history and no block hint was given", ("id",p.id));
+         }
 
          get_transaction_result result;
 
-         result.id = p.id;
-         result.last_irreversible_block = chain.last_irreversible_block_num();
+         if (in_history) {
+            result.id = p.id;
+            result.last_irreversible_block = chain.last_irreversible_block_num();
 
-         const auto& db = chain.db();
 
-         const auto& idx = db.get_index<action_history_index, by_trx_id>();
-         auto itr = idx.lower_bound( boost::make_tuple(p.id) );
-         if( itr == idx.end() ) {
-            return result;
-         }
-         result.id         = itr->trx_id;
-         result.block_num  = itr->block_num;
-         result.block_time = itr->block_time;
+            result.id         = itr->trx_id;
+            result.block_num  = itr->block_num;
+            result.block_time = itr->block_time;
 
-         if( fc::variant(result.id).as_string().substr(0,8) != fc::variant(p.id).as_string().substr(0,8) )
-            return result;
+            while( itr != idx.end() && itr->trx_id == result.id ) {
 
-         while( itr != idx.end() && itr->trx_id == result.id ) {
+              fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
+              action_trace t;
+              fc::raw::unpack( ds, t );
+              result.traces.emplace_back( chain.to_variant_with_abi(t) );
 
-           fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
-           action_trace t;
-           fc::raw::unpack( ds, t );
-           result.traces.emplace_back( chain.to_variant_with_abi(t) );
+              ++itr;
+            }
 
-           ++itr;
-         }
-
-         auto blk = chain.fetch_block_by_number( result.block_num );
-         if( blk == nullptr ) { // still in pending
-             auto blk_state = chain.pending_block_state();
-             if( blk_state != nullptr ) {
-                 blk = blk_state->block;
-             }
-         }
-         if( blk != nullptr ) {
-             for (const auto &receipt: blk->transactions) {
-                 if (receipt.trx.contains<packed_transaction>()) {
-                     auto &pt = receipt.trx.get<packed_transaction>();
+            auto blk = chain.fetch_block_by_number( result.block_num );
+            if( blk == nullptr ) { // still in pending
+                auto blk_state = chain.pending_block_state();
+                if( blk_state != nullptr ) {
+                    blk = blk_state->block;
+                }
+            }
+            if( blk != nullptr ) {
+                for (const auto &receipt: blk->transactions) {
+                    if (receipt.trx.contains<packed_transaction>()) {
+                        auto &pt = receipt.trx.get<packed_transaction>();
+                        auto mtrx = transaction_metadata(pt);
+                        if (mtrx.id == result.id) {
+                            fc::mutable_variant_object r("receipt", receipt);
+                            r("trx", chain.to_variant_with_abi(mtrx.trx));
+                            result.trx = move(r);
+                            break;
+                        }
+                    } else {
+                        auto &id = receipt.trx.get<transaction_id_type>();
+                        if (id == result.id) {
+                            fc::mutable_variant_object r("receipt", receipt);
+                            result.trx = move(r);
+                            break;
+                        }
+                    }
+                }
+            }
+         } else {
+            auto blk = chain.fetch_block_by_number(*p.block_num_hint);
+            bool found = false;
+            if (blk) {
+               for (const auto& receipt: blk->transactions) {
+                  if (receipt.trx.contains<packed_transaction>()) {
+                     auto& pt = receipt.trx.get<packed_transaction>();
                      auto mtrx = transaction_metadata(pt);
-                     if (mtrx.id == result.id) {
-                         fc::mutable_variant_object r("receipt", receipt);
-                         r("trx", chain.to_variant_with_abi(mtrx.trx));
-                         result.trx = move(r);
-                         break;
+                     if (fc::variant(mtrx.id).as_string().substr(0, 8) == short_id) {
+                        result.id = mtrx.id;
+                        result.last_irreversible_block = chain.last_irreversible_block_num();
+                        result.block_num = *p.block_num_hint;
+                        result.block_time = blk->timestamp;
+                        fc::mutable_variant_object r("receipt", receipt);
+                        r("trx", chain.to_variant_with_abi(mtrx.trx));
+                        result.trx = move(r);
+                        found = true;
+                        break;
                      }
-                 } else {
-                     auto &id = receipt.trx.get<transaction_id_type>();
-                     if (id == result.id) {
-                         fc::mutable_variant_object r("receipt", receipt);
-                         result.trx = move(r);
-                         break;
+                  } else {
+                     auto& id = receipt.trx.get<transaction_id_type>();
+                     if (fc::variant(id).as_string().substr(0, 8) == short_id) {
+                        result.id = id;
+                        result.last_irreversible_block = chain.last_irreversible_block_num();
+                        result.block_num = *p.block_num_hint;
+                        result.block_time = blk->timestamp;
+                        fc::mutable_variant_object r("receipt", receipt);
+                        result.trx = move(r);
+                        found = true;
+                        break;
                      }
-                 }
-             }
+                  }
+               }
+            }
+
+            if (!found) {
+               FC_THROW("Transaction ${id} not found in history or in block number ${n}", ("id",p.id)("n", *p.block_num_hint));
+            }
          }
 
          return result;

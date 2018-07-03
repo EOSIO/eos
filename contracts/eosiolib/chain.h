@@ -25,7 +25,7 @@ extern "C" {
      *  @brief Gets the set of active producers.
      *
      *  @param producers - Pointer to a buffer of account names
-     *  @param datalen - Byte length of buffer
+     *  @param datalen - Byte length of buffer, when passed 0 will return the size required to store full output. 
      *
      *  @return uint32_t - Number of bytes actually populated
      *  @pre `producers` is a pointer to a range of memory at least `datalen` bytes long

@@ -235,7 +235,7 @@ namespace eosio {
        * Construct a new action object with the given action struct
        *
        * @brief Construct a new action object with the given permission, action receiver, action name, action struct
-       * @tparam T  - Type of action struct
+       * @tparam T  - Type of action struct, must be serializable by `pack(...)`
        * @param auth - The permissions that authorizes this action
        * @param a -  The name of the account this action is intended for (action receiver)
        * @param n - The name of the action
@@ -249,7 +249,7 @@ namespace eosio {
        * Construct a new action object with the given action struct
        *
        * @brief Construct a new action object with the given list of permissions, action receiver, action name, action struct
-       * @tparam T  - Type of action struct
+       * @tparam T  - Type of action struct, must be serializable by `pack(...)`
        * @param auths - The list of permissions that authorize this action
        * @param a -  The name of the account this action is intended for (action receiver)
        * @param n - The name of the action
