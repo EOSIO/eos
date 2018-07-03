@@ -573,7 +573,7 @@ namespace eosio {
            _app_ios.post( [self = shared_from_this(),callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
               auto lib = control.last_irreversible_block_num();
-              auto head = control.head_block_id();
+              auto head = control.fork_db_head_block_id();
               auto head_num = block_header::num_from_id(head);
 
 
@@ -1358,6 +1358,9 @@ namespace eosio {
          plugin_logger = fc::get_logger_map()[logger_name];
 
       wlog( "bnet startup " );
+
+      auto& chain = app().get_plugin<chain_plugin>().chain();
+      FC_ASSERT ( chain.get_read_mode() != chain::db_read_mode::IRREVERSIBLE, "bnet is not compatible with \"irreversible\" read_mode");
 
       my->_on_appled_trx_handle = app().get_channel<channels::accepted_transaction>()
                                 .subscribe( [this]( transaction_metadata_ptr t ){

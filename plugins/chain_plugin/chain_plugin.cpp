@@ -39,7 +39,10 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
       osm << "speculative";
    } else if ( m == eosio::chain::db_read_mode::HEAD ) {
       osm << "head";
+   } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
+      osm << "irreversible";
    }
+
    return osm;
 }
 
@@ -61,6 +64,8 @@ void validate(boost::any& v,
      v = boost::any(eosio::chain::db_read_mode::SPECULATIVE);
   } else if ( s == "head" ) {
      v = boost::any(eosio::chain::db_read_mode::HEAD);
+  } else if ( s == "irreversible" ) {
+     v = boost::any(eosio::chain::db_read_mode::IRREVERSIBLE);
   } else {
      throw validation_error(validation_error::invalid_option_value);
   }
@@ -184,7 +189,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
          ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
-          "Database read mode (\"speculative\" or \"head\")")
+          "Database read mode (\"speculative\", \"head\" or \"irreversible\").\n"
+          "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
+          "In \"head\" mode database contains changes done up to the current head block.\n"
+          "In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
          ;
 
 // TODO: rate limiting
@@ -659,12 +667,12 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    return {
       eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
       db.get_chain_id(),
-      db.head_block_num(),
+      db.fork_db_head_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
-      db.head_block_id(),
-      db.head_block_time(),
-      db.head_block_producer(),
+      db.fork_db_head_block_id(),
+      db.fork_db_head_block_time(),
+      db.fork_db_head_block_producer(),
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),
