@@ -2643,7 +2643,8 @@ int main( int argc, char** argv ) {
 
       fc::variant trx_var;
       abi_serializer abi;
-      abi.to_variant(trx, trx_var, resolver);
+      fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
+      abi.to_variant(trx, trx_var, resolver, max_serialization_time);
       obj["transaction"] = trx_var;
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;

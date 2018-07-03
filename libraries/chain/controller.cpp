@@ -1472,6 +1472,10 @@ bool controller::contracts_console()const {
    return my->conf.contracts_console;
 }
 
+fc::microseconds controller::get_abi_serializer_max_time_ms()const {
+   return my->conf.abi_serializer_max_time_ms;
+}
+
 chain_id_type controller::get_chain_id()const {
    return my->chain_id;
 }

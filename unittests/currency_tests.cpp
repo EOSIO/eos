@@ -39,7 +39,7 @@ class currency_tester : public TESTER {
          act.account = N(eosio.token);
          act.name = name;
          act.authorization = vector<permission_level>{{signer, config::active_name}};
-         act.data = abi_ser.variant_to_binary(action_type_name, data);
+         act.data = abi_ser.variant_to_binary(action_type_name, data, control->get_abi_serializer_max_time_ms());
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
@@ -420,7 +420,8 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
-         ("delay", 10)
+         ("delay", 10),
+         control->get_abi_serializer_max_time_ms()
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -475,7 +476,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
-         ("delay", 10)
+         ("delay", 10),
+         control->get_abi_serializer_max_time_ms()
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -526,7 +528,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
-         ("delay", 0)
+         ("delay", 0),
+         control->get_abi_serializer_max_time_ms()
       );
       trx.actions.emplace_back(std::move(setowner_act));
 

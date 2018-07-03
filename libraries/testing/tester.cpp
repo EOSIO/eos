@@ -91,8 +91,7 @@ namespace eosio { namespace testing {
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-      abi_serializer::set_max_serialization_time(fc::seconds(1)); // 1s for slow test machines
+      cfg.abi_serializer_max_time_ms = fc::seconds(1); // 1s for slow test machines
 
       for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
          if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
@@ -440,7 +439,7 @@ namespace eosio { namespace testing {
       act.account = code;
       act.name = acttype;
       act.authorization = auths;
-      act.data = abis.variant_to_binary(action_type_name, data);
+      act.data = abis.variant_to_binary(action_type_name, data, control->get_abi_serializer_max_time_ms());
       return act;
    } FC_CAPTURE_AND_RETHROW() }
 
@@ -458,7 +457,7 @@ namespace eosio { namespace testing {
         );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), control->get_abi_serializer_max_time_ms());
       set_transaction_headers(trx);
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, control->get_chain_id() );
@@ -504,7 +503,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), control->get_abi_serializer_max_time_ms());
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, "active" ), control->get_chain_id() );
@@ -538,7 +537,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), control->get_abi_serializer_max_time_ms());
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), control->get_chain_id()  );
@@ -565,7 +564,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), control->get_abi_serializer_max_time_ms());
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( currency, name(config::active_name).to_string() ), control->get_chain_id()  );

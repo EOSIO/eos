@@ -1698,7 +1698,8 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
       ("from", "tester")
       ("to", "tester2")
       ("quantity", "3.0000 CUR")
-      ("memo", "hi" )
+      ("memo", "hi" ),
+      chain.control->get_abi_serializer_max_time_ms()
    );
 
    signed_transaction trx;

@@ -32,13 +32,14 @@ BOOST_AUTO_TEST_SUITE(abi_tests)
 // verify that round trip conversion, via bytes, reproduces the exact same data
 fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 {
-   auto bytes = abis.variant_to_binary(type, var);
+   fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
+   auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
 
-   auto var2 = abis.binary_to_variant(type, bytes);
+   auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
 
    std::string r = fc::json::to_string(var2);
 
-   auto bytes2 = abis.variant_to_binary(type, var2);
+   auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
 
    BOOST_TEST( fc::to_hex(bytes) == fc::to_hex(bytes2) );
 
@@ -57,18 +58,19 @@ template<typename T>
 fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 { try {
 
-   auto bytes = abis.variant_to_binary(type, var);
+   fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
+   auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
 
    T obj;
-   abi_serializer::from_variant(var, obj, get_resolver());
+   abi_serializer::from_variant(var, obj, get_resolver(), max_serialization_time);
 
    fc::variant var2;
-   abi_serializer::to_variant(obj, var2, get_resolver());
+   abi_serializer::to_variant(obj, var2, get_resolver(), max_serialization_time);
 
    std::string r = fc::json::to_string(var2);
 
 
-   auto bytes2 = abis.variant_to_binary(type, var2);
+   auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
 
    BOOST_TEST( fc::to_hex(bytes) == fc::to_hex(bytes2) );
 
@@ -2819,10 +2821,11 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    }
    )=====";
    fc::variant var;
-   abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()));
+   fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
+   abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), max_serialization_time);
 
    chain::packed_transaction packed_txn2;
-   abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()));
+   abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), max_serialization_time);
 
    const auto txn2 = packed_txn2.get_transaction();
 
@@ -3395,11 +3398,12 @@ BOOST_AUTO_TEST_CASE(abi_recursive_structs)
         "tables": []
       }
       )=====";
-
+      
       abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>());
       string hi_data = "{\"user\":\"eosio\",\"arg2\":{\"user\":\"1\"}}";
-      auto bin = abis.variant_to_binary("hi", fc::json::from_string(hi_data));
-      BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin);, fc::exception );
+      fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
+      auto bin = abis.variant_to_binary("hi", fc::json::from_string(hi_data), max_serialization_time);
+      BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin, max_serialization_time);, fc::exception );
 
    } FC_LOG_AND_RETHROW()
 }

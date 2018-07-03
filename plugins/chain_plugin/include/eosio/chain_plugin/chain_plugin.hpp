@@ -328,7 +328,7 @@ public:
             copy_inline_row(*itr, data);
 
             if (p.json) {
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data));
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, db.get_abi_serializer_max_time_ms()));
             } else {
                result.rows.emplace_back(fc::variant(data));
             }

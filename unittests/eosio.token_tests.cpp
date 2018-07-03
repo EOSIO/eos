@@ -44,7 +44,7 @@ public:
       action act;
       act.account = N(eosio.token);
       act.name    = name;
-      act.data    = abi_ser.variant_to_binary( action_type_name, data );
+      act.data    = abi_ser.variant_to_binary( action_type_name, data,control->get_abi_serializer_max_time_ms() );
 
       return base_tester::push_action( std::move(act), uint64_t(signer));
    }
@@ -54,7 +54,7 @@ public:
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
       vector<char> data = get_row_by_account( N(eosio.token), symbol_code, N(stat), symbol_code );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data, control->get_abi_serializer_max_time_ms() );
    }
 
    fc::variant get_account( account_name acc, const string& symbolname)
@@ -62,7 +62,7 @@ public:
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
       vector<char> data = get_row_by_account( N(eosio.token), acc, N(accounts), symbol_code );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data, control->get_abi_serializer_max_time_ms() );
    }
 
    action_result create( account_name issuer,

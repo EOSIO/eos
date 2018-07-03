@@ -502,7 +502,7 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
    act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
 }
 
-}
+} // anonymous namespace
 
 void mongo_db_plugin_impl::process_accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
@@ -937,7 +937,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
 
          mongocxx::model::update_one update_op{ make_document(kvp("_id", ir_trans->view()["_id"].get_oid())), update_doc.view()};
          bulk.append(update_op);
-
          transactions_in_block = true;
       }
    }

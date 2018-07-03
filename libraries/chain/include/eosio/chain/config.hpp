@@ -92,6 +92,7 @@ const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multip
 const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call checktime from hashing intrinsic once per this number of bytes
 
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::binaryen;
+const static fc::microseconds default_abi_serializer_max_time_ms = fc::microseconds(15*1000);
 
 /**
  *  The number of sequential blocks produced by a single producer
