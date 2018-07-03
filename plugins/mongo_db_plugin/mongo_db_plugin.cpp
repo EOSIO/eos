@@ -22,10 +22,13 @@
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
+#include <bsoncxx/exception/exception.hpp>
 #include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
+#include <mongocxx/exception/operation_exception.hpp>
+#include <mongocxx/exception/logic_error.hpp>
 
 namespace fc { class variant; }
 
@@ -357,24 +360,45 @@ namespace {
    }
 
 void handle_mongo_exception( const char* desc, int line_num ) {
+   bool shutdown = true;
    try {
       try {
          throw;
+      } catch( mongocxx::logic_error& e) {
+         // logic_error on invalid key, do not shutdown
+         wlog( "mongo logic error, ${desc}, line ${line}, code ${code}, ${what}",
+               ("desc", desc)( "line", line_num )( "code", e.code().value() )( "what", e.what() ));
+         shutdown = false;
+      } catch( mongocxx::operation_exception& e) {
+         elog( "mongo exception, ${desc}, line ${line}, code ${code}, ${details}",
+               ("desc", desc)( "line", line_num )( "code", e.code().value() )( "details", e.code().message() ));
+         if (e.raw_server_error()) {
+            elog( "mongo exception, ${desc}, line ${line}, ${details}",
+                  ("desc", desc)( "line", line_num )( "details", bsoncxx::to_json(e.raw_server_error()->view())));
+         }
+      } catch( mongocxx::exception& e) {
+         elog( "mongo exception, ${desc}, line ${line}, code ${code}, ${what}",
+               ("desc", desc)( "line", line_num )( "code", e.code().value() )( "what", e.what() ));
+      } catch( bsoncxx::exception& e) {
+         elog( "bsoncxx exception, ${desc}, line ${line}, code ${code}, ${what}",
+               ("desc", desc)( "line", line_num )( "code", e.code().value() )( "what", e.what() ));
       } catch( fc::exception& er ) {
-         elog( "mongo fc exception, ${desc}, line $(line_nun), ${details}",
-               ("desc", desc)( "line_num", line_num )( "details", er.to_detail_string()));
+         elog( "mongo fc exception, ${desc}, line ${line}, ${details}",
+               ("desc", desc)( "line", line_num )( "details", er.to_detail_string()));
       } catch( const std::exception& e ) {
-         elog( "mongo std exception, ${desc}, line $(line_nun), ${what}",
-               ("desc", desc)( "line_num", line_num )( "what", e.what()));
+         elog( "mongo std exception, ${desc}, line ${line}, ${what}",
+               ("desc", desc)( "line", line_num )( "what", e.what()));
       } catch( ... ) {
-         elog( "mongo unknown exception, ${desc}, line $(line_nun)", ("desc", desc)( "line_num", line_num ));
+         elog( "mongo unknown exception, ${desc}, line ${line_nun}", ("desc", desc)( "line_num", line_num ));
       }
    } catch (...) {
       std::cerr << "Exception attempting to handle exception for " << desc << " " << line_num << std::endl;
    }
 
-   // shutdown if mongo failed to provide opportunity to fix issue and restart
-   app().quit();
+   if( shutdown ) {
+      // shutdown if mongo failed to provide opportunity to fix issue and restart
+      app().quit();
+   }
 }
 
    void update_account(mongocxx::collection& accounts, const chain::action& act) {
@@ -966,6 +990,10 @@ void mongo_db_plugin_impl::init() {
          auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+
+         auto block_stats = mongo_conn[db_name][block_states_col];
+         block_stats.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
+         block_stats.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
 
          // accounts indexes
          accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
