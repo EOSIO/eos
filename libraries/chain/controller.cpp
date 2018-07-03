@@ -166,7 +166,6 @@ struct controller_impl {
       FC_ASSERT( log_head );
       auto lh_block_num = log_head->block_num();
 
-      emit( self.irreversible_block, s );
       db.commit( s->block_num );
 
       if( s->block_num <= lh_block_num ) {
@@ -185,6 +184,14 @@ struct controller_impl {
          reversible_blocks.remove( *objitr );
          objitr = ubi.begin();
       }
+
+      if ( read_mode == db_read_mode::IRREVERSIBLE ) {
+         apply_block( s->block, controller::block_status::complete );
+         fork_db.mark_in_current_chain( s, true );
+         fork_db.set_validity( s, true );
+         head = s;
+      }
+      emit( self.irreversible_block, s );
    }
 
    void init() {
@@ -260,7 +267,6 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
-      fork_db.close();
 
       db.flush();
       reversible_blocks.flush();
@@ -874,7 +880,10 @@ struct controller_impl {
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
-         maybe_switch_forks( s );
+
+         if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+            maybe_switch_forks( s );
+         }
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -882,7 +891,9 @@ struct controller_impl {
       FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
-      maybe_switch_forks();
+      if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+         maybe_switch_forks();
+      }
    }
 
    void maybe_switch_forks( controller::block_status s = controller::block_status::complete ) {
@@ -1202,6 +1213,10 @@ controller::controller( const controller::config& cfg )
 
 controller::~controller() {
    my->abort_block();
+   //close fork_db here, because it can generate "irreversible" signal to this controller,
+   //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
+   //for that we need 'my' to be valid pointer pointing to valid controller_impl.
+   my->fork_db.close();
 }
 
 
@@ -1276,6 +1291,22 @@ const block_header& controller::head_block_header()const {
 }
 block_state_ptr controller::head_block_state()const {
    return my->head;
+}
+
+uint32_t controller::fork_db_head_block_num()const {
+   return my->fork_db.head()->block_num;
+}
+
+block_id_type controller::fork_db_head_block_id()const {
+   return my->fork_db.head()->id;
+}
+
+time_point controller::fork_db_head_block_time()const {
+   return my->fork_db.head()->header.timestamp;
+}
+
+account_name  controller::fork_db_head_block_producer()const {
+   return my->fork_db.head()->header.producer;
 }
 
 block_state_ptr controller::pending_block_state()const {

@@ -367,8 +367,10 @@ void txn_test_gen_plugin::set_program_options(options_description&, options_desc
 }
 
 void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
-   my.reset(new txn_test_gen_plugin_impl);
-   my->txn_reference_block_lag = options.at("txn-reference-block-lag").as<int32_t>();
+   try {
+      my.reset( new txn_test_gen_plugin_impl );
+      my->txn_reference_block_lag = options.at( "txn-reference-block-lag" ).as<int32_t>();
+   } FC_LOG_AND_RETHROW()
 }
 
 void txn_test_gen_plugin::plugin_startup() {

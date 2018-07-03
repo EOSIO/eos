@@ -248,6 +248,15 @@ chain::action generate_nonce_action() {
    return chain::action( {}, config::null_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
+void prompt_for_wallet_password(string& pw, const string& name) {
+   if(pw.size() == 0 && name != "SecureEnclave") {
+      std::cout << localized("password: ");
+      fc::set_console_echo(false);
+      std::getline( std::cin, pw, '\n' );
+      fc::set_console_echo(true);
+   }
+}
+
 fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    //wdump((trx));
@@ -1056,6 +1065,38 @@ struct list_producers_subcommand {
    }
 };
 
+struct get_schedule_subcommand {
+   bool print_json = false;
+
+   void print(const char* name, const fc::variant& schedule) {
+      if (schedule.is_null()) {
+         printf("%s schedule empty\n\n", name);
+         return;
+      }
+      printf("%s schedule version %s\n", name, schedule["version"].as_string().c_str());
+      printf("    %-13s %s\n", "Producer", "Producer key");
+      printf("    %-13s %s\n", "=============", "==================");
+      for (auto& row: schedule["producers"].get_array())
+         printf("    %-13s %s\n", row["producer_name"].as_string().c_str(), row["block_signing_key"].as_string().c_str());
+      printf("\n");
+   }
+
+   get_schedule_subcommand(CLI::App* actionRoot) {
+      auto get_schedule = actionRoot->add_subcommand("schedule", localized("Retrieve the producer schedule"));
+      get_schedule->add_flag("--json,-j", print_json, localized("Output in JSON format"));
+      get_schedule->set_callback([this] {
+         auto result = call(get_schedule_func, fc::mutable_variant_object());
+         if ( print_json ) {
+            std::cout << fc::json::to_pretty_string(result) << std::endl;
+            return;
+         }
+         print("active", result["active"]);
+         print("pending", result["pending"]);
+         print("proposed", result["proposed"]);
+      });
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
@@ -1816,8 +1857,10 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transaction_id_str;
+   uint32_t block_num_hint = 0;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
+   getTransaction->add_option( "-b,--block-hint", block_num_hint, localized("the block number this transaction may be in") );
    getTransaction->set_callback([&] {
       transaction_id_type transaction_id;
       try {
@@ -1825,6 +1868,9 @@ int main( int argc, char** argv ) {
          transaction_id = transaction_id_type(transaction_id_str);
       } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
       auto arg= fc::mutable_variant_object( "id", transaction_id);
+      if ( block_num_hint > 0 ) {
+         arg = arg("block_num_hint", block_num_hint);
+      }
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
@@ -1922,6 +1968,7 @@ int main( int argc, char** argv ) {
       }
    });
 
+   auto getSchedule = get_schedule_subcommand{get};
 
    /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
@@ -2188,12 +2235,7 @@ int main( int argc, char** argv ) {
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       call(wallet_url, wallet_unlock, vs);
@@ -2226,12 +2268,7 @@ int main( int argc, char** argv ) {
    removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
    removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    removeKeyWallet->set_callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       public_key_type pubkey;
       try {
          pubkey = public_key_type( wallet_rm_key_str );
@@ -2275,12 +2312,7 @@ int main( int argc, char** argv ) {
    listPrivKeys->add_option("-n,--name", wallet_name, localized("The name of the wallet to list keys from"), true);
    listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    listPrivKeys->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       const auto& v = call(wallet_url, wallet_list_keys, vs);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -2434,7 +2466,7 @@ int main( int argc, char** argv ) {
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
-   propose_action->add_option("contract", proposed_contract, localized("contract to wich deferred transaction should be delivered"))->required();
+   propose_action->add_option("contract", proposed_contract, localized("contract to which deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
    propose_action->add_option("proposer", proposer, localized("Account proposing the transaction"));

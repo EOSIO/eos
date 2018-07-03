@@ -1504,7 +1504,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   }
 
   eosdcmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
-  eosdcmd += " --genesis-json " + genesis.string();
+  eosdcmd += " --genesis-json " + instance.config_dir_name + "/genesis.json";
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
