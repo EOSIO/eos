@@ -1107,6 +1107,10 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
             }
          }
 
+         if( options.count( "abi-serializer-max-time-ms") == 0 ) {
+            FC_ASSERT(false, "--abi-serializer-max-time-ms required as default value not appropriate for parsing full blocks");
+         }
+
          if( options.count( "mongodb-queue-size" )) {
             my->queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();
          }
