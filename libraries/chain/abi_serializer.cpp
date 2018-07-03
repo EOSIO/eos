@@ -18,6 +18,10 @@ namespace eosio { namespace chain {
 
    const size_t abi_serializer::max_recursion_depth;
    fc::microseconds abi_serializer::max_serialization_time = fc::microseconds(15*1000); // 15 ms
+   static const string int_mark      = "int";
+   static const string uint_mark     = "uint";
+   static const string array_mark    = "[]";
+   static const string optional_mark = "?";
 
    using boost::algorithm::ends_with;
    using std::string;
@@ -142,16 +146,16 @@ namespace eosio { namespace chain {
 
    bool abi_serializer::is_integer(const type_name& type) const {
       string stype = type;
-      return boost::starts_with(stype, "uint") || boost::starts_with(stype, "int");
+      return boost::starts_with(stype, uint_mark) || boost::starts_with(stype, int_mark);
    }
 
    int abi_serializer::get_integer_size(const type_name& type) const {
       string stype = type;
       FC_ASSERT( is_integer(type), "${stype} is not an integer type", ("stype",stype));
-      if( boost::starts_with(stype, "uint") ) {
-         return boost::lexical_cast<int>(stype.substr(string("uint").size()));
+      if( boost::starts_with(stype, uint_mark) ) {
+         return boost::lexical_cast<int>(stype.substr(uint_mark.size()));
       } else {
-         return boost::lexical_cast<int>(stype.substr(string("int").size()));
+         return boost::lexical_cast<int>(stype.substr(int_mark.size()));
       }
    }
 
@@ -160,18 +164,18 @@ namespace eosio { namespace chain {
    }
 
    bool abi_serializer::is_array(const type_name& type)const {
-      return ends_with(string(type), "[]");
+      return ends_with(string(type), array_mark);
    }
 
    bool abi_serializer::is_optional(const type_name& type)const {
-      return ends_with(string(type), "?");
+      return ends_with(string(type), optional_mark);
    }
 
    type_name abi_serializer::fundamental_type(const type_name& type)const {
       if( is_array(type) ) {
-         return type_name(string(type).substr(0, type.size()-string("[]").size()));
+         return type_name(string(type).substr(type.size()-array_mark.size()));
       } else if ( is_optional(type) ) {
-         return type_name(string(type).substr(0, type.size()-string("?").size()));
+         return type_name(string(type).substr(type.size()-optional_mark.size()));
       } else {
        return type;
       }
