@@ -152,12 +152,7 @@ void queue(boost::mutex& mtx, boost::condition_variable& condition, Queue& queue
 
 void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
-      if( startup ) {
-         // on startup we don't want to queue, instead push back on caller
-         process_accepted_transaction( t );
-      } else {
-         queue( mtx, condition, transaction_metadata_queue, t, queue_size );
-      }
+      queue( mtx, condition, transaction_metadata_queue, t, queue_size );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -169,12 +164,7 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
 
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
-      if( startup ) {
-         // on startup we don't want to queue, instead push back on caller
-         process_applied_transaction( t );
-      } else {
-         queue( mtx, condition, transaction_trace_queue, t, queue_size );
-      }
+      queue( mtx, condition, transaction_trace_queue, t, queue_size );
    } catch (fc::exception& e) {
       elog("FC Exception while applied_transaction ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -186,12 +176,7 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
 
 void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_ptr& bs ) {
    try {
-      if( startup ) {
-         // on startup we don't want to queue, instead push back on caller
-         process_irreversible_block( bs );
-      } else {
-         queue( mtx, condition, irreversible_block_state_queue, bs, queue_size );
-      }
+      queue( mtx, condition, irreversible_block_state_queue, bs, queue_size );
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -203,12 +188,7 @@ void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_
 
 void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
    try {
-      if( startup ) {
-         // on startup we don't want to queue, instead push back on caller
-         process_accepted_block( bs );
-      } else {
-         queue( mtx, condition, block_state_queue, bs, queue_size );
-      }
+      queue( mtx, condition, block_state_queue, bs, queue_size );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -1058,6 +1038,12 @@ void mongo_db_plugin_impl::init() {
          handle_mongo_exception("create indexes", __LINE__);
       }
    }
+
+   ilog("starting db plugin thread");
+
+   consume_thread = boost::thread([this] { consume_blocks(); });
+
+   startup = false;
 }
 
 ////////////
@@ -1164,13 +1150,6 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
 
 void mongo_db_plugin::plugin_startup()
 {
-   if (my->configured) {
-      ilog("starting db plugin");
-
-      my->consume_thread = boost::thread([this] { my->consume_blocks(); });
-
-      my->startup = false;
-   }
 }
 
 void mongo_db_plugin::plugin_shutdown()
