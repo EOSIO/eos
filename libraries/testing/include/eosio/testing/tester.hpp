@@ -123,9 +123,9 @@ namespace eosio { namespace testing {
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                          const variant_object& data )const;
 
-         void set_transaction_headers( transaction& trx,
-                                                      uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
-                                                      uint32_t delay_sec = 0 )const;
+         void  set_transaction_headers( transaction& trx,
+                                        uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
+                                        uint32_t delay_sec = 0 )const;
 
          vector<transaction_trace_ptr>  create_accounts( vector<account_name> names,
                                                          bool multisig = false,
