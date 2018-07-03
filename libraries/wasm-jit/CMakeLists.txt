@@ -76,3 +76,4 @@ add_subdirectory(Source/WASM)
 add_subdirectory(Source/WAST)
 
 #add_subdirectory(Test/spec)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Include DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio/wasm-jit/)
