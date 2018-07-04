@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    validator.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(validator.control->push_block( copy_b ), fc::exception ,
    [] (const fc::exception &e)->bool {
-      return e.code() == action_validate_exception::code_value ;
+      return e.code() == account_name_exists_exception::code_value ;
    }) ;
   
 }

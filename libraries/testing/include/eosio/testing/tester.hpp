@@ -55,7 +55,9 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
-
+   std::vector<uint8_t> read_wasm( const char* fn );
+   std::vector<char>    read_abi( const char* fn );
+   std::string          read_wast( const char* fn );
    using namespace eosio::chain;
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
@@ -121,9 +123,9 @@ namespace eosio { namespace testing {
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                          const variant_object& data )const;
 
-         void                 set_transaction_headers(signed_transaction& trx,
-                                                      uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
-                                                      uint32_t delay_sec = 0)const;
+         void  set_transaction_headers( transaction& trx,
+                                        uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
+                                        uint32_t delay_sec = 0 )const;
 
          vector<transaction_trace_ptr>  create_accounts( vector<account_name> names,
                                                          bool multisig = false,
