@@ -104,7 +104,7 @@ def startNode(nodeIndex, account):
     )
     cmd = (
         args.nodeos +
-        '    --max-irreversible-block-age 9999999'
+        '    --max-irreversible-block-age -1'
         '    --contracts-console'
         '    --genesis-json ' + os.path.abspath(args.genesis) +
         '    --blocks-dir ' + os.path.abspath(dir) + '/blocks'

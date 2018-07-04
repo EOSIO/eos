@@ -1578,6 +1578,8 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
 
+   abi_serializer::set_max_serialization_time(fc::seconds(1)); // No risk to client side serialization taking a long time
+
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where nodeos is running") )->group("hidden");
@@ -1707,7 +1709,7 @@ int main( int argc, char** argv ) {
 
       auto abi  = fc::json::to_pretty_string( result["abi"] );
       if( filename.size() ) {
-         std::cout << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+         std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
          std::ofstream abiout( filename.c_str() );
          abiout << abi;
       } else {
@@ -2014,23 +2016,23 @@ int main( int argc, char** argv ) {
             wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
       }
 
-      std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
+      std::cerr << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
       FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
-         std::cout << localized("Using already assembled WASM...") << std::endl;
+         std::cerr << localized("Using already assembled WASM...") << std::endl;
          wasm = vector<uint8_t>(wast.begin(), wast.end());
       }
       else {
-         std::cout << localized("Assembling WASM...") << std::endl;
+         std::cerr << localized("Assembling WASM...") << std::endl;
          wasm = wast_to_wasm(wast);
       }
 
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
       if ( shouldSend ) {
-         std::cout << localized("Setting Code...") << std::endl;
+         std::cerr << localized("Setting Code...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
       }
    };
@@ -2050,7 +2052,7 @@ int main( int argc, char** argv ) {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
       if ( shouldSend ) {
-         std::cout << localized("Setting ABI...") << std::endl;
+         std::cerr << localized("Setting ABI...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
       }
    };
@@ -2062,7 +2064,7 @@ int main( int argc, char** argv ) {
       shouldSend = false;
       set_code_callback();
       set_abi_callback();
-      std::cout << localized("Publishing contract...") << std::endl;
+      std::cerr << localized("Publishing contract...") << std::endl;
       send_actions(std::move(actions), 10000, packed_transaction::zlib);
    });
    codeSubcommand->set_callback(set_code_callback);
@@ -2423,8 +2425,7 @@ int main( int argc, char** argv ) {
       return true;
    };
 
-   auto propose_action = msig->add_subcommand("propose", localized("Propose transaction"));
-   //auto propose_action = msig->add_subcommand("action", localized("Propose action"));
+   auto propose_action = msig->add_subcommand("propose", localized("Propose action"));
    add_standard_transaction_options(propose_action);
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
@@ -2450,13 +2451,12 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
       transaction proposed_trx = trx_var.as<transaction>();
 
-      auto arg= fc::mutable_variant_object()
+      auto arg = fc::mutable_variant_object()
          ("code", proposed_contract)
          ("action", proposed_action)
          ("args", trx_var);
 
       auto result = call(json_to_bin_func, arg);
-      //std::cout << "Result: "; fc::json::to_stream(std::cout, result); std::cout << std::endl;
 
       bytes proposed_trx_serialized = result.get_object()["binargs"].as<bytes>();
 
@@ -2519,9 +2519,53 @@ int main( int argc, char** argv ) {
       }
    };
 
+   //multisige propose transaction
+   auto propose_trx = msig->add_subcommand("propose_trx", localized("Propose transaction"));
+   add_standard_transaction_options(propose_trx);
+   propose_trx->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
+   propose_trx->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+   propose_trx->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
+   propose_trx->add_option("proposer", proposer, localized("Account proposing the transaction"));
+
+   propose_trx->set_callback([&] {
+      fc::variant requested_perm_var;
+      try {
+         requested_perm_var = json_from_file_or_string(requested_perm);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(trx_to_push);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
+
+      auto accountPermissions = get_account_permissions(tx_permission);
+      if (accountPermissions.empty()) {
+         if (!proposer.empty()) {
+            accountPermissions = vector<permission_level>{{proposer, config::active_name}};
+         } else {
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
+         }
+      }
+      if (proposer.empty()) {
+         proposer = name(accountPermissions.at(0).actor).to_string();
+      }
+
+      auto arg = fc::mutable_variant_object()
+         ("code", "eosio.msig")
+         ("action", "propose")
+         ("args", fc::mutable_variant_object()
+          ("proposer", proposer )
+          ("proposal_name", proposal_name)
+          ("requested", requested_perm_var)
+          ("trx", trx_var)
+         );
+      auto result = call(json_to_bin_func, arg);
+      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
+   });
+
+
    // multisig review
    auto review = msig->add_subcommand("review", localized("Review transaction"));
-   add_standard_transaction_options(review);
    review->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    review->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
 
