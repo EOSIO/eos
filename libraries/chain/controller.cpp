@@ -395,29 +395,40 @@ struct controller_impl {
 
 
 
+   /**
+    * @post regardless of the success of commit block there is no active pending block
+    */
    void commit_block( bool add_to_fork_db ) {
-      if( add_to_fork_db ) {
-         pending->_pending_block_state->validated = true;
-         auto new_bsp = fork_db.add( pending->_pending_block_state );
-         emit( self.accepted_block_header, pending->_pending_block_state );
-         head = fork_db.head();
-         FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
+      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
+         pending.reset();
+      });
 
+      try {
+         if (add_to_fork_db) {
+            pending->_pending_block_state->validated = true;
+            auto new_bsp = fork_db.add(pending->_pending_block_state);
+            emit(self.accepted_block_header, pending->_pending_block_state);
+            head = fork_db.head();
+            FC_ASSERT(new_bsp == head, "committed block did not become the new head in fork database");
+         }
+
+         if( !replaying ) {
+            reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
+               ubo.blocknum = pending->_pending_block_state->block_num;
+               ubo.set_block( pending->_pending_block_state->block );
+            });
+         }
+
+         emit( self.accepted_block, pending->_pending_block_state );
+      } catch (...) {
+         // dont bother resetting pending, instead abort the block
+         reset_pending_on_exit.cancel();
+         abort_block();
+         throw;
       }
 
-  //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      emit( self.accepted_block, pending->_pending_block_state );
-
-      if( !replaying ) {
-         reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = pending->_pending_block_state->block_num;
-            ubo.set_block( pending->_pending_block_state->block );
-         });
-      }
-
+      // push the state for pending.
       pending->push();
-      pending.reset();
-
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
