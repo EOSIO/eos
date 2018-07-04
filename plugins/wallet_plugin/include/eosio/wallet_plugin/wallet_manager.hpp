@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/transaction.hpp>
-#include <eosio/wallet_plugin/wallet.hpp>
+#include <eosio/wallet_plugin/wallet_api.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 
@@ -15,7 +15,7 @@ namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.
 ///
-/// The name of the wallet is also used as part of the file name by wallet_api. See wallet_manager::create.
+/// The name of the wallet is also used as part of the file name by soft_wallet. See wallet_manager::create.
 /// No const methods because timeout may cause lock_all() to be called.
 class wallet_manager {
 public:
@@ -38,7 +38,7 @@ public:
    /// @see wallet_manager::set_timeout(const std::chrono::seconds& t)
    /// @param secs The timeout in seconds.
    void set_timeout(int64_t secs) { set_timeout(std::chrono::seconds(secs)); }
-
+      
    /// Sign transaction with the private keys specified via their public keys.
    /// Use chain_controller::get_required_keys to determine which keys are needed for txn.
    /// @param txn the transaction to sign.
@@ -48,6 +48,14 @@ public:
    /// @throws fc::exception if corresponding private keys not found in unlocked wallets
    chain::signed_transaction sign_transaction(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
                                              const chain::chain_id_type& id);
+
+
+   /// Sign digest with the private keys specified via their public keys.
+   /// @param digest the digest to sign.
+   /// @param key the public key of the corresponding private key to sign the digest with
+   /// @return signature over the digest
+   /// @throws fc::exception if corresponding private keys not found in unlocked wallets
+   chain::signature_type sign_digest(const chain::digest_type& digest, const public_key_type& key);
 
    /// Create a new wallet.
    /// A new wallet is created in file dir/{name}.wallet see set_dir.
@@ -67,8 +75,8 @@ public:
    /// @return A list of wallet names with " *" appended if the wallet is unlocked.
    std::vector<std::string> list_wallets();
 
-   /// @return A list of private keys from all unlocked wallets in wif format.
-   map<public_key_type,private_key_type> list_keys();
+   /// @return A list of private keys from a wallet provided password is correct to said wallet
+   map<public_key_type,private_key_type> list_keys(const string& name, const string& pw);
 
    /// @return A set of public keys from all unlocked wallets, use with chain_controller::get_required_keys.
    flat_set<public_key_type> get_public_keys();
@@ -86,7 +94,7 @@ public:
    /// The wallet remains unlocked until ::lock is called or program exit.
    /// @param name the name of the wallet to lock.
    /// @param password the plaintext password returned from ::create.
-   /// @throws fc::exception if wallet not found or invalid password.
+   /// @throws fc::exception if wallet not found or invalid password or already unlocked.
    void unlock(const std::string& name, const std::string& password);
 
    /// Import private key into specified wallet.
@@ -96,6 +104,22 @@ public:
    /// @param wif_key the WIF Private Key to import, e.g. 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
    /// @throws fc::exception if wallet not found or locked.
    void import_key(const std::string& name, const std::string& wif_key);
+
+   /// Removes a key from the specified wallet.
+   /// Wallet must be opened and unlocked.
+   /// @param name the name of the wallet to remove the key from.
+   /// @param password the plaintext password returned from ::create.
+   /// @param key the Public Key to remove, e.g. EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+   /// @throws fc::exception if wallet not found or locked or key is not removed.
+   void remove_key(const std::string& name, const std::string& password, const std::string& key);
+
+   /// Creates a key within the specified wallet.
+   /// Wallet must be opened and unlocked
+   /// @param name of the wallet to create key in
+   /// @param type of key to create
+   /// @throws fc::exception if wallet not found or locked, or if the wallet cannot create said type of key
+   /// @return The public key of the created key
+   string create_key(const std::string& name, const std::string& key_type);
 
 private:
    /// Verify timeout has not occurred and reset timeout if not.

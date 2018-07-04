@@ -163,7 +163,7 @@ namespace Runtime
 	DEFINE_INTRINSIC_FUNCTION2(wavmIntrinsics,_growMemory,growMemory,i32,i32,deltaPages,i64,memoryBits)
 	{
 		MemoryInstance* memory = reinterpret_cast<MemoryInstance*>(memoryBits);
-		assert(memory);
+		WAVM_ASSERT_THROW(memory);
 		const Iptr numPreviousMemoryPages = growMemory(memory,(Uptr)deltaPages);
 		if(numPreviousMemoryPages + (Uptr)deltaPages > IR::maxMemoryPages) { return -1; }
 		else { return (I32)numPreviousMemoryPages; }
@@ -172,7 +172,7 @@ namespace Runtime
 	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,_currentMemory,currentMemory,i32,i64,memoryBits)
 	{
 		MemoryInstance* memory = reinterpret_cast<MemoryInstance*>(memoryBits);
-		assert(memory);
+		WAVM_ASSERT_THROW(memory);
 		Uptr numMemoryPages = getMemoryNumPages(memory);
 		if(numMemoryPages > UINT32_MAX) { numMemoryPages = UINT32_MAX; }
 		return (U32)numMemoryPages;

@@ -1,6 +1,13 @@
 var searchData=
 [
-  ['initializer_5flist',['initializer_list',['../classstd_1_1initializer__list.html',1,'std']]],
-  ['iostream',['iostream',['../classeosio_1_1iostream.html',1,'eosio']]],
-  ['issue',['issue',['../structeosio_1_1generic__currency_1_1issue.html',1,'eosio::generic_currency']]]
+  ['g',['G',['../class_g.html',1,'']]],
+  ['game',['game',['../structtic__tac__toe_1_1game.html',1,'tic_tac_toe']]],
+  ['gen',['gen',['../structgen.html',1,'']]],
+  ['gen_5ftest',['gen_test',['../structgen__test.html',1,'']]],
+  ['generator',['generator',['../structgenerator.html',1,'']]],
+  ['genericconvertingdeleter',['GenericConvertingDeleter',['../struct_generic_converting_deleter.html',1,'']]],
+  ['genericdeleter',['GenericDeleter',['../struct_generic_deleter.html',1,'']]],
+  ['goodcomparator',['GoodComparator',['../struct_good_comparator.html',1,'']]],
+  ['goodhashnodefault',['GoodHashNoDefault',['../struct_good_hash_no_default.html',1,'']]],
+  ['goroutine',['goroutine',['../structgoroutine.html',1,'']]]
 ];

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['fixed_20point',['Fixed Point',['../group__fixedpoint.html',1,'']]]
+  ['memory_20c_2b_2b_20api',['Memory C++ API',['../group__memorycppapi.html',1,'']]]
 ];

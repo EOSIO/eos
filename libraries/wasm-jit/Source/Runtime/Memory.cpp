@@ -42,7 +42,7 @@ namespace Runtime
 		if(!memory->baseAddress) { delete memory; return nullptr; }
 
 		// Grow the memory to the type's minimum size.
-		assert(type.size.min <= UINTPTR_MAX);
+		WAVM_ASSERT_THROW(type.size.min <= UINTPTR_MAX);
 		if(growMemory(memory,Uptr(type.size.min)) == -1) { delete memory; return nullptr; }
 
 		// Add the memory to the global array.
@@ -65,6 +65,8 @@ namespace Runtime
 		{
 			if(memories[memoryIndex] == this) { memories.erase(memories.begin() + memoryIndex); break; }
 		}
+
+		theMemoryInstance = nullptr;
 	}
 	
 	bool isAddressOwnedByMemory(U8* address)
@@ -82,9 +84,19 @@ namespace Runtime
 	Uptr getMemoryNumPages(MemoryInstance* memory) { return memory->numPages; }
 	Uptr getMemoryMaxPages(MemoryInstance* memory)
 	{
-		assert(memory->type.size.max <= UINTPTR_MAX);
+		WAVM_ASSERT_THROW(memory->type.size.max <= UINTPTR_MAX);
 		return Uptr(memory->type.size.max);
 	}
+
+	void resetMemory(MemoryInstance* memory, MemoryType& newMemoryType) {
+		memory->type.size.min = 1;
+		if(shrinkMemory(memory, memory->numPages - 1) == -1)
+			causeException(Exception::Cause::outOfMemory);
+		memset(memory->baseAddress, 0, 1<<IR::numBytesPerPageLog2);
+		memory->type = newMemoryType;
+		if(growMemory(memory, memory->type.size.min - 1) == -1)
+			causeException(Exception::Cause::outOfMemory);
+   }
 
 	Iptr growMemory(MemoryInstance* memory,Uptr numNewPages)
 	{
@@ -102,6 +114,7 @@ namespace Runtime
 			{
 				return -1;
 			}
+			memset(memory->baseAddress + (memory->numPages << IR::numBytesPerPageLog2), 0, numNewPages << IR::numBytesPerPageLog2);
 			memory->numPages += numNewPages;
 		}
 		return previousNumPages;

@@ -5,6 +5,7 @@
 #pragma once
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/core_symbol.hpp>
 #include <string>
 #include <functional>
 
@@ -19,11 +20,11 @@ namespace eosio {
          from_string constructs a symbol from an input a string of the form "4,EOS"
          where the integer represents number of decimals. Number of decimals must be larger than zero.
        */
-      
+
       static constexpr uint64_t string_to_symbol_c(uint8_t precision, const char* str) {
          uint32_t len = 0;
          while (str[len]) ++len;
-         
+
          uint64_t result = 0;
          // No validation is done at compile time
          for (uint32_t i = 0; i < len; ++i) {
@@ -33,7 +34,7 @@ namespace eosio {
          result |= uint64_t(precision);
          return result;
       }
-      
+
 #define SY(P,X) ::eosio::chain::string_to_symbol_c(P,#X)
 
       static uint64_t string_to_symbol(uint8_t precision, const char* str) {
@@ -42,7 +43,7 @@ namespace eosio {
             while(str[len]) ++len;
             uint64_t result = 0;
             for (uint32_t i = 0; i < len; ++i) {
-               // All characters must be upper case alaphabets
+               // All characters must be upper case alphabets
                FC_ASSERT (str[i] >= 'A' && str[i] <= 'Z', "invalid character in symbol name");
                result |= (uint64_t(str[i]) << (8*(i+1)));
             }
@@ -51,10 +52,23 @@ namespace eosio {
          } FC_CAPTURE_LOG_AND_RETHROW((str))
       }
 
+      struct symbol_code {
+         uint64_t value;
+
+         operator uint64_t()const { return value; }
+      };
+
       class symbol {
          public:
-            explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) { }
-            explicit symbol(uint64_t v = SY(4, EOS)): m_value(v) { }
+
+            static constexpr uint8_t max_precision = 18;
+
+            explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) {
+               FC_ASSERT(valid(), "invalid symbol: ${s}", ("s",s));
+            }
+            explicit symbol(uint64_t v = CORE_SYMBOL): m_value(v) {
+               FC_ASSERT(valid(), "invalid symbol: ${name}", ("name",name()));
+            }
             static symbol from_string(const string& from)
             {
                try {
@@ -64,17 +78,16 @@ namespace eosio {
                   FC_ASSERT(comma_pos != string::npos, "missing comma in symbol");
                   auto prec_part = s.substr(0, comma_pos);
                   uint8_t p = fc::to_int64(prec_part);
-                  FC_ASSERT(p > 0, "zero decimals in symbol");
                   string name_part = s.substr(comma_pos + 1);
+                  FC_ASSERT( p <= max_precision, "precision ${p} should be <= 18", ("p", p));
                   return symbol(string_to_symbol(p, name_part.c_str()));
                } FC_CAPTURE_LOG_AND_RETHROW((from))
             }
             uint64_t value() const { return m_value; }
             bool valid() const
             {
-               if (decimals() == 0) return false;
                const auto& s = name();
-               return valid_name(s);
+               return decimals() <= max_precision && valid_name(s);
             }
             static bool valid_name(const string& name)
             {
@@ -84,14 +97,13 @@ namespace eosio {
             uint8_t decimals() const { return m_value & 0xFF; }
             uint64_t precision() const
             {
-               static int64_t table[] = {
-                  1, 10, 100, 1000, 10000,
-                  100000, 1000000, 10000000, 100000000ll,
-                  1000000000ll, 10000000000ll,
-                  100000000000ll, 1000000000000ll,
-                  10000000000000ll, 100000000000000ll
-               };
-               return table[ decimals() ];
+               FC_ASSERT( decimals() <= max_precision, "precision ${p} should be <= 18", ("p", decimals()) );
+               uint64_t p10 = 1;
+               uint64_t p = decimals();
+               while( p > 0  ) {
+                  p10 *= 10; --p;
+               }
+               return p10;
             }
             string name() const
             {
@@ -105,7 +117,9 @@ namespace eosio {
                }
                return result;
             }
-            
+
+            symbol_code to_symbol_code()const { return {m_value >> 8}; }
+
             explicit operator string() const
             {
                uint64_t v = m_value;
@@ -122,11 +136,21 @@ namespace eosio {
             {
                return ds << s.to_string();
             }
-            
+
+            void reflector_verify()const {
+               FC_ASSERT( decimals() <= max_precision, "precision ${p} should be <= 18", ("p", decimals()) );
+               FC_ASSERT( valid_name(name()), "invalid symbol: ${name}", ("name",name()));
+            }
+
          private:
             uint64_t m_value;
             friend struct fc::reflector<symbol>;
       }; // class symbol
+
+      struct extended_symbol {
+         symbol       sym;
+         account_name contract;
+      };
 
       inline bool operator== (const symbol& lhs, const symbol& rhs)
       {
@@ -145,7 +169,7 @@ namespace eosio {
          return lhs.value() > rhs.value();
       }
 
-   } // namespace chain   
+   } // namespace chain
 } // namespace eosio
 
 namespace fc {
@@ -155,4 +179,15 @@ namespace fc {
    }
 }
 
+namespace fc {
+   inline void to_variant(const eosio::chain::symbol_code& var, fc::variant& vo) {
+      vo = eosio::chain::symbol(var.value << 8).name();
+   }
+   inline void from_variant(const fc::variant& var, eosio::chain::symbol_code& vo) {
+      vo = eosio::chain::symbol(0, var.get_string().c_str()).to_symbol_code();
+   }
+}
+
+FC_REFLECT(eosio::chain::symbol_code, (value))
 FC_REFLECT(eosio::chain::symbol, (m_value))
+FC_REFLECT(eosio::chain::extended_symbol, (sym)(contract))

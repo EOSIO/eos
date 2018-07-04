@@ -6,9 +6,10 @@
 #include <eosiolib/eosio.hpp>
 
 namespace asserter {
-   struct PACKED(assertdef) {
-      int8_t   condition;
-      int8_t   message_length;
-      char     message[];
+   struct assertdef {
+      int8_t      condition;
+      std::string message;
+
+      EOSLIB_SERIALIZE( assertdef, (condition)(message) )
    };
 }

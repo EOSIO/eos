@@ -3,7 +3,7 @@
 #include "Platform/Platform.h"
 #include "Runtime.h"
 #include "RuntimePrivate.h"
-
+#include <iostream>
 #include <string>
 
 namespace Intrinsics
@@ -44,11 +44,11 @@ namespace Intrinsics
 
 	Function::~Function()
 	{
-		{
-			Platform::Lock Lock(Singleton::get().mutex);
-			Singleton::get().functionMap.erase(Singleton::get().functionMap.find(getDecoratedName(name,function->type)));
-		}
-		delete function;
+      {
+         Platform::Lock Lock(Singleton::get().mutex);
+         Singleton::get().functionMap.erase(Singleton::get().functionMap.find(getDecoratedName(name,function->type)));
+      }
+      delete function;
 	}
 
 	Global::Global(const char* inName,IR::GlobalType inType)

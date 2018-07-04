@@ -1,27 +1,36 @@
-version: "2"
+version: "3"
 
 services:
-  eosiod:
+  builder:
+    build:
+      context: builder
+    image: eosio/builder
+
+  nodeosd:
     build:
       context: .
     image: eosio/eos
-    command: /opt/eosio/bin/start_eosiod.sh
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e
+    hostname: nodeosd
     ports:
       - 8888:8888
       - 9876:9876
     expose:
       - "8888"
     volumes:
-      - eosiod-data-volume:/opt/eosio/bin/data-dir
+      - nodeos-data-volume:/opt/eosio/bin/data-dir
 
-  walletd:
+  keosd:
     image: eosio/eos
-    command: /opt/eosio/bin/eosio-walletd
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
+    hostname: keosd
     links:
-      - eosiod
+      - nodeosd
     volumes:
-      - walletd-data-volume:/opt/eosio/bin/data-dir
+      - keosd-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
-  eosiod-data-volume:
-  walletd-data-volume:
+  nodeos-data-volume:
+    external: true
+  keosd-data-volume:
+    external: true

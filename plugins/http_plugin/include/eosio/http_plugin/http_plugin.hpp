@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <appbase/application.hpp>
+#include <fc/exception/exception.hpp>
 
 #include <fc/reflect/reflect.hpp>
 
@@ -72,6 +73,12 @@ namespace eosio {
               add_handler(call.first, call.second);
         }
 
+        // standard exception handling for api handlers
+        static void handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb );
+
+        bool is_on_loopback() const;
+        bool is_secure() const;
+
       private:
         std::unique_ptr<class http_plugin_impl> my;
    };
@@ -80,10 +87,50 @@ namespace eosio {
     * @brief Structure used to create JSON error responses
     */
    struct error_results {
-     uint16_t code;
-     string message;
-     string details;
+      uint16_t code;
+      string message;
+
+      struct error_info {
+         int64_t code;
+         string name;
+         string what;
+
+         struct error_detail {
+            string message;
+            string file;
+            uint64_t line_number;
+            string method;
+         };
+
+         vector<error_detail> details;
+
+         static const uint8_t details_limit = 10;
+
+         error_info() {};
+
+         error_info(const fc::exception& exc, bool include_log) {
+            code = exc.code();
+            name = exc.name();
+            what = exc.what();
+            if (include_log) {
+               for (auto itr = exc.get_log().begin(); itr != exc.get_log().end(); ++itr) {
+                  // Prevent sending trace that are too big
+                  if (details.size() >= details_limit) break;
+                  // Append error
+                  error_detail detail = {
+                          itr->get_message(), itr->get_context().get_file(),
+                          itr->get_context().get_line_number(), itr->get_context().get_method()
+                  };
+                  details.emplace_back(detail);
+               }
+            }
+         }
+      };
+
+      error_info error;
    };
 }
 
-FC_REFLECT(eosio::error_results, (code)(message)(details))
+FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))
+FC_REFLECT(eosio::error_results::error_info, (code)(name)(what)(details))
+FC_REFLECT(eosio::error_results, (code)(message)(error))

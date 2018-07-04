@@ -87,11 +87,11 @@ namespace Runtime
 	RUNTIME_API bool isA(ObjectInstance* object,const IR::ObjectType& type);
 
 	// Casts from object to subclasses, and vice versa.
-	inline FunctionInstance* asFunction(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::function); return (FunctionInstance*)object; }
-	inline TableInstance* asTable(ObjectInstance* object)			{ assert(object && object->kind == IR::ObjectKind::table); return (TableInstance*)object; }
-	inline MemoryInstance* asMemory(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::memory); return (MemoryInstance*)object; }
-	inline GlobalInstance* asGlobal(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::global); return (GlobalInstance*)object; }
-	inline ModuleInstance* asModule(ObjectInstance* object)		{ assert(object && object->kind == IR::ObjectKind::module); return (ModuleInstance*)object; }
+	inline FunctionInstance* asFunction(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::function); return (FunctionInstance*)object; }
+	inline TableInstance* asTable(ObjectInstance* object)			{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::table); return (TableInstance*)object; }
+	inline MemoryInstance* asMemory(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::memory); return (MemoryInstance*)object; }
+	inline GlobalInstance* asGlobal(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::global); return (GlobalInstance*)object; }
+	inline ModuleInstance* asModule(ObjectInstance* object)		{ WAVM_ASSERT_THROW(object && object->kind == IR::ObjectKind::module); return (ModuleInstance*)object; }
 
 	template<typename Instance> Instance* as(ObjectInstance* object);
 	template<> inline FunctionInstance* as<FunctionInstance>(ObjectInstance* object) { return asFunction(object); }
@@ -122,12 +122,7 @@ namespace Runtime
 
 	// Invokes a FunctionInstance with the given parameters, and returns the result.
 	// Throws a Runtime::Exception if a trap occurs.
-	Result invokeFunction(FunctionInstance* function,const std::vector<Value>& parameters);
-
-	void invokeFunction2(FunctionInstance* function,const std::vector<Value>& parameters);
-
-  void test( int a );
-	Result testPointerPass(int64_t function, int64_t test2);
+	RUNTIME_API Result invokeFunction(FunctionInstance* function,const std::vector<Value>& parameters);
 
 	// Returns the type of a FunctionInstance.
 	RUNTIME_API const IR::FunctionType* getFunctionType(FunctionInstance* function);
@@ -217,6 +212,7 @@ namespace Runtime
 
 	RUNTIME_API void runInstanceStartFunc(ModuleInstance* moduleInstance);
 	RUNTIME_API void resetGlobalInstances(ModuleInstance* moduleInstance);
+	RUNTIME_API void resetMemory(MemoryInstance* memory, IR::MemoryType& newMemoryType);
 
 	// Gets an object exported by a ModuleInstance by name.
 	RUNTIME_API ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name);

@@ -1,4 +1,5 @@
 {
+  "version": "eosio::abi/1.0",
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -23,7 +24,8 @@
   ],
   "actions": [{
       "name": "setowner",
-      "type": "setowner"
+      "type": "setowner",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -33,5 +35,7 @@
       "key_names" : ["key"],
       "key_types" : ["name"]
     }
-  ]
+  ],
+  "ricardian_clauses": [],
+  "abi_extensions": []
 }

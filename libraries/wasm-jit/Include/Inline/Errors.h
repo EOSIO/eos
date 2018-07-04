@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <cstdio>
 #include <cstdlib>
+#include <stdexcept>
 
 namespace Errors
 {
@@ -24,3 +25,7 @@ namespace Errors
 
 // Like assert, but is never removed in any build configuration.
 #define errorUnless(condition) if(!(condition)) { Errors::fatalf("errorUnless(%s) failed\n",#condition); }
+
+#define WAVM_ASSERT_THROW(cond) ({ if( !(cond) ) throw std::runtime_error{"wavm assert: " #cond}; })
+
+#define WAVM_ASSERT_TERMINATE(cond) ({ if( !(cond) ) { fprintf(stderr, "wavm assert in destructor: %s", #cond); std::terminate(); } })

@@ -50,7 +50,7 @@ that requires usage of a fingerprint when signing a digest (such a signing a tra
 ```
 $ applesedemo.app/Contents/MacOS/applesedemo --create-se-touch-only
 Successfully created
-public_key(EOSR17iKCZrb1JqSjUncCbDGQenzSqyuNmPU8iUA15efNW5KD1iHd9x)
+public_key(PUB_R1_7iKCZrb1JqSjUncCbDGQenzSqyuNmPU8iUA15efNW5KD1iHd9x)
 ```
 The public key for the private key is printed; note it somewhere. It is possible to ask the Secure Enclave to
 create multiple private keys and assign labels to them but this application only allows a single key at once.
@@ -64,14 +64,14 @@ Now, ask the Secure Enclave to sign the digest with the private key only it know
 generated until a valid fingerprint is used.
 ```
 $ applesedemo.app/Contents/MacOS/applesedemo --sign 0ba904eae8773b70c75333db4de2f3ac45a8ad4ddba1b242f0b3cfc199391dd8
-signature(EOSR1Jx4sBidhFV6PSvS8hWbG5oh77HKud8xpkoHLvWaZVaBeWttRpyEjaGbPRVEKu3JePTyVjANmP4GKFtG2DAuB4MTVqsdC9W)
+signature(SIG_R1_Jx4sBidhFV6PSvS8hWbG5oh77HKud8xpkoHLvWaZVaBeWttRpyEjaGbPRVEKu3JePTyVjANmP4GKFtG2DAuB4MTVqsdC9W)
 ```
 ## Key Recovery
 Given the signature and digest, we must be able to correlate that with the public key that signed the digest.
 ```
 $ applesedemo.app/Contents/MacOS/applesedemo --recover 0ba904eae8773b70c75333db4de2f3ac45a8ad4ddba1b242f0b3cfc199391dd8 \
-     EOSR1Jx4sBidhFV6PSvS8hWbG5oh77HKud8xpkoHLvWaZVaBeWttRpyEjaGbPRVEKu3JePTyVjANmP4GKFtG2DAuB4MTVqsdC9W
-public_key(EOSR17iKCZrb1JqSjUncCbDGQenzSqyuNmPU8iUA15efNW5KD1iHd9x)
+     SIG_R1_Jx4sBidhFV6PSvS8hWbG5oh77HKud8xpkoHLvWaZVaBeWttRpyEjaGbPRVEKu3JePTyVjANmP4GKFtG2DAuB4MTVqsdC9W
+public_key(PUB_R1_7iKCZrb1JqSjUncCbDGQenzSqyuNmPU8iUA15efNW5KD1iHd9x)
 ```
 Indeed, the public key recovered from this digest and signature matches the public key from the key stored in the Secure
 Enclave.

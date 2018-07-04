@@ -13,7 +13,7 @@ namespace WAST
 {
 	const char* describeToken(TokenType tokenType)
 	{
-		assert(tokenType < numTokenTypes);
+		WAVM_ASSERT_THROW(tokenType < numTokenTypes);
 		static const char* tokenDescriptions[] =
 		{
 			// This ENUM_TOKENS must come before the literalTokenPairs definition that redefines VISIT_OPERATOR_TOKEN.

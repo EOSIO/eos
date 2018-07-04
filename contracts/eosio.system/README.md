@@ -34,7 +34,7 @@ Indicates that a particular account wishes to become a producer
    Storage changes will be billed to 'account'
 
 ## eosio.system::unstake        account quantity 
-   - **account** - the account which is requsting their balance be unstaked
+   - **account** - the account which is requesting their balance be unstaked
    - **quantity** - the quantity which will be unstaked, unstaked tokens lose voting influence immediately
 
    - in order to unstake tokens, an account must request them. The user will receive them over
@@ -71,7 +71,7 @@ Indicates that a particular account wishes to become a producer
    - this special action is triggered when a block is applied by the given producer and cannot be generated from
      any other source. It is used to pay producers and calculate missed blocks of other producers. 
 
-   - producer pay is deposited into the prodcer's stake balance and can be withdrawn over time.
+   - producer pay is deposited into the producer's stake balance and can be withdrawn over time.
 
    - if blocknum is the start of a new round this may update the active producer config from the producer votes.
 

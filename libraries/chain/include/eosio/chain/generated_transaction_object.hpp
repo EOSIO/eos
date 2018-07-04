@@ -29,11 +29,20 @@ namespace eosio { namespace chain {
          id_type                       id;
          transaction_id_type           trx_id;
          account_name                  sender;
-         uint32_t                      sender_id = 0; /// ID given this transaction by the sender
+         uint128_t                     sender_id = 0; /// ID given this transaction by the sender
+         account_name                  payer;
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
-         shared_vector<char>           packed_trx;
+         shared_string                 packed_trx;
+
+         uint32_t set( const transaction& trx ) {
+            auto trxsize = fc::raw::pack_size( trx );
+            packed_trx.resize( trxsize );
+            fc::datastream<char*> ds( packed_trx.data(), trxsize );
+            fc::raw::pack( ds, trx );
+            return trxsize;
+         }
    };
 
    struct by_trx_id;
@@ -47,13 +56,13 @@ namespace eosio { namespace chain {
       indexed_by<
          ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
          ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, transaction_id_type, trx_id)>,
-         ordered_unique< tag<by_expiration>, 
+         ordered_unique< tag<by_expiration>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, expiration),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
             >
          >,
-         ordered_unique< tag<by_delay>, 
+         ordered_unique< tag<by_delay>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, delay_until),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
@@ -62,15 +71,19 @@ namespace eosio { namespace chain {
          ordered_unique< tag<by_sender_id>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, account_name, sender),
-               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, uint32_t, sender_id),
-               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, uint128_t, sender_id)
             >
          >
       >
    >;
 
-   typedef chainbase::generic_index<generated_transaction_multi_index> generated_transaction_index;
+   namespace config {
+      template<>
+      struct billable_size<generated_transaction_object> {
+         static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 5;  ///< overhead for 5x indices internal-key, txid, expiration, delay, sender_id
+         static const uint64_t value = 96 + 4 + overhead; ///< 96 bytes for our constant size fields, 4 bytes for a varint for packed_trx size and 96 bytes of implementation overhead
+      };
+   }
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
-

@@ -21,13 +21,13 @@ namespace Log
 	void setCategoryEnabled(Category category,bool enable)
 	{
 		Platform::Lock lock(categoryEnabledMutex);
-		assert(category < Category::num);
+		WAVM_ASSERT_THROW(category < Category::num);
 		categoryEnabled[(Uptr)category] = enable;
 	}
 	bool isCategoryEnabled(Category category)
 	{
 		Platform::Lock lock(categoryEnabledMutex);
-		assert(category < Category::num);
+		WAVM_ASSERT_THROW(category < Category::num);
 		return categoryEnabled[(Uptr)category];
 	}
 	void printf(Category category,const char* format,...)

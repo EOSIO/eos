@@ -7,7 +7,7 @@ if(NOT EOS_GIT_REVISION_DESCRIPTION)
     set(EOS_GIT_REVISION_DESCRIPTION "unknown")
 endif(NOT EOS_GIT_REVISION_DESCRIPTION)
 
-file(GLOB HEADERS "include/eos/utilities/*.hpp")
+file(GLOB HEADERS "include/eosio/utilities/*.hpp")
 
 set(sources
    key_conversion.cpp
@@ -30,12 +30,3 @@ if (USE_PCH)
   set_target_properties(eos_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
   cotire(eos_utilities)
 endif(USE_PCH)
-
-install( TARGETS
-   eos_utilities
-
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
-install( FILES ${HEADERS} DESTINATION "include/eos/utilities" )

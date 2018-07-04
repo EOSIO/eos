@@ -1,4 +1,5 @@
 {
+  "version": "eosio::abi/1.0",
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -16,8 +17,11 @@
   ],
   "actions": [{
   "name":"anyaction",
-  "type":"anyaction"
+  "type":"anyaction",
+  "ricardian_contract": ""
   }
 ],
-  "tables": []
+  "tables": [],
+  "ricardian_clauses": [],
+  "abi_extensions": []
 }

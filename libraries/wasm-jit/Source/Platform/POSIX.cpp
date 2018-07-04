@@ -13,6 +13,8 @@
 #include <setjmp.h>
 #include <sys/resource.h>
 #include <string.h>
+#include <iostream>
+#include <string>
 
 #include <sys/time.h>
 
@@ -27,6 +29,12 @@
 	#include <execinfo.h>
 	#include <dlfcn.h>
 #endif
+#ifdef __FreeBSD__
+	#include <execinfo.h>
+	#include <dlfcn.h>
+	#include <pthread_np.h>
+	#include <iostream>
+#endif
 
 namespace Platform
 {
@@ -34,7 +42,7 @@ namespace Platform
 	{
 		U32 preferredVirtualPageSize = sysconf(_SC_PAGESIZE);
 		// Verify our assumption that the virtual page size is a power of two.
-		assert(!(preferredVirtualPageSize & (preferredVirtualPageSize - 1)));
+		WAVM_ASSERT_THROW(!(preferredVirtualPageSize & (preferredVirtualPageSize - 1)));
 		return floorLogTwo(preferredVirtualPageSize);
 	}
 	Uptr getPageSizeLog2()
@@ -101,7 +109,7 @@ namespace Platform
 
 	bool describeInstructionPointer(Uptr ip,std::string& outDescription)
 	{
-		#ifdef __linux__
+		#if defined __linux__ || defined __FreeBSD__
 			// Look up static symbol information for the address.
 			Dl_info symbolInfo;
 			if(dladdr((void*)ip,&symbolInfo) && symbolInfo.dli_sname)
@@ -136,11 +144,15 @@ namespace Platform
 			// Get the stack address from pthreads, but use getrlimit to find the maximum size of the stack instead of the current.
 			struct rlimit stackLimit;
 			getrlimit(RLIMIT_STACK,&stackLimit);
-			#ifdef __linux__
+			#if defined __linux__ || defined __FreeBSD__
 				// Linux uses pthread_getattr_np/pthread_attr_getstack, and returns a pointer to the minimum address of the stack.
 				pthread_attr_t threadAttributes;
-				memset(&threadAttributes,0,sizeof(threadAttributes));
-				pthread_getattr_np(pthread_self(),&threadAttributes);
+				pthread_attr_init(&threadAttributes);
+				#ifdef __linux__
+					pthread_getattr_np(pthread_self(),&threadAttributes);
+				#else
+					pthread_attr_get_np(pthread_self(), &threadAttributes);
+				#endif
 				Uptr stackSize;
 				pthread_attr_getstack(&threadAttributes,(void**)&stackMinAddr,&stackSize);
 				pthread_attr_destroy(&threadAttributes);
@@ -158,7 +170,7 @@ namespace Platform
 		}
 	}
 
-	THREAD_LOCAL jmp_buf signalReturnEnv;
+	THREAD_LOCAL sigjmp_buf signalReturnEnv;
 	THREAD_LOCAL HardwareTrapType signalType = HardwareTrapType::none;
 	THREAD_LOCAL CallStack* signalCallStack = nullptr;
 	THREAD_LOCAL Uptr* signalOperand = nullptr;
@@ -266,7 +278,7 @@ namespace Platform
 
 	CallStack captureCallStack(Uptr numOmittedFramesFromTop)
 	{
-		#ifdef __linux__
+		#if 0
 			// Unwind the callstack.
 			enum { maxCallStackSize = signalStackNumBytes / sizeof(void*) / 8 };
 			void* callstackAddresses[maxCallStackSize];

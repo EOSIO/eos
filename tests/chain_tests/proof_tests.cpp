@@ -3,6 +3,11 @@
 #include <eosio/chain/merkle.hpp>
 #include <fc/io/json.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -13,8 +18,8 @@ struct action_proof_data {
    scope_name                scope;
    action_name               name;
    bytes                     data;
-   uint32_t                  region_id;
-   uint32_t                  cycle_index;
+   uint64_t                  region_id;
+   uint64_t                  cycle_index;
    vector<data_access_info>  data_access;
 };
 FC_REFLECT(action_proof_data, (receiver)(scope)(name)(data)(region_id)(cycle_index)(data_access));
@@ -118,19 +123,19 @@ bool proof_is_valid(const digest_type& digest, const vector<digest_type>& path, 
 
 BOOST_AUTO_TEST_SUITE(proof_tests)
 
-BOOST_FIXTURE_TEST_CASE( prove_block_in_chain, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( prove_block_in_chain, validating_tester ) { try {
    vector<block_id_type> known_blocks;
    known_blocks.reserve(100);
    block_header last_block_header;
 
     // register a callback on new blocks to record block information
-   control->applied_block.connect([&](const block_trace& bt){
+   validating_node->applied_block.connect([&](const block_trace& bt){
       known_blocks.emplace_back(bt.block.id());
       last_block_header = bt.block;
    });
 
    produce_blocks(100);
-
+   return;
    vector<merkle_node> nodes;
    vector<digest_type> ids;
    vector<size_t> block_leaves;
@@ -182,7 +187,7 @@ struct action_proof_info {
  *  This test case will attempt to allow one account to transfer on behalf
  *  of another account by updating the active authority.
  */
-BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( prove_action_in_block, validating_tester ) { try {
    vector<merkle_node> nodes;
    vector<size_t> block_leaves;
    vector<action_proof_info> known_actions;
@@ -190,15 +195,19 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
    block_header last_block_header;
    block_id_type last_block_id;
 
-      // register a callback on new blocks to record block information
-   control->applied_block.connect([&](const block_trace& bt){
+   // register a callback on new blocks to record block information
+   validating_node->applied_block.connect([&](const block_trace& bt){
       nodes.emplace_back(merkle_node{bt.block.id()});
       size_t block_leaf = nodes.size() - 1;
       block_leaves.push_back(block_leaf);
-      vector<size_t> shard_leaves;
+
+      vector<size_t> region_leaves;
 
       for (uint32_t r_idx = 0; r_idx < bt.region_traces.size(); r_idx++) {
          const auto& rt = bt.region_traces.at(r_idx);
+
+         vector<size_t> shard_leaves;
+
          for (uint32_t c_idx = 0; c_idx < rt.cycle_traces.size(); c_idx++) {
             const auto& ct = rt.cycle_traces.at(c_idx);
 
@@ -214,8 +223,8 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
                         at.act.account,
                         at.act.name,
                         at.act.data,
-                        at.region_id,
-                        at.cycle_index,
+                        tt.region_id,
+                        tt.cycle_index,
                         at.data_access
                      };
                      fc::raw::pack(enc, a_data);
@@ -228,13 +237,23 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
 
                if (action_leaves.size() > 0) {
                   process_merkle(nodes, move(action_leaves));
-                  shard_leaves.emplace_back(nodes.size() - 1);
+               } else {
+                  nodes.emplace_back(merkle_node{digest_type()});
                }
+               shard_leaves.emplace_back(nodes.size() - 1);
             }
          }
+
+         if (shard_leaves.size() > 0) {
+            process_merkle(nodes, move(shard_leaves));
+         } else {
+            nodes.emplace_back(merkle_node{digest_type()});
+         }
+
+         region_leaves.emplace_back(nodes.size() - 1);
       }
 
-      digest_type action_mroot = process_merkle(nodes, move(shard_leaves));
+      digest_type action_mroot = process_merkle(nodes, move(region_leaves));
       BOOST_REQUIRE_EQUAL((std::string)bt.block.action_mroot, (std::string)action_mroot);
 
       last_block_header = bt.block;
@@ -242,13 +261,15 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
       block_action_mroots[bt.block.id()] = bt.block.action_mroot;
    });
 
+   create_accounts( { N(alice), N(bob), N(carol), N(david), N(elvis) });
+
    produce_blocks(50);
 
-   transfer( N(inita), N(initb), "1.0000 EOS", "memo" );
-   transfer( N(initb), N(initc), "1.0000 EOS", "memo" );
-   transfer( N(initc), N(initd), "1.0000 EOS", "memo" );
-   transfer( N(initd), N(inite), "1.0000 EOS", "memo" );
-   transfer( N(inite), N(inita), "1.0000 EOS", "memo" );
+   push_dummy(N(alice), "AB");
+   push_dummy(N(bob), "BC");
+   push_dummy(N(carol), "CD");
+   push_dummy(N(david), "DE");
+   push_dummy(N(elvis), "EF");
 
    produce_blocks(50);
    digest_type block_mroot = process_merkle(nodes, move(block_leaves));

@@ -2,8 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/eos.hpp>
-#include <eosiolib/db.hpp>
+#include <eosiolib/eosio.hpp>
 
 /**
  *  @defgroup tictactoecontract Tic Tac Toe Contract
@@ -11,7 +10,6 @@
  *  @ingroup examplecontract
  *  
  *  @details
- *
  *  For the following tic-tac-toe game:
  *  - Each pair of player can have 2 unique game, one where player_1 become host and player_2 become challenger and vice versa
  *  - The game data is stored in the "host" scope and use the "challenger" as the key
@@ -44,85 +42,102 @@
  *  @{
  */
 
-using namespace eosio;
 namespace tic_tac_toe {
-  /**
-   * @brief Data structure to hold game information
-   */
-  struct PACKED(game) {
-    game() {};
-    game(account_name challenger, account_name host):challenger(challenger), host(host), turn(host) {
-      // Initialize board
-      initialize_board();
-    };
-    account_name     challenger; // this also acts as key of the table
-    account_name     host;
-    account_name     turn; // = account name of host/ challenger
-    account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
-    uint8_t          board_len = 9;
-    uint8_t          board[9]; //
-    
-    // Initialize board with empty cell
-    void initialize_board() {
-      for (uint8_t i = 0; i < board_len ; i++) {
-        board[i] = 0;
+   static const account_name games_account = N(games);
+   static const account_name code_account = N(tic.tac.toe);
+
+   /**
+    * @brief Data structure to hold game information
+    */
+   static const uint32_t board_len = 9;
+   struct game {
+      game() { initialize_board(); }
+      game(account_name challenger_account, account_name host_account)
+            : challenger(challenger_account), host(host_account), turn(host_account) {
+         // Initialize board
+         initialize_board();
       }
-    }
+      account_name     challenger;
+      account_name     host;
+      account_name     turn; // = account name of host/ challenger
+      account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
+      uint8_t          board[board_len];
 
-    // Reset game
-    void reset_game() {
-      initialize_board();
-      turn = host;
-      winner = N(none);
-    }
-  };
+      // Initialize board with empty cell
+      void initialize_board() {
+         for (uint8_t i = 0; i < board_len ; i++) {
+            board[i] = 0;
+         }
+      }
 
-  /**
-   * @brief Action to create new game
-   */ 
-  struct create {
-    account_name   challenger;
-    account_name   host;
-  };
+      // Reset game
+      void reset_game() {
+         initialize_board();
+         turn = host;
+         winner = N(none);
+      }
 
-  /**
-   * @brief Action to restart new game
-   */ 
-  struct restart {
-    account_name   challenger;
-    account_name   host;
-    account_name   by; // the account who wants to restart the game
-  };
+      auto primary_key() const { return challenger; }
 
-  /**
-   * @brief Action to close new game
-   */ 
-  struct close {
-    account_name   challenger;
-    account_name   host;
-  };
+      EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board) )
+   };
 
-  /**
-   * @brief Data structure for movement
-   */ 
-  struct movement {
-    uint32_t    row;
-    uint32_t    column;
-  };
+   /**
+    * @brief Action to create new game
+    */
+   struct create {
+      account_name   challenger;
+      account_name   host;
 
-  /**
-   * @brief Action to make movement
-   */ 
-  struct move {
-    account_name   challenger;
-    account_name   host;
-    account_name   by; // the account who wants to make the move
-    movement       mvt;
-  };
+      EOSLIB_SERIALIZE( create, (challenger)(host) )
+   };
 
-  /**
-   * @brief table to store list of games
-   */ 
-  using Games = eosio::table<N(tic.tac.toe),N(tic.tac.toe),N(games),game,uint64_t>;
+   /**
+    * @brief Action to restart new game
+    */
+   struct restart {
+      account_name   challenger;
+      account_name   host;
+      account_name   by; // the account who wants to restart the game
+
+      EOSLIB_SERIALIZE( restart, (challenger)(host)(by) )
+   };
+
+   /**
+    * @brief Action to close new game
+    */
+   struct close {
+      account_name   challenger;
+      account_name   host;
+
+      EOSLIB_SERIALIZE( close, (challenger)(host) )
+   };
+
+   /**
+    * @brief Data structure for movement
+    */
+   struct movement {
+      uint32_t    row;
+      uint32_t    column;
+
+      EOSLIB_SERIALIZE( movement, (row)(column) )
+   };
+
+   /**
+    * @brief Action to make movement
+    */
+   struct move {
+      account_name   challenger;
+      account_name   host;
+      account_name   by; // the account who wants to make the move
+      movement       mvt;
+
+      EOSLIB_SERIALIZE( move, (challenger)(host)(by)(mvt) )
+   };
+
+   /**
+    * @brief table definition, used to store existing games and their current state
+    */
+   typedef eosio::multi_index< games_account, game> games;
 }
 /// @}

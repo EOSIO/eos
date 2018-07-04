@@ -28,6 +28,8 @@ namespace Runtime
 		};
 	}
 
+	MemoryInstance* MemoryInstance::theMemoryInstance = nullptr;
+
 	ModuleInstance* instantiateModule(const IR::Module& module,ImportBindings&& imports)
 	{
 		ModuleInstance* moduleInstance = new ModuleInstance(
@@ -72,20 +74,22 @@ namespace Runtime
 		}
 		for(const MemoryDef& memoryDef : module.memories.defs)
 		{
-			auto memory = createMemory(memoryDef.type);
-			if(!memory) { causeException(Exception::Cause::outOfMemory); }
-			moduleInstance->memories.push_back(memory);
+			if(!MemoryInstance::theMemoryInstance) {
+				MemoryInstance::theMemoryInstance = createMemory(memoryDef.type);
+				if(!MemoryInstance::theMemoryInstance) { causeException(Exception::Cause::outOfMemory); }
+			}
+			moduleInstance->memories.push_back(MemoryInstance::theMemoryInstance);
 		}
 
 		// Find the default memory and table for the module.
 		if(moduleInstance->memories.size() != 0)
 		{
-			assert(moduleInstance->memories.size() == 1);
+			WAVM_ASSERT_THROW(moduleInstance->memories.size() == 1);
 			moduleInstance->defaultMemory = moduleInstance->memories[0];
 		}
 		if(moduleInstance->tables.size() != 0)
 		{
-			assert(moduleInstance->tables.size() == 1);
+			WAVM_ASSERT_THROW(moduleInstance->tables.size() == 1);
 			moduleInstance->defaultTable = moduleInstance->tables[0];
 		}
 
@@ -100,32 +104,10 @@ namespace Runtime
 			|| table->elements.size() - baseOffset < tableSegment.indices.size())
 			{ causeException(Exception::Cause::invalidSegmentOffset); }
 		}
-		for(auto& dataSegment : module.dataSegments)
-		{
-			MemoryInstance* memory = moduleInstance->memories[dataSegment.memoryIndex];
 
-			const Value baseOffsetValue = evaluateInitializer(moduleInstance,dataSegment.baseOffset);
-			errorUnless(baseOffsetValue.type == ValueType::i32);
-			const U32 baseOffset = baseOffsetValue.i32;
-			const Uptr numMemoryBytes = (memory->numPages << IR::numBytesPerPageLog2);
-			if(baseOffset > numMemoryBytes
-			|| numMemoryBytes - baseOffset < dataSegment.data.size())
-			{ causeException(Exception::Cause::invalidSegmentOffset); }
-		}
-
-		// Copy the module's data segments into the module's default memory.
-		for(const DataSegment& dataSegment : module.dataSegments)
-		{
-			MemoryInstance* memory = moduleInstance->memories[dataSegment.memoryIndex];
-
-			const Value baseOffsetValue = evaluateInitializer(moduleInstance,dataSegment.baseOffset);
-			errorUnless(baseOffsetValue.type == ValueType::i32);
-			const U32 baseOffset = baseOffsetValue.i32;
-
-			assert(baseOffset + dataSegment.data.size() <= (memory->numPages << IR::numBytesPerPageLog2));
-
-			memcpy(memory->baseAddress + baseOffset,dataSegment.data.data(),dataSegment.data.size());
-		}
+		//Previously, the module instantiation would write in to the memoryInstance here. Don't do that
+      //since the memoryInstance is shared across all moduleInstances and we could be compiling
+      //a new instance while another instance is running
 		
 		// Instantiate the module's global definitions.
 		for(const GlobalDef& globalDef : module.globals.defs)
@@ -173,12 +155,12 @@ namespace Runtime
 			const Value baseOffsetValue = evaluateInitializer(moduleInstance,tableSegment.baseOffset);
 			errorUnless(baseOffsetValue.type == ValueType::i32);
 			const U32 baseOffset = baseOffsetValue.i32;
-			assert(baseOffset + tableSegment.indices.size() <= table->elements.size());
+			WAVM_ASSERT_THROW(baseOffset + tableSegment.indices.size() <= table->elements.size());
 
 			for(Uptr index = 0;index < tableSegment.indices.size();++index)
 			{
 				const Uptr functionIndex = tableSegment.indices[index];
-				assert(functionIndex < moduleInstance->functions.size());
+				WAVM_ASSERT_THROW(functionIndex < moduleInstance->functions.size());
 				setTableElement(table,baseOffset + index,moduleInstance->functions[functionIndex]);
 			}
 		}
@@ -186,7 +168,7 @@ namespace Runtime
 		// Call the module's start function.
 		if(module.startFunctionIndex != UINTPTR_MAX)
 		{
-			assert(moduleInstance->functions[module.startFunctionIndex]->type == IR::FunctionType::get());
+			WAVM_ASSERT_THROW(moduleInstance->functions[module.startFunctionIndex]->type == IR::FunctionType::get());
 			moduleInstance->startFunctionIndex = module.startFunctionIndex;
 		}
 

@@ -56,7 +56,7 @@ namespace Runtime
 
 	[[noreturn]] void handleHardwareTrap(Platform::HardwareTrapType trapType,Platform::CallStack&& trapCallStack,Uptr trapOperand)
 	{
-    std::cerr << "handle hadrware trap \n";
+      std::cerr << "handle hardware trap\n";
 		std::vector<std::string> callStackDescription = describeCallStack(trapCallStack);
 
 		switch(trapType)
@@ -148,8 +148,8 @@ namespace Runtime
 
 	Value setGlobalValue(GlobalInstance* global,Value newValue)
 	{
-		assert(newValue.type == global->type.valueType);
-		assert(global->type.isMutable);
+		WAVM_ASSERT_THROW(newValue.type == global->type.valueType);
+		WAVM_ASSERT_THROW(global->type.isMutable);
 		const Value previousValue = Value(global->type.valueType,global->value);
 		global->value = newValue;
 		return previousValue;

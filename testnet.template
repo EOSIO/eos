@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# set up a wallet just for holding the key used during blockchain ignition
+
+bioshost=$BIOS_HOSTNAME
+if [ -z "$bioshost" ]; then
+   bioshost=localhost
+fi
+
+biosport=$BIOS_HTTP_PORT
+if [ -z "$biosport" ]; then
+    biosport=9776
+fi
+
+wddir=eosio-ignition-wd
+wdaddr=localhost:8899
+wdurl=http://$wdaddr
+# Manual deployers, add a line below this block that looks like:
+#    bioshost=$BIOS_HOSTNAME
+#    biosport=$BIOS_HTTP_PORT
+#    cnt_dir=$CONTRACT_DIR
+#    sys=$SYS_CONTRACT
+# where $BIOS_HOSTNAME is replaced by the hostname portion of the http-server-address configured
+# for the nodeos instance running to bios producer
+# ------ DO NOT ALTER THE NEXT LINE -------
+###INSERT envars
+
+logfile=$wddir/bootlog.txt
+
+if [ -e $wddir ]; then
+    rm -rf $wddir
+fi
+mkdir $wddir
+
+step=1
+echo Initializing ignition sequence  at $(date) | tee $logfile
+
+echo "http-server-address = $wdaddr" > $wddir/config.ini
+
+programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
+echo $$ > ignition_wallet.pid
+echo keosd log in $wddir/wdlog.txt >> $logfile
+sleep 1
+
+ecmd () {
+    echo ===== Start: $step ============ >> $logfile
+    echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
+    echo ----------------------- >> $logfile
+    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport $* >> $logfile 2>&1
+    echo ==== End: $step ============== >> $logfile
+    step=$(($step + 1))
+}
+
+wcmd () {
+    ecmd wallet $*
+}
+
+cacmd () {
+    ecmd create account eosio $*
+}
+
+sleep 2
+ecmd get info
+
+
+wcmd create -n ignition
+# Manual deployers, add a line below this block that looks like:
+#    wcmd import -n ignition $PRODKEY[0]
+#    wcmd import -n ignition $PRODKEY[1]
+#    ...
+#    wcmd import -n ignition $PRODKEY[20]
+
+# where $BIOSKEY is replaced by the private key for the bios node
+# ------ DO NOT ALTER THE NEXT LINE -------
+###INSERT prodkeys
+
+# Manual deployers, add a series of lines below this block that looks like:
+#    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]
+#    cacmd $PRODNAME[1] $OWNERKEY[1] $ACTiVEKEY[1]
+#    ...
+#    cacmd $PRODNAME[20] $OWNERKEY[20] $ACTIVEKEY[20]
+# where $PRODNAME is the producer account name and $OWNERKEY and $ACTIVEKEY are both the producer's
+# public key
+# ------ DO NOT ALTER THE NEXT LINE -------
+###INSERT cacmd
+
+
+ecmd set contract eosio contracts/eosio.bios contracts/eosio.bios/eosio.bios.wast contracts/eosio.bios/eosio.bios.abi
+
+#the setprods.json argument cannot pass through the function call due to embedded quotes
+echo ===== Start: $step ============ >> $logfile
+echo executing: cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active | tee -a $logfile
+echo ----------------------- >> $logfile
+programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio setprods setprods.json -p eosio@active >> $logfile 2>&1
+echo ==== End: $step ============== >> $logfile
+step=$(($step + 1))
+
+ecmd set contract eosio contracts/eosio.system contracts/eosio.system/eosio.system.wast contracts/eosio.system/eosio.system.abi
+
+echo ===== Start: $step ============ >> $logfile
+echo executing: cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
+echo ----------------------- >> $logfile
+programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active >> $logfile 2>&1
+echo ==== End: $step ============== >> $logfile
+step=$(($step + 1))
+
+for a in {a..u}; do ecmd transfer eosio init$a 1000000.0000 "\"fund_producer_init$a\""; done
+
+pkill -15 keosd

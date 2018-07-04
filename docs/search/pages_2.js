@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['welcome_20to_20the_20eos_2eio_20documentation',['Welcome to the EOS.IO Documentation',['../index.html',1,'']]]
+  ['dice',['DICE',['../md_contracts_dice__r_e_a_d_m_e.html',1,'']]]
 ];

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/system.h File Reference</title>
+<title>EOS.IO: contracts/eosiolib/system.h File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 4.1</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -70,18 +70,29 @@ $(function() {
 <div class="title">system.h File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="types_8h_source.html">eoslib/types.h</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="types_8h_source.html">eosiolib/types.h</a>&gt;</code><br />
 </div>
 <p><a href="system_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a">assert</a> (<a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> test, const char *cstr)</td></tr>
-<tr class="memdesc:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this action and unwinds all pending changes.  <a href="group__systemcapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a">More...</a><br /></td></tr>
-<tr class="separator:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga44479e2657d126b44ca53d30c3e670d8">time</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe">now</a> ()</td></tr>
-<tr class="memdesc:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get time of the last accepted block.  <a href="group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe">More...</a><br /></td></tr>
-<tr class="separator:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga63ddae51c80531b721b4c86595bad1ad"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#ga63ddae51c80531b721b4c86595bad1ad">eosio_assert</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="structtest.html">test</a>, const char *msg)</td></tr>
+<tr class="memdesc:ga63ddae51c80531b721b4c86595bad1ad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this action and unwinds all pending changes.  <a href="group__systemcapi.html#ga63ddae51c80531b721b4c86595bad1ad">More...</a><br /></td></tr>
+<tr class="separator:ga63ddae51c80531b721b4c86595bad1ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gae176e69d32041367b707b1bbcfd90f22"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gae176e69d32041367b707b1bbcfd90f22">eosio_assert_message</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="structtest.html">test</a>, const char *msg, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> msg_len)</td></tr>
+<tr class="memdesc:gae176e69d32041367b707b1bbcfd90f22"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this action and unwinds all pending changes.  <a href="group__systemcapi.html#gae176e69d32041367b707b1bbcfd90f22">More...</a><br /></td></tr>
+<tr class="separator:gae176e69d32041367b707b1bbcfd90f22"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gac641add82fe25fe30f38efd149d46e5d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gac641add82fe25fe30f38efd149d46e5d">eosio_assert_code</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="structtest.html">test</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code)</td></tr>
+<tr class="memdesc:gac641add82fe25fe30f38efd149d46e5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this action and unwinds all pending changes.  <a href="group__systemcapi.html#gac641add82fe25fe30f38efd149d46e5d">More...</a><br /></td></tr>
+<tr class="separator:gac641add82fe25fe30f38efd149d46e5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gae6b0de62b1edad98f29873b53f75dda0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gae6b0de62b1edad98f29873b53f75dda0">eosio_exit</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> code)</td></tr>
+<tr class="separator:gae6b0de62b1edad98f29873b53f75dda0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gaa95529fd8b200ddbb9ae71ea5c6055a3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gaa95529fd8b200ddbb9ae71ea5c6055a3">current_time</a> ()</td></tr>
+<tr class="memdesc:gaa95529fd8b200ddbb9ae71ea5c6055a3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get time of the current block (i.e. the block including this action)  <a href="group__systemcapi.html#gaa95529fd8b200ddbb9ae71ea5c6055a3">More...</a><br /></td></tr>
+<tr class="separator:gaa95529fd8b200ddbb9ae71ea5c6055a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga1d6f7cc76d564d41a635075b12ea6d40"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#ga1d6f7cc76d564d41a635075b12ea6d40">now</a> ()</td></tr>
+<tr class="memdesc:ga1d6f7cc76d564d41a635075b12ea6d40"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get time (rounded down to the nearest second) of the current block (i.e. the block including this action)  <a href="group__systemcapi.html#ga1d6f7cc76d564d41a635075b12ea6d40">More...</a><br /></td></tr>
+<tr class="separator:ga1d6f7cc76d564d41a635075b12ea6d40"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>

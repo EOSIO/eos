@@ -1,0 +1,231 @@
+{
+   "version": "eosio::abi/1.0",
+   "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+   },{
+      "new_type_name": "permission_name",
+      "type": "name"
+   },{
+      "new_type_name": "action_name",
+      "type": "name"
+   },{
+      "new_type_name": "transaction_id_type",
+      "type": "checksum256"
+   },{
+      "new_type_name": "weight_type",
+      "type": "uint16"
+   }],
+   "structs": [{
+      "name": "permission_level",
+      "base": "",
+      "fields": [
+        {"name":"actor",      "type":"account_name"},
+        {"name":"permission", "type":"permission_name"}
+      ]
+    },{
+      "name": "key_weight",
+      "base": "",
+      "fields": [
+        {"name":"key",    "type":"public_key"},
+        {"name":"weight", "type":"weight_type"}
+      ]
+    },{
+      "name": "permission_level_weight",
+      "base": "",
+      "fields": [
+        {"name":"permission", "type":"permission_level"},
+        {"name":"weight",     "type":"weight_type"}
+      ]
+    },{
+      "name": "wait_weight",
+      "base": "",
+      "fields": [
+        {"name":"wait_sec", "type":"uint32"},
+        {"name":"weight",   "type":"weight_type"}
+      ]
+    },{
+      "name": "authority",
+      "base": "",
+      "fields": [
+        {"name":"threshold", "type":"uint32"},
+        {"name":"keys",      "type":"key_weight[]"},
+        {"name":"accounts",  "type":"permission_level_weight[]"},
+        {"name":"waits",     "type":"wait_weight[]"}
+      ]
+    },{
+      "name": "newaccount",
+      "base": "",
+      "fields": [
+        {"name":"creator", "type":"account_name"},
+        {"name":"name",    "type":"account_name"},
+        {"name":"owner",   "type":"authority"},
+        {"name":"active",  "type":"authority"}
+      ]
+    },{
+      "name": "setcode",
+      "base": "",
+      "fields": [
+        {"name":"account",   "type":"account_name"},
+        {"name":"vmtype",    "type":"uint8"},
+        {"name":"vmversion", "type":"uint8"},
+        {"name":"code",      "type":"bytes"}
+      ]
+    },{
+      "name": "setabi",
+      "base": "",
+      "fields": [
+        {"name":"account", "type":"account_name"},
+        {"name":"abi",     "type":"bytes"}
+      ]
+    },{
+      "name": "updateauth",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"permission", "type":"permission_name"},
+        {"name":"parent",     "type":"permission_name"},
+        {"name":"auth",       "type":"authority"}
+      ]
+    },{
+      "name": "deleteauth",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"permission", "type":"permission_name"}
+      ]
+    },{
+      "name": "linkauth",
+      "base": "",
+      "fields": [
+        {"name":"account",     "type":"account_name"},
+        {"name":"code",        "type":"account_name"},
+        {"name":"type",        "type":"action_name"},
+        {"name":"requirement", "type":"permission_name"}
+      ]
+    },{
+      "name": "unlinkauth",
+      "base": "",
+      "fields": [
+        {"name":"account",     "type":"account_name"},
+        {"name":"code",        "type":"account_name"},
+        {"name":"type",        "type":"action_name"}
+      ]
+    },{
+      "name": "canceldelay",
+      "base": "",
+      "fields": [
+        {"name":"canceling_auth", "type":"permission_level"},
+        {"name":"trx_id",         "type":"transaction_id_type"}
+      ]
+    },{
+      "name": "onerror",
+      "base": "",
+      "fields": [
+        {"name":"sender_id", "type":"uint128"},
+        {"name":"sent_trx",  "type":"bytes"}
+      ]
+    },{
+      "name": "set_account_limits",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"ram_bytes",  "type":"int64"},
+        {"name":"net_weight", "type":"int64"},
+        {"name":"cpu_weight", "type":"int64"}
+      ]
+    },{
+        "name": "setpriv",
+        "base": "",
+        "fields": [
+          {"name":"account",    "type":"account_name"},
+          {"name":"is_priv",    "type":"int8"}
+        ]
+      },{
+      "name": "set_global_limits",
+      "base": "",
+      "fields": [
+        {"name":"cpu_usec_per_period",    "type":"int64"}
+      ]
+    },{
+      "name": "producer_key",
+      "base": "",
+      "fields": [
+        {"name":"producer_name",      "type":"account_name"},
+        {"name":"block_signing_key",  "type":"public_key"}
+      ]
+    },{
+      "name": "set_producers",
+      "base": "",
+      "fields": [
+        {"name":"schedule",   "type":"producer_key[]"}
+      ]
+    },{
+      "name": "require_auth",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"}
+      ]
+    }],
+   "actions": [{
+      "name": "newaccount",
+      "type": "newaccount",
+      "ricardian_contract": ""
+    },{
+      "name": "setcode",
+      "type": "setcode",
+      "ricardian_contract": ""
+    },{
+      "name": "setabi",
+      "type": "setabi",
+      "ricardian_contract": ""
+    },{
+      "name": "updateauth",
+      "type": "updateauth",
+      "ricardian_contract": ""
+    },{
+      "name": "deleteauth",
+      "type": "deleteauth",
+      "ricardian_contract": ""
+    },{
+      "name": "linkauth",
+      "type": "linkauth",
+      "ricardian_contract": ""
+    },{
+      "name": "unlinkauth",
+      "type": "unlinkauth",
+      "ricardian_contract": ""
+    },{
+      "name": "canceldelay",
+      "type": "canceldelay",
+      "ricardian_contract": ""
+    },{
+      "name": "onerror",
+      "type": "onerror",
+      "ricardian_contract": ""
+    },{
+      "name": "setalimits",
+      "type": "set_account_limits",
+      "ricardian_contract": ""
+    },{
+      "name": "setglimits",
+      "type": "set_global_limits",
+      "ricardian_contract": ""
+    },{
+       "name": "setpriv",
+       "type": "setpriv",
+      "ricardian_contract": ""
+    },{
+      "name": "setprods",
+      "type": "set_producers",
+      "ricardian_contract": ""
+    },{
+      "name": "reqauth",
+      "type": "require_auth",
+      "ricardian_contract": ""
+    }
+   ],
+   "tables": [],
+   "ricardian_clauses": [],
+   "abi_extensions": []
+}

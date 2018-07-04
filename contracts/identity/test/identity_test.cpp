@@ -1,77 +1,35 @@
-#include <eosiolib/chain.h>
+#include <eosiolib/action.h>
+#include <eosiolib/contract.hpp>
 #include <eosiolib/dispatcher.hpp>
-#include <eosiolib/singleton.hpp>
-#include <eosiolib/table.hpp>
-#include <eosiolib/vector.hpp>
-
-#include <identity/identity.hpp>
+#include <identity/interface.hpp>
 
 namespace identity_test {
    
    using eosio::action_meta;
    using eosio::singleton;
-   using eosio::string;
-   using eosio::vector;
+   using std::string;
+   using std::vector;
 
-   class contract {
+   class contract : public eosio::contract {
       public:
+         static constexpr uint64_t code = N(identitytest);
+         typedef singleton<N(result), uint64_t> result_table;
 
-      static const uint64_t code = N(identitytest);
-         typedef identity::contract< N(identity) > identity_contract;
-         typedef identity_contract::identity_name identity_name;
-         typedef identity_contract::property_name property_name;
+         using eosio::contract::contract;
 
-         struct get_owner_for_identity : public action_meta< code, N(getowner) >
-         {
-            uint64_t identity;
-
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const get_owner_for_identity& c ){
-               return ds << c.identity;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, get_owner_for_identity& c ){
-               return ds >> c.identity;
-            }
-         };
-
-         struct get_identity_for_account : public action_meta< code, N(getidentity) >
-         {
-            account_name account ;
-
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const get_identity_for_account& c ){
-               return ds << c.account;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, get_identity_for_account& c ){
-               return ds >> c.account;
-            }
-         };
-
-         typedef singleton<code, N(result), code, uint64_t> result_table;
-
-         static void on( const get_owner_for_identity& c ) {
-            account_name owner = identity_contract::get_owner_for_identity(c.identity);
-            result_table::set(owner, 0); //use scope = 0 for simplicity
+         void getowner( const uint64_t identity ) {
+            identity::interface iface( N(identity) );
+            account_name owner = iface.get_owner_for_identity(current_receiver(), identity);
+            result_table( code, 0 ).set( owner, code ); //use scope = 0 for simplicity
          }
 
-         static void on( const get_identity_for_account& c ) {
-            identity_name idnt = identity_contract::get_identity_for_account(c.account);
-            result_table::set(idnt, 0); //use scope = 0 for simplicity
+         void getidentity( const account_name account ) {
+            identity::interface iface( N(identity) );
+            identity::identity_name idnt = iface.get_identity_for_account(current_receiver(), account);
+            result_table( code, 0 ).set(idnt, code ); //use scope = 0 for simplicity
          }
-
-         static void apply( account_name c, action_name act) {
-            eosio::dispatch<contract, get_owner_for_identity, get_identity_for_account>(c,act);
-         }
-
    };
 
 } /// namespace identity
 
-extern "C" {
-    /// The apply method implements the dispatch of events to this contract
-    void apply( uint64_t code, uint64_t action ) {
-       identity_test::contract::apply( code, action );
-    }
-}
+EOSIO_ABI( identity_test::contract, (getowner)(getidentity) );

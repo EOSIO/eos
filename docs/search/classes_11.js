@@ -1,9 +1,7 @@
 var searchData=
 [
-  ['var_5ftable',['var_table',['../structeosio_1_1var__table.html',1,'eosio']]],
-  ['vector',['vector',['../classeosio_1_1vector.html',1,'eosio']]],
-  ['vector_3c_20char_20_3e',['vector&lt; char &gt;',['../classeosio_1_1vector.html',1,'eosio']]],
-  ['vector_3c_20eosio_3a_3aaction_20_3e',['vector&lt; eosio::action &gt;',['../classeosio_1_1vector.html',1,'eosio']]],
-  ['vector_3c_20eosio_3a_3apermission_5flevel_20_3e',['vector&lt; eosio::permission_level &gt;',['../classeosio_1_1vector.html',1,'eosio']]],
-  ['vote_5faction',['vote_action',['../structvote__action.html',1,'']]]
+  ['q_5fconst',['Q_Const',['../struct_q___const.html',1,'']]],
+  ['q_5fcv',['Q_CV',['../struct_q___c_v.html',1,'']]],
+  ['q_5fnone',['Q_None',['../struct_q___none.html',1,'']]],
+  ['q_5fvolatile',['Q_Volatile',['../struct_q___volatile.html',1,'']]]
 ];

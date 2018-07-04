@@ -7,13 +7,15 @@
 namespace eosio { namespace chain { 
 
    void name::set( const char* str ) {
-   try {
-      const auto len = strnlen(str,14);
-      EOS_ASSERT( len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name",string(str)) );
+      const auto len = strnlen(str, 14);
+      EOS_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
       value = string_to_name(str);
-      EOS_ASSERT( to_string() == string(str), name_type_exception, "Name not properly normalized (name: ${name}, normalized: ${normalized}) ", ("name",string(str))("normalized",to_string())  );
-   }FC_CAPTURE_AND_RETHROW( (str) ) }
+      EOS_ASSERT(to_string() == string(str), name_type_exception,
+                 "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
+                 ("name", string(str))("normalized", to_string()));
+   }
 
+   // keep in sync with name::to_string() in contract definition for name
    name::operator string()const {
      static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 

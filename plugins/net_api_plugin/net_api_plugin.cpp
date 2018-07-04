@@ -30,14 +30,8 @@ using namespace eosio;
              if (body.empty()) body = "{}"; \
              INVOKE \
              cb(http_response_code, fc::json::to_string(result)); \
-          } catch (fc::eof_exception& e) { \
-             error_results results{400, "Bad Request", e.to_string()}; \
-             cb(400, fc::json::to_string(results)); \
-             elog("Unable to parse arguments: ${args}", ("args", body)); \
-          } catch (fc::exception& e) { \
-             error_results results{500, "Internal Service Error", e.to_detail_string()}; \
-             cb(500, fc::json::to_string(results)); \
-             elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \
        }}
 
@@ -89,19 +83,16 @@ void net_api_plugin::plugin_startup() {
 }
 
 void net_api_plugin::plugin_initialize(const variables_map& options) {
-   if (options.count("http-server-address")) {
-      const auto& lipstr = options.at("http-server-address").as<string>();
-      const auto& host = lipstr.substr(0, lipstr.find(':'));
-      if (host != "localhost" && host != "127.0.0.1") {
-         wlog("\n"
-              "*************************************\n"
-              "*                                   *\n"
-              "*  --  Net API NOT on localhost  -- *\n"
-              "*                                   *\n"
-              "*   this may be abused if exposed   *\n"
-              "*                                   *\n"
-              "*************************************\n");
-      }
+   const auto& _http_plugin = app().get_plugin<http_plugin>();
+   if (!_http_plugin.is_on_loopback()) {
+      wlog("\n"
+           "**********SECURITY WARNING**********\n"
+           "*                                  *\n"
+           "* --         Net API            -- *\n"
+           "* - EXPOSED to the LOCAL NETWORK - *\n"
+           "* - USE ONLY ON SECURE NETWORKS! - *\n"
+           "*                                  *\n"
+           "************************************\n");
    }
 }
 

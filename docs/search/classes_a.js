@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['name',['name',['../structeosio_1_1name.html',1,'eosio']]],
-  ['native_5fcurrency',['native_currency',['../structeosio_1_1native__currency.html',1,'eosio']]]
+  ['j',['J',['../struct_j.html',1,'']]],
+  ['jsonreporter',['JSONReporter',['../classbenchmark_1_1_j_s_o_n_reporter.html',1,'benchmark']]]
 ];

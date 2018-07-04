@@ -1,16 +1,15 @@
 #pragma once
-#include <eosiolib/utility.hpp>
-#include <eosiolib/preprocessor/seq/for_each.hpp>
-#include <eosiolib/preprocessor/seq/enum.hpp>
-#include <eosiolib/preprocessor/seq/size.hpp>
-#include <eosiolib/preprocessor/seq/seq.hpp>
-#include <eosiolib/preprocessor/stringize.hpp>
+#include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/seq/enum.hpp>
+#include <boost/preprocessor/seq/size.hpp>
+#include <boost/preprocessor/seq/seq.hpp>
+#include <boost/preprocessor/stringize.hpp>
 
 namespace eosio {
   template<typename T>
   struct reflector {
-     typedef false_type is_reflected;
-     typedef false_type is_enum;
+     typedef std::false_type is_reflected;
+     typedef std::false_type is_enum;
   };
 
 } /// eosio

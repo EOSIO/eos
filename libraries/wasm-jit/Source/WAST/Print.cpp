@@ -274,7 +274,7 @@ namespace WAST
 		{
 			string += "\nbr_table" INDENT_STRING;
 			enum { numTargetsPerLine = 16 };
-			assert(imm.branchTableIndex < functionDef.branchTables.size());
+			WAVM_ASSERT_THROW(imm.branchTableIndex < functionDef.branchTables.size());
 			const std::vector<U32>& targetDepths = functionDef.branchTables[imm.branchTableIndex];
 			for(Uptr targetIndex = 0;targetIndex < targetDepths.size();++targetIndex)
 			{
@@ -390,7 +390,7 @@ namespace WAST
 				string += " offset=";
 				string += std::to_string(imm.offset);
 			}
-			assert(imm.alignmentLog2 == naturalAlignmentLog2);
+			WAVM_ASSERT_THROW(imm.alignmentLog2 == naturalAlignmentLog2);
 		}
 		#endif
 
