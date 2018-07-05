@@ -1323,7 +1323,7 @@ class transaction_api : public context_aware_api {
             transaction trx;
             fc::raw::unpack<transaction>(data, data_len, trx);
             context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
-         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+         } FC_RETHROW_EXCEPTIONS(warn, "data as hex: ${data}", ("data", fc::to_hex(data, data_len)))
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
