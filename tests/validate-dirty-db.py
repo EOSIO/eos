@@ -7,11 +7,13 @@ from TestHelper import TestHelper
 import random
 import subprocess
 import signal
+import time
 
 ###############################################################
 # Test for validating the dirty db flag sticks repeated nodeos restart attempts
 ###############################################################
 
+time.sleep(1)
 
 Print=Utils.Print
 
@@ -82,11 +84,11 @@ try:
 
     Print("Kill cluster nodes.")
     cluster.killall(allInstances=killAll)
-    
+
     Print("Restart nodeos repeatedly to ensure dirty database flag sticks.")
     nodeId=0
     timeout=3
-    
+
     for i in range(0,3):
         Print("Attempt %d." % (i))
         ret = runNodeosAndGetOutput(nodeId, timeout)

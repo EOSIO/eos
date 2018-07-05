@@ -7,6 +7,7 @@ from TestHelper import TestHelper
 
 import random
 import traceback
+import time
 
 ###############################################################
 # Test for different nodes restart scenarios.
@@ -23,6 +24,7 @@ import traceback
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
 
+time.sleep(1)
 
 Print=Utils.Print
 

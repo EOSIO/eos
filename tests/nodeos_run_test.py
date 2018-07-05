@@ -8,12 +8,15 @@ from TestHelper import TestHelper
 
 import decimal
 import re
+import time
 
 ###############################################################
 # nodeos_run_test
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
+
+time.sleep(1)
 
 Print=Utils.Print
 errorExit=Utils.errorExit
@@ -214,7 +217,7 @@ try:
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)
 
-    # create accounts via eosio as otherwise a bid is needed 
+    # create accounts via eosio as otherwise a bid is needed
     Print("Create new account %s via %s" % (testeraAccount.name, cluster.eosioAccount.name))
     transId=node.createInitializeAccount(testeraAccount, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False)
     if transId is None:

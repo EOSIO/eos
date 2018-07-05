@@ -6,6 +6,9 @@ from WalletMgr import WalletMgr
 from TestHelper import TestHelper
 
 import random
+import time
+
+time.sleep(1)
 
 Print=Utils.Print
 
@@ -97,7 +100,7 @@ try:
         errorExit("Failed to spread and validate funds.")
 
     print("Funds spread validated")
-    
+
     testSuccessful=True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, False, killAll, dumpErrorDetails)
