@@ -293,17 +293,22 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
                                  3130000, "actor or contract whitelist/blacklist exception" )
 
-      FC_DECLARE_DERIVED_EXCEPTION( actor_whitelist_exception,    chain_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( actor_whitelist_exception,    whitelist_blacklist_exception,
                                     3130001, "Authorizing actor of transaction is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( actor_blacklist_exception,    chain_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( actor_blacklist_exception,    whitelist_blacklist_exception,
                                     3130002, "Authorizing actor of transaction is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_whitelist_exception, chain_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( contract_whitelist_exception, whitelist_blacklist_exception,
                                     3130003, "Contract to execute is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, chain_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, whitelist_blacklist_exception,
                                     3130004, "Contract to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( action_blacklist_exception, chain_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( action_blacklist_exception,   whitelist_blacklist_exception,
                                     3130005, "Action to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( key_blacklist_exception, chain_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( key_blacklist_exception,      whitelist_blacklist_exception,
                                     3130006, "Public key in authority is on the blacklist" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( controller_emit_signal_exception, chain_exception,
+                                 3140000, "exceptions that are allowed to bubble out of emit calls in controller" )
+      FC_DECLARE_DERIVED_EXCEPTION( checkpoint_exception,          controller_emit_signal_exception,
+                                   3140001, "Block does not match checkpoint" )
 
 } } // eosio::chain
