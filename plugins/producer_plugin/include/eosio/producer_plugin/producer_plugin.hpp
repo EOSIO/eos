@@ -23,6 +23,10 @@ public:
       fc::optional<int32_t> max_irreversible_block_age;
    };
 
+   struct greylist_params {
+      std::vector<account_name> accounts;
+   };
+
    producer_plugin();
    virtual ~producer_plugin();
 
@@ -44,6 +48,10 @@ public:
    void update_runtime_options(const runtime_options& options);
    runtime_options get_runtime_options() const;
 
+   void add_greylist_accounts(const greylist_params& params);
+   void remove_greylist_accounts(const greylist_params& params);
+   greylist_params get_greylist() const;
+
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_plugin_impl> my;
@@ -52,3 +60,4 @@ private:
 } //eosio
 
 FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age));
+FC_REFLECT(eosio::producer_plugin::greylist_params, (accounts));
