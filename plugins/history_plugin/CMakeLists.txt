@@ -1,4 +1,5 @@
-file(GLOB HEADERS "include/eosio/history_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/history_plugin/*.hpp"
+                  "include/eosio/*.hpp")
 add_library( history_plugin
              history_plugin.cpp
              ${HEADERS} )
