@@ -412,18 +412,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
          wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
-      } else if( options.at("fix-reversible-blocks").as<bool>() ) {
-         if( !recover_reversible_blocks(  my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
-                                          my->chain_config->reversible_cache_size,
-                                          optional<fc::path>(),
-                                          options.at("truncate-at-block").as<uint32_t>() ) ) {
-            ilog("Reversible blocks database verified to not be corrupted. Now exiting...");
-         } else {
-            ilog("Exiting after fixing reversible blocks database...");
-         }
-         EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
-      } else if( options.at("truncate-at-block").as<uint32_t>() > 0 ) {
-         wlog("The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain.");
       } else if( options.count("import-reversible-blocks") ) {
          auto reversible_blocks_file = options.at("import-reversible-blocks").as<bfs::path>();
          ilog("Importing reversible blocks from '${file}'", ("file", reversible_blocks_file.generic_string()) );
