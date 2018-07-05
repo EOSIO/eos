@@ -59,7 +59,6 @@ namespace eosio { namespace chain {
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
-            fc::microseconds         abi_serializer_max_time_ms = chain::config::default_abi_serializer_max_time_ms;
 
             db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
          };
@@ -193,8 +192,6 @@ namespace eosio { namespace chain {
 
          bool contracts_console()const;
 
-         fc::microseconds  get_abi_serializer_max_time_ms()const;
-
          chain_id_type get_chain_id()const;
 
          db_read_mode get_read_mode()const;
@@ -235,9 +232,9 @@ namespace eosio { namespace chain {
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj ) {
+         fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {
             fc::variant pretty_output;
-            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); }, get_abi_serializer_max_time_ms());
+            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); }, max_serialization_time);
             return pretty_output;
          }
 
