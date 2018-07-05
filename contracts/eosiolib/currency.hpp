@@ -9,7 +9,7 @@ namespace eosio {
 
    /**
     *  This contract enables the creation, issuance, and transfering of many different tokens.
-    *
+    *  @deprecated This class is deprecated in favor of eosio.token in Dawn 3.0
     */
    class currency {
       public:

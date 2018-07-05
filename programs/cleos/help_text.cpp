@@ -67,6 +67,13 @@ const char* unknown_abi_table_help_text = _(R"text(The ABI for the code on accou
 Please check the account and table name, and verify that the account has the expected code using:
   cleos get code ${1})text");
 
+const char* failed_to_find_transaction_text = _("Failed to fetch information for transaction: \033[1m${1}\033[0m from the history plugin\n\n"
+                                                "\033[32mIf you know the block number which included this transaction you providing it with the \033[2m--block-hint\033[22m option may help\033[0m");
+
+const char* failed_to_find_transaction_with_block_text = _("Failed to fetch information for transaction: \033[1m${1}\033[0m from the history plugin and the transaction was not present in block \033[1m${2}\033[0m\n");
+
+const char* history_plugin_advice_text = _("\033[32mPlease ensure that the \033[2meosio::history_plugin\033[22m is enabled on the RPC node you are connecting to and that an account involved in this transaction was configured in the \033[2mfilter-on\033[22m setting.\033[0m\n");
+
 const char* help_regex_error = _("Error locating help text: ${code} ${what}");
 
 const std::vector<std::pair<const char*, std::vector<const char *>>> error_help_text {
@@ -82,7 +89,9 @@ const std::vector<std::pair<const char*, std::vector<const char *>>> error_help_
    {"AES error[^\\x00]*wallet/unlock.*postdata\":\\[\"([^\"]*)\"", {bad_wallet_password_help_text}},
    {"Wallet is locked: ([\\S]*)", {locked_wallet_help_text}},
    {"Key already in wallet[^\\x00]*wallet/import_key.*postdata\":\\[\"([^\"]*)\"", {duplicate_key_import_help_text}},
-   {"ABI does not define table[^\\x00]*get_table_rows.*code\":\"([^\"]*)\",\"table\":\"([^\"]*)\"", {unknown_abi_table_help_text}}
+   {"ABI does not define table[^\\x00]*get_table_rows.*code\":\"([^\"]*)\",\"table\":\"([^\"]*)\"", {unknown_abi_table_help_text}},
+   {"Transaction ([^ ]{8})[^ ]* not found in history and no block hint was given", {failed_to_find_transaction_text, history_plugin_advice_text}},
+   {"Transaction ([^ ]{8})[^ ]* not found in history or in block number ([0-9]*)", {failed_to_find_transaction_with_block_text, history_plugin_advice_text}},
 };
 
 auto smatch_to_variant(const std::smatch& smatch) {
