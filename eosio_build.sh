@@ -198,7 +198,6 @@
 
 		export BOOST_ROOT="${HOME}/opt/boost"
 		OPENSSL_ROOT_DIR=/usr/include/openssl
-		WASM_ROOT="${HOME}/opt/wasm"
 	fi
 
 	if [ "$ARCH" == "Darwin" ]; then
@@ -207,7 +206,6 @@
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-		WASM_ROOT=/usr/local/wasm
 	fi
 
 	. "$FILE"
