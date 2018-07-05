@@ -340,7 +340,7 @@ namespace {
       return pretty_output;
    }
 
-void handle_mongo_exception( const char* desc, int line_num ) {
+void handle_mongo_exception( const std::string& desc, int line_num ) {
    bool shutdown = true;
    try {
       try {
@@ -791,7 +791,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
          FC_ASSERT( false, "Failed to insert trans ${id}", ("id", t->id));
       }
    } catch(...) {
-      handle_mongo_exception("trans_traces insert: ", __LINE__);
+      handle_mongo_exception("trans_traces insert: " + json, __LINE__);
    }
 }
 
@@ -839,7 +839,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
          FC_ASSERT( false, "Failed to insert block_state ${bid}", ("bid", block_id));
       }
    } catch(...) {
-      handle_mongo_exception("block_states insert", __LINE__);
+      handle_mongo_exception("block_states insert: " + json, __LINE__);
    }
 
    auto blocks = mongo_conn[db_name][blocks_col];
@@ -871,7 +871,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
          FC_ASSERT( false, "Failed to insert block ${bid}", ("bid", block_id));
       }
    } catch(...) {
-      handle_mongo_exception("blocks insert", __LINE__);
+      handle_mongo_exception("blocks insert: " + json, __LINE__);
    }
 }
 
