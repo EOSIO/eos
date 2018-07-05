@@ -302,7 +302,7 @@ public:
       uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
 
       abi_serializer abis;
-      abis.set_abi(abi);
+      abis.set_abi(abi, abi_serializer_max_time);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();

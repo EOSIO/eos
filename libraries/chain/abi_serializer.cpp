@@ -49,9 +49,9 @@ namespace eosio { namespace chain {
       );
    }
 
-   abi_serializer::abi_serializer( const abi_def& abi ) {
+   abi_serializer::abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time ) {
       configure_built_in_types();
-      set_abi(abi);
+      set_abi(abi, max_serialization_time);
    }
 
    void abi_serializer::configure_built_in_types() {
@@ -97,7 +97,8 @@ namespace eosio { namespace chain {
       built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
    }
 
-   void abi_serializer::set_abi(const abi_def& abi) {
+   void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {
+      const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
       typedefs.clear();
       structs.clear();
       actions.clear();
@@ -108,8 +109,8 @@ namespace eosio { namespace chain {
          structs[st.name] = st;
 
       for( const auto& td : abi.types ) {
-         FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
-         FC_ASSERT(!is_type(td.new_type_name), "type already exists", ("new_type_name",td.new_type_name));
+         FC_ASSERT(_is_type(td.type, 0, deadline, max_serialization_time), "invalid type", ("type",td.type));
+         FC_ASSERT(!_is_type(td.new_type_name, 0, deadline, max_serialization_time), "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
 
@@ -132,7 +133,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( tables.size() == abi.tables.size() );
       FC_ASSERT( error_messages.size() == abi.error_messages.size() );
 
-      validate();
+      validate(max_serialization_time);
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
@@ -176,12 +177,12 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth, const fc::time_point& deadline)const {
+   bool abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const {
       FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       if( ++recursion_depth > max_recursion_depth) return false;
       auto type = fundamental_type(rtype);
       if( built_in_types.find(type) != built_in_types.end() ) return true;
-      if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth, deadline);
+      if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth, deadline, max_serialization_time);
       if( structs.find(type) != structs.end() ) return true;
       return false;
    }
@@ -192,7 +193,7 @@ namespace eosio { namespace chain {
       return itr->second;
    }
 
-   void abi_serializer::validate()const {
+   void abi_serializer::validate(const fc::microseconds& max_serialization_time)const {
       const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
       for( const auto& t : typedefs ) { try {
          vector<type_name> types_seen{t.first, t.second};
@@ -205,7 +206,7 @@ namespace eosio { namespace chain {
          }
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& t : typedefs ) { try {
-         FC_ASSERT(is_type(t.second), "", ("type",t.second) );
+         FC_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
          if( s.second.base != type_name() ) {
@@ -221,17 +222,17 @@ namespace eosio { namespace chain {
          }
          for( const auto& field : s.second.fields ) { try {
             FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-            FC_ASSERT(is_type(field.type) );
+            FC_ASSERT(_is_type(field.type, 0, deadline, max_serialization_time) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        FC_ASSERT(is_type(a.second), "", ("type",a.second) );
+        FC_ASSERT(_is_type(a.second, 0, deadline, max_serialization_time), "", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
 
       for( const auto& t : tables ) { try {
         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        FC_ASSERT(is_type(t.second), "", ("type",t.second) );
+        FC_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
@@ -369,7 +370,7 @@ namespace eosio { namespace chain {
    { try {
       FC_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
       FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-      if( !is_type(type) ) {
+      if( !_is_type(type, recursion_depth, deadline, max_serialization_time) ) {
          return var.as<bytes>();
       }
 

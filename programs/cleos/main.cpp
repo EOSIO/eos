@@ -2553,11 +2553,11 @@ int main( int argc, char** argv ) {
    });
 
    //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-   auto resolver = [](const name& code) -> optional<abi_serializer> {
+   auto resolver = [abi_serializer_max_time](const name& code) -> optional<abi_serializer> {
       auto result = call(get_code_func, fc::mutable_variant_object("account_name", code.to_string()));
       if (result["abi"].is_object()) {
          //std::cout << "ABI: " << fc::json::to_pretty_string(result) << std::endl;
-         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>()));
+         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>(), abi_serializer_max_time));
       } else {
          std::cerr << "ABI for contract " << code.to_string() << " not found. Action data will be shown in hex only." << std::endl;
          return optional<abi_serializer>();

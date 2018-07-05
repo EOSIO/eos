@@ -910,7 +910,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
    const abi_def abi = eosio::chain_apis::get_abi(db, N(eosio));
    const auto table_type = get_table_type(abi, N(producers));
-   const abi_serializer abis{ abi };
+   const abi_serializer abis{ abi, abi_serializer_max_time };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
@@ -969,13 +969,13 @@ read_only::get_producer_schedule_result read_only::get_producer_schedule( const 
 
 template<typename Api>
 struct resolver_factory {
-   static auto make(const Api *api) {
-      return [api](const account_name &name) -> optional<abi_serializer> {
-         const auto *accnt = api->db.db().template find<account_object, by_name>(name);
+   static auto make(const Api* api, const fc::microseconds& max_serialization_time) {
+      return [api, max_serialization_time](const account_name &name) -> optional<abi_serializer> {
+         const auto* accnt = api->db.db().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
             if (abi_serializer::to_abi(accnt->abi, abi)) {
-               return abi_serializer(abi);
+               return abi_serializer(abi, max_serialization_time);
             }
          }
 
@@ -985,8 +985,8 @@ struct resolver_factory {
 };
 
 template<typename Api>
-auto make_resolver(const Api *api) {
-   return resolver_factory<Api>::make(api);
+auto make_resolver(const Api* api, const fc::microseconds& max_serialization_time) {
+   return resolver_factory<Api>::make(api, max_serialization_time);
 }
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
@@ -1003,7 +1003,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
    fc::variant pretty_output;
-   abi_serializer::to_variant(*block, pretty_output, make_resolver(this), abi_serializer_max_time);
+   abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer_max_time), abi_serializer_max_time);
 
    uint32_t ref_block_prefix = block->id()._hash[1];
 
@@ -1049,7 +1049,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
-      auto resolver = make_resolver(this);
+      auto resolver = make_resolver(this, abi_serializer_max_time);
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
@@ -1193,7 +1193,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    //const abi_def abi = get_abi( db, N(eosio) );
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi );
+      abi_serializer abis( abi, abi_serializer_max_time );
       //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
 
       const auto token_code = N(eosio.token);
@@ -1275,7 +1275,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
 
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {
-      abi_serializer abis( abi );
+      abi_serializer abis( abi, abi_serializer_max_time );
       auto action_type = abis.get_action_type(params.action);
       EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
@@ -1295,7 +1295,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    const auto& code_account = db.db().get<account_object,by_name>( params.code );
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi );
+      abi_serializer abis( abi, abi_serializer_max_time );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time );
    } else {
       EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
@@ -1305,7 +1305,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    transaction pretty_input;
-   auto resolver = make_resolver(this);
+   auto resolver = make_resolver(this, abi_serializer_max_time);
    try {
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer_max_time);
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")

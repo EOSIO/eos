@@ -124,6 +124,8 @@ struct txn_test_gen_plugin_impl {
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
          auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
+         abi_serializer eosio_token_serializer{fc::json::from_string(eosio_token_abi).as<abi_def>(), abi_serializer_max_time};
+
          fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
          fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
          fc::crypto::private_key txn_test_receiver_C_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'c')));
@@ -244,6 +246,7 @@ struct txn_test_gen_plugin_impl {
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
+      abi_serializer eosio_token_serializer{fc::json::from_string(eosio_token_abi).as<abi_def>(), abi_serializer_max_time};
       //create the actions here
       act_a_to_b.account = N(txn.test.t);
       act_a_to_b.name = N(transfer);
@@ -293,6 +296,7 @@ struct txn_test_gen_plugin_impl {
       try {
          controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
+         auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
          name sender("txn.test.a");
          name recipient("txn.test.b");
@@ -300,7 +304,7 @@ struct txn_test_gen_plugin_impl {
          fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
-         abi_serializer eosio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
+         abi_serializer eosio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi(), abi_serializer_max_time);
 
          uint32_t reference_block_num = cc.last_irreversible_block_num();
          if (txn_reference_block_lag >= 0) {
@@ -362,8 +366,6 @@ struct txn_test_gen_plugin_impl {
    action act_b_to_a;
 
    int32_t txn_reference_block_lag;
-
-   abi_serializer eosio_token_serializer{fc::json::from_string(eosio_token_abi).as<abi_def>()};
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}

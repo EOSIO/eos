@@ -35,7 +35,7 @@ public:
       const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-      abi_ser.set_abi(abi);
+      abi_ser.set_abi(abi, abi_serializer_max_time);
    }
 
    action_result push_action( const account_name& signer, const action_name &name, const variant_object &data ) {

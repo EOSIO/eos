@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
          const auto& accnt  = this->control->db().get<account_object,by_name>( name );
          abi_def abi;
          if (abi_serializer::to_abi(accnt.abi, abi)) {
-            return abi_serializer(abi);
+            return abi_serializer(abi, abi_serializer_max_time);
          }
          return optional<abi_serializer>();
       } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
@@ -775,7 +775,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
     const auto& accnt  = control->db().get<account_object,by_name>( N(stltest) );
     abi_def abi;
     BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-    abi_serializer abi_ser(abi);
+    abi_serializer abi_ser(abi, abi_serializer_max_time);
 
     //send message
     {
@@ -1091,7 +1091,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
    const auto& accnt  = control->db().get<account_object,by_name>(N(noop));
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
+   abi_serializer abi_ser(abi, abi_serializer_max_time);
 
    {
       produce_blocks(5);
@@ -1154,8 +1154,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    const auto& accnt  = control->db().get<account_object,by_name>(config::system_account_name);
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-   abi_ser.validate();
+   abi_serializer abi_ser(abi, abi_serializer_max_time);
 
    signed_transaction trx;
    name a = N(alice);

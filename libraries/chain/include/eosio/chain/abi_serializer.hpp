@@ -27,16 +27,14 @@ namespace impl {
  */
 struct abi_serializer {
    abi_serializer(){ configure_built_in_types(); }
-   explicit abi_serializer( const abi_def& abi );
-   void set_abi(const abi_def& abi);
-
-   void validate()const;
+   abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
+   void set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time);
 
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
    bool      is_optional(const type_name& type)const;
-   bool      is_type(const type_name& type)const {
-      return _is_type(type, 0, fc::time_point::now() + max_serialization_time);
+   bool      is_type(const type_name& type, const fc::microseconds& max_serialization_time)const {
+      return _is_type(type, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
    }
    bool      is_builtin_type(const type_name& type)const;
    bool      is_integer(const type_name& type) const;
@@ -117,7 +115,9 @@ private:
    void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
-   bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline)const;
+   bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
+
+   void validate(const fc::microseconds& max_serialization_time)const;
 
    friend struct impl::abi_from_variant;
    friend struct impl::abi_to_variant;

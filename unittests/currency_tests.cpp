@@ -75,7 +75,7 @@ class currency_tester : public TESTER {
       }
 
       currency_tester()
-      :TESTER(),abi_ser(json::from_string(eosio_token_abi).as<abi_def>())
+      :TESTER(),abi_ser(json::from_string(eosio_token_abi).as<abi_def>(), abi_serializer_max_time)
       {
          create_account( N(eosio.token));
          set_code( N(eosio.token), eosio_token_wast );
@@ -409,7 +409,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    set_code(N(proxy), proxy_wast);
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>());
+   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -465,7 +465,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    set_code(N(bob), proxy_wast);
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>());
+   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
