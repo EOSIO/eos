@@ -1625,7 +1625,7 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
 
-   abi_serializer::set_max_serialization_time(fc::seconds(1)); // No risk to client side serialization taking a long time
+   fc::microseconds abi_serializer_max_time = fc::seconds(1); // No risk to client side serialization taking a long time
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
@@ -2643,8 +2643,7 @@ int main( int argc, char** argv ) {
 
       fc::variant trx_var;
       abi_serializer abi;
-      fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
-      abi.to_variant(trx, trx_var, resolver, max_serialization_time);
+      abi.to_variant(trx, trx_var, resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;
