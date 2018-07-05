@@ -77,6 +77,7 @@ namespace eosio { namespace testing {
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
+         static const fc::microseconds abi_serializer_max_time;
 
          virtual ~base_tester() {};
 

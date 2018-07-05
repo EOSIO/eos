@@ -614,7 +614,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
          })
       );
 
-   abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), test.control->get_abi_serializer_max_time_ms());
+   abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), test.abi_serializer_max_time);
 
    test.set_transaction_headers(trx);
 

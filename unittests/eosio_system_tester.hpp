@@ -229,7 +229,7 @@ public:
          action act;
          act.account = config::system_account_name;
          act.name = name;
-         act.data = abi_ser.variant_to_binary( action_type_name, data, control->get_abi_serializer_max_time_ms() );
+         act.data = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
          return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
    }
@@ -330,22 +330,22 @@ public:
 
    asset get_balance( const account_name& act ) {
       vector<char> data = get_row_by_account( N(eosio.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
-      return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data, control->get_abi_serializer_max_time_ms())["balance"].as<asset>();
+      return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data, abi_serializer_max_time)["balance"].as<asset>();
    }
 
    fc::variant get_total_stake( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, act, N(userres), act );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data, control->get_abi_serializer_max_time_ms() );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data, abi_serializer_max_time );
    }
 
    fc::variant get_voter_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data, control->get_abi_serializer_max_time_ms() );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data, abi_serializer_max_time );
    }
 
    fc::variant get_producer_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
-      return abi_ser.binary_to_variant( "producer_info", data, control->get_abi_serializer_max_time_ms() );
+      return abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
    }
 
    void create_currency( name contract, name manager, asset maxsupply ) {
@@ -385,7 +385,7 @@ public:
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
       vector<char> data = get_row_by_account( N(eosio.token), symbol_code, N(stat), symbol_code );
-      return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data, control->get_abi_serializer_max_time_ms() );
+      return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }
 
    asset get_token_supply() {
@@ -395,13 +395,13 @@ public:
    fc::variant get_global_state() {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, control->get_abi_serializer_max_time_ms() );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
 
    }
 
    fc::variant get_refund_request( name account ) {
       vector<char> data = get_row_by_account( config::system_account_name, account, N(refunds), account );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "refund_request", data, control->get_abi_serializer_max_time_ms() );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "refund_request", data, abi_serializer_max_time );
    }
 
    abi_serializer initialize_multisig() {

@@ -29,10 +29,11 @@ using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
+fc::microseconds max_serialization_time = fc::seconds(1); // some test machines are very slow
+
 // verify that round trip conversion, via bytes, reproduces the exact same data
 fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 {
-   fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
    auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
 
    auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
@@ -58,7 +59,6 @@ template<typename T>
 fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 { try {
 
-   fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
    auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
 
    T obj;
@@ -2821,7 +2821,6 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    }
    )=====";
    fc::variant var;
-   fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
    abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), max_serialization_time);
 
    chain::packed_transaction packed_txn2;
@@ -3401,7 +3400,6 @@ BOOST_AUTO_TEST_CASE(abi_recursive_structs)
       
       abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>());
       string hi_data = "{\"user\":\"eosio\",\"arg2\":{\"user\":\"1\"}}";
-      fc::microseconds max_serialization_time = eosio::chain::config::default_abi_serializer_max_time_ms;
       auto bin = abis.variant_to_binary("hi", fc::json::from_string(hi_data), max_serialization_time);
       BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin, max_serialization_time);, fc::exception );
 

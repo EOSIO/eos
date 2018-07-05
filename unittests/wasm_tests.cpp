@@ -206,7 +206,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
       );
 
    signed_transaction trx;
-   abi_serializer::from_variant(pretty_trx, trx, resolver, control->get_abi_serializer_max_time_ms());
+   abi_serializer::from_variant(pretty_trx, trx, resolver, abi_serializer_max_time);
    set_transaction_headers(trx);
    trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
    push_transaction( trx );
@@ -788,7 +788,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
                                              ("from", "bob")
                                              ("to", "alice")
                                              ("message","Hi Alice!"),
-                                             control->get_abi_serializer_max_time_ms()
+                                             abi_serializer_max_time
                                              );
         trx.actions.push_back(std::move(msg_act));
 
@@ -1105,7 +1105,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
                                            ("from", "noop")
                                            ("type", "some type")
                                            ("data", "some data goes here"),
-                                           control->get_abi_serializer_max_time_ms()
+                                           abi_serializer_max_time
                                            );
 
       trx.actions.emplace_back(std::move(act));
@@ -1130,7 +1130,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
                                            ("from", "alice")
                                            ("type", "some type")
                                            ("data", "some data goes here"),
-                                           control->get_abi_serializer_max_time_ms()
+                                           abi_serializer_max_time
                                            );
 
       trx.actions.emplace_back(std::move(act));
@@ -1174,7 +1174,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    fc::variant pretty_output;
    // verify to_variant works on eos native contract type: newaccount
    // see abi_serializer::to_abi()
-   abi_serializer::to_variant(*result, pretty_output, get_resolver(), control->get_abi_serializer_max_time_ms());
+   abi_serializer::to_variant(*result, pretty_output, get_resolver(), abi_serializer_max_time);
 
    BOOST_TEST(fc::json::to_string(pretty_output).find("newaccount") != std::string::npos);
 

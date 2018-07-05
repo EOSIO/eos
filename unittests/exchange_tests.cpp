@@ -65,7 +65,7 @@ class exchange_tester : public TESTER {
          act.account = contract;
          act.name = name;
          act.authorization = vector<permission_level>{{signer, config::active_name}};
-         act.data = abi_ser.variant_to_binary(action_type_name, data, control->get_abi_serializer_max_time_ms());
+         act.data = abi_ser.variant_to_binary(action_type_name, data, abi_serializer_max_time);
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
