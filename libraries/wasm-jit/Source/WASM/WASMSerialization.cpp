@@ -493,15 +493,16 @@ namespace WASM
       if (numBodyBytes >= max_size)
          throw FatalSerializationException(std::string("Function body too large"));
       if (numLocalSets >= 1024)
-         throw FatalSerializationException(std::string("too many locals"));
+         throw FatalSerializationException(std::string("too many local sets"));
+      size_t locals_accum = numBodyBytes;
 
 		for(Uptr setIndex = 0;setIndex < numLocalSets;++setIndex)
 		{
 			LocalSet localSet;
 			serialize(bodyStream,localSet);
-
-			if( localSet.num > 8024 )
-				throw FatalSerializationException( "localSet.num too large" );
+         locals_accum += localSet.num*4;
+			if( locals_accum >= max_size )
+				throw FatalSerializationException( "too many locals" );
 
 			for(Uptr index = 0;index < localSet.num;++index) { functionDef.nonParameterLocalTypes.push_back(localSet.type); }
 		}

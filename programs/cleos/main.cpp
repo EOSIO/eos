@@ -248,6 +248,15 @@ chain::action generate_nonce_action() {
    return chain::action( {}, config::null_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
+void prompt_for_wallet_password(string& pw, const string& name) {
+   if(pw.size() == 0 && name != "SecureEnclave") {
+      std::cout << localized("password: ");
+      fc::set_console_echo(false);
+      std::getline( std::cin, pw, '\n' );
+      fc::set_console_echo(true);
+   }
+}
+
 fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    //wdump((trx));
@@ -284,7 +293,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       trx.context_free_actions.emplace_back( generate_nonce_action() );
    }
 
-   trx.max_cpu_usage_ms = tx_max_net_usage;
+   trx.max_cpu_usage_ms = tx_max_cpu_usage;
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
@@ -548,7 +557,7 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
-   if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
+   if (boost::istarts_with(authorityJsonOrFile, "EOS") || boost::istarts_with(authorityJsonOrFile, "PUB_R1")) {
       try {
          return authority(public_key_type(authorityJsonOrFile));
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
@@ -1052,6 +1061,38 @@ struct list_producers_subcommand {
                    row["total_votes"].as_double() / weight);
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
+      });
+   }
+};
+
+struct get_schedule_subcommand {
+   bool print_json = false;
+
+   void print(const char* name, const fc::variant& schedule) {
+      if (schedule.is_null()) {
+         printf("%s schedule empty\n\n", name);
+         return;
+      }
+      printf("%s schedule version %s\n", name, schedule["version"].as_string().c_str());
+      printf("    %-13s %s\n", "Producer", "Producer key");
+      printf("    %-13s %s\n", "=============", "==================");
+      for (auto& row: schedule["producers"].get_array())
+         printf("    %-13s %s\n", row["producer_name"].as_string().c_str(), row["block_signing_key"].as_string().c_str());
+      printf("\n");
+   }
+
+   get_schedule_subcommand(CLI::App* actionRoot) {
+      auto get_schedule = actionRoot->add_subcommand("schedule", localized("Retrieve the producer schedule"));
+      get_schedule->add_flag("--json,-j", print_json, localized("Output in JSON format"));
+      get_schedule->set_callback([this] {
+         auto result = call(get_schedule_func, fc::mutable_variant_object());
+         if ( print_json ) {
+            std::cout << fc::json::to_pretty_string(result) << std::endl;
+            return;
+         }
+         print("active", result["active"]);
+         print("pending", result["pending"]);
+         print("proposed", result["proposed"]);
       });
    }
 };
@@ -1713,7 +1754,7 @@ int main( int argc, char** argv ) {
 
       auto abi  = fc::json::to_pretty_string( result["abi"] );
       if( filename.size() ) {
-         std::cout << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
+         std::cerr << localized("saving abi to ${filename}", ("filename", filename)) << std::endl;
          std::ofstream abiout( filename.c_str() );
          abiout << abi;
       } else {
@@ -1816,8 +1857,10 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transaction_id_str;
+   uint32_t block_num_hint = 0;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
+   getTransaction->add_option( "-b,--block-hint", block_num_hint, localized("the block number this transaction may be in") );
    getTransaction->set_callback([&] {
       transaction_id_type transaction_id;
       try {
@@ -1825,6 +1868,9 @@ int main( int argc, char** argv ) {
          transaction_id = transaction_id_type(transaction_id_str);
       } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
       auto arg= fc::mutable_variant_object( "id", transaction_id);
+      if ( block_num_hint > 0 ) {
+         arg = arg("block_num_hint", block_num_hint);
+      }
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
@@ -1922,6 +1968,7 @@ int main( int argc, char** argv ) {
       }
    });
 
+   auto getSchedule = get_schedule_subcommand{get};
 
    /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
@@ -2020,23 +2067,23 @@ int main( int argc, char** argv ) {
             wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
       }
 
-      std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
+      std::cerr << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
       FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
-         std::cout << localized("Using already assembled WASM...") << std::endl;
+         std::cerr << localized("Using already assembled WASM...") << std::endl;
          wasm = vector<uint8_t>(wast.begin(), wast.end());
       }
       else {
-         std::cout << localized("Assembling WASM...") << std::endl;
+         std::cerr << localized("Assembling WASM...") << std::endl;
          wasm = wast_to_wasm(wast);
       }
 
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
       if ( shouldSend ) {
-         std::cout << localized("Setting Code...") << std::endl;
+         std::cerr << localized("Setting Code...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
       }
    };
@@ -2056,7 +2103,7 @@ int main( int argc, char** argv ) {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
       if ( shouldSend ) {
-         std::cout << localized("Setting ABI...") << std::endl;
+         std::cerr << localized("Setting ABI...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
       }
    };
@@ -2068,7 +2115,7 @@ int main( int argc, char** argv ) {
       shouldSend = false;
       set_code_callback();
       set_abi_callback();
-      std::cout << localized("Publishing contract...") << std::endl;
+      std::cerr << localized("Publishing contract...") << std::endl;
       send_actions(std::move(actions), 10000, packed_transaction::zlib);
    });
    codeSubcommand->set_callback(set_code_callback);
@@ -2188,12 +2235,7 @@ int main( int argc, char** argv ) {
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       call(wallet_url, wallet_unlock, vs);
@@ -2204,13 +2246,20 @@ int main( int argc, char** argv ) {
    string wallet_key_str;
    auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
-   importWallet->add_option("key", wallet_key_str, localized("Private key in WIF format to import"))->required();
+   importWallet->add_option("--private-key", wallet_key_str, localized("Private key in WIF format to import"));
    importWallet->set_callback([&wallet_name, &wallet_key_str] {
+      if( wallet_key_str.size() == 0 ) {
+         std::cout << localized("private key: ");
+         fc::set_console_echo(false);
+         std::getline( std::cin, wallet_key_str, '\n' );
+         fc::set_console_echo(true);
+      }
+
       private_key_type wallet_key;
       try {
          wallet_key = private_key_type( wallet_key_str );
       } catch (...) {
-          EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+         EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
       }
       public_key_type pubkey = wallet_key.get_public_key();
 
@@ -2226,12 +2275,7 @@ int main( int argc, char** argv ) {
    removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
    removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    removeKeyWallet->set_callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       public_key_type pubkey;
       try {
          pubkey = public_key_type( wallet_rm_key_str );
@@ -2275,12 +2319,7 @@ int main( int argc, char** argv ) {
    listPrivKeys->add_option("-n,--name", wallet_name, localized("The name of the wallet to list keys from"), true);
    listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    listPrivKeys->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       const auto& v = call(wallet_url, wallet_list_keys, vs);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -2429,13 +2468,12 @@ int main( int argc, char** argv ) {
       return true;
    };
 
-   auto propose_action = msig->add_subcommand("propose", localized("Propose transaction"));
-   //auto propose_action = msig->add_subcommand("action", localized("Propose action"));
+   auto propose_action = msig->add_subcommand("propose", localized("Propose action"));
    add_standard_transaction_options(propose_action);
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
-   propose_action->add_option("contract", proposed_contract, localized("contract to wich deferred transaction should be delivered"))->required();
+   propose_action->add_option("contract", proposed_contract, localized("contract to which deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
    propose_action->add_option("proposer", proposer, localized("Account proposing the transaction"));
@@ -2456,13 +2494,12 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
       transaction proposed_trx = trx_var.as<transaction>();
 
-      auto arg= fc::mutable_variant_object()
+      auto arg = fc::mutable_variant_object()
          ("code", proposed_contract)
          ("action", proposed_action)
          ("args", trx_var);
 
       auto result = call(json_to_bin_func, arg);
-      //std::cout << "Result: "; fc::json::to_stream(std::cout, result); std::cout << std::endl;
 
       bytes proposed_trx_serialized = result.get_object()["binargs"].as<bytes>();
 
@@ -2525,9 +2562,53 @@ int main( int argc, char** argv ) {
       }
    };
 
+   //multisige propose transaction
+   auto propose_trx = msig->add_subcommand("propose_trx", localized("Propose transaction"));
+   add_standard_transaction_options(propose_trx);
+   propose_trx->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
+   propose_trx->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+   propose_trx->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
+   propose_trx->add_option("proposer", proposer, localized("Account proposing the transaction"));
+
+   propose_trx->set_callback([&] {
+      fc::variant requested_perm_var;
+      try {
+         requested_perm_var = json_from_file_or_string(requested_perm);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(trx_to_push);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
+
+      auto accountPermissions = get_account_permissions(tx_permission);
+      if (accountPermissions.empty()) {
+         if (!proposer.empty()) {
+            accountPermissions = vector<permission_level>{{proposer, config::active_name}};
+         } else {
+            EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
+         }
+      }
+      if (proposer.empty()) {
+         proposer = name(accountPermissions.at(0).actor).to_string();
+      }
+
+      auto arg = fc::mutable_variant_object()
+         ("code", "eosio.msig")
+         ("action", "propose")
+         ("args", fc::mutable_variant_object()
+          ("proposer", proposer )
+          ("proposal_name", proposal_name)
+          ("requested", requested_perm_var)
+          ("trx", trx_var)
+         );
+      auto result = call(json_to_bin_func, arg);
+      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
+   });
+
+
    // multisig review
    auto review = msig->add_subcommand("review", localized("Review transaction"));
-   add_standard_transaction_options(review);
    review->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    review->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
 
@@ -2666,6 +2747,40 @@ int main( int argc, char** argv ) {
       send_actions({chain::action{accountPermissions, "eosio.msig", "exec", result.get_object()["binargs"].as<bytes>()}});
       }
    );
+
+   // sudo subcommand
+   auto sudo = app.add_subcommand("sudo", localized("Sudo contract commands"), false);
+   sudo->require_subcommand();
+
+   // sudo exec
+   executer = "";
+   string trx_to_exec;
+   auto sudo_exec = sudo->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
+   add_standard_transaction_options(sudo_exec);
+   sudo_exec->add_option("executer", executer, localized("Account executing the transaction and paying for the deferred transaction RAM"))->required();
+   sudo_exec->add_option("transaction", trx_to_exec, localized("The JSON string or filename defining the transaction to execute"))->required();
+
+   sudo_exec->set_callback([&] {
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(trx_to_exec);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_exec))
+
+      auto accountPermissions = get_account_permissions(tx_permission);
+      if( accountPermissions.empty() ) {
+         accountPermissions = vector<permission_level>{{executer, config::active_name}, {"eosio.sudo", config::active_name}};
+      }
+
+      auto arg = fc::mutable_variant_object()
+         ("code", "eosio.sudo")
+         ("action", "exec")
+         ("args", fc::mutable_variant_object()
+            ("executer", executer )
+            ("trx", trx_var)
+         );
+      auto result = call(json_to_bin_func, arg);
+      send_actions({chain::action{accountPermissions, "eosio.sudo", "exec", result.get_object()["binargs"].as<bytes>()}});
+   });
 
    // system subcommand
    auto system = app.add_subcommand("system", localized("Send eosio.system contract action to the blockchain."), false);

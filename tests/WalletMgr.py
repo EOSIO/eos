@@ -17,7 +17,7 @@ class WalletMgr(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=8899, host="localhost"):
+    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=9899, host="localhost"):
         self.walletd=walletd
         self.nodeosPort=nodeosPort
         self.nodeosHost=nodeosHost
@@ -76,7 +76,7 @@ class WalletMgr(object):
 
     def importKey(self, account, wallet):
         warningMsg="Key already in wallet"
-        cmd="%s %s wallet import --name %s %s" % (
+        cmd="%s %s wallet import --name %s --private-key %s" % (
             Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
@@ -92,7 +92,7 @@ class WalletMgr(object):
         if account.activePrivateKey is None:
             Utils.Print("WARNING: Active private key is not defined for account \"%s\"" % (account.name))
         else:
-            cmd="%s %s wallet import --name %s %s" % (
+            cmd="%s %s wallet import --name %s  --private-key %s" % (
                 Utils.EosClientPath, self.endpointArgs, wallet.name, account.activePrivateKey)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:

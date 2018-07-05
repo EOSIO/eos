@@ -354,7 +354,7 @@ struct txn_test_gen_plugin_impl {
 
    int32_t txn_reference_block_lag;
 
-   abi_serializer eosio_token_serializer = fc::json::from_string(eosio_token_abi).as<abi_def>();
+   abi_serializer eosio_token_serializer{fc::json::from_string(eosio_token_abi).as<abi_def>()};
 };
 
 txn_test_gen_plugin::txn_test_gen_plugin() {}
@@ -367,8 +367,10 @@ void txn_test_gen_plugin::set_program_options(options_description&, options_desc
 }
 
 void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
-   my.reset(new txn_test_gen_plugin_impl);
-   my->txn_reference_block_lag = options.at("txn-reference-block-lag").as<int32_t>();
+   try {
+      my.reset( new txn_test_gen_plugin_impl );
+      my->txn_reference_block_lag = options.at( "txn-reference-block-lag" ).as<int32_t>();
+   } FC_LOG_AND_RETHROW()
 }
 
 void txn_test_gen_plugin::plugin_startup() {

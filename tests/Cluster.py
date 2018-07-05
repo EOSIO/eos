@@ -13,6 +13,7 @@ import sys
 import random
 import json
 import socket
+import errno
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -32,7 +33,7 @@ class Cluster(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899, enableMongo=False
                  , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
@@ -128,7 +129,7 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 5000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time 5000 --abi-serializer-max-time-ms 5000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
@@ -191,7 +192,7 @@ class Cluster(object):
             account.activePrivateKey=keys["private"]
             account.activePublicKey=keys["public"]
 
-        for name,initKeys in producerKeys.items():
+        for name,_ in producerKeys.items():
             account=Account(name)
             initAccountKeys(account, producerKeys[name])
             self.defProducerAccounts[name] = account
@@ -322,7 +323,7 @@ class Cluster(object):
     @staticmethod
     def getClientVersion(verbose=False):
         """Returns client version (string)"""
-        p = re.compile('^Build version:\s(\w+)\n$')
+        p = re.compile(r'^Build version:\s(\w+)\n$')
         try:
             cmd="%s version client" % (Utils.EosClientPath)
             if verbose: Utils.Print("cmd: %s" % (cmd))
@@ -476,7 +477,7 @@ class Cluster(object):
             node=self.nodes[nextEosIdx]
             if Utils.Debug: Utils.Print("Wait for transaction id %s on node port %d" % (transId, node.port))
             if node.waitForTransInBlock(transId) is False:
-                Utils.Print("ERROR: Selected node never received transaction id %s" % (transId))
+                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
                 return False
 
             transferAmount -= amount
@@ -497,7 +498,7 @@ class Cluster(object):
         node=self.nodes[0]
         if Utils.Debug: Utils.Print("Wait for transaction id %s on node port %d" % (transId, node.port))
         if node.waitForTransInBlock(transId) is False:
-            Utils.Print("ERROR: Selected node never received transaction id %s" % (transId))
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
             return False
 
         return True
@@ -728,7 +729,9 @@ class Cluster(object):
                 accounts.append(initx)
 
             transId=Node.getTransId(trans)
-            biosNode.waitForTransInBlock(transId)
+            if not biosNode.waitForTransInBlock(transId):
+                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+                return False
 
             Utils.Print("Validating system accounts within bootstrap")
             biosNode.validateAccounts(accounts)
@@ -776,6 +779,7 @@ class Cluster(object):
                 trans=trans[1]
                 transId=Node.getTransId(trans)
                 if not biosNode.waitForTransInBlock(transId):
+                    Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
                     return False
 
                 # wait for block production handover (essentially a block produced by anyone but eosio).
@@ -815,7 +819,9 @@ class Cluster(object):
 
             Node.validateTransaction(trans)
             transId=Node.getTransId(trans)
-            biosNode.waitForTransInBlock(transId)
+            if not biosNode.waitForTransInBlock(transId):
+                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+                return False
 
             contract="eosio.token"
             contractDir="contracts/%s" % (contract)
@@ -840,7 +846,9 @@ class Cluster(object):
 
             Node.validateTransaction(trans[1])
             transId=Node.getTransId(trans[1])
-            biosNode.waitForTransInBlock(transId)
+            if not biosNode.waitForTransInBlock(transId):
+                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+                return False
 
             contract=eosioTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))
@@ -856,7 +864,11 @@ class Cluster(object):
             Utils.Print("Wait for issue action transaction to become finalized.")
             transId=Node.getTransId(trans[1])
             # biosNode.waitForTransInBlock(transId)
-            biosNode.waitForTransFinalization(transId)
+            # guesstimating block finalization timeout. Two production rounds of 12 blocks per node, plus 60 seconds buffer
+            timeout = .5 * 12 * 2 * len(producerKeys) + 60
+            if not biosNode.waitForTransFinalization(transId, timeout=timeout):
+                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a finalized block on server port %d." % (transId, biosNode.port))
+                return False
 
             expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
@@ -896,6 +908,7 @@ class Cluster(object):
             Utils.Print("Wait for last transfer transaction to become finalized.")
             transId=Node.getTransId(trans[1])
             if not biosNode.waitForTransInBlock(transId):
+                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
                 return False
 
             Utils.Print("Cluster bootstrap done.")
@@ -1073,8 +1086,7 @@ class Cluster(object):
             node=self.nodes[0]
             if Utils.Debug: Utils.Print("Wait for transaction id %s on server port %d." % ( transId, node.port))
             if node.waitForTransInBlock(transId) is False:
-                Utils.Print("ERROR: Failed waiting for transaction id %s on server port %d." % (
-                    transId, node.port))
+                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
                 return False
 
         return True

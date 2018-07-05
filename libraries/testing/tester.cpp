@@ -36,15 +36,18 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(bool push_genesis) {
+   void base_tester::init(bool push_genesis, db_read_mode read_mode) {
       cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
       cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
       cfg.state_size = 1024*1024*8;
       cfg.reversible_cache_size = 1024*1024*8;
       cfg.contracts_console = true;
+      cfg.read_mode = read_mode;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+
+      abi_serializer::set_max_serialization_time(fc::seconds(1)); // 1s for slow test machines
 
       for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
          if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
@@ -681,7 +684,7 @@ namespace eosio { namespace testing {
    }
 
 
-   vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) {
+   vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) const {
       vector<char> data;
       const auto& db = control->db();
       const auto* t_id = db.find<chain::table_id_object, chain::by_code_scope_table>( boost::make_tuple( code, scope, table ) );
