@@ -4,6 +4,9 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/symbol.hpp>
 
+#include <eosio.token/eosio.token.wast.hpp>
+#include <eosio.token/eosio.token.abi.hpp>
+
 #include <exchange/exchange.wast.hpp>
 #include <exchange/exchange.abi.hpp>
 
@@ -78,6 +81,12 @@ class exchange_tester : public TESTER {
          return get_currency_balance(N(exchange), symbol(SY(4,CUR)), account);
       }
 
+      void check_balance(account_name contract, account_name account, asset expected)
+      {
+         auto actual = get_currency_balance(contract, expected.get_symbol(), account);
+         BOOST_REQUIRE_EQUAL(expected, actual);
+      }
+
       exchange_state get_market_state( account_name exchange, symbol sym ) {
 
          uint64_t s = sym.value() >> 8;
@@ -142,6 +151,11 @@ class exchange_tester : public TESTER {
          FC_ASSERT( false, "unable to find loan balance" );
       }
 
+      void deploy_token( account_name ac ) {
+         create_account( ac );
+         set_code( ac, eosio_token_wast );
+      }
+
       void deploy_exchange( account_name ac ) {
          create_account( ac );
          set_code( ac, exchange_wast );
@@ -165,20 +179,18 @@ class exchange_tester : public TESTER {
          );
       }
 
-      auto trade( name ex_contract, name signer, symbol market,
-                  extended_asset sell, extended_asset min_receive )
+      auto marketorder( name ex_contract, name signer, symbol market,
+                  extended_asset sell, extended_symbol receive )
       {
-         wdump((market)(sell)(min_receive));
+         wdump((market)(sell)(receive));
          wdump((market.to_string()));
          wdump((fc::variant(market).as_string()));
          wdump((fc::variant(market).as<symbol>()));
-         return push_action( ex_contract, signer, N(trade), mutable_variant_object()
+         return push_action( ex_contract, signer, N(marketorder), mutable_variant_object()
                  ("seller",  signer )
                  ("market",  market )
                  ("sell", sell)
-                 ("min_receive", min_receive)
-                 ("expire", 0)
-                 ("fill_or_kill", 1)
+                 ("receive", receive)
          );
       }
 
@@ -188,6 +200,13 @@ class exchange_tester : public TESTER {
             ("to",  exchangecontract )
             ("quantity", amount.quantity )
             ("memo", "deposit")
+         );
+      }
+
+      auto withdraw( name exchangecontract, name signer, extended_asset amount ) {
+         return push_action( exchangecontract, signer, N(withdraw), mutable_variant_object()
+            ("from", signer )
+            ("quantity", amount )
          );
       }
 
@@ -279,9 +298,9 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    auto dan_ex_exc = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"EXC"), N(dan) );
    wdump((dan_ex_exc));
 
-   auto result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
+   auto result = t.marketorder( N(exchange), N(trader), symbol(2,"EXC"),
                           extended_asset( A(10.00 BTC), N(exchange) ),
-                          extended_asset( A(0.01 USD), N(exchange) ) );
+                          extended_symbol{ symbol(2,"USD"), N(exchange) } );
 
    for( const auto& at : result->action_traces )
       ilog( "${s}", ("s",at.console) );
@@ -291,9 +310,9 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    wdump((trader_ex_btc.quantity));
    wdump((trader_ex_usd.quantity));
 
-   result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
+   result = t.marketorder( N(exchange), N(trader), symbol(2,"EXC"),
                           extended_asset( A(9.75 USD), N(exchange) ),
-                          extended_asset( A(0.01 BTC), N(exchange) ) );
+                          extended_symbol{ symbol(2,"BTC"), N(exchange) } );
 
    trader_ex_usd = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"USD"), N(trader) );
    trader_ex_btc = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"BTC"), N(trader) );
@@ -305,7 +324,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    wdump((trader_ex_usd.quantity));
 
    BOOST_REQUIRE_EQUAL( trader_ex_usd.quantity, A(1500.00 USD) );
-   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1499.99 BTC) );
+   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1500.00 BTC) );
 
    wdump((t.get_market_state( N(exchange), symbol(2,"EXC") ) ));
 
@@ -352,7 +371,24 @@ BOOST_AUTO_TEST_CASE( exchange_lend ) try {
    //BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
-
+BOOST_AUTO_TEST_CASE( withdraw ) try {
+   exchange_tester t;
+   t.create_account( N(loki) );
+   t.deploy_token( N(loki.token) );
+   t.create_currency( N(loki.token), N(loki.token), A(500.00 BTC) );
+   t.issue( N(loki.token), N(loki.token), N(loki), A(500.00 BTC) );
+   t.issue( N(exchange), N(exchange), N(loki), A(50.00 BTC) );
+   t.check_balance(N(loki.token), N(loki), A(500.00 BTC));
+   t.check_balance(N(exchange), N(loki), A(50.00 BTC));
+   t.deposit( N(exchange), N(loki), extended_asset( A(500.00 BTC), N(loki.token) ) );
+   t.deposit( N(exchange), N(loki), extended_asset( A(50.00 BTC), N(exchange) ) );
+   BOOST_CHECK_THROW( t.withdraw( N(exchange), N(loki), extended_asset( A(501.00 BTC), N(loki.token) ) ), eosio_assert_message_exception );
+   BOOST_CHECK_THROW( t.withdraw( N(exchange), N(loki), extended_asset( A(51.00 BTC), N(exchange) ) ), eosio_assert_message_exception );
+   t.withdraw( N(exchange), N(loki), extended_asset( A(500.00 BTC), N(loki.token) ) );
+   t.withdraw( N(exchange), N(loki), extended_asset( A(50.00 BTC), N(exchange) ) );
+   t.check_balance(N(loki.token), N(loki), A(500.00 BTC));
+   t.check_balance(N(exchange), N(loki), A(50.00 BTC));
+} FC_LOG_AND_RETHROW() /// test_api_withdraw
 
 
 BOOST_AUTO_TEST_SUITE_END()
