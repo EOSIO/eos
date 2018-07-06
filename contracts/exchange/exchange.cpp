@@ -2,6 +2,7 @@
 #include "exchange.hpp"
 
 #include "exchange_state.cpp"
+#include "dexchange_state.cpp"
 #include "exchange_accounts.cpp"
 #include "market_state.cpp"
 
