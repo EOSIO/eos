@@ -67,6 +67,13 @@ const char* unknown_abi_table_help_text = _(R"text(The ABI for the code on accou
 Please check the account and table name, and verify that the account has the expected code using:
   cleos get code ${1})text");
 
+const char* failed_to_find_transaction_text = _("Failed to fetch information for transaction: \033[1m${1}\033[0m from the history plugin\n\n"
+                                                "\033[32mIf you know the block number which included this transaction you providing it with the \033[2m--block-hint\033[22m option may help\033[0m");
+
+const char* failed_to_find_transaction_with_block_text = _("Failed to fetch information for transaction: \033[1m${1}\033[0m from the history plugin and the transaction was not present in block \033[1m${2}\033[0m\n");
+
+const char* history_plugin_advice_text = _("\033[32mPlease ensure that the \033[2meosio::history_plugin\033[22m is enabled on the RPC node you are connecting to and that an account involved in this transaction was configured in the \033[2mfilter-on\033[22m setting.\033[0m\n");
+
 const char* help_regex_error = _("Error locating help text: ${code} ${what}");
 
 const std::vector<std::pair<const char*, std::vector<const char *>>> error_help_text {
@@ -82,7 +89,9 @@ const std::vector<std::pair<const char*, std::vector<const char *>>> error_help_
    {"AES error[^\\x00]*wallet/unlock.*postdata\":\\[\"([^\"]*)\"", {bad_wallet_password_help_text}},
    {"Wallet is locked: ([\\S]*)", {locked_wallet_help_text}},
    {"Key already in wallet[^\\x00]*wallet/import_key.*postdata\":\\[\"([^\"]*)\"", {duplicate_key_import_help_text}},
-   {"ABI does not define table[^\\x00]*get_table_rows.*code\":\"([^\"]*)\",\"table\":\"([^\"]*)\"", {unknown_abi_table_help_text}}
+   {"ABI does not define table[^\\x00]*get_table_rows.*code\":\"([^\"]*)\",\"table\":\"([^\"]*)\"", {unknown_abi_table_help_text}},
+   {"Transaction ([^ ]{8})[^ ]* not found in history and no block hint was given", {failed_to_find_transaction_text, history_plugin_advice_text}},
+   {"Transaction ([^ ]{8})[^ ]* not found in history or in block number ([0-9]*)", {failed_to_find_transaction_with_block_text, history_plugin_advice_text}},
 };
 
 auto smatch_to_variant(const std::smatch& smatch) {
@@ -102,8 +111,38 @@ auto smatch_to_variant(const std::smatch& smatch) {
 const char* error_advice_name_type_exception = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
 const char* error_advice_public_key_type_exception = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
 const char* error_advice_private_key_type_exception = R"=====(Private key should be encoded in base58 WIF)=====";
-const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON follows the right authority structure!
-You can refer to contracts/eosiolib/native.hpp for reference)=====";
+const char* error_advice_authority_type_exception = R"=====(Ensure that your authority JSON is valid follows the following format!
+{
+  "threshold":      <INTEGER [1-2^32): the threshold that must be met to satisfy this authority>,
+  "keys": [         <keys must be alpha-numerically sorted by their string representations and unique>
+    ...
+    {
+      "key":        <STRING: EOS.IO compatible Public Key>,
+      "weight":     <INTEGER [1-2^16): a signature from this key contributes this to satisfying the threshold>
+    }
+    ...
+  ],
+  "accounts": [     <accounts must be alpha-numerically sorted by their permission (actor, then permission) and unique>
+    ...
+    {
+      "permission": {
+        "actor":      <STRING: account name of the delegated signer>,
+        "permission": <STRING: permission level on the account that must be satisfied>,
+      },
+      "weight":     <INTEGER [1-2^16): satisfying the delegation contributes this to satisfying the threshold>
+    }
+    ...
+  ],
+  "waits": [        <waits must be sorted by wait_sec, largest first, and be unique>
+    ...
+    {
+      "wait_sec":   <INTEGER [1-2^32): seconds of delay which qualifies as passing this wait>
+      "weight":     <INTEGER [1-2^16): satisfying the delay contributes this to satisfying the threshold>
+    }
+    ...
+  ]
+}
+)=====";
 const char* error_advice_action_type_exception = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
 const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!
 You can refer to contracts/eosiolib/transaction.hpp for reference)=====";
@@ -212,12 +251,12 @@ const std::map<int64_t, std::string> error_advice = {
    { account_query_exception::code_value, error_advice_account_query_exception },
    { contract_table_query_exception::code_value, error_advice_contract_table_query_exception },
    { contract_query_exception::code_value, error_advice_contract_query_exception },
-   
+
    { tx_irrelevant_sig::code_value, error_advice_tx_irrelevant_sig },
    { unsatisfied_authorization::code_value, error_advice_unsatisfied_authorization },
    { missing_auth_exception::code_value, error_advice_missing_auth_exception },
    { irrelevant_auth_exception::code_value, error_advice_irrelevant_auth_exception },
-   
+
    { missing_chain_api_plugin_exception::code_value, error_advice_missing_chain_api_plugin_exception },
    { missing_wallet_api_plugin_exception::code_value, error_advice_missing_wallet_api_plugin_exception },
    { missing_history_api_plugin_exception::code_value, error_advice_missing_history_api_plugin_exception },
@@ -234,7 +273,7 @@ const std::map<int64_t, std::string> error_advice = {
 namespace eosio { namespace client { namespace help {
 
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
-   // eos recognized error code is from 3000000 
+   // eos recognized error code is from 3000000
    // refer to libraries/chain/include/eosio/chain/exceptions.hpp
    if (e.code() >= chain_exception::code_value) {
       std::string advice, explanation, stack_trace;

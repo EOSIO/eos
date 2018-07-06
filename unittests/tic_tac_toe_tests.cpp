@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_SUITE(tic_tac_toe_tests)
 
 BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
    TESTER chain;
-   abi_serializer abi_ser = json::from_string(tic_tac_toe_abi).as<abi_def>();
+   abi_serializer abi_ser{json::from_string(tic_tac_toe_abi).as<abi_def>()};
    chain.create_account(N(tic.tac.toe));
    chain.produce_blocks(10);
 

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from WalletMgr import WalletMgr
+from TestHelper import TestHelper
 
-import argparse
 import random
 import traceback
 
@@ -22,34 +24,15 @@ import traceback
 ###############################################################
 
 
-Print=testUtils.Utils.Print
+Print=Utils.Print
 
 def errorExit(msg="", errorCode=1):
     Print("ERROR:", msg)
     traceback.print_stack(limit=-1)
     exit(errorCode)
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-p", type=int, help="producing nodes count", default=2)
-parser.add_argument("-d", type=int, help="delay between nodes startup", default=1)
-parser.add_argument("-s", type=str, help="topology", default="mesh")
-parser.add_argument("-c", type=str, help="chain strategy[%s|%s|%s]" %
-                    (testUtils.Utils.SyncResyncTag, testUtils.Utils.SyncNoneTag, testUtils.Utils.SyncHardReplayTag),
-                    default=testUtils.Utils.SyncResyncTag)
-parser.add_argument("--kill-sig", type=str, help="kill signal[%s|%s]" %
-                    (testUtils.Utils.SigKillTag, testUtils.Utils.SigTermTag), default=testUtils.Utils.SigKillTag)
-parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
-parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
-parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
-                    action='store_true')
-parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
-                    action='store_true')
-parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
-parser.add_argument("--p2p-plugin", help="select a p2p plugin to use (either net or bnet). Defaults to net.", default="net")
-
-args = parser.parse_args()
+args=TestHelper.parse_args({"-p","-d","-s","-c","--kill-sig","--kill-count","--keep-logs","--p2p-plugin"
+                            ,"--dump-error-details","-v","--leave-running","--clean-run"})
 pnodes=args.p
 topo=args.s
 delay=args.d
@@ -65,16 +48,16 @@ killAll=args.clean_run
 p2pPlugin=args.p2p_plugin
 
 seed=1
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 testSuccessful=False
 
-assert (chainSyncStrategyStr == testUtils.Utils.SyncResyncTag or chainSyncStrategyStr == testUtils.Utils.SyncNoneTag or
-        chainSyncStrategyStr == testUtils.Utils.SyncHardReplayTag)
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster(walletd=True)
-walletMgr=testUtils.WalletMgr(True)
+cluster=Cluster(walletd=True)
+walletMgr=WalletMgr(True)
 
 try:
+    TestHelper.printSystemInfo("BEGIN")
+
     cluster.setChainStrategy(chainSyncStrategyStr)
     cluster.setWalletMgr(walletMgr)
 
@@ -104,7 +87,7 @@ try:
     accountsCount=total_nodes
     walletName="MyWallet"
     Print("Creating wallet %s if one doesn't already exist." % walletName)
-    wallet=walletMgr.create(walletName)
+    wallet=walletMgr.create(walletName, [cluster.eosioAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
     if wallet is None:
         errorExit("Failed to create wallet %s" % (walletName))
 
@@ -160,22 +143,6 @@ try:
 
     testSuccessful=True
 finally:
-    if testSuccessful:
-        Print("Test succeeded.")
-    else:
-        Print("Test failed.")
-    if not testSuccessful and dumpErrorDetails:
-        cluster.dumpErrorDetails()
-        walletMgr.dumpErrorDetails()
-        Print("== Errors see above ==")
-
-    if killEosInstances:
-        Print("Shut down the cluster%s" % (" and cleanup." if (testSuccessful and not keepLogs) else "."))
-        cluster.killall(allInstances=killAll)
-        walletMgr.killall(allInstances=killAll)
-        if testSuccessful and not keepLogs:
-            Print("Cleanup cluster and wallet data.")
-            cluster.cleanup()
-            walletMgr.cleanup()
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killEosInstances, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

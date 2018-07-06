@@ -879,6 +879,113 @@ BOOST_FIXTURE_TEST_CASE( imports, TESTER ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( nested_limit_test, TESTER ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(nested)} );
+   produce_block();
+
+   // nested loops
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << ")";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << ")";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+
+   // nested blocks
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << ")";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << ")";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+   // nested ifs
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1023; ++i)
+         ss << "))";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 1024; ++i)
+         ss << "))";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+   // mixed nested
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 223; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 800; ++i)
+         ss << ")";
+      for(unsigned int i = 0; i < 223; ++i)
+         ss << "))";
+      ss << "))";
+      set_code(N(nested), ss.str().c_str());
+   }
+   {
+      std::stringstream ss;
+      ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
+      for(unsigned int i = 0; i < 224; ++i)
+         ss << "(if (i32.wrap/i64 (get_local $0)) (then (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(block (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 400; ++i)
+         ss << "(loop (drop (i32.const " <<  i << "))";
+      for(unsigned int i = 0; i < 800; ++i)
+         ss << ")";
+      for(unsigned int i = 0; i < 224; ++i)
+         ss << "))";
+      ss << "))";
+      BOOST_CHECK_THROW(set_code(N(nested), ss.str().c_str()), eosio::chain::wasm_execution_error);
+   }
+
+} FC_LOG_AND_RETHROW()
+
+
 BOOST_FIXTURE_TEST_CASE( lotso_globals, TESTER ) try {
    produce_blocks(2);
 
@@ -1520,6 +1627,12 @@ BOOST_FIXTURE_TEST_CASE( apply_export_and_signature, TESTER ) try {
    BOOST_CHECK_THROW(set_code(N(bbb), no_apply_wast), fc::exception);
    produce_blocks(1);
 
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_2_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_3_wast), fc::exception);
+   produce_blocks(1);
+
    BOOST_CHECK_THROW(set_code(N(bbb), apply_wrong_signature_wast), fc::exception);
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
@@ -1616,6 +1729,9 @@ INCBIN(leak_readGlobals, "leak_readGlobals.wasm");
 INCBIN(leak_readImports, "leak_readImports.wasm");
 INCBIN(leak_wasm_binary_cpp_L1249, "leak_wasm_binary_cpp_L1249.wasm");
 INCBIN(readFunctions_slowness_out_of_memory, "readFunctions_slowness_out_of_memory.wasm");
+INCBIN(deep_loops_ext_report, "deep_loops_ext_report.wasm");
+INCBIN(80k_deep_loop_with_ret, "80k_deep_loop_with_ret.wasm");
+INCBIN(80k_deep_loop_with_void, "80k_deep_loop_with_void.wasm");
 
 BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    produce_blocks(2);
@@ -1738,6 +1854,18 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    {
       vector<uint8_t> wasm(greadFunctions_slowness_out_of_memoryData, greadFunctions_slowness_out_of_memoryData + greadFunctions_slowness_out_of_memorySize);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gdeep_loops_ext_reportData, gdeep_loops_ext_reportData + gdeep_loops_ext_reportSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_execution_error);
+   }
+   {
+      vector<uint8_t> wasm(g80k_deep_loop_with_retData, g80k_deep_loop_with_retData + g80k_deep_loop_with_retSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_execution_error);
+   }
+   {
+      vector<uint8_t> wasm(g80k_deep_loop_with_voidData, g80k_deep_loop_with_voidData + g80k_deep_loop_with_voidSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_execution_error);
    }
 
    produce_blocks(1);

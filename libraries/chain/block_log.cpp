@@ -133,7 +133,6 @@ namespace eosio { namespace chain {
          my->genesis_written_to_block_log = true; // Assume it was constructed properly.
          my->head = read_head();
          my->head_id = my->head->id();
-         edump((my->head->block_num()));
 
          if (index_size) {
             my->check_block_read();

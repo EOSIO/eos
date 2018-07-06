@@ -283,7 +283,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             _production_enabled = true;
 
 
-         if( fc::time_point::now() - block->timestamp < fc::seconds(5) || (block->block_num() % 1000 == 0) ) {
+         if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
             ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, conf: ${confs}, latency: ${latency} ms]",
                  ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(8,16))
                  ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
@@ -577,6 +577,9 @@ void producer_plugin::plugin_startup()
    ilog("producer plugin:  plugin_startup() begin");
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   FC_ASSERT( my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE,
+              "node cannot have any producer-name configured because block production is impossible when read_mode is not \"speculative\"" );
+
    my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
    my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
 
@@ -838,7 +841,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                continue;
             }
 
-            if (trx->packed_trx.expiration() > pbs->header.timestamp.to_time_point()) {
+            if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
                // expired, drop it
                chain.drop_unapplied_transaction(trx);
                continue;

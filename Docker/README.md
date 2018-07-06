@@ -20,10 +20,10 @@ cd eos/Docker
 docker build . -t eosio/eos
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.1 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.7 tag, you could do the following:
 
 ```bash
-docker build -t eosio/eos:v1.0.1 --build-arg branch=v1.0.1 .
+docker build -t eosio/eos:v1.0.7 --build-arg branch=v1.0.7 .
 ```
 
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
@@ -73,7 +73,7 @@ After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be s
 You can run the `cleos` commands via a bash alias.
 
 ```bash
-alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888 --wallet-url http://localhost:8888'
+alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -u http://nodeosd:8888 --wallet-url http://localhost:8900'
 cleos get info
 cleos get account inita
 ```
@@ -142,7 +142,7 @@ version: "3"
 services:
   nodeosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh -e
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -154,7 +154,7 @@ services:
 
   keosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/keosd
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: keosd
     links:
       - nodeosd
@@ -173,27 +173,24 @@ run `docker pull eosio/eos:latest`
 
 run `docker-compose up`
 
-### EOSIO 1.0 Testnet
+### EOSIO Testnet
 
-We can easily set up a EOSIO 1.0 local testnet using docker images. Just run the following commands:
+We can easily set up a EOSIO local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 
 ```
-# pull images
-docker pull eosio/eos:v1.0.1
-
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
-# start containers
-docker-compose -f docker-compose-eosio1.0.yaml up -d
+# pull images and start containers
+docker-compose -f docker-compose-eosio-latest.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs -f nodeosd
 # stop containers
-docker-compose -f docker-compose-eosio1.0.yaml down
+docker-compose -f docker-compose-eosio-latest.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.

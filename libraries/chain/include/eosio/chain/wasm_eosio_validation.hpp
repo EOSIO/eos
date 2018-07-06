@@ -2,6 +2,7 @@
 
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/controller.hpp>
 #include <eosio/chain/wasm_eosio_binary_ops.hpp>
 #include <functional>
 #include <vector>
@@ -99,15 +100,33 @@ namespace eosio { namespace chain { namespace wasm_validations {
       }
    };
    
+   struct nested_validator {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static bool disabled;
+      static uint16_t depth;
+      static void init(bool disable) { disabled = disable; depth = 0; }
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         if (!disabled) {
+            if ( inst->get_code() == wasm_ops::end_code && depth > 0 ) {
+               depth--;
+               return;
+            }
+            depth++;
+            EOS_ASSERT(depth < 1024, wasm_execution_error, "Nested depth exceeded");
+         }
+      }
+   };
+
    // add opcode specific constraints here
    // so far we only black list
    struct op_constrainers : wasm_ops::op_types<blacklist_validator> {
-      using block_t           = wasm_ops::block                   <whitelist_validator>;
-      using loop_t            = wasm_ops::loop                    <whitelist_validator>;
-      using if__t             = wasm_ops::if_                     <whitelist_validator>;
-      using else__t           = wasm_ops::else_                   <whitelist_validator>;
+      using block_t           = wasm_ops::block                   <whitelist_validator, nested_validator>;
+      using loop_t            = wasm_ops::loop                    <whitelist_validator, nested_validator>;
+      using if__t             = wasm_ops::if_                     <whitelist_validator, nested_validator>;
+      using else__t           = wasm_ops::else_                   <whitelist_validator, nested_validator>;
       
-      using end_t             = wasm_ops::end                     <whitelist_validator>;
+      using end_t             = wasm_ops::end                     <whitelist_validator, nested_validator>;
       using unreachable_t     = wasm_ops::unreachable             <whitelist_validator>;
       using br_t              = wasm_ops::br                      <whitelist_validator>;
       using br_if_t           = wasm_ops::br_if                   <whitelist_validator>;
@@ -311,8 +330,9 @@ namespace eosio { namespace chain { namespace wasm_validations {
                                                                              maximum_function_stack_visitor,
                                                                              ensure_apply_exported_visitor>;
       public:
-         wasm_binary_validation( IR::Module& mod ) : _module( &mod ) {
+         wasm_binary_validation( const eosio::chain::controller& control, IR::Module& mod ) : _module( &mod ) {
             // initialize validators here
+            nested_validator::init(!control.is_producing_block());
          }
 
          void validate() {

@@ -57,6 +57,8 @@ struct controller_impl {
    controller::config             conf;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
+   bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -77,8 +79,10 @@ struct controller_impl {
          reversible_blocks.remove( *b );
       }
 
-      for( const auto& t : head->trxs )
-         unapplied_transactions[t->signed_id] = t;
+      if ( read_mode == db_read_mode::SPECULATIVE ) {
+         for( const auto& t : head->trxs )
+            unapplied_transactions[t->signed_id] = t;
+      }
       head = prev;
       db.undo();
 
@@ -103,7 +107,8 @@ struct controller_impl {
     resource_limits( db ),
     authorization( s, db ),
     conf( cfg ),
-    chain_id( cfg.genesis.compute_chain_id() )
+    chain_id( cfg.genesis.compute_chain_id() ),
+    read_mode( cfg.read_mode )
    {
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -161,7 +166,6 @@ struct controller_impl {
       FC_ASSERT( log_head );
       auto lh_block_num = log_head->block_num();
 
-      emit( self.irreversible_block, s );
       db.commit( s->block_num );
 
       if( s->block_num <= lh_block_num ) {
@@ -180,6 +184,14 @@ struct controller_impl {
          reversible_blocks.remove( *objitr );
          objitr = ubi.begin();
       }
+
+      if ( read_mode == db_read_mode::IRREVERSIBLE ) {
+         apply_block( s->block, controller::block_status::complete );
+         fork_db.mark_in_current_chain( s, true );
+         fork_db.set_validity( s, true );
+         head = s;
+      }
+      emit( self.irreversible_block, s );
    }
 
    void init() {
@@ -255,10 +267,6 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
-      fork_db.close();
-
-      if (head && blog.read_head())
-         edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
       db.flush();
       reversible_blocks.flush();
@@ -447,7 +455,7 @@ struct controller_impl {
                                         uint32_t billed_cpu_time_us) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
-      etrx.actions.emplace_back( vector<permission_level>{},
+      etrx.actions.emplace_back( vector<permission_level>{{gto.sender, config::active_name}},
                                  onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
@@ -492,7 +500,8 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return    (code == block_net_usage_exceeded::code_value)
+      return    (code == subjective_block_production_exception::code_value)
+             || (code == block_net_usage_exceeded::code_value)
              || (code == block_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
              || (code == leeway_deadline_exception::code_value)
@@ -500,7 +509,8 @@ struct controller_impl {
              || (code == actor_blacklist_exception::code_value)
              || (code == contract_whitelist_exception::code_value)
              || (code == contract_blacklist_exception::code_value)
-             || (code == action_blacklist_exception::code_value);
+             || (code == action_blacklist_exception::code_value)
+             || (code == key_blacklist_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -532,6 +542,11 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+
+      auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+         in_trx_requiring_checks = old_value;
+      });
+      in_trx_requiring_checks = true;
 
       transaction_context trx_context( self, dtrx, gto.trx_id );
       trx_context.deadline = deadline;
@@ -570,7 +585,7 @@ struct controller_impl {
 
       if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-         edump((trace->except->to_detail_string()));
+         dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trx_context.start, trx_context.billed_cpu_time_us );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
@@ -694,8 +709,14 @@ struct controller_impl {
 
             emit(self.applied_transaction, trace);
 
-            trx_context.squash();
-            restore.cancel();
+
+            if ( read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
+               //this may happen automatically in destructor, but I prefere make it more explicit
+               trx_context.undo();
+            } else {
+               restore.cancel();
+               trx_context.squash();
+            }
 
             if (!implicit) {
                unapplied_transactions.erase( trx->signed_id );
@@ -736,44 +757,50 @@ struct controller_impl {
 
       auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
 
+      //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
+      if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
 
+         const auto& gpo = db.get<global_property_object>();
+         if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
+             ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
+             pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
+             !was_pending_promoted // ... and not just because it was promoted to active at the start of this block, then:
+         )
+            {
+               // Promote proposed schedule to pending schedule.
+               if( !replaying ) {
+                  ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                        ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
+                        ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
+                        ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+               }
+               pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
+               db.modify( gpo, [&]( auto& gp ) {
+                     gp.proposed_schedule_block_num = optional<block_num_type>();
+                     gp.proposed_schedule.clear();
+                  });
+            }
 
-      const auto& gpo = db.get<global_property_object>();
-      if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
-          ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
-          pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
-          !was_pending_promoted // ... and not just because it was promoted to active at the start of this block, then:
-        )
-      {
-         // Promote proposed schedule to pending schedule.
-         if( !replaying ) {
-            ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                  ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                  ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
-                  ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+         try {
+            auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+                  in_trx_requiring_checks = old_value;
+               });
+            in_trx_requiring_checks = true;
+            push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
+         } catch( const boost::interprocess::bad_alloc& e  ) {
+            elog( "on block transaction failed due to a bad allocation" );
+            throw;
+         } catch( const fc::exception& e ) {
+            wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+            edump((e.to_detail_string()));
+         } catch( ... ) {
          }
-         pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
-         db.modify( gpo, [&]( auto& gp ) {
-            gp.proposed_schedule_block_num = optional<block_num_type>();
-            gp.proposed_schedule.clear();
-         });
+
+         clear_expired_input_transactions();
+         update_producers_authority();
       }
 
-      try {
-         auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
-         push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
-      } catch( const boost::interprocess::bad_alloc& e  ) {
-         elog( "on block transaction failed due to a bad allocation" );
-         throw;
-      } catch( const fc::exception& e ) {
-         wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-         edump((e.to_detail_string()));
-      } catch( ... ) {
-         wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-      }
-
-      clear_expired_input_transactions();
-      update_producers_authority();
       guard_pending.cancel();
    } // start_block
 
@@ -792,14 +819,35 @@ struct controller_impl {
          FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
          start_block( b->timestamp, b->confirmed, s );
 
+         transaction_trace_ptr trace;
+
          for( const auto& receipt : b->transactions ) {
+            auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
-               push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
+               trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
-               push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+            } else {
+               EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
+
+            bool transaction_failed =  trace && trace->except;
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            if( transaction_failed && !transaction_can_fail) {
+               edump((*trace));
+               throw *trace->except;
+            }
+
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() > 0,
+                        block_validate_exception, "expected a receipt",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+                        block_validate_exception, "expected receipt was not added",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
             const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
                         block_validate_exception, "receipt does not match",
@@ -832,7 +880,10 @@ struct controller_impl {
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
-         maybe_switch_forks( s );
+
+         if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+            maybe_switch_forks( s );
+         }
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -840,7 +891,9 @@ struct controller_impl {
       FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
-      maybe_switch_forks();
+      if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+         maybe_switch_forks();
+      }
    }
 
    void maybe_switch_forks( controller::block_status s = controller::block_status::complete ) {
@@ -909,8 +962,10 @@ struct controller_impl {
 
    void abort_block() {
       if( pending ) {
-         for( const auto& t : pending->_pending_block_state->trxs )
-            unapplied_transactions[t->signed_id] = t;
+         if ( read_mode == db_read_mode::SPECULATIVE ) {
+            for( const auto& t : pending->_pending_block_state->trxs )
+               unapplied_transactions[t->signed_id] = t;
+         }
          pending.reset();
       }
    }
@@ -1086,6 +1141,16 @@ struct controller_impl {
       }
    }
 
+   void check_key_list( const public_key_type& key )const {
+      if( conf.key_blacklist.size() > 0 ) {
+         EOS_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
+                     key_blacklist_exception,
+                     "public key '${key}' is on the key blacklist",
+                     ("key", key)
+                   );
+      }
+   }
+
    /*
    bool should_check_tapos()const { return true; }
 
@@ -1148,6 +1213,10 @@ controller::controller( const controller::config& cfg )
 
 controller::~controller() {
    my->abort_block();
+   //close fork_db here, because it can generate "irreversible" signal to this controller,
+   //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
+   //for that we need 'my' to be valid pointer pointing to valid controller_impl.
+   my->fork_db.close();
 }
 
 
@@ -1222,6 +1291,22 @@ const block_header& controller::head_block_header()const {
 }
 block_state_ptr controller::head_block_state()const {
    return my->head;
+}
+
+uint32_t controller::fork_db_head_block_num()const {
+   return my->fork_db.head()->block_num;
+}
+
+block_id_type controller::fork_db_head_block_id()const {
+   return my->fork_db.head()->id;
+}
+
+time_point controller::fork_db_head_block_time()const {
+   return my->fork_db.head()->header.timestamp;
+}
+
+account_name  controller::fork_db_head_block_producer()const {
+   return my->fork_db.head()->header.producer;
 }
 
 block_state_ptr controller::pending_block_state()const {
@@ -1365,7 +1450,7 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 }
 
 bool controller::skip_auth_check()const {
-   return my->replaying && !my->conf.force_all_checks;
+   return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool controller::contracts_console()const {
@@ -1374,6 +1459,10 @@ bool controller::contracts_console()const {
 
 chain_id_type controller::get_chain_id()const {
    return my->chain_id;
+}
+
+db_read_mode controller::get_read_mode()const {
+   return my->read_mode;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
@@ -1397,9 +1486,13 @@ const account_object& controller::get_account( account_name name )const
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
    vector<transaction_metadata_ptr> result;
-   result.reserve(my->unapplied_transactions.size());
-   for ( const auto& entry: my->unapplied_transactions ) {
-      result.emplace_back(entry.second);
+   if ( my->read_mode == db_read_mode::SPECULATIVE ) {
+      result.reserve(my->unapplied_transactions.size());
+      for ( const auto& entry: my->unapplied_transactions ) {
+         result.emplace_back(entry.second);
+      }
+   } else {
+      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode" ); //should never happen
    }
    return result;
 }
@@ -1430,6 +1523,10 @@ void controller::check_contract_list( account_name code )const {
 
 void controller::check_action_list( account_name code, action_name action )const {
    my->check_action_list( code, action );
+}
+
+void controller::check_key_list( const public_key_type& key )const {
+   my->check_key_list( key );
 }
 
 bool controller::is_producing_block()const {

@@ -59,6 +59,11 @@ using namespace eosio;
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
      eosio::detail::wallet_api_plugin_empty result;
 
+#define INVOKE_V_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
+     eosio::detail::wallet_api_plugin_empty result;
+
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
      eosio::detail::wallet_api_plugin_empty result;
@@ -88,6 +93,8 @@ void wallet_api_plugin::plugin_startup() {
             INVOKE_V_R_R(wallet_mgr, unlock, std::string, std::string), 200),
        CALL(wallet, wallet_mgr, import_key,
             INVOKE_V_R_R(wallet_mgr, import_key, std::string, std::string), 201),
+       CALL(wallet, wallet_mgr, remove_key,
+            INVOKE_V_R_R_R(wallet_mgr, remove_key, std::string, std::string, std::string), 201),
        CALL(wallet, wallet_mgr, create_key,
             INVOKE_R_R_R(wallet_mgr, create_key, std::string, std::string), 201),
        CALL(wallet, wallet_mgr, list_wallets,
@@ -100,20 +107,33 @@ void wallet_api_plugin::plugin_startup() {
 }
 
 void wallet_api_plugin::plugin_initialize(const variables_map& options) {
-   if (options.count("http-server-address")) {
-      const auto& lipstr = options.at("http-server-address").as<string>();
-      const auto& host = lipstr.substr(0, lipstr.find(':'));
-      if (host != "localhost" && host != "127.0.0.1") {
-         wlog("\n"
-              "*************************************\n"
-              "*                                   *\n"
-              "*  --   Wallet NOT on localhost  -- *\n"
-              "*  - Password and/or Private Keys - *\n"
-              "*  - are transferred unencrypted. - *\n"
-              "*                                   *\n"
-              "*************************************\n");
+   try {
+      const auto& _http_plugin = app().get_plugin<http_plugin>();
+      if( !_http_plugin.is_on_loopback()) {
+         if( !_http_plugin.is_secure()) {
+            elog( "\n"
+                  "********!!!SECURITY ERROR!!!********\n"
+                  "*                                  *\n"
+                  "* --       Wallet API           -- *\n"
+                  "* - EXPOSED to the LOCAL NETWORK - *\n"
+                  "* -  HTTP RPC is NOT encrypted   - *\n"
+                  "* - Password and/or Private Keys - *\n"
+                  "* - are at HIGH risk of exposure - *\n"
+                  "*                                  *\n"
+                  "************************************\n" );
+         } else {
+            wlog( "\n"
+                  "**********SECURITY WARNING**********\n"
+                  "*                                  *\n"
+                  "* --       Wallet API           -- *\n"
+                  "* - EXPOSED to the LOCAL NETWORK - *\n"
+                  "* - Password and/or Private Keys - *\n"
+                  "* -   are at risk of exposure    - *\n"
+                  "*                                  *\n"
+                  "************************************\n" );
+         }
       }
-   }
+   } FC_LOG_AND_RETHROW()
 }
 
 

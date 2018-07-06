@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from TestHelper import TestHelper
 
-import argparse
 import random
 import subprocess
 import signal
@@ -12,31 +13,21 @@ import signal
 ###############################################################
 
 
-Print=testUtils.Utils.Print
+Print=Utils.Print
 
 def errorExit(msg="", errorCode=1):
     Print("ERROR:", msg)
     exit(errorCode)
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--leave-running", help="Leave cluster running after test finishes", action='store_true')
-parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
-                    action='store_true')
-parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
-                    action='store_true')
-parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
-
-args = parser.parse_args()
+args = TestHelper.parse_args({"--keep-logs","--dump-error-details","-v","--leave-running","--clean-run"})
 debug=args.v
 pnodes=1
 topo="mesh"
 delay=1
-chainSyncStrategyStr=testUtils.Utils.SyncResyncTag
+chainSyncStrategyStr=Utils.SyncResyncTag
 total_nodes = pnodes
 killCount=1
-killSignal=testUtils.Utils.SigKillTag
+killSignal=Utils.SigKillTag
 
 killEosInstances= not args.leave_running
 dumpErrorDetails=args.dump_error_details
@@ -44,13 +35,13 @@ keepLogs=args.keep_logs
 killAll=args.clean_run
 
 seed=1
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 testSuccessful=False
 
 def runNodeosAndGetOutput(myNodeId, myTimeout=3):
     """Startup nodeos, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
     Print("Launching nodeos process id: %d" % (myNodeId))
-    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios"
+    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors"
     Print("cmd: %s" % (cmd))
     proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -68,9 +59,11 @@ def runNodeosAndGetOutput(myNodeId, myTimeout=3):
     return (True, output)
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster(walletd=True)
+cluster=Cluster(walletd=True)
 
 try:
+    TestHelper.printSystemInfo("BEGIN")
+
     cluster.setChainStrategy(chainSyncStrategyStr)
 
     cluster.killall(allInstances=killAll)
@@ -112,20 +105,6 @@ try:
 
     testSuccessful=True
 finally:
-    if testSuccessful:
-        Print("Test succeeded.")
-    else:
-        Print("Test failed.")
-
-    if not testSuccessful and dumpErrorDetails:
-        cluster.dumpErrorDetails()
-        Print("== Errors see above ==")
-
-    if killEosInstances:
-        Print("Shut down the cluster.")
-        cluster.killall(allInstances=killAll)
-        if testSuccessful and not keepLogs:
-            Print("Cleanup cluster data.")
-            cluster.cleanup()
+    TestHelper.shutdown(cluster, None, testSuccessful, killEosInstances, False, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)
