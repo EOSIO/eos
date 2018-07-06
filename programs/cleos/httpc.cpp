@@ -136,6 +136,7 @@ namespace eosio { namespace client { namespace http {
 
       for(const auto& r : result) {
          const auto& addr = r.endpoint().address();
+         if (addr.is_v6()) continue;
          uint16_t port = r.endpoint().port();
          resolved_addresses.emplace_back(addr.to_string());
          is_loopback = is_loopback && addr.is_loopback();
