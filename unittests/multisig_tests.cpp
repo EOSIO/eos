@@ -151,7 +151,7 @@ public:
          action act;
          act.account = N(eosio.msig);
          act.name = name;
-         act.data = abi_ser.variant_to_binary( action_type_name, data, control->get_abi_serializer_max_time_ms() );
+         act.data = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
          //std::cout << "test:\n" << fc::to_hex(act.data.data(), act.data.size()) << " size = " << act.data.size() << std::endl;
 
          return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );

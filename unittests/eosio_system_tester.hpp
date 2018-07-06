@@ -437,7 +437,7 @@ public:
       action act;
       act.account = N(eosio.msig);
       act.name = name;
-      act.data = msig_abi_ser.variant_to_binary( action_type_name, data, control->get_abi_serializer_max_time_ms() );
+      act.data = msig_abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
       return base_tester::push_action( std::move(act), signer );
    };
