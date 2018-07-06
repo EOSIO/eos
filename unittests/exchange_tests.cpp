@@ -179,20 +179,18 @@ class exchange_tester : public TESTER {
          );
       }
 
-      auto trade( name ex_contract, name signer, symbol market,
-                  extended_asset sell, extended_asset min_receive )
+      auto marketorder( name ex_contract, name signer, symbol market,
+                  extended_asset sell, extended_symbol receive )
       {
-         wdump((market)(sell)(min_receive));
+         wdump((market)(sell)(receive));
          wdump((market.to_string()));
          wdump((fc::variant(market).as_string()));
          wdump((fc::variant(market).as<symbol>()));
-         return push_action( ex_contract, signer, N(trade), mutable_variant_object()
+         return push_action( ex_contract, signer, N(marketorder), mutable_variant_object()
                  ("seller",  signer )
                  ("market",  market )
                  ("sell", sell)
-                 ("min_receive", min_receive)
-                 ("expire", 0)
-                 ("fill_or_kill", 1)
+                 ("receive", receive)
          );
       }
 
@@ -300,9 +298,9 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    auto dan_ex_exc = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"EXC"), N(dan) );
    wdump((dan_ex_exc));
 
-   auto result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
+   auto result = t.marketorder( N(exchange), N(trader), symbol(2,"EXC"),
                           extended_asset( A(10.00 BTC), N(exchange) ),
-                          extended_asset( A(0.01 USD), N(exchange) ) );
+                          extended_symbol{ symbol(2,"USD"), N(exchange) } );
 
    for( const auto& at : result->action_traces )
       ilog( "${s}", ("s",at.console) );
@@ -312,9 +310,9 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    wdump((trader_ex_btc.quantity));
    wdump((trader_ex_usd.quantity));
 
-   result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
+   result = t.marketorder( N(exchange), N(trader), symbol(2,"EXC"),
                           extended_asset( A(9.75 USD), N(exchange) ),
-                          extended_asset( A(0.01 BTC), N(exchange) ) );
+                          extended_symbol{ symbol(2,"BTC"), N(exchange) } );
 
    trader_ex_usd = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"USD"), N(trader) );
    trader_ex_btc = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"BTC"), N(trader) );
@@ -326,7 +324,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    wdump((trader_ex_usd.quantity));
 
    BOOST_REQUIRE_EQUAL( trader_ex_usd.quantity, A(1500.00 USD) );
-   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1499.99 BTC) );
+   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1500.00 BTC) );
 
    wdump((t.get_market_state( N(exchange), symbol(2,"EXC") ) ));
 

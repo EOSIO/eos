@@ -157,6 +157,7 @@
     { "name": "deposit", "type": "deposit", "ricardian_contract": "" },
     { "name": "withdraw", "type": "withdraw", "ricardian_contract": "" },
     { "name": "transfer", "type": "transfer", "ricardian_contract": "" },
+    { "name": "marketorder", "type": "marketorder", "ricardian_contract": "" },
     { "name": "trade", "type": "trade", "ricardian_contract": "" },
     { "name": "createx", "type": "createx", "ricardian_contract": "" },
     { "name": "issue", "type": "issue", "ricardian_contract": "" },
