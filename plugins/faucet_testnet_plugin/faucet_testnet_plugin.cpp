@@ -299,14 +299,16 @@ void faucet_testnet_plugin::set_program_options(options_description&, options_de
 }
 
 void faucet_testnet_plugin::plugin_initialize(const variables_map& options) {
-   my->_create_interval_msec = options.at("faucet-create-interval-ms").as<uint32_t>();
-   my->_create_account_name = options.at("faucet-name").as<std::string>();
+   try {
+      my->_create_interval_msec = options.at( "faucet-create-interval-ms" ).as<uint32_t>();
+      my->_create_account_name = options.at( "faucet-name" ).as<std::string>();
 
-   auto faucet_key_pair = fc::json::from_string(options.at("faucet-private-key").as<std::string>()).as<key_pair>();
-   my->_create_account_public_key = public_key_type(faucet_key_pair.first);
-   ilog("Public Key: ${public}", ("public", my->_create_account_public_key));
-   fc::crypto::private_key private_key(faucet_key_pair.second);
-   my->_create_account_private_key = std::move(private_key);
+      auto faucet_key_pair = fc::json::from_string( options.at( "faucet-private-key" ).as<std::string>()).as<key_pair>();
+      my->_create_account_public_key = public_key_type( faucet_key_pair.first );
+      ilog( "Public Key: ${public}", ("public", my->_create_account_public_key));
+      fc::crypto::private_key private_key( faucet_key_pair.second );
+      my->_create_account_private_key = std::move( private_key );
+   } FC_LOG_AND_RETHROW()
 }
 
 void faucet_testnet_plugin::plugin_startup() {

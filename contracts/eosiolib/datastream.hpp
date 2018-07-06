@@ -22,28 +22,47 @@
 
 namespace eosio {
 
+/**
+ * @defgroup datastream Data Stream
+ * @brief Defines data stream for reading and writing data in the form of bytes
+ * @ingroup serialize
+ * @{
+ */
 
 /**
- *  @brief A data stream for reading and writing data in the form of bytes
+ *  %A data stream for reading and writing data in the form of bytes
+ *
+ *  @brief %A data stream for reading and writing data in the form of bytes.
+ *  @tparam T - Type of the datastream buffer
  */
 template<typename T>
 class datastream {
    public:
+      /**
+       * Construct a new datastream object given the size of the buffer and start position of the buffer
+       *
+       * @brief Construct a new datastream object
+       * @param start - The start position of the buffer
+       * @param s - The size of the buffer
+       */
       datastream( T start, size_t s )
       :_start(start),_pos(start),_end(start+s){}
 
      /**
       *  Skips a specified number of bytes from this stream
+      *
       *  @brief Skips a specific number of bytes from this stream
-      *  @param s The number of bytes to skip
+      *  @param s - The number of bytes to skip
       */
       inline void skip( size_t s ){ _pos += s; }
 
      /**
       *  Reads a specified number of bytes from the stream into a buffer
+      *
       *  @brief Reads a specified number of bytes from this stream into a buffer
-      *  @param d pointer to the destination buffer
-      *  @param s the number of bytes to read
+      *  @param d - The pointer to the destination buffer
+      *  @param s - the number of bytes to read
+      *  @return true
       */
       inline bool read( char* d, size_t s ) {
         eosio_assert( size_t(_end - _pos) >= (size_t)s, "read" );
@@ -54,9 +73,11 @@ class datastream {
 
      /**
       *  Writes a specified number of bytes into the stream from a buffer
+      *
       *  @brief Writes a specified number of bytes into the stream from a buffer
-      *  @param d pointer to the source buffer
-      *  @param s The number of bytes to write
+      *  @param d - The pointer to the source buffer
+      *  @param s - The number of bytes to write
+      *  @return true
       */
       inline bool write( const char* d, size_t s ) {
         eosio_assert( _end - _pos >= (int32_t)s, "write" );
@@ -67,8 +88,10 @@ class datastream {
 
      /**
       *  Writes a byte into the stream
+      *
       *  @brief Writes a byte into the stream
       *  @param c byte to write
+      *  @return true
       */
       inline bool put(char c) {
         eosio_assert( _pos < _end, "put" );
@@ -79,10 +102,20 @@ class datastream {
 
      /**
       *  Reads a byte from the stream
+      *
       *  @brief Reads a byte from the stream
-      *  @param c reference to destination byte
+      *  @param c - The reference to destination byte
+      *  @return true
       */
       inline bool get( unsigned char& c ) { return get( *(char*)&c ); }
+
+     /**
+      *  Reads a byte from the stream
+      *
+      *  @brief Reads a byte from the stream
+      *  @param c - The reference to destination byte
+      *  @return true
+      */
       inline bool get( char& c )
       {
         eosio_assert( _pos < _end, "get" );
@@ -93,72 +126,164 @@ class datastream {
 
      /**
       *  Retrieves the current position of the stream
+      *
       *  @brief Retrieves the current position of the stream
-      *  @return the current position of the stream
+      *  @return T - The current position of the stream
       */
       T pos()const { return _pos; }
       inline bool valid()const { return _pos <= _end && _pos >= _start;  }
 
      /**
       *  Sets the position within the current stream
+      *
       *  @brief Sets the position within the current stream
-      *  @param p offset relative to the origin
+      *  @param p - The offset relative to the origin
+      *  @return true if p is within the range
+      *  @return false if p is not within the rawnge
       */
       inline bool seekp(size_t p) { _pos = _start + p; return _pos <= _end; }
 
      /**
       *  Gets the position within the current stream
+      *
       *  @brief Gets the position within the current stream
-      *  @return p the position within the current stream
+      *  @return p - The position within the current stream
       */
       inline size_t tellp()const      { return size_t(_pos - _start); }
 
      /**
       *  Returns the number of remaining bytes that can be read/skipped
+      *
       *  @brief Returns the number of remaining bytes that can be read/skipped
-      *  @return number of remaining bytes
+      *  @return size_t - The number of remaining bytes
       */
       inline size_t remaining()const  { return _end - _pos; }
     private:
+      /**
+       * The start position of the buffer
+       *
+       * @brief The start position of the buffer
+       */
       T _start;
+      /**
+       * The current position of the buffer
+       *
+       * @brief The current position of the buffer
+       */
       T _pos;
+      /**
+       * The end position of the buffer
+       *
+       * @brief The end position of the buffer
+       */
       T _end;
 };
 
 /**
- *  @brief Specialization of datastream used to help determine the final size of a serialized value
+ * @brief Specialization of datastream used to help determine the final size of a serialized value.
+ * Specialization of datastream used to help determine the final size of a serialized value
  */
 template<>
 class datastream<size_t> {
    public:
+      /**
+       * Construct a new specialized datastream object given the initial size
+       *
+       * @brief Construct a new specialized datastream object
+       * @param init_size - The initial size
+       */
      datastream( size_t init_size = 0):_size(init_size){}
+
+     /**
+      *  Increment the size by s. This behaves the same as write( const char* ,size_t s ).
+      *
+      *  @brief Increase the size by s
+      *  @param s - The amount of size to increase
+      *  @return true
+      */
      inline bool     skip( size_t s )                 { _size += s; return true;  }
+
+     /**
+      *  Increment the size by s. This behaves the same as skip( size_t s )
+      *
+      *  @brief Increase the size by s
+      *  @param s - The amount of size to increase
+      *  @return true
+      */
      inline bool     write( const char* ,size_t s )  { _size += s; return true;  }
+
+     /**
+      *  Increment the size by one
+      *
+      *  @brief Increase the size by one
+      *  @return true
+      */
      inline bool     put(char )                      { ++_size; return  true;    }
+
+     /**
+      *  Check validity. It's always valid
+      *
+      *  @brief Check validity
+      *  @return true
+      */
      inline bool     valid()const                     { return true;              }
+
+     /**
+      * Set new size
+      *
+      * @brief Set new size
+      * @param p - The new size
+      * @return true
+      */
      inline bool     seekp(size_t p)                  { _size = p;  return true;  }
+
+     /**
+      * Get the size
+      *
+      * @brief Get the size
+      * @return size_t - The size
+      */
      inline size_t   tellp()const                     { return _size;             }
+
+     /**
+      * Always returns 0
+      *
+      * @brief Always returns 0
+      * @return size_t - 0
+      */
      inline size_t   remaining()const                 { return 0;                 }
   private:
+     /**
+      * The size used to determine the final size of a serialized value.
+      *
+      * @brief The size used to determine the final size of a serialized value.
+      */
      size_t _size;
 };
 
 /**
  *  Serialize a public_key into a stream
+ *
  *  @brief Serialize a public_key
- *  @param ds stream to write
- *  @param pubkey value to serialize
+ *  @param ds - The stream to write
+ *  @param pubkey - The value to serialize
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
  */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const public_key pubkey) {
   ds.write( (const char*)&pubkey, sizeof(pubkey));
   return ds;
 }
+
 /**
  *  Deserialize a public_key from a stream
+ *
  *  @brief Deserialize a public_key
- *  @param ds stream to read
- *  @param pubkey destination for deserialized value
+ *  @param ds - The stream to read
+ *  @param pubkey - The destination for deserialized value
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
  */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, public_key& pubkey) {
@@ -168,20 +293,27 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, public_key& pubkey
 
 /**
  *  Serialize a key256 into a stream
+ *
  *  @brief Serialize a key256
- *  @param ds stream to write
- *  @param d value to serialize
+ *  @param ds - The stream to write
+ *  @param d - The value to serialize
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
  */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const key256& d) {
   ds.write( (const char*)d.data(), d.size() );
   return ds;
 }
+
 /**
  *  Deserialize a key256 from a stream
+ *
  *  @brief Deserialize a key256
- *  @param ds stream to read
- *  @param d destination for deserialized value
+ *  @param ds - The stream to read
+ *  @param d - The destination for deserialized value
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
  */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
@@ -189,10 +321,29 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
   return ds;
 }
 
+/**
+ *  Serialize a bool into a stream
+ *
+ *  @brief  Serialize a bool into a stream
+ *  @param ds - The stream to read
+ *  @param d - The value to serialize
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const bool& d) {
   return ds << uint8_t(d);
 }
+
+/**
+ *  Deserialize a bool from a stream
+ *
+ *  @brief Deserialize a bool
+ *  @param ds - The stream to read
+ *  @param d - The destination for deserialized value
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, bool& d) {
   uint8_t t;
@@ -203,20 +354,27 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, bool& d) {
 
 /**
  *  Serialize a checksum256 into a stream
+ *
  *  @brief Serialize a checksum256
- *  @param ds stream to write
- *  @param d value to serialize
+ *  @param ds - The stream to write
+ *  @param d - The value to serialize
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
  */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum256& d) {
    ds.write( (const char*)&d.hash[0], sizeof(d.hash) );
    return ds;
 }
+
 /**
  *  Deserialize a checksum256 from a stream
+ *
  *  @brief Deserialize a checksum256
- *  @param ds stream to read
- *  @param d destination for deserialized value
+ *  @param ds - The stream to read
+ *  @param d - The destination for deserialized value
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
  */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& d) {
@@ -224,6 +382,15 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& d) {
    return ds;
 }
 
+/**
+ *  Serialize a string into a stream
+ *
+ *  @brief Serialize a string
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const std::string& v ) {
    ds << unsigned_int( v.size() );
@@ -232,6 +399,15 @@ DataStream& operator << ( DataStream& ds, const std::string& v ) {
    return ds;
 }
 
+/**
+ *  Deserialize a string from a stream
+ *
+ *  @brief Deserialize a string
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, std::string& v ) {
    std::vector<char> tmp;
@@ -243,6 +419,17 @@ DataStream& operator >> ( DataStream& ds, std::string& v ) {
    return ds;
 }
 
+/**
+ *  Serialize a fixed size array into a stream
+ *
+ *  @brief Serialize a fixed size array
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the object contained in the array
+ *  @tparam N - Size of the array
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::size_t N>
 DataStream& operator << ( DataStream& ds, const std::array<T,N>& v ) {
    for( const auto& i : v )
@@ -250,6 +437,18 @@ DataStream& operator << ( DataStream& ds, const std::array<T,N>& v ) {
    return ds;
 }
 
+
+/**
+ *  Deserialize a fixed size array from a stream
+ *
+ *  @brief Deserialize a fixed size array
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the object contained in the array
+ *  @tparam N - Size of the array
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::size_t N>
 DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
    for( auto& i : v )
@@ -258,6 +457,14 @@ DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
 }
 
 namespace _datastream_detail {
+   /**
+    * Check if type T is a pointer
+    *
+    * @brief Check if type T is a pointer
+    * @tparam T - The type to be checked
+    * @return true if T is a pointer
+    * @return false otherwise
+    */
    template<typename T>
    constexpr bool is_pointer() {
       return std::is_pointer<T>::value ||
@@ -265,6 +472,14 @@ namespace _datastream_detail {
              std::is_member_pointer<T>::value;
    }
 
+   /**
+    * Check if type T is a primitive type
+    *
+    * @brief Check if type T is a primitive type
+    * @tparam T - The type to be checked
+    * @return true if T is a primitive type
+    * @return false otherwise
+    */
    template<typename T>
    constexpr bool is_primitive() {
       return std::is_arithmetic<T>::value ||
@@ -272,12 +487,32 @@ namespace _datastream_detail {
    }
 }
 
+/**
+ *  Pointer should not be serialized, so this function will always throws an error
+ *
+ *  @brief Deserialize a a pointer
+ *  @param ds - The stream to read
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the pointer
+ *  @return DataStream& - Reference to the datastream
+ *  @post Throw an exception if it is a pointer
+ */
 template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_pointer<T>()>* = nullptr>
 DataStream& operator >> ( DataStream& ds, T ) {
    static_assert(!_datastream_detail::is_pointer<T>(), "Pointers should not be serialized" );
    return ds;
 }
 
+/**
+ *  Serialize a fixed size array of non-primitive and non-pointer type
+ *
+ *  @brief Serialize a fixed size array of non-primitive and non-pointer type
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the pointer
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::size_t N,
          std::enable_if_t<!_datastream_detail::is_primitive<T>() &&
                           !_datastream_detail::is_pointer<T>()>* = nullptr>
@@ -288,6 +523,16 @@ DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
    return ds;
 }
 
+/**
+ *  Serialize a fixed size array of non-primitive type
+ *
+ *  @brief Serialize a fixed size array of non-primitive type
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the pointer
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::size_t N,
          std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
@@ -296,6 +541,17 @@ DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
    return ds;
 }
 
+/**
+ *  Deserialize a fixed size array of non-primitive and non-pointer type
+ *
+ *  @brief Deserialize a fixed size array of non-primitive and non-pointer type
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam T - Type of the object contained in the array
+ *  @tparam N - Size of the array
+ *  @tparam DataStream - Type of datastream
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::size_t N,
          std::enable_if_t<!_datastream_detail::is_primitive<T>() &&
                           !_datastream_detail::is_pointer<T>()>* = nullptr>
@@ -308,6 +564,17 @@ DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
    return ds;
 }
 
+/**
+ *  Deserialize a fixed size array of non-primitive type
+ *
+ *  @brief Deserialize a fixed size array of non-primitive type
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam T - Type of the object contained in the array
+ *  @tparam N - Size of the array
+ *  @tparam DataStream - Type of datastream
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::size_t N,
          std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
@@ -318,6 +585,15 @@ DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
    return ds;
 }
 
+/**
+ *  Serialize a vector of char
+ *
+ *  @brief Serialize a vector of char
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const vector<char>& v ) {
    ds << unsigned_int( v.size() );
@@ -325,6 +601,16 @@ DataStream& operator << ( DataStream& ds, const vector<char>& v ) {
    return ds;
 }
 
+/**
+ *  Serialize a vector
+ *
+ *  @brief Serialize a vector
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the object contained in the vector
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T>
 DataStream& operator << ( DataStream& ds, const vector<T>& v ) {
    ds << unsigned_int( v.size() );
@@ -333,6 +619,15 @@ DataStream& operator << ( DataStream& ds, const vector<T>& v ) {
    return ds;
 }
 
+/**
+ *  Deserialize a vector of char
+ *
+ *  @brief Deserialize a vector of char
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, vector<char>& v ) {
    unsigned_int s;
@@ -342,6 +637,16 @@ DataStream& operator >> ( DataStream& ds, vector<char>& v ) {
    return ds;
 }
 
+/**
+ *  Deserialize a vector
+ *
+ *  @brief Deserialize a vector
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the object contained in the vector
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T>
 DataStream& operator >> ( DataStream& ds, vector<T>& v ) {
    unsigned_int s;
@@ -374,6 +679,17 @@ DataStream& operator >> ( DataStream& ds, std::set<T>& s ) {
    return ds;
 }
 
+/**
+ *  Serialize a map
+ *
+ *  @brief Serialize a map
+ *  @param ds - The stream to write
+ *  @param m - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam K - Type of the key contained in the map
+ *  @tparam V - Type of the value contained in the map
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename K, typename V>
 DataStream& operator << ( DataStream& ds, const std::map<K,V>& m ) {
    ds << unsigned_int( m.size() );
@@ -383,6 +699,17 @@ DataStream& operator << ( DataStream& ds, const std::map<K,V>& m ) {
    return ds;
 }
 
+/**
+ *  Deserialize a map
+ *
+ *  @brief Deserialize a map
+ *  @param ds - The stream to read
+ *  @param m - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @tparam K - Type of the key contained in the map
+ *  @tparam V - Type of the value contained in the map
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename K, typename V>
 DataStream& operator >> ( DataStream& ds, std::map<K,V>& m ) {
    m.clear();
@@ -418,6 +745,18 @@ DataStream& operator >> ( DataStream& ds, boost::container::flat_set<T>& s ) {
    return ds;
 }
 
+
+/**
+ *  Serialize a flat map
+ *
+ *  @brief Serialize a flat map
+ *  @param ds - The stream to write
+ *  @param m - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam K - Type of the key contained in the flat map
+ *  @tparam V - Type of the value contained in the flat map
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename K, typename V>
 DataStream& operator<<( DataStream& ds, const boost::container::flat_map<K,V>& m ) {
    ds << unsigned_int( m.size() );
@@ -426,6 +765,17 @@ DataStream& operator<<( DataStream& ds, const boost::container::flat_map<K,V>& m
    return ds;
 }
 
+/**
+ *  Deserialize a flat map
+ *
+ *  @brief Deserialize a flat map
+ *  @param ds - The stream to read
+ *  @param m - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @tparam K - Type of the key contained in the flat map
+ *  @tparam V - Type of the value contained in the flat map
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename K, typename V>
 DataStream& operator>>( DataStream& ds, boost::container::flat_map<K,V>& m ) {
    m.clear();
@@ -439,6 +789,16 @@ DataStream& operator>>( DataStream& ds, boost::container::flat_map<K,V>& m ) {
    return ds;
 }
 
+/**
+ *  Serialize a tuple
+ *
+ *  @brief Serialize a tuple
+ *  @param ds - The stream to write
+ *  @param t - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam Args - Type of the objects contained in the tuple
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename... Args>
 DataStream& operator<<( DataStream& ds, const std::tuple<Args...>& t ) {
    boost::fusion::for_each( t, [&]( const auto& i ) {
@@ -447,6 +807,16 @@ DataStream& operator<<( DataStream& ds, const std::tuple<Args...>& t ) {
    return ds;
 }
 
+/**
+ *  Deserialize a tuple
+ *
+ *  @brief Deserialize a tuple
+ *  @param ds - The stream to read
+ *  @param t - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @tparam Args - Type of the objects contained in the tuple
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename... Args>
 DataStream& operator>>( DataStream& ds, std::tuple<Args...>& t ) {
    boost::fusion::for_each( t, [&]( auto& i ) {
@@ -455,6 +825,16 @@ DataStream& operator>>( DataStream& ds, std::tuple<Args...>& t ) {
    return ds;
 }
 
+/**
+ *  Serialize a class
+ *
+ *  @brief Serialize a class
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of class
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::enable_if_t<std::is_class<T>::value>* = nullptr>
 DataStream& operator<<( DataStream& ds, const T& v ) {
    boost::pfr::for_each_field(v, [&](const auto& field) {
@@ -462,6 +842,17 @@ DataStream& operator<<( DataStream& ds, const T& v ) {
    });
    return ds;
 }
+
+/**
+ *  Deserialize a class
+ *
+ *  @brief Deserialize a class
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of class
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::enable_if_t<std::is_class<T>::value>* = nullptr>
 DataStream& operator>>( DataStream& ds, T& v ) {
    boost::pfr::for_each_field(v, [&](auto& field) {
@@ -470,18 +861,47 @@ DataStream& operator>>( DataStream& ds, T& v ) {
    return ds;
 }
 
+/**
+ *  Serialize a primitive type
+ *
+ *  @brief Serialize a primitive type
+ *  @param ds - The stream to write
+ *  @param v - The value to serialize
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the primitive type
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator<<( DataStream& ds, const T& v ) {
    ds.write( (const char*)&v, sizeof(T) );
    return ds;
 }
 
+/**
+ *  Deserialize a primitive type
+ *
+ *  @brief Deserialize a primitive type
+ *  @param ds - The stream to read
+ *  @param v - The destination for deserialized value
+ *  @tparam DataStream - Type of datastream
+ *  @tparam T - Type of the primitive type
+ *  @return DataStream& - Reference to the datastream
+ */
 template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator>>( DataStream& ds, T& v ) {
    ds.read( (char*)&v, sizeof(T) );
    return ds;
 }
 
+/**
+ * Unpack data inside a fixed size buffer as T
+ *
+ * @brief Unpack data inside a fixed size buffer as T
+ * @tparam T - Type of the unpacked data
+ * @param buffer - Pointer to the buffer
+ * @param len - Length of the buffer
+ * @return T - The unpacked data
+ */
 template<typename T>
 T unpack( const char* buffer, size_t len ) {
    T result;
@@ -490,11 +910,27 @@ T unpack( const char* buffer, size_t len ) {
    return result;
 }
 
+/**
+ * Unpack data inside a variable size buffer as T
+ *
+ * @brief Unpack data inside a variable size buffer as T
+ * @tparam T - Type of the unpacked data
+ * @param bytes - Buffer
+ * @return T - The unpacked data
+ */
 template<typename T>
 T unpack( const vector<char>& bytes ) {
    return unpack<T>( bytes.data(), bytes.size() );
 }
 
+/**
+ * Get the size of the packed data
+ *
+ * @brief Get the size of the packed data
+ * @tparam T - Type of the data to be packed
+ * @param value - Data to be packed
+ * @return size_t - Size of the packed data
+ */
 template<typename T>
 size_t pack_size( const T& value ) {
   datastream<size_t> ps;
@@ -502,6 +938,14 @@ size_t pack_size( const T& value ) {
   return ps.tellp();
 }
 
+/**
+ * Get packed data
+ *
+ * @brief Get packed data
+ * @tparam T - Type of the data to be packed
+ * @param value - Data to be packed
+ * @return bytes - The packed data
+ */
 template<typename T>
 bytes pack( const T& value ) {
   bytes result;
@@ -512,28 +956,64 @@ bytes pack( const T& value ) {
   return result;
 }
 
+/**
+ *  Serialize  a checksum160 type
+ *
+ *  @brief Serialize a checksum160 type
+ *  @param ds - The stream to write
+ *  @param cs - The value to serialize
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum160& cs) {
    ds.write((const char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
 
+/**
+ *  Deserialize  a checksum160 type
+ *
+ *  @brief Deserialize  a checksum160 type
+ *  @param ds - The stream to read
+ *  @param cs - The destination for deserialized value
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum160& cs) {
    ds.read((char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
 
+/**
+ *  Serialize  a checksum512 type
+ *
+ *  @brief Serialize a checksum512 type
+ *  @param ds - The stream to write
+ *  @param cs - The value to serialize
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum512& cs) {
    ds.write((const char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
 
+/**
+ *  Deserialize  a checksum512 type
+ *
+ *  @brief Deserialize  a checksum512 type
+ *  @param ds - The stream to read
+ *  @param cs - The destination for deserialized value
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum512& cs) {
    ds.read((char*)&cs.hash[0], sizeof(cs.hash));
    return ds;
 }
-
+/// @} datastream
 }

@@ -58,13 +58,7 @@ namespace eosio {
    using ::memset;
    using ::memcpy;
 
-  /**
-   *  @defgroup memorycppapi Memory C++ API
-   *  @brief Defines common memory functions
-   *  @ingroup memoryapi
-   *
-   *  @{
-   */
+
 
    class memory_manager  // NOTE: Should never allocate another instance of memory_manager
    {
