@@ -41,9 +41,12 @@ namespace eosio {
     * Maintains a state along with the cache of margin positions and/or limit orders.
     */
    struct market_state {
-      market_state( account_name this_contract, symbol_type market_symbol, exchange_accounts& acnts );
+      market_state( account_name this_contract, symbol_type market_symbol, exchange_accounts& acnts, currency& excur );
 
       const exchange_state& initial_state()const;
+
+
+      void market_order( account_name seller, extended_asset sell, extended_symbol receive );
       void margin_call( extended_symbol debt_type );
       void lend( account_name lender, const extended_asset& debt );
       void unlend( account_name lender, double ishares, const extended_symbol& sym );
@@ -65,7 +68,9 @@ namespace eosio {
 
       private:
          exchange_accounts&        _accounts;
+         currency&                 _currencies;
          markets::const_iterator   market_state_itr;
+         account_name              _this_contract;
 
          void cover_margin( account_name borrower, margins& m, exchange_state::connector& c,
                              const extended_asset& cover_amount );

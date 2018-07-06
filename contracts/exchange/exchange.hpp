@@ -85,7 +85,7 @@ namespace eosio {
           *  - check to see if there are any limit/stoploss that need to execute first, then
           *    execute this.
           */
-         void marketorder( account_name seller, symbol_type market, extended_asset sell );
+         void marketorder( account_name seller, symbol_type market, extended_asset sell, extended_symbol receive );
 
          /**
           *  When market price falls to amount_to_sell / trigger_base => buy

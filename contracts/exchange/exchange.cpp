@@ -23,6 +23,13 @@ namespace eosio {
       currency::inline_transfer( _this_contract, from, quantity, "withdraw" );
    }
 
+   void exchange::marketorder( account_name seller, symbol_type market_symbol, extended_asset sell, extended_symbol receive ) {
+      require_auth( seller );
+      market_state market( _this_contract, market_symbol, _accounts, _excurrencies );
+      market.market_order( seller, sell, receive );
+      market.save();
+   }
+
    void exchange::on( const trade& t ) {
       require_auth( t.seller );
       eosio_assert( t.sell.is_valid(), "invalid sell amount" );
@@ -33,7 +40,7 @@ namespace eosio {
       auto receive_symbol = t.min_receive.get_extended_symbol();
       eosio_assert( t.sell.get_extended_symbol() != receive_symbol, "invalid conversion" );
 
-      market_state market( _this_contract, t.market, _accounts );
+      market_state market( _this_contract, t.market, _accounts, _excurrencies );
 
       auto temp   = market.exstate;
       auto output = temp.convert( t.sell, receive_symbol );
@@ -76,7 +83,7 @@ namespace eosio {
       eosio_assert( b.delta_borrow.is_valid(), "invalid borrow delta" );
       eosio_assert( b.delta_collateral.is_valid(), "invalid collateral delta" );
 
-      market_state market( _this_contract, b.market, _accounts );
+      market_state market( _this_contract, b.market, _accounts, _excurrencies );
 
       eosio_assert( b.delta_borrow.amount != 0 || b.delta_collateral.amount != 0, "no effect" );
       eosio_assert( b.delta_borrow.get_extended_symbol() != b.delta_collateral.get_extended_symbol(), "invalid args" );
@@ -103,7 +110,7 @@ namespace eosio {
       eosio_assert( c.cover_amount.is_valid(), "invalid cover amount" );
       eosio_assert( c.cover_amount.amount > 0, "cover amount must be positive" );
 
-      market_state market( _this_contract, c.market, _accounts );
+      market_state market( _this_contract, c.market, _accounts, _excurrencies );
 
       market.cover_margin( c.borrower, c.cover_amount);
 
@@ -174,7 +181,7 @@ namespace eosio {
       eosio_assert( quantity.is_valid(), "invalid quantity" );
       eosio_assert( quantity.amount > 0, "must lend a positive amount" );
 
-      market_state m( _this_contract, market, _accounts );
+      market_state m( _this_contract, market, _accounts, _excurrencies );
       m.lend( lender, quantity );
       m.save();
    }
@@ -183,7 +190,7 @@ namespace eosio {
       require_auth( lender );
       eosio_assert( interest_shares > 0, "must unlend a positive amount" );
 
-      market_state m( _this_contract, market, _accounts );
+      market_state m( _this_contract, market, _accounts, _excurrencies );
       m.unlend( lender, interest_shares, interest_symbol );
       m.save();
    }

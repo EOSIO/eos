@@ -3,7 +3,7 @@
 
 namespace eosio {
 
-   market_state::market_state( account_name this_contract, symbol_type market_symbol, exchange_accounts& acnts )
+   market_state::market_state( account_name this_contract, symbol_type market_symbol, exchange_accounts& acnts, currency& excur  )
    :marketid( market_symbol.name() ),
     market_table( this_contract, marketid ),
     base_margins( this_contract,  (marketid<<4) + 1),
@@ -11,7 +11,9 @@ namespace eosio {
     base_loans( this_contract,    (marketid<<4) + 1),
     quote_loans( this_contract,   (marketid<<4) + 2),
     _accounts(acnts),
-    market_state_itr( market_table.find(marketid) )
+    _currencies(excur),
+    market_state_itr( market_table.find(marketid) ),
+    _this_contract(this_contract)
    {
       eosio_assert( market_state_itr != market_table.end(), "unknown market" );
       exstate = *market_state_itr;
@@ -51,6 +53,36 @@ namespace eosio {
 
    const exchange_state& market_state::initial_state()const {
       return *market_state_itr;
+   }
+
+   void market_state::market_order( account_name seller, extended_asset sell, extended_symbol receive_symbol ) {
+      eosio_assert( sell.is_valid(), "invalid sell amount" );
+      eosio_assert( sell.amount > 0, "sell amount must be positive" );
+      eosio_assert( sell.get_extended_symbol() != receive_symbol, "invalid conversion" );
+
+      _accounts.adjust_balance( seller, -sell, "sold" );
+
+      auto temp   = this->exstate;
+      auto output = temp.convert( sell, receive_symbol );
+
+      while( temp.requires_margin_call() ) {
+         this->margin_call( receive_symbol );
+         temp = this->exstate;
+         output = temp.convert( sell, receive_symbol );
+      }
+      this->exstate = temp;
+
+      print( name{seller}, "   ", sell, "  =>  ", output, "\n" );
+
+      _accounts.adjust_balance( seller, output, "received" );
+
+      if( this->exstate.supply.amount != this->initial_state().supply.amount ) {
+         auto delta = this->exstate.supply - this->initial_state().supply;
+
+         _currencies.issue_currency( { .to = _this_contract,
+                                        .quantity = delta,
+                                        .memo = string("") } );
+      }
    }
 
    void market_state::lend( account_name lender, const extended_asset& quantity ) {
