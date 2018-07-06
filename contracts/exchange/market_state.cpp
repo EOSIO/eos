@@ -199,7 +199,7 @@ namespace eosio {
       }
 
       c.peer_margin.total_lent += delta_debt;
-      eosio_assert( c.peer_margin.total_lent.amount <= c.peer_margin.total_lendable.amount, "insufficient funds availalbe to borrow" );
+      eosio_assert( c.peer_margin.total_lent.amount <= c.peer_margin.total_lendable.amount, "insufficient funds available to borrow" );
 
       if( existing != m.end() ) {
          if( existing->call_price < c.peer_margin.least_collateralized )
@@ -211,8 +211,6 @@ namespace eosio {
       }
 
    }
-
-
 
    void market_state::save() {
       market_table.modify( market_state_itr, 0, [&]( auto& s ) {

@@ -61,6 +61,7 @@ namespace eosio {
       margins quote_margins;
       loans   base_loans;
       loans   quote_loans;
+      /// limits and stoploss 
 
       private:
          exchange_accounts&        _accounts;

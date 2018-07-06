@@ -20,18 +20,19 @@ namespace eosio {
       real_type      interest_shares = 0;
 
       real_type lend( int64_t new_lendable ) {
+         real_type new_shares = new_lendable;
          if( total_lendable.amount > 0 ) {
-            real_type new_shares =  (interest_shares * new_lendable) / total_lendable.amount;
+            new_shares =  (interest_shares * new_lendable) / total_lendable.amount;
             interest_shares += new_shares;
             total_lendable.amount += new_lendable;
          } else {
             interest_shares += new_lendable;
             total_lendable.amount  += new_lendable;
          }
-         return new_lendable;
+         return new_shares;
       }
 
-      extended_asset unlend( double ishares ) {
+      extended_asset unlend( real_type ishares ) {
          extended_asset result = total_lent;
          print( "unlend: ", ishares, " existing interest_shares:  ", interest_shares, "\n" ); 
          result.amount  = int64_t( (ishares * total_lendable.amount) / interest_shares );

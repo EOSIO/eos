@@ -1,5 +1,6 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/currency.hpp>
+#include <eosiolib/time.hpp>
 #include <boost/container/flat_map.hpp>
 #include <cmath>
 #include <exchange/market_state.hpp>
@@ -68,14 +69,49 @@ namespace eosio {
             extended_asset   delta_collateral;
          };
 
+         /// TODO: rename this to market_order
          struct trade {
             account_name    seller;
             symbol_type     market;
             extended_asset  sell;
-            extended_asset  min_receive;
-            uint32_t        expire = 0;
-            uint8_t         fill_or_kill = true;
+            extended_asset  min_receive; ///< not part of market order
+            uint32_t        expire = 0; ///< not part of market order
+            uint8_t         fill_or_kill = true; ///< not part of market order
          };
+
+         /**
+          *  This will sell through the bancor market maker and give the current price.
+          *
+          *  - check to see if there are any limit/stoploss that need to execute first, then
+          *    execute this.
+          */
+         void marketorder( account_name seller, symbol_type market, extended_asset sell );
+
+         /**
+          *  When market price falls to amount_to_sell / trigger_base => buy
+          *
+          *  Transfers amount_to_sell from seller's balance with exchange to this order, on
+          *  fill, transfers proceeds to seller's account.  If canceled amount_to_sell is returned to
+          *  users account.
+          *
+          *  @param order_id - unique per seller, (seller,order_id) ident this order for cancel
+          *
+          *  - create the order 
+          *  - check to see if any orders need to be processed
+          */
+         void limitorder( account_name seller, uint16_t order_id, symbol_type market, 
+                           extended_asset amount_to_sell,
+                           extended_asset trigger_base, ///< ammount_to_sell / trigger_base => trigger price
+                           block_timestamp_type  expiration ///< time at which this order is no longer valid 
+                         );
+         /**
+          * When market price falls to amount_to_sell / trigger_base => sell amount to sell
+          */
+         void stoploss( account_name seller, uint16_t order_id, symbol_type market, 
+                           extended_asset amount_to_sell,
+                           extended_asset trigger_base, ///< ammount_to_sell / trigger_base => trigger price
+                           block_timestamp_type  expiration ///< time at which this order is no longer valid 
+                       );
 
          void on( const trade& t    );
          void on( const upmargin& b );
