@@ -82,50 +82,22 @@ class tic_tac_toe : public eosio::contract {
        */
       typedef eosio::multi_index< N(games), game> games;
 
-      /**
-       * @brief Action to create a new game
-       * @abi action
-       */
-      struct create {
-         account_name   challenger;
-         account_name   host;
-      };
-
-      /**
-       * @brief Action to restart a new game
-       * @abi action
-       */
-      struct restart {
-         account_name   challenger;
-         account_name   host;
-         account_name   by; // the account who wants to restart the game
-      };
-
-      /**
-       * @brief Action to close an existing game, and remove it from the storage
-       * @abi action
-       */
-      struct close {
-         account_name   challenger;
-         account_name   host;
-      };
-
-
-      /**
-       * @brief Action to make movement
-       * @abi action
-       */
-      struct move {
-         account_name   challenger;
-         account_name   host;
-         account_name   by; // the account who wants to make the move
-         uint16_t       row;
-         uint16_t       column;
-      };
-
+      /// @abi action
+      /// Create a new game
       void create(const account_name& challenger, const account_name& host);
+
+      /// @abi action
+      /// Restart a game
+      /// @param by the account who wants to restart the game
       void restart(const account_name& challenger, const account_name& host, const account_name& by);
+
+      /// @abi action
+      /// Close an existing game, and remove it from storage
       void close(const account_name& challenger, const account_name& host);
+
+      /// @abi action
+      /// Make movement
+      /// @param by the account who wants to make the move
       void move(const account_name& challenger, const account_name& host, const account_name& by, const uint16_t& row, const uint16_t& column);
       
 };
