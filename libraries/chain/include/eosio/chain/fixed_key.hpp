@@ -9,7 +9,7 @@
 #include <type_traits>
 
 #include <fc/exception/exception.hpp>
-
+#include <eosio/chain/exceptions.hpp>
 namespace eosio {
 
    using chain::uint128_t;
@@ -58,7 +58,7 @@ namespace eosio {
                    continue;
                }
 
-               FC_ASSERT( sub_words_left == 1, "unexpected error in fixed_key constructor" );
+               EOS_ASSERT( sub_words_left == 1, chain::fixed_key_type_exception, "unexpected error in fixed_key constructor" );
                temp_word |= static_cast<word_t>(w);
                sub_words_left = num_sub_words;
 

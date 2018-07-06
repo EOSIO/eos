@@ -586,7 +586,7 @@ asset to_asset( const string& code, const string& s ) {
          auto p = cache.insert(make_pair( sym, result.max_supply.get_symbol() ));
          it = p.first;
       } else {
-         FC_THROW("Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
+         EOS_THROW(symbol_type_exception, "Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
       }
    }
    auto expected_symbol = it->second;
@@ -595,7 +595,7 @@ asset to_asset( const string& code, const string& s ) {
       auto a_old = a;
       a = asset( a.get_amount() * factor, expected_symbol );
    } else if ( a.decimals() > expected_symbol.decimals() ) {
-      FC_THROW("Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
+      EOS_THROW(symbol_type_exception, "Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
    } // else precision matches
    return a;
 }
@@ -960,7 +960,7 @@ struct approve_producer_subcommand {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
-            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
             vector<eosio::name> prods;
             for ( auto& x : prod_vars ) {
@@ -1006,7 +1006,7 @@ struct unapprove_producer_subcommand {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
-            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
             vector<eosio::name> prods;
             for ( auto& x : prod_vars ) {
@@ -2081,7 +2081,7 @@ int main( int argc, char** argv ) {
 
       std::cerr << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
-      FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
+      EOS_ASSERT( !wast.empty(), wast_file_not_found, "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
@@ -2109,7 +2109,7 @@ int main( int argc, char** argv ) {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
 
-      FC_ASSERT( fc::exists( abiPath ), "no abi file found ${f}", ("f", abiPath)  );
+      EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
 
       try {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
