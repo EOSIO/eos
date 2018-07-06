@@ -48,6 +48,7 @@ struct permission {
 template<typename>
 struct resolver_factory;
 
+// see specialization for uint64_t in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
    try {
@@ -208,13 +209,12 @@ public:
       name        code;
       string      scope;
       name        table;
-//      string      table_type;
       string      table_key;
       string      lower_bound;
       string      upper_bound;
       uint32_t    limit = 10;
-      string      sec_key_type;  // type of secondary key if table_key is not primary
-      uint32_t    sec_index_position = 0; // secondary index position, 0-first secondary index
+      string      key_type;  // type of key specified by index_position
+      string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
     };
 
    struct get_table_rows_result {
@@ -295,6 +295,46 @@ public:
       }
    }
 
+   static uint64_t get_table_index_name(const read_only::get_table_rows_params& p) {
+      // see multi_index packing of index name
+      const uint64_t table = p.table;
+      uint64_t index = table & 0xFFFFFFFFFFFFFFF0ULL;
+      EOS_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
+
+      uint64_t pos = 0;
+      if (p.index_position.empty() || p.index_position == "first" || p.index_position == "primary") {
+      } else if (p.index_position == "second" || p.index_position == "secondary") {
+      } else if (p.index_position == "third" || p.index_position == "tertiary" || p.index_position == "ternary") {
+         pos = 1;
+      } else if (p.index_position == "fourth" || p.index_position == "quaternary") {
+         pos = 2;
+      } else if (p.index_position == "fifth" || p.index_position == "quinary") {
+         pos = 3;
+      } else if (p.index_position == "sixth" || p.index_position == "senary") {
+         pos = 4;
+      } else if (p.index_position == "seventh" || p.index_position == "septenary") {
+         pos = 5;
+      } else if (p.index_position == "eighth" || p.index_position == "octonary") {
+         pos = 6;
+      } else if (p.index_position == "ninth" || p.index_position == "nonary") {
+         pos = 7;
+      } else if (p.index_position == "tenth" || p.index_position == "denary") {
+         pos = 8;
+      } else {
+         try {
+            pos = fc::to_uint64( p.index_position );
+         } catch(...) {
+            EOS_ASSERT( false, chain::contract_table_query_exception, "Invalid index_position: ${p}", ("p", p.index_position));
+         }
+         if (pos < 2) {
+            pos = 0;
+         } else {
+            pos -= 2;
+         }
+      }
+      index |= (pos & 0x000000000000000FULL);
+      return index;
+   }
 
    template <typename IndexType, typename Scope, typename SecKeyType, typename ConvFn>
    read_only::get_table_rows_result get_table_rows_by_seckey( const read_only::get_table_rows_params& p, const abi_def& abi, ConvFn conv )const {
@@ -305,8 +345,9 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi);
+      const uint64_t table_with_index = get_table_index_name(p);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-      const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, (((uint64_t)p.table & 0xFFFFFFFFFFFFFFF0ULL) | (p.sec_index_position & 0x000000000000000FULL))));
+      const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, table_with_index));
       if (t_id != nullptr && index_t_id != nullptr) {
          const auto &secidx = d.get_index<IndexType, Scope>();
          decltype(index_t_id->id) low_tid(index_t_id->id._id);
@@ -315,12 +356,24 @@ public:
          auto upper = secidx.lower_bound(boost::make_tuple(next_tid));
 
          if (p.lower_bound.size()) {
-            SecKeyType lv = convert_to_type<SecKeyType>(p.lower_bound, "lower_bound");
-            lower = secidx.lower_bound(boost::make_tuple(low_tid, conv(lv)));
+            if (p.key_type == "name") {
+               name s(p.lower_bound);
+               SecKeyType lv = convert_to_type<SecKeyType>( s.to_string(), "lower_bound name" ); // avoids compiler error
+               lower = secidx.lower_bound( boost::make_tuple( low_tid, conv( lv )));
+            } else {
+               SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
+               lower = secidx.lower_bound( boost::make_tuple( low_tid, conv( lv )));
+            }
          }
          if (p.upper_bound.size()) {
-            SecKeyType uv = convert_to_type<SecKeyType>(p.upper_bound, "upper_bound");
-            upper = secidx.lower_bound(boost::make_tuple(low_tid, conv(uv)));
+            if (p.key_type == "name") {
+               name s(p.upper_bound);
+               SecKeyType uv = convert_to_type<SecKeyType>( s.to_string(), "upper_bound name" );
+               upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
+            } else {
+               SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
+               upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
+            }
          }
 
          vector<char> data;
@@ -369,12 +422,22 @@ public:
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
 
          if (p.lower_bound.size()) {
-            auto lv = convert_to_type<typename IndexType::value_type::key_type>(p.lower_bound, "lower_bound");
-            lower = idx.lower_bound(boost::make_tuple(t_id->id, lv));
+            if (p.key_type == "name") {
+               name s(p.lower_bound);
+               lower = idx.lower_bound( boost::make_tuple( t_id->id, s.value ));
+            } else {
+               auto lv = convert_to_type<typename IndexType::value_type::key_type>( p.lower_bound, "lower_bound" );
+               lower = idx.lower_bound( boost::make_tuple( t_id->id, lv ));
+            }
          }
          if (p.upper_bound.size()) {
-            auto uv = convert_to_type<typename IndexType::value_type::key_type>(p.upper_bound, "upper_bound");
-            upper = idx.lower_bound(boost::make_tuple(t_id->id, uv));
+            if (p.key_type == "name") {
+               name s(p.upper_bound);
+               upper = idx.lower_bound( boost::make_tuple( t_id->id, s.value ));
+            } else {
+               auto uv = convert_to_type<typename IndexType::value_type::key_type>( p.upper_bound, "upper_bound" );
+               upper = idx.lower_bound( boost::make_tuple( t_id->id, uv ));
+            }
          }
 
          vector<char> data;
@@ -383,7 +446,7 @@ public:
 
          unsigned int count = 0;
          auto itr = lower;
-         for (itr = lower; itr != upper; ++itr) {
+         for (; itr != upper; ++itr) {
             copy_inline_row(*itr, data);
 
             if (p.json) {
@@ -487,7 +550,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(sec_key_type)(sec_index_position) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
