@@ -39,14 +39,13 @@ namespace eosiosystem {
          _gstate.total_unpaid_blocks++;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks++;
-               p.last_produced_block_time = timestamp;
          });
       }
-      
+
       /// only update block producers once every minute, block_timestamp is in half seconds
       if( timestamp.slot - _gstate.last_producer_schedule_update.slot > 120 ) {
          update_elected_producers( timestamp );
-         
+
          if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
             name_bid_table bids(_self,_self);
             auto idx = bids.get_index<N(highbid)>();
@@ -71,8 +70,9 @@ namespace eosiosystem {
 
       const auto& prod = _producers.get( owner );
       eosio_assert( prod.active(), "producer does not have an active key" );
-      
-      eosio_assert( _gstate.total_activated_stake >= min_activated_stake, "not enough has been staked for producers to claim rewards" );
+
+      eosio_assert( _gstate.total_activated_stake >= min_activated_stake,
+                    "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       auto ct = current_time();
 
@@ -103,7 +103,6 @@ namespace eosiosystem {
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
-         _gstate.savings         += to_savings;
 
          _gstate.last_pervote_bucket_fill = ct;
       }
@@ -113,7 +112,7 @@ namespace eosiosystem {
          producer_per_block_pay = (_gstate.perblock_bucket * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
       }
       int64_t producer_per_vote_pay = 0;
-      if( _gstate.total_producer_vote_weight > 0 ) { 
+      if( _gstate.total_producer_vote_weight > 0 ) {
          producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
       }
       if( producer_per_vote_pay < min_pervote_daily_pay ) {
@@ -127,7 +126,7 @@ namespace eosiosystem {
           p.last_claim_time = ct;
           p.unpaid_blocks = 0;
       });
-      
+
       if( producer_per_block_pay > 0 ) {
          INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.bpay),N(active)},
                                                        { N(eosio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );

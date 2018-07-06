@@ -1,0 +1,45 @@
+{
+  "version": "eosio::abi/1.0",
+  "types": [],
+  "structs": [{
+      "name": "defercall",
+      "base": "",
+      "fields": [{
+          "name": "payer",
+          "type": "name"
+        },{
+           "name": "sender_id",
+           "type": "uint64"
+         },{
+          "name": "contract",
+          "type": "name"
+        },{
+          "name": "payload",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "deferfunc",
+      "base": "",
+      "fields": [{
+          "name": "payload",
+          "type": "uint64"
+        }
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "defercall",
+      "type": "defercall",
+      "ricardian_contract": ""
+    },{
+      "name": "deferfunc",
+      "type": "deferfunc",
+      "ricardian_contract": ""
+    }
+  ],
+  "tables": [],
+  "ricardian_clauses": [],
+  "error_messages": [],
+  "abi_extensions": []
+}

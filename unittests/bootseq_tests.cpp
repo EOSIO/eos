@@ -332,7 +332,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         votepro( N(minow1), {N(p1), N(p2)} );
 
 
-#warning Complete this test
+// TODO: Complete this test
     } FC_LOG_AND_RETHROW()
 }
 

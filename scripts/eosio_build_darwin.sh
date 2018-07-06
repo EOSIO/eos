@@ -5,7 +5,7 @@
 
 	MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
 
-	CPU_SPEED=$(bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^6) / 10")
+	CPU_SPEED=$(bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^8) / 10")
 	CPU_CORE=$( sysctl -in machdep.cpu.core_count )
 
 	DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
@@ -129,7 +129,7 @@
 		DEP=$DEP"python@3 "
 		DISPLAY="${DISPLAY}${COUNT}. Python 3\\n\\t"
 		printf "\\t\\t python3 ${bldred}NOT${txtrst} found.\\n"
-		(( DCOUNT++ ))
+		(( COUNT++ ))
 	else
 		printf "\\t\\t Python3 found\\n"
 	fi
@@ -316,7 +316,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v3.2 --depth 1
 		then
 			printf "\\tUnable to clone MongoDB C++ driver at this time.\\n"
 			printf "\\tExiting now.\\n\\n"

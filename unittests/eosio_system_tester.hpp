@@ -317,6 +317,13 @@ public:
       return r;
    }
 
+   action_result vote( const account_name& voter, const std::vector<account_name>& producers, const account_name& proxy = name(0) ) {
+      return push_action(voter, N(voteproducer), mvo()
+                         ("voter",     voter)
+                         ("proxy",     proxy)
+                         ("producers", producers));
+   }
+
    uint32_t last_block_time() const {
       return time_point_sec( control->head_block_time() ).sec_since_epoch();
    }
@@ -545,9 +552,6 @@ inline fc::mutable_variant_object voter( account_name acct ) {
       //("last_vote_weight", double(0))
       ("proxied_vote_weight", double(0))
       ("is_proxy", 0)
-      ("deferred_trx_id", 0)
-      ("last_unstake_time", fc::time_point_sec() )
-      ("unstaking", asset() )
       ;
 }
 

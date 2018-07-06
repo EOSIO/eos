@@ -159,7 +159,8 @@ namespace eosio {
      * @brief Generates eosio::abi_def struct handling events from ASTConsumer
      */
    class abi_generator {
-      private: 
+      private:
+         static constexpr size_t max_recursion_depth = 25; // arbitrary depth to prevent infinite recursion
          bool                   verbose;
          int                    optimizations;
          abi_def*               output;
@@ -171,6 +172,7 @@ namespace eosio {
          string                 target_contract;
          vector<string>         target_actions;
          ricardian_contracts    rc;
+
       public:
 
          enum optimization {
@@ -178,7 +180,8 @@ namespace eosio {
          };
 
          abi_generator()
-         :optimizations(0)
+         : verbose(false)
+         , optimizations(0)
          , output(nullptr)
          , compiler_instance(nullptr)
          , ast_context(nullptr)
@@ -283,17 +286,17 @@ namespace eosio {
          string decl_to_string(clang::Decl* d);
 
          bool is_typedef(const clang::QualType& qt);
-         QualType add_typedef(const clang::QualType& qt);
+         QualType add_typedef(const clang::QualType& qt, size_t recursion_depth);
 
          bool is_vector(const clang::QualType& qt);
          bool is_vector(const string& type_name);
-         string add_vector(const clang::QualType& qt);
+         string add_vector(const clang::QualType& qt, size_t recursion_depth);
 
          bool is_struct(const clang::QualType& qt);
-         string add_struct(const clang::QualType& qt, string full_type_name="");
+         string add_struct(const clang::QualType& qt, string full_type_name, size_t recursion_depth);
 
          string get_type_name(const clang::QualType& qt, bool no_namespace);
-         string add_type(const clang::QualType& tqt);
+         string add_type(const clang::QualType& tqt, size_t recursion_depth);
 
          bool is_elaborated(const clang::QualType& qt);
          bool is_struct_specialization(const clang::QualType& qt);
@@ -340,6 +343,25 @@ namespace eosio {
             callback_handler(CompilerInstance& compiler_instance, find_eosio_abi_macro_action& act)
             : compiler_instance(compiler_instance), act(act) {}
 
+            string remove_namespace(const string& full_name) {
+               int i = full_name.size();
+               int on_spec = 0;
+               int colons = 0;
+               while( --i >= 0 ) {
+                  if( full_name[i] == '>' ) {
+                     ++on_spec; colons=0;
+                  } else if( full_name[i] == '<' ) {
+                     --on_spec; colons=0;
+                  } else if( full_name[i] == ':' && !on_spec) {
+                     if (++colons == 2)
+                        return full_name.substr(i+2);
+                  } else {
+                     colons = 0;
+                  }
+               }
+               return full_name;
+            }
+
             void MacroExpands (const Token &token, const MacroDefinition &md, SourceRange range, const MacroArgs *args) override {
 
                auto* id = token.getIdentifierInfo();
@@ -363,7 +385,7 @@ namespace eosio {
                auto res = regex_search(macrostr, smatch, r);
                ABI_ASSERT( res );
 
-               act.contract = smatch[1].str();
+               act.contract = remove_namespace(smatch[1].str());
 
                auto actions_str = smatch[2].str();
                boost::trim(actions_str);

@@ -861,13 +861,16 @@ class Option {
     ///@{
 
     /// Set the option as required
-    Option *required(bool value = true) {
-        required_ = value;
+    Option *required() {
+        if( !required_ ) {
+            description_ += " (required)";
+        }
+        required_ = true;
         return this;
     }
 
     /// Support Plubmum term
-    Option *mandatory(bool value = true) { return required(value); }
+    Option *mandatory() { return required(); }
 
     /// Set the number of expected arguments (Flags bypass this)
     Option *expected(int value) {

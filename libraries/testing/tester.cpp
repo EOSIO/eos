@@ -6,12 +6,57 @@
 
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>
+#include <fstream>
 
 eosio::chain::asset core_from_string(const std::string& s) {
   return eosio::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
 }
 
 namespace eosio { namespace testing {
+   std::string read_wast( const char* fn ) {
+      std::ifstream wast_file(fn);
+      FC_ASSERT( wast_file.is_open(), "wast file cannot be found" );
+      wast_file.seekg(0, std::ios::end);
+      std::vector<char> wast; 
+      int len = wast_file.tellg();
+      FC_ASSERT( len >= 0, "wast file length is -1" );
+      wast.resize(len+1);
+      wast_file.seekg(0, std::ios::beg);
+      wast_file.read(wast.data(), wast.size());
+      wast[wast.size()-1] = '\0';
+      wast_file.close();
+      return {wast.data()};
+   }
+
+   std::vector<uint8_t> read_wasm( const char* fn ) {
+      std::ifstream wasm_file(fn, std::ios::binary);
+      FC_ASSERT( wasm_file.is_open(), "wasm file cannot be found" );
+      wasm_file.seekg(0, std::ios::end);
+      std::vector<uint8_t> wasm; 
+      int len = wasm_file.tellg();
+      FC_ASSERT( len >= 0, "wasm file length is -1" );
+      wasm.resize(len);
+      wasm_file.seekg(0, std::ios::beg);
+      wasm_file.read((char*)wasm.data(), wasm.size());
+      wasm_file.close();
+      return wasm;
+   }
+
+   std::vector<char> read_abi( const char* fn ) {
+      std::ifstream abi_file(fn);
+      FC_ASSERT( abi_file.is_open(), "abi file cannot be found" );
+      abi_file.seekg(0, std::ios::end);
+      std::vector<char> abi; 
+      int len = abi_file.tellg();
+      FC_ASSERT( len >= 0, "abi file length is -1" );
+      abi.resize(len+1);
+      abi_file.seekg(0, std::ios::beg);
+      abi_file.read(abi.data(), abi.size());
+      abi[abi.size()-1] = '\0';
+      abi_file.close();
+      return abi;
+   }
+
 
    bool expect_assert_message(const fc::exception& ex, string expected) {
       BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
@@ -45,6 +90,8 @@ namespace eosio { namespace testing {
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+
+      abi_serializer::set_max_serialization_time(fc::microseconds(100*1000)); // 100ms for slow test machines
 
       for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
          if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
@@ -216,7 +263,7 @@ namespace eosio { namespace testing {
    }
 
 
-  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
+  void base_tester::set_transaction_headers( transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 

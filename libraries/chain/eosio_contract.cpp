@@ -56,6 +56,12 @@ void validate_authority_precondition( const apply_context& context, const author
                   );
       }
    }
+
+   if( context.control.is_producing_block() ) {
+      for( const auto& p : auth.keys ) {
+         context.control.check_key_list( p.key );
+      }
+   }
 }
 
 /**
@@ -86,7 +92,7 @@ void apply_eosio_newaccount(apply_context& context) {
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
-   EOS_ASSERT(existing_account == nullptr, action_validate_exception,
+   EOS_ASSERT(existing_account == nullptr, account_name_exists_exception,
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
@@ -130,10 +136,10 @@ void apply_eosio_setcode(apply_context& context) {
    FC_ASSERT( act.vmversion == 0 );
 
    fc::sha256 code_id; /// default ID == 0
-   
+
    if( act.code.size() > 0 ) {
      code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
-     wasm_interface::validate(act.code);
+     wasm_interface::validate(context.control, act.code);
    }
 
    const auto& account = db.get<account_object,by_name>(act.account);
@@ -146,7 +152,7 @@ void apply_eosio_setcode(apply_context& context) {
 
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
-      #warning TODO: update setcode message to include the hash, then validate it in validate
+      // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
       a.code_version = code_id;
       a.code.resize( code_size );
@@ -276,7 +282,8 @@ void apply_eosio_deleteauth(apply_context& context) {
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       EOS_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete a linked authority. Unlink the authority first");
+                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.", 
+                 ("code", string(range.first->code))("type", string(range.first->message_type)));
    }
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});

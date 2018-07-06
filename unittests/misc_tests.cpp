@@ -25,12 +25,64 @@
 using namespace eosio::chain;
 using namespace eosio::testing;
 
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
 namespace eosio
 {
 using namespace chain;
 using namespace std;
 
+static constexpr uint64_t name_suffix( uint64_t n ) {
+   uint32_t remaining_bits_after_last_actual_dot = 0;
+   uint32_t tmp = 0;
+   for( int32_t remaining_bits = 59; remaining_bits >= 4; remaining_bits -= 5 ) { // Note: remaining_bits must remain signed integer
+      // Get characters one-by-one in name in order from left to right (not including the 13th character)
+      auto c = (n >> remaining_bits) & 0x1Full;
+      if( !c ) { // if this character is a dot
+         tmp = static_cast<uint32_t>(remaining_bits);
+      } else { // if this character is not a dot
+         remaining_bits_after_last_actual_dot = tmp;
+      }
+   }
+
+   uint64_t thirteenth_character = n & 0x0Full;
+   if( thirteenth_character ) { // if 13th character is not a dot
+      remaining_bits_after_last_actual_dot = tmp;
+   }
+
+   if( remaining_bits_after_last_actual_dot == 0 ) // there is no actual dot in the name other than potentially leading dots
+      return n;
+
+   // At this point remaining_bits_after_last_actual_dot has to be within the range of 4 to 59 (and restricted to increments of 5).
+
+   // Mask for remaining bits corresponding to characters after last actual dot, except for 4 least significant bits (corresponds to 13th character).
+   uint64_t mask = (1ull << remaining_bits_after_last_actual_dot) - 16;
+   uint32_t shift = 64 - remaining_bits_after_last_actual_dot;
+
+   return ( ((n & mask) << shift) + (thirteenth_character << (shift-1)) );
+}
+
 BOOST_AUTO_TEST_SUITE(misc_tests)
+
+BOOST_AUTO_TEST_CASE(name_suffix_tests)
+{
+   BOOST_CHECK_EQUAL( name{name_suffix(0)}, name{0} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn))}, name{N(abcdehijklmn)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn1))}, name{N(abcdehijklmn1)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(.abc.def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(..abc.def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abc..def))}, name{N(def)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def.ghi))}, name{N(ghi)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij))}, name{N(abcdefghij)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(.abcdefghij.1))}, name{N(1)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij))}, name{N(bcdefghij)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(a.bcdefghij.1))}, name{N(1)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(......a.b.c))}, name{N(c)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhi.123))}, name{N(123)} );
+   BOOST_CHECK_EQUAL( name{name_suffix(N(abcdefhij.123))}, name{N(123)} );
+}
 
 /// Test processing of unbalanced strings
 BOOST_AUTO_TEST_CASE(json_from_string_test)

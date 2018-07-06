@@ -42,14 +42,12 @@ namespace eosiosystem {
       auto prod = _producers.find( producer );
 
       if ( prod != _producers.end() ) {
-         if( producer_key != prod->producer_key ) {
-             _producers.modify( prod, producer, [&]( producer_info& info ){
-                  info.producer_key = producer_key;
-                  info.is_active    = true;
-                  info.url          = url;
-                  info.location     = location;
-             });
-         }
+         _producers.modify( prod, producer, [&]( producer_info& info ){
+               info.producer_key = producer_key;
+               info.is_active    = true;
+               info.url          = url;
+               info.location     = location;
+            });
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
@@ -80,42 +78,12 @@ namespace eosiosystem {
       std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
       top_producers.reserve(21);
 
-      std::vector<decltype(idx.cbegin())> inactive_iters;
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
-
-         /**
-            If it's the first time or it's been over a day since a producer was last voted in, 
-            update his info. Otherwise, a producer gets a grace period of 7 hours after which
-            he gets deactivated if he hasn't produced in 24 hours.
-          */
-         if ( it->time_became_active.slot == 0 ||
-              block_time.slot > it->time_became_active.slot + 23 * blocks_per_hour ) {
-            _producers.modify( *it, 0, [&](auto& p) {
-                  p.time_became_active = block_time;
-               });
-         } else if ( block_time.slot > (2 * 21 * 12 * 100) + it->time_became_active.slot &&
-                     block_time.slot > it->last_produced_block_time.slot + blocks_per_day ) {
-            // save producers that will be deactivated
-            inactive_iters.push_back(it);
-            continue;
-         } else {
-            _producers.modify( *it, 0, [&](auto& p) {
-                  p.time_became_active = block_time;
-               });
-         }
-
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
 
       if ( top_producers.size() < _gstate.last_producer_schedule_size ) {
          return;
-      }
-
-      for ( const auto& it: inactive_iters ) {
-         _producers.modify( *it, 0, [&](auto& p) {
-               p.deactivate();
-               p.time_became_active.slot = 0;
-            });
       }
 
       /// sort by producer name
@@ -128,15 +96,10 @@ namespace eosiosystem {
          producers.push_back(item.first);
 
       bytes packed_schedule = pack(producers);
-      checksum160 new_id;
-      sha1( packed_schedule.data(), packed_schedule.size(), &new_id );
 
-      if( new_id != _gstate.last_producer_schedule_id ) {
-         _gstate.last_producer_schedule_id = new_id;
-         set_proposed_producers( packed_schedule.data(),  packed_schedule.size() );
-         _gstate.last_producer_schedule_size = top_producers.size();
+      if( set_proposed_producers( packed_schedule.data(),  packed_schedule.size() ) >= 0 ) {
+         _gstate.last_producer_schedule_size = static_cast<decltype(_gstate.last_producer_schedule_size)>( top_producers.size() );
       }
-      _gstate.last_producer_schedule_update = block_time;
    }
 
    double stake2vote( int64_t staked ) {
@@ -161,12 +124,11 @@ namespace eosiosystem {
     *  If voting for a proxy, the producer votes will not change until the proxy updates their own vote.
     */
    void system_contract::voteproducer( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers ) {
+      require_auth( voter_name );
       update_votes( voter_name, proxy, producers, true );
    }
 
    void system_contract::update_votes( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers, bool voting ) {
-      require_auth( voter_name );
-
       //validate input
       if ( proxy ) {
          eosio_assert( producers.size() == 0, "cannot vote for producers and proxy at same time" );
@@ -190,7 +152,7 @@ namespace eosiosystem {
        */
       if( voter->last_vote_weight <= 0.0 ) {
          _gstate.total_activated_stake += voter->staked;
-         if( _gstate.total_activated_stake >= min_activated_stake ) {
+         if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
             _gstate.thresh_activated_stake_time = current_time();
          }
       }

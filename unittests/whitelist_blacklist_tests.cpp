@@ -7,6 +7,9 @@
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 
+#include <deferred_test/deferred_test.wast.hpp>
+#include <deferred_test/deferred_test.abi.hpp>
+
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -19,6 +22,7 @@ using namespace eosio::testing;
 
 using mvo = fc::mutable_variant_object;
 
+template<class Tester = TESTER>
 class whitelist_blacklist_tester {
    public:
       whitelist_blacklist_tester() {}
@@ -46,14 +50,22 @@ class whitelist_blacklist_tester {
          return cfg;
       }
 
-      void init() {
+      void init( bool bootstrap = true ) {
+         FC_ASSERT( !chain, "chain is already up" );
+
          auto cfg = get_default_chain_configuration( tempdir.path() );
          cfg.actor_whitelist = actor_whitelist;
          cfg.actor_blacklist = actor_blacklist;
          cfg.contract_whitelist = contract_whitelist;
          cfg.contract_blacklist = contract_blacklist;
+         cfg.action_blacklist = action_blacklist;
 
          chain.emplace(cfg);
+         wdump((last_produced_block));
+         chain->set_last_produced_block_map( last_produced_block );
+
+         if( !bootstrap ) return;
+
          chain->create_accounts({N(eosio.token), N(alice), N(bob), N(charlie)});
          chain->set_code(N(eosio.token), eosio_token_wast);
          chain->set_abi(N(eosio.token), eosio_token_abi);
@@ -69,6 +81,13 @@ class whitelist_blacklist_tester {
          chain->produce_blocks();
       }
 
+      void shutdown() {
+         FC_ASSERT( chain.valid(), "chain is not up" );
+         last_produced_block = chain->get_last_produced_block_map();
+         wdump((last_produced_block));
+         chain.reset();
+      }
+
       transaction_trace_ptr transfer( account_name from, account_name to, string quantity = "1.00 TOK" ) {
          return chain->push_action( N(eosio.token), N(transfer), from, mvo()
             ( "from", from )
@@ -78,12 +97,14 @@ class whitelist_blacklist_tester {
          );
       }
 
-      fc::temp_directory       tempdir; // Must come before chain
-      fc::optional<TESTER>     chain;
-      flat_set<account_name>   actor_whitelist;
-      flat_set<account_name>   actor_blacklist;
-      flat_set<account_name>   contract_whitelist;
-      flat_set<account_name>   contract_blacklist;
+      fc::temp_directory                tempdir; // Must come before chain
+      fc::optional<Tester>              chain;
+      flat_set<account_name>            actor_whitelist;
+      flat_set<account_name>            actor_blacklist;
+      flat_set<account_name>            contract_whitelist;
+      flat_set<account_name>            contract_blacklist;
+      flat_set< pair<account_name, action_name> >  action_blacklist;
+      map<account_name, block_id_type>  last_produced_block;
 };
 
 struct transfer_args {
@@ -99,7 +120,7 @@ FC_REFLECT( transfer_args, (from)(to)(quantity)(memo) )
 BOOST_AUTO_TEST_SUITE(whitelist_blacklist_tests)
 
 BOOST_AUTO_TEST_CASE( actor_whitelist ) { try {
-   whitelist_blacklist_tester test;
+   whitelist_blacklist_tester<> test;
    test.actor_whitelist = {N(eosio), N(eosio.token), N(alice)};
    test.init();
 
@@ -132,7 +153,7 @@ BOOST_AUTO_TEST_CASE( actor_whitelist ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( actor_blacklist ) { try {
-   whitelist_blacklist_tester test;
+   whitelist_blacklist_tester<> test;
    test.actor_blacklist = {N(bob)};
    test.init();
 
@@ -166,7 +187,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( contract_whitelist ) { try {
-   whitelist_blacklist_tester test;
+   whitelist_blacklist_tester<> test;
    test.contract_whitelist = {N(eosio), N(eosio.token), N(bob)};
    test.init();
 
@@ -215,7 +236,7 @@ BOOST_AUTO_TEST_CASE( contract_whitelist ) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( contract_blacklist ) { try {
-   whitelist_blacklist_tester test;
+   whitelist_blacklist_tester<> test;
    test.contract_blacklist = {N(charlie)};
    test.init();
 
@@ -261,6 +282,158 @@ BOOST_AUTO_TEST_CASE( contract_blacklist ) { try {
                           fc_exception_message_starts_with("account 'charlie' is on the contract blacklist")
                         );
    test.chain->produce_blocks();
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( action_blacklist ) { try {
+   whitelist_blacklist_tester<> test;
+   test.contract_whitelist = {N(eosio), N(eosio.token), N(bob), N(charlie)};
+   test.action_blacklist = {{N(charlie), N(create)}};
+   test.init();
+
+   test.transfer( N(eosio.token), N(alice), "1000.00 TOK" );
+
+   test.chain->produce_blocks();
+
+   test.chain->set_code(N(bob), eosio_token_wast);
+   test.chain->set_abi(N(bob), eosio_token_abi);
+
+   test.chain->produce_blocks();
+
+   test.chain->set_code(N(charlie), eosio_token_wast);
+   test.chain->set_abi(N(charlie), eosio_token_abi);
+
+   test.chain->produce_blocks();
+
+   test.transfer( N(alice), N(bob) );
+
+   test.transfer( N(alice), N(charlie) ),
+
+   test.chain->push_action( N(bob), N(create), N(bob), mvo()
+      ( "issuer", "bob" )
+      ( "maximum_supply", "1000000.00 CUR" )
+   );
+
+   BOOST_CHECK_EXCEPTION( test.chain->push_action( N(charlie), N(create), N(charlie), mvo()
+                              ( "issuer", "charlie" )
+                              ( "maximum_supply", "1000000.00 CUR" )
+                          ),
+                          action_blacklist_exception,
+                          fc_exception_message_starts_with("action 'charlie::create' is on the action blacklist")
+                        );
+   test.chain->produce_blocks();
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( blacklist_eosio ) { try {
+   whitelist_blacklist_tester<tester> tester1;
+   tester1.init();
+   tester1.chain->produce_blocks();
+   tester1.chain->set_code(N(eosio), eosio_token_wast);
+   tester1.chain->produce_blocks();
+   tester1.shutdown();
+   tester1.contract_blacklist = {N(eosio)};
+   tester1.init(false);
+
+   whitelist_blacklist_tester<tester> tester2;
+   tester2.init(false);
+
+   while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
+      auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
+      tester2.chain->push_block( b );
+   }
+
+   tester1.chain->produce_blocks(2);
+
+   while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
+      auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
+      tester2.chain->push_block( b );
+   }
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( deferred_blacklist_failure ) { try {
+   whitelist_blacklist_tester<tester> tester1;
+   tester1.init();
+   tester1.chain->produce_blocks();
+   tester1.chain->set_code( N(bob), deferred_test_wast );
+   tester1.chain->set_abi( N(bob),  deferred_test_abi );
+   tester1.chain->set_code( N(charlie), deferred_test_wast );
+   tester1.chain->set_abi( N(charlie),  deferred_test_abi );
+   tester1.chain->produce_blocks();
+
+   tester1.chain->push_action( N(bob), N(defercall), N(alice), mvo()
+      ( "payer", "alice" )
+      ( "sender_id", 0 )
+      ( "contract", "charlie" )
+      ( "payload", 10 )
+   );
+
+   tester1.chain->produce_blocks(2);
+
+   tester1.shutdown();
+
+   tester1.contract_blacklist = {N(charlie)};
+   tester1.init(false);
+
+   whitelist_blacklist_tester<tester> tester2;
+   tester2.init(false);
+
+   while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
+      auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
+      tester2.chain->push_block( b );
+   }
+
+   tester1.chain->push_action( N(bob), N(defercall), N(alice), mvo()
+      ( "payer", "alice" )
+      ( "sender_id", 1 )
+      ( "contract", "charlie" )
+      ( "payload", 10 )
+   );
+
+   BOOST_CHECK_EXCEPTION( tester1.chain->produce_blocks(), fc::exception,
+                          fc_exception_message_is("account 'charlie' is on the contract blacklist")
+                        );
+   tester1.chain->produce_blocks(2, true); // Produce 2 empty blocks (other than onblock of course).
+
+   while( tester2.chain->control->head_block_num() < tester1.chain->control->head_block_num() ) {
+      auto b = tester1.chain->control->fetch_block_by_number( tester2.chain->control->head_block_num()+1 );
+      tester2.chain->push_block( b );
+   }
+} FC_LOG_AND_RETHROW() }
+
+
+BOOST_AUTO_TEST_CASE( blacklist_onerror ) { try {
+   whitelist_blacklist_tester<TESTER> tester1;
+   tester1.init();
+   tester1.chain->produce_blocks();
+   tester1.chain->set_code( N(bob), deferred_test_wast );
+   tester1.chain->set_abi( N(bob),  deferred_test_abi );
+   tester1.chain->set_code( N(charlie), deferred_test_wast );
+   tester1.chain->set_abi( N(charlie),  deferred_test_abi );
+   tester1.chain->produce_blocks();
+
+   tester1.chain->push_action( N(bob), N(defercall), N(alice), mvo()
+      ( "payer", "alice" )
+      ( "sender_id", 0 )
+      ( "contract", "charlie" )
+      ( "payload", 13 )
+   );
+
+   tester1.chain->produce_blocks();
+   tester1.shutdown();
+
+   tester1.action_blacklist = {{N(eosio), N(onerror)}};
+   tester1.init(false);
+
+   tester1.chain->push_action( N(bob), N(defercall), N(alice), mvo()
+      ( "payer", "alice" )
+      ( "sender_id", 0 )
+      ( "contract", "charlie" )
+      ( "payload", 13 )
+   );
+
+   BOOST_CHECK_EXCEPTION( tester1.chain->produce_blocks(), fc::exception,
+                          fc_exception_message_is("action 'eosio::onerror' is on the action blacklist")
+                        );
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

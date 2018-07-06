@@ -57,6 +57,7 @@ struct controller_impl {
    controller::config             conf;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -257,9 +258,6 @@ struct controller_impl {
       pending.reset();
       fork_db.close();
 
-      if (head && blog.read_head())
-         edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
-
       db.flush();
       reversible_blocks.flush();
    }
@@ -397,29 +395,40 @@ struct controller_impl {
 
 
 
+   /**
+    * @post regardless of the success of commit block there is no active pending block
+    */
    void commit_block( bool add_to_fork_db ) {
-      if( add_to_fork_db ) {
-         pending->_pending_block_state->validated = true;
-         auto new_bsp = fork_db.add( pending->_pending_block_state );
-         emit( self.accepted_block_header, pending->_pending_block_state );
-         head = fork_db.head();
-         FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
+      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
+         pending.reset();
+      });
 
+      try {
+         if (add_to_fork_db) {
+            pending->_pending_block_state->validated = true;
+            auto new_bsp = fork_db.add(pending->_pending_block_state);
+            emit(self.accepted_block_header, pending->_pending_block_state);
+            head = fork_db.head();
+            FC_ASSERT(new_bsp == head, "committed block did not become the new head in fork database");
+         }
+
+         if( !replaying ) {
+            reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
+               ubo.blocknum = pending->_pending_block_state->block_num;
+               ubo.set_block( pending->_pending_block_state->block );
+            });
+         }
+
+         emit( self.accepted_block, pending->_pending_block_state );
+      } catch (...) {
+         // dont bother resetting pending, instead abort the block
+         reset_pending_on_exit.cancel();
+         abort_block();
+         throw;
       }
 
-  //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      emit( self.accepted_block, pending->_pending_block_state );
-
-      if( !replaying ) {
-         reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = pending->_pending_block_state->block_num;
-            ubo.set_block( pending->_pending_block_state->block );
-         });
-      }
-
+      // push the state for pending.
       pending->push();
-      pending.reset();
-
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -447,7 +456,7 @@ struct controller_impl {
                                         uint32_t billed_cpu_time_us) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
-      etrx.actions.emplace_back( vector<permission_level>{},
+      etrx.actions.emplace_back( vector<permission_level>{{gto.sender, config::active_name}},
                                  onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
@@ -492,10 +501,17 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return (code == block_net_usage_exceeded::code_value) ||
-             (code == block_cpu_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value)       ||
-             (code == leeway_deadline_exception::code_value);
+      return    (code == subjective_block_production_exception::code_value)
+             || (code == block_net_usage_exceeded::code_value)
+             || (code == block_cpu_usage_exceeded::code_value)
+             || (code == deadline_exception::code_value)
+             || (code == leeway_deadline_exception::code_value)
+             || (code == actor_whitelist_exception::code_value)
+             || (code == actor_blacklist_exception::code_value)
+             || (code == contract_whitelist_exception::code_value)
+             || (code == contract_blacklist_exception::code_value)
+             || (code == action_blacklist_exception::code_value)
+             || (code == key_blacklist_exception::code_value);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -527,6 +543,11 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+
+      auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+         in_trx_requiring_checks = old_value;
+      });
+      in_trx_requiring_checks = true;
 
       transaction_context trx_context( self, dtrx, gto.trx_id );
       trx_context.deadline = deadline;
@@ -565,7 +586,7 @@ struct controller_impl {
 
       if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-         edump((trace->except->to_detail_string()));
+         dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gto, deadline, trx_context.start, trx_context.billed_cpu_time_us );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
@@ -633,13 +654,14 @@ struct controller_impl {
          try {
             if( implicit ) {
                trx_context.init_for_implicit_trx();
+               trx_context.can_subjectively_fail = false;
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
                                                trx->trx.signatures.size() );
             }
 
-            if( !implicit && pending->_block_status == controller::block_status::incomplete ) {
+            if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
                check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
             }
 
@@ -755,6 +777,10 @@ struct controller_impl {
 
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+         auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+            in_trx_requiring_checks = old_value;
+         });
+         in_trx_requiring_checks = true;
          push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
       } catch( const boost::interprocess::bad_alloc& e  ) {
          elog( "on block transaction failed due to a bad allocation" );
@@ -776,12 +802,7 @@ struct controller_impl {
    void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback, bool trust  ) {
       auto p = pending->_pending_block_state;
 
-      try {
-         p->sign( signer_callback, false); //trust );
-      } catch ( ... ) {
-         edump(( fc::json::to_pretty_string( p->header ) ) );
-         throw;
-      }
+      p->sign( signer_callback, false); //trust );
 
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
@@ -791,15 +812,39 @@ struct controller_impl {
          FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
          start_block( b->timestamp, b->confirmed, s );
 
+         transaction_trace_ptr trace;
+
          for( const auto& receipt : b->transactions ) {
+            auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
-               push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
+               trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us );
+            } else if( receipt.trx.contains<transaction_id_type>() ) {
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+            } else {
+               EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
-            else if( receipt.trx.contains<transaction_id_type>() ) {
-               push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+
+            bool transaction_failed =  trace && trace->except;
+            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            if( transaction_failed && !transaction_can_fail) {
+               edump((*trace));
+               throw *trace->except;
             }
+
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() > 0,
+                        block_validate_exception, "expected a receipt",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
+            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+                        block_validate_exception, "expected receipt was not added",
+                        ("block", *b)("expected_receipt", receipt)
+                      );
+            const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+            EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
+                        block_validate_exception, "receipt does not match",
+                        ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
 
          finalize_block();
@@ -876,13 +921,14 @@ struct controller_impl {
             if (except) {
                elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
 
-               while (ritr != branches.first.rend() ) {
-                  fork_db.set_validity( *ritr, false );
-                  ++ritr;
-               }
+               // ritr currently points to the block that threw
+               // if we mark it invalid it will automatically remove all forks built off it.
+               fork_db.set_validity( *ritr, false );
 
                // pop all blocks from the bad fork
-               for( auto itr = (ritr + 1).base(); itr != branches.second.end(); ++itr ) {
+               // ritr base is a forward itr to the last block successfully applied
+               auto applied_itr = ritr.base();
+               for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
                   fork_db.mark_in_current_chain( *itr , false );
                   pop_block();
                }
@@ -1047,7 +1093,7 @@ struct controller_impl {
          vector<account_name> blacklisted;
          blacklisted.reserve( actors.size() );
          set_intersection( actors.begin(), actors.end(),
-                           conf.actor_blacklist.begin(), conf.actor_whitelist.end(),
+                           conf.actor_blacklist.begin(), conf.actor_blacklist.end(),
                            std::back_inserter(blacklisted)
                          );
          EOS_ASSERT( blacklisted.size() == 0, actor_blacklist_exception,
@@ -1067,6 +1113,26 @@ struct controller_impl {
          EOS_ASSERT( conf.contract_blacklist.find( code ) == conf.contract_blacklist.end(),
                      contract_blacklist_exception,
                      "account '${code}' is on the contract blacklist", ("code", code)
+                   );
+      }
+   }
+
+   void check_action_list( account_name code, action_name action )const {
+      if( conf.action_blacklist.size() > 0 ) {
+         EOS_ASSERT( conf.action_blacklist.find( std::make_pair(code, action) ) == conf.action_blacklist.end(),
+                     action_blacklist_exception,
+                     "action '${code}::${action}' is on the action blacklist",
+                     ("code", code)("action", action)
+                   );
+      }
+   }
+
+   void check_key_list( const public_key_type& key )const {
+      if( conf.key_blacklist.size() > 0 ) {
+         EOS_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
+                     key_blacklist_exception,
+                     "public key '${key}' is on the key blacklist",
+                     ("key", key)
                    );
       }
    }
@@ -1257,6 +1323,16 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
    return my->blog.read_block_by_num(block_num);
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
+block_state_ptr controller::fetch_block_state_by_id( block_id_type id )const {
+   auto state = my->fork_db.get_block(id);
+   return state;
+}
+
+block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )const  { try {
+   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
+   return blk_state;
+} FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
 block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
    auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
    if( blk_state ) {
@@ -1340,7 +1416,7 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 }
 
 bool controller::skip_auth_check()const {
-   return my->replaying && !my->conf.force_all_checks;
+   return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool controller::contracts_console()const {
@@ -1401,6 +1477,14 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
 
 void controller::check_contract_list( account_name code )const {
    my->check_contract_list( code );
+}
+
+void controller::check_action_list( account_name code, action_name action )const {
+   my->check_action_list( code, action );
+}
+
+void controller::check_key_list( const public_key_type& key )const {
+   my->check_key_list( key );
 }
 
 bool controller::is_producing_block()const {

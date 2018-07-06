@@ -7,6 +7,7 @@ namespace eosio { namespace chain { namespace resource_limits {
    namespace impl {
       template<typename T>
       struct ratio {
+         static_assert(std::is_integral<T>::value, "ratios must have integral types");
          T numerator;
          T denominator;
       };

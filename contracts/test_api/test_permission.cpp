@@ -58,7 +58,7 @@ struct test_permission_last_used_msg {
    EOSLIB_SERIALIZE( test_permission_last_used_msg, (account)(permission)(last_used_time) )
 };
 
-void test_permission::test_permission_last_used(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_permission::test_permission_last_used(uint64_t /* receiver */, uint64_t code, uint64_t action) {
    (void)code;
    (void)action;
    using namespace eosio;
@@ -68,7 +68,7 @@ void test_permission::test_permission_last_used(uint64_t receiver, uint64_t code
    eosio_assert( get_permission_last_used(params.account, params.permission) == params.last_used_time, "unexpected last used permission time" );
 }
 
-void test_permission::test_account_creation_time(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_permission::test_account_creation_time(uint64_t /* receiver */, uint64_t code, uint64_t action) {
    (void)code;
    (void)action;
    using namespace eosio;

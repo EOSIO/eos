@@ -79,8 +79,6 @@ namespace eosio { namespace chain {
    void fork_database::close() {
       if( my->index.size() == 0 ) return;
 
-      fc::datastream<size_t> ps;
-
       auto fork_db_dat = my->datadir / config::forkdb_filename;
       std::ofstream out( fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
       uint32_t num_blocks_in_fork_db = my->index.size();
@@ -92,8 +90,6 @@ namespace eosio { namespace chain {
          fc::raw::pack( out, my->head->id );
       else
          fc::raw::pack( out, block_id_type() );
-      idump((num_blocks_in_fork_db));
-
 
       /// we don't normally indicate the head block as irreversible
       /// we cannot normally prune the lib if it is the head block because
@@ -211,14 +207,14 @@ namespace eosio { namespace chain {
             my->index.erase(itr);
 
          auto& previdx = my->index.get<by_prev>();
-         auto  previtr = previdx.find(id);
-         while( previtr != previdx.end() ) {
+         auto  previtr = previdx.lower_bound(remove_queue[i]);
+         while( previtr != previdx.end() && (*previtr)->header.previous == remove_queue[i] ) {
             remove_queue.push_back( (*previtr)->id );
-            previdx.erase(previtr);
-            previtr = previdx.find(id);
+            ++previtr;
          }
       }
       //wdump((my->index.size()));
+      my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
    void fork_database::set_validity( const block_state_ptr& h, bool valid ) {

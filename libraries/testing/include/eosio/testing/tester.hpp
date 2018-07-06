@@ -55,7 +55,9 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
-
+   std::vector<uint8_t> read_wasm( const char* fn );
+   std::vector<char>    read_abi( const char* fn );
+   std::string          read_wast( const char* fn );
    using namespace eosio::chain;
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
@@ -121,9 +123,9 @@ namespace eosio { namespace testing {
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                          const variant_object& data )const;
 
-         void                 set_transaction_headers(signed_transaction& trx,
-                                                      uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
-                                                      uint32_t delay_sec = 0)const;
+         void  set_transaction_headers( transaction& trx,
+                                        uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
+                                        uint32_t delay_sec = 0 )const;
 
          vector<transaction_trace_ptr>  create_accounts( vector<account_name> names,
                                                          bool multisig = false,
@@ -200,6 +202,9 @@ namespace eosio { namespace testing {
                                                              const account_name& account ) const;
 
          vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
+
+         map<account_name, block_id_type> get_last_produced_block_map()const { return last_produced_block; };
+         void set_last_produced_block_map( const map<account_name, block_id_type>& lpb ) { last_produced_block = lpb; }
 
          static vector<uint8_t> to_uint8_vector(const string& s);
 
@@ -303,7 +308,8 @@ namespace eosio { namespace testing {
    public:
       virtual ~validating_tester() {
          try {
-            produce_block();
+            if( num_blocks_to_producer_before_shutdown > 0 )
+               produce_blocks( num_blocks_to_producer_before_shutdown );
             BOOST_REQUIRE_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
@@ -385,7 +391,8 @@ namespace eosio { namespace testing {
         return ok;
       }
 
-      unique_ptr<controller>                  validating_node;
+      unique_ptr<controller>   validating_node;
+      uint32_t                 num_blocks_to_producer_before_shutdown = 0;
    };
 
    /**

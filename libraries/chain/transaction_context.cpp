@@ -289,16 +289,16 @@ namespace eosio { namespace chain {
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
             EOS_THROW( block_cpu_usage_exceeded,
                        "not enough time left in block to complete executing transaction",
-                       ("now", now)("deadline", _deadline)("start", start) );
+                       ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
             EOS_THROW( tx_cpu_usage_exceeded,
                        "transaction was executing for too long",
-                       ("now", now)("deadline", _deadline)("start", start) );
+                       ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
             EOS_THROW( leeway_deadline_exception,
                        "the transaction was unable to complete by deadline, "
-                       "but it is possible it could have succeeded if it were allow to run to completion",
-                       ("now", now)("deadline", _deadline)("start", start) );
+                       "but it is possible it could have succeeded if it were allowed to run to completion",
+                       ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          }
          FC_ASSERT( false, "unexpected deadline exception code" );
       }

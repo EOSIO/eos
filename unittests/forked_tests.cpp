@@ -38,6 +38,105 @@ BOOST_AUTO_TEST_CASE( irrblock ) try {
 
 } FC_LOG_AND_RETHROW() 
 
+struct fork_tracker {
+   vector<signed_block_ptr> blocks;
+   incremental_merkle       block_merkle;
+};
+
+BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
+   tester bios;
+   bios.produce_block();
+   bios.produce_block();
+   bios.create_accounts( {N(a),N(b),N(c),N(d),N(e)} );
+
+   bios.produce_block();
+   auto res = bios.set_producers( {N(a),N(b),N(c),N(d),N(e)} );
+
+   // run until the producers are installed and its the start of "a's" round
+   while( bios.control->pending_block_state()->header.producer.to_string() != "a" || bios.control->head_block_state()->header.producer.to_string() != "e") {
+      bios.produce_block();
+   }
+
+   // sync remote node
+   tester remote;
+   while( remote.control->head_block_num() < bios.control->head_block_num() ) {
+      auto fb = bios.control->fetch_block_by_number( remote.control->head_block_num()+1 );
+      remote.push_block( fb );
+   }
+
+   // produce 6 blocks on bios
+   for (int i = 0; i < 6; i ++) {
+      bios.produce_block();
+      BOOST_REQUIRE_EQUAL( bios.control->head_block_state()->header.producer.to_string(), "a" );
+   }
+
+   vector<fork_tracker> forks(7);
+   // enough to skip A's blocks
+   auto offset = fc::milliseconds(config::block_interval_ms * 13);
+
+   // skip a's blocks on remote
+   // create 7 forks of 7 blocks so this fork is longer where the ith block is corrupted
+   for (size_t i = 0; i < 7; i ++) {
+      auto b = remote.produce_block(offset);
+      BOOST_REQUIRE_EQUAL( b->producer.to_string(), "b" );
+
+      for (size_t j = 0; j < 7; j ++) {
+         auto& fork = forks.at(j);
+
+         if (j <= i) {
+            auto copy_b = std::make_shared<signed_block>(*b);
+            if (j == i) {
+               // corrupt this block
+               fork.block_merkle = remote.control->head_block_state()->blockroot_merkle;
+               copy_b->action_mroot._hash[0] ^= 0x1ULL;
+            } else if (j < i) {
+               // link to a corrupted chain
+               copy_b->previous = fork.blocks.back()->id();
+            }
+
+            // re-sign the block
+            auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), fork.block_merkle.get_root() ) );
+            auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule_hash) );
+            copy_b->producer_signature = remote.get_private_key(N(b), "active").sign(sig_digest);
+
+            // add this new block to our corrupted block merkle
+            fork.block_merkle.append(copy_b->id());
+            fork.blocks.emplace_back(copy_b);
+         } else {
+            fork.blocks.emplace_back(b);
+         }
+      }
+
+      offset = fc::milliseconds(config::block_interval_ms);
+   }
+
+   // go from most corrupted fork to least
+   for (size_t i = 0; i < forks.size(); i++) {
+      BOOST_TEST_CONTEXT("Testing Fork: " << i) {
+         const auto& fork = forks.at(i);
+         // push the fork to the original node
+         for (int fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
+            const auto& b = fork.blocks.at(fidx);
+            // push the block only if its not known already
+            if (!bios.control->fetch_block_by_id(b->id())) {
+               bios.push_block(b);
+            }
+         }
+
+         // push the block which should attempt the corrupted fork and fail
+         BOOST_REQUIRE_THROW(bios.push_block(fork.blocks.back()), fc::exception);
+      }
+   }
+
+   // make sure we can still produce a blocks until irreversibility moves
+   auto lib = bios.control->head_block_state()->dpos_irreversible_blocknum;
+   size_t tries = 0;
+   while (bios.control->head_block_state()->dpos_irreversible_blocknum == lib && ++tries < 10000) {
+      bios.produce_block();
+   }
+
+} FC_LOG_AND_RETHROW();
+
 BOOST_AUTO_TEST_CASE( forking ) try {
    tester c;
    c.produce_block();

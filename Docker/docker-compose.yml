@@ -10,7 +10,7 @@ services:
     build:
       context: .
     image: eosio/eos
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -22,7 +22,7 @@ services:
 
   keosd:
     image: eosio/eos
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: keosd
     links:
       - nodeosd

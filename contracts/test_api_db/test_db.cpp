@@ -159,7 +159,7 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
 
       buffer_len = 20;
       len = db_get_i64(itr, value, 0);
-      len = db_get_i64(itr, value, len);
+      len = db_get_i64(itr, value, (uint32_t)len);
       value[len] = '\0';
       std::string sfull(value);
       eosio_assert(sfull == "bob's info", "primary_i64_general - db_get_i64 - full");
@@ -448,7 +448,7 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
    uint64_t pk    = scope;
 
    int32_t itr = -1;
-   uint64_t value;
+   uint64_t value = 0;
    switch( ia.index ) {
       case 1:
          itr = db_idx64_find_primary(ia.code, scope, table, &value, pk);
@@ -536,7 +536,10 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
    }
 }
 
-void test_db::misaligned_secondary_key256_tests(uint64_t receiver, uint64_t, uint64_t) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
+
+void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_t, uint64_t) {
    auto key = eosio::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
    char* ptr = (char*)(&key);
    ptr += 1;
@@ -545,3 +548,5 @@ void test_db::misaligned_secondary_key256_tests(uint64_t receiver, uint64_t, uin
    // test that find_primary doesn't crash on unaligned data
    db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (eosio::key256*)(ptr), 2, 0);
 }
+
+#pragma clang diagnostic pop

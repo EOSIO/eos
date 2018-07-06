@@ -44,9 +44,11 @@ namespace eosio {
     */
    template<typename T>
    T unpack_action_data() {
-      char buffer[action_data_size()];
-      read_action_data( buffer, sizeof(buffer) );
-      return unpack<T>( buffer, sizeof(buffer) );
+      constexpr size_t max_stack_buffer_size = 512;
+      size_t size = action_data_size();
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      read_action_data( buffer, size );
+      return unpack<T>( buffer, size );
    }
 
    using ::require_auth;

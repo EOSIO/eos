@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "EOS.IO"
-PROJECT_NUMBER         = "DAWN ${DOXY_EOS_VERSION}"
+PROJECT_NUMBER         = "EOSIO ${DOXY_EOS_VERSION}"
 PROJECT_BRIEF          =
 PROJECT_LOGO           = eos-logo.png
 OUTPUT_DIRECTORY       =

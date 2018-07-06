@@ -18,7 +18,6 @@ Remote = p2p_test_peers.P2PTestPeers
 hosts=Remote.hosts
 ports=Remote.ports
 
-TEST_OUTPUT_DEFAULT="p2p_network_test_log.txt"
 DEFAULT_HOST=hosts[0]
 DEFAULT_PORT=ports[0]
 
@@ -29,7 +28,6 @@ errorExit=testUtils.Utils.errorExit
 # Override default help argument so that only --help (and not -h) can call help
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                     help=argparse._('show this help message and exit'))
-parser.add_argument("-o", "--output", type=str, help="output file", default=TEST_OUTPUT_DEFAULT)
 parser.add_argument("--defproducera_prvt_key", type=str, help="defproducera private key.",
                     default=testUtils.Cluster.defproduceraAccount.ownerPrivateKey)
 parser.add_argument("--defproducerb_prvt_key", type=str, help="defproducerb private key.",
@@ -42,7 +40,6 @@ parser.add_argument("--stress_network", help="test load/stress network", action=
 parser.add_argument("--not_kill_wallet", help="not killing walletd", action='store_true')
 
 args = parser.parse_args()
-testOutputFile=args.output
 enableMongo=False
 defproduceraPrvtKey=args.defproducera_prvt_key
 defproducerbPrvtKey=args.defproducerb_prvt_key
@@ -61,7 +58,6 @@ else:
 cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
 
 print("BEGIN")
-print("TEST_OUTPUT: %s" % (testOutputFile))
 
 print("number of hosts: %d, list of hosts:" % (len(hosts)))
 for i in range(len(hosts)):

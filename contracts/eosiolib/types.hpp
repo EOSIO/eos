@@ -67,28 +67,36 @@ namespace eosio {
    #define N(X) ::eosio::string_to_name(#X)
 
 
-   static constexpr uint64_t name_suffix( uint64_t tmp ) {
-      uint64_t suffix = 0;
-      bool endsuffix = false;
-      uint32_t offset = 0;
-      for( uint32_t i = 0; i <= 12; ++i, ++offset ) {
-         auto p = tmp >> 59;
-         if( !p ) {
-            endsuffix = true;
-         } else {
-            if( !endsuffix ) {
-               suffix |= uint64_t(p) << (59-(5*offset));
-            }
+   static constexpr uint64_t name_suffix( uint64_t n ) {
+      uint32_t remaining_bits_after_last_actual_dot = 0;
+      uint32_t tmp = 0;
+      for( int32_t remaining_bits = 59; remaining_bits >= 4; remaining_bits -= 5 ) { // Note: remaining_bits must remain signed integer
+         // Get characters one-by-one in name in order from left to right (not including the 13th character)
+         auto c = (n >> remaining_bits) & 0x1Full;
+         if( !c ) { // if this character is a dot
+            tmp = static_cast<uint32_t>(remaining_bits);
+         } else { // if this character is not a dot
+            remaining_bits_after_last_actual_dot = tmp;
          }
-         if( endsuffix && p ) {
-            endsuffix = false;
-            offset = 0;
-            suffix = uint64_t(p) << (59-(5*offset));
-         }
-         tmp <<= 5;
       }
-      return suffix;
+
+      uint64_t thirteenth_character = n & 0x0Full;
+      if( thirteenth_character ) { // if 13th character is not a dot
+         remaining_bits_after_last_actual_dot = tmp;
+      }
+
+      if( remaining_bits_after_last_actual_dot == 0 ) // there is no actual dot in the name other than potentially leading dots
+         return n;
+
+      // At this point remaining_bits_after_last_actual_dot has to be within the range of 4 to 59 (and restricted to increments of 5).
+
+      // Mask for remaining bits corresponding to characters after last actual dot, except for 4 least significant bits (corresponds to 13th character).
+      uint64_t mask = (1ull << remaining_bits_after_last_actual_dot) - 16;
+      uint32_t shift = 64 - remaining_bits_after_last_actual_dot;
+
+      return ( ((n & mask) << shift) + (thirteenth_character << (shift-1)) );
    }
+
    /**
     *  @brief wraps a uint64_t to ensure it is only passed to methods that expect a Name
     *  @details wraps a uint64_t to ensure it is only passed to methods that expect a Name and

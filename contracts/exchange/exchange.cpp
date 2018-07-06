@@ -112,7 +112,7 @@ namespace eosio {
 
    void exchange::createx( account_name    creator,
                  asset           initial_supply,
-                 uint32_t        fee,
+                 uint32_t        /* fee */,
                  extended_asset  base_deposit,
                  extended_asset  quote_deposit
                ) {

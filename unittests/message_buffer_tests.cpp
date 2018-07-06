@@ -254,6 +254,70 @@ BOOST_AUTO_TEST_CASE(message_buffer_write_ptr_to_end)
   FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(message_buffer_read_peek_bounds) {
+   using my_message_buffer_t = fc::message_buffer<1024>;
+   my_message_buffer_t mbuff;
+   unsigned char stuff[] = {
+      0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+   };
+   memcpy(mbuff.write_ptr(), stuff, sizeof(stuff));
+   mbuff.advance_write_ptr(sizeof(stuff));
+
+   my_message_buffer_t::index_t index = mbuff.read_index();
+   uint8_t throw_away_buffer[4];
+   mbuff.peek(&throw_away_buffer, 4, index); //8 bytes left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 4, index); //4 bytes left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 2, index); //2 bytes left to peek afterwards
+   BOOST_CHECK_THROW(mbuff.peek(&throw_away_buffer, 3, index), fc::out_of_range_exception);
+   mbuff.peek(&throw_away_buffer, 1, index); //1 byte left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 0, index); //1 byte left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 1, index); //no bytes left to peek afterwards
+   BOOST_CHECK_THROW(mbuff.peek(&throw_away_buffer, 1, index), fc::out_of_range_exception);
+
+   mbuff.read(&throw_away_buffer, 4); //8 bytes left to read afterwards
+   mbuff.read(&throw_away_buffer, 4); //4 bytes left to read afterwards
+   mbuff.read(&throw_away_buffer, 2); //2 bytes left to read afterwards
+   BOOST_CHECK_THROW(mbuff.read(&throw_away_buffer, 4), fc::out_of_range_exception);
+   mbuff.read(&throw_away_buffer, 1); //1 byte left to read afterwards
+   mbuff.read(&throw_away_buffer, 0); //1 byte left to read afterwards
+   mbuff.read(&throw_away_buffer, 1); //no bytes left to read afterwards
+   BOOST_CHECK_THROW(mbuff.read(&throw_away_buffer, 1), fc::out_of_range_exception);
+}
+
+BOOST_AUTO_TEST_CASE(message_buffer_read_peek_bounds_multi) {
+   using my_message_buffer_t = fc::message_buffer<5>;
+   my_message_buffer_t mbuff;
+   unsigned char stuff[] = {
+      0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+   };
+   memcpy(mbuff.write_ptr(), stuff, 5);
+   mbuff.advance_write_ptr(5);
+   memcpy(mbuff.write_ptr(), stuff+5, 5);
+   mbuff.advance_write_ptr(5);
+   memcpy(mbuff.write_ptr(), stuff+10, 2);
+   mbuff.advance_write_ptr(2);
+
+   my_message_buffer_t::index_t index = mbuff.read_index();
+   uint8_t throw_away_buffer[4];
+   mbuff.peek(&throw_away_buffer, 4, index); //8 bytes left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 4, index); //4 bytes left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 2, index); //2 bytes left to peek afterwards
+   BOOST_CHECK_THROW(mbuff.peek(&throw_away_buffer, 3, index), fc::out_of_range_exception);
+   mbuff.peek(&throw_away_buffer, 1, index); //1 bytes left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 0, index); //1 bytes left to peek afterwards
+   mbuff.peek(&throw_away_buffer, 1, index); //no bytes left to peek afterwards
+   BOOST_CHECK_THROW(mbuff.peek(&throw_away_buffer, 1, index), fc::out_of_range_exception);
+
+   mbuff.read(&throw_away_buffer, 4); //8 bytes left to read afterwards
+   mbuff.read(&throw_away_buffer, 4); //4 bytes left to read afterwards
+   mbuff.read(&throw_away_buffer, 2); //2 bytes left to read afterwards
+   BOOST_CHECK_THROW(mbuff.read(&throw_away_buffer, 4), fc::out_of_range_exception);
+   mbuff.read(&throw_away_buffer, 1); //1 bytes left to read afterwards
+   mbuff.read(&throw_away_buffer, 0); //1 bytes left to read afterwards
+   mbuff.read(&throw_away_buffer, 1); //no bytes left to read afterwards
+   BOOST_CHECK_THROW(mbuff.read(&throw_away_buffer, 1), fc::out_of_range_exception);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio

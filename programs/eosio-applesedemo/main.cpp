@@ -34,7 +34,7 @@ CFDictionaryRef CopyOurKeyInfo() {
    CFDictionaryRef keyAttrDic = CFDictionaryCreate(nullptr, keyAttrKeys, keyAttrValues, sizeof(keyAttrKeys)/sizeof(keyAttrKeys[0]), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
    CFDictionaryRef attributes = nullptr;
-   OSStatus ret = SecItemCopyMatching(keyAttrDic, (CFTypeRef*)&attributes);
+   SecItemCopyMatching(keyAttrDic, (CFTypeRef*)&attributes);
 
    CFRelease(keyAttrDic);
    return attributes;

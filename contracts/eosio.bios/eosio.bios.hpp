@@ -13,7 +13,7 @@ namespace eosio {
             set_privileged( account, ispriv );
          }
 
-         void setalimits( account_name account, uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight ) {
+         void setalimits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
             require_auth( _self );
             set_resource_limits( account, ram_bytes, net_weight, cpu_weight );
          }
@@ -26,9 +26,12 @@ namespace eosio {
          void setprods( std::vector<eosio::producer_key> schedule ) {
             (void)schedule; // schedule argument just forces the deserialization of the action data into vector<producer_key> (necessary check)
             require_auth( _self );
-            char buffer[action_data_size()];
-            read_action_data( buffer, sizeof(buffer) ); // should be the same data as eosio::pack(schedule)
-            set_proposed_producers(buffer, sizeof(buffer));
+
+            constexpr size_t max_stack_buffer_size = 512;
+            size_t size = action_data_size();
+            char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+            read_action_data( buffer, size );
+            set_proposed_producers(buffer, size);
          }
 
          void reqauth( action_name from ) {

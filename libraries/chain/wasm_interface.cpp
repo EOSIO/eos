@@ -31,7 +31,7 @@ namespace eosio { namespace chain {
 
    wasm_interface::~wasm_interface() {}
 
-   void wasm_interface::validate(const bytes& code) {
+   void wasm_interface::validate(const controller& control, const bytes& code) {
       Module module;
       try {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
@@ -42,7 +42,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
       }
 
-      wasm_validations::wasm_binary_validation validator(module);
+      wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
 
       root_resolver resolver(true);
@@ -1281,7 +1281,12 @@ class memory_api : public context_aware_api {
       }
 
       int memcmp( array_ptr<const char> dest, array_ptr<const char> src, size_t length) {
-         return ::memcmp(dest, src, length);
+         int ret = ::memcmp(dest, src, length);
+         if(ret < 0)
+            return -1;
+         if(ret > 0)
+            return 1;
+         return 0;
       }
 
       char* memset( array_ptr<char> dest, int value, size_t length ) {

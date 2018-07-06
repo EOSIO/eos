@@ -399,8 +399,12 @@ namespace eosio { namespace chain {
          checktime(); // TODO: this should eventually move into authority_checker instead
          EOS_ASSERT( checker.satisfied( p.first, p.second ), unsatisfied_authorization,
                      "transaction declares authority '${auth}', "
-                     "but does not have signatures for it under a provided delay of ${provided_delay} ms",
-                     ("auth", p.first)("provided_delay", provided_delay.count()/1000)
+                     "but does not have signatures for it under a provided delay of ${provided_delay} ms, "
+                     "provided permissions ${provided_permissions}, and provided keys ${provided_keys}",
+                     ("auth", p.first)
+                     ("provided_delay", provided_delay.count()/1000)
+                     ("provided_permissions", provided_permissions)
+                     ("provided_keys", provided_keys)
                      ("delay_max_limit_ms", delay_max_limit.count()/1000)
                    );
 
@@ -436,8 +440,14 @@ namespace eosio { namespace chain {
                                       );
 
       EOS_ASSERT( checker.satisfied({account, permission}), unsatisfied_authorization,
-                  "permission '${auth}' was not satisfied under a provided delay of ${provided_delay} ms",
-                  ("auth", permission_level{account, permission})("provided_delay", provided_delay.count()/1000) );
+                  "permission '${auth}' was not satisfied under a provided delay of ${provided_delay} ms, "
+                  "provided permissions ${provided_permissions}, and provided keys ${provided_keys}",
+                  ("auth", permission_level{account, permission})
+                  ("provided_delay", provided_delay.count()/1000)
+                  ("provided_permissions", provided_permissions)
+                  ("provided_keys", provided_keys)
+                  ("delay_max_limit_ms", delay_max_limit.count()/1000)
+                );
 
       if( !allow_unused_keys ) {
          EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,

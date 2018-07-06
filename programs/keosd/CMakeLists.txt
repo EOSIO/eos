@@ -15,6 +15,8 @@ target_link_libraries( keosd
         PRIVATE http_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
+mas_sign(keosd)
+
 install( TARGETS
    keosd
 
