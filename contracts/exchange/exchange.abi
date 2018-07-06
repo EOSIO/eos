@@ -61,6 +61,16 @@
       ]
     },
     {
+      "name": "marketorder",
+      "base": "",
+      "fields": [
+        {"name":"seller", "type":"account_name"},
+        {"name":"market", "type":"symbol"},
+        {"name":"sell", "type":"extended_asset"},
+        {"name":"receive", "type":"extended_symbol"}
+      ]
+    },
+    {
       "name": "trade",
       "base": "",
       "fields": [
