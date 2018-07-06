@@ -102,6 +102,14 @@
       ]
     },
     {
+      "name": "withdraw",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"quantity", "type":"extended_asset"}
+      ]
+    },
+    {
      "name": "create",
      "base": "",
      "fields": [
@@ -137,6 +145,7 @@
   ],
   "actions": [
     { "name": "deposit", "type": "deposit", "ricardian_contract": "" },
+    { "name": "withdraw", "type": "withdraw", "ricardian_contract": "" },
     { "name": "transfer", "type": "transfer", "ricardian_contract": "" },
     { "name": "trade", "type": "trade", "ricardian_contract": "" },
     { "name": "createx", "type": "createx", "ricardian_contract": "" },
