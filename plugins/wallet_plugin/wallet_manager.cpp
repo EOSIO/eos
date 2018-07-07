@@ -263,6 +263,11 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
    EOS_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
 }
 
+void wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet) {
+   if(wallets.find(name) != wallets.end())
+      FC_THROW("tried to use wallet name the already existed");
+   wallets.emplace(name, std::move(wallet));
+}
 
 } // namespace wallet
 } // namespace eosio

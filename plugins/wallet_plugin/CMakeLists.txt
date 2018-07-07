@@ -19,6 +19,7 @@ add_library( wallet_plugin
              wallet_plugin.cpp
              wallet_manager.cpp
              ${SE_WALLET_SOURCES}
+             yubihsm_wallet.cpp
              ${HEADERS} )
 
 target_link_libraries( wallet_plugin eosio_chain appbase ${security_framework} ${corefoundation_framework} ${localauthentication_framework} ${cocoa_framework})
