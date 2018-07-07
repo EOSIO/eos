@@ -62,25 +62,25 @@ struct yubihsm_api {
    };
    yubihsm_shlib _shlib;
 
-#define LOAD_IMPORT(n) decltype(n)* n = _shlib[#n];
-   LOAD_IMPORT(yh_init)
-   LOAD_IMPORT(yh_init_connector)
-   LOAD_IMPORT(yh_strerror)
-   LOAD_IMPORT(yh_connect_best)
-   LOAD_IMPORT(yh_create_session_derived)
-   LOAD_IMPORT(yh_authenticate_session)
-   LOAD_IMPORT(yh_capabilities_to_num)
-   LOAD_IMPORT(yh_util_list_objects)
-   LOAD_IMPORT(yh_util_get_pubkey)
-   LOAD_IMPORT(yh_util_sign_ecdsa)
-   LOAD_IMPORT(yh_util_get_object_info)
-   LOAD_IMPORT(yh_check_capability)
-   LOAD_IMPORT(yh_send_secure_msg)
-   LOAD_IMPORT(yh_exit)
-   LOAD_IMPORT(yh_util_close_session)
-   LOAD_IMPORT(yh_destroy_session)
-   LOAD_IMPORT(yh_disconnect)
-   LOAD_IMPORT(yh_util_generate_key_ec)
+#define LOAD_IMPORT(n) decltype(yh_ ## n)* n = _shlib["yh_" #n];
+   LOAD_IMPORT(init)
+   LOAD_IMPORT(init_connector)
+   LOAD_IMPORT(strerror)
+   LOAD_IMPORT(connect_best)
+   LOAD_IMPORT(create_session_derived)
+   LOAD_IMPORT(authenticate_session)
+   LOAD_IMPORT(capabilities_to_num)
+   LOAD_IMPORT(util_list_objects)
+   LOAD_IMPORT(util_get_pubkey)
+   LOAD_IMPORT(util_sign_ecdsa)
+   LOAD_IMPORT(util_get_object_info)
+   LOAD_IMPORT(check_capability)
+   LOAD_IMPORT(send_secure_msg)
+   LOAD_IMPORT(exit)
+   LOAD_IMPORT(util_close_session)
+   LOAD_IMPORT(destroy_session)
+   LOAD_IMPORT(disconnect)
+   LOAD_IMPORT(util_generate_key_ec)
 };
 
 struct yubihsm_wallet_impl {
@@ -88,13 +88,13 @@ struct yubihsm_wallet_impl {
 
    yubihsm_wallet_impl(const string& ep, const uint16_t ak) : endpoint(ep), authkey(ak) {
       yh_rc rc;
-      if((rc = api.yh_init()))
-         FC_THROW("yubihsm init failure: ${c}", ("c", api.yh_strerror(rc)));
+      if((rc = api.init()))
+         FC_THROW("yubihsm init failure: ${c}", ("c", api.strerror(rc)));
    }
 
    ~yubihsm_wallet_impl() {
       lock();
-      api.yh_exit();
+      api.exit();
       //bizarre, is there no way to destroy a yh_connector??
 
       ///XXX Probably a race condition on timer shutdown and appbase destruction
@@ -108,8 +108,8 @@ struct yubihsm_wallet_impl {
       yh_rc rc;
       size_t blob_sz = 128;
       uint8_t blob[blob_sz];
-      if((rc = api.yh_util_get_pubkey(session, key_id, blob, &blob_sz, nullptr)))
-         FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_get_pubkey failed: ${m}", ("m", api.yh_strerror(rc)));
+      if((rc = api.util_get_pubkey(session, key_id, blob, &blob_sz, nullptr)))
+         FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_get_pubkey failed: ${m}", ("m", api.strerror(rc)));
       if(blob_sz != 64)
          FC_THROW_EXCEPTION(chain::wallet_exception, "unexpected pubkey size from yh_util_get_pubkey");
 
@@ -131,31 +131,31 @@ struct yubihsm_wallet_impl {
       uint8_t context[YH_CONTEXT_LEN] = {0};
 
       try {
-         if((rc = api.yh_init_connector(endpoint.c_str(), &connector)))
-            FC_THROW_EXCEPTION(chain::wallet_exception, "Failled to initialize yubihsm connector URL: ${c}", ("c", api.yh_strerror(rc)));
-         if((rc = api.yh_connect_best(&connector, 1, NULL)))
-            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to connect to YubiHSM connector: ${m}", ("m", api.yh_strerror(rc)));
-         if((rc = api.yh_create_session_derived(connector, authkey, (const uint8_t *)password.data(), password.size(), false, context, sizeof(context), &session)))
-            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to create YubiHSM session: ${m}", ("m", api.yh_strerror(rc)));
-         if((rc = api.yh_authenticate_session(session, context, sizeof(context))))
-            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to authenticate YubiHSM session: ${m}", ("m", api.yh_strerror(rc)));
+         if((rc = api.init_connector(endpoint.c_str(), &connector)))
+            FC_THROW_EXCEPTION(chain::wallet_exception, "Failled to initialize yubihsm connector URL: ${c}", ("c", api.strerror(rc)));
+         if((rc = api.connect_best(&connector, 1, NULL)))
+            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to connect to YubiHSM connector: ${m}", ("m", api.strerror(rc)));
+         if((rc = api.create_session_derived(connector, authkey, (const uint8_t *)password.data(), password.size(), false, context, sizeof(context), &session)))
+            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to create YubiHSM session: ${m}", ("m", api.strerror(rc)));
+         if((rc = api.authenticate_session(session, context, sizeof(context))))
+            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to authenticate YubiHSM session: ${m}", ("m", api.strerror(rc)));
 
          yh_object_descriptor authkey_desc;
-         if((rc = api.yh_util_get_object_info(session, authkey, YH_AUTHKEY, &authkey_desc)))
-            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to get authkey info: ${m}", ("m", api.yh_strerror(rc)));
+         if((rc = api.util_get_object_info(session, authkey, YH_AUTHKEY, &authkey_desc)))
+            FC_THROW_EXCEPTION(chain::wallet_exception, "Failed to get authkey info: ${m}", ("m", api.strerror(rc)));
 
          authkey_caps = authkey_desc.capabilities;
          authkey_domains = authkey_desc.domains;
 
-         if(!api.yh_check_capability(&authkey_caps, "asymmetric_sign_ecdsa"))
+         if(!api.check_capability(&authkey_caps, "asymmetric_sign_ecdsa"))
             FC_THROW_EXCEPTION(chain::wallet_exception, "Given authkey cannot perform signing");
 
          size_t found_objects_n = 64*1024;
          yh_object_descriptor found_objs[found_objects_n];
          yh_capabilities find_caps;
-         api.yh_capabilities_to_num("asymmetric_sign_ecdsa", &find_caps);
-         if((rc = api.yh_util_list_objects(session, 0, YH_ASYMMETRIC, 0, &find_caps, YH_ALGO_EC_P256, nullptr, found_objs, &found_objects_n)))
-            FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_list_objects failed: ${m}", ("m", api.yh_strerror(rc)));
+         api.capabilities_to_num("asymmetric_sign_ecdsa", &find_caps);
+         if((rc = api.util_list_objects(session, 0, YH_ASYMMETRIC, 0, &find_caps, YH_ALGO_EC_P256, nullptr, found_objs, &found_objects_n)))
+            FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_list_objects failed: ${m}", ("m", api.strerror(rc)));
 
          for(size_t i = 0; i < found_objects_n; ++i)
             populate_key_map_with_keyid(found_objs[i].id);
@@ -170,12 +170,12 @@ struct yubihsm_wallet_impl {
 
    void lock() {
       if(session) {
-         api.yh_util_close_session(session);
-         api.yh_destroy_session(&session);
+         api.util_close_session(session);
+         api.destroy_session(&session);
       }
       session = nullptr;
       if(connector)
-         api.yh_disconnect(connector);
+         api.disconnect(connector);
       //it would seem like this would leak-- there is no destroy() call for it. But I clearly can't reuse connectors
       // as that fails with a "Unable to find a suitable connector"
       connector = nullptr;
@@ -193,7 +193,7 @@ struct yubihsm_wallet_impl {
          uint8_t data, resp;
          yh_cmd resp_cmd;
          size_t resp_sz = 1;
-         if(api.yh_send_secure_msg(session, YHC_ECHO, &data, 1, &resp_cmd, &resp, &resp_sz))
+         if(api.send_secure_msg(session, YHC_ECHO, &data, 1, &resp_cmd, &resp, &resp_sz))
             lock();
          else
             prime_keepalive_timer();
@@ -208,9 +208,9 @@ struct yubihsm_wallet_impl {
       size_t der_sig_sz = 128;
       uint8_t der_sig[der_sig_sz];
       yh_rc rc;
-      if((rc = api.yh_util_sign_ecdsa(session, it->second, (uint8_t*)d.data(), d.data_size(), der_sig, &der_sig_sz))) {
+      if((rc = api.util_sign_ecdsa(session, it->second, (uint8_t*)d.data(), d.data_size(), der_sig, &der_sig_sz))) {
          lock();
-         FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_sign_ecdsa failed: ${m}", ("m", api.yh_strerror(rc)));
+         FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_sign_ecdsa failed: ${m}", ("m", api.strerror(rc)));
       }
 
       ///XXX a lot of this below is similar to SE wallet; commonize it in non-junky way
@@ -239,18 +239,18 @@ struct yubihsm_wallet_impl {
    }
 
    public_key_type create() {
-      if(!api.yh_check_capability(&authkey_caps, "asymmetric_gen"))
+      if(!api.check_capability(&authkey_caps, "asymmetric_gen"))
          FC_THROW_EXCEPTION(chain::wallet_exception, "Given authkey cannot create keys");
 
       yh_rc rc;
       uint16_t new_key_id = 0;
       yh_capabilities creation_caps = {};
-      if(api.yh_capabilities_to_num("asymmetric_sign_ecdsa:export_under_wrap", &creation_caps))
+      if(api.capabilities_to_num("asymmetric_sign_ecdsa:export_under_wrap", &creation_caps))
          FC_THROW_EXCEPTION(chain::wallet_exception, "Cannot create caps mask");
 
       try {
-         if((rc = api.yh_util_generate_key_ec(session, &new_key_id, "keosd created key", authkey_domains, &creation_caps, YH_ALGO_EC_P256)))
-            FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_generate_key_ec failed: ${m}", ("m", api.yh_strerror(rc)));
+         if((rc = api.util_generate_key_ec(session, &new_key_id, "keosd created key", authkey_domains, &creation_caps, YH_ALGO_EC_P256)))
+            FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_generate_key_ec failed: ${m}", ("m", api.strerror(rc)));
          return populate_key_map_with_keyid(new_key_id)->first;
       }
       catch(chain::wallet_exception& e) {
