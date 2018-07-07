@@ -51,7 +51,7 @@ void actions_table::create()
     *m_session << "CREATE TABLE tokens("
             "account VARCHAR(13),"
             "symbol VARCHAR(10),"
-            "amount REAL(14,4),"
+            "amount DOUBLE(64,4),"
             "FOREIGN KEY (account) REFERENCES accounts(name)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;"; // TODO: other tokens could have diff format.
 
     *m_session << "CREATE INDEX idx_tokens_account ON tokens (account);";
