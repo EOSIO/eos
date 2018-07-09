@@ -29,6 +29,8 @@ namespace eosio {
             interest_shares += new_lendable;
             total_lendable.amount  += new_lendable;
          }
+         // Higher limits trigger a floating-point issue which causes unlend to refund too much
+         eosio_assert( total_lendable.amount < (1ll << 53), "exceeded maximum lendable amount" );
          return new_shares;
       }
 

@@ -390,5 +390,35 @@ BOOST_AUTO_TEST_CASE( withdraw ) try {
    t.check_balance(N(exchange), N(loki), A(50.00 BTC));
 } FC_LOG_AND_RETHROW() /// test_api_withdraw
 
+BOOST_AUTO_TEST_CASE( exchange_lend_max ) try {
+   exchange_tester t;
+
+   auto lender1_amount = asset{ 1, symbol(2,"USD") };
+   auto lender2_amount = asset{ (1ll << 53) - 2, symbol(2,"USD") };
+   auto lender2_amount_bad = lender2_amount + asset{ 1, symbol(2,"USD") };
+
+   t.create_account( N(lender1) );
+   t.issue( N(exchange), N(exchange), N(lender1), lender1_amount );
+   t.check_balance(N(exchange), N(lender1), lender1_amount);
+   t.deposit( N(exchange), N(lender1), extended_asset{ lender1_amount, N(exchange) } );
+   BOOST_REQUIRE_EQUAL(lender1_amount, t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"USD"), N(lender1)).quantity);
+   t.lend( N(exchange), N(lender1), extended_asset{ lender1_amount, N(exchange) }, symbol(2,"EXC") );
+
+   t.create_account( N(lender2) );
+   t.issue( N(exchange), N(exchange), N(lender2), lender2_amount );
+   t.deposit( N(exchange), N(lender2), extended_asset{ lender2_amount, N(exchange) } );
+
+   BOOST_CHECK_THROW( t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount_bad, N(exchange) }, symbol(2,"EXC") ), eosio_assert_message_exception );
+   t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount, N(exchange) }, symbol(2,"EXC") );
+
+   auto lentshares1 = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender1), true );
+   t.unlend( N(exchange), N(lender1), lentshares1, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"EXC") );
+   BOOST_REQUIRE_EQUAL(lender1_amount, t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"USD"), N(lender1)).quantity);
+
+   auto lentshares2 = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender2), true );
+   t.unlend( N(exchange), N(lender2), lentshares2, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"EXC") );
+   BOOST_REQUIRE_EQUAL(lender2_amount, t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"USD"), N(lender2)).quantity);
+} FC_LOG_AND_RETHROW() /// test_api_bootstrap
+
 
 BOOST_AUTO_TEST_SUITE_END()
