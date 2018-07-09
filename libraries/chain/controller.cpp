@@ -59,6 +59,7 @@ struct controller_impl {
    bool                           replaying = false;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
+   optional<fc::microseconds>     subjective_cpu_leeway;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -662,6 +663,9 @@ struct controller_impl {
       transaction_trace_ptr trace;
       try {
          transaction_context trx_context(self, trx->trx, trx->id);
+         if (subjective && (bool)subjective_cpu_leeway) {
+            trx_context.leeway = *subjective_cpu_leeway;
+         }
          trx_context.deadline = deadline;
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
@@ -694,7 +698,6 @@ struct controller_impl {
                        false
                );
             }
-
             trx_context.exec();
             trx_context.finalize(subjective); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
@@ -1606,5 +1609,8 @@ bool controller::is_known_unexpired_transaction( const transaction_id_type& id) 
    return db().find<transaction_object, by_trx_id>(id);
 }
 
+void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
+   my->subjective_cpu_leeway = leeway;
+}
 
 } } /// eosio::chain

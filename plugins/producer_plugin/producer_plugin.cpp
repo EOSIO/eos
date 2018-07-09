@@ -669,6 +669,11 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
       chain.abort_block();
       my->schedule_production_loop();
    }
+
+   if (options.subjective_cpu_leeway_us) {
+      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      chain.set_subjective_cpu_leeway(fc::microseconds(*options.subjective_cpu_leeway_us));
+   }
 }
 
 producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
