@@ -10,7 +10,7 @@ namespace eosio {
                                extended_symbol supply_sym, symbol_type peg_sym ) {
       manager                 = mgr;
       fee                     = ifee;
-      supply.amount           = icollateral.amount * 10000;
+      supply                  = extended_asset( icollateral.amount * 10000, supply_sym);
       target_reserve_ratio    = trratio;
       current_target_price    = iprice;
       collateral_balance      = extended_asset( int64_t(icollateral.amount / trratio), icollateral.get_extended_symbol() );
@@ -24,6 +24,27 @@ namespace eosio {
 
 
    /**
+    *  Definitions:
+    *     Bancor Price - the current collateral_balance / pegged_balance
+    *     Target Price - the new bancor price after adjusting either collateral_balance or pegged balance
+    *     Total Peg    - pegged_balance + sold_peg
+    *     
+    *     Target Collateral Ratio - defined by market
+    *     Current Collateral Ratio - (SUM(spare_collateral+collateral_balance) / (Target Price * Total Peg)
+    *     Min Collateral Ratio -  1:1
+    *  Cases:
+    *    PEG Price Too High (either remove collateral_balance or add pegged_balance)
+    *     Above Target Collateral Ratio
+    *       - Print PEG and add to pegged_balance until Current Collateral Ratio == Target Collateral Ratio
+    *     Below Target Collateral Ratio
+    *       - Move C from collateral_balance to spare collateral until Current Collateral == Target Collateral Ratio
+    *     
+    *    PEG Price Too Low (either add collateral_balance or reduce pegged_balance)
+    *       Above Min Collateral Ratio
+    *         - Move spare collateral to collateral_balance
+    *       Below Min Collateral Ratio
+    *         - Do nothing... peg will float based upon supply and demand
+    *
     *  This method moves collateral between collateral_balance and spare_collateral to bias
     *  the bancor price toward the target price any time the bancor price has been different
     *  from the target price by more than 1% for more than 24 hours.
@@ -34,7 +55,6 @@ namespace eosio {
     */
    void dexchange_state::sync_toward_feed( block_timestamp_type now ) {
 
-#if 0
       double bancor_price = double(collateral_balance.amount) / pegged_balance.amount;
       double delta = std::fabs(bancor_price - current_target_price);
       double dpercent = delta / current_target_price;
@@ -48,7 +68,7 @@ namespace eosio {
       /// if bancor hasn't traded within 1% of 24hr median average price within the past 24 hour, then 
       /// we need to modify the collateral or pegged currency supply so that it is closer to
       /// the average... within 24 hours this should cause the price to converge to within 1%
-      if( (now - last_price_in_range).slot > 120*60*24 /*blocks per day*/ ) {
+      if( (now.slot - last_price_in_range.slot) > 120*60*24 /*blocks per day*/ ) {
 
          double new_bancor_price = ((bancor_price * (120*60-1)) + current_target_price) / ( 120*60 );
 
@@ -57,17 +77,16 @@ namespace eosio {
 
 
          /// add or remove collateral from the spare collateral to make price the new bancor price
-         auto delta_col = uint64_t(collateral_expected - collateral_balance.amount);
+         auto delta_col = int64_t(collateral_expected - collateral_balance.amount);
 
          /// if for some reason we need more collateral than we have then do nothing
-         if( delta_col.amount > 0 && spare_collateral.amount < delta_col ) 
+         if( delta_col > 0 && spare_collateral.amount < delta_col ) 
             return; /// unable to help support the price, sorry
 
          /// adjust spare collateral and maker collateral by delta
-         spare_collateral.amount   -= delta_collateral;
-         collateral_balance.amount += delta_collateral;
+         spare_collateral.amount   -= delta_col;
+         collateral_balance.amount += delta_col;
       }
-#endif
 
    }
 
