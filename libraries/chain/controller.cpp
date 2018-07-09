@@ -151,6 +151,9 @@ struct controller_impl {
       } catch (boost::interprocess::bad_alloc& e) {
          wlog( "bad alloc" );
          throw e;
+      } catch ( controller_emit_signal_exception& e ) {
+         wlog( "${details}", ("details", e.to_detail_string()) );
+         throw e;
       } catch ( fc::exception& e ) {
          wlog( "${details}", ("details", e.to_detail_string()) );
       } catch ( ... ) {
@@ -889,6 +892,7 @@ struct controller_impl {
       try {
          FC_ASSERT( b );
          FC_ASSERT( s != controller::block_status::incomplete, "invalid block status for a completed block" );
+         emit( self.pre_accepted_block, b );
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );

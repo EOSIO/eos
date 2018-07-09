@@ -105,7 +105,8 @@ using boost::signals2::scoped_connection;
 class chain_plugin_impl {
 public:
    chain_plugin_impl()
-   :accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
+   :pre_accepted_block_channel(app().get_channel<channels::pre_accepted_block>())
+   ,accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
    ,accepted_block_channel(app().get_channel<channels::accepted_block>())
    ,irreversible_block_channel(app().get_channel<channels::irreversible_block>())
    ,accepted_transaction_channel(app().get_channel<channels::accepted_transaction>())
@@ -129,6 +130,7 @@ public:
    fc::optional<vm_type>            wasm_runtime;
 
    // retained references to channels for easy publication
+   channels::pre_accepted_block::channel_type&     pre_accepted_block_channel;
    channels::accepted_block_header::channel_type&  accepted_block_header_channel;
    channels::accepted_block::channel_type&         accepted_block_channel;
    channels::irreversible_block::channel_type&     irreversible_block_channel;
@@ -148,6 +150,7 @@ public:
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
 
    // scoped connections for chain controller
+   fc::optional<scoped_connection>                                   pre_accepted_block_connection;
    fc::optional<scoped_connection>                                   accepted_block_header_connection;
    fc::optional<scoped_connection>                                   accepted_block_connection;
    fc::optional<scoped_connection>                                   irreversible_block_connection;
@@ -209,9 +212,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
-           "extract genesis_state from blocks.log as JSON, print to console, and exit")
+          "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
-           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
+          "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
          ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
@@ -224,6 +227,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database and block log")
          ("truncate-at-block", bpo::value<uint32_t>()->default_value(0),
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
+         ("import-reversible-blocks", bpo::value<bfs::path>(),
+          "replace reversible block database with blocks imported from specified file and then exit")
          ;
 
 }
@@ -301,15 +306,23 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->blocks_dir = bld;
       }
 
-      if( options.count( "checkpoint" )) {
-         auto cps = options.at( "checkpoint" ).as<vector<string>>();
-         my->loaded_checkpoints.reserve( cps.size());
-         for( auto cp : cps ) {
-            auto item = fc::json::from_string( cp ).as<std::pair<uint32_t, block_id_type>>();
-            my->loaded_checkpoints[item.first] = item.second;
+      if( options.count("checkpoint") ) {
+         auto cps = options.at("checkpoint").as<vector<string>>();
+         my->loaded_checkpoints.reserve(cps.size());
+         for( const auto& cp : cps ) {
+            auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
+            auto itr = my->loaded_checkpoints.find(item.first);
+            if( itr != my->loaded_checkpoints.end() ) {
+               FC_ASSERT( itr->second == item.second,
+                          "redefining existing checkpoint at block number ${num}: original: ${orig} new: ${new}",
+                          ("num", item.first)("orig", itr->second)("new", item.second)
+               );
+            } else {
+               my->loaded_checkpoints[item.first] = item.second;
+            }
          }
       }
-     
+
       if(options.count("abi-serializer-max-time-ms"))
          abi_serializer::set_max_serialization_time(fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000));
 
@@ -410,6 +423,19 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
          wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
+      } else if( options.count("import-reversible-blocks") ) {
+         auto reversible_blocks_file = options.at("import-reversible-blocks").as<bfs::path>();
+         ilog("Importing reversible blocks from '${file}'", ("file", reversible_blocks_file.generic_string()) );
+         fc::remove_all( my->chain_config->blocks_dir/config::reversible_blocks_dir_name );
+
+         import_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
+                                   my->chain_config->reversible_cache_size, reversible_blocks_file );
+
+         EOS_THROW( fixed_reversible_db_exception, "imported reversible blocks" );
+      }
+
+      if( options.count("import-reversible-blocks") ) {
+         wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
       if( options.count( "genesis-json" )) {
@@ -477,6 +503,19 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       // relay signals to channels
+      my->pre_accepted_block_connection = my->chain->pre_accepted_block.connect([this](const signed_block_ptr& blk) {
+         auto itr = my->loaded_checkpoints.find( blk->block_num() );
+         if( itr != my->loaded_checkpoints.end() ) {
+            auto id = blk->id();
+            EOS_ASSERT( itr->second == id, checkpoint_exception,
+                        "Checkpoint does not match for block number ${num}: expected: ${expected} actual: ${actual}",
+                        ("num", blk->block_num())("expected", itr->second)("actual", id)
+            );
+         }
+
+         my->pre_accepted_block_channel.publish(blk);
+      });
+
       my->accepted_block_header_connection = my->chain->accepted_block_header.connect(
             [this]( const block_state_ptr& blk ) {
                my->accepted_block_header_channel.publish( blk );
@@ -514,7 +553,6 @@ void chain_plugin::plugin_startup()
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
-      /// TODO: my->chain->add_checkpoints(my->loaded_checkpoints);
    }
 
    ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
@@ -524,6 +562,7 @@ void chain_plugin::plugin_startup()
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_plugin::plugin_shutdown() {
+   my->pre_accepted_block_connection.reset();
    my->accepted_block_header_connection.reset();
    my->accepted_block_connection.reset();
    my->irreversible_block_connection.reset();
@@ -577,12 +616,12 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    }
    fc::path backup_dir;
 
+   auto now = fc::time_point::now();
+
    if( new_db_dir ) {
       backup_dir = reversible_dir;
       reversible_dir = *new_db_dir;
    } else {
-      auto now = fc::time_point::now();
-
       auto reversible_dir_name = reversible_dir.filename().generic_string();
       FC_ASSERT( reversible_dir_name != ".", "Invalid path to reversible directory" );
       backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
@@ -601,6 +640,9 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    chainbase::database  old_reversible( backup_dir, database::read_only, 0, true );
    chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
+   std::fstream         reversible_blocks;
+   reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
+                           std::ios::out | std::ios::binary | std::ios::app );
 
    uint32_t num = 0;
    uint32_t start = 0;
@@ -620,6 +662,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
       }
       for( ; itr != ubi.end(); ++itr ) {
          FC_ASSERT( itr->blocknum == end + 1, "gap in reversible block database" );
+         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = itr->blocknum;
             ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
@@ -641,6 +684,49 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    else
       ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
             ("num", num)("start", start)("end", end) );
+
+   return true;
+}
+
+bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
+                                             uint32_t cache_size,
+                                             const fc::path& reversible_blocks_file )const {
+   std::fstream         reversible_blocks;
+   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
+   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
+
+   reversible_blocks.seekg( 0, std::ios::end );
+   uint64_t end_pos = reversible_blocks.tellg();
+   reversible_blocks.seekg( 0 );
+
+   uint32_t num = 0;
+   uint32_t start = 0;
+   uint32_t end = 0;
+   try {
+      new_reversible.add_index<reversible_block_index>();
+      while( reversible_blocks.tellg() < end_pos ) {
+         signed_block tmp;
+         fc::raw::unpack(reversible_blocks, tmp);
+         num = tmp.block_num();
+
+         if( start == 0 ) {
+            start = num;
+         } else {
+            FC_ASSERT( num == end + 1, "gap in reversible block database" );
+         }
+
+         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
+            ubo.blocknum = num;
+            ubo.set_block( std::make_shared<signed_block>(tmp) );
+         });
+         end = num;
+      }
+   } catch( ... ) {}
+
+   ilog( "Imported blocks ${start} to ${end}", ("start", start)("end", end));
+
+   if( num == 0 || end != num )
+      return false;
 
    return true;
 }

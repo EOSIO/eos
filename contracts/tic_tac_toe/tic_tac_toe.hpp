@@ -42,102 +42,63 @@
  *  @{
  */
 
-namespace tic_tac_toe {
-   static const account_name games_account = N(games);
-   static const account_name code_account = N(tic.tac.toe);
-
-   /**
-    * @brief Data structure to hold game information
-    */
-   static const uint32_t board_len = 9;
-   struct game {
-      game() { initialize_board(); }
-      game(account_name challenger_account, account_name host_account)
-            : challenger(challenger_account), host(host_account), turn(host_account) {
-         // Initialize board
-         initialize_board();
-      }
-      account_name     challenger;
-      account_name     host;
-      account_name     turn; // = account name of host/ challenger
-      account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
-      uint8_t          board[board_len];
-
-      // Initialize board with empty cell
-      void initialize_board() {
-         for (uint8_t i = 0; i < board_len ; i++) {
-            board[i] = 0;
+class tic_tac_toe : public eosio::contract {
+   public:
+      tic_tac_toe( account_name self ):contract(self){}
+      /**
+       * @brief Information related to a game
+       * @abi table games i64
+       */
+      struct game {
+         static const uint16_t board_width = 3;
+         static const uint16_t board_height = board_width;
+         game() { 
+            initialize_board(); 
          }
-      }
+         account_name          challenger;
+         account_name          host;
+         account_name          turn; // = account name of host/ challenger
+         account_name          winner = N(none); // = none/ draw/ name of host/ name of challenger
+         std::vector<uint8_t>  board;
 
-      // Reset game
-      void reset_game() {
-         initialize_board();
-         turn = host;
-         winner = N(none);
-      }
+         // Initialize board with empty cell
+         void initialize_board() {
+            board = std::vector<uint8_t>(board_width * board_height, 0);
+         }
 
-      auto primary_key() const { return challenger; }
+         // Reset game
+         void reset_game() {
+            initialize_board();
+            turn = host;
+            winner = N(none);
+         }
 
-      EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board) )
-   };
+         auto primary_key() const { return challenger; }
+         EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board))
+      };
 
-   /**
-    * @brief Action to create new game
-    */
-   struct create {
-      account_name   challenger;
-      account_name   host;
+      /**
+       * @brief The table definition, used to store existing games and their current state
+       */
+      typedef eosio::multi_index< N(games), game> games;
 
-      EOSLIB_SERIALIZE( create, (challenger)(host) )
-   };
+      /// @abi action
+      /// Create a new game
+      void create(const account_name& challenger, const account_name& host);
 
-   /**
-    * @brief Action to restart new game
-    */
-   struct restart {
-      account_name   challenger;
-      account_name   host;
-      account_name   by; // the account who wants to restart the game
+      /// @abi action
+      /// Restart a game
+      /// @param by the account who wants to restart the game
+      void restart(const account_name& challenger, const account_name& host, const account_name& by);
 
-      EOSLIB_SERIALIZE( restart, (challenger)(host)(by) )
-   };
+      /// @abi action
+      /// Close an existing game, and remove it from storage
+      void close(const account_name& challenger, const account_name& host);
 
-   /**
-    * @brief Action to close new game
-    */
-   struct close {
-      account_name   challenger;
-      account_name   host;
-
-      EOSLIB_SERIALIZE( close, (challenger)(host) )
-   };
-
-   /**
-    * @brief Data structure for movement
-    */
-   struct movement {
-      uint32_t    row;
-      uint32_t    column;
-
-      EOSLIB_SERIALIZE( movement, (row)(column) )
-   };
-
-   /**
-    * @brief Action to make movement
-    */
-   struct move {
-      account_name   challenger;
-      account_name   host;
-      account_name   by; // the account who wants to make the move
-      movement       mvt;
-
-      EOSLIB_SERIALIZE( move, (challenger)(host)(by)(mvt) )
-   };
-
-   /**
-    * @brief table definition, used to store existing games and their current state
-    */
-   typedef eosio::multi_index< games_account, game> games;
-}
+      /// @abi action
+      /// Make movement
+      /// @param by the account who wants to make the move
+      void move(const account_name& challenger, const account_name& host, const account_name& by, const uint16_t& row, const uint16_t& column);
+      
+};
 /// @}

@@ -196,6 +196,7 @@ namespace eosio { namespace chain {
 
          db_read_mode get_read_mode()const;
 
+         signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;

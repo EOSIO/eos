@@ -77,7 +77,7 @@ def startWallet():
     run(args.cleos + 'wallet create')
 
 def importKeys():
-    run(args.cleos + 'wallet import ' + args.private_key)
+    run(args.cleos + 'wallet import --private-key ' + args.private_key)
     keys = {}
     for a in accounts:
         key = a['pvt']
@@ -85,13 +85,13 @@ def importKeys():
             if len(keys) >= args.max_user_keys:
                 break
             keys[key] = True
-            run(args.cleos + 'wallet import ' + key)
+            run(args.cleos + 'wallet import --private-key ' + key)
     for i in range(firstProducer, firstProducer + numProducers):
         a = accounts[i]
         key = a['pvt']
         if not key in keys:
             keys[key] = True
-            run(args.cleos + 'wallet import ' + key)
+            run(args.cleos + 'wallet import --private-key ' + key)
 
 def startNode(nodeIndex, account):
     dir = args.nodes_dir + ('%02d-' % nodeIndex) + account['name'] + '/'
