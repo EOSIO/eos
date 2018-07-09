@@ -6,7 +6,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/history_plugin.hpp>
+#include <eosio/history_plugin/history_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/utilities/common.hpp>
