@@ -60,12 +60,13 @@ uint64_t convert_to_type(const string& str, const string& desc);
 
 class read_only {
    const controller& db;
+   const fc::microseconds abi_serializer_max_time;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db)
-      : db(db) {}
+   read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
+      : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
    using get_info_params = empty;
 
@@ -258,6 +259,17 @@ public:
 
    get_producers_result get_producers( const get_producers_params& params )const;
 
+   struct get_producer_schedule_params {
+   };
+
+   struct get_producer_schedule_result {
+      fc::variant active;
+      fc::variant pending;
+      fc::variant proposed;
+   };
+
+   get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -290,7 +302,7 @@ public:
       uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
 
       abi_serializer abis;
-      abis.set_abi(abi);
+      abis.set_abi(abi, abi_serializer_max_time);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
@@ -317,7 +329,7 @@ public:
             copy_inline_row(*itr, data);
 
             if (p.json) {
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data));
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
             } else {
                result.rows.emplace_back(fc::variant(data));
             }
@@ -338,8 +350,10 @@ public:
 
 class read_write {
    controller& db;
+   const fc::microseconds abi_serializer_max_time;
 public:
-   read_write(controller& db) : db(db) {}
+   read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
+         : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -374,7 +388,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain()); }
+   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time()); }
    chain_apis::read_write get_read_write_api();
 
    void accept_block( const chain::signed_block_ptr& block );
@@ -388,6 +402,11 @@ public:
                                    uint32_t truncate_at_block = 0
                                  )const;
 
+   bool import_reversible_blocks( const fc::path& reversible_dir,
+                                  uint32_t cache_size,
+                                  const fc::path& reversible_blocks_file
+                                )const;
+                                             
    // Only call this in plugin_initialize() to modify controller constructor configuration
    controller::config& chain_config();
    // Only call this after plugin_startup()!
@@ -396,6 +415,7 @@ public:
    const controller& chain() const;
 
    chain::chain_id_type get_chain_id() const;
+   fc::microseconds get_abi_serializer_max_time() const;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
@@ -421,6 +441,9 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(ma
 
 FC_REFLECT( eosio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_producer_vote_weight)(more) );
+
+FC_REFLECT_EMPTY( eosio::chain_apis::read_only::get_producer_schedule_params )
+FC_REFLECT( eosio::chain_apis::read_only::get_producer_schedule_result, (active)(pending)(proposed) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)

@@ -33,8 +33,15 @@ namespace eosio { namespace chain {
 
    class fork_database;
 
+   enum class db_read_mode {
+      SPECULATIVE,
+      HEAD,
+      IRREVERSIBLE
+   };
+
    class controller {
       public:
+
          struct config {
             flat_set<account_name>   actor_whitelist;
             flat_set<account_name>   actor_blacklist;
@@ -52,6 +59,8 @@ namespace eosio { namespace chain {
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
+
+            db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
          };
 
          enum class block_status {
@@ -141,6 +150,11 @@ namespace eosio { namespace chain {
          const block_header&  head_block_header()const;
          block_state_ptr      head_block_state()const;
 
+         uint32_t             fork_db_head_block_num()const;
+         block_id_type        fork_db_head_block_id()const;
+         time_point           fork_db_head_block_time()const;
+         account_name         fork_db_head_block_producer()const;
+
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
 
@@ -180,6 +194,9 @@ namespace eosio { namespace chain {
 
          chain_id_type get_chain_id()const;
 
+         db_read_mode get_read_mode()const;
+
+         signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;
@@ -202,22 +219,24 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n )const {
+         optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
-                     return abi_serializer( abi );
+                     return abi_serializer( abi, max_serialization_time );
                } FC_CAPTURE_AND_LOG((n))
             }
             return optional<abi_serializer>();
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj ) {
+         fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {
             fc::variant pretty_output;
-            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); });
+            abi_serializer::to_variant( obj, pretty_output,
+                                        [&]( account_name n ){ return get_abi_serializer( n, max_serialization_time ); },
+                                        max_serialization_time);
             return pretty_output;
          }
 

@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
          const auto& accnt  = this->control->db().get<account_object,by_name>( name );
          abi_def abi;
          if (abi_serializer::to_abi(accnt.abi, abi)) {
-            return abi_serializer(abi);
+            return abi_serializer(abi, abi_serializer_max_time);
          }
          return optional<abi_serializer>();
       } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
@@ -206,7 +206,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
       );
 
    signed_transaction trx;
-   abi_serializer::from_variant(pretty_trx, trx, resolver);
+   abi_serializer::from_variant(pretty_trx, trx, resolver, abi_serializer_max_time);
    set_transaction_headers(trx);
    trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
    push_transaction( trx );
@@ -775,7 +775,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
     const auto& accnt  = control->db().get<account_object,by_name>( N(stltest) );
     abi_def abi;
     BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-    abi_serializer abi_ser(abi);
+    abi_serializer abi_ser(abi, abi_serializer_max_time);
 
     //send message
     {
@@ -787,7 +787,8 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
         msg_act.data = abi_ser.variant_to_binary("message", mutable_variant_object()
                                              ("from", "bob")
                                              ("to", "alice")
-                                             ("message","Hi Alice!")
+                                             ("message","Hi Alice!"),
+                                             abi_serializer_max_time
                                              );
         trx.actions.push_back(std::move(msg_act));
 
@@ -1090,7 +1091,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
    const auto& accnt  = control->db().get<account_object,by_name>(N(noop));
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
+   abi_serializer abi_ser(abi, abi_serializer_max_time);
 
    {
       produce_blocks(5);
@@ -1103,7 +1104,8 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
       act.data = abi_ser.variant_to_binary("anyaction", mutable_variant_object()
                                            ("from", "noop")
                                            ("type", "some type")
-                                           ("data", "some data goes here")
+                                           ("data", "some data goes here"),
+                                           abi_serializer_max_time
                                            );
 
       trx.actions.emplace_back(std::move(act));
@@ -1127,7 +1129,8 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
       act.data = abi_ser.variant_to_binary("anyaction", mutable_variant_object()
                                            ("from", "alice")
                                            ("type", "some type")
-                                           ("data", "some data goes here")
+                                           ("data", "some data goes here"),
+                                           abi_serializer_max_time
                                            );
 
       trx.actions.emplace_back(std::move(act));
@@ -1151,8 +1154,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    const auto& accnt  = control->db().get<account_object,by_name>(config::system_account_name);
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-   abi_ser.validate();
+   abi_serializer abi_ser(abi, abi_serializer_max_time);
 
    signed_transaction trx;
    name a = N(alice);
@@ -1171,7 +1173,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    fc::variant pretty_output;
    // verify to_variant works on eos native contract type: newaccount
    // see abi_serializer::to_abi()
-   abi_serializer::to_variant(*result, pretty_output, get_resolver());
+   abi_serializer::to_variant(*result, pretty_output, get_resolver(), abi_serializer_max_time);
 
    BOOST_TEST(fc::json::to_string(pretty_output).find("newaccount") != std::string::npos);
 
@@ -1729,6 +1731,9 @@ INCBIN(leak_readGlobals, "leak_readGlobals.wasm");
 INCBIN(leak_readImports, "leak_readImports.wasm");
 INCBIN(leak_wasm_binary_cpp_L1249, "leak_wasm_binary_cpp_L1249.wasm");
 INCBIN(readFunctions_slowness_out_of_memory, "readFunctions_slowness_out_of_memory.wasm");
+INCBIN(deep_loops_ext_report, "deep_loops_ext_report.wasm");
+INCBIN(80k_deep_loop_with_ret, "80k_deep_loop_with_ret.wasm");
+INCBIN(80k_deep_loop_with_void, "80k_deep_loop_with_void.wasm");
 
 BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    produce_blocks(2);
@@ -1851,6 +1856,18 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    {
       vector<uint8_t> wasm(greadFunctions_slowness_out_of_memoryData, greadFunctions_slowness_out_of_memoryData + greadFunctions_slowness_out_of_memorySize);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gdeep_loops_ext_reportData, gdeep_loops_ext_reportData + gdeep_loops_ext_reportSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_execution_error);
+   }
+   {
+      vector<uint8_t> wasm(g80k_deep_loop_with_retData, g80k_deep_loop_with_retData + g80k_deep_loop_with_retSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_execution_error);
+   }
+   {
+      vector<uint8_t> wasm(g80k_deep_loop_with_voidData, g80k_deep_loop_with_voidData + g80k_deep_loop_with_voidSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_execution_error);
    }
 
    produce_blocks(1);
