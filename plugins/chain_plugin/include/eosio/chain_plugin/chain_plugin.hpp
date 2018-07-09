@@ -276,13 +276,13 @@ public:
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
 
-   template<typename IndexType, typename Scope, typename Function>
-   void walk_table(const name& code, const name& scope, const name& table, Function f) const
+   template<typename Function>
+   void walk_key_value_table(const name& code, const name& scope, const name& table, Function f) const
    {
       const auto& d = db.db();
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
       if (t_id != nullptr) {
-         const auto &idx = d.get_index<IndexType, Scope>();
+         const auto &idx = d.get_index<chain::key_value_index, chain::by_scope_primary>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
          auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
@@ -295,48 +295,9 @@ public:
       }
    }
 
-   static uint64_t get_table_index_name(const read_only::get_table_rows_params& p) {
-      // see multi_index packing of index name
-      const uint64_t table = p.table;
-      uint64_t index = table & 0xFFFFFFFFFFFFFFF0ULL;
-      EOS_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
+   static uint64_t get_table_index_name(const read_only::get_table_rows_params& p, bool& primary);
 
-      uint64_t pos = 0;
-      if (p.index_position.empty() || p.index_position == "first" || p.index_position == "primary") {
-      } else if (p.index_position == "second" || p.index_position == "secondary") {
-      } else if (p.index_position == "third" || p.index_position == "tertiary" || p.index_position == "ternary") {
-         pos = 1;
-      } else if (p.index_position == "fourth" || p.index_position == "quaternary") {
-         pos = 2;
-      } else if (p.index_position == "fifth" || p.index_position == "quinary") {
-         pos = 3;
-      } else if (p.index_position == "sixth" || p.index_position == "senary") {
-         pos = 4;
-      } else if (p.index_position == "seventh" || p.index_position == "septenary") {
-         pos = 5;
-      } else if (p.index_position == "eighth" || p.index_position == "octonary") {
-         pos = 6;
-      } else if (p.index_position == "ninth" || p.index_position == "nonary") {
-         pos = 7;
-      } else if (p.index_position == "tenth" || p.index_position == "denary") {
-         pos = 8;
-      } else {
-         try {
-            pos = fc::to_uint64( p.index_position );
-         } catch(...) {
-            EOS_ASSERT( false, chain::contract_table_query_exception, "Invalid index_position: ${p}", ("p", p.index_position));
-         }
-         if (pos < 2) {
-            pos = 0;
-         } else {
-            pos -= 2;
-         }
-      }
-      index |= (pos & 0x000000000000000FULL);
-      return index;
-   }
-
-   template <typename IndexType, typename Scope, typename SecKeyType, typename ConvFn>
+   template <typename IndexType, typename SecKeyType, typename ConvFn>
    read_only::get_table_rows_result get_table_rows_by_seckey( const read_only::get_table_rows_params& p, const abi_def& abi, ConvFn conv )const {
       read_only::get_table_rows_result result;
       const auto& d = db.db();
@@ -345,11 +306,12 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi);
-      const uint64_t table_with_index = get_table_index_name(p);
+      bool primary = false;
+      const uint64_t table_with_index = get_table_index_name(p, primary);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, table_with_index));
       if (t_id != nullptr && index_t_id != nullptr) {
-         const auto &secidx = d.get_index<IndexType, Scope>();
+         const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
          decltype(index_t_id->id) low_tid(index_t_id->id._id);
          decltype(index_t_id->id) next_tid(index_t_id->id._id + 1);
          auto lower = secidx.lower_bound(boost::make_tuple(low_tid));
@@ -382,9 +344,9 @@ public:
 
          unsigned int count = 0;
          auto itr = lower;
-         for (itr = lower; itr != upper; ++itr) {
+         for (; itr != upper; ++itr) {
 
-            const auto *itr2 = d.find<chain::key_value_object, chain::by_scope_primary>(boost::make_tuple(t_id->id, itr->primary_key));
+            const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>(boost::make_tuple(t_id->id, itr->primary_key));
             if (itr2 == nullptr) continue;
             copy_inline_row(*itr2, data);
 
@@ -405,7 +367,7 @@ public:
       return result;
    }
 
-   template <typename IndexType, typename Scope>
+   template <typename IndexType>
    read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.db();
@@ -416,7 +378,7 @@ public:
       abis.set_abi(abi);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
-         const auto &idx = d.get_index<IndexType, Scope>();
+         const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
          auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
