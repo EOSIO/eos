@@ -331,7 +331,7 @@ namespace eosio { namespace testing {
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
-   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
+   } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}", ("header", transaction_header(trx.get_transaction()) )) }
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
                                                         fc::time_point deadline,
@@ -350,7 +350,9 @@ namespace eosio { namespace testing {
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;
-   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx))(billed_cpu_time_us) ) }
+   } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}, billed_cpu_time_us: ${billed}",
+                            ("header", transaction_header(trx) ) ("billed", billed_cpu_time_us))
+   }
 
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;

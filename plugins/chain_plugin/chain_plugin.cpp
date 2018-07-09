@@ -1279,7 +1279,8 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
-} FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
+} FC_RETHROW_EXCEPTIONS( warn, "code: ${code}, action: ${action}, args: ${args}",
+                         ("code", params.code)( "action", params.action )( "args", params.args ))
 
 read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
    abi_bin_to_json_result result;
