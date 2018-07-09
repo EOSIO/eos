@@ -1625,7 +1625,7 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
 
-   abi_serializer::set_max_serialization_time(fc::seconds(1)); // No risk to client side serialization taking a long time
+   fc::microseconds abi_serializer_max_time = fc::seconds(1); // No risk to client side serialization taking a long time
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
@@ -2553,11 +2553,11 @@ int main( int argc, char** argv ) {
    });
 
    //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-   auto resolver = [](const name& code) -> optional<abi_serializer> {
+   auto resolver = [abi_serializer_max_time](const name& code) -> optional<abi_serializer> {
       auto result = call(get_code_func, fc::mutable_variant_object("account_name", code.to_string()));
       if (result["abi"].is_object()) {
          //std::cout << "ABI: " << fc::json::to_pretty_string(result) << std::endl;
-         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>()));
+         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>(), abi_serializer_max_time));
       } else {
          std::cerr << "ABI for contract " << code.to_string() << " not found. Action data will be shown in hex only." << std::endl;
          return optional<abi_serializer>();
@@ -2643,7 +2643,7 @@ int main( int argc, char** argv ) {
 
       fc::variant trx_var;
       abi_serializer abi;
-      abi.to_variant(trx, trx_var, resolver);
+      abi.to_variant(trx, trx_var, resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;

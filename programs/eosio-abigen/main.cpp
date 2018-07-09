@@ -88,7 +88,7 @@ int main(int argc, const char **argv) { abi_def output; try {
    if(!result) {
       result = Tool.run(create_factory(abi_verbose, abi_opt_sfs, abi_context, output, contract, actions).get());
       if(!result) {
-         abi_serializer(output).validate();
+         abi_serializer abis(output, fc::seconds(1)); // No risk to client side serialization taking a long time
          fc::variant vabi;
          to_variant(output, vabi);
 

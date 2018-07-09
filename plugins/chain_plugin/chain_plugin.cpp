@@ -128,6 +128,8 @@ public:
    fc::optional<chain_id_type>      chain_id;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
+   fc::microseconds                 abi_serializer_max_time_ms;
+
 
    // retained references to channels for easy publication
    channels::pre_accepted_block::channel_type&     pre_accepted_block_channel;
@@ -174,7 +176,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
-         ("abi-serializer-max-time-ms", bpo::value<uint32_t>(), "Override default maximum ABI serialization time allowed in ms")
+         ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
+          "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
          ("contracts-console", bpo::bool_switch()->default_value(false),
@@ -323,11 +326,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          }
       }
 
-      if(options.count("abi-serializer-max-time-ms"))
-         abi_serializer::set_max_serialization_time(fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000));
-
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
+
+      if(options.count("abi-serializer-max-time-ms"))
+         my->abi_serializer_max_time_ms = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
 
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
@@ -573,7 +576,7 @@ void chain_plugin::plugin_shutdown() {
 }
 
 chain_apis::read_write chain_plugin::get_read_write_api() {
-   return chain_apis::read_write(chain());
+   return chain_apis::read_write(chain(), get_abi_serializer_max_time());
 }
 
 void chain_plugin::accept_block(const signed_block_ptr& block ) {
@@ -744,6 +747,11 @@ chain::chain_id_type chain_plugin::get_chain_id()const {
    return *my->chain_id;
 }
 
+fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
+   return my->abi_serializer_max_time_ms;
+}
+
+
 namespace chain_apis {
 
 const string read_only::KEYi64 = "i64";
@@ -883,7 +891,7 @@ static float64_t to_softfloat64( double d ) {
    return *reinterpret_cast<float64_t*>(&d);
 }
 
-static fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis ) {
+static fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms ) {
    const auto table_type = get_table_type(abi, N(global));
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
@@ -896,13 +904,13 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type(N(global)), data);
+   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms);
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
    const abi_def abi = eosio::chain_apis::get_abi(db, N(eosio));
    const auto table_type = get_table_type(abi, N(producers));
-   const abi_serializer abis{ abi };
+   const abi_serializer abis{ abi, abi_serializer_max_time };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
@@ -939,12 +947,12 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
       copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
       if (p.json)
-         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data));
+         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
       else
          result.rows.emplace_back(fc::variant(data));
    }
 
-   result.total_producer_vote_weight = get_global_row(d, abi, abis)["total_producer_vote_weight"].as_double();
+   result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time)["total_producer_vote_weight"].as_double();
    return result;
 }
 
@@ -961,13 +969,13 @@ read_only::get_producer_schedule_result read_only::get_producer_schedule( const 
 
 template<typename Api>
 struct resolver_factory {
-   static auto make(const Api *api) {
-      return [api](const account_name &name) -> optional<abi_serializer> {
-         const auto *accnt = api->db.db().template find<account_object, by_name>(name);
+   static auto make(const Api* api, const fc::microseconds& max_serialization_time) {
+      return [api, max_serialization_time](const account_name &name) -> optional<abi_serializer> {
+         const auto* accnt = api->db.db().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
             if (abi_serializer::to_abi(accnt->abi, abi)) {
-               return abi_serializer(abi);
+               return abi_serializer(abi, max_serialization_time);
             }
          }
 
@@ -977,8 +985,8 @@ struct resolver_factory {
 };
 
 template<typename Api>
-auto make_resolver(const Api *api) {
-   return resolver_factory<Api>::make(api);
+auto make_resolver(const Api* api, const fc::microseconds& max_serialization_time) {
+   return resolver_factory<Api>::make(api, max_serialization_time);
 }
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
@@ -995,7 +1003,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
    fc::variant pretty_output;
-   abi_serializer::to_variant(*block, pretty_output, make_resolver(this));
+   abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer_max_time), abi_serializer_max_time);
 
    uint32_t ref_block_prefix = block->id()._hash[1];
 
@@ -1041,9 +1049,9 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
-      auto resolver = make_resolver(this);
+      auto resolver = make_resolver(this, abi_serializer_max_time);
       try {
-         abi_serializer::from_variant(params, *pretty_input, resolver);
+         abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
@@ -1054,8 +1062,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
             try {
                fc::variant pretty_output;
-               pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
-               //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
+               pretty_output = db.to_variant_with_abi(*trx_trace_ptr, abi_serializer_max_time);
 
                chain::transaction_id_type id = trx_trace_ptr->id;
                next(read_write::push_transaction_results{id, pretty_output});
@@ -1182,11 +1189,10 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    }
 
    const auto& code_account = db.db().get<account_object,by_name>( N(eosio) );
-   //const abi_def abi = get_abi( db, N(eosio) );
+
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi );
-      //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
+      abi_serializer abis( abi, abi_serializer_max_time );
 
       const auto token_code = N(eosio.token);
 
@@ -1212,7 +1218,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.total_resources = abis.binary_to_variant( "user_resources", data );
+            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time );
          }
       }
 
@@ -1223,7 +1229,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data );
+            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer_max_time );
          }
       }
 
@@ -1234,7 +1240,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.refund_request = abis.binary_to_variant( "refund_request", data );
+            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer_max_time );
          }
       }
 
@@ -1245,7 +1251,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( "voter_info", data );
+            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time );
          }
       }
    }
@@ -1267,11 +1273,11 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
 
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {
-      abi_serializer abis( abi );
+      abi_serializer abis( abi, abi_serializer_max_time );
       auto action_type = abis.get_action_type(params.action);
       EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
-         result.binargs = abis.variant_to_binary(action_type, params.args);
+         result.binargs = abis.variant_to_binary(action_type, params.args, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
@@ -1287,8 +1293,8 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    const auto& code_account = db.db().get<account_object,by_name>( params.code );
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi );
-      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
+      abi_serializer abis( abi, abi_serializer_max_time );
+      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time );
    } else {
       EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
@@ -1297,9 +1303,9 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    transaction pretty_input;
-   auto resolver = make_resolver(this);
+   auto resolver = make_resolver(this, abi_serializer_max_time);
    try {
-      abi_serializer::from_variant(params.transaction, pretty_input, resolver);
+      abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer_max_time);
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
 
    auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);

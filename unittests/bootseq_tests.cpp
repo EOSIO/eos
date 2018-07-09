@@ -76,7 +76,7 @@ public:
    fc::variant get_global_state() {
       vector<char> data = get_row_by_account( N(eosio), N(eosio), N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
 
    }
 
@@ -167,7 +167,7 @@ public:
            const auto& accnt = control->db().get<account_object,by_name>( account );
            abi_def abi_definition;
            BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi_definition), true);
-           abi_ser.set_abi(abi_definition);
+           abi_ser.set_abi(abi_definition, abi_serializer_max_time);
         }
         produce_blocks();
     }

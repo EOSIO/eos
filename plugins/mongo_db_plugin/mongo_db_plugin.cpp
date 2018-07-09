@@ -101,6 +101,7 @@ public:
    boost::atomic<bool> done{false};
    boost::atomic<bool> startup{true};
    fc::optional<chain::chain_id_type> chain_id;
+   fc::microseconds abi_serializer_max_time;
 
    static const account_name newaccount;
    static const account_name setabi;
@@ -309,7 +310,7 @@ namespace {
       return blocks.find_one( make_document( kvp( "block_id", id )));
    }
 
-   optional<abi_serializer> get_abi_serializer( account_name n, mongocxx::collection& accounts ) {
+   optional<abi_serializer> get_abi_serializer( account_name n, mongocxx::collection& accounts, const fc::microseconds& abi_serializer_max_time ) {
       using bsoncxx::builder::basic::kvp;
       using bsoncxx::builder::basic::make_document;
       if( n.good()) {
@@ -325,7 +326,7 @@ namespace {
                      ilog( "Unable to convert account abi to abi_def for ${n}", ( "n", n ));
                      return optional<abi_serializer>();
                   }
-                  return abi_serializer( abi );
+                  return abi_serializer( abi, abi_serializer_max_time );
                }
             }
          } FC_CAPTURE_AND_LOG((n))
@@ -334,9 +335,11 @@ namespace {
    }
 
    template<typename T>
-   fc::variant to_variant_with_abi( const T& obj, mongocxx::collection& accounts ) {
+   fc::variant to_variant_with_abi( const T& obj, mongocxx::collection& accounts, const fc::microseconds& abi_serializer_max_time  ) {
       fc::variant pretty_output;
-      abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ) { return get_abi_serializer( n, accounts ); } );
+      abi_serializer::to_variant( obj, pretty_output,
+                                  [&]( account_name n ) { return get_abi_serializer( n, accounts, abi_serializer_max_time ); },
+                                  abi_serializer_max_time );
       return pretty_output;
    }
 
@@ -442,7 +445,7 @@ void handle_mongo_exception( const std::string& desc, int line_num ) {
       }
    }
 
-void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act ) {
+void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act, const fc::microseconds& abi_serializer_max_time ) {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
    try {
@@ -478,8 +481,8 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
          string json;
          try {
             abi_serializer abis;
-            abis.set_abi( abi );
-            auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data );
+            abis.set_abi( abi, abi_serializer_max_time );
+            auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data, abi_serializer_max_time );
             json = fc::json::to_string( v );
 
             const auto& value = bsoncxx::from_json( json );
@@ -502,7 +505,7 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
    act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
 }
 
-}
+} // anonymous namespace
 
 void mongo_db_plugin_impl::process_accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
@@ -613,7 +616,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
       }
       if( start_block_reached ) {
-         add_data( act_doc, accounts, act );
+         add_data( act_doc, accounts, act, abi_serializer_max_time );
          act_array.append( act_doc );
          mongocxx::model::insert_one insert_op{act_doc.view()};
          bulk_actions.append( insert_op );
@@ -768,7 +771,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-   auto v = to_variant_with_abi( *t, accounts );
+   auto v = to_variant_with_abi( *t, accounts, abi_serializer_max_time );
    string json = fc::json::to_string( v );
    try {
       const auto& value = bsoncxx::from_json( json );
@@ -848,7 +851,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
                     kvp( "block_id", block_id_str ),
                     kvp( "irreversible", b_bool{false} ));
 
-   auto v = to_variant_with_abi( *bs->block, accounts );
+   auto v = to_variant_with_abi( *bs->block, accounts, abi_serializer_max_time );
    json = fc::json::to_string( v );
    try {
       const auto& value = bsoncxx::from_json( json );
@@ -937,7 +940,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
 
          mongocxx::model::update_one update_op{ make_document(kvp("_id", ir_trans->view()["_id"].get_oid())), update_doc.view()};
          bulk.append(update_op);
-
          transactions_in_block = true;
       }
    }
@@ -1096,6 +1098,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          if( options.count( "abi-serializer-max-time-ms") == 0 ) {
             FC_ASSERT(false, "--abi-serializer-max-time-ms required as default value not appropriate for parsing full blocks");
          }
+         my->abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
          if( options.count( "mongodb-queue-size" )) {
             my->queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();

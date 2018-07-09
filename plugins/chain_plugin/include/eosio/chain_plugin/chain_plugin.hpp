@@ -60,12 +60,13 @@ uint64_t convert_to_type(const string& str, const string& desc);
 
 class read_only {
    const controller& db;
+   const fc::microseconds abi_serializer_max_time;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db)
-      : db(db) {}
+   read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
+      : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
    using get_info_params = empty;
 
@@ -301,7 +302,7 @@ public:
       uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
 
       abi_serializer abis;
-      abis.set_abi(abi);
+      abis.set_abi(abi, abi_serializer_max_time);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
@@ -328,7 +329,7 @@ public:
             copy_inline_row(*itr, data);
 
             if (p.json) {
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data));
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
             } else {
                result.rows.emplace_back(fc::variant(data));
             }
@@ -349,8 +350,10 @@ public:
 
 class read_write {
    controller& db;
+   const fc::microseconds abi_serializer_max_time;
 public:
-   read_write(controller& db) : db(db) {}
+   read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
+         : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -385,7 +388,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain()); }
+   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time()); }
    chain_apis::read_write get_read_write_api();
 
    void accept_block( const chain::signed_block_ptr& block );
@@ -412,6 +415,7 @@ public:
    const controller& chain() const;
 
    chain::chain_id_type get_chain_id() const;
+   fc::microseconds get_abi_serializer_max_time() const;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
