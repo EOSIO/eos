@@ -133,7 +133,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( tables.size() == abi.tables.size() );
       FC_ASSERT( error_messages.size() == abi.error_messages.size() );
 
-      validate(max_serialization_time);
+      validate(deadline, max_serialization_time);
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
@@ -193,8 +193,7 @@ namespace eosio { namespace chain {
       return itr->second;
    }
 
-   void abi_serializer::validate(const fc::microseconds& max_serialization_time)const {
-      const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
+   void abi_serializer::validate(const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const {
       for( const auto& t : typedefs ) { try {
          vector<type_name> types_seen{t.first, t.second};
          auto itr = typedefs.find(t.second);
@@ -347,10 +346,7 @@ namespace eosio { namespace chain {
             const auto& va = var.get_array();
 
             FC_ASSERT( st.base == type_name(), "support for base class as array not yet implemented" );
-            /*if( st.base != type_name() ) {
-               _variant_to_binary(resolve_type(st.base), var, ds, recursive_depth, max_serialization_time);
-            }
-            */
+
             uint32_t i = 0;
             if (va.size() > 0) {
                for( const auto& field : st.fields ) {
