@@ -144,18 +144,6 @@ public:
       produce_block();
       BOOST_REQUIRE_EQUAL( true, chain_has_transaction(trace->id) );
       return trace;
-
-      /*
-         string action_type_name = abi_ser.get_action_type(name);
-
-         action act;
-         act.account = N(eosio.msig);
-         act.name = name;
-         act.data = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
-         //std::cout << "test:\n" << fc::to_hex(act.data.data(), act.data.size()) << " size = " << act.data.size() << std::endl;
-
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
-      */
    }
 
    transaction reqauth( account_name from, const vector<permission_level>& auths, const fc::microseconds& max_serialization_time );

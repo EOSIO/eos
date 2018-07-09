@@ -1063,7 +1063,6 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
             try {
                fc::variant pretty_output;
                pretty_output = db.to_variant_with_abi(*trx_trace_ptr, abi_serializer_max_time);
-               //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
 
                chain::transaction_id_type id = trx_trace_ptr->id;
                next(read_write::push_transaction_results{id, pretty_output});
@@ -1190,11 +1189,10 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    }
 
    const auto& code_account = db.db().get<account_object,by_name>( N(eosio) );
-   //const abi_def abi = get_abi( db, N(eosio) );
+
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi, abi_serializer_max_time );
-      //get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
 
       const auto token_code = N(eosio.token);
 

@@ -429,20 +429,6 @@ public:
       return msig_abi_ser;
    }
 
-   //helper function
-   /*
-   action_result push_action_msig( const account_name& signer, const action_name &name, const variant_object &data ) {
-      string action_type_name = msig_abi_ser.get_action_type(name);
-
-      action act;
-      act.account = N(eosio.msig);
-      act.name = name;
-      act.data = msig_abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
-
-      return base_tester::push_action( std::move(act), signer );
-   };
-   */
-
    vector<name> active_and_vote_producers() {
       //stake more than 15% of total EOS supply to activate chain
       transfer( "eosio", "alice1111111", core_from_string("650000000.0000"), "eosio" );

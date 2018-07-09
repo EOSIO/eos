@@ -429,7 +429,6 @@ namespace eosio { namespace testing {
       const auto& acnt = control->get_account(code);
       auto abi = acnt.get_abi();
       chain::abi_serializer abis(abi, abi_serializer_max_time);
-    //  auto a = control->get_account(code).get_abi();
 
       string action_type_name = abis.get_action_type(acttype);
       FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
