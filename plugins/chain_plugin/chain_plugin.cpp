@@ -776,6 +776,51 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
+uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params& p, bool& primary) {
+   using boost::algorithm::starts_with;
+   // see multi_index packing of index name
+   const uint64_t table = p.table;
+   uint64_t index = table & 0xFFFFFFFFFFFFFFF0ULL;
+   EOS_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
+
+   primary = false;
+   uint64_t pos = 0;
+   if (p.index_position.empty() || p.index_position == "first" || p.index_position == "primary" || p.index_position == "one") {
+      primary = true;
+   } else if (starts_with(p.index_position, "sec") || p.index_position == "two") { // second, secondary
+   } else if (starts_with(p.index_position , "ter") || starts_with(p.index_position, "th")) { // tertiary, ternary, third, three
+      pos = 1;
+   } else if (starts_with(p.index_position, "fou")) { // four, fourth
+      pos = 2;
+   } else if (starts_with(p.index_position, "fi")) { // five, fifth
+      pos = 3;
+   } else if (starts_with(p.index_position, "six")) { // six, sixth
+      pos = 4;
+   } else if (starts_with(p.index_position, "sev")) { // seven, seventh
+      pos = 5;
+   } else if (starts_with(p.index_position, "eig")) { // eight, eighth
+      pos = 6;
+   } else if (starts_with(p.index_position, "nin")) { // nine, ninth
+      pos = 7;
+   } else if (starts_with(p.index_position, "ten")) { // ten, tenth
+      pos = 8;
+   } else {
+      try {
+         pos = fc::to_uint64( p.index_position );
+      } catch(...) {
+         EOS_ASSERT( false, chain::contract_table_query_exception, "Invalid index_position: ${p}", ("p", p.index_position));
+      }
+      if (pos < 2) {
+         primary = true;
+         pos = 0;
+      } else {
+         pos -= 2;
+      }
+   }
+   index |= (pos & 0x000000000000000FULL);
+   return index;
+}
+
 template<>
 uint64_t convert_to_type(const string& str, const string& desc) {
    uint64_t value = 0;
@@ -825,13 +870,53 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   auto table_type = get_table_type( abi, p.table );
 
-   if( table_type == KEYi64 ) {
-      return get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
+   bool primary = false;
+   auto table_with_index = get_table_index_name( p, primary );
+   if( primary ) {
+      EOS_ASSERT( p.table == table_with_index, chain::contract_table_query_exception, "Invalid table name ${t}", ( "t", p.table ));
+      auto table_type = get_table_type( abi, p.table );
+      if( table_type == KEYi64 || p.key_type == "i64" || p.key_type == "name" ) {
+         return get_table_rows_ex<key_value_index>(p,abi);
+      }
+      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
+   } else {
+      EOS_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
+
+      if (p.key_type == "i64" || p.key_type == "name") {
+         return get_table_rows_by_seckey<index64_index, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
+            return v;
+         });
+      }
+      else if (p.key_type == "i128") {
+         return get_table_rows_by_seckey<index128_index, uint128_t>(p, abi, [](uint128_t v)->uint128_t {
+            return v;
+         });
+      }
+      else if (p.key_type == "i256") {
+         return get_table_rows_by_seckey<index256_index, uint256_t>(p, abi, [](uint256_t v)->key256_t {
+            key256_t k;
+            k[0] = ((uint128_t *)&v)[0];
+            k[1] = ((uint128_t *)&v)[1];
+            return k;
+         });
+      }
+      else if (p.key_type == "float64") {
+         return get_table_rows_by_seckey<index_double_index, double>(p, abi, [](double v)->float64_t {
+            float64_t f = *(float64_t *)&v;
+            return f;
+         });
+      }
+      else if (p.key_type == "float128") {
+         return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
+            float64_t f = *(float64_t *)&v;
+            float128_t f128;
+            f64_to_f128M(f, &f128);
+            return f128;
+         });
+      }
+      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }
-
-   EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
@@ -840,7 +925,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
    auto table_type = get_table_type( abi, "accounts" );
 
    vector<asset> results;
-   walk_table<key_value_index, by_scope_primary>(p.code, p.account, N(accounts), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, p.account, N(accounts), [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
 
       asset cursor;
@@ -868,7 +953,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
-   walk_table<key_value_index, by_scope_primary>(p.code, scope, N(stat), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, scope, N(stat), [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
