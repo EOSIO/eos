@@ -497,6 +497,11 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
    } catch( std::exception& e ) {
       ilog( "Unable to convert action.data to ABI: ${s}::${n}, std what: ${e}",
             ("s", act.account)( "n", act.name )( "e", e.what()));
+   } catch (fc::exception& e) {
+      if (act.name != "onblock") { // eosio::onblock not in original eosio.system abi
+         ilog( "Unable to convert action.data to ABI: ${s}::${n}, fc exception: ${e}",
+               ("s", act.account)( "n", act.name )( "e", e.to_detail_string()));
+      }
    } catch( ... ) {
       ilog( "Unable to convert action.data to ABI: ${s}::${n}, unknown exception",
             ("s", act.account)( "n", act.name ));
