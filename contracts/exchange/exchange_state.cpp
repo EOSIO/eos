@@ -10,10 +10,8 @@ namespace eosio {
       real_type ONE(1.0);
 
       real_type E = -R * (ONE - std::pow( ONE + T / C, F) );
-      int64_t f = 0;
-      if( fee > 0 )
-            f = std::max(int64_t(E * fee), int64_t(1));
-      int64_t issued = std::max(int64_t(E) - f, int64_t(0));
+      int64_t issued = int64_t(E) - int64_t(E * fee + 1);
+      eosio_assert( issued > 0, "conversion is not positive after fee" );
 
       supply.amount += issued;
       c.balance.amount += in.amount;
@@ -33,10 +31,8 @@ namespace eosio {
 
 
       real_type T = C * (std::pow( ONE + E/R, F) - ONE);
-      int64_t f = 0;
-      if( fee > 0 )
-            f = std::max(int64_t(T * fee), int64_t(1));
-      int64_t out = std::max(int64_t(T) - f, int64_t(0));
+      int64_t out = int64_t(T) - int64_t(T * fee + 1);
+      eosio_assert( out > 0, "conversion is not positive after fee" );
 
       supply.amount -= in.amount;
       c.balance.amount -= out;

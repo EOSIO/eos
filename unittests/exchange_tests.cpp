@@ -338,8 +338,8 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    wdump((trader_ex_btc.quantity));
    wdump((trader_ex_usd.quantity));
 
-   BOOST_REQUIRE_EQUAL( trader_ex_usd.quantity, A(1500.00 USD) );
-   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1499.99 BTC) );
+   BOOST_REQUIRE_EQUAL( trader_ex_usd.quantity, A(1499.99 USD) );
+   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1499.98 BTC) );
 
    wdump((t.get_market_state( N(exchange), symbol(2,"EXC") ) ));
 
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE( exchange_lend2 ) try {
    // lender3: trigger a margin call by issuing a market order
    t.marketorder( N(exchange), N(lender3), symbol(2,"EXC"), extended_asset{ A(100.00 USD), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
-   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(42.85 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(42.82 USD));
 } FC_LOG_AND_RETHROW() /// exchange_lend2
 
 BOOST_AUTO_TEST_CASE( exchange_fees ) try {
@@ -490,20 +490,20 @@ BOOST_AUTO_TEST_CASE( exchange_fees ) try {
    t.issue( N(exchange), N(exchange), N(holder1), A(10.00 USD) );
    t.deposit( N(exchange), N(holder1), extended_asset{ A(10.00 USD), N(exchange) } );
    t.marketorder( N(exchange), N(holder1), symbol(2,"HIFEE"), extended_asset{ A(10.00 USD), N(exchange) }, extended_symbol{ symbol(2,"HIFEE"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(holder1), A(4.44 HIFEE));
+   t.check_exchange_balance(N(exchange), N(exchange), N(holder1), A(4.43 HIFEE));
 
    // trader1: round trip 10.00 USD
    t.create_account( N(trader1) );
    t.issue( N(exchange), N(exchange), N(trader1), A(10.00 USD) );
    t.deposit( N(exchange), N(trader1), extended_asset{ A(10.00 USD), N(exchange) } );
    t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(10.00 USD), N(exchange) }, extended_symbol{ symbol(2,"HIFEE"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(4.42 HIFEE));
-   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(4.42 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(7.94 BTC));
-   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(7.94 BTC), N(exchange) }, extended_symbol{ symbol(2,"HIFEE"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(3.58 HIFEE));
-   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(3.58 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(6.56 USD)); // approx 10.00 * (0.90)^4
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(4.41 HIFEE));
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(4.41 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(7.91 BTC));
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(7.91 BTC), N(exchange) }, extended_symbol{ symbol(2,"HIFEE"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(3.56 HIFEE));
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(3.56 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(6.51 USD)); // approx 10.00 * (0.90)^4
    t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(0.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(0.00 HIFEE));
 
@@ -512,15 +512,15 @@ BOOST_AUTO_TEST_CASE( exchange_fees ) try {
    t.issue( N(exchange), N(exchange), N(trader2), A(1000.00 USD) );
    t.deposit( N(exchange), N(trader2), extended_asset{ A(1000.00 USD), N(exchange) } );
    t.marketorder( N(exchange), N(trader2), symbol(2,"HIFEE"), extended_asset{ A(1000.00 USD), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(398.26 BTC));
-   t.marketorder( N(exchange), N(trader2), symbol(2,"HIFEE"), extended_asset{ A(398.26 BTC), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(644.13 USD)); // slightly worse than 1000.00 * (0.90)^4
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(398.22 BTC));
+   t.marketorder( N(exchange), N(trader2), symbol(2,"HIFEE"), extended_asset{ A(398.22 BTC), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(644.01 USD)); // slightly worse than 1000.00 * (0.90)^4
    t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(0.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(0.00 HIFEE));
 
    // holder1: profit
-   t.marketorder( N(exchange), N(holder1), symbol(2,"HIFEE"), extended_asset{ A(4.44 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
-   t.check_exchange_balance(N(exchange), N(exchange), N(holder1), A(10.97 USD));
+   t.marketorder( N(exchange), N(holder1), symbol(2,"HIFEE"), extended_asset{ A(4.43 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(holder1), A(10.94 USD));
 } FC_LOG_AND_RETHROW() /// exchange_fees
 
 BOOST_AUTO_TEST_SUITE_END()

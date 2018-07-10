@@ -65,6 +65,8 @@ namespace eosio {
 
       if( last_sync == now ) return;
 
+      last_sync = now;
+
       bool price_drift_too_long = (now.slot - last_price_in_range.slot) > 120*60*24; /*blocks per day*/
 
       /// if bancor hasn't traded within 1% of 24hr median average price within the past 24 hour, then 
@@ -89,8 +91,10 @@ namespace eosio {
       } else { // price too low
 
          if( above_collateral_ratio ) {
+            // move collateral from spare to maker balance
          }
          else {
+            // do nothing
          }
 
       }
