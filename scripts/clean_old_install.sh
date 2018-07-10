@@ -1,0 +1,44 @@
+#! /bin/bash
+
+if [ -d "/usr/local/include/eosio" ]; then
+   printf "\n\tOld eosio install needs to be removed.\n\n"
+   printf "\tDo you wish to remove this install? (requires sudo)\n"
+   select yn in "Yes" "No"; do
+      case $yn in
+         [Yy]* )
+
+            pushd /usr/local &> /dev/null
+            pushd include &> /dev/null
+            sudo rm -rf appbase chainbase eosio eosio.system eosiolib fc libc++ musl &> /dev/null
+            popd &> /dev/null
+
+            pushd bin &> /dev/null
+            sudo rm cleos eosio-abigen eosio-applesdemo eosio-launcher eosio-s2wasm eosio-wast2wasm eosiocpp keosd nodeos &> /dev/null
+            popd &> /dev/null
+
+            pushd etc &> /dev/null
+            sudo rm eosio &> /dev/null
+            popd &> /dev/null
+
+            pushd share &> /dev/null
+            sudo rm eosio &> /dev/null
+            popd &> /dev/null
+
+            pushd usr/share &> /dev/null
+            sudo rm eosio &> /dev/null
+            popd &> /dev/null
+
+            pushd var/lib &> /dev/null
+            sudo rm eosio &> /dev/null
+            popd &> /dev/null
+
+            pushd var/log &> /dev/null
+            sudo rm eosio &> /dev/null
+            popd &> /dev/null
+            break;;
+         [Nn]* ) 
+            printf "\tAborting uninstall\n\n"
+            exit -1;;
+      esac
+   done
+fi
