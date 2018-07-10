@@ -302,7 +302,8 @@ class Node(object):
         assert(transId)
         assert(isinstance(transId, str))
         trans=self.getTransaction(transId)
-        assert(trans)
+        if trans is None:
+            return None
 
         refBlockNum=None
         key=""
@@ -549,6 +550,7 @@ class Node(object):
 
     def waitForTransInBlock(self, transId, timeout=None):
         """Wait for trans id to be finalized."""
+        assert(isinstance(transId, str))
         lam = lambda: self.isTransInAnyBlock(transId)
         ret=Utils.waitForBool(lam, timeout)
         return ret

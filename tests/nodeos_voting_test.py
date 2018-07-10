@@ -69,12 +69,15 @@ def validBlockProducer(prodsActive, prodsSeen, blockNum, node):
 
 def getNextCleanProductionCycle(trans, node):
     transId=Node.getTransId(trans)
-    rounds=15*12*2  # 2/3+1 of producers x blocks per producer x at least 2 times
+    rounds=21*12*2  # max time to ensure that at least 2/3+1 of producers x blocks per producer x at least 2 times
     node.waitForTransFinalization(transId, timeout=rounds/2)
     irreversibleBlockNum=node.getIrreversibleBlockNum()
-    # The voted schedule should be promoted now, then need to wait for that to become irreversible 
-    promotedBlockNum=node.getHeadBlockNum()+240
+
+    # The voted schedule should be promoted now, then need to wait for that to become irreversible
+    votingTallyWindow=120  #could be up to 120 blocks before the votes were tallied
+    promotedBlockNum=node.getHeadBlockNum()+votingTallyWindow
     node.waitForIrreversibleBlock(promotedBlockNum, timeout=rounds/2)
+
     ibnSchedActive=node.getIrreversibleBlockNum()
 
     blockNum=node.getHeadBlockNum()
