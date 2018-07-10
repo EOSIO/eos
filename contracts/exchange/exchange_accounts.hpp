@@ -38,6 +38,6 @@ namespace eosio {
          /**
           *  Keep a cache of all accounts tables we access
           */
-         flat_map<account_name, exaccounts> exaccounts_cache;
+         flat_map<account_name, std::unique_ptr<exaccounts>> exaccounts_cache;
    };
 } /// namespace eosio

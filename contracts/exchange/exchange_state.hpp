@@ -79,7 +79,7 @@ namespace eosio {
       extended_asset convert_from_exchange( connector& c, extended_asset in );
       extended_asset convert( extended_asset from, extended_symbol to );
 
-      bool requires_margin_call( const exchange_state::connector& con )const;
+      bool requires_margin_call( const exchange_state::connector& con, const extended_symbol& collateral_symbol )const;
       bool requires_margin_call()const;
 
       EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(base)(quote) )

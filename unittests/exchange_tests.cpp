@@ -127,6 +127,12 @@ class exchange_tester : public TESTER {
          return extended_asset();
       }
 
+      void check_exchange_balance(account_name exchange, account_name currency, account_name owner, asset expected)
+      {
+         auto actual = get_exchange_balance( exchange, currency, expected.get_symbol(), owner );
+         BOOST_REQUIRE_EQUAL( expected, actual.quantity );
+      }
+
       double get_lent_shares( account_name exchange, symbol market, account_name owner, bool base )
       {
          const auto& db  = control->db();
@@ -223,6 +229,15 @@ class exchange_tester : public TESTER {
              ("market", market )
              ("interest_shares", interest_shares)
              ("interest_symbol", interest_symbol)
+         );
+      }
+
+      auto upmargin( name contract, name borrower, const symbol& market, const extended_asset& delta_borrow, const extended_asset& delta_collateral ) {
+         return push_action( contract, borrower, N(upmargin), mutable_variant_object()
+            ("borrower", borrower)
+            ("market", market)
+            ("delta_borrow", delta_borrow)
+            ("delta_collateral", delta_collateral)
          );
       }
 
@@ -324,7 +339,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    wdump((trader_ex_usd.quantity));
 
    BOOST_REQUIRE_EQUAL( trader_ex_usd.quantity, A(1500.00 USD) );
-   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1500.00 BTC) );
+   BOOST_REQUIRE_EQUAL( trader_ex_btc.quantity, A(1499.99 BTC) );
 
    wdump((t.get_market_state( N(exchange), symbol(2,"EXC") ) ));
 
@@ -390,12 +405,11 @@ BOOST_AUTO_TEST_CASE( withdraw ) try {
    t.check_balance(N(exchange), N(loki), A(50.00 BTC));
 } FC_LOG_AND_RETHROW() /// test_api_withdraw
 
-BOOST_AUTO_TEST_CASE( exchange_lend_max ) try {
+BOOST_AUTO_TEST_CASE( exchange_lend2 ) try {
    exchange_tester t;
 
    auto lender1_amount = asset{ 1, symbol(2,"USD") };
    auto lender2_amount = asset{ (1ll << 53) - 2, symbol(2,"USD") };
-   auto lender2_amount_bad = lender2_amount + asset{ 1, symbol(2,"USD") };
 
    t.create_account( N(lender1) );
    t.issue( N(exchange), N(exchange), N(lender1), lender1_amount );
@@ -408,17 +422,51 @@ BOOST_AUTO_TEST_CASE( exchange_lend_max ) try {
    t.issue( N(exchange), N(exchange), N(lender2), lender2_amount );
    t.deposit( N(exchange), N(lender2), extended_asset{ lender2_amount, N(exchange) } );
 
-   BOOST_CHECK_THROW( t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount_bad, N(exchange) }, symbol(2,"EXC") ), eosio_assert_message_exception );
+   // lend max amount. Make sure no more is possible
+   BOOST_CHECK_THROW( t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount + asset{ 1, symbol(2,"USD") }, N(exchange) }, symbol(2,"EXC") ), eosio_assert_message_exception );
    t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount, N(exchange) }, symbol(2,"EXC") );
 
+   // lender1: unlend everything
    auto lentshares1 = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender1), true );
    t.unlend( N(exchange), N(lender1), lentshares1, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"EXC") );
    BOOST_REQUIRE_EQUAL(lender1_amount, t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"USD"), N(lender1)).quantity);
 
+   // lender2: unlend everything
    auto lentshares2 = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender2), true );
    t.unlend( N(exchange), N(lender2), lentshares2, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"EXC") );
    BOOST_REQUIRE_EQUAL(lender2_amount, t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"USD"), N(lender2)).quantity);
-} FC_LOG_AND_RETHROW() /// test_api_bootstrap
+
+   // lender3: lend 100 USD and 100 BTC
+   t.create_account( N(lender3) );
+   t.issue( N(exchange), N(exchange), N(lender3), A(1000.00 USD) );
+   t.issue( N(exchange), N(exchange), N(lender3), A(1000.00 BTC) );
+   t.check_balance(N(exchange), N(lender3), A(1000.00 USD) );
+   t.check_balance(N(exchange), N(lender3), A(1000.00 BTC) );
+   t.deposit( N(exchange), N(lender3), extended_asset{ A(1000.00 USD), N(exchange) } );
+   t.deposit( N(exchange), N(lender3), extended_asset{ A(1000.00 BTC), N(exchange) } );
+   t.check_balance(N(exchange), N(lender3), A(0.00 USD) );
+   t.check_balance(N(exchange), N(lender3), A(0.00 BTC) );
+   t.lend( N(exchange), N(lender3), extended_asset{ A(100.00 USD), N(exchange) }, symbol(2,"EXC") );
+   t.lend( N(exchange), N(lender3), extended_asset{ A(100.00 BTC), N(exchange) }, symbol(2,"EXC") );
+   t.check_exchange_balance(N(exchange), N(exchange), N(lender3), A(900.00 USD) );
+   t.check_exchange_balance(N(exchange), N(exchange), N(lender3), A(900.00 BTC) );
+
+   // borrower1: borrow without and with enough collateral
+   t.create_account( N(borrower1) );
+   t.issue( N(exchange), N(exchange), N(borrower1), A(100.00 USD) );
+   t.deposit( N(exchange), N(borrower1), extended_asset{ A(100.00 USD), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(0.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(100.00 USD));
+   BOOST_CHECK_THROW( t.upmargin( N(exchange), N(borrower1), symbol(2,"EXC"), extended_asset{ A(50.00 BTC), N(exchange) }, extended_asset{ A(50.00 USD), N(exchange) } ), eosio_assert_message_exception );
+   t.upmargin( N(exchange), N(borrower1), symbol(2,"EXC"), extended_asset{ A(50.00 BTC), N(exchange) }, extended_asset{ A(60.00 USD), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(40.00 USD));
+
+   // lender3: trigger a margin call by issuing a market order
+   t.marketorder( N(exchange), N(lender3), symbol(2,"EXC"), extended_asset{ A(100.00 USD), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(42.85 USD));
+} FC_LOG_AND_RETHROW() /// exchange_lend2
 
 
 BOOST_AUTO_TEST_SUITE_END()

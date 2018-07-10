@@ -7,17 +7,17 @@ namespace eosio {
 
       auto table = exaccounts_cache.find( owner );
       if( table == exaccounts_cache.end() ) {
-         table = exaccounts_cache.emplace( owner, exaccounts(_this_contract, owner )  ).first;
+         table = exaccounts_cache.emplace( owner, std::make_unique<exaccounts>(_this_contract, owner )  ).first;
       }
-      auto useraccounts = table->second.find( owner );
-      if( useraccounts == table->second.end() ) {
-         table->second.emplace( owner, [&]( auto& exa ){
+      auto useraccounts = table->second->find( owner );
+      if( useraccounts == table->second->end() ) {
+         table->second->emplace( owner, [&]( auto& exa ){
            exa.owner = owner;
            exa.balances[delta.get_extended_symbol()] = delta.amount;
            eosio_assert( delta.amount >= 0, "overdrawn balance 1" );
          });
       } else {
-         table->second.modify( useraccounts, 0, [&]( auto& exa ) {
+         table->second->modify( useraccounts, 0, [&]( auto& exa ) {
            const auto& b = exa.balances[delta.get_extended_symbol()] += delta.amount;
            eosio_assert( b >= 0, "overdrawn balance 2" );
          });

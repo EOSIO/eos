@@ -38,7 +38,7 @@ namespace eosio {
 
       auto change_collat = exstate.convert( change_debt, pos->collateral.get_extended_symbol() );
 
-      _accounts.adjust_balance( pos->owner, change_collat );
+      _accounts.adjust_balance( pos->owner, change_collat, "margin_call" );
 
       c.peer_margin.total_lent.amount -= pos->borrowed.amount;
       price_idx.erase(pos);
@@ -87,7 +87,7 @@ namespace eosio {
 
    void market_state::lend( account_name lender, const extended_asset& quantity ) {
       auto sym = quantity.get_extended_symbol();
-      _accounts.adjust_balance( lender, -quantity );
+      _accounts.adjust_balance( lender, -quantity, "lend" );
 
       if( sym == exstate.base.balance.get_extended_symbol() ) {
          double new_shares = exstate.base.peer_margin.lend( quantity.amount );
@@ -108,11 +108,11 @@ namespace eosio {
 
       if( sym == exstate.base.balance.get_extended_symbol() ) {
          extended_asset unlent  = exstate.base.peer_margin.unlend( ishares );
-         _accounts.adjust_balance( lender, unlent );
+         _accounts.adjust_balance( lender, unlent, "unlend" );
       }
       else if( sym == exstate.quote.balance.get_extended_symbol() ) {
          extended_asset unlent  = exstate.quote.peer_margin.unlend( ishares );
-         _accounts.adjust_balance( lender, unlent );
+         _accounts.adjust_balance( lender, unlent, "unlend" );
       }
       else eosio_assert( false, "unable to lend to this market" );
    }
@@ -171,13 +171,13 @@ namespace eosio {
          auto freedcollateral = existing->collateral - estcol;
          m.erase( existing );
          existing = m.begin();
-         _accounts.adjust_balance( borrower, freedcollateral );
+         _accounts.adjust_balance( borrower, freedcollateral, "cover_margin" );
       }
       else {
          m.modify( existing, 0, [&]( auto& obj ) {
              obj.collateral.amount -= estcol.amount;
              obj.borrowed.amount -= cover_amount.amount;
-             obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
+             obj.call_price = double(obj.collateral.amount) / obj.borrowed.amount;
          });
       }
       c.peer_margin.total_lent.amount -= cover_amount.amount;
@@ -213,7 +213,7 @@ namespace eosio {
             obj.owner      = borrower;
             obj.borrowed   = delta_debt;
             obj.collateral = delta_col;
-            obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
+            obj.call_price = double(obj.collateral.amount) / obj.borrowed.amount;
          });
       } else {
          if( existing->borrowed.amount == -delta_debt.amount ) {
@@ -225,7 +225,7 @@ namespace eosio {
             m.modify( existing, 0, [&]( auto& obj ) {
                obj.borrowed   += delta_debt;
                obj.collateral += delta_col;
-               obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
+               obj.call_price = double(obj.collateral.amount) / obj.borrowed.amount;
             });
          }
       }
@@ -237,7 +237,7 @@ namespace eosio {
          if( existing->call_price < c.peer_margin.least_collateralized )
             c.peer_margin.least_collateralized = existing->call_price;
 
-         eosio_assert( !exstate.requires_margin_call( c ), "this update would trigger a margin call" );
+         eosio_assert( !exstate.requires_margin_call( c, delta_col.get_extended_symbol() ), "this update would trigger a margin call" );
       } else {
          c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
       }

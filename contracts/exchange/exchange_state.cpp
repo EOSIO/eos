@@ -68,19 +68,20 @@ namespace eosio {
       return from;
    }
 
-   bool exchange_state::requires_margin_call(  const exchange_state::connector& con )const {
+   bool exchange_state::requires_margin_call( const exchange_state::connector& con, const extended_symbol& collateral_symbol )const {
       if( con.peer_margin.total_lent.amount > 0  ) {
          auto tmp = *this;
          auto base_total_col = int64_t(con.peer_margin.total_lent.amount * con.peer_margin.least_collateralized);
-         auto covered = tmp.convert( extended_asset( base_total_col, con.balance.get_extended_symbol()), con.peer_margin.total_lent.get_extended_symbol() );
+         auto covered = tmp.convert( extended_asset( base_total_col, collateral_symbol ), con.peer_margin.total_lent.get_extended_symbol() );
          if( covered.amount <= con.peer_margin.total_lent.amount ) 
-            return true;
+           return true;
       }
       return false;
    }
 
    bool exchange_state::requires_margin_call()const {
-      return requires_margin_call( base ) || requires_margin_call( quote );
+      return requires_margin_call( base, quote.balance.get_extended_symbol() ) || 
+             requires_margin_call( quote, base.balance.get_extended_symbol() );
    }
 
 
