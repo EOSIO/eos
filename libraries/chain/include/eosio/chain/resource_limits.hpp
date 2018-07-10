@@ -66,22 +66,16 @@ namespace eosio { namespace chain { namespace resource_limits {
          uint64_t get_block_cpu_limit() const;
          uint64_t get_block_net_limit() const;
 
-         int64_t get_account_cpu_limit( const account_name& name, bool subjective = true) const;
-         int64_t get_account_net_limit( const account_name& name, bool subjective = true) const;
+         int64_t get_account_cpu_limit( const account_name& name, bool elastic = true) const;
+         int64_t get_account_net_limit( const account_name& name, bool elastic = true) const;
 
-         account_resource_limit get_account_cpu_limit_ex( const account_name& name, bool subjective = true) const;
-         account_resource_limit get_account_net_limit_ex( const account_name& name, bool subjective = true) const;
+         account_resource_limit get_account_cpu_limit_ex( const account_name& name, bool elastic = true) const;
+         account_resource_limit get_account_net_limit_ex( const account_name& name, bool elastic = true) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
 
-         void add_greylist(const account_name &name);
-         void remove_greylist(const account_name &name);
-         bool is_greylisted(const account_name &name) const;
-         const std::set<account_name> &get_greylisted_account() const { return _greylisted_accounts; }
-
       private:
          chainbase::database& _db;
-         std::set<account_name> _greylisted_accounts; // #4368 access to extended CPU/Net virtual resources should be subjective
    };
 } } } /// eosio::chain
 

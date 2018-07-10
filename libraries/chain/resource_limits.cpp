@@ -334,12 +334,12 @@ uint64_t resource_limits_manager::get_block_net_limit() const {
    return config.net_limit_parameters.max - state.pending_net_usage;
 }
 
-int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name, bool subjective ) const {
-   auto arl = get_account_cpu_limit_ex(name, subjective);
+int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name, bool elastic ) const {
+   auto arl = get_account_cpu_limit_ex(name, elastic);
    return arl.available;
 }
 
-account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, bool subjective) const {
+account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, bool elastic) const {
 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
@@ -356,7 +356,7 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
 
    uint128_t window_size = config.account_cpu_usage_average_window;
 
-   uint128_t virtual_cpu_capacity_in_window = (uint128_t)((subjective && is_greylisted(name)) ? config.cpu_limit_parameters.max : state.virtual_cpu_limit) * window_size;
+   uint128_t virtual_cpu_capacity_in_window = (uint128_t)(elastic ? state.virtual_cpu_limit : config.cpu_limit_parameters.max) * window_size;
    uint128_t user_weight     = (uint128_t)cpu_weight;
    uint128_t all_user_weight = (uint128_t)state.total_cpu_weight;
 
@@ -373,12 +373,12 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    return arl;
 }
 
-int64_t resource_limits_manager::get_account_net_limit( const account_name& name, bool subjective) const {
-   auto arl = get_account_net_limit_ex(name, subjective);
+int64_t resource_limits_manager::get_account_net_limit( const account_name& name, bool elastic) const {
+   auto arl = get_account_net_limit_ex(name, elastic);
    return arl.available;
 }
 
-account_resource_limit resource_limits_manager::get_account_net_limit_ex( const account_name& name, bool subjective) const {
+account_resource_limit resource_limits_manager::get_account_net_limit_ex( const account_name& name, bool elastic) const {
    const auto& config = _db.get<resource_limits_config_object>();
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
@@ -394,7 +394,7 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
 
    uint128_t window_size = config.account_net_usage_average_window;
 
-   uint128_t virtual_network_capacity_in_window = (uint128_t)((subjective && is_greylisted(name)) ? config.net_limit_parameters.max : state.virtual_net_limit) * window_size;
+   uint128_t virtual_network_capacity_in_window = (uint128_t)(elastic ? state.virtual_net_limit : config.net_limit_parameters.max) * window_size;
    uint128_t user_weight     = (uint128_t)net_weight;
    uint128_t all_user_weight = (uint128_t)state.total_net_weight;
 
@@ -410,18 +410,6 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    arl.used = impl::downgrade_cast<int64_t>(net_used_in_window);
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
    return arl;
-}
-
-bool resource_limits_manager::is_greylisted(const account_name &name) const {
-   return (_greylisted_accounts.find(name) != _greylisted_accounts.end());
-}
-
-void resource_limits_manager::add_greylist(const account_name &name) {
-   _greylisted_accounts.insert(name);
-}
-
-void resource_limits_manager::remove_greylist(const account_name &name) {
-   _greylisted_accounts.erase(name);
 }
 
 } } } /// eosio::chain::resource_limits

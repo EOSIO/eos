@@ -685,26 +685,22 @@ producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
 
 void producer_plugin::add_greylist_accounts(const greylist_params& params) {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   auto& rm = chain.get_mutable_resource_limits_manager();
    for (auto &acc : params.accounts) {
-      rm.add_greylist(acc);
+      chain.add_resource_greylist(acc);
    }
 }
 
 void producer_plugin::remove_greylist_accounts(const greylist_params& params) {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   auto& rm = chain.get_mutable_resource_limits_manager();
    for (auto &acc : params.accounts) {
-      rm.remove_greylist(acc);
+      chain.remove_resource_greylist(acc);
    }
 }
 
 producer_plugin::greylist_params producer_plugin::get_greylist() const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   const auto& rm = chain.get_resource_limits_manager();
-
    greylist_params result;
-   const auto& list = rm.get_greylisted_account();
+   const auto& list = chain.get_resource_greylist();
    result.accounts.reserve(list.size());
    for (auto &acc: list) {
       result.accounts.push_back(acc);

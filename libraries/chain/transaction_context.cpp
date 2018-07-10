@@ -27,7 +27,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( trx.transaction_extensions.size() == 0, "we don't support any extensions yet" );
    }
 
-   void transaction_context::init(uint64_t initial_net_usage, bool subjective)
+   void transaction_context::init(uint64_t initial_net_usage)
    {
       FC_ASSERT( !is_initialized, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
@@ -88,10 +88,11 @@ namespace eosio { namespace chain {
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
       for( const auto& a : bill_to_accounts ) {
-         auto net_limit = rl.get_account_net_limit(a, subjective);
+         bool elastic = !(control.is_producing_block() && control.is_resource_greylisted(a));
+         auto net_limit = rl.get_account_net_limit(a, elastic);
          if( net_limit >= 0 )
             account_net_limit = std::min( account_net_limit, net_limit );
-         auto cpu_limit = rl.get_account_cpu_limit(a, subjective);
+         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 )
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
       }
@@ -134,13 +135,12 @@ namespace eosio { namespace chain {
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
       published = control.pending_block_time();
-      init( initial_net_usage, false);
+      init( initial_net_usage);
    }
 
    void transaction_context::init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                                  uint64_t packed_trx_prunable_size,
-                                                 uint32_t num_signatures,
-                                                 bool subjective)
+                                                 uint32_t num_signatures)
    {
       const auto& cfg = control.get_global_properties().configuration;
 
@@ -169,7 +169,7 @@ namespace eosio { namespace chain {
       control.validate_expiration( trx );
       control.validate_tapos( trx );
       control.validate_referenced_accounts( trx );
-      init( initial_net_usage, subjective);
+      init( initial_net_usage);
       record_transaction( id, trx.expiration ); /// checks for dupes
    }
 
@@ -201,7 +201,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   void transaction_context::finalize(bool subjective) {
+   void transaction_context::finalize() {
       FC_ASSERT( is_initialized, "must first initialize" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
@@ -223,10 +223,11 @@ namespace eosio { namespace chain {
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
       for( const auto& a : bill_to_accounts ) {
-         auto net_limit = rl.get_account_net_limit(a, subjective);
+         bool elastic = !(control.is_producing_block() && control.is_resource_greylisted(a));
+         auto net_limit = rl.get_account_net_limit(a, elastic);
          if( net_limit >= 0 )
             account_net_limit = std::min( account_net_limit, net_limit );
-         auto cpu_limit = rl.get_account_cpu_limit(a, subjective);
+         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 )
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
       }

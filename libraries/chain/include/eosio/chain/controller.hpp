@@ -61,6 +61,8 @@ namespace eosio { namespace chain {
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
             db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
+
+            flat_set<account_name>   resource_greylist;
          };
 
          enum class block_status {
@@ -178,7 +180,10 @@ namespace eosio { namespace chain {
          void check_key_list( const public_key_type& key )const;
          bool is_producing_block()const;
 
-
+         void add_resource_greylist(const account_name &name);
+         void remove_resource_greylist(const account_name &name);
+         bool is_resource_greylisted(const account_name &name) const;
+         const flat_set<account_name> &get_resource_greylist() const;
 
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
@@ -262,4 +267,5 @@ FC_REFLECT( eosio::chain::controller::config,
             (contracts_console)
             (genesis)
             (wasm_runtime)
+            (resource_greylist)
           )

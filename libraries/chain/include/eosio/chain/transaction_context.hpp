@@ -6,7 +6,7 @@ namespace eosio { namespace chain {
 
    class transaction_context {
       private:
-         void init( uint64_t initial_net_usage, bool subjective = true);
+         void init( uint64_t initial_net_usage);
 
       public:
 
@@ -19,13 +19,12 @@ namespace eosio { namespace chain {
 
          void init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                   uint64_t packed_trx_prunable_size,
-                                  uint32_t num_signatures,
-                                  bool subjective = true);
+                                  uint32_t num_signatures);
 
          void init_for_deferred_trx( fc::time_point published );
 
          void exec();
-         void finalize(bool subjective = true);
+         void finalize();
          void squash();
          void undo();
 

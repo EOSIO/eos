@@ -655,15 +655,14 @@ struct controller_impl {
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
                                            bool implicit,
-                                           uint32_t billed_cpu_time_us,
-                                           bool subjective = true)
+                                           uint32_t billed_cpu_time_us)
    {
       FC_ASSERT(deadline != fc::time_point(), "deadline cannot be uninitialized");
 
       transaction_trace_ptr trace;
       try {
          transaction_context trx_context(self, trx->trx, trx->id);
-         if (subjective && (bool)subjective_cpu_leeway) {
+         if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
          trx_context.deadline = deadline;
@@ -676,7 +675,7 @@ struct controller_impl {
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
-                                               trx->trx.signatures.size(), subjective);
+                                               trx->trx.signatures.size());
             }
 
             if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
@@ -699,7 +698,7 @@ struct controller_impl {
                );
             }
             trx_context.exec();
-            trx_context.finalize(subjective); // Automatically rounds up network and CPU usage in trace and bills payers if successful
+            trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
             auto restore = make_block_restore_point();
 
@@ -844,7 +843,7 @@ struct controller_impl {
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
-               trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us, false);
+               trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us);
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
             } else {
@@ -1611,6 +1610,22 @@ bool controller::is_known_unexpired_transaction( const transaction_id_type& id) 
 
 void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
    my->subjective_cpu_leeway = leeway;
+}
+
+void controller::add_resource_greylist(const account_name &name) {
+   my->conf.resource_greylist.insert(name);
+}
+
+void controller::remove_resource_greylist(const account_name &name) {
+   my->conf.resource_greylist.erase(name);
+}
+
+bool controller::is_resource_greylisted(const account_name &name) const {
+   return my->conf.resource_greylist.find(name) !=  my->conf.resource_greylist.end();
+}
+
+const flat_set<account_name> &controller::get_resource_greylist() const {
+   return  my->conf.resource_greylist;
 }
 
 } } /// eosio::chain
