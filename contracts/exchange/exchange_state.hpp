@@ -59,7 +59,7 @@ namespace eosio {
    struct exchange_state {
       account_name      manager;
       extended_asset    supply;
-      uint32_t          fee = 0;
+      double            fee = 0;
 
       struct connector {
          extended_asset balance;

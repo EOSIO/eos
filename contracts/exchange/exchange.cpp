@@ -120,13 +120,14 @@ namespace eosio {
 
    void exchange::createx( account_name    creator,
                  asset           initial_supply,
-                 uint32_t        /* fee */,
+                 double          fee,
                  extended_asset  base_deposit,
                  extended_asset  quote_deposit
                ) {
       require_auth( creator );
       eosio_assert( initial_supply.is_valid(), "invalid initial supply" );
       eosio_assert( initial_supply.amount > 0, "initial supply must be positive" );
+      eosio_assert( fee >= 0, "fee can not be negative" );
       eosio_assert( base_deposit.is_valid(), "invalid base deposit" );
       eosio_assert( base_deposit.amount > 0, "base deposit must be positive" );
       eosio_assert( quote_deposit.is_valid(), "invalid quote deposit" );
@@ -147,6 +148,7 @@ namespace eosio {
       exstates.emplace( creator, [&]( auto& s ) {
           s.manager = creator;
           s.supply  = extended_asset(initial_supply, _this_contract);
+          s.fee = fee;
           s.base.balance = base_deposit;
           s.quote.balance = quote_deposit;
 

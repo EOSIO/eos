@@ -40,7 +40,7 @@ namespace eosio {
 
          void createx( account_name    creator,
                        asset           initial_supply,
-                       uint32_t        fee,
+                       double          fee,
                        extended_asset  base_deposit,
                        extended_asset  quote_deposit
                      );

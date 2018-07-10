@@ -42,7 +42,7 @@ FC_REFLECT( margin_state, (total_lendable)(total_lent)(least_collateralized)(int
 struct exchange_state {
    account_name      manager;
    extended_asset    supply;
-   uint32_t          fee = 0;
+   double            fee = 0;
 
    struct connector {
       extended_asset balance;
@@ -244,11 +244,11 @@ class exchange_tester : public TESTER {
       auto create_exchange( name contract, name signer,
                             extended_asset base_deposit,
                             extended_asset quote_deposit,
-                            asset exchange_supply ) {
+                            asset exchange_supply, double fee = 0 ) {
          return push_action( contract, signer, N(createx), mutable_variant_object()
                         ("creator", signer)
                         ("initial_supply", exchange_supply)
-                        ("fee", 0)
+                        ("fee", fee)
                         ("base_deposit", base_deposit)
                         ("quote_deposit", quote_deposit)
                     );
@@ -468,5 +468,59 @@ BOOST_AUTO_TEST_CASE( exchange_lend2 ) try {
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(42.85 USD));
 } FC_LOG_AND_RETHROW() /// exchange_lend2
 
+BOOST_AUTO_TEST_CASE( exchange_fees ) try {
+   exchange_tester t;
+
+   // HIFEE: USD/BTC, 10% fee
+   t.create_account( N(maker) );
+   t.issue( N(exchange), N(exchange), N(maker), A(1000.00 USD) );
+   t.issue( N(exchange), N(exchange), N(maker), A(1000.00 BTC) );
+   t.deposit( N(exchange), N(maker), extended_asset{ A(1000.00 USD), N(exchange) } );
+   t.deposit( N(exchange), N(maker), extended_asset{ A(1000.00 BTC), N(exchange) } );
+   t.create_exchange(
+      N(exchange),
+      N(maker),
+      extended_asset{ A(1000.00 USD), N(exchange) },
+      extended_asset{ A(1000.00 BTC), N(exchange) },
+      A(1000.00 HIFEE),
+      0.10);
+
+   // holder1: 10.00 USD
+   t.create_account( N(holder1) );
+   t.issue( N(exchange), N(exchange), N(holder1), A(10.00 USD) );
+   t.deposit( N(exchange), N(holder1), extended_asset{ A(10.00 USD), N(exchange) } );
+   t.marketorder( N(exchange), N(holder1), symbol(2,"HIFEE"), extended_asset{ A(10.00 USD), N(exchange) }, extended_symbol{ symbol(2,"HIFEE"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(holder1), A(4.44 HIFEE));
+
+   // trader1: round trip 10.00 USD
+   t.create_account( N(trader1) );
+   t.issue( N(exchange), N(exchange), N(trader1), A(10.00 USD) );
+   t.deposit( N(exchange), N(trader1), extended_asset{ A(10.00 USD), N(exchange) } );
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(10.00 USD), N(exchange) }, extended_symbol{ symbol(2,"HIFEE"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(4.42 HIFEE));
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(4.42 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(7.94 BTC));
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(7.94 BTC), N(exchange) }, extended_symbol{ symbol(2,"HIFEE"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(3.58 HIFEE));
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIFEE"), extended_asset{ A(3.58 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(6.56 USD)); // approx 10.00 * (0.90)^4
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(0.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader1), A(0.00 HIFEE));
+
+   // trader2: round trip 1000.00 USD
+   t.create_account( N(trader2) );
+   t.issue( N(exchange), N(exchange), N(trader2), A(1000.00 USD) );
+   t.deposit( N(exchange), N(trader2), extended_asset{ A(1000.00 USD), N(exchange) } );
+   t.marketorder( N(exchange), N(trader2), symbol(2,"HIFEE"), extended_asset{ A(1000.00 USD), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(398.26 BTC));
+   t.marketorder( N(exchange), N(trader2), symbol(2,"HIFEE"), extended_asset{ A(398.26 BTC), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(644.13 USD)); // slightly worse than 1000.00 * (0.90)^4
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(0.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(trader2), A(0.00 HIFEE));
+
+   // holder1: profit
+   t.marketorder( N(exchange), N(holder1), symbol(2,"HIFEE"), extended_asset{ A(4.44 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(holder1), A(10.97 USD));
+} FC_LOG_AND_RETHROW() /// exchange_fees
 
 BOOST_AUTO_TEST_SUITE_END()

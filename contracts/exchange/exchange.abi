@@ -88,7 +88,7 @@
       "fields": [
         {"name":"creator", "type":"account_name"},
         {"name":"initial_supply", "type":"asset"},
-        {"name":"fee", "type":"uint32"},
+        {"name":"fee", "type":"float64"},
         {"name":"base_deposit", "type":"extended_asset"},
         {"name":"quote_deposit", "type":"extended_asset"}
       ]
