@@ -65,12 +65,38 @@ namespace eosio {
 
       if( last_sync == now ) return;
 
+      bool price_drift_too_long = (now.slot - last_price_in_range.slot) > 120*60*24; /*blocks per day*/
+
       /// if bancor hasn't traded within 1% of 24hr median average price within the past 24 hour, then 
       /// we need to modify the collateral or pegged currency supply so that it is closer to
       /// the average... within 24 hours this should cause the price to converge to within 1%
-      if( (now.slot - last_price_in_range.slot) > 120*60*24 /*blocks per day*/ ) {
+      if( !price_drift_too_long ) return;
 
-         double new_bancor_price = ((bancor_price * (120*60-1)) + current_target_price) / ( 120*60 );
+      double desired_collateral    = (sold_peg.amount + pegged_balance.amount) * bancor_price * target_reserve_ratio;
+      double current_collateral    = spare_collateral.amount + collateral_balance.amount;
+      bool above_collateral_ratio  = desired_collateral > current_collateral;
+      double new_bancor_price      = ((bancor_price * (120*60-1)) + current_target_price) / ( 120*60 );
+
+      if( current_target_price > bancor_price ) { /// price too high
+         
+         if( above_collateral_ratio ) {
+            /// calculate the number of pegged_balance required to make bancor_price == new_bancor_price
+         }
+         else {
+            /// calculate the amount of collateral required and move it from spare collateral
+         }
+
+      } else { // price too low
+
+         if( above_collateral_ratio ) {
+         }
+         else {
+         }
+
+      }
+
+
+
 
          /// the total value of maker collateral should always equal the value of the maker pegged 
          double collateral_expected = pegged_balance.amount / new_bancor_price;
@@ -86,38 +112,6 @@ namespace eosio {
          /// adjust spare collateral and maker collateral by delta
          spare_collateral.amount   -= delta_col;
          collateral_balance.amount += delta_col;
-      }
-
-   }
-
-   /**
-    *  This method will issue new pegged tokens if the total collateral ratio is above the
-    *  target.
-    */
-   void dexchange_state::sync_toward_target_reserve() {
-
-#if 0
-      double total_collateral         = collateral_balance.amount + spare_collateral.amount;
-      double total_debt               = sold_peg.amount + pegged_balance.amount;
-
-
-      double ideal_collateral_balance = total_collateral / target_reserve_ratio;
-      double ideal_total_debt         = ideal_collateral_balance * new_bancor_price;
-
-
-      double target_collateral = (total_debt * target_reserve_ratio / new_bancor_price);
-      
-      if( collateral_balance.amount > target_collateral ) {
-         double target_debt = ideal_collateral_balance * new_bancor_price;
-         double new_debt    = target_debt - total_debt;
-         int64_t delta_col  = int64_t( ideal_collateral_balance - collateral_balance.amount );
-         collateral_balance.amount += delta_col;
-         spare_collateral          -= delta_col;
-         
-         eosio_assert( spare_collateral.amount > 0 && collateral_balance.amount > 0, "collateral error" );
-         pegged_balance.amount += new_debt;
-      }
-#endif 
 
    }
 
