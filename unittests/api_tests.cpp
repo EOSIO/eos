@@ -1353,6 +1353,14 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
                                            eosio_assert_message_exception, "updater cannot change primary key when modifying an object");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_run_out_of_avl_pk", {},
                                            eosio_assert_message_exception, "next primary key in table is at autoincrement limit");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail", {},
+                                           eosio_assert_message_exception, "unable to find key");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail_with_msg", {},
+                                           eosio_assert_message_exception, "unable to find primary key in require_find");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail", {},
+                                           eosio_assert_message_exception, "unable to find secondary key");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail_with_msg", {},
+                                           eosio_assert_message_exception, "unable to find sec key");
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_sk_cache_pk_lookup", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_pk_cache_sk_lookup", {});
 
