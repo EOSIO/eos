@@ -1625,7 +1625,7 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
 
-   abi_serializer::set_max_serialization_time(fc::seconds(1)); // No risk to client side serialization taking a long time
+   fc::microseconds abi_serializer_max_time = fc::seconds(1); // No risk to client side serialization taking a long time
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
@@ -1771,27 +1771,37 @@ int main( int argc, char** argv ) {
    string lower;
    string upper;
    string table_key;
+   string key_type;
    bool binary = false;
    uint32_t limit = 10;
+   string index_position;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
    getTable->add_option( "contract", code, localized("The contract who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
-   getTable->add_option( "-k,--key", table_key, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
+   getTable->add_option( "-k,--key", table_key, localized("Deprecated") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
+   getTable->add_option( "--index", index_position,
+                         localized("Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc.\n"
+                                   "\t\t\t\tNumber or name of index can be specified, e.g. 'secondary' or '2'."));
+   getTable->add_option( "--key-type", key_type,
+                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128).\n"
+                                   "\t\t\t\tSpecial type 'name' indicates an account name."));
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
                          ("code",code)
                          ("scope",scope)
                          ("table",table)
-                         ("table_key",table_key)
+                         ("table_key",table_key) // not used
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)
+                         ("key_type",key_type)
+                         ("index_position", index_position)
                          );
 
       std::cout << fc::json::to_pretty_string(result)
@@ -2553,11 +2563,11 @@ int main( int argc, char** argv ) {
    });
 
    //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-   auto resolver = [](const name& code) -> optional<abi_serializer> {
+   auto resolver = [abi_serializer_max_time](const name& code) -> optional<abi_serializer> {
       auto result = call(get_code_func, fc::mutable_variant_object("account_name", code.to_string()));
       if (result["abi"].is_object()) {
          //std::cout << "ABI: " << fc::json::to_pretty_string(result) << std::endl;
-         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>()));
+         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>(), abi_serializer_max_time));
       } else {
          std::cerr << "ABI for contract " << code.to_string() << " not found. Action data will be shown in hex only." << std::endl;
          return optional<abi_serializer>();
@@ -2643,7 +2653,7 @@ int main( int argc, char** argv ) {
 
       fc::variant trx_var;
       abi_serializer abi;
-      abi.to_variant(trx, trx_var, resolver);
+      abi.to_variant(trx, trx_var, resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;

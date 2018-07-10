@@ -30,7 +30,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
 
    produce_blocks(1);
 
-   abi_serializer abi_ser(json::from_string(multi_index_test_abi).as<abi_def>());
+   abi_serializer abi_ser(json::from_string(multi_index_test_abi).as<abi_def>(), abi_serializer_max_time);
 
    signed_transaction trx1;
    {
@@ -40,7 +40,8 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
       trigger_act.name = N(trigger);
       trigger_act.authorization = vector<permission_level>{{N(multitest), config::active_name}};
       trigger_act.data = abi_ser.variant_to_binary("trigger", mutable_variant_object()
-                                                   ("what", 0)
+                                                   ("what", 0),
+                                                   abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(trigger_act));
       set_transaction_headers(trx);
@@ -57,7 +58,8 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
       trigger_act.name = N(trigger);
       trigger_act.authorization = vector<permission_level>{{N(multitest), config::active_name}};
       trigger_act.data = abi_ser.variant_to_binary("trigger", mutable_variant_object()
-                                                   ("what", 1)
+                                                   ("what", 1),
+                                                   abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(trigger_act));
       set_transaction_headers(trx);

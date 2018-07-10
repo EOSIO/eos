@@ -41,14 +41,11 @@ class Utils:
     SigTermTag="term"
 
     systemWaitTimeout=90
-
-    # mongoSyncTime: nodeos mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
-    #  a wait period before the 2nd DB check (if first check fails)
-    mongoSyncTime=25
+    irreversibleTimeout=60
 
     @staticmethod
-    def setMongoSyncTime(syncTime):
-        Utils.mongoSyncTime=syncTime
+    def setIrreversibleTimeout(timeout):
+        Utils.irreversibleTimeout=timeout
 
     @staticmethod
     def setSystemWaitTimeout(timeout):
