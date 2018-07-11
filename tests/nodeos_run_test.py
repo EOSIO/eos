@@ -686,7 +686,7 @@ try:
 
         if enableMongo:
             blockId=block["block_id"]
-            block2=node.getBlockById(blockId)
+            block2=node.getBlockByIdMdb(blockId)
             if block2 is None:
                 errorExit("mongo get block by id %s" % blockId)
 
