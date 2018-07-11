@@ -859,37 +859,64 @@ class Node(object):
         if toAccount is None:
             toAccount=fromAccount
 
-        specificCmd="system delegatebw"
+        cmdDesc="system delegatebw"
         transferStr="--transfer" if transferTo else "" 
-        cmd="%s %s %s -j %s %s \"%s %s\" \"%s %s\" %s" % (
-            Utils.EosClientPath, self.endpointArgs, specificCmd, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
-        return self.processCmd(cmd, specificCmd, waitForTransBlock)
+        cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
+            cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
+        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock)
+
+        transId=Node.getTransId(trans)
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
+            return None
+        return trans
 
     def regproducer(self, producer, url, location, waitForTransBlock=False):
-        specificCmd="system regproducer"
-        cmd="%s %s %s -j %s %s %s %s" % (
-            Utils.EosClientPath, self.endpointArgs, specificCmd, producer.name, producer.activePublicKey, url, location)
-        return self.processCmd(cmd, specificCmd, waitForTransBlock)
+        cmdDesc="system regproducer"
+        cmd="%s -j %s %s %s %s" % (
+            cmdDesc, producer.name, producer.activePublicKey, url, location)
+        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock)
+
+        transId=Node.getTransId(trans)
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
+            return None
+        return trans
 
     def vote(self, account, producers, waitForTransBlock=False):
-        specificCmd = "system voteproducer prods"
-        cmd="%s %s %s -j %s %s" % (
-            Utils.EosClientPath, self.endpointArgs, specificCmd, account.name, " ".join(producers))
-        return self.processCmd(cmd, specificCmd, waitForTransBlock)
+        cmdDesc = "system voteproducer prods"
+        cmd="%s -j %s %s" % (
+            cmdDesc, account.name, " ".join(producers))
+        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock)
 
-    def processCmd(self, cmd, cmdDesc, waitForTransBlock):
+        transId=Node.getTransId(trans)
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
+            return None
+        return trans
+
+    def processCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None):
+        cmd="%s %s %s" % (Utils.EosClientPath, self.endpointArgs, cmd)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
             trans=Utils.runCmdReturnJson(cmd)
         except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during %s. %s" % (cmdDesc, msg))
+            if not silentErrors:
+                msg=ex.output.decode("utf-8")
+                errorMsg="Exception during %s. %s" % (cmdDesc, msg)
+                if errorOnExit:
+                    Utils.cmdError(errorMsg)
+                    Utils.errorExit(errorMsg)
+                else:
+                    Utils.Print("ERROR: %s" % (errorMsg))
             return None
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
+        if exitMsg is not None:
+            exitMsg=": " + exitMsg
+        else:
+            exitMsg=""
+        if exitOnError and trans is None:
+            Utils.cmdError("could not %s%s" % (cmdDesc,exitMsg))
+            errorExit("Failed to %s" % (cmdDesc))
+
         return trans
 
     def getInfo(self, silentErrors=False):
@@ -1037,7 +1064,6 @@ class Node(object):
         stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
         stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
         with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-            #cmd=self.cmd + ("" if chainArg is None else (" " + chainArg))
             cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
             Utils.Print("cmd: %s" % (cmd))
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
