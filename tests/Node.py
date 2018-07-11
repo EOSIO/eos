@@ -186,8 +186,7 @@ class Node(object):
         assert isinstance(blockNum, int)
         assert (blockNum > 0)
 
-        info=self.getInfo(silentErrors=True)
-        assert(info)
+        info=self.getInfo(silentErrors=True, exitOnError=True)
         node_block_num=0
         try:
             node_block_num=int(info["head_block_num"])
@@ -203,8 +202,7 @@ class Node(object):
         assert isinstance(blockNum, int)
         assert (blockNum > 0)
 
-        info=self.getInfo(silentErrors=True)
-        assert(info)
+        info=self.getInfo(silentErrors=True, exitOnError=True)
         node_block_num=0
         try:
             node_block_num=int(info["last_irreversible_block_num"])
@@ -903,17 +901,9 @@ class Node(object):
 
         return trans
 
-    def getInfo(self, silentErrors=False):
-        cmd="%s %s get info" % (Utils.EosClientPath, self.endpointArgs)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            if not silentErrors:
-                msg=ex.output.decode("utf-8")
-                Utils.Print("ERROR: Exception during get info. %s" % (msg))
-            return None
+    def getInfo(self, silentErrors=False, exitOnError=False):
+        cmdDesc = "get info"
+        return self.processCmd(cmdDesc, cmdDesc, exitOnError=exitOnError)
 
     def getBlockFromDb(self, idx):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
@@ -927,14 +917,14 @@ class Node(object):
             Utils.Print("ERROR: Exception during get db block. %s" % (msg))
             return None
 
-    def checkPulse(self):
-        info=self.getInfo(True)
+    def checkPulse(self, exitOnError=False):
+        info=self.getInfo(True, exitOnError=exitOnError)
         return False if info is None else True
 
     def getHeadBlockNum(self):
         """returns head block number(string) as returned by cleos get info."""
         if not self.enableMongo:
-            info=self.getInfo()
+            info=self.getInfo(exitOnError=True)
             if info is not None:
                 headBlockNumTag="head_block_num"
                 return info[headBlockNumTag]
@@ -948,7 +938,7 @@ class Node(object):
 
     def getIrreversibleBlockNum(self):
         if not self.enableMongo:
-            info=self.getInfo()
+            info=self.getInfo(exitOnError=True)
             if info is not None:
                 return info["last_irreversible_block_num"]
         else:

@@ -244,7 +244,7 @@ class Cluster(object):
         node.setWalletEndpointArgs(self.walletEndpointArgs)
         if Utils.Debug: Utils.Print("Node: %s", str(node))
 
-        node.checkPulse()
+        node.checkPulse(exitOnError=True)
         self.nodes=[node]
 
         if defproduceraPrvtKey is not None:
@@ -284,7 +284,7 @@ class Cluster(object):
             node.setWalletEndpointArgs(self.walletEndpointArgs)
             if Utils.Debug: Utils.Print("Node:", node)
 
-            node.checkPulse()
+            node.checkPulse(exitOnError=True)
             nodes.append(node)
 
         self.nodes=nodes
@@ -806,7 +806,7 @@ class Cluster(object):
                     return False
 
                 # wait for block production handover (essentially a block produced by anyone but eosio).
-                lam = lambda: biosNode.getInfo()["head_block_producer"] != "eosio"
+                lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
                 ret=Utils.waitForBool(lam)
                 if not ret:
                     Utils.Print("ERROR: Block production handover failed.")
