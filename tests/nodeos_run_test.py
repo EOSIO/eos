@@ -300,14 +300,10 @@ try:
 
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(transId)
-    if transaction is None:
-        cmdError("%s get transaction trans_id" % (ClientName))
-        errorExit("Failed to retrieve transaction details %s" % (transId))
+    transaction=node.getTransaction(transId, exitOnError=True)
 
     typeVal=None
     amountVal=None
-    assert(transaction)
     key=""
     try:
         if not enableMongo:

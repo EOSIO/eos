@@ -229,27 +229,18 @@ class Node(object):
         return finalized
 
     # pylint: disable=too-many-branches
-    def getTransaction(self, transId, silentErrors=False):
+    def getTransaction(self, transId, silentErrors=False, exitOnError=False):
         if not self.enableMongo:
-            cmd="%s %s get transaction %s" % (Utils.EosClientPath, self.endpointArgs, transId)
-            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-            try:
-                trans=Utils.runCmdReturnJson(cmd)
-                return trans
-            except subprocess.CalledProcessError as ex:
-                msg=ex.output.decode("utf-8")
-                if "Failed to connect" in msg:
-                    Utils.Print("ERROR: Node is unreachable. %s" % (msg))
-                    raise
-                if not silentErrors:
-                    Utils.Print("ERROR: Exception during transaction retrieval. %s" % (msg))
-                return None
+            cmdDesc="get transaction"
+            cmd="%s %s" % (cmdDesc, transId)
+            msg="(transaction id=%s)" % (transId);
+            return self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
-            return self.getTransactionMdb(transId, silentErrors)
+            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnError)
 
         return None
 
-    def getTransactionMdb(self, transId, silentErrors=False):
+    def getTransactionMdb(self, transId, silentErrors=False, exitOnError=False):
         """Get transaction from MongoDB. Since DB only contains finalized blocks, transactions can take a while to appear in DB."""
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
         #subcommand='db.Transactions.findOne( { $and : [ { "trx_id": "%s" }, {"irreversible":true} ] } )' % (transId)
@@ -257,11 +248,18 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
             trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
+            if trans is None and exitOnError:
+                Utils.cmdError("could not retrieve transaction in mongodb for transaction id=%s" % (transId))
+                errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
             return trans
         except subprocess.CalledProcessError as ex:
-            if not silentErrors:
-                msg=ex.output.decode("utf-8")
-                Utils.Print("ERROR: Exception during get db node get trans. %s" % (msg))
+            msg=ex.output.decode("utf-8")
+            errorMsg="Exception during get db node get trans in mongodb with transaction id=%s. %s" % (transId,msg)
+            if exitOnError:
+                Utils.cmdError("" % (errorMsg))
+                errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
+            elif not silentErrors:
+                Utils.Print("ERROR: %s" % (errorMsg))
             return None
 
     def isTransInBlock(self, transId, blockId):
@@ -302,9 +300,7 @@ class Node(object):
         """Given a transaction Id (string), will return block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
-        trans=self.getTransaction(transId)
-        if trans is None:
-            return None
+        trans=self.getTransaction(transId, exitOnError=True)
 
         refBlockNum=None
         key=""
