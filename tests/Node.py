@@ -836,7 +836,7 @@ class Node(object):
             return None
         return trans
 
-    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False):
+    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
         if toAccount is None:
             toAccount=fromAccount
 
@@ -844,29 +844,32 @@ class Node(object):
         transferStr="--transfer" if transferTo else "" 
         cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
-        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock)
+        msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
+        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock, exitOnError=exitOnError, exitMsg=msg)
 
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
             return None
         return trans
 
-    def regproducer(self, producer, url, location, waitForTransBlock=False):
+    def regproducer(self, producer, url, location, waitForTransBlock=False, exitOnError=False):
         cmdDesc="system regproducer"
         cmd="%s -j %s %s %s %s" % (
             cmdDesc, producer.name, producer.activePublicKey, url, location)
-        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock)
+        msg="producer=%s" % (producer.name);
+        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock, exitOnError=exitOnError, exitMsg=msg)
 
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
             return None
         return trans
 
-    def vote(self, account, producers, waitForTransBlock=False):
+    def vote(self, account, producers, waitForTransBlock=False, exitOnError=False):
         cmdDesc = "system voteproducer prods"
         cmd="%s -j %s %s" % (
             cmdDesc, account.name, " ".join(producers))
-        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock)
+        msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
+        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock, exitOnError=exitOnError, exitMsg=msg)
 
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
