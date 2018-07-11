@@ -416,10 +416,10 @@ class Node(object):
     def getEosAccount(self, name, exitOnError=False):
         assert(isinstance(name, str))
         if not self.enableMongo:
-	        cmdDesc="get account"
-	        cmd="%s -j %s" % (cmdDesc, name)
-	        msg="( getEosAccount(name=%s) )" % (name);
-	        return self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+            cmdDesc="get account"
+            cmd="%s -j %s" % (cmdDesc, name)
+            msg="( getEosAccount(name=%s) )" % (name);
+            return self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         else:
             return self.getEosAccountFromDb(name, exitOnError=exitOnError)
 
@@ -837,7 +837,7 @@ class Node(object):
         cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
@@ -849,7 +849,7 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (
             cmdDesc, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
-        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
@@ -861,7 +861,7 @@ class Node(object):
         cmd="%s -j %s %s" % (
             cmdDesc, account.name, " ".join(producers))
         msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
-        trans=self.processCmd(cmd, cmdDesc, waitForTransBlock, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
@@ -878,7 +878,7 @@ class Node(object):
             if not silentErrors:
                 msg=ex.output.decode("utf-8")
                 errorMsg="Exception during %s. %s" % (cmdDesc, msg)
-                if errorOnExit:
+                if exitOnError:
                     Utils.cmdError(errorMsg)
                     Utils.errorExit(errorMsg)
                 else:
@@ -890,7 +890,7 @@ class Node(object):
         else:
             exitMsg=""
         if exitOnError and trans is None:
-            Utils.cmdError("could not %s%s" % (cmdDesc,exitMsg))
+            Utils.cmdError("could not %s - %s" % (cmdDesc,exitMsg))
             errorExit("Failed to %s" % (cmdDesc))
 
         return trans
