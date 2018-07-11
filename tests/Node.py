@@ -130,9 +130,8 @@ class Node(object):
             assert(account)
             assert(isinstance(account, Account))
             if Utils.Debug: Utils.Print("Validating account %s" % (account.name))
-            accountInfo=self.getEosAccount(account.name)
+            accountInfo=self.getEosAccount(account.name, exitOnError=True)
             try:
-                assert(accountInfo)
                 if not self.enableMongo:
                     assert(accountInfo["account_name"] == account.name)
                 else:
@@ -416,20 +415,15 @@ class Node(object):
 
         return trans
 
-    def getEosAccount(self, name):
+    def getEosAccount(self, name, exitOnError=False):
         assert(isinstance(name, str))
         if not self.enableMongo:
-            cmd="%s %s get account -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
-            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-            try:
-                trans=Utils.runCmdReturnJson(cmd)
-                return trans
-            except subprocess.CalledProcessError as ex:
-                msg=ex.output.decode("utf-8")
-                Utils.Print("ERROR: Exception during get account. %s" % (msg))
-                return None
+	        cmdDesc="get account"
+	        cmd="%s -j %s" % (cmdDesc, name)
+	        msg="( getEosAccount(name=%s) )" % (name);
+	        return self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         else:
-            return self.getEosAccountFromDb(name)
+            return self.getEosAccountFromDb(name, exitOnError=exitOnError)
 
     def getEosAccountFromDb(self, name):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
@@ -822,7 +816,7 @@ class Node(object):
         if opts is not None:
             cmdArr += opts.split()
         s=" ".join(cmdArr)
-        if Utils.Debug: Utils.Print("cmd: %s" % (s))
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
         try:
             trans=Utils.runCmdArrReturnJson(cmdArr)
             return (True, trans)
