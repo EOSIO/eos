@@ -385,22 +385,16 @@ class Node(object):
         assert(isinstance(blockId, int))
         return self.isBlockFinalized(blockId)
 
-    # Create & initialize account and return creation transactions. Return transaction json object
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=100):
-        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
-            Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
-            account.ownerPublicKey, account.activePublicKey,
-            stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
 
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        trans=None
-        try:
-            trans=Utils.runCmdReturnJson(cmd)
-            transId=Node.getTransId(trans)
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during account creation. %s" % (msg))
-            return None
+    # Create & initialize account and return creation transactions. Return transaction json object
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=100, exitOnError=False):
+        cmdDesc="system newaccount"
+        cmd='%s -j %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
+            cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
+            account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
+        msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
+        trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+        transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
             self.waitForTransInBlock(transId) # seems like account creation needs to be finalized before transfer can happen
@@ -412,22 +406,15 @@ class Node(object):
 
         return trans
 
-    def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
+    def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, exitOnError=False):
         """Create account and return creation transactions. Return transaction json object.
         waitForTransBlock: wait on creation transaction id to appear in a block."""
-        cmd="%s %s create account -j %s %s %s %s" % (
-            Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
-            account.ownerPublicKey, account.activePublicKey)
-
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        trans=None
-        try:
-            trans=Utils.runCmdReturnJson(cmd)
-            transId=Node.getTransId(trans)
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during account creation. %s" % (msg))
-            return None
+        cmdDesc="create account"
+        cmd="%s -j %s %s %s %s" % (
+            cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey, account.activePublicKey)
+        msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
+        trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+        transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
             self.waitForTransInBlock(transId) # seems like account creation needs to be finlized before transfer can happen
