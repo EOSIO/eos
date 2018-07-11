@@ -826,17 +826,10 @@ class Node(object):
                 Utils.Print("ERROR: Exception during push message. %s" % (msg))
             return (False, msg)
 
-    def setPermission(self, account, code, pType, requirement, waitForTransBlock=False):
-        cmd="%s %s set action permission -j %s %s %s %s" % (
-            Utils.EosClientPath, self.endpointArgs, account, code, pType, requirement)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        trans=None
-        try:
-            trans=Utils.runCmdReturnJson(cmd)
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during set permission. %s" % (msg))
-            return None
+    def setPermission(self, account, code, pType, requirement, waitForTransBlock=False, exitOnError=False):
+        cmdDesc="set action permission"
+        cmd="%s -j %s %s %s %s" % (cmdDesc, account, code, pType, requirement)
+        trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
 
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
