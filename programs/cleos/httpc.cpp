@@ -150,6 +150,18 @@ namespace eosio { namespace client { namespace http {
       return resolved_url(url, std::move(resolved_addresses), *resolved_port, is_loopback);
    }
 
+   string format_host_header(const resolved_url& url) {
+      // common practice is to only make the port explicit when it is the non-default port
+      if (
+         (url.scheme == "https" && url.resolved_port == 443) ||
+         (url.scheme == "http" && url.resolved_port == 80)
+      ) {
+         return url.server;
+      } else {
+         return url.server + ":" + url.port;
+      }
+   }
+
    fc::variant do_http_call( const connection_param& cp,
                              const fc::variant& postdata,
                              bool print_request,
@@ -163,8 +175,9 @@ namespace eosio { namespace client { namespace http {
 
    boost::asio::streambuf request;
    std::ostream request_stream(&request);
+   auto host_header_value = format_host_header(url);
    request_stream << "POST " << url.path << " HTTP/1.0\r\n";
-   request_stream << "Host: " << url.server << "\r\n";
+   request_stream << "Host: " << host_header_value << "\r\n";
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
    request_stream << "Connection: close\r\n";
