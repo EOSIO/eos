@@ -568,8 +568,7 @@ class Cluster(object):
         """create account, verify account and return transaction id"""
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
-        trans=node.createInitializeAccount(account, creator, stakedDeposit)
-        assert(trans)
+        trans=node.createInitializeAccount(account, creator, stakedDeposit, exitOnError=True)
         assert(node.verifyAccount(account))
         return trans
 
@@ -586,10 +585,10 @@ class Cluster(object):
     #         return transId
     #     return None
 
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, exitOnError=False):
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
-        trans=node.createInitializeAccount(account, creatorAccount, stakedDeposit, waitForTransBlock)
+        trans=node.createInitializeAccount(account, creatorAccount, stakedDeposit, waitForTransBlock, exitOnError=exitOnError)
         return trans
 
     @staticmethod
