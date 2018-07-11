@@ -435,23 +435,17 @@ class Node(object):
             Utils.Print("ERROR: Exception during get account from db. %s" % (msg))
             return None
 
-    def getTable(self, contract, scope, table):
-        cmd="%s %s get table %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, scope, table)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Utils.runCmdReturnJson(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during table retrieval. %s" % (msg))
-            return None
+    def getTable(self, contract, scope, table, exitOnError=False):
+        cmdDesc = "get table"
+        cmd="%s %s %s %s" % (cmdDesc, contract, scope, table)
+        msg="contract=%s, scope=%s, table=%s" % (contract, scope, table);
+        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     def getTableAccountBalance(self, contract, scope):
         assert(isinstance(contract, str))
         assert(isinstance(scope, str))
         table="accounts"
-        trans = self.getTable(contract, scope, table)
-        assert(trans)
+        trans = self.getTable(contract, scope, table, exitOnError=True)
         try:
             return trans["rows"][0]["balance"]
         except (TypeError, KeyError) as _:
