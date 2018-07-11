@@ -17,15 +17,8 @@ import re
 
 Print=Utils.Print
 errorExit=Utils.errorExit
-
+cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
-
-def cmdError(name, cmdCode=0, exitNow=False):
-    msg="FAILURE - %s%s" % (name, ("" if cmdCode == 0 else (" returned error code %d" % cmdCode)))
-    if exitNow:
-        errorExit(msg, True)
-    else:
-        Print(msg)
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"

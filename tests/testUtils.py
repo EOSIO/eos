@@ -84,12 +84,9 @@ class Utils:
         exit(errorCode)
 
     @staticmethod
-    def cmdError(name, cmdCode=0, exitNow=False):
+    def cmdError(name, cmdCode=0):
         msg="FAILURE - %s%s" % (name, ("" if cmdCode == 0 else (" returned error code %d" % cmdCode)))
-        if exitNow:
-            Utils.errorExit(msg, True)
-        else:
-            Utils.Print(msg)
+        Utils.Print(msg)
 
     @staticmethod
     def waitForObj(lam, timeout=None):
