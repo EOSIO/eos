@@ -672,10 +672,7 @@ try:
         errorExit("Failed to unlock wallet %s" % (defproduceraWallet.name))
 
     Print("Get account defproducera")
-    account=node.getEosAccount(defproduceraAccount.name)
-    if account is None:
-        cmdError("%s get account" % (ClientName))
-        errorExit("Failed to get account %s" % (defproduceraAccount.name))
+    account=node.getEosAccount(defproduceraAccount.name, exitOnError=True)
 
     Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.unlockWallet(testWallet):
