@@ -165,7 +165,7 @@ class Node(object):
 
         return None
 
-    def getBlockById(self, blockId, silentErrors=False):
+    def getBlockByIdMdb(self, blockId, silentErrors=False):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
         subcommand='db.blocks.findOne( { "block_id": "%s" } )' % (blockId)
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
