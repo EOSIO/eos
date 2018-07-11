@@ -1283,12 +1283,24 @@ namespace eosio {
 
    void listener::on_accept( boost::system::error_code ec ) {
      if( ec ) {
+        if( ec == boost::system::errc::too_many_files_open )
+           do_accept();
         return;
      }
-     auto newsession = std::make_shared<session>( move( _socket ), _net_plugin );
-     _net_plugin->async_add_session( newsession );
-     newsession->_local_peer_id = _net_plugin->_peer_id;
-     newsession->run();
+     std::shared_ptr<session> newsession;
+     try {
+        newsession = std::make_shared<session>( move( _socket ), _net_plugin );
+     }
+     catch( std::exception& e ) {
+        //making a session creates an instance of std::random_device which may open /dev/urandom
+        // for example. Unfortuately the only defined error is a std::exception derivative
+        _socket.close();
+     }
+     if( newsession ) {
+        _net_plugin->async_add_session( newsession );
+        newsession->_local_peer_id = _net_plugin->_peer_id;
+        newsession->run();
+     }
      do_accept();
    }
 
