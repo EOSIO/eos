@@ -1,16 +1,12 @@
 version: "3"
 
 services:
-  builder:
-    build:
-      context: builder
-    image: eosio/builder
 
   nodeosd:
     build:
       context: .
     image: eosio/eos
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e
+    command: /nodeosd.sh --data-dir /mnt/dev/data-dir -e
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -18,16 +14,16 @@ services:
     expose:
       - "8888"
     volumes:
-      - nodeos-data-volume:/opt/eosio/bin/data-dir
+      - nodeos-data-volume:/mnt/dev/data-dir
 
   keosd:
     image: eosio/eos
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
+    command: keosd --wallet-dir /mnt/dev/data-dir --http-server-address=127.0.0.1:8900
     hostname: keosd
     links:
       - nodeosd
     volumes:
-      - keosd-data-volume:/opt/eosio/bin/data-dir
+      - keosd-data-volume:/mnt/dev/data-dir
 
 volumes:
   nodeos-data-volume:

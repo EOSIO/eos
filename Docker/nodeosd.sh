@@ -1,16 +1,15 @@
 #!/bin/sh
-cd /opt/eosio/bin
 
-if [ -f '/opt/eosio/bin/data-dir/config.ini' ]; then
+if [ -f '/mnt/dev/data-dir/config.ini' ]; then
     echo
   else
-    cp /config.ini /opt/eosio/bin/data-dir
+    cp /config.ini /mnt/dev/data-dir
 fi
 
-if [ -d '/opt/eosio/bin/data-dir/contracts' ]; then
+if [ -d '/mnt/dev/data-dir/contracts' ]; then
     echo
   else
-    cp -r /contracts /opt/eosio/bin/data-dir
+    cp -r /eos/contracts /mnt/dev/data-dir
 fi
 
 while :; do
@@ -25,9 +24,9 @@ while :; do
 done
 
 if [ ! "$CONFIG_DIR" ]; then
-    CONFIG_DIR="--config-dir=/opt/eosio/bin/data-dir"
+    CONFIG_DIR="--config-dir=/mnt/dev/data-dir"
 else
     CONFIG_DIR=""
 fi
 
-exec /opt/eosio/bin/nodeos $CONFIG_DIR "$@"
+exec nodeos $CONFIG_DIR "$@"
