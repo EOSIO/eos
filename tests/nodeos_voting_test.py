@@ -35,10 +35,7 @@ def vote(node, account, producers):
 
 def getBlockProducer(node, blockNum):
     node.waitForBlock(blockNum)
-    block=node.getBlock(blockNum)
-    if block is None:
-        Utils.cmdError("could not get block number %s" % (blockNum))
-        errorExit("Failed to get block")
+    block=node.getBlock(blockNum, exitOnError=True)
     blockProducer=block["producer"]
     if blockProducer is None:
         Utils.cmdError("could not get producer for block number %s" % (blockNum))

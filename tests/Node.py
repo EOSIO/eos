@@ -142,20 +142,14 @@ class Node(object):
                 raise
 
     # pylint: disable=too-many-branches
-    def getBlock(self, blockNum, silentErrors=False):
+    def getBlock(self, blockNum, silentErrors=False, exitOnError=False):
         """Given a blockId will return block details."""
         assert(isinstance(blockNum, int))
         if not self.enableMongo:
-            cmd="%s %s get block %d" % (Utils.EosClientPath, self.endpointArgs, blockNum)
-            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-            try:
-                block=Utils.runCmdReturnJson(cmd)
-                return block
-            except subprocess.CalledProcessError as ex:
-                if not silentErrors:
-                    msg=ex.output.decode("utf-8")
-                    Utils.Print("ERROR: Exception during get block. %s" % (msg))
-                return None
+            cmdDesc="get block"
+            cmd="%s %d" % (cmdDesc, blockNum)
+            msg="(block number=%s)" % (blockNum);
+            return self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.blocks.findOne( { "block_num": %d } )' % (blockNum)
@@ -269,8 +263,8 @@ class Node(object):
         assert(blockId)
         assert(isinstance(blockId, int))
 
-        block=self.getBlock(blockId)
-        assert(block)
+        block=self.getBlock(blockId, exitOnError=True)
+
         transactions=None
         key=""
         try:
