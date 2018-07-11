@@ -27,10 +27,7 @@ class ProducerToNode:
 
 def vote(node, account, producers):
     Print("Votes for %s" % (account.name))
-    trans=node.vote(account, producers, waitForTransBlock=False)
-    if trans is None:
-        Utils.cmdError("voting with %s" % (account.name))
-        errorExit("Failed to vote with account %s" % (account.name))
+    trans=node.vote(account, producers, waitForTransBlock=False, exitOnError=True)
     return trans
 
 def getBlockProducer(node, blockNum):
@@ -250,10 +247,7 @@ try:
         node=cluster.getNode(i)
         node.producers=Cluster.parseProducers(i)
         for prod in node.producers:
-            trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False)
-            if trans is None:
-                Utils.cmdError("registering producer %s" % (prod.name))
-                errorExit("Failed registering producer %s" % (prod.name))
+            trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
 
     node0=cluster.getNode(0)
     if node0 is None:
@@ -278,10 +272,7 @@ try:
         if node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer") is None:
             errorExit("Failed to transfer funds %d from account %s to %s" % (
                 transferAmount, cluster.eosioAccount.name, account.name))
-        trans=node.delegatebw(account, 20000000.0000, 20000000.0000) 
-        if trans is None:
-            Utils.cmdError("delegate bandwidth for %s" % (account.name))
-            errorExit("Failed to delegate bandwidth for %s" % (account.name))
+        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, exitOnError=True)
 
     # containers for tracking producers
     prodsActive={}
