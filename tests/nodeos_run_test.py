@@ -488,8 +488,8 @@ try:
     Print("Test for block decoded packed transaction (issue 2932)")
     blockId=node.getBlockIdByTransId(transId)
     assert(blockId)
-    block=node.getBlock(blockId)
-    assert(block)
+    block=node.getBlock(blockId, exitOnError=True)
+
     transactions=None
     try:
         if not enableMongo:
@@ -691,10 +691,7 @@ try:
     if enableMongo:
         start=2 # block 1 (genesis block) is not signaled to the plugins, so not available in DB
     for blockNum in range(start, currentBlockNum+1):
-        block=node.getBlock(blockNum, silentErrors=False)
-        if block is None:
-            cmdError("%s get block" % (ClientName))
-            errorExit("get block by num %d" % blockNum)
+        block=node.getBlock(blockNum, silentErrors=False, exitOnError=True)
 
         if enableMongo:
             blockId=block["block_id"]

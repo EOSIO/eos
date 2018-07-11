@@ -345,7 +345,7 @@ def myTest(transWillEnterBlock):
             blockNum += 1
             Print("Our transaction is in block %d" % (blockNum))
 
-            block=node2.getBlock(blockNum)
+            block=node2.getBlock(blockNum, exitOnError=True)
             cycles=block["cycles"]
             if len(cycles) > 0:
                 blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
