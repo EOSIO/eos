@@ -649,17 +649,11 @@ try:
     code="currency1111"
     pType="transfer"
     requirement="active"
-    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
-    if trans is None:
-        cmdError("%s set action permission set" % (ClientName))
-        errorExit("Failed to set permission")
+    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True, exitOnError=True)
 
     Print("remove permission")
     requirement="null"
-    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
-    if trans is None:
-        cmdError("%s set action permission set" % (ClientName))
-        errorExit("Failed to remove permission")
+    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True, exitOnError=True)
 
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():
