@@ -2048,14 +2048,14 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 
    auto abi = eosio_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
 
-   auto is_assert_exception = [](fc::assert_exception const & e) -> bool {
+   auto is_assert_exception = [](const auto& e) -> bool {
       wlog(e.to_string()); return true;
    };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), fc::assert_exception, is_assert_exception );
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), duplicate_abi_type_def_exception, is_assert_exception);
 
    abi = fc::json::from_string(struct_cycle_abi).as<abi_def>();
    abi_serializer abis;
-   BOOST_CHECK_EXCEPTION( abis.set_abi(abi, max_serialization_time), fc::assert_exception, is_assert_exception );
+   BOOST_CHECK_EXCEPTION( abis.set_abi(abi, max_serialization_time), abi_circular_def_exception, is_assert_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2895,8 +2895,8 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), fc::assert_exception, is_table_exception );
+   auto is_table_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), duplicate_abi_type_def_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_struct_repeat)
@@ -2952,8 +2952,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("structs.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_struct_def_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_action_repeat)
@@ -3012,8 +3011,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("actions.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_action_def_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_table_repeat)
@@ -3075,8 +3073,7 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_table_def_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_type_def)
@@ -3169,8 +3166,8 @@ BOOST_AUTO_TEST_CASE(abi_type_loop)
    }
    )=====";
 
-   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), fc::assert_exception, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), duplicate_abi_type_def_exception, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3209,8 +3206,8 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine)
    }
    )=====";
 
-   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("invalid type") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), fc::assert_exception, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("invalid type") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), invalid_type_inside_abi, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3230,8 +3227,8 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine_to_name)
    }
    )=====";
 
-   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), fc::assert_exception, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), duplicate_abi_type_def_exception, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 

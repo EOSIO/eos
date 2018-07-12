@@ -297,12 +297,10 @@ namespace eosio { namespace chain {
                                     3100005, "Extracted genesis state from blocks.log" )
       FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception,    misc_exception,
                                     3100006, "Subjective exception thrown during block production" )
-      FC_DECLARE_DERIVED_EXCEPTION( overflow_exception,    misc_exception,
-                                    3100007, "Oveflow" )
       FC_DECLARE_DERIVED_EXCEPTION( multiple_voter_info,    misc_exception,
-                                    3100008, "Multiple voter info detected" )
+                                    3100007, "Multiple voter info detected" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_feature,    misc_exception,
-                                    3100009, "Feature is currently unsupported" )
+                                    3100008, "Feature is currently unsupported" )
       
 
 
