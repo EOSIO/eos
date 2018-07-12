@@ -1003,7 +1003,7 @@ namespace eosio {
            peer_ilog(this, "received signed_block_ptr");
            if (!b) {
               peer_elog(this, "bad signed_block_ptr : null pointer");
-              FC_THROW("bad block" );
+              EOS_THROW(block_validate_exception, "bad block" );
            }
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
@@ -1048,7 +1048,7 @@ namespace eosio {
            peer_ilog(this, "received packed_transaction_ptr");
            if (!p) {
               peer_elog(this, "bad packed_transaction_ptr : null pointer");
-              FC_THROW("bad transaction");
+              EOS_THROW(transaction_exception, "bad transaction");
            }
 
            auto id = p->id();
@@ -1130,7 +1130,7 @@ namespace eosio {
         }
 
         void run() {
-           FC_ASSERT( _acceptor.is_open(), "unable top open listen socket" );
+           EOS_ASSERT( _acceptor.is_open(), plugin_exception, "unable top open listen socket" );
            do_accept();
         }
 
@@ -1360,7 +1360,7 @@ namespace eosio {
       wlog( "bnet startup " );
 
       auto& chain = app().get_plugin<chain_plugin>().chain();
-      FC_ASSERT ( chain.get_read_mode() != chain::db_read_mode::IRREVERSIBLE, "bnet is not compatible with \"irreversible\" read_mode");
+      EOS_ASSERT ( chain.get_read_mode() != chain::db_read_mode::IRREVERSIBLE, plugin_exception, "bnet is not compatible with \"irreversible\" read_mode");
 
       my->_on_appled_trx_handle = app().get_channel<channels::accepted_transaction>()
                                 .subscribe( [this]( transaction_metadata_ptr t ){
@@ -1439,7 +1439,7 @@ namespace eosio {
       wlog( "done joining threads" );
 
       my->for_each_session([](auto ses){
-         FC_ASSERT( false, "session ${ses} still active", ("ses", ses->_session_num) );
+         EOS_ASSERT( false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num) );
       });
 
       // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl

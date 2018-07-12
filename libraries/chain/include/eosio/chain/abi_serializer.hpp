@@ -185,8 +185,8 @@ namespace impl {
       static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver,
                        size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          mvo(name,v);
       }
 
@@ -206,8 +206,8 @@ namespace impl {
       static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver,
                        size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          vector<variant> array;
          array.reserve(v.size());
 
@@ -227,8 +227,8 @@ namespace impl {
       static void add( mutable_variant_object &mvo, const char* name, const std::shared_ptr<M>& v, Resolver resolver,
                        size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          if( !v ) return;
          mutable_variant_object obj_mvo;
          add(obj_mvo, "_", *v, resolver, recursion_depth, deadline, max_serialization_time);
@@ -257,8 +257,8 @@ namespace impl {
       static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver,
                        size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          mutable_variant_object obj_mvo;
          add_static_variant<Resolver> adder(obj_mvo, resolver, recursion_depth, deadline, max_serialization_time);
          v.visit(adder);
@@ -276,8 +276,8 @@ namespace impl {
       static void add( mutable_variant_object &out, const char* name, const action& act, Resolver resolver,
                        size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          mutable_variant_object mvo;
          mvo("account", act.account);
          mvo("name", act.name);
@@ -314,8 +314,8 @@ namespace impl {
       static void add( mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver,
                        size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          mutable_variant_object mvo;
          auto trx = ptrx.get_transaction();
          mvo("id", trx.id());
@@ -382,8 +382,8 @@ namespace impl {
       static void extract( const variant& v, M& o, Resolver,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          from_variant(v, o);
       }
 
@@ -403,8 +403,8 @@ namespace impl {
       static void extract( const variant& v, vector<M>& o, Resolver resolver,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          const variants& array = v.get_array();
          o.clear();
          o.reserve( array.size() );
@@ -423,8 +423,8 @@ namespace impl {
       static void extract( const variant& v, std::shared_ptr<M>& o, Resolver resolver,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          const variant_object& vo = v.get_object();
          M obj;
          extract(vo, obj, resolver, recursion_depth, deadline, max_serialization_time);
@@ -440,8 +440,8 @@ namespace impl {
       static void extract( const variant& v, action& act, Resolver resolver,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          const variant_object& vo = v.get_object();
          EOS_ASSERT(vo.contains("account"), packed_transaction_type_exception, "Missing account");
          EOS_ASSERT(vo.contains("name"), packed_transaction_type_exception, "Missing name");
@@ -487,8 +487,8 @@ namespace impl {
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
       {
-         FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
          const variant_object& vo = v.get_object();
          EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
          EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
@@ -570,8 +570,8 @@ namespace impl {
    void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver,
                              size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
    {
-      FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       mutable_variant_object member_mvo;
       fc::reflector<M>::visit( impl::abi_to_variant_visitor<M, Resolver>( member_mvo, v, resolver, recursion_depth, deadline, max_serialization_time ) );
       mvo(name, std::move(member_mvo));
@@ -581,8 +581,8 @@ namespace impl {
    void abi_from_variant::extract( const variant& v, M& o, Resolver resolver,
                                    size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
    {
-      FC_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       const variant_object& vo = v.get_object();
       fc::reflector<M>::visit( abi_from_variant_visitor<M, decltype(resolver)>( vo, o, resolver, recursion_depth, deadline, max_serialization_time ) );
    }
