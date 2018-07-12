@@ -72,14 +72,9 @@ extern "C" {
 
 
    /**
-    *  Returns the time in seconds from 1970 of the last accepted block (not the block including this action)
-    *  @brief Get time of the last accepted block
-    *  @return time in seconds from 1970 of the last accepted block
-    *  Example:
-*
-    *  @code
-    *  time current_time = now();
-    *  @endcode
+    *  Returns the time in microseconds from 1970 of the current block
+    *  @brief Get time of the current block (i.e. the block including this action)
+    *  @return time in microseconds from 1970 of the current block
     */
    uint64_t  current_time();
 
