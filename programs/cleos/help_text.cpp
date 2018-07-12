@@ -205,8 +205,8 @@ You can check the contract's abi by using 'cleos get code' command.)=====";
 
 const char* error_advice_permission_query_exception =  "Most likely, the given account/ permission doesn't exist in the blockchain.";
 const char* error_advice_account_query_exception =  "Most likely, the given account doesn't exist in the blockchain.";
-const char* error_advice_contract_table_query_exception =  "Most likely, the given table doesnt' exist in the blockchain.";
-const char* error_advice_contract_query_exception =  "Most likely, the given contract doesnt' exist in the blockchain.";
+const char* error_advice_contract_table_query_exception =  "Most likely, the given table doesn't exist in the blockchain.";
+const char* error_advice_contract_query_exception =  "Most likely, the given contract doesn't exist in the blockchain.";
 
 const char* error_advice_tx_irrelevant_sig =  "Please remove the unnecessary signature from your transaction!";
 const char* error_advice_unsatisfied_authorization =  "Ensure that you have the related private keys inside your wallet and your wallet is unlocked.";
