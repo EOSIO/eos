@@ -1254,7 +1254,7 @@ struct buyram_subcommand {
       auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
       buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
       buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
-      buyram->add_option("tokens", amount, localized("The amount of EOS to pay for RAM, or number of kbytes of RAM if --kbytes is set"))->required();
+      buyram->add_option("amount", amount, localized("The amount of EOS to pay for RAM, or number of kbytes of RAM if --kbytes is set"))->required();
       buyram->add_flag("--kbytes,-k", kbytes, localized("buyram in number of kbytes"));
       add_standard_transaction_options(buyram);
       buyram->set_callback([this] {
