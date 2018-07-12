@@ -199,14 +199,11 @@ namespace eosio {
             try {
                bool is_secure = con->get_uri()->get_secure();
                const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
-               auto local_socket_host = local_endpoint.address().to_string();
-               auto port = local_endpoint.port();
-               if (!(is_secure && port == 443) || (!is_secure && port == 80)) {
-                  local_socket_host += ":" + std::to_string(port);
-               }
+               auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+
                auto& req = con->get_request();
                const auto& host_str = req.get_header("Host");
-               if (host_str.empty() || !host_is_valid(host_str, local_socket_host, is_secure)) {
+               if (host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
                   con->set_status(websocketpp::http::status_code::bad_request);
                   return;
                }
