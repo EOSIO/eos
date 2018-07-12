@@ -191,7 +191,7 @@ void apply_context::execute_inline( action&& a ) {
       EOS_ASSERT( actor != nullptr, action_validate_exception,
                   "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
-                  "inline action's authorizations include a non-existent permission: {permission}",
+                  "inline action's authorizations include a non-existent permission: ${permission}",
                   ("permission", auth) );
    }
 
@@ -270,6 +270,14 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    auto& d = control.db();
    if ( auto ptr = d.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
+
+      // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
+      EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
+                  "Replacing a deferred transaction is temporarily disabled." );
+
+      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
+      // trx_context.add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
+
       d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;

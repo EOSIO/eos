@@ -250,6 +250,8 @@ namespace eosio { namespace chain {
                                     3100004, "corrupted reversible block database was fixed" )
       FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,    misc_exception,
                                     3100005, "extracted genesis state from blocks.log" )
+      FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception,    misc_exception,
+                                    3100006, "subjective exception thrown during block production" )
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception, chain_exception,
                                  3110000, "missing plugin exception" )

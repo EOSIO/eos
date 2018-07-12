@@ -57,6 +57,7 @@ struct controller_impl {
    controller::config             conf;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -394,29 +395,40 @@ struct controller_impl {
 
 
 
+   /**
+    * @post regardless of the success of commit block there is no active pending block
+    */
    void commit_block( bool add_to_fork_db ) {
-      if( add_to_fork_db ) {
-         pending->_pending_block_state->validated = true;
-         auto new_bsp = fork_db.add( pending->_pending_block_state );
-         emit( self.accepted_block_header, pending->_pending_block_state );
-         head = fork_db.head();
-         FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
+      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
+         pending.reset();
+      });
 
+      try {
+         if (add_to_fork_db) {
+            pending->_pending_block_state->validated = true;
+            auto new_bsp = fork_db.add(pending->_pending_block_state);
+            emit(self.accepted_block_header, pending->_pending_block_state);
+            head = fork_db.head();
+            FC_ASSERT(new_bsp == head, "committed block did not become the new head in fork database");
+         }
+
+         if( !replaying ) {
+            reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
+               ubo.blocknum = pending->_pending_block_state->block_num;
+               ubo.set_block( pending->_pending_block_state->block );
+            });
+         }
+
+         emit( self.accepted_block, pending->_pending_block_state );
+      } catch (...) {
+         // dont bother resetting pending, instead abort the block
+         reset_pending_on_exit.cancel();
+         abort_block();
+         throw;
       }
 
-  //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      emit( self.accepted_block, pending->_pending_block_state );
-
-      if( !replaying ) {
-         reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = pending->_pending_block_state->block_num;
-            ubo.set_block( pending->_pending_block_state->block );
-         });
-      }
-
+      // push the state for pending.
       pending->push();
-      pending.reset();
-
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -489,7 +501,8 @@ struct controller_impl {
 
    bool failure_is_subjective( const fc::exception& e ) {
       auto code = e.code();
-      return    (code == block_net_usage_exceeded::code_value)
+      return    (code == subjective_block_production_exception::code_value)
+             || (code == block_net_usage_exceeded::code_value)
              || (code == block_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
              || (code == leeway_deadline_exception::code_value)
@@ -530,6 +543,11 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+
+      auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+         in_trx_requiring_checks = old_value;
+      });
+      in_trx_requiring_checks = true;
 
       transaction_context trx_context( self, dtrx, gto.trx_id );
       trx_context.deadline = deadline;
@@ -759,6 +777,10 @@ struct controller_impl {
 
       try {
          auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+         auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+            in_trx_requiring_checks = old_value;
+         });
+         in_trx_requiring_checks = true;
          push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage );
       } catch( const boost::interprocess::bad_alloc& e  ) {
          elog( "on block transaction failed due to a bad allocation" );
@@ -1394,7 +1416,7 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 }
 
 bool controller::skip_auth_check()const {
-   return my->replaying && !my->conf.force_all_checks;
+   return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool controller::contracts_console()const {

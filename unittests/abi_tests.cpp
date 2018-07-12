@@ -13,6 +13,7 @@
 #include <fc/io/json.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/abi_serializer.hpp>
@@ -512,7 +513,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
 
    auto var = fc::json::from_string(test_data);
-   verify_byte_round_trip_conversion(abi, "transfer", var);
+   verify_byte_round_trip_conversion(abi_serializer{abi}, "transfer", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2000,7 +2001,7 @@ BOOST_AUTO_TEST_CASE(general)
    )=====";
 
    auto var = fc::json::from_string(my_other);
-   verify_byte_round_trip_conversion(abi, "A", var);
+   verify_byte_round_trip_conversion(abi_serializer{abi}, "A", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3299,5 +3300,108 @@ BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
 
 } FC_LOG_AND_RETHROW() }
 
+
+// Infinite recursion of abi_serializer is_type
+BOOST_AUTO_TEST_CASE(abi_is_type_recursion)
+{
+   try {
+      const char* abi_str = R"=====(
+      {
+       "types": [
+        {
+            "new_type_name": "a[]",
+            "type": "a[][]",
+        },
+        ],
+        "structs": [
+         {
+            "name": "a[]",
+            "base": "",
+            "fields": []
+         },
+         {
+            "name": "hi",
+            "base": "",
+            "fields": [{
+                "name": "user",
+                "type": "name"
+              }
+            ]
+          }
+        ],
+        "actions": [{
+            "name": "hi",
+            "type": "hi",
+            "ricardian_contract": ""
+          }
+        ],
+        "tables": []
+      }
+      )=====";
+
+      BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>()), fc::exception );
+
+   } FC_LOG_AND_RETHROW()
+}
+
+// Infinite recursion of abi_serializer in struct definitions
+BOOST_AUTO_TEST_CASE(abi_recursive_structs)
+{
+   try {
+      const char* abi_str = R"=====(
+      {
+        "types": [],
+        "structs": [
+          {
+            "name": "a"
+            "base": "",
+            "fields": [
+              {
+              "name": "user",
+              "type": "b"
+              }
+            ]
+          },
+          {
+            "name": "b"
+            "base": "",
+            "fields": [
+             {
+               "name": "user",
+               "type": "a"
+             }
+            ]
+          },
+          {
+            "name": "hi",
+            "base": "",
+            "fields": [{
+                "name": "user",
+                "type": "name"
+              },
+              {
+                "name": "arg2",
+                "type": "a"
+              }
+            ]
+          }
+        ],
+        "actions": [{
+            "name": "hi",
+            "type": "hi",
+            "ricardian_contract": ""
+          }
+        ],
+        "tables": []
+      }
+      )=====";
+
+      abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>());
+      string hi_data = "{\"user\":\"eosio\",\"arg2\":{\"user\":\"1\"}}";
+      auto bin = abis.variant_to_binary("hi", fc::json::from_string(hi_data));
+      BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin);, fc::exception );
+
+   } FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()

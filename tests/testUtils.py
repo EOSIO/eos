@@ -1232,7 +1232,7 @@ class WalletMgr(object):
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
             return False
 
-        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
+        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors --http-validate-host=false" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
@@ -1492,7 +1492,7 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 5000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time 5000 --abi-serializer-max-time-ms 5000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
