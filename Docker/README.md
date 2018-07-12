@@ -20,10 +20,10 @@ cd eos/Docker
 docker build . -t eosio/eos
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.8 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.9 tag, you could do the following:
 
 ```bash
-docker build -t eosio/eos:v1.0.8 --build-arg branch=v1.0.8 .
+docker build -t eosio/eos:v1.0.9 --build-arg branch=v1.0.9 .
 ```
 
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
@@ -173,27 +173,24 @@ run `docker pull eosio/eos:latest`
 
 run `docker-compose up`
 
-### EOSIO 1.0 Testnet
+### EOSIO Testnet
 
-We can easily set up a EOSIO 1.0 local testnet using docker images. Just run the following commands:
+We can easily set up a EOSIO local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 
 ```
-# pull images
-docker pull eosio/eos:v1.0.8
-
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
-# start containers
-docker-compose -f docker-compose-eosio1.0.yaml up -d
+# pull images and start containers
+docker-compose -f docker-compose-eosio-latest.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs -f nodeosd
 # stop containers
-docker-compose -f docker-compose-eosio1.0.yaml down
+docker-compose -f docker-compose-eosio-latest.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.

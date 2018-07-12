@@ -92,6 +92,7 @@ namespace eosio { namespace client { namespace http {
    const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
    const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
    const string get_producers_func = chain_func_base + "/get_producers";
+   const string get_schedule_func = chain_func_base + "/get_producer_schedule";
    const string get_required_keys = chain_func_base + "/get_required_keys";
 
 

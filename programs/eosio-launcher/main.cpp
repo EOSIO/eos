@@ -1026,6 +1026,7 @@ launcher_def::write_config_file (tn_node_def &node) {
    cfg << "readonly = 0\n";
    cfg << "send-whole-blocks = true\n";
    cfg << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n";
+   cfg << "http-validate-host = false\n";
    if (p2p == p2p_plugin::NET) {
       cfg << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n";
       cfg << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
@@ -1504,7 +1505,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   }
 
   eosdcmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
-  eosdcmd += " --genesis-json " + genesis.string();
+  eosdcmd += " --genesis-json " + instance.config_dir_name + "/genesis.json";
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }

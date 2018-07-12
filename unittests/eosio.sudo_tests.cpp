@@ -84,7 +84,7 @@ public:
       const auto& accnt = control->db().get<account_object,by_name>( N(eosio.sudo) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-      abi_ser.set_abi(abi);
+      abi_ser.set_abi(abi, abi_serializer_max_time);
 
       while( control->pending_block_state()->header.producer.to_string() == "eosio" ) {
          produce_block();
@@ -141,7 +141,7 @@ transaction eosio_sudo_tester::sudo_exec( account_name executer, const transacti
    transaction trx2;
    set_transaction_headers(trx2, expiration);
    action act;
-   abi_serializer::from_variant( act_obj, act, get_resolver() );
+   abi_serializer::from_variant( act_obj, act, get_resolver(), abi_serializer_max_time );
    trx2.actions.push_back( std::move(act) );
    return trx2;
 }
@@ -162,7 +162,7 @@ transaction eosio_sudo_tester::reqauth( account_name from, const vector<permissi
    transaction trx;
    set_transaction_headers(trx, expiration);
    action act;
-   abi_serializer::from_variant( act_obj, act, get_resolver() );
+   abi_serializer::from_variant( act_obj, act, get_resolver(), abi_serializer_max_time );
    trx.actions.push_back( std::move(act) );
    return trx;
 }

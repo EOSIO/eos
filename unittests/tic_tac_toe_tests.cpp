@@ -41,12 +41,6 @@ struct game {
 FC_REFLECT(game, (challenger)(host)(turn)(winner)(board));
 
 
-struct movement {
-   uint32_t    row;
-   uint32_t    column;
-};
-FC_REFLECT(movement, (row)(column));
-
 struct ttt_tester : TESTER {
    void get_game(game& game, account_name scope, account_name key) {
       auto* maybe_tid = find_table(N(tic.tac.toe), scope, N(games));
@@ -65,7 +59,7 @@ BOOST_AUTO_TEST_SUITE(tic_tac_toe_tests)
 
 BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
    TESTER chain;
-   abi_serializer abi_ser{json::from_string(tic_tac_toe_abi).as<abi_def>()};
+   abi_serializer abi_ser{json::from_string(tic_tac_toe_abi).as<abi_def>(), chain.abi_serializer_max_time};
    chain.create_account(N(tic.tac.toe));
    chain.produce_blocks(10);
 
@@ -84,84 +78,68 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
 
    chain.produce_blocks();
 
-   auto mvt = mutable_variant_object()
-           ("row", 1)
-           ("column", 1);
    chain.push_action(N(tic.tac.toe), N(move), N(player1), mutable_variant_object()
            ("challenger", "player2")
            ("host", "player1")
            ("by", "player1")
-           ("mvt", mvt)
+           ("row", 1)
+           ("column", 1)
    );
 
-   mvt = mutable_variant_object()
-           ("row", 0)
-           ("column", 1);
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(move), N(player1), mutable_variant_object()
          ("challenger", "player2")
          ("host", "player1")
          ("by", "player1")
-         ("mvt", mvt)
+         ("row", 0)
+         ("column", 1)
       ), eosio_assert_message_exception, eosio_assert_message_starts_with("it's not your turn yet"));
 
-   mvt = mutable_variant_object()
-           ("row", 1)
-           ("column", 1);
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(move), N(player2), mutable_variant_object()
          ("challenger", "player2")
          ("host", "player1")
          ("by", "player2")
-         ("mvt", mvt)
+         ("row", 1)
+         ("column", 1)
       ), eosio_assert_message_exception, eosio_assert_message_starts_with("not a valid movement"));
 
-   mvt = mutable_variant_object()
-           ("row", 0)
-           ("column", 1);
    chain.push_action(N(tic.tac.toe), N(move), N(player2), mutable_variant_object()
            ("challenger", "player2")
            ("host", "player1")
            ("by", "player2")
-           ("mvt", mvt)
+           ("row", 0)
+           ("column", 1)
    );
 
-   mvt = mutable_variant_object()
-           ("row", 0)
-           ("column", 0 );
    chain.push_action(N(tic.tac.toe), N(move), N(player1), mutable_variant_object()
            ("challenger", "player2")
            ("host", "player1")
            ("by", "player1")
-           ("mvt", mvt)
+           ("row", 0)
+           ("column", 0 )
    );
 
-   mvt = mutable_variant_object()
-           ("row", 0)
-           ("column", 2);
    chain.push_action(N(tic.tac.toe), N(move), N(player2), mutable_variant_object()
            ("challenger", "player2")
            ("host", "player1")
            ("by", "player2")
-           ("mvt", mvt)
+           ("row", 0)
+           ("column", 2)
    );
 
-   mvt = mutable_variant_object()
-           ("row", 2)
-           ("column", 2);
    chain.push_action(N(tic.tac.toe), N(move), N(player1), mutable_variant_object()
            ("challenger", "player2")
            ("host", "player1")
            ("by", "player1")
-           ("mvt", mvt)
+           ("row", 2)
+           ("column", 2)
    );
 
-   mvt = mutable_variant_object()
-           ("row", 2)
-           ("column", 0);
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(move), N(player2), mutable_variant_object()
          ("challenger", "player2")
          ("host", "player1")
          ("by", "player2")
-         ("mvt", mvt)
+         ("row", 2)
+         ("column", 0)
       ), eosio_assert_message_exception, eosio_assert_message_starts_with("the game has ended"));
 
    game current;
@@ -173,14 +151,12 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
            ("host", "player1")
    );
 
-   mvt = mutable_variant_object()
-           ("row", 2)
-           ("column", 0);
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(move), N(player2), mutable_variant_object()
          ("challenger", "player2")
          ("host", "player1")
          ("by", "player2")
-         ("mvt", mvt)
+         ("row", 2)
+         ("column", 0)
       ), eosio_assert_message_exception, eosio_assert_message_starts_with("game doesn't exists"));
 
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(restart), N(player2), mutable_variant_object()
@@ -201,25 +177,21 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
    );
 
    // making a move and ...
-   mvt = mutable_variant_object()
-           ("row", 1)
-           ("column", 1);
    chain.push_action(N(tic.tac.toe), N(move), N(player2), mutable_variant_object()
            ("challenger", "player1")
            ("host", "player2")
            ("by", "player2")
-           ("mvt", mvt)
+           ("row", 1)
+           ("column", 1)
    );
 
    // ... repeating to get exception to ensure restart above actually did something
-   mvt = mutable_variant_object()
-           ("row", 0)
-           ("column", 1);
    BOOST_CHECK_EXCEPTION(chain.push_action(N(tic.tac.toe), N(move), N(player2), mutable_variant_object()
          ("challenger", "player1")
          ("host", "player2")
          ("by", "player2")
-         ("mvt", mvt)
+         ("row", 0)
+         ("column", 1)
       ), eosio_assert_message_exception, eosio_assert_message_starts_with("it's not your turn yet"));
 } FC_LOG_AND_RETHROW()
 
