@@ -88,6 +88,7 @@ namespace eosio { namespace chain {
 
          uint64_t                      net_limit = 0;
          bool                          net_limit_due_to_block = true;
+         bool                          net_limit_due_to_greylist = false;
          uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
 

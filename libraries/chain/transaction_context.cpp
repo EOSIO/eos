@@ -225,8 +225,10 @@ namespace eosio { namespace chain {
       for( const auto& a : bill_to_accounts ) {
          bool elastic = !(control.is_producing_block() && control.is_resource_greylisted(a));
          auto net_limit = rl.get_account_net_limit(a, elastic);
-         if( net_limit >= 0 )
+         if( net_limit >= 0 ) {
             account_net_limit = std::min( account_net_limit, net_limit );
+            if (!elastic) net_limit_due_to_greylist = true;
+         }
          auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 )
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
@@ -273,9 +275,13 @@ namespace eosio { namespace chain {
 
    void transaction_context::check_net_usage()const {
       if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
-         if( net_limit_due_to_block ) {
+         if ( net_limit_due_to_block ) {
             EOS_THROW( block_net_usage_exceeded,
                        "not enough space left in block: ${net_usage} > ${net_limit}",
+                       ("net_usage", net_usage)("net_limit", eager_net_limit) );
+         }  else if (net_limit_due_to_greylist) {
+            EOS_THROW( greylist_net_usage_exceeded,
+                       "net usage of transaction is too high: ${net_usage} > ${net_limit}",
                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
          } else {
             EOS_THROW( tx_net_usage_exceeded,
