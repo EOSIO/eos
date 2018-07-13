@@ -15,10 +15,7 @@ import os
 ###############################################################
 
 Print=Utils.Print
-
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
+errorExit=Utils.errorExit
 
 args = TestHelper.parse_args({"-p","--dump-error-details","-v","--leave-running","--clean-run"})
 pnodes=args.p

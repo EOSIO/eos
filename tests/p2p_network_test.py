@@ -23,7 +23,7 @@ DEFAULT_PORT=ports[0]
 
 parser = argparse.ArgumentParser(add_help=False)
 Print=testUtils.Utils.Print
-errorExit=testUtils.Utils.errorExit
+errorExit=Utils.errorExit
 
 # Override default help argument so that only --help (and not -h) can call help
 parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
