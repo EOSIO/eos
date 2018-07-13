@@ -1721,26 +1721,51 @@ int main( int argc, char** argv ) {
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
+      string code_hash, wasm, wast, abi;
+      try {
+         const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
+         const std::vector<char> wasm_v = result["wasm"].as_blob().data;
+         const std::vector<char> abi_v = result["abi"].as_blob().data;
 
-      std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
+         fc::sha256 hash;
+         if(wasm_v.size())
+            hash = fc::sha256::hash(wasm_v.data(), wasm_v.size());
+         code_hash = (string)hash;
+
+         wasm = string(wasm_v.begin(), wasm_v.end());
+         if(!code_as_wasm && wasm_v.size())
+            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false);
+
+         abi_def abi_d;
+         if(abi_serializer::to_abi(abi_v, abi_d))
+            abi = fc::json::to_pretty_string(abi_d);
+      }
+      catch(chain::missing_chain_api_plugin_exception&) {
+         //see if this is an old nodeos that doesn't support get_raw_code_and_abi
+         const auto old_result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
+         code_hash = old_result["code_hash"].as_string();
+         if(code_as_wasm) {
+            wasm = old_result["wasm"].as_string();
+            std::cout << localized("Warning: communicating to older nodeos which returns malformed binary wasm") << std::endl;
+         }
+         else
+            wast = old_result["wast"].as_string();
+         abi = fc::json::to_pretty_string(old_result["abi"]);
+      }
+
+      std::cout << localized("code hash: ${code_hash}", ("code_hash", code_hash)) << std::endl;
 
       if( codeFilename.size() ){
          std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
-         string code;
-
-         if(code_as_wasm) {
-            code = result["wasm"].as_string();
-         } else {
-            code = result["wast"].as_string();
-         }
 
          std::ofstream out( codeFilename.c_str() );
-         out << code;
+         if(code_as_wasm)
+            out << wasm;
+         else
+            out << wast;
       }
       if( abiFilename.size() ) {
          std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
-         auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
       }
@@ -2564,7 +2589,7 @@ int main( int argc, char** argv ) {
 
    //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
    auto resolver = [abi_serializer_max_time](const name& code) -> optional<abi_serializer> {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", code.to_string()));
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", code.to_string()));
       if (result["abi"].is_object()) {
          //std::cout << "ABI: " << fc::json::to_pretty_string(result) << std::endl;
          return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>(), abi_serializer_max_time));

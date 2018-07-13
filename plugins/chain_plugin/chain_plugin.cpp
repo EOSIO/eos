@@ -1237,6 +1237,18 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    return result;
 }
 
+read_only::get_raw_code_and_abi_results read_only::get_raw_code_and_abi( const get_raw_code_and_abi_params& params)const {
+   get_raw_code_and_abi_results result;
+   result.account_name = params.account_name;
+
+   const auto& d = db.db();
+   const auto& accnt = d.get<account_object,by_name>(params.account_name);
+   result.wasm = blob{{accnt.code.begin(), accnt.code.end()}};
+   result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+
+   return result;
+}
+
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
    get_account_results result;
    result.account_name = params.account_name;
