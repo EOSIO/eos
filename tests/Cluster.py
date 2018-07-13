@@ -313,7 +313,6 @@ class Cluster(object):
             for node in nodes:
                 try:
                     if (not node.killed) and (not node.isBlockPresent(targetBlockNum)):
-                    #if (not node.killed) and (not node.isBlockFinalized(targetBlockNum)):
                         return False
                 except (TypeError) as _:
                     # This can happen if client connects before server is listening

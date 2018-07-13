@@ -465,7 +465,7 @@ class Node(object):
             print("transaction[rows][0][balance] not found. Transaction: %s" % (trans))
             raise
 
-    def getCurrencyBalance(self, contract, account, symbol=CORE_SYMBOL):
+    def getCurrencyBalance(self, contract, account, symbol=CORE_SYMBOL, exitOnError=False):
         """returns raw output from get currency balance e.g. '99999.9950 CUR'"""
         assert(contract)
         assert(isinstance(contract, str))
@@ -473,31 +473,21 @@ class Node(object):
         assert(isinstance(account, str))
         assert(symbol)
         assert(isinstance(symbol, str))
-        cmd="%s %s get currency balance %s %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, account, symbol)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Utils.runCmdReturnStr(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get currency stats. %s" % (msg))
-            return None
+        cmdDesc = "get currency balance"
+        cmd="%s %s %s %s" % (cmdDesc, contract, account, symbol)
+        msg="contract=%s, account=%s, symbol=%s" % (contract, account, symbol);
+        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, returnType=ReturnType.raw)
 
-    def getCurrencyStats(self, contract, symbol=CORE_SYMBOL):
+    def getCurrencyStats(self, contract, symbol=CORE_SYMBOL, exitOnError=False):
         """returns Json output from get currency stats."""
         assert(contract)
         assert(isinstance(contract, str))
         assert(symbol)
         assert(isinstance(symbol, str))
-        cmd="%s %s get currency stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Utils.runCmdReturnJson(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get currency stats. %s" % (msg))
-            return None
+        cmdDesc = "get currency stats"
+        cmd="%s %s %s" % (cmdDesc, contract, symbol)
+        msg="contract=%s, symbol=%s" % (contract, symbol);
+        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     # Verifies account. Returns "get account" json return object
     def verifyAccount(self, account):
