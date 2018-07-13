@@ -69,16 +69,6 @@ namespace eosio {
             extended_asset   delta_collateral;
          };
 
-         /// TODO: rename this to market_order
-         struct trade {
-            account_name    seller;
-            symbol_type     market;
-            extended_asset  sell;
-            extended_asset  min_receive; ///< not part of market order
-            uint32_t        expire = 0; ///< not part of market order
-            uint8_t         fill_or_kill = true; ///< not part of market order
-         };
-
          /**
           *  This will sell through the bancor market maker and give the current price.
           *
@@ -113,7 +103,6 @@ namespace eosio {
                            block_timestamp_type  expiration ///< time at which this order is no longer valid 
                        );
 
-         void on( const trade& t    );
          void on( const upmargin& b );
          void on( const covermargin& b );
          void on( const currency::transfer& t, account_name code );

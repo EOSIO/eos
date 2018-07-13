@@ -31,51 +31,6 @@ namespace eosio {
       market.save();
    }
 
-   void exchange::on( const trade& t ) {
-      require_auth( t.seller );
-      eosio_assert( t.sell.is_valid(), "invalid sell amount" );
-      eosio_assert( t.sell.amount > 0, "sell amount must be positive" );
-      eosio_assert( t.min_receive.is_valid(), "invalid min receive amount" );
-      eosio_assert( t.min_receive.amount >= 0, "min receive amount cannot be negative" );
-
-      auto receive_symbol = t.min_receive.get_extended_symbol();
-      eosio_assert( t.sell.get_extended_symbol() != receive_symbol, "invalid conversion" );
-
-      market_state market( _this_contract, t.market, _accounts, _excurrencies );
-
-      auto temp   = market.exstate;
-      auto output = temp.convert( t.sell, receive_symbol );
-
-      while( temp.requires_margin_call() ) {
-         market.margin_call( receive_symbol );
-         temp = market.exstate;
-         output = temp.convert( t.sell, receive_symbol );
-      }
-      market.exstate = temp;
-
-      print( name{t.seller}, "   ", t.sell, "  =>  ", output, "\n" );
-
-      if( t.min_receive.amount != 0 ) {
-         eosio_assert( t.min_receive.amount <= output.amount, "unable to fill" );
-      }
-
-      _accounts.adjust_balance( t.seller, -t.sell, "sold" );
-      _accounts.adjust_balance( t.seller, output, "received" );
-
-      if( market.exstate.supply.amount != market.initial_state().supply.amount ) {
-         auto delta = market.exstate.supply - market.initial_state().supply;
-
-         _excurrencies.issue_currency( { .to = _this_contract,
-                                        .quantity = delta,
-                                        .memo = string("") } );
-      }
-
-      /// TODO: if pending order start deferred trx to fill it
-
-      market.save();
-   }
-
-
    /**
     *  This action shall fail if it would result in a margin call
     */
@@ -232,9 +187,6 @@ namespace eosio {
       };
 
       switch( act ) {
-         case N(trade):
-            on( unpack_action_data<trade>() );
-            return;
          case N(upmargin):
             on( unpack_action_data<upmargin>() );
             return;
