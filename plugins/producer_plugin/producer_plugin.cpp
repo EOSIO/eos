@@ -118,6 +118,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
+      bool     _enable_stale_speculation           = false;
       bool     _pause_production                   = false;
       uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
@@ -285,8 +286,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return;
          }
 
-         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
+         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() ) {
             _production_enabled = true;
+         }
 
 
          if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
@@ -301,6 +303,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         if (!chain.pending_block_state()) {
+            _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+            return;
+         }
+
          auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
 
          auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
@@ -370,6 +377,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       enum class start_block_result {
          succeeded,
          failed,
+         waiting,
          exhausted
       };
 
@@ -416,6 +424,7 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("enable-stale-speculation", boost::program_options::bool_switch()->notifier([this](bool e){my->_enable_stale_speculation = e;}), "Enable speculative execution and relay, even if the chain is stale.")
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
@@ -798,6 +807,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       }
    }
 
+   if (_pending_block_mode == pending_block_mode::speculating && !(_enable_stale_speculation || _production_enabled)) {
+      return start_block_result::waiting;
+   }
+
    try {
       uint16_t blocks_to_confirm = 0;
 
@@ -975,6 +988,9 @@ void producer_plugin_impl::schedule_production_loop() {
             self->schedule_production_loop();
          }
       });
+   } else if (result == start_block_result::waiting) {
+      // nothing to do until more blocks arrive
+
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
       // we succeeded but block may be exhausted
