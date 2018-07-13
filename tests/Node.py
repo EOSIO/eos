@@ -899,7 +899,7 @@ class Node(object):
 
     def getInfo(self, silentErrors=False, exitOnError=False):
         cmdDesc = "get info"
-        return self.processCmd(cmdDesc, cmdDesc, exitOnError=exitOnError)
+        return self.processCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
 
     def getBlockFromDb(self, idx):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
