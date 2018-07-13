@@ -1223,7 +1223,7 @@ launcher_def::write_bios_boot () {
          }
          else if (key == "prodkeys" ) {
             for (auto &node : network.nodes) {
-               brb << "wcmd import -n ignition " << string(node.second.keys[0]) << "\n";
+               brb << "wcmd import -n ignition --private-key " << string(node.second.keys[0]) << "\n";
             }
          }
          else if (key == "cacmd") {
