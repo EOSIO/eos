@@ -6,7 +6,6 @@ from WalletMgr import WalletMgr
 from TestHelper import TestHelper
 
 import random
-import traceback
 
 ###############################################################
 # Test for different nodes restart scenarios.
@@ -25,11 +24,7 @@ import traceback
 
 
 Print=Utils.Print
-
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    traceback.print_stack(limit=-1)
-    exit(errorCode)
+errorExit=Utils.errorExit
 
 args=TestHelper.parse_args({"-p","-d","-s","-c","--kill-sig","--kill-count","--keep-logs","--p2p-plugin"
                             ,"--dump-error-details","-v","--leave-running","--clean-run"})

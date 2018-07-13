@@ -13,10 +13,7 @@ import subprocess
 ###############################################################
 
 Print=Utils.Print
-
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
+errorExit=Utils.errorExit
 
 args = TestHelper.parse_args({"--dump-error-details","-v","--leave-running","--only-bios","--clean-run"})
 debug=args.v
