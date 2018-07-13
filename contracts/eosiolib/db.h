@@ -11,13 +11,13 @@ extern "C" {
  *  @defgroup database Database API
  *  @brief Defines APIs that store and retrieve data on the blockchain
  *  @ingroup contractdev
- * 
+ *
  *  @defgroup databasecpp Database C++ API
  *  @brief Defines an interface to EOSIO database
  *  @ingroup database
- *  
+ *
  *  @details
- *  EOS.IO organizes data according to the following broad structure:
+ *  EOSIO organizes data according to the following broad structure:
  *  - **code** - the account name which has write permission
  *     - **scope** - an area where the data is stored
  *        - **table** - a name for the table that is being stored
@@ -28,9 +28,9 @@ extern "C" {
  *  @defgroup databasec Database C API
  *  @brief Defines %C APIs for interfacing with the database.
  *  @ingroup database
- *  
+ *
  *  @details Database C API provides low level interface to EOSIO database.
- * 
+ *
  *  @section tabletypes Supported Table Types
  *  Following are the table types supported by the C API:
  *  1. Primary Table
@@ -40,146 +40,143 @@ extern "C" {
  *    - 128-bit integer key
  *    - 256-bit integer key
  *    - double key
- *    - long double
+ *    - long double key
  *  @{
  */
 
 /**
   *
   *  Store a record in a primary 64-bit integer index table
-  * 
+  *
   *  @brief Store a record in a primary 64-bit integer index table
-  *  @param scope - The scope where the record will be stored
-  *  @param table - The ID/name of the table within the current scope/code context
-  *  @param payer - The account that is paying for this storage
-  *  @param id - Id of the entry
+  *  @param scope - The scope where the table resides (implied to be within the code of the current receiver)
+  *  @param table - The table name
+  *  @param payer - The account that pays for the storage costs
+  *  @param id - ID of the entry
   *  @param data - Record to store
   *  @param len - Size of data
-  *  @pre len >= sizeof(data)
-  *  @pre data is a valid pointer to a range of memory at least `len` bytes long
+  *  @pre `data` is a valid pointer to a range of memory at least `len` bytes long
   *  @pre `*((uint64_t*)data)` stores the primary key
-  *  @pre this method is being called from an apply context (not validate or precondition)
-  *  @return iterator to the newly created object
+  *  @return iterator to the newly created table row
   *  @post a new entry is created in the table
   */
 int32_t db_store_i64(account_name scope, table_name table, account_name payer, uint64_t id,  const void* data, uint32_t len);
 
 /**
   *
-  *  Update a record inside a primary 64-bit integer index table
+  *  Update a record in a primary 64-bit integer index table
   *
-  *  @brief Update a record inside a primary 64-bit integer index table
-  *  @param iterator - Iterator of the record to update
-  *  @param payer - The account that is paying for this storage
+  *  @brief Update a record in a primary 64-bit integer index table
+  *  @param iterator - Iterator to the table row containing the record to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
   *  @param data - New updated record
   *  @param len - Size of data
-  *  @pre len >= sizeof(data)
   *  @pre `data` is a valid pointer to a range of memory at least `len` bytes long
   *  @pre `*((uint64_t*)data)` stores the primary key
-  *  @pre this method is being called from an apply context (not validate or precondition)
-  *  @pre `iterator` is pointing to the existing data inside the table
-  *  @post the data pointed by the iterator is replaced with the new data
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the record contained in the table row pointed to by `iterator` is replaced with the new updated record
   */
 void db_update_i64(int32_t iterator, account_name payer, const void* data, uint32_t len);
 
 /**
   *
-  *  Remove a record inside a primary 64-bit integer index table
+  *  Remove a record from a primary 64-bit integer index table
   *
-  *  @brief Remove a record inside a primary 64-bit integer index table
-  *  @param iterator - The iterator pointing to the record to remove
-  *  @pre `iterator` is pointing to the existing data inside the table
-  *  @post the data is removed
+  *  @brief Remove a record from a primary 64-bit integer index table
+  *  @param iterator - Iterator to the table row to remove
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   *
-  * Example:
+  *  Example:
+  *
   *  @code
-  *  int itr = db_find_i64(receiver, receiver, table1, N(alice));
-  *  eosio_assert(itr >= 0, "primary_i64_general - db_find_i64");
+  *  int32_t itr = db_find_i64(receiver, receiver, table1, N(alice));
+  *  eosio_assert(itr >= 0, "Alice cannot be removed since she was already not found in the table");
   *  db_remove_i64(itr);
-  *  itr = db_find_i64(receiver, receiver, table1, N(alice)); 
   *  @endcode
   */
 void db_remove_i64(int32_t iterator);
 
 /**
   *
-  *  Get a record inside a primary 64-bit integer index table
+  *  Get a record in a primary 64-bit integer index table
   *
-  *  @brief Get a record inside a primary 64-bit integer index table
-  *  @param iterator - The iterator to the record
-  *  @param data - The buffer which will be replaced with the retrieved record
+  *  @brief Get a record in a primary 64-bit integer index table
+  *  @param iterator - The iterator to the table row containing the record to retrieve
+  *  @param data - Pointer to the buffer which will be filled with the retrieved record
   *  @param len - Size of the buffer
-  *  @return size of the retrieved record
-  *  @pre `iterator` is pointing to the existing data inside the table
+  *  @return size of the data copied into the buffer if `len > 0`, or size of the retrieved record if `len == 0`.
+  *  @pre `iterator` points to an existing table row in the table
   *  @pre `data` is a valid pointer to a range of memory at least `len` bytes long
-  *  @pre `len` needs to be larger than the size of the data that is going to be retrieved
-  *  @post `data` will be filled with the retrieved data
+  *  @post `data` will be filled with the retrieved record (truncated to the first `len` bytes if necessary)
   *
   *  Example:
-*
+  *
   *  @code
   *  char value[50];
-  *  auto len = db_get_i64(itr, value, buffer_len);
-  *  value[len] = '\0';
-  *  std::string s(value);
+  *  auto len = db_get_i64(itr, value, 0);
+  *  eosio_assert(len <= 50, "buffer to small to store retrieved record");
+  *  db_get_i64(itr, value, len);
   *  @endcode
   */
 int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
 
 /**
   *
-  *  Get the next record after the given iterator from a primary 64-bit integer index table
+  *  Find the table row following the referenced table row in a primary 64-bit integer index table
   *
-  *  @brief Get the next record after the given iterator from a primary 64-bit integer index table
-  *  @param iterator - The iterator to the record
-  *  @param primary - It will be replaced with the primary key of the next record 
-  *  @return iterator to the next record
-  *  @pre `iterator` is pointing to the existing data inside the table
-  *  @post `primary` will be replaced with the primary key of the data proceeding the data pointed by the iterator
+  *  @brief Find the table row following the referenced table row in a primary 64-bit integer index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row
+  *  @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table)
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   *
   *  Example:
-*
+  *
   *  @code
-  *  int charlie_itr = db_find_i64(receiver, receiver, table1, N(charlie));
-  *  // nothing after charlie
+  *  int32_t charlie_itr = db_find_i64(receiver, receiver, table1, N(charlie));
+  *  // expect nothing after charlie
   *  uint64_t prim = 0
-  *  int end_itr = db_next_i64(charlie_itr, &prim);
+  *  int32_t  end_itr = db_next_i64(charlie_itr, &prim);
+  *  eosio_assert(end_itr < -1, "Charlie was not the last entry in the table");
   *  @endcode
   */
 int32_t db_next_i64(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the previous record before the given iterator from a primary 64-bit integer index table
+  *  Find the table row preceding the referenced table row in a primary 64-bit integer index table
   *
-  *  @brief Get the previous record before the given iterator from a primary 64-bit integer index table
-  *  @param iterator - The iterator to the record
-  *  @param primary - It will be replaced with the primary key of the previous record 
-  *  @return iterator to the previous record
-  *  @pre `iterator` is pointing to the existing data inside the table
-  *  @post `primary` will be replaced with the primary key of the data preceeding the data pointed by the iterator
+  *  @brief Find the table row preceding the referenced table row in a primary 64-bit integer index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row
+  *  @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table)
+  *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
+  *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   *
   *  Example:
-*
+  *
   *  @code
-  *  uint64_t prim = 123;
-  *  int itr_prev = db_previous_i64(itr, &prim);
+  *  uint64_t prim = 0;
+  *  int32_t  itr_prev = db_previous_i64(itr, &prim);
   *  @endcode
   */
 int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Find a record inside a primary 64-bit integer index table
+  *  Find a table row in a primary 64-bit integer index table by primary key
   *
-  *  @brief Find a record inside a primary 64-bit integer index table
-  *  @param scope - The scope where the record is stored
-  *  @param table - The table name where the record is stored
-  *  @param id - The primary key of the record to look up
-  *  @return iterator to the found record
+  *  @brief Find a table row in a primary 64-bit integer index table by primary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param id - The primary key of the table row to look up
+  *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   *
   *  Example:
-*
+  *
   *  @code
   *  int itr = db_find_i64(receiver, receiver, table1, N(charlie));
   *  @endcode
@@ -188,188 +185,182 @@ int32_t db_find_i64(account_name code, account_name scope, table_name table, uin
 
 /**
   *
-  *  Find the lowerbound record given a key inside a primary 64-bit integer index table
-  *  Lowerbound record is the first nearest record which primary key is <= the given key
+  *  Find the table row in a primary 64-bit integer index table that matches the lowerbound condition for a given primary key
+  *  The table row that matches the lowerbound condition is the first table row in the table with the lowest primary key that is >= the given key
   *
-  *  @brief Find the lowerbound record given a key inside a primary 64-bit integer index table
+  *  @brief Find the table row in a primary 64-bit integer index table that matches the lowerbound condition for a given primary key
   *  @param code - The name of the owner of the table
   *  @param scope - The scope where the table resides
   *  @param table - The table name
-  *  @param id - The primary key used as a pivot to determine the lowerbound record
-  *  @return iterator to the lowerbound record
+  *  @param id - The primary key used to determine the lowerbound
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_lowerbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
 
 /**
   *
-  *  Find the upperbound record given a key inside a primary 64-bit integer index table
-  *  Upperbound record is the first nearest record which primary key is < the given key
+  *  Find the table row in a primary 64-bit integer index table that matches the upperbound condition for a given primary key
+  *  The table row that matches the upperbound condition is the first table row in the table with the lowest primary key that is > the given key
   *
-  *  @brief Find the upperbound record given a key inside a primary 64-bit integer index table
+  *  @brief Find the table row in a primary 64-bit integer index table that matches the upperbound condition for a given primary key
   *  @param code - The name of the owner of the table
   *  @param scope - The scope where the table resides
   *  @param table - The table name
-  *  @param id - The primary key used as a pivot to determine the upperbound record
-  *  @return iterator to the upperbound record
+  *  @param id - The primary key used to determine the upperbound
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_upperbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
 
 /**
   *
-  *  Find the latest record inside a primary 64-bit integer index table
+  *  Get an iterator representing just-past-the-end of the last table row of a primary 64-bit integer index table
   *
-  *  @brief Find the latest record inside a primary 64-bit integer index table
+  *  @brief Get an iterator representing just-past-the-end of the last table row of a primary 64-bit integer index table
   *  @param code - The name of the owner of the table
   *  @param scope - The scope where the table resides
   *  @param table - The table name
-  *  @return iterator to the last record
+  *  @return end iterator of the table
   */
 int32_t db_end_i64(account_name code, account_name scope, table_name table);
 
 /**
   *
-  *  Store a record's secondary index in a secondary 64-bit integer index table
-  * 
-  *  @brief Store a record's secondary index in a secondary 64-bit integer index table
-  *  @param scope - The scope where the secondary index will be stored
-  *  @param table - The table name where the secondary index will be stored
-  *  @param payer - The account that is paying for this storage
-  *  @param id - The primary key of the record which secondary index to be stored
-  *  @param secondary - The pointer to the key of the secondary index to store
-  *  @return iterator to the newly created secondary index
-  *  @post new secondary index is created
+  *  Store an association of a 64-bit integer secondary key to a primary key in a secondary 64-bit integer index table
+  *
+  *  @brief Store an association of a 64-bit integer secondary key to a primary key in a secondary 64-bit integer index table
+  *  @param scope - The scope where the table resides (implied to be within the code of the current receiver)
+  *  @param table - The table name
+  *  @param payer - The account that pays for the storage costs
+  *  @param id - The primary key to which to associate the secondary key
+  *  @param secondary - Pointer to the secondary key
+  *  @return iterator to the newly created table row
+  *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary 64-bit integer index table
   */
 int32_t db_idx64_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
 
 /**
   *
-  *  Update a record's secondary index inside a secondary 64-bit integer index table
-  * 
-  *  @brief Update a record's secondary index inside a secondary 64-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param payer - The account that is paying for this storage
-  *  @param secondary - The pointer to the **new** key of the secondary index
-  *  @pre `iterator` is pointing to existing secondary index
-  *  @post the seconday index pointed by the iterator is updated by the new value
+  *  Update an association for a 64-bit integer secondary key to a primary key in a secondary 64-bit integer index table
+  *
+  *  @brief Update an association for a 64-bit integer secondary key to a primary key in a secondary 64-bit integer index table
+  *  @param iterator - The iterator to the table row containing the secondary key association to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
+  *  @param secondary - Pointer to the **new** secondary key that will replace the existing one of the association
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
 void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secondary);
 
 /**
   *
-  *  Remove a record's secondary index from a secondary 64-bit integer index table
-  * 
-  *  @brief Remove a record's secondary index from a secondary 64-bit integer index table
-  *  @param iterator - The iterator to the secondary index to be removed
-  *  @pre `iterator` is pointing to existing secondary index
-  *  @post the secondary index pointed by the iterator is removed from the table
+  *  Remove a table row from a secondary 64-bit integer index table
+  *
+  *  @brief Remove a table row from a secondary 64-bit integer index table
+  *  @param iterator - Iterator to the table row to remove
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
 void db_idx64_remove(int32_t iterator);
 
 /**
   *
-  *  Get the next secondary index inside a secondary 64-bit integer index table
-  * 
-  *  @brief Get the next secondary index inside a secondary 64-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
-  *  @return iterator to the next secondary index
-  *  @pre `iterator` is pointing to the existing secondary index inside the table
-  *  @post `primary` will be replaced with the primary key of the secondary index proceeding the secondary index pointed by the iterator
+  *  Find the table row following the referenced table row in a secondary 64-bit integer index table
+  *
+  *  @brief Find the table row following the referenced table row in a secondary 64-bit integer index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row
+  *  @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table)
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the previous secondary index inside a secondary 64-bit integer index table
-  * 
-  *  @brief Get the previous secondary index inside a secondary 64-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
-  *  @return iterator to the previous secondary index
-  *  @pre `iterator` is pointing to the existing secondary index inside the table 
-  *  @post `primary` will be replaced with the primary key of the secondary index preceeding the secondary index pointed by the iterator
+  *  Find the table row preceding the referenced table row in a secondary 64-bit integer index table
+  *
+  *  @brief Find the table row preceding the referenced table row in a secondary 64-bit integer index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row
+  *  @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table)
+  *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
+  *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx64_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the secondary index of a record  from a secondary 64-bit integer index table given the record's primary key
-  * 
-  *  @brief Get  the secondary index of a record from a secondary 64-bit integer index table given the record's primary key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - It will be replaced with the secondary index key
-  *  @param primary - The record's primary key
-  *  @pre A correponding primary 64-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given record's primary key
+  *  Find a table row in a secondary 64-bit integer index table by primary key
+  *
+  *  @brief Find a table row in a secondary 64-bit integer index table by primary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to a `uint64_t` variable which will have its value set to the secondary key of the found table row
+  *  @param primary - The primary key of the table row to look up
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx64_find_primary(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t primary);
 
 /**
   *
-  *  Get the secondary index of a record from a secondary 64-bit integer index table given the secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 64-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the secondary index contains
-  *  @pre A correponding primary 64-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given secondary index key
+  *  Find a table row in a secondary 64-bit integer index table by secondary key
+  *
+  *  @brief Find a table row in a secondary 64-bit integer index table by secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key used to lookup the table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx64_find_secondary(account_name code, account_name scope, table_name table, const uint64_t* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the lowerbound secondary index from a secondary 64-bit integer index table given the secondary index key
-  *  Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 64-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the lowerbound secondary index contains
-  *  @pre A correponding primary 64-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the lowerbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the lowerbound secondary index
-  *  @return iterator to the lowerbound secondary index
+  *  Find the table row in a secondary 64-bit integer index table that matches the lowerbound condition for a given secondary key
+  *  The table row that matches the lowerbound condition is the first table row in the table with the lowest secondary key that is >= the given key
+  *
+  *  @brief Find the table row in a secondary 64-bit integer index table that matches the lowerbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the lowerbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx64_lowerbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the upperbound secondary index from a secondary 64-bit integer index table given the secondary index key
-  *  Upperbound secondary index is the first secondary index which key is < the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 64-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as upperbound pivot point, later on it will be replaced with the upperbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the upperbound secondary index contains
-  *  @pre A correponding primary 64-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the upperbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the upperbound secondary index
-  *  @return iterator to the upperbound secondary index
+  *  Find the table row in a secondary 64-bit integer index table that matches the upperbound condition for a given secondary key
+  *  The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key
+  *
+  *  @brief Find the table row in a secondary 64-bit integer index table that matches the upperbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx64_upperbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the last secondary index from a secondary 64-bit integer index table 
-  * 
-  *  @brief Get the last secondary index from a secondary 64-bit integer index table 
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @return iterator to the last secondary index
+  *  Get an end iterator representing just-past-the-end of the last table row of a secondary 64-bit integer index table
+  *
+  *  @brief Get an end iterator representing just-past-the-end of the last table row of a secondary 64-bit integer index table
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @return end iterator of the table
   */
 int32_t db_idx64_end(account_name code, account_name scope, table_name table);
 
@@ -377,578 +368,571 @@ int32_t db_idx64_end(account_name code, account_name scope, table_name table);
 
 /**
   *
-  *  Store a record's secondary index in a secondary 128-bit integer index table
-  * 
-  *  @brief Store a record's secondary index in a secondary 128-bit integer index table
-  *  @param scope - The scope where the secondary index will be stored
-  *  @param table - The table name where the secondary index will be stored
-  *  @param payer - The account that is paying for this storage
-  *  @param id - The primary key of the record which secondary index to be stored
-  *  @param secondary - The pointer to the key of the secondary index to store
-  *  @return iterator to the newly created secondary index
-  *  @post new secondary index is created
+  *  Store an association of a 128-bit integer secondary key to a primary key in a secondary 128-bit integer index table
+  *
+  *  @brief Store an association of a 128-bit integer secondary key to a primary key in a secondary 128-bit integer index table
+  *  @param scope - The scope where the table resides (implied to be within the code of the current receiver)
+  *  @param table - The table name
+  *  @param payer - The account that pays for the storage costs
+  *  @param id - The primary key to which to associate the secondary key
+  *  @param secondary - Pointer to the secondary key
+  *  @return iterator to the newly created table row
+  *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary 128-bit integer index table
   */
 int32_t db_idx128_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* secondary);
 
 /**
   *
-  *  Update a record's secondary index inside a secondary 128-bit integer index table
-  * 
-  *  @brief Update a record's secondary index inside a secondary 128-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param payer - The account that is paying for this storage
-  *  @param secondary - The pointer to the **new** key of the secondary index
-  *  @pre `iterator` is pointing to existing secondary index
-  *  @post the seconday index pointed by the iterator is updated by the new value
+  *  Update an association for a 128-bit integer secondary key to a primary key in a secondary 128-bit integer index table
+  *
+  *  @brief Update an association for a 128-bit integer secondary key to a primary key in a secondary 128-bit integer index table
+  *  @param iterator - The iterator to the table row containing the secondary key association to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
+  *  @param secondary - Pointer to the **new** secondary key that will replace the existing one of the association
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
 void db_idx128_update(int32_t iterator, account_name payer, const uint128_t* secondary);
 
 /**
   *
-  *  Remove a record's secondary index from a secondary 128-bit integer index table
-  * 
-  *  @brief Remove a record's secondary index from a secondary 128-bit integer index table
-  *  @param iterator - The iterator to the secondary index to be removed
-  *  @pre `iterator` is pointing to existing secondary index
-  *  @post the secondary index pointed by the iterator is removed from the table
+  *  Remove a table row from a secondary 128-bit integer index table
+  *
+  *  @brief Remove a table row from a secondary 128-bit integer index table
+  *  @param iterator - Iterator to the table row to remove
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
 void db_idx128_remove(int32_t iterator);
 
 /**
   *
-  *  Get the next secondary index inside a secondary 128-bit integer index table
-  * 
-  *  @brief Get the next secondary index inside a secondary 128-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
-  *  @return iterator to the next secondary index
-  *  @pre `iterator` is pointing to the existing secondary index inside the table
-  *  @post `primary` will be replaced with the primary key of the secondary index proceeding the secondary index pointed by the iterator
+  *  Find the table row following the referenced table row in a secondary 128-bit integer index table
+  *
+  *  @brief Find the table row following the referenced table row in a secondary 128-bit integer index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row
+  *  @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table)
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx128_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the previous secondary index inside a secondary 128-bit integer index table
-  * 
-  *  @brief Get the previous secondary index inside a secondary 128-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
-  *  @return iterator to the previous secondary index
-  *  @pre `iterator` is pointing to the existing secondary index inside the table 
-  *  @post `primary` will be replaced with the primary key of the secondary index preceeding the secondary index pointed by the iterator
+  *  Find the table row preceding the referenced table row in a secondary 128-bit integer index table
+  *
+  *  @brief Find the table row preceding the referenced table row in a secondary 128-bit integer index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row
+  *  @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table)
+  *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
+  *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx128_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the secondary index of a record  from a secondary 128-bit integer index table given the record's primary key
-  * 
-  *  @brief Get  the secondary index of a record from a secondary 128-bit integer index table given the record's primary key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - It will be replaced with the secondary index key
-  *  @param primary - The record's primary key
-  *  @pre A correponding primary 128-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given record's primary key
+  *  Find a table row in a secondary 128-bit integer index table by primary key
+  *
+  *  @brief Find a table row in a secondary 128-bit integer index table by primary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to a `uint128_t` variable which will have its value set to the secondary key of the found table row
+  *  @param primary - The primary key of the table row to look up
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx128_find_primary(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t primary);
 
 /**
   *
-  *  Get the secondary index of a record from a secondary 128-bit integer index table given the secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 128-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the secondary index contains
-  *  @pre A correponding primary 128-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given secondary index key
+  *  Find a table row in a secondary 128-bit integer index table by secondary key
+  *
+  *  @brief Find a table row in a secondary 128-bit integer index table by secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key used to lookup the table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx128_find_secondary(account_name code, account_name scope, table_name table, const uint128_t* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the lowerbound secondary index from a secondary 128-bit integer index table given the secondary index key
-  *  Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 128-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the lowerbound secondary index contains
-  *  @pre A correponding primary 128-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the lowerbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the lowerbound secondary index
-  *  @return iterator to the lowerbound secondary index
+  *  Find the table row in a secondary 128-bit integer index table that matches the lowerbound condition for a given secondary key
+  *  The table row that matches the lowerbound condition is the first table row in the table with the lowest secondary key that is >= the given key
+  *
+  *  @brief Find the table row in a secondary 128-bit integer index table that matches the lowerbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the lowerbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx128_lowerbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the upperbound secondary index from a secondary 128-bit integer index table given the secondary index key
-  *  Upperbound secondary index is the first secondary index which key is < the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 128-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as upperbound pivot point, later on it will be replaced with the upperbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the upperbound secondary index contains
-  *  @pre A correponding primary 128-bit integer index table with the given code, scope table must exist
-  *  @post The secondary param will contains the upperbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the upperbound secondary index
-  *  @return iterator to the upperbound secondary index
+  *  Find the table row in a secondary 128-bit integer index table that matches the upperbound condition for a given secondary key
+  *  The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key
+  *
+  *  @brief Find the table row in a secondary 128-bit integer index table that matches the upperbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx128_upperbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the last secondary index from a secondary 128-bit integer index table 
-  * 
-  *  @brief Get the last secondary index from a secondary 128-bit integer index table 
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @return iterator to the last secondary index
+  *  Get an end iterator representing just-past-the-end of the last table row of a secondary 128-bit integer index table
+  *
+  *  @brief Get an end iterator representing just-past-the-end of the last table row of a secondary 128-bit integer index table
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @return end iterator of the table
   */
 int32_t db_idx128_end(account_name code, account_name scope, table_name table);
 
 /**
   *
-  *  Store a record's secondary index in a secondary 256-bit integer index table
-  * 
-  *  @brief Store a record's secondary index in a secondary 256-bit integer index table
-  *  @param scope - The scope where the secondary index will be stored
-  *  @param table - The table name where the secondary index will be stored
-  *  @param payer - The account that is paying for this storage
-  *  @param id - The primary key of the record which secondary index to be stored
-  *  @param data - The pointer to the key of the secondary index to store
-  *  @param data_len - Size of the key of the secondary index to store
-  *  @return iterator to the newly created secondary index
-  *  @pre `data` is pointing to range of memory at least `data_len` bytes long
-  *  @post new secondary index is created
+  *  Store an association of a 256-bit secondary key to a primary key in a secondary 256-bit index table
+  *
+  *  @brief Store an association of a 256-bit secondary key to a primary key in a secondary 256-bit index table
+  *  @param scope - The scope where the table resides (implied to be within the code of the current receiver)
+  *  @param table - The table name
+  *  @param payer - The account that pays for the storage costs
+  *  @param id - The primary key to which to associate the secondary key
+  *  @param data - Pointer to the secondary key data stored as an array of 2 `uint128_t` integers
+  *  @param data_len - Must be set to 2
+  *  @return iterator to the newly created table row
+  *  @post new secondary key association between primary key `id` and the specified secondary key is created in the secondary 256-bit index table
   */
-int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const void* data, uint32_t data_len );
+int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* data, uint32_t data_len );
 
 /**
   *
-  *  Update a record's secondary index inside a secondary 256-bit integer index table
-  * 
-  *  @brief Update a record's secondary index inside a secondary 256-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param payer - The account that is paying for this storage
-  *  @param data - The pointer to the **new** key of the secondary index
-  *  @param data_len - Size of the **new** key of the secondary index to store
-  *  @pre `iterator` is pointing to existing secondary index
-  *  @post the seconday index pointed by the iterator is updated by the new value
+  *  Update an association for a 256-bit secondary key to a primary key in a secondary 256-bit index table
+  *
+  *  @brief Update an association for a 256-bit secondary key to a primary key in a secondary 256-bit index table
+  *  @param iterator - The iterator to the table row containing the secondary key association to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
+  *  @param data - Pointer to the **new** secondary key data (which is stored as an array of 2 `uint128_t` integers) that will replace the existing one of the association
+  *  @param data_len - Must be set to 2
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the secondary key of the table row pointed to by `iterator` is replaced by the specified secondary key
   */
-void db_idx256_update(int32_t iterator, account_name payer, const void* data, uint32_t data_len);
+void db_idx256_update(int32_t iterator, account_name payer, const uint128_t* data, uint32_t data_len);
 
 /**
   *
-  *  Remove a record's secondary index from a secondary 256-bit integer index table
-  * 
-  *  @brief Remove a record's secondary index from a secondary 256-bit integer index table
-  *  @param iterator - The iterator to the secondary index to be removed
-  *  @pre `iterator` is pointing to existing secondary index
-  *  @post the secondary index pointed by the iterator is removed from the table
+  *  Remove a table row from a secondary 256-bit index table
+  *
+  *  @brief Remove a table row from a secondary 256-bit index table
+  *  @param iterator - Iterator to the table row to remove
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
 void db_idx256_remove(int32_t iterator);
 
 /**
   *
-  *  Get the next secondary index inside a secondary 256-bit integer index table
-  * 
-  *  @brief Get the next secondary index inside a secondary 256-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
-  *  @return iterator to the next secondary index
- *  @pre `iterator` is pointing to the existing secondary index inside the table
-  *  @post `primary` will be replaced with the primary key of the secondary index proceeding the secondary index pointed by the iterator
+  *  Find the table row following the referenced table row in a secondary 256-bit index table
+  *
+  *  @brief Find the table row following the referenced table row in a secondary 256-bit index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row
+  *  @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table)
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the previous secondary index inside a secondary 256-bit integer index table
-  * 
-  *  @brief Get the previous secondary index inside a secondary 256-bit integer index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
-  *  @return iterator to the previous secondary index
- *  @pre `iterator` is pointing to the existing secondary index inside the table 
-  *  @post `primary` will be replaced with the primary key of the secondary index preceeding the secondary index pointed by the iterator
+  *  Find the table row preceding the referenced table row in a secondary 256-bit index table
+  *
+  *  @brief Find the table row preceding the referenced table row in a secondary 256-bit index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row
+  *  @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table)
+  *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
+  *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the secondary index of a record  from a secondary 256-bit integer index table given the record's primary key
-  * 
-  *  @brief Get  the secondary index of a record from a secondary 256-bit integer index table given the record's primary key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param data - The buffer which will be replaced with the secondary index key
-  *  @param data_len - The buffer size
-  *  @param primary - The record's primary key
-  *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The data param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given record's primary key
+  *  Find a table row in a secondary 256-bit index table by primary key
+  *
+  *  @brief Find a table row in a secondary 128-bit integer index table by primary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the an array of 2 `uint128_t` integers which will act as the buffer to hold the retrieved secondary key of the found table row
+  *  @param data_len - Must be set to 2
+  *  @param primary - The primary key of the table row to look up
+  *  @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row
+  *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
-int32_t db_idx256_find_primary(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t primary);
+int32_t db_idx256_find_primary(account_name code, account_name scope, table_name table, uint128_t* data, uint32_t data_len, uint64_t primary);
 
 /**
   *
-  *  Get the secondary index of a record from a secondary 256-bit integer index table given the secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 256-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param data - The pointer to the secondary index key
-  *  @param data_len - Size of the secondary index key 
-  *  @param primary - It will be replaced with the primary key of the record which the secondary index contains
-  *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The data param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given secondary index key
+  *  Find a table row in a secondary 256-bit index table by secondary key
+  *
+  *  @brief Find a table row in a secondary 256-bit index table by secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the secondary key data (which is stored as an array of 2 `uint128_t` integers) used to lookup the table row
+  *  @param data_len - Must be set to 2
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the first table row with a secondary key equal to the specified secondary key or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx256_find_secondary(account_name code, account_name scope, table_name table, const void* data, uint32_t data_len, uint64_t* primary);
 
 /**
   *
-  *  Get the lowerbound secondary index from a secondary 256-bit integer index table given the secondary index key
-  *  Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 256-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param data - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
-  *  @param data_len - Size of the secondary index key 
-  *  @param primary - It will be replaced with the primary key of the record which the lowerbound secondary index contains
-  *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The data param will contains the lowerbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the lowerbound secondary index
-  *  @return iterator to the lowerbound secondary index
+  *  Find the table row in a secondary 256-bit index table that matches the lowerbound condition for a given secondary key
+  *  The table row that matches the lowerbound condition is the first table row in the table with the lowest secondary key that is >= the given key (uses lexicographical ordering on the 256-bit keys)
+  *
+  *  @brief Find the table row in a secondary 256-bit index table that matches the lowerbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the secondary key data (which is stored as an array of 2 `uint128_t` integers) first used to determine the lowerbound and which is then replaced with the secondary key of the found table row
+  *  @param data_len - Must be set to 2
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx256_lowerbound(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t* primary);
 
 /**
   *
-  *  Get the upperbound secondary index from a secondary 256-bit integer index table given the secondary index key
-  *  Upperbound secondary index is the first secondary index which key is < the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary 256-bit integer index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param data - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
-  *  @param data_len - Size of the secondary index key 
-  *  @param primary - It will be replaced with the primary key of the record which the upperbound secondary index contains
-  *  @pre A correponding primary 256-bit integer index table with the given code, scope table must exist
-  *  @post The data param will contains the upperbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the upperbound secondary index
-  *  @return iterator to the upperbound secondary index
+  *  Find the table row in a secondary 256-bit index table that matches the upperbound condition for a given secondary key
+  *  The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key (uses lexicographical ordering on the 256-bit keys)
+  *
+  *  @brief Find the table row in a secondary 256-bit index table that matches the upperbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the secondary key data (which is stored as an array of 2 `uint128_t` integers) first used to determine the upperbound and which is then replaced with the secondary key of the found table row
+  *  @param data_len - Must be set to 2
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx256_upperbound(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t* primary);
 
 /**
   *
-  *  Get the last secondary index from a secondary 256-bit integer index table 
-  * 
-  *  @brief Get the last secondary index from a secondary 256-bit integer index table 
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @return iterator to the last secondary index
+  *  Get an end iterator representing just-past-the-end of the last table row of a secondary 256-bit index table
+  *
+  *  @brief Get an end iterator representing just-past-the-end of the last table row of a secondary 256-bit index table
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @return end iterator of the table
   */
 int32_t db_idx256_end(account_name code, account_name scope, table_name table);
 
 /**
   *
-  *  Store a record's secondary index in a secondary double index table
-  * 
-  *  @brief Store a record's secondary index in a secondary double index table
-  *  @param scope - The scope where the secondary index will be stored
-  *  @param table - The table name where the secondary index will be stored
-  *  @param payer - The account that is paying for this storage
-  *  @param id - The primary key of the record which secondary index to be stored
-  *  @param secondary - The pointer to the key of the secondary index to store
-  *  @return iterator to the newly created secondary index
+  *  Store an association of a double-precision floating-point secondary key to a primary key in a secondary double-precision floating-point index table
+  *
+  *  @brief Store an association of a double-precision floating-point secondary key to a primary key in a secondary double-precision floating-point index table
+  *  @param scope - The scope where the table resides (implied to be within the code of the current receiver)
+  *  @param table - The table name
+  *  @param payer - The account that pays for the storage costs
+  *  @param id - The primary key to which to associate the secondary key
+  *  @param secondary - Pointer to the secondary key
+  *  @return iterator to the newly created table row
+  *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary double-precision floating-point index table
   */
 int32_t db_idx_double_store(account_name scope, table_name table, account_name payer, uint64_t id, const double* secondary);
 
 /**
   *
-  *  Update a record's secondary index inside a secondary double index table
-  * 
-  *  @brief Update a record's secondary index inside a secondary double index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param payer - The account that is paying for this storage
-  *  @param secondary - The pointer to the **new** key of the secondary index
+  *  Update an association for a double-precision floating-point secondary key to a primary key in a secondary double-precision floating-point index table
+  *
+  *  @brief Update an association for a double-precision floating-point secondary key to a primary key in a secondary double-precision floating-point index table
+  *  @param iterator - The iterator to the table row containing the secondary key association to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
+  *  @param secondary - Pointer to the **new** secondary key that will replace the existing one of the association
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
 void db_idx_double_update(int32_t iterator, account_name payer, const double* secondary);
 
 /**
   *
-  *  Remove a record's secondary index from a secondary double index table
-  * 
-  *  @brief Remove a record's secondary index from a secondary double index table
-  *  @param iterator - The iterator to the secondary index to be removed
+  *  Remove a table row from a secondary double-precision floating-point index table
+  *
+  *  @brief Remove a table row from a secondary double-precision floating-point index table
+  *  @param iterator - Iterator to the table row to remove
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
 void db_idx_double_remove(int32_t iterator);
 
 /**
   *
-  *  Get the next secondary index inside a secondary double index table
-  * 
-  *  @brief Get the next secondary index inside a secondary double index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
-  *  @return iterator to the next secondary index
+  *  Find the table row following the referenced table row in a secondary double-precision floating-point index table
+  *
+  *  @brief Find the table row following the referenced table row in a secondary double-precision floating-point index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row
+  *  @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table)
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx_double_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the previous secondary index inside a secondary double index table
-  * 
-  *  @brief Get the previous secondary index inside a secondary double index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
-  *  @return iterator to the previous secondary index
+  *  Find the table row preceding the referenced table row in a secondary double-precision floating-point index table
+  *
+  *  @brief Find the table row preceding the referenced table row in a secondary double-precision floating-point index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row
+  *  @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table)
+  *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
+  *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx_double_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the secondary index of a record  from a secondary double index table given the record's primary key
-  * 
-  *  @brief Get  the secondary index of a record from a secondary double index table given the record's primary key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - It will be replaced with the secondary index key
-  *  @param primary - The record's primary key
-  *  @pre A correponding primary double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given record's primary key
+  *  Find a table row in a secondary double-precision floating-point index table by primary key
+  *
+  *  @brief Find a table row in a secondary double-precision floating-point index table by primary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to a `double` variable which will have its value set to the secondary key of the found table row
+  *  @param primary - The primary key of the table row to look up
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_double_find_primary(account_name code, account_name scope, table_name table, double* secondary, uint64_t primary);
 
 /**
   *
-  *  Get the secondary index of a record from a secondary double index table given the secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary double index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the secondary index contains
-  *  @pre A correponding primary double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given secondary index key
+  *  Find a table row in a secondary double-precision floating-point index table by secondary key
+  *
+  *  @brief Find a table row in a secondary double-precision floating-point index table by secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key used to lookup the table row
+  *  @param primary - Pointer to a `double` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_double_find_secondary(account_name code, account_name scope, table_name table, const double* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the lowerbound secondary index from a secondary double index table given the secondary index key
-  *  Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary double index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the lowerbound secondary index contains
-  *  @pre A correponding primary double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the lowerbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the lowerbound secondary index
-  *  @return iterator to the lowerbound secondary index
+  *  Find the table row in a secondary double-precision floating-point index table that matches the lowerbound condition for a given secondary key
+  *  The table row that matches the lowerbound condition is the first table row in the table with the lowest secondary key that is >= the given key
+  *
+  *  @brief Find the table row in a secondary double-precision floating-point index table that matches the lowerbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the lowerbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_double_lowerbound(account_name code, account_name scope, table_name table, double* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the upperbound secondary index from a secondary double index table given the secondary index key
-  *  Upperbound secondary index is the first secondary index which key is < the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary double index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as upperbound pivot point, later on it will be replaced with the upperbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the upperbound secondary index contains
-  *  @pre A correponding primary double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the upperbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the upperbound secondary index
-  *  @return iterator to the upperbound secondary index
+  *  Find the table row in a secondary double-precision floating-point index table that matches the upperbound condition for a given secondary key
+  *  The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key
+  *
+  *  @brief Find the table row in a secondary double-precision floating-point index table that matches the upperbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_double_upperbound(account_name code, account_name scope, table_name table, double* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the last secondary index from a secondary double index table 
-  * 
-  *  @brief Get the last secondary index from a secondary double index table 
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @return iterator to the last secondary index
+  *  Get an end iterator representing just-past-the-end of the last table row of a secondary double-precision floating-point index table
+  *
+  *  @brief Get an end iterator representing just-past-the-end of the last table row of a secondary double-precision floating-point index table
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @return end iterator of the table
   */
 int32_t db_idx_double_end(account_name code, account_name scope, table_name table);
 
 /**
   *
-  *  Store a record's secondary index in a secondary long double index table
-  * 
-  *  @brief Store a record's secondary index in a secondary long double index table
-  *  @param scope - The scope where the secondary index will be stored
-  *  @param table - The table name where the secondary index will be stored
-  *  @param payer - The account that is paying for this storage
-  *  @param id - The primary key of the record which secondary index to be stored
-  *  @param secondary - The pointer to the key of the secondary index to store
-  *  @return iterator to the newly created secondary index
+  *  Store an association of a quadruple-precision floating-point secondary key to a primary key in a secondary quadruple-precision floating-point index table
+  *
+  *  @brief Store an association of a quadruple-precision floating-point secondary key to a primary key in a secondary quadruple-precision floating-point index table
+  *  @param scope - The scope where the table resides (implied to be within the code of the current receiver)
+  *  @param table - The table name
+  *  @param payer - The account that pays for the storage costs
+  *  @param id - The primary key to which to associate the secondary key
+  *  @param secondary - Pointer to the secondary key
+  *  @return iterator to the newly created table row
+  *  @post new secondary key association between primary key `id` and secondary key `*secondary` is created in the secondary quadruple-precision floating-point index table
   */
 int32_t db_idx_long_double_store(account_name scope, table_name table, account_name payer, uint64_t id, const long double* secondary);
 
 /**
   *
-  *  Update a record's secondary index inside a secondary long double index table
-  * 
-  *  @brief Update a record's secondary index inside a secondary long double index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param payer - The account that is paying for this storage
-  *  @param secondary - The pointer to the **new** key of the secondary index
+  *  Update an association for a quadruple-precision floating-point secondary key to a primary key in a secondary quadruple-precision floating-point index table
+  *
+  *  @brief Update an association for a quadruple-precision floating-point secondary key to a primary key in a secondary quadruple-precision floating-point index table
+  *  @param iterator - The iterator to the table row containing the secondary key association to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
+  *  @param secondary - Pointer to the **new** secondary key that will replace the existing one of the association
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the secondary key of the table row pointed to by `iterator` is replaced by `*secondary`
   */
 void db_idx_long_double_update(int32_t iterator, account_name payer, const long double* secondary);
 
 /**
   *
-  *  Remove a record's secondary index from a secondary long double index table
-  * 
-  *  @brief Remove a record's secondary index from a secondary long double index table
-  *  @param iterator - The iterator to the secondary index to be removed
+  *  Remove a table row from a secondary quadruple-precision floating-point index table
+  *
+  *  @brief Remove a table row from a secondary quadruple-precision floating-point index table
+  *  @param iterator - Iterator to the table row to remove
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
   */
 void db_idx_long_double_remove(int32_t iterator);
 
 /**
   *
-  *  Get the next secondary index inside a secondary long double index table
-  * 
-  *  @brief Get the next secondary index inside a secondary long double index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **next** secondary index
-  *  @return iterator to the next secondary index
+  *  Find the table row following the referenced table row in a secondary quadruple-precision floating-point index table
+  *
+  *  @brief Find the table row following the referenced table row in a secondary quadruple-precision floating-point index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row
+  *  @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table)
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx_long_double_next(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the previous secondary index inside a secondary long double index table
-  * 
-  *  @brief Get the previous secondary index inside a secondary long double index table
-  *  @param iterator - The iterator to the secondary index
-  *  @param primary - It will be replaced with the primary key of the record which is stored in the **previous** secondary index
-  *  @return iterator to the previous secondary index
+  *  Find the table row preceding the referenced table row in a secondary quadruple-precision floating-point index table
+  *
+  *  @brief Find the table row preceding the referenced table row in a secondary quadruple-precision floating-point index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row
+  *  @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table)
+  *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
+  *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
   */
 int32_t db_idx_long_double_previous(int32_t iterator, uint64_t* primary);
 
 /**
   *
-  *  Get the secondary index of a record  from a secondary long double index table given the record's primary key
-  * 
-  *  @brief Get  the secondary index of a record from a secondary long double index table given the record's primary key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - It will be replaced with the secondary index key
-  *  @param primary - The record's primary key
-  *  @pre A correponding primary long double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given record's primary key
+  *  Find a table row in a secondary quadruple-precision floating-point index table by primary key
+  *
+  *  @brief Find a table row in a secondary quadruple-precision floating-point index table by primary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to a `long double` variable which will have its value set to the secondary key of the found table row
+  *  @param primary - The primary key of the table row to look up
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_long_double_find_primary(account_name code, account_name scope, table_name table, long double* secondary, uint64_t primary);
 
 /**
   *
-  *  Get the secondary index of a record from a secondary long double index table given the secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary long double index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the secondary index contains
-  *  @pre A correponding primary long double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the appropriate secondary index key
-  *  @post The primary param will contains the record that corresponds to the appropriate secondary index
-  *  @return iterator to the secondary index which contains the given secondary index key
+  *  Find a table row in a secondary quadruple-precision floating-point index table by secondary key
+  *
+  *  @brief Find a table row in a secondary quadruple-precision floating-point index table by secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key used to lookup the table row
+  *  @param primary - Pointer to a `long double` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the first table row with a secondary key equal to `*secondary` or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_long_double_find_secondary(account_name code, account_name scope, table_name table, const long double* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the lowerbound secondary index from a secondary long double index table given the secondary index key
-  *  Lowerbound secondary index is the first secondary index which key is <= the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary long double index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as lowerbound pivot point, later on it will be replaced with the lowerbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the lowerbound secondary index contains
-  *  @pre A correponding primary long double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the lowerbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the lowerbound secondary index
-  *  @return iterator to the lowerbound secondary index
+  *  Find the table row in a secondary quadruple-precision floating-point index table that matches the lowerbound condition for a given secondary key
+  *  The table row that matches the lowerbound condition is the first table row in the table with the lowest secondary key that is >= the given key
+  *
+  *  @brief Find the table row in a secondary quadruple-precision floating-point index table that matches the lowerbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the lowerbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_long_double_lowerbound(account_name code, account_name scope, table_name table, long double* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the upperbound secondary index from a secondary long double index table given the secondary index key
-  *  Upperbound secondary index is the first secondary index which key is < the given secondary index key
-  * 
-  *  @brief Get the secondary index of a record from a secondary long double index table given the secondary index key
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @param secondary - The pointer to the secondary index key which acts as upperbound pivot point, later on it will be replaced with the upperbound secondary index key
-  *  @param primary - It will be replaced with the primary key of the record which the upperbound secondary index contains
-  *  @pre A correponding primary long double index table with the given code, scope table must exist
-  *  @post The secondary param will contains the upperbound secondary index key
-  *  @post The primary param will contains the record that corresponds to the upperbound secondary index
-  *  @return iterator to the upperbound secondary index
+  *  Find the table row in a secondary quadruple-precision floating-point index table that matches the upperbound condition for a given secondary key
+  *  The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key
+  *
+  *  @brief Find the table row in a secondary quadruple-precision floating-point index table that matches the upperbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param secondary - Pointer to secondary key first used to determine the upperbound and which is then replaced with the secondary key of the found table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*secondary` will be replaced with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
   */
 int32_t db_idx_long_double_upperbound(account_name code, account_name scope, table_name table, long double* secondary, uint64_t* primary);
 
 /**
   *
-  *  Get the last secondary index from a secondary long double index table 
-  * 
-  *  @brief Get the last secondary index from a secondary long double index table 
-  *  @param code - The owner of the secondary index table
-  *  @param scope - The scope where the secondary index resides
-  *  @param table - The table where the secondary index resides
-  *  @return iterator to the last secondary index
+  *  Get an end iterator representing just-past-the-end of the last table row of a secondary quadruple-precision floating-point index table
+  *
+  *  @brief Get an end iterator representing just-past-the-end of the last table row of a secondary quadruple-precision floating-point index table
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @return end iterator of the table
   */
 int32_t db_idx_long_double_end(account_name code, account_name scope, table_name table);
 
