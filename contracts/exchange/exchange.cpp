@@ -76,6 +76,7 @@ namespace eosio {
    void exchange::createx( account_name    creator,
                  asset           initial_supply,
                  double          fee,
+                 double          interest_rate,
                  extended_asset  base_deposit,
                  extended_asset  quote_deposit
                ) {
@@ -83,6 +84,7 @@ namespace eosio {
       eosio_assert( initial_supply.is_valid(), "invalid initial supply" );
       eosio_assert( initial_supply.amount > 0, "initial supply must be positive" );
       eosio_assert( fee >= 0, "fee can not be negative" );
+      eosio_assert( interest_rate >= 0, "interest_rate can not be negative" );
       eosio_assert( base_deposit.is_valid(), "invalid base deposit" );
       eosio_assert( base_deposit.amount > 0, "base deposit must be positive" );
       eosio_assert( quote_deposit.is_valid(), "invalid quote deposit" );
@@ -104,6 +106,7 @@ namespace eosio {
           s.manager = creator;
           s.supply  = extended_asset(initial_supply, _this_contract);
           s.fee = fee;
+          s.interest_rate = interest_rate;
           s.base.balance = base_deposit;
           s.quote.balance = quote_deposit;
 
@@ -111,11 +114,15 @@ namespace eosio {
           s.base.peer_margin.total_lent.contract        = base_deposit.contract;
           s.base.peer_margin.total_lendable.symbol      = base_deposit.symbol;
           s.base.peer_margin.total_lendable.contract    = base_deposit.contract;
+          s.base.peer_margin.collected_interest.symbol  = quote_deposit.symbol;
+          s.base.peer_margin.collected_interest.contract= quote_deposit.contract;
 
           s.quote.peer_margin.total_lent.symbol         = quote_deposit.symbol;
           s.quote.peer_margin.total_lent.contract       = quote_deposit.contract;
           s.quote.peer_margin.total_lendable.symbol     = quote_deposit.symbol;
           s.quote.peer_margin.total_lendable.contract   = quote_deposit.contract;
+          s.quote.peer_margin.collected_interest.symbol  =base_deposit.symbol;
+          s.quote.peer_margin.collected_interest.contract=base_deposit.contract;
       });
 
       _excurrencies.create_currency( { .issuer = _this_contract,

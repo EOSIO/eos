@@ -13,12 +13,14 @@ namespace eosio {
       account_name     owner;
       extended_asset   borrowed;
       extended_asset   collateral;
+      extended_asset   interest_reserve;
+      time_point_sec   interest_start_time;
       double           call_price = 0;
 
       uint64_t get_call()const { return uint64_t(1000000*call_price); }
       uint64_t primary_key()const { return owner; }
 
-      EOSLIB_SERIALIZE( margin_position, (owner)(borrowed)(collateral)(call_price) )
+      EOSLIB_SERIALIZE( margin_position, (owner)(borrowed)(collateral)(interest_reserve)(interest_start_time)(call_price) )
    };
 
    typedef eosio::multi_index<N(margins), margin_position,

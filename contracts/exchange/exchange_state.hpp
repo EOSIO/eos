@@ -9,6 +9,7 @@ namespace eosio {
    struct margin_state {
       extended_asset total_lendable;
       extended_asset total_lent;
+      extended_asset collected_interest;
       real_type      least_collateralized = std::numeric_limits<double>::max();
 
       /**
@@ -42,13 +43,14 @@ namespace eosio {
          total_lendable.amount -= result.amount;
          interest_shares -= ishares;
 
+         // todo: call margins? zero interest_shares on underflow?
          eosio_assert( interest_shares >= 0, "underflow" );
          eosio_assert( total_lendable.amount >= 0, "underflow" );
 
          return result;
       }
 
-      EOSLIB_SERIALIZE( margin_state, (total_lendable)(total_lent)(least_collateralized)(interest_shares) )
+      EOSLIB_SERIALIZE( margin_state, (total_lendable)(total_lent)(collected_interest)(least_collateralized)(interest_shares) )
    };
 
    /**
@@ -60,6 +62,7 @@ namespace eosio {
       account_name      manager;
       extended_asset    supply;
       double            fee = 0;
+      double            interest_rate = 0;
 
       struct connector {
          extended_asset balance;
@@ -75,14 +78,14 @@ namespace eosio {
 
       uint64_t primary_key()const { return supply.symbol.name(); }
 
-      extended_asset convert_to_exchange( connector& c, extended_asset in ); 
-      extended_asset convert_from_exchange( connector& c, extended_asset in );
-      extended_asset convert( extended_asset from, extended_symbol to );
+      extended_asset convert_to_exchange( connector& c, extended_asset in, bool allow_zero ); 
+      extended_asset convert_from_exchange( connector& c, extended_asset in, bool allow_zero );
+      extended_asset convert( extended_asset from, extended_symbol to, bool allow_zero = false );
 
       bool requires_margin_call( const exchange_state::connector& con, const extended_symbol& collateral_symbol )const;
       bool requires_margin_call()const;
 
-      EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(base)(quote) )
+      EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(interest_rate)(base)(quote) )
    };
 
    typedef eosio::multi_index<N(markets), exchange_state> markets;

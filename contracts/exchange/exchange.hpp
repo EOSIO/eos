@@ -41,6 +41,7 @@ namespace eosio {
          void createx( account_name    creator,
                        asset           initial_supply,
                        double          fee,
+                       double          interest_rate,
                        extended_asset  base_deposit,
                        extended_asset  quote_deposit
                      );

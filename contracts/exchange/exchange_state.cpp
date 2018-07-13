@@ -1,7 +1,7 @@
 #include <exchange/exchange_state.hpp>
 
 namespace eosio {
-   extended_asset exchange_state::convert_to_exchange( connector& c, extended_asset in ) {
+   extended_asset exchange_state::convert_to_exchange( connector& c, extended_asset in, bool allow_zero ) {
 
       real_type R(supply.amount);
       real_type C(c.balance.amount+in.amount);
@@ -11,7 +11,10 @@ namespace eosio {
 
       real_type E = -R * (ONE - std::pow( ONE + T / C, F) );
       int64_t issued = int64_t(E) - int64_t(E * fee + 1);
-      eosio_assert( issued > 0, "conversion is not positive after fee" );
+      if( allow_zero && issued <= 0)
+         issued = 0;
+      else
+         eosio_assert( issued > 0, "conversion is not positive after fee" );
 
       supply.amount += issued;
       c.balance.amount += in.amount;
@@ -19,7 +22,7 @@ namespace eosio {
       return extended_asset( issued, supply.get_extended_symbol() );
    }
 
-   extended_asset exchange_state::convert_from_exchange( connector& c, extended_asset in ) {
+   extended_asset exchange_state::convert_from_exchange( connector& c, extended_asset in, bool allow_zero ) {
       eosio_assert( in.contract == supply.contract, "unexpected asset contract input" );
       eosio_assert( in.symbol== supply.symbol, "unexpected asset symbol input" );
 
@@ -32,7 +35,10 @@ namespace eosio {
 
       real_type T = C * (std::pow( ONE + E/R, F) - ONE);
       int64_t out = int64_t(T) - int64_t(T * fee + 1);
-      eosio_assert( out > 0, "conversion is not positive after fee" );
+      if( allow_zero && out <= 0)
+         out = 0;
+      else
+         eosio_assert( out > 0, "conversion is not positive after fee" );
 
       supply.amount -= in.amount;
       c.balance.amount -= out;
@@ -40,7 +46,7 @@ namespace eosio {
       return extended_asset( out, c.balance.get_extended_symbol() );
    }
 
-   extended_asset exchange_state::convert( extended_asset from, extended_symbol to ) {
+   extended_asset exchange_state::convert( extended_asset from, extended_symbol to, bool allow_zero ) {
       auto sell_symbol  = from.get_extended_symbol();
       auto ex_symbol    = supply.get_extended_symbol();
       auto base_symbol  = base.balance.get_extended_symbol();
@@ -48,24 +54,24 @@ namespace eosio {
 
       if( sell_symbol != ex_symbol ) {
          if( sell_symbol == base_symbol ) {
-            from = convert_to_exchange( base, from );
+            from = convert_to_exchange( base, from, allow_zero );
          } else if( sell_symbol == quote_symbol ) {
-            from = convert_to_exchange( quote, from );
+            from = convert_to_exchange( quote, from, allow_zero );
          } else { 
             eosio_assert( false, "invalid sell" );
          }
       } else {
          if( to == base_symbol ) {
-            from = convert_from_exchange( base, from ); 
+            from = convert_from_exchange( base, from, allow_zero ); 
          } else if( to == quote_symbol ) {
-            from = convert_from_exchange( quote, from ); 
+            from = convert_from_exchange( quote, from, allow_zero ); 
          } else {
             eosio_assert( false, "invalid conversion" );
          }
       }
 
       if( to != from.get_extended_symbol() )
-         return convert( from, to );
+         return convert( from, to, allow_zero );
 
       return from;
    }

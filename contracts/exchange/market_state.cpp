@@ -27,6 +27,7 @@ namespace eosio {
    }
 
    void market_state::margin_call( exchange_state::connector& c, margins& marginstable ) {
+      // todo: interest
       auto price_idx = marginstable.get_index<N(callprice)>();
       auto pos = price_idx.begin();
       if( pos == price_idx.end() )
@@ -62,15 +63,34 @@ namespace eosio {
 
       _accounts.adjust_balance( seller, -sell, "sold" );
 
-      auto temp   = this->exstate;
+      exchange_state::connector* down; // value is going down
+      exchange_state::connector* up;   // value is going up
+      margins* up_margins;
+
+      if( sell.get_extended_symbol() == exstate.base.balance.get_extended_symbol() || receive_symbol == exstate.quote.balance.get_extended_symbol() ) {
+         down = &exstate.base;
+         up = &exstate.quote;
+         up_margins = &quote_margins;
+      } else {
+         down = &exstate.quote;
+         up = &exstate.base;
+         up_margins = &base_margins;
+      }
+
+      auto temp = this->exstate;
+      auto converted_interest = temp.convert( up->peer_margin.collected_interest, up->peer_margin.total_lendable.get_extended_symbol(), true );
       auto output = temp.convert( sell, receive_symbol );
 
-      while( temp.requires_margin_call() ) {
-         this->margin_call( receive_symbol );
+      while( temp.requires_margin_call(*up, down->balance.get_extended_symbol()) ) {
+         this->margin_call( *up, *up_margins );
          temp = this->exstate;
+         converted_interest = temp.convert( up->peer_margin.collected_interest, up->peer_margin.total_lendable.get_extended_symbol(), true );
          output = temp.convert( sell, receive_symbol );
       }
       this->exstate = temp;
+
+      up->peer_margin.collected_interest.amount = 0;
+      up->peer_margin.total_lendable += converted_interest;
 
       print( name{seller}, "   ", sell, "  =>  ", output, "\n" );
 
@@ -153,6 +173,7 @@ namespace eosio {
    void market_state::cover_margin( account_name borrower, margins& m, exchange_state::connector& c,
                                     const extended_asset& cover_amount )
    {
+      // todo: interest
       auto existing = m.find( borrower );
       eosio_assert( existing != m.end(), "no known margin position" );
       eosio_assert( existing->borrowed.amount >= cover_amount.amount, "attempt to cover more than user has" );
@@ -204,6 +225,7 @@ namespace eosio {
    void market_state::adjust_margin( account_name borrower, margins& m, exchange_state::connector& c,
                                      const extended_asset& delta_debt, const extended_asset& delta_col )
    {
+      // todo: interest
       auto existing = m.find( borrower );
       if( existing == m.end() ) {
          eosio_assert( delta_debt.amount > 0, "cannot borrow neg" );

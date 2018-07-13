@@ -34,15 +34,17 @@ using namespace fc;
 struct margin_state {
    extended_asset total_lendable;
    extended_asset total_lent;
+   extended_asset collected_interest;
    double         least_collateralized = 0;
    double         interest_shares = 0;
 };
-FC_REFLECT( margin_state, (total_lendable)(total_lent)(least_collateralized)(interest_shares) )
+FC_REFLECT( margin_state, (total_lendable)(total_lent)(collected_interest)(least_collateralized)(interest_shares) )
 
 struct exchange_state {
    account_name      manager;
    extended_asset    supply;
    double            fee = 0;
+   double            interest_rate = 0;
 
    struct connector {
       extended_asset balance;
@@ -55,7 +57,7 @@ struct exchange_state {
 };
 
 FC_REFLECT( exchange_state::connector, (balance)(weight)(peer_margin) );
-FC_REFLECT( exchange_state, (manager)(supply)(fee)(base)(quote) );
+FC_REFLECT( exchange_state, (manager)(supply)(fee)(interest_rate)(base)(quote) );
 
 class exchange_tester : public TESTER {
    public:
@@ -244,11 +246,13 @@ class exchange_tester : public TESTER {
       auto create_exchange( name contract, name signer,
                             extended_asset base_deposit,
                             extended_asset quote_deposit,
-                            asset exchange_supply, double fee = 0 ) {
+                            asset exchange_supply, 
+                            double fee = 0, double interest_rate = 0 ) {
          return push_action( contract, signer, N(createx), mutable_variant_object()
                         ("creator", signer)
                         ("initial_supply", exchange_supply)
                         ("fee", fee)
+                        ("interest_rate", interest_rate)
                         ("base_deposit", base_deposit)
                         ("quote_deposit", quote_deposit)
                     );
