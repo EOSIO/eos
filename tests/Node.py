@@ -641,37 +641,27 @@ class Node(object):
         return balances
 
     # Gets accounts mapped to key. Returns json object
-    def getAccountsByKey(self, key):
-        cmd="%s %s get accounts %s" % (Utils.EosClientPath, self.endpointArgs, key)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Utils.runCmdReturnJson(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during accounts by key retrieval. %s" % (msg))
-            return None
+    def getAccountsByKey(self, key, exitOnError=False):
+        cmdDesc = "get accounts"
+        cmd="%s %s" % (cmdDesc, key)
+        msg="key=%s" % (key);
+        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     # Get actions mapped to an account (cleos get actions)
-    def getActions(self, account, pos=-1, offset=-1):
+    def getActions(self, account, pos=-1, offset=-1, exitOnError=False):
         assert(isinstance(account, Account))
         assert(isinstance(pos, int))
         assert(isinstance(offset, int))
 
         if not self.enableMongo:
-            cmd="%s %s get actions -j %s %d %d" % (Utils.EosClientPath, self.endpointArgs, account.name, pos, offset)
-            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-            try:
-                actions=Utils.runCmdReturnJson(cmd)
-                return actions
-            except subprocess.CalledProcessError as ex:
-                msg=ex.output.decode("utf-8")
-                Utils.Print("ERROR: Exception during actions by account retrieval. %s" % (msg))
-                return None
+            cmdDesc = "get actions"
+            cmd="%s -j %s %d %d" % (cmdDesc, account.name, pos, offset)
+            msg="account=%s, pos=%d, offset=%d" % (account.name, pos, offset);
+            return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         else:
-            return self.getActionsMdb(account, pos, offset)
+            return self.getActionsMdb(account, pos, offset, exitOnError=exitOnError)
 
-    def getActionsMdb(self, account, pos=-1, offset=-1):
+    def getActionsMdb(self, account, pos=-1, offset=-1, exitOnError=False):
         assert(isinstance(account, Account))
         assert(isinstance(pos, int))
         assert(isinstance(offset, int))
