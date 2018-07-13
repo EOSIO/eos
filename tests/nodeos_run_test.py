@@ -287,8 +287,7 @@ try:
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
     Print("Validate last action for account %s" % (testeraAccount.name))
-    actions=node.getActions(testeraAccount, -1, -1)
-    assert(actions)
+    actions=node.getActions(testeraAccount, -1, -1, exitOnError=True)
     try:
         if not enableMongo:
             assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
