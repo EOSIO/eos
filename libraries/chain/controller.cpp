@@ -895,6 +895,9 @@ struct controller_impl {
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
+         // on replay irreversible is not emitted by fork database, so emit it explicitly here
+         if( s == controller::block_status::irreversible )
+            emit( self.irreversible_block, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
             maybe_switch_forks( s );
