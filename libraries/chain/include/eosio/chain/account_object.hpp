@@ -80,5 +80,4 @@ namespace eosio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
 
-
-FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
