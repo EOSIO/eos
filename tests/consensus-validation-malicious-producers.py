@@ -21,6 +21,7 @@ import shutil
 
 
 Print=testUtils.Utils.Print
+errorExit=Utils.errorExit
 
 StagedNodeInfo=namedtuple("StagedNodeInfo", "config logging")
 
@@ -191,11 +192,6 @@ def stageScenario(stagedNodeInfos):
 
 def cleanStaging():
     os.path.exists(stagingDir) and shutil.rmtree(stagingDir)
-
-
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
 
 def error(msg="", errorCode=1):
     Print("ERROR:", msg)
