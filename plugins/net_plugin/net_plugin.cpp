@@ -946,16 +946,8 @@ namespace eosio {
          try {
             signed_block_ptr b = cc.fetch_block_by_id(blkid);
             if(b) {
-               uint32_t bnum = b->block_num();
-               bool send_whole = bnum <= cc.last_irreversible_block_num();
-               fc_dlog(logger,"found block for id at num ${n}",("n",bnum));
-               if (send_whole) {
-                  enqueue(net_message(*b));
-               }
-               else {
-                  //signed_block_summary &sbs = *b;
-                  enqueue(net_message(*b));
-               }
+               fc_dlog(logger,"found block for id at num ${n}",("n",b->block_num()));
+               enqueue(net_message(*b));
             }
             else {
                ilog("fetch block by id returned null, id ${id} on block ${c} of ${s} for ${p}",
