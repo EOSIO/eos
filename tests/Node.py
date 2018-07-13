@@ -691,19 +691,14 @@ class Node(object):
         accounts=trans["account_names"]
         return accounts
 
-    def getServants(self, name):
-        cmd="%s %s get servants %s" % (Utils.EosClientPath, self.endpointArgs, name)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        try:
-            trans=Utils.runCmdReturnJson(cmd)
-            return trans
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during servants retrieval. %s" % (msg))
-            return None
+    def getServants(self, name, exitOnError=False):
+        cmdDesc = "get servants"
+        cmd="%s %s" % (cmdDesc, name)
+        msg="name=%s" % (name);
+        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     def getServantsArr(self, name):
-        trans=self.getServants(name)
+        trans=self.getServants(name, exitOnError=True)
         servants=trans["controlled_accounts"]
         return servants
 
