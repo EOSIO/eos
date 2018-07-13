@@ -408,9 +408,8 @@ try:
         errorExit("FAILURE - currency1111 balance check failed. Expected: %s, Recieved %s" % (expected, actual), raw=True)
 
     Print("Verify currency1111 contract has proper total supply of CUR (via get currency1111 stats)")
-    res=node.getCurrencyStats(contract, "CUR")
+    res=node.getCurrencyStats(contract, "CUR", exitOnError=True)
     try:
-        assert(res)
         assert(res["CUR"]["supply"] == "100000.0000 CUR")
     except (AssertionError, KeyError) as _:
         Print("ERROR: Failed get currecy stats assertion. %s" % (res))
