@@ -7,9 +7,14 @@ import re
 import datetime
 import json
 
+from enum import Enum
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
+
+class ReturnType(Enum):
+    raw  = 1
+    json = 2
 
 # pylint: disable=too-many-public-methods
 class Node(object):
@@ -868,12 +873,16 @@ class Node(object):
             return None
         return trans
 
-    def processCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None):
+    def processCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        assert(isinstance(returnType, ReturnType))
         cmd="%s %s %s" % (Utils.EosClientPath, self.endpointArgs, cmd)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
-            trans=Utils.runCmdReturnJson(cmd)
+            if returnType==ReturnType.json:
+                trans=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
+            elif returnType==ReturnType.raw:
+                trans=Utils.runCmdReturnStr(cmd)
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
                 msg=ex.output.decode("utf-8")
