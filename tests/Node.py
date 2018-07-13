@@ -80,7 +80,7 @@ class Node(object):
         return tmpStr
 
     @staticmethod
-    def runMongoCmdReturnJson(cmd, subcommand, trace=False):
+    def runMongoCmdReturnJson(cmd, subcommand, trace=False, exitOnError=False):
         """Run mongodb subcommand and return response."""
         assert(cmd)
         assert(isinstance(cmd, list))
@@ -88,7 +88,12 @@ class Node(object):
         assert(isinstance(subcommand, str))
         retId,outs,errs=Node.stdinAndCheckOutput(cmd, subcommand)
         if retId is not 0:
-            Utils.Print("ERROR: mongodb call failed. %s" % (errs))
+            errorMsg="mongodb call failed. cmd=[ %s ] subcommand=\"%s\" - %s" % (", ".join(cmd), subcommand, errs)
+            if exitOnError:
+                Utils.cmdError(errorMsg)
+                Utils.errorExit(errorMsg)
+
+            Utils.Print("ERROR: %s" % (errMsg))
             return None
         outStr=Node.byteArrToStr(outs)
         if not outStr:
@@ -159,13 +164,18 @@ class Node(object):
             subcommand='db.blocks.findOne( { "block_num": %d } )' % (blockNum)
             if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
             try:
-                block=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
+                block=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
                 if block is not None:
                     return block
             except subprocess.CalledProcessError as ex:
                 if not silentErrors:
                     msg=ex.output.decode("utf-8")
-                    Utils.Print("ERROR: Exception during get db node get block. %s" % (msg))
+                    errorMsg="Exception during get db node get block. %s" % (msg)
+                    if exitOnError:
+                        Utils.cmdError(errorMsg)
+                        Utils.errorExit(errorMsg)
+                    else:
+                        Utils.Print("ERROR: %s" % (errorMsg))
                 return None
 
         return None
@@ -243,11 +253,9 @@ class Node(object):
         subcommand='db.transactions.findOne( { "trx_id": "%s" } )' % (transId)
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
-            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
-            if trans is None and exitOnError:
-                Utils.cmdError("could not retrieve transaction in mongodb for transaction id=%s" % (transId))
-                errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
-            return trans
+            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
+            if trans is not None:
+                return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             errorMsg="Exception during get db node get trans in mongodb with transaction id=%s. %s" % (transId,msg)
@@ -682,12 +690,17 @@ class Node(object):
         subcommand='db.actions.find({$or: [{"data.from":"%s"},{"data.to":"%s"}]}).sort({"_id":%d}).limit(%d)' % (account.name, account.name, pos, abs(offset))
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
-            actions=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
+            actions=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
             if actions is not None:
                 return actions
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get db actions. %s" % (msg))
+            errorMsg="Exception during get db actions. %s" % (msg)
+            if exitOnError:
+                Utils.cmdError(errorMsg)
+                Utils.errorExit(errorMsg)
+            else:
+                Utils.Print("ERROR: %s" % (errorMsg))
         return None
 
     # Gets accounts mapped to key. Returns array
