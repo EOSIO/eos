@@ -199,13 +199,6 @@ def claimRewards():
             times.append(getJsonOutput(args.cleos + 'system claimrewards -j ' + row['owner'])['processed']['elapsed'])
     print('Elapsed time for claimrewards:', times)
 
-def vote(b, e):
-    for i in range(b, e):
-        voter = accounts[i]['name']
-        prods = random.sample(range(firstProducer, firstProducer + numProducers), args.num_producers_vote)
-        prods = ' '.join(map(lambda x: accounts[x]['name'], prods))
-        retry(args.cleos + 'system voteproducer prods ' + voter + ' ' + prods)
-
 def proxyVotes(b, e):
     vote(firstProducer, firstProducer + 1)
     proxy = accounts[firstProducer]['name']

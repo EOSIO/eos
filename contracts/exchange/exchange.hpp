@@ -12,7 +12,7 @@ namespace eosio {
     *  an equal value of both sides of the order book and giving the issuer
     *  the initial shares in that orderbook.
     *
-    *  To prevent exessive rounding errors, the initial deposit should include
+    *  To prevent excessive rounding errors, the initial deposit should include
     *  a sizeable quantity of both the base and quote currencies and the exchange
     *  shares should have a quantity 100x the quantity of the largest initial
     *  deposit.
