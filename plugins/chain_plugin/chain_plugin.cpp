@@ -1112,7 +1112,6 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    })();
 
    read_only::get_scheduled_transactions_result result;
-   result.transactions.reserve(p.limit);
 
    auto resolver = make_resolver(this, abi_serializer_max_time);
 
