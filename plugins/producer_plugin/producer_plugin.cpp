@@ -312,8 +312,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return;
          }
 
-         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
+         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() ) {
             _production_enabled = true;
+         }
 
 
          if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
@@ -328,6 +329,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         if (!chain.pending_block_state()) {
+            _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+            return;
+         }
+
          auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
 
          auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
@@ -397,6 +403,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       enum class start_block_result {
          succeeded,
          failed,
+         waiting,
          exhausted
       };
 
@@ -825,6 +832,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       }
    }
 
+   if (_pending_block_mode == pending_block_mode::speculating && !_production_enabled) {
+      return start_block_result::waiting;
+   }
+
    try {
       uint16_t blocks_to_confirm = 0;
 
@@ -1002,6 +1013,9 @@ void producer_plugin_impl::schedule_production_loop() {
             self->schedule_production_loop();
          }
       });
+   } else if (result == start_block_result::waiting) {
+      // nothing to do until more blocks arrive
+
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
       // we succeeded but block may be exhausted
