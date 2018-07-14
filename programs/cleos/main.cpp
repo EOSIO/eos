@@ -1248,20 +1248,30 @@ struct buyram_subcommand {
    string from_str;
    string receiver_str;
    string amount;
+   bool kbytes = false;
 
    buyram_subcommand(CLI::App* actionRoot) {
       auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
       buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
       buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
-      buyram->add_option("tokens", amount, localized("The amount of EOS to pay for RAM"))->required();
+      buyram->add_option("amount", amount, localized("The amount of EOS to pay for RAM, or number of kbytes of RAM if --kbytes is set"))->required();
+      buyram->add_flag("--kbytes,-k", kbytes, localized("buyram in number of kbytes"));
       add_standard_transaction_options(buyram);
       buyram->set_callback([this] {
+         if (kbytes) {
+            fc::variant act_payload = fc::mutable_variant_object()
+                  ("payer", from_str)
+                  ("receiver", receiver_str)
+                  ("bytes", fc::to_uint64(amount) * 1024ull);
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyrambytes), act_payload)});            
+         } else {
             fc::variant act_payload = fc::mutable_variant_object()
                ("payer", from_str)
                ("receiver", receiver_str)
                ("quant", to_asset(amount));
             send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
-         });
+         }
+      });
    }
 };
 

@@ -203,6 +203,33 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                }
             }
          } ) );
+
+         // since the watermark has to be set before a block is created, we are looking into the future to
+         // determine the new schedule to identify producers that have become active
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         const auto hbn = bsp->block_num;
+         auto new_block_header = bsp->header;
+         new_block_header.timestamp = new_block_header.timestamp.next();
+         new_block_header.previous = bsp->id;
+         auto new_bs = bsp->generate_next(new_block_header.timestamp);
+
+         // for newly installed producers we can set their watermarks to the block they became active
+         if (new_bs.maybe_promote_pending() && bsp->active_schedule.version != new_bs.active_schedule.version) {
+            flat_set<account_name> new_producers;
+            new_producers.reserve(new_bs.active_schedule.producers.size());
+            for( const auto& p: new_bs.active_schedule.producers) {
+               if (_producers.count(p.producer_name) > 0)
+                  new_producers.insert(p.producer_name);
+            }
+
+            for( const auto& p: bsp->active_schedule.producers) {
+               new_producers.erase(p.producer_name);
+            }
+
+            for (const auto& new_producer: new_producers) {
+               _producer_watermarks[new_producer] = hbn;
+            }
+         }
       }
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
@@ -1103,23 +1130,6 @@ void producer_plugin_impl::produce_block() {
    //idump((fc::time_point::now() - hbt));
 
    block_state_ptr new_bs = chain.head_block_state();
-   // for newly installed producers we can set their watermarks to the block they became
-   if (hbs->active_schedule.version != new_bs->active_schedule.version) {
-      flat_set<account_name> new_producers;
-      new_producers.reserve(new_bs->active_schedule.producers.size());
-      for( const auto& p: new_bs->active_schedule.producers) {
-         if (_producers.count(p.producer_name) > 0)
-            new_producers.insert(p.producer_name);
-      }
-
-      for( const auto& p: hbs->active_schedule.producers) {
-         new_producers.erase(p.producer_name);
-      }
-
-      for (const auto& new_producer: new_producers) {
-         _producer_watermarks[new_producer] = chain.head_block_num();
-      }
-   }
    _producer_watermarks[new_bs->header.producer] = chain.head_block_num();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
