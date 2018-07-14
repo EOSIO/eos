@@ -283,6 +283,19 @@ public:
 
    get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
 
+   struct get_scheduled_transactions_params {
+      bool        json = false;
+      string      lower_bound;  /// timestamp OR transaction ID
+      uint32_t    limit = 50;
+   };
+
+   struct get_scheduled_transactions_result {
+      fc::variants  transactions;
+      string        more; ///< fill lower_bound with this to fetch next set of transactions
+   };
+
+   get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -539,6 +552,9 @@ FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_pro
 
 FC_REFLECT_EMPTY( eosio::chain_apis::read_only::get_producer_schedule_params )
 FC_REFLECT( eosio::chain_apis::read_only::get_producer_schedule_result, (active)(pending)(proposed) );
+
+FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
