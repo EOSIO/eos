@@ -426,7 +426,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_action", "test_publication_time", fc::raw::pack(pub_time) );
 
    // test test_abort
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "test_abort", {} ), assert_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "test_abort", {} ), abort_called,
          [](const fc::exception& e) {
             return expect_assert_message(e, "abort() called");
          }
@@ -496,7 +496,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       set_transaction_headers(trx);
       // run (dummy_action.b = 200) case looking for invalid use of context_free api
       sigs = trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
-      BOOST_CHECK_EXCEPTION(push_transaction(trx), assert_exception,
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), unaccessible_api,
                             [](const fc::exception& e) {
                                return expect_assert_message(e, "this API may only be called from context_free apply");
                             }
@@ -521,7 +521,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
             trx.signatures.clear();
             set_transaction_headers(trx);
             sigs = trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
-            BOOST_CHECK_EXCEPTION(push_transaction(trx), assert_exception,
+            BOOST_CHECK_EXCEPTION(push_transaction(trx), unaccessible_api,
                  [](const fc::exception& e) {
                     return expect_assert_message(e, "only context free api's can be used in this context" );
                  }
@@ -872,7 +872,7 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3", {});
 
    // test test_divti3_by_0
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), assert_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), arithmetic_exception,
          [](const fc::exception& e) {
             return expect_assert_message(e, "divide by zero");
          }
@@ -882,7 +882,7 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_udivti3", {});
 
    // test test_udivti3_by_0
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_udivti3_by_0", {}), assert_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_udivti3_by_0", {}), arithmetic_exception,
          [](const fc::exception& e) {
             return expect_assert_message(e, "divide by zero");
          }
@@ -892,7 +892,7 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_modti3", {});
 
    // test test_modti3_by_0
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_modti3_by_0", {}), assert_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_modti3_by_0", {}), arithmetic_exception,
          [](const fc::exception& e) {
             return expect_assert_message(e, "divide by zero");
          }
@@ -946,9 +946,9 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
 
    // test send_action_large
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), assert_exception,
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), inline_action_too_big,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "data_len < context.control.get_global_properties().configuration.max_inline_action_size: inline action too big");
+            return expect_assert_message(e, "inline action too big");
          }
       );
 
@@ -1353,6 +1353,14 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
                                            eosio_assert_message_exception, "updater cannot change primary key when modifying an object");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_run_out_of_avl_pk", {},
                                            eosio_assert_message_exception, "next primary key in table is at autoincrement limit");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail", {},
+                                           eosio_assert_message_exception, "unable to find key");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail_with_msg", {},
+                                           eosio_assert_message_exception, "unable to find primary key in require_find");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail", {},
+                                           eosio_assert_message_exception, "unable to find secondary key");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail_with_msg", {},
+                                           eosio_assert_message_exception, "unable to find sec key");
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_sk_cache_pk_lookup", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_pk_cache_sk_lookup", {});
 
@@ -1409,7 +1417,7 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
       CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_true", payload );
       payload[payload.size()-1] = 0;
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_false", payload ),
-                             fc::assert_exception, fc_assert_exception_message_is("Error expected key different than recovered key") );
+                             crypto_api_exception, fc_exception_message_is("Error expected key different than recovered key") );
 	}
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha1", {} );
@@ -1422,22 +1430,22 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_crypto", "ripemd160_no_data", {} );
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha256_false", {},
-                                           assert_exception, "hash mismatch" );
+                                           crypto_api_exception, "hash mismatch" );
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha256_true", {} );
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha1_false", {},
-                                           assert_exception, "hash mismatch" );
+                                           crypto_api_exception, "hash mismatch" );
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha1_true", {} );
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha512_false", {},
-                                           assert_exception, "hash mismatch" );
+                                           crypto_api_exception, "hash mismatch" );
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha512_true", {} );
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_ripemd160_false", {},
-                                           assert_exception, "hash mismatch" );
+                                           crypto_api_exception, "hash mismatch" );
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "assert_ripemd160_true", {} );
 
@@ -1878,15 +1886,15 @@ BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
    produce_blocks(1);
 
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} ),
-      assert_exception,
+      unaccessible_api,
       [](const fc::exception& e) {
-         return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
+         return expect_assert_message(e, "testapi does not have permission to call this API");
       });
 
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ),
-      assert_exception,
+      unaccessible_api,
       [](const fc::exception& e) {
-         return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
+         return expect_assert_message(e, "testapi does not have permission to call this API");
       });
 
    // change privilege
@@ -1911,7 +1919,7 @@ BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} );
 
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ),
-      assert_exception,
+      unsupported_feature,
       [](const fc::exception& e) {
          return expect_assert_message(e, "Unsupported Hardfork Detected");
       });
@@ -2055,7 +2063,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
    set_abi( N(testapi), abi_string );
 
    auto var = fc::json::from_string(abi_string);
-   abi_serializer abis(var.as<abi_def>());
+   abi_serializer abis(var.as<abi_def>(), abi_serializer_max_time);
 
    produce_blocks(10);
 

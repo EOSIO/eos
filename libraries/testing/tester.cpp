@@ -6,12 +6,58 @@
 
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>
+#include <fstream>
 
 eosio::chain::asset core_from_string(const std::string& s) {
   return eosio::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
 }
 
 namespace eosio { namespace testing {
+   std::string read_wast( const char* fn ) {
+      std::ifstream wast_file(fn);
+      FC_ASSERT( wast_file.is_open(), "wast file cannot be found" );
+      wast_file.seekg(0, std::ios::end);
+      std::vector<char> wast; 
+      int len = wast_file.tellg();
+      FC_ASSERT( len >= 0, "wast file length is -1" );
+      wast.resize(len+1);
+      wast_file.seekg(0, std::ios::beg);
+      wast_file.read(wast.data(), wast.size());
+      wast[wast.size()-1] = '\0';
+      wast_file.close();
+      return {wast.data()};
+   }
+
+   std::vector<uint8_t> read_wasm( const char* fn ) {
+      std::ifstream wasm_file(fn, std::ios::binary);
+      FC_ASSERT( wasm_file.is_open(), "wasm file cannot be found" );
+      wasm_file.seekg(0, std::ios::end);
+      std::vector<uint8_t> wasm; 
+      int len = wasm_file.tellg();
+      FC_ASSERT( len >= 0, "wasm file length is -1" );
+      wasm.resize(len);
+      wasm_file.seekg(0, std::ios::beg);
+      wasm_file.read((char*)wasm.data(), wasm.size());
+      wasm_file.close();
+      return wasm;
+   }
+
+   std::vector<char> read_abi( const char* fn ) {
+      std::ifstream abi_file(fn);
+      FC_ASSERT( abi_file.is_open(), "abi file cannot be found" );
+      abi_file.seekg(0, std::ios::end);
+      std::vector<char> abi; 
+      int len = abi_file.tellg();
+      FC_ASSERT( len >= 0, "abi file length is -1" );
+      abi.resize(len+1);
+      abi_file.seekg(0, std::ios::beg);
+      abi_file.read(abi.data(), abi.size());
+      abi[abi.size()-1] = '\0';
+      abi_file.close();
+      return abi;
+   }
+
+   const fc::microseconds base_tester::abi_serializer_max_time{1000*1000}; // 1s for slow test machines
 
    bool expect_assert_message(const fc::exception& ex, string expected) {
       BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
@@ -46,8 +92,6 @@ namespace eosio { namespace testing {
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-      abi_serializer::set_max_serialization_time(fc::microseconds(100*1000)); // 100ms for slow test machines
 
       for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
          if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
@@ -219,7 +263,7 @@ namespace eosio { namespace testing {
    }
 
 
-  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
+  void base_tester::set_transaction_headers( transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 
@@ -286,7 +330,7 @@ namespace eosio { namespace testing {
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
-   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
+   } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}", ("header", transaction_header(trx.get_transaction()) )) }
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
                                                         fc::time_point deadline,
@@ -305,7 +349,9 @@ namespace eosio { namespace testing {
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;
-   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx))(billed_cpu_time_us) ) }
+   } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}, billed_cpu_time_us: ${billed}",
+                            ("header", transaction_header(trx) ) ("billed", billed_cpu_time_us))
+   }
 
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
@@ -382,8 +428,7 @@ namespace eosio { namespace testing {
                                    const variant_object& data )const { try {
       const auto& acnt = control->get_account(code);
       auto abi = acnt.get_abi();
-      chain::abi_serializer abis(abi);
-    //  auto a = control->get_account(code).get_abi();
+      chain::abi_serializer abis(abi, abi_serializer_max_time);
 
       string action_type_name = abis.get_action_type(acttype);
       FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
@@ -393,7 +438,7 @@ namespace eosio { namespace testing {
       act.account = code;
       act.name = acttype;
       act.authorization = auths;
-      act.data = abis.variant_to_binary(action_type_name, data);
+      act.data = abis.variant_to_binary(action_type_name, data, abi_serializer_max_time);
       return act;
    } FC_CAPTURE_AND_RETHROW() }
 
@@ -411,7 +456,7 @@ namespace eosio { namespace testing {
         );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
       set_transaction_headers(trx);
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, control->get_chain_id() );
@@ -457,7 +502,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, "active" ), control->get_chain_id() );
@@ -491,7 +536,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), control->get_chain_id()  );
@@ -518,7 +563,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
       set_transaction_headers(trx);
 
       trx.sign( get_private_key( currency, name(config::active_name).to_string() ), control->get_chain_id()  );

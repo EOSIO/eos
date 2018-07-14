@@ -413,6 +413,17 @@ class multi_index
                return lb;
             }
 
+            const_iterator require_find( secondary_key_type&& secondary, const char* error_msg = "unable to find secondary key" )const {
+               return require_find( secondary, error_msg );
+            }
+
+            const_iterator require_find( const secondary_key_type& secondary, const char* error_msg = "unable to find secondary key" )const {
+               auto lb = lower_bound( secondary );
+               eosio_assert( lb != cend(), error_msg );
+               eosio_assert( secondary == secondary_extractor_type()(*lb), error_msg );
+               return lb;
+            }
+
             const T& get( secondary_key_type&& secondary, const char* error_msg = "unable to find secondary key" )const {
                return get( secondary, error_msg );
             }
@@ -1982,6 +1993,29 @@ class multi_index
 
          auto itr = db_find_i64( _code, _scope, TableName, primary );
          if( itr < 0 ) return end();
+
+         const item& i = load_object_by_primary_iterator( itr );
+         return iterator_to(static_cast<const T&>(i));
+      }
+
+      /**
+       *  Search for an existing object in a table using its primary key.
+       *  @brief Search for an existing object in a table using its primary key.
+       *
+       *  @param primary - Primary key value of the object
+       *  @param error_msg - error message if an object with primary key `primary` is not found.
+       *  @return An iterator to the found object which has a primary key equal to `primary` OR throws an exception if an object with primary key `primary` is not found.
+       */
+
+      const_iterator require_find( uint64_t primary, const char* error_msg = "unable to find key" )const {
+         auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item_ptr& ptr) {
+               return ptr._item->primary_key() == primary;
+            });
+         if( itr2 != _items_vector.rend() )
+            return iterator_to(*(itr2->_item));
+
+         auto itr = db_find_i64( _code, _scope, TableName, primary );
+         eosio_assert( itr >= 0,  error_msg );
 
          const item& i = load_object_by_primary_iterator( itr );
          return iterator_to(static_cast<const T&>(i));

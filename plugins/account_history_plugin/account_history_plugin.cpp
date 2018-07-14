@@ -443,7 +443,7 @@ fc::variant account_history_plugin_impl::transaction_to_variant(const packed_tra
    };
 
    fc::variant pretty_output;
-   abi_serializer::to_variant(ptrx, pretty_output, resolver);
+   abi_serializer::to_variant(ptrx, pretty_output, resolver, chain_plug->get_abi_serializer_max_time());
    return pretty_output;
 }
 

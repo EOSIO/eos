@@ -6,7 +6,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/history_plugin.hpp>
+#include <eosio/history_plugin/history_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/utilities/common.hpp>
@@ -119,7 +119,7 @@ int main(int argc, char** argv)
             return DATABASE_DIRTY;
          }
       }
-      elog("${e}", ("e",e.to_detail_string()));
+      elog( "${e}", ("e", e.to_detail_string()));
       return OTHER_FAIL;
    } catch( const boost::interprocess::bad_alloc& e ) {
       elog("bad alloc");

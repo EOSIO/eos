@@ -72,7 +72,7 @@ struct controller_impl {
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
-      FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
+      EOS_ASSERT( prev, block_validate_exception, "attempt to pop beyond last irreversible block" );
 
       if( const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num) )
       {
@@ -151,6 +151,9 @@ struct controller_impl {
       } catch (boost::interprocess::bad_alloc& e) {
          wlog( "bad alloc" );
          throw e;
+      } catch ( controller_emit_signal_exception& e ) {
+         wlog( "${details}", ("details", e.to_detail_string()) );
+         throw e;
       } catch ( fc::exception& e ) {
          wlog( "${details}", ("details", e.to_detail_string()) );
       } catch ( ... ) {
@@ -163,7 +166,7 @@ struct controller_impl {
          blog.read_head();
 
       const auto& log_head = blog.head();
-      FC_ASSERT( log_head );
+      EOS_ASSERT( log_head, block_log_exception, "block log head can not be found" );
       auto lh_block_num = log_head->block_num();
 
       db.commit( s->block_num );
@@ -174,8 +177,8 @@ struct controller_impl {
          return;
       }
 
-      FC_ASSERT( s->block_num - 1  == lh_block_num, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
-      FC_ASSERT( s->block->previous == log_head->id(), "irreversible doesn't link to block log head" );
+      EOS_ASSERT( s->block_num - 1  == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
+      EOS_ASSERT( s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head" );
       blog.append(s->block);
 
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
@@ -241,17 +244,17 @@ struct controller_impl {
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.rbegin();
       if( objitr != ubi.rend() ) {
-         FC_ASSERT( objitr->blocknum == head->block_num,
+         EOS_ASSERT( objitr->blocknum == head->block_num, fork_database_exception,
                     "reversible block database is inconsistent with fork database, replay blockchain",
                     ("head",head->block_num)("unconfimed", objitr->blocknum)         );
       } else {
          auto end = blog.read_head();
-         FC_ASSERT( end && end->block_num() == head->block_num,
+         EOS_ASSERT( end && end->block_num() == head->block_num, fork_database_exception,
                     "fork database exists but reversible block database does not, replay blockchain",
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
 
-      FC_ASSERT( db.revision() >= head->block_num, "fork database is inconsistent with shared memory",
+      EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
                  ("db",db.revision())("head",head->block_num) );
 
       if( db.revision() > head->block_num ) {
@@ -405,29 +408,40 @@ struct controller_impl {
 
 
 
+   /**
+    * @post regardless of the success of commit block there is no active pending block
+    */
    void commit_block( bool add_to_fork_db ) {
-      if( add_to_fork_db ) {
-         pending->_pending_block_state->validated = true;
-         auto new_bsp = fork_db.add( pending->_pending_block_state );
-         emit( self.accepted_block_header, pending->_pending_block_state );
-         head = fork_db.head();
-         FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
+      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
+         pending.reset();
+      });
 
+      try {
+         if (add_to_fork_db) {
+            pending->_pending_block_state->validated = true;
+            auto new_bsp = fork_db.add(pending->_pending_block_state);
+            emit(self.accepted_block_header, pending->_pending_block_state);
+            head = fork_db.head();
+            EOS_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
+         }
+
+         if( !replaying ) {
+            reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
+               ubo.blocknum = pending->_pending_block_state->block_num;
+               ubo.set_block( pending->_pending_block_state->block );
+            });
+         }
+
+         emit( self.accepted_block, pending->_pending_block_state );
+      } catch (...) {
+         // dont bother resetting pending, instead abort the block
+         reset_pending_on_exit.cancel();
+         abort_block();
+         throw;
       }
 
-  //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      emit( self.accepted_block, pending->_pending_block_state );
-
-      if( !replaying ) {
-         reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = pending->_pending_block_state->block_num;
-            ubo.set_block( pending->_pending_block_state->block );
-         });
-      }
-
+      // push the state for pending.
       pending->push();
-      pending.reset();
-
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -516,7 +530,7 @@ struct controller_impl {
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
       const auto& idx = db.get_index<generated_transaction_multi_index,by_trx_id>();
       auto itr = idx.find( trxid );
-      FC_ASSERT( itr != idx.end(), "unknown transaction" );
+      EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
       return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us );
    }
 
@@ -529,7 +543,7 @@ struct controller_impl {
          remove_scheduled_transaction(gto);
       });
 
-      FC_ASSERT( gto.delay_until <= self.pending_block_time(), "this transaction isn't ready",
+      EOS_ASSERT( gto.delay_until <= self.pending_block_time(), transaction_exception, "this transaction isn't ready",
                  ("gto.delay_until",gto.delay_until)("pbt",self.pending_block_time())          );
       if( gto.expiration < self.pending_block_time() ) {
          auto trace = std::make_shared<transaction_trace>();
@@ -623,7 +637,7 @@ struct controller_impl {
    const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
                                             uint64_t cpu_usage_us, uint64_t net_usage ) {
       uint64_t net_usage_words = net_usage / 8;
-      FC_ASSERT( net_usage_words*8 == net_usage, "net_usage is not divisible by 8" );
+      EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
       pending->_pending_block_state->block->transactions.emplace_back( trx );
       transaction_receipt& r = pending->_pending_block_state->block->transactions.back();
       r.cpu_usage_us         = cpu_usage_us;
@@ -642,7 +656,7 @@ struct controller_impl {
                                            bool implicit,
                                            uint32_t billed_cpu_time_us  )
    {
-      FC_ASSERT(deadline != fc::time_point(), "deadline cannot be uninitialized");
+      EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
       transaction_trace_ptr trace;
       try {
@@ -737,9 +751,9 @@ struct controller_impl {
 
 
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
-      FC_ASSERT( !pending );
+      EOS_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
-      FC_ASSERT( db.revision() == head->block_num, "",
+      EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block", 
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -816,7 +830,7 @@ struct controller_impl {
 
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
-         FC_ASSERT( b->block_extensions.size() == 0, "no supported extensions" );
+         EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          start_block( b->timestamp, b->confirmed, s );
 
          transaction_trace_ptr trace;
@@ -873,13 +887,17 @@ struct controller_impl {
 
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
     //  idump((fc::json::to_pretty_string(*b)));
-      FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
+      EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
       try {
-         FC_ASSERT( b );
-         FC_ASSERT( s != controller::block_status::incomplete, "invalid block status for a completed block" );
+         EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
+         EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
+         emit( self.pre_accepted_block, b );
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
+         // on replay irreversible is not emitted by fork database, so emit it explicitly here
+         if( s == controller::block_status::irreversible )
+            emit( self.irreversible_block, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
             maybe_switch_forks( s );
@@ -888,7 +906,7 @@ struct controller_impl {
    }
 
    void push_confirmation( const header_confirmation& c ) {
-      FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
+      EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
       if ( read_mode != db_read_mode::IRREVERSIBLE ) {
@@ -918,7 +936,7 @@ struct controller_impl {
             fork_db.mark_in_current_chain( *itr , false );
             pop_block();
          }
-         FC_ASSERT( self.head_block_id() == branches.second.back()->header.previous,
+         EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
                     "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
@@ -944,7 +962,7 @@ struct controller_impl {
                   fork_db.mark_in_current_chain( *itr , false );
                   pop_block();
                }
-               FC_ASSERT( self.head_block_id() == branches.second.back()->header.previous,
+               EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
                           "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
 
                // re-apply good blocks
@@ -997,7 +1015,7 @@ struct controller_impl {
 
    void finalize_block()
    {
-      FC_ASSERT(pending, "it is not valid to finalize when there is no pending block");
+      EOS_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
       try {
 
 
@@ -1314,7 +1332,7 @@ block_state_ptr controller::pending_block_state()const {
    return block_state_ptr();
 }
 time_point controller::pending_block_time()const {
-   FC_ASSERT( my->pending, "no pending block" );
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->_pending_block_state->header.timestamp;
 }
 

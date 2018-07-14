@@ -196,6 +196,7 @@ namespace eosio { namespace chain {
 
          db_read_mode get_read_mode()const;
 
+         signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;
@@ -218,22 +219,24 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n )const {
+         optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
-                     return abi_serializer( abi );
+                     return abi_serializer( abi, max_serialization_time );
                } FC_CAPTURE_AND_LOG((n))
             }
             return optional<abi_serializer>();
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj ) {
+         fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {
             fc::variant pretty_output;
-            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); });
+            abi_serializer::to_variant( obj, pretty_output,
+                                        [&]( account_name n ){ return get_abi_serializer( n, max_serialization_time ); },
+                                        max_serialization_time);
             return pretty_output;
          }
 

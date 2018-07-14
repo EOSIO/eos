@@ -5,6 +5,7 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio { namespace chain {
 
@@ -86,8 +87,8 @@ namespace eosio { namespace chain {
 
       template<typename T>
       T data_as()const {
-         FC_ASSERT( account == T::get_account() );
-         FC_ASSERT( name == T::get_name()  );
+         EOS_ASSERT( account == T::get_account(), action_type_exception, "account is not consistent with action struct" );
+         EOS_ASSERT( name == T::get_name(), action_type_exception, "action name is not consistent with action struct"  );
          return fc::raw::unpack<T>(data);
       }
    };

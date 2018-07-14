@@ -55,7 +55,9 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
-
+   std::vector<uint8_t> read_wasm( const char* fn );
+   std::vector<char>    read_abi( const char* fn );
+   std::string          read_wast( const char* fn );
    using namespace eosio::chain;
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
@@ -75,6 +77,7 @@ namespace eosio { namespace testing {
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
+         static const fc::microseconds abi_serializer_max_time;
 
          virtual ~base_tester() {};
 
@@ -121,9 +124,9 @@ namespace eosio { namespace testing {
          action get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                          const variant_object& data )const;
 
-         void                 set_transaction_headers(signed_transaction& trx,
-                                                      uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
-                                                      uint32_t delay_sec = 0)const;
+         void  set_transaction_headers( transaction& trx,
+                                        uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
+                                        uint32_t delay_sec = 0 )const;
 
          vector<transaction_trace_ptr>  create_accounts( vector<account_name> names,
                                                          bool multisig = false,
@@ -226,7 +229,7 @@ namespace eosio { namespace testing {
                   const auto& accnt = control->db().get<account_object, by_name>( name );
                   abi_def abi;
                   if( abi_serializer::to_abi( accnt.abi, abi )) {
-                     return abi_serializer( abi );
+                     return abi_serializer( abi, abi_serializer_max_time );
                   }
                   return optional<abi_serializer>();
                } FC_RETHROW_EXCEPTIONS( error, "Failed to find or parse ABI for ${name}", ("name", name))

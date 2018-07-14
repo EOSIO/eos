@@ -89,7 +89,7 @@ namespace eosio {
          inline string is_clause_decl( string line ) {
             smatch match;
             if ( regex_match( line, match, regex("(###[ ]+CLAUSE[ ]+NAME[ ]*:[ ]*)(.*)", regex_constants::ECMAScript) ) ) {
-               FC_ASSERT( match.size() == 3, "Error, malformed clause declaration" );
+               EOS_ASSERT( match.size() == 3, invalid_ricardian_clause_exception, "Error, malformed clause declaration" );
                return match[2].str();
             }
             return {};
@@ -98,7 +98,7 @@ namespace eosio {
          inline string is_action_decl( string line ) {
             smatch match;
             if ( regex_match( line, match, regex("(##[ ]+ACTION[ ]+NAME[ ]*:[ ]*)(.*)", regex_constants::ECMAScript) ) ) {
-               FC_ASSERT( match.size() == 3, "Error, malformed action declaration" );
+               EOS_ASSERT( match.size() == 3,  invalid_ricardian_action_exception, "Error, malformed action declaration" );
                return match[2].str();
             }
             return {};
@@ -137,7 +137,7 @@ namespace eosio {
                if ( !(_name = is_clause_decl( line )).empty() ) {
                   if ( !first_time ) {
                      if (body.str().empty() ) {
-                        FC_ASSERT( false, "Error, invalid input in ricardian clauses, no body found" );
+                        EOS_ASSERT( false, invalid_ricardian_clause_exception, "Error, invalid input in ricardian clauses, no body found" );
                      }
                      _clauses.emplace_back( name, body.str() );
                      body.str("");

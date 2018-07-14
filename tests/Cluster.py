@@ -129,11 +129,11 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 5000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time 5000 --abi-serializer-max-time-ms 5000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
-            nodeosArgs += " --plugin eosio::mongo_db_plugin --delete-all-blocks --mongodb-uri %s" % self.mongoUri
+            nodeosArgs += " --plugin eosio::mongo_db_plugin --mongodb-wipe --delete-all-blocks --mongodb-uri %s" % self.mongoUri
 
         if nodeosArgs:
             cmdArr.append("--nodeos")

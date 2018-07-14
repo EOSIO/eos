@@ -20,8 +20,9 @@ namespace eosio { namespace chain { namespace plugin_interface {
    using next_function = std::function<void(const fc::static_variant<fc::exception_ptr, T>&)>;
 
    struct chain_plugin_interface;
-   
+
    namespace channels {
+      using pre_accepted_block     = channel_decl<struct pre_accepted_block_tag,    signed_block_ptr>;
       using rejected_block         = channel_decl<struct rejected_block_tag,        signed_block_ptr>;
       using accepted_block_header  = channel_decl<struct accepted_block_header_tag, block_state_ptr>;
       using accepted_block         = channel_decl<struct accepted_block_tag,        block_state_ptr>;

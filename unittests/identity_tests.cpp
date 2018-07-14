@@ -47,12 +47,12 @@ public:
       const auto& accnt = control->db().get<account_object,by_name>( N(identity) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-      abi_ser.set_abi(abi);
+      abi_ser.set_abi(abi, abi_serializer_max_time);
 
       const auto& acnt_test = control->db().get<account_object,by_name>( N(identitytest) );
       abi_def abi_test;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(acnt_test.abi, abi_test), true);
-      abi_ser_test.set_abi(abi_test);
+      abi_ser_test.set_abi(abi_test, abi_serializer_max_time);
 
       const auto& ap = control->active_producers();
       FC_ASSERT(0 < ap.producers.size(), "No producers");
@@ -80,7 +80,8 @@ public:
       get_owner_act.account = N(identitytest);
       get_owner_act.name = N(getowner);
       get_owner_act.data = abi_ser_test.variant_to_binary("getowner", mutable_variant_object()
-                                                          ("identity", identity)
+                                                          ("identity", identity),
+                                                          abi_serializer_max_time
       );
       BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_owner_act), N(alice)));
       return get_result_uint64();
@@ -92,7 +93,8 @@ public:
       get_identity_act.account = N(identitytest);
       get_identity_act.name = N(getidentity);
       get_identity_act.data = abi_ser_test.variant_to_binary("getidentity", mutable_variant_object()
-                                                          ("account", account)
+                                                          ("account", account),
+                                                          abi_serializer_max_time
       );
       BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_identity_act), N(alice)));
       return get_result_uint64();
@@ -104,7 +106,8 @@ public:
       create_act.name = N(create);
       create_act.data = abi_ser.variant_to_binary("create", mutable_variant_object()
                                                   ("creator", account_name)
-                                                  ("identity", identity)
+                                                  ("identity", identity),
+                                                  abi_serializer_max_time
       );
       return push_action( std::move(create_act), (auth ? string_to_name(account_name.c_str()) : (string_to_name(account_name.c_str()) == N(bob)) ? N(alice) : N(bob)));
    }
@@ -122,7 +125,7 @@ public:
 
       vector<char> data;
       copy_row(*itr, data);
-      return abi_ser.binary_to_variant("identrow", data);
+      return abi_ser.binary_to_variant("identrow", data, abi_serializer_max_time);
    }
 
    action_result certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
@@ -133,7 +136,8 @@ public:
                                                 ("bill_storage_to", certifier)
                                                 ("certifier", certifier)
                                                 ("identity", identity)
-                                                ("value", fields)
+                                                ("value", fields),
+                                                abi_serializer_max_time
       );
       return push_action( std::move(cert_act), (auth ? string_to_name(certifier.c_str()) : (string_to_name(certifier.c_str()) == N(bob)) ? N(alice) : N(bob)));
    }
@@ -159,7 +163,7 @@ public:
          );
          vector<char> data;
          copy_row(*itr, data);
-         return abi_ser.binary_to_variant("certrow", data);
+         return abi_ser.binary_to_variant("certrow", data, abi_serializer_max_time);
       } else {
          return fc::variant(nullptr);
       }
@@ -177,7 +181,7 @@ public:
       if( itr != idx.end() && itr->t_id == t_id->id && N(account) == itr->primary_key) {
          vector<char> data;
          copy_row(*itr, data);
-         return abi_ser.binary_to_variant("accountrow", data);
+         return abi_ser.binary_to_variant("accountrow", data, abi_serializer_max_time);
       } else {
          return fc::variant(nullptr);
       }
@@ -192,7 +196,8 @@ public:
       settrust_act.data = abi_ser.variant_to_binary("settrust", mutable_variant_object()
                                                     ("trustor", trustor)
                                                     ("trusting", trusting)
-                                                    ("trust", trust)
+                                                    ("trust", trust),
+                                                    abi_serializer_max_time
       );
       auto tr = string_to_name(trustor.c_str());
       return push_action( std::move(settrust_act), (auth ? tr : 0) );

@@ -65,7 +65,7 @@ void sql_db_plugin::plugin_initialize(const variables_map& options)
         }
 
         chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-        FC_ASSERT( chain_plug );
+        EOS_ASSERT( chain_plug, missing_chain_plugin_exception, "" );
         auto& chain = chain_plug->chain();
 
         m_irreversible_block_consumer = std::make_unique < consumer <
