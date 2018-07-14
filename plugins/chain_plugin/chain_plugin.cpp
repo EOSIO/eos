@@ -1116,7 +1116,8 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    auto resolver = make_resolver(this, abi_serializer_max_time);
 
    uint32_t remaining = p.limit;
-   while (itr != idx_by_delay.end() && remaining > 0) {
+   auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::time_point::now()) {
       auto row = fc::mutable_variant_object()
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)
