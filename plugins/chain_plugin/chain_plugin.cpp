@@ -1114,7 +1114,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
    read_only::get_scheduled_transactions_result result;
    result.transactions.reserve(p.limit);
 
-   auto resolver = make_resolver(this);
+   auto resolver = make_resolver(this, abi_serializer_max_time);
 
    uint32_t remaining = p.limit;
    while (itr != idx_by_delay.end() && remaining > 0) {
@@ -1135,7 +1135,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
          fc::datastream<const char*> ds( itr->packed_trx.data(), itr->packed_trx.size() );
          fc::raw::unpack(ds,trx);
 
-         abi_serializer::to_variant(trx, pretty_transaction, resolver);
+         abi_serializer::to_variant(trx, pretty_transaction, resolver, abi_serializer_max_time);
          row("transaction", pretty_transaction);
       } else {
          auto packed_transaction = bytes(itr->packed_trx.begin(), itr->packed_trx.end());
