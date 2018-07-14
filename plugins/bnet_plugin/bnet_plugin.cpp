@@ -1000,7 +1000,7 @@ namespace eosio {
            peer_ilog(this, "received signed_block_ptr");
            if (!b) {
               peer_elog(this, "bad signed_block_ptr : null pointer");
-              FC_THROW("bad block" );
+              EOS_THROW(block_validate_exception, "bad block" );
            }
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
@@ -1045,7 +1045,7 @@ namespace eosio {
            peer_ilog(this, "received packed_transaction_ptr");
            if (!p) {
               peer_elog(this, "bad packed_transaction_ptr : null pointer");
-              FC_THROW("bad transaction");
+              EOS_THROW(transaction_exception, "bad transaction");
            }
 
            auto id = p->id();
@@ -1127,7 +1127,7 @@ namespace eosio {
         }
 
         void run() {
-           FC_ASSERT( _acceptor.is_open(), "unable top open listen socket" );
+           EOS_ASSERT( _acceptor.is_open(), plugin_exception, "unable top open listen socket" );
            do_accept();
         }
 
@@ -1268,12 +1268,24 @@ namespace eosio {
 
    void listener::on_accept( boost::system::error_code ec ) {
      if( ec ) {
+        if( ec == boost::system::errc::too_many_files_open )
+           do_accept();
         return;
      }
-     auto newsession = std::make_shared<session>( move( _socket ), _net_plugin );
-     _net_plugin->async_add_session( newsession );
-     newsession->_local_peer_id = _net_plugin->_peer_id;
-     newsession->run();
+     std::shared_ptr<session> newsession;
+     try {
+        newsession = std::make_shared<session>( move( _socket ), _net_plugin );
+     }
+     catch( std::exception& e ) {
+        //making a session creates an instance of std::random_device which may open /dev/urandom
+        // for example. Unfortuately the only defined error is a std::exception derivative
+        _socket.close();
+     }
+     if( newsession ) {
+        _net_plugin->async_add_session( newsession );
+        newsession->_local_peer_id = _net_plugin->_peer_id;
+        newsession->run();
+     }
      do_accept();
    }
 
@@ -1416,7 +1428,7 @@ namespace eosio {
       wlog( "done joining threads" );
 
       my->for_each_session([](auto ses){
-         FC_ASSERT( false, "session ${ses} still active", ("ses", ses->_session_num) );
+         EOS_ASSERT( false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num) );
       });
 
       // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl

@@ -286,7 +286,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          auto& list = my->chain_config->action_blacklist;
          for( const auto& a : acts ) {
             auto pos = a.find( "::" );
-            FC_ASSERT( pos != std::string::npos, "Invalid entry in action-blacklist: '${a}'", ("a", a));
+            EOS_ASSERT( pos != std::string::npos, plugin_config_exception, "Invalid entry in action-blacklist: '${a}'", ("a", a));
             account_name code( a.substr( 0, pos ));
             action_name act( a.substr( pos + 2 ));
             list.emplace( code.value, act.value );
@@ -316,7 +316,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
             auto itr = my->loaded_checkpoints.find(item.first);
             if( itr != my->loaded_checkpoints.end() ) {
-               FC_ASSERT( itr->second == item.second,
+               EOS_ASSERT( itr->second == item.second,
+                           plugin_config_exception,
                           "redefining existing checkpoint at block number ${num}: original: ${orig} new: ${new}",
                           ("num", item.first)("orig", itr->second)("new", item.second)
                );
@@ -442,7 +443,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       if( options.count( "genesis-json" )) {
-         FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                     plugin_config_exception,
                     "Genesis state can only be set on a fresh blockchain." );
 
          auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
@@ -450,7 +452,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             genesis_file = bfs::current_path() / genesis_file;
          }
 
-         FC_ASSERT( fc::is_regular_file( genesis_file ),
+         EOS_ASSERT( fc::is_regular_file( genesis_file ),
+                     plugin_config_exception,
                     "Specified genesis file '${genesis}' does not exist.",
                     ("genesis", genesis_file.generic_string()));
 
@@ -465,7 +468,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          wlog( "Starting up fresh blockchain with provided genesis state." );
       } else if( options.count( "genesis-timestamp" )) {
-         FC_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                     plugin_config_exception,
                     "Genesis state can only be set on a fresh blockchain." );
 
          my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
@@ -626,10 +630,11 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
       reversible_dir = *new_db_dir;
    } else {
       auto reversible_dir_name = reversible_dir.filename().generic_string();
-      FC_ASSERT( reversible_dir_name != ".", "Invalid path to reversible directory" );
+      EOS_ASSERT( reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory" );
       backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
 
-      FC_ASSERT( !fc::exists(backup_dir),
+      EOS_ASSERT( !fc::exists(backup_dir),
+                  reversible_blocks_backup_dir_exist,
                  "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
                  ("backup_dir", backup_dir) );
 
@@ -664,7 +669,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
          return true;
       }
       for( ; itr != ubi.end(); ++itr ) {
-         FC_ASSERT( itr->blocknum == end + 1, "gap in reversible block database" );
+         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db, "gap in reversible block database" );
          reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = itr->blocknum;
@@ -715,7 +720,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
          if( start == 0 ) {
             start = num;
          } else {
-            FC_ASSERT( num == end + 1, "gap in reversible block database" );
+            EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db, "gap in reversible block database" );
          }
 
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
@@ -743,7 +748,7 @@ controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
 chain::chain_id_type chain_plugin::get_chain_id()const {
-   FC_ASSERT( my->chain_id.valid(), "chain ID has not been initialized yet" );
+   EOS_ASSERT( my->chain_id.valid(), chain_id_type_exception, "chain ID has not been initialized yet" );
    return *my->chain_id;
 }
 
@@ -840,7 +845,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
             try {
                value = ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
             } catch( ... ) {
-               FC_ASSERT( false, "Could not convert ${desc} string '${str}' to any of the following: "
+               EOS_ASSERT( false, chain_type_exception, "Could not convert ${desc} string '${str}' to any of the following: "
                                  "uint64_t, valid name, or valid symbol (with or without the precision)",
                           ("desc", desc)("str", str));
             }
@@ -1184,7 +1189,7 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
 
 void read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
    try {
-      FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
+      EOS_ASSERT( params.size() <= 1000, too_many_tx_at_once, "Attempt to push too many transactions at once" );
       auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
       auto result = std::make_shared<read_write::push_transactions_results>();
       result->reserve(params.size());
@@ -1232,6 +1237,18 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    return result;
 }
 
+read_only::get_raw_code_and_abi_results read_only::get_raw_code_and_abi( const get_raw_code_and_abi_params& params)const {
+   get_raw_code_and_abi_results result;
+   result.account_name = params.account_name;
+
+   const auto& d = db.db();
+   const auto& accnt = d.get<account_object,by_name>(params.account_name);
+   result.wasm = blob{{accnt.code.begin(), accnt.code.end()}};
+   result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+
+   return result;
+}
+
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
    get_account_results result;
    result.account_name = params.account_name;
@@ -1264,7 +1281,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       if( perm->parent._id ) {
          const auto* p = d.find<permission_object,by_id>( perm->parent );
          if( p ) {
-            FC_ASSERT(perm->owner == p->owner, "Invalid parent");
+            EOS_ASSERT(perm->owner == p->owner, invalid_parent_permission, "Invalid parent permission");
             parent = p->name;
          }
       }

@@ -298,13 +298,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // from empty string
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string(""),
-                            fc::assert_exception, fc_assert_exception_message_is("creating symbol from empty string"));
+                            symbol_type_exception, fc_exception_message_is("creating symbol from empty string"));
    }
 
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
-                            fc::assert_exception, fc_assert_exception_message_is("missing comma in symbol"));
+                            symbol_type_exception, fc_exception_message_is("missing comma in symbol"));
    }
 
    // 0 decimals part
@@ -317,13 +317,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // invalid - contains lower case characters, no validation
    {
       BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,EoS)),
-                            fc::assert_exception, fc_assert_exception_message_is("invalid symbol: EoS"));
+                            symbol_type_exception, fc_exception_message_is("invalid symbol: EoS"));
    }
 
    // invalid - contains lower case characters, exception thrown
    {
       BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
-                            fc::assert_exception, fc_assert_exception_message_is("invalid character in symbol name"));
+                            symbol_type_exception, fc_exception_message_is("invalid character in symbol name"));
    }
 
    // Missing decimal point, should create asset with 0 decimals

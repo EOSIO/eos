@@ -436,26 +436,42 @@ try:
         Print("ERROR: Failed get currecy stats assertion. %s" % (res))
         raise
 
-    Print("push transfer action to currency1111 contract")
+    dupRejected=False
+    dupTransAmount=10
+    totalTransfer=dupTransAmount
     contract="currency1111"
     action="transfer"
-    data="{\"from\":\"currency1111\",\"to\":\"defproducera\",\"quantity\":"
-    data +="\"00.0050 CUR\",\"memo\":\"test\"}"
-    opts="--permission currency1111@active"
-    trans=node.pushMessage(contract, action, data, opts)
-    if trans is None or not trans[0]:
-        cmdError("%s push message currency1111 transfer" % (ClientName))
-        errorExit("Failed to push message to currency1111 contract")
-    transId=Node.getTransId(trans[1])
+    for _ in range(5):
+        Print("push transfer action to currency1111 contract")
+        data="{\"from\":\"currency1111\",\"to\":\"defproducera\",\"quantity\":"
+        data +="\"00.00%s CUR\",\"memo\":\"test\"}" % (dupTransAmount)
+        opts="--permission currency1111@active"
+        trans=node.pushMessage(contract, action, data, opts)
+        if trans is None or not trans[0]:
+            cmdError("%s push message currency1111 transfer" % (ClientName))
+            errorExit("Failed to push message to currency1111 contract")
+        transId=Node.getTransId(trans[1])
 
-    Print("push duplicate transfer action to currency1111 contract")
-    transDuplicate=node.pushMessage(contract, action, data, opts, True)
-    if transDuplicate is not None and transDuplicate[0]:
-        transDuplicateId=Node.getTransId(transDuplicate[1])
-        if transId != transDuplicateId:
-            cmdError("%s push message currency1111 duplicate transfer incorrectly accepted, but they were generated with different transaction ids, it is likely a timing issue, report if problem persists, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+        Print("push duplicate transfer action to currency1111 contract")
+        transDuplicate=node.pushMessage(contract, action, data, opts, True)
+        if transDuplicate is not None and transDuplicate[0]:
+            transDuplicateId=Node.getTransId(transDuplicate[1])
+            if transId != transDuplicateId:
+                Print("%s push message currency1111 duplicate transfer incorrectly accepted, but they were generated with different transaction ids, this is a timing setup issue, trying again" % (ClientName))
+                # add the transfer that wasn't supposed to work
+                totalTransfer+=dupTransAmount
+                dupTransAmount+=1
+                # add the new first transfer that is expected to work
+                totalTransfer+=dupTransAmount
+                continue
+            else:
+                cmdError("%s push message currency1111 transfer, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+            errorExit("Failed to reject duplicate message for currency1111 contract")
         else:
-            cmdError("%s push message currency1111 transfer, \norig: %s \ndup: %s" % (ClientName, trans, transDuplicate))
+            dupRejected=True
+            break
+
+    if not dupRejected:
         errorExit("Failed to reject duplicate message for currency1111 contract")
 
     Print("verify transaction exists")
@@ -466,26 +482,27 @@ try:
     Print("read current contract balance")
     amountStr=node.getTableAccountBalance("currency1111", defproduceraAccount.name)
 
-    expected="0.0050 CUR"
+    expectedDefproduceraBalance="0.00%s CUR" % (totalTransfer)
     actual=amountStr
-    if actual != expected:
-        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+    if actual != expectedDefproduceraBalance:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (expectedDefproduceraBalance, actual), raw=True)
 
     amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
 
-    expected="99999.9950 CUR"
+    expExtension=100-totalTransfer
+    expectedCurrency1111Balance="99999.99%s CUR" % (expExtension)
     actual=amountStr
-    if actual != expected:
-        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+    if actual != expectedCurrency1111Balance:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (expectedCurrency1111Balance, actual), raw=True)
 
     amountStr=node.getCurrencyBalance("currency1111", currencyAccount.name, "CUR")
     try:
         assert(actual)
         assert(isinstance(actual, str))
         actual=amountStr.strip()
-        assert(expected == actual)
+        assert(expectedCurrency1111Balance == actual)
     except (AssertionError, KeyError) as _:
-        Print("ERROR: Failed get currecy balance assertion. (expected=<%s>, actual=<%s>)" % (str(expected), str(actual)))
+        Print("ERROR: Failed get currecy balance assertion. (expected=<%s>, actual=<%s>)" % (expectedCurrency1111Balance, actual))
         raise
 
     Print("Test for block decoded packed transaction (issue 2932)")
@@ -525,7 +542,7 @@ try:
         assert(myTrans["actions"][0]["authorization"][0]["permission"] == "active")
         assert(myTrans["actions"][0]["data"]["from"] == "currency1111")
         assert(myTrans["actions"][0]["data"]["to"] == "defproducera")
-        assert(myTrans["actions"][0]["data"]["quantity"] == "0.0050 CUR")
+        assert(myTrans["actions"][0]["data"]["quantity"] == "0.00%s CUR" % (dupTransAmount))
         assert(myTrans["actions"][0]["data"]["memo"] == "test")
     except (AssertionError, TypeError, KeyError) as _:
         Print("FAILURE - Failed to parse block transaction. %s" % (myTrans))
@@ -550,23 +567,21 @@ try:
     Print("read current contract balance")
     amountStr=node.getTableAccountBalance("currency1111", defproduceraAccount.name)
 
-    expected="0.0050 CUR"
     actual=amountStr
-    if actual != expected:
-        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+    if actual != expectedDefproduceraBalance:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (expectedDefproduceraBalance, actual), raw=True)
 
     amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
 
-    expected="99999.9950 CUR"
     actual=amountStr
-    if actual != expected:
-        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+    if actual != expectedCurrency1111Balance:
+        errorExit("FAILURE - Wrong currency1111 balance (expected=%s, actual=%s)" % (expectedCurrency1111Balance, actual), raw=True)
 
     Print("push another transfer action to currency1111 contract")
     contract="currency1111"
     action="transfer"
     data="{\"from\":\"defproducera\",\"to\":\"currency1111\",\"quantity\":"
-    data +="\"00.0050 CUR\",\"memo\":\"test\"}"
+    data +="\"00.00%s CUR\",\"memo\":\"test\"}" % (totalTransfer)
     opts="--permission defproducera@active"
     trans=node.pushMessage(contract, action, data, opts)
     if trans is None or not trans[0]:
