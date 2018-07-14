@@ -118,7 +118,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
-      bool     _enable_stale_speculation           = false;
       bool     _pause_production                   = false;
       uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
@@ -451,7 +450,6 @@ void producer_plugin::set_program_options(
 
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
-         ("enable-stale-speculation", boost::program_options::bool_switch()->notifier([this](bool e){my->_enable_stale_speculation = e;}), "Enable speculative execution and relay, even if the chain is stale.")
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
@@ -834,7 +832,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       }
    }
 
-   if (_pending_block_mode == pending_block_mode::speculating && !(_enable_stale_speculation || _production_enabled)) {
+   if (_pending_block_mode == pending_block_mode::speculating && !_production_enabled) {
       return start_block_result::waiting;
    }
 
