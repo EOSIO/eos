@@ -180,6 +180,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
+         ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Minimum available size (in MB) in the chain state database before the node shutsdown to prevent corruption")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
@@ -340,6 +341,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.count( "chain-state-db-size-mb" ))
          my->chain_config->state_size = options.at( "chain-state-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
+
+      if( options.count( "chain-state-db-guard-size-mb" ))
+         my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
       if( options.count( "reversible-blocks-db-size-mb" ))
          my->chain_config->reversible_cache_size =
@@ -757,6 +761,14 @@ fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_ms;
 }
 
+void chain_plugin::handle_database_guard_exception(const chain::database_guard_exception& e) const {
+   elog("Database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
+        "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
+   dlog("Details: ${details}", ("details", e.to_detail_string()));
+
+   // quit the app
+   app().quit();
+}
 
 namespace chain_apis {
 
