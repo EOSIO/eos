@@ -561,7 +561,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 { try {
-   my->chain->startup();
+   try {
+      my->chain->startup();
+   } catch (const database_guard_exception& e) {
+      // make sure to properly close the db
+      my->chain.reset();
+      throw;
+   }
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
