@@ -668,26 +668,29 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
    std::fstream         reversible_blocks;
    reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
-                           std::ios::out | std::ios::binary | std::ios::app );
+                           std::ios::out | std::ios::binary );
 
    uint32_t num = 0;
    uint32_t start = 0;
    uint32_t end = 0;
+   old_reversible.add_index<reversible_block_index>();
+   new_reversible.add_index<reversible_block_index>();
+   const auto& ubi = old_reversible.get_index<reversible_block_index,by_num>();
+   auto itr = ubi.begin();
+   if( itr != ubi.end() ) {
+      start = itr->blocknum;
+      end = start - 1;
+   }
+   if( truncate_at_block > 0 && start > truncate_at_block ) {
+      ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
+      return true;
+   }
    try {
-      old_reversible.add_index<reversible_block_index>();
-      new_reversible.add_index<reversible_block_index>();
-      const auto& ubi = old_reversible.get_index<reversible_block_index,by_num>();
-      auto itr = ubi.begin();
-      if( itr != ubi.end() ) {
-         start = itr->blocknum;
-         end = start - 1;
-      }
-      if( truncate_at_block > 0 && start > truncate_at_block ) {
-         ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
-         return true;
-      }
       for( ; itr != ubi.end(); ++itr ) {
-         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db, "gap in reversible block database" );
+         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
+                     "gap in reversible block database between ${end} and ${blocknum}",
+                     ("end", end)("blocknum", itr->blocknum)
+                   );
          reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = itr->blocknum;
@@ -698,6 +701,8 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
          if( end == truncate_at_block )
             break;
       }
+   } catch( const gap_in_reversible_blocks_db& e ) {
+      wlog( "${details}", ("details", e.to_detail_string()) );
    } catch( ... ) {}
 
    if( end == truncate_at_block )
@@ -728,8 +733,8 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
    uint32_t num = 0;
    uint32_t start = 0;
    uint32_t end = 0;
+   new_reversible.add_index<reversible_block_index>();
    try {
-      new_reversible.add_index<reversible_block_index>();
       while( reversible_blocks.tellg() < end_pos ) {
          signed_block tmp;
          fc::raw::unpack(reversible_blocks, tmp);
@@ -738,7 +743,10 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
          if( start == 0 ) {
             start = num;
          } else {
-            EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db, "gap in reversible block database" );
+            EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
+                        "gap in reversible block database between ${end} and ${num}",
+                        ("end", end)("num", num)
+                      );
          }
 
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
@@ -747,6 +755,9 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
          });
          end = num;
       }
+   } catch( gap_in_reversible_blocks_db& e ) {
+      wlog( "${details}", ("details", e.to_detail_string()) );
+      FC_RETHROW_EXCEPTION( e, warn, "rethrow" );
    } catch( ... ) {}
 
    ilog( "Imported blocks ${start} to ${end}", ("start", start)("end", end));
@@ -761,26 +772,33 @@ bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
                                              const fc::path& reversible_blocks_file ) {
    chainbase::database  reversible( reversible_dir, database::read_only, 0, true );
    std::fstream         reversible_blocks;
-   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::out | std::ios::binary | std::ios::app );
+   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::out | std::ios::binary );
 
    uint32_t num = 0;
    uint32_t start = 0;
    uint32_t end = 0;
+   reversible.add_index<reversible_block_index>();
+   const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
+   auto itr = ubi.begin();
+   if( itr != ubi.end() ) {
+      start = itr->blocknum;
+      end = start - 1;
+   }
    try {
-      reversible.add_index<reversible_block_index>();
-      const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
-      auto itr = ubi.begin();
-      if( itr != ubi.end() ) {
-         start = itr->blocknum;
-         end = start - 1;
-      }
       for( ; itr != ubi.end(); ++itr ) {
-         if( itr->blocknum != end + 1 )
-            break; // gap in reversible block database
+         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
+                     "gap in reversible block database between ${end} and ${blocknum}",
+                     ("end", end)("blocknum", itr->blocknum)
+                   );
+         signed_block tmp;
+         fc::datastream<const char *> ds( itr->packedblock.data(), itr->packedblock.size() );
+         fc::raw::unpack(ds, tmp); // Verify that packed block has not been corrupted.
          reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
          end = itr->blocknum;
          ++num;
       }
+   } catch( const gap_in_reversible_blocks_db& e ) {
+      wlog( "${details}", ("details", e.to_detail_string()) );
    } catch( ... ) {}
 
    if( num == 0 ) {

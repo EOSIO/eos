@@ -450,7 +450,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_backup_dir_exist,          reversible_blocks_exception,
                                     3180002, "Backup directory for reversible blocks already existg" )
       FC_DECLARE_DERIVED_EXCEPTION( gap_in_reversible_blocks_db,          reversible_blocks_exception,
-                                    3180003, "There is gap in reversible blocks database" )
+                                    3180003, "Gap in the reversible blocks database" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_log_exception, chain_exception,
                                  3190000, "Block log exception" )
