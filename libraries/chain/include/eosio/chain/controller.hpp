@@ -54,6 +54,7 @@ namespace eosio { namespace chain {
             uint64_t                 state_size             =  chain::config::default_state_size;
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
+            uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     contracts_console      =  false;
@@ -185,6 +186,7 @@ namespace eosio { namespace chain {
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
          void validate_db_available_size() const;
+         void validate_reversible_available_size() const;
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 

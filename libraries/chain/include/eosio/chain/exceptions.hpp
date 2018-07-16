@@ -228,8 +228,14 @@ namespace eosio { namespace chain {
                                     3060003, "Contract Table Query Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,       database_exception,
                                     3060004, "Contract Query Exception" )
-      FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception, database_exception,
-                                    3060004, "Database usage is at unsafe levels" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
+                                 3060100, "Database exception" )
+
+      FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception, guard_exception,
+                                    3060101, "Database usage is at unsafe levels" )
+      FC_DECLARE_DERIVED_EXCEPTION( reversible_guard_exception, guard_exception,
+                                    3060102, "Reversible block log usage is at unsafe levels" )
 
    FC_DECLARE_DERIVED_EXCEPTION( wasm_exception, chain_exception,
                                  3070000, "WASM Exception" )

@@ -299,8 +299,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          bool except = false;
          try {
             chain.push_block(block);
-         } catch ( const database_guard_exception& e ) {
-            app().get_plugin<chain_plugin>().handle_database_guard_exception(e);
+         } catch ( const guard_exception& e ) {
+            app().get_plugin<chain_plugin>().handle_guard_exception(e);
             return;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
@@ -384,8 +384,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                send_response(trace);
             }
 
-         } catch ( const database_guard_exception& e ) {
-            app().get_plugin<chain_plugin>().handle_database_guard_exception(e);
+         } catch ( const guard_exception& e ) {
+            app().get_plugin<chain_plugin>().handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
             raise(SIGUSR1);
          } CATCH_AND_CALL(send_response);
@@ -891,8 +891,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                // the state of the chain including this transaction
                try {
                   chain.push_transaction(trx, fc::time_point::maximum());
-               } catch ( const database_guard_exception& e ) {
-                  app().get_plugin<chain_plugin>().handle_database_guard_exception(e);
+               } catch ( const guard_exception& e ) {
+                  app().get_plugin<chain_plugin>().handle_guard_exception(e);
                   return start_block_result::failed;
                } FC_LOG_AND_DROP();
 
@@ -935,8 +935,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                         chain.drop_unapplied_transaction(trx);
                      }
                   }
-               } catch ( const database_guard_exception& e ) {
-                  app().get_plugin<chain_plugin>().handle_database_guard_exception(e);
+               } catch ( const guard_exception& e ) {
+                  app().get_plugin<chain_plugin>().handle_guard_exception(e);
                   return start_block_result::failed;
                } FC_LOG_AND_DROP();
             }
@@ -976,8 +976,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                         _blacklisted_transactions.insert(transaction_id_with_expiry{trx, expiration});
                      }
                   }
-               } catch ( const database_guard_exception& e ) {
-                  app().get_plugin<chain_plugin>().handle_database_guard_exception(e);
+               } catch ( const guard_exception& e ) {
+                  app().get_plugin<chain_plugin>().handle_guard_exception(e);
                   return start_block_result::failed;
                } FC_LOG_AND_DROP();
             }
@@ -1093,8 +1093,8 @@ bool producer_plugin_impl::maybe_produce_block() {
    try {
       produce_block();
       return true;
-   } catch ( const database_guard_exception& e ) {
-      app().get_plugin<chain_plugin>().handle_database_guard_exception(e);
+   } catch ( const guard_exception& e ) {
+      app().get_plugin<chain_plugin>().handle_guard_exception(e);
       return false;
    } catch ( boost::interprocess::bad_alloc& ) {
       raise(SIGUSR1);
