@@ -50,13 +50,14 @@ namespace eosio {
                     market.exstate.quote.balance.get_extended_symbol() == b.delta_collateral.get_extended_symbol(),
                     "invalid asset for market" );
 
-      market.update_margin( b.borrower, b.delta_borrow, b.delta_collateral );
+      auto delta_collateral = b.delta_collateral;
+      market.update_margin( b.borrower, b.delta_borrow, delta_collateral );
 
      /// if this succeeds then the borrower will see their balances adjusted accordingly,
      /// if they don't have sufficient balance to either fund the collateral or pay off the
      /// debt then this will fail before we go further.
      _accounts.adjust_balance( b.borrower, b.delta_borrow, "borrowed" );
-     _accounts.adjust_balance( b.borrower, -b.delta_collateral, "collateral" );
+     _accounts.adjust_balance( b.borrower, -delta_collateral, "collateral" );
 
      market.save();
    }

@@ -1,6 +1,8 @@
 #include <exchange/market_state.hpp>
 #include <boost/math/special_functions/relative_difference.hpp>
 
+static const uint32_t sec_per_year = 60 * 60 * 24 * 365;
+
 namespace eosio {
 
    market_state::market_state( account_name this_contract, symbol_type market_symbol, exchange_accounts& acnts, currency& excur  )
@@ -51,9 +53,42 @@ namespace eosio {
          c.peer_margin.least_collateralized = double(uint64_t(-1));
    }
 
-
    const exchange_state& market_state::initial_state()const {
       return *market_state_itr;
+   }
+
+   extended_asset market_state::get_interest( extended_asset value, uint32_t elapsed_time ) {
+      value.amount = int64_t(value.amount * (exp(exstate.interest_rate * elapsed_time / sec_per_year) - 1));
+      return value;
+   }
+
+   void market_state::reserve_interest( margin_position& margin, uint32_t at_time ) {
+      if( margin.interest_reserve.amount )
+         margin.collateral += margin.interest_reserve;
+      margin.interest_reserve = get_interest( margin.collateral, sec_per_year );
+      margin.collateral -= margin.interest_reserve;
+      margin.interest_start_time = time_point_sec{at_time};
+   }
+
+   void market_state::charge_interest( exchange_state::connector& c, margin_position& margin, uint32_t at_time ) {
+      auto interest = std::min(get_interest(margin.collateral + margin.interest_reserve, at_time - margin.interest_start_time.utc_seconds), margin.interest_reserve);
+      c.peer_margin.collected_interest += interest;
+      margin.collateral += margin.interest_reserve - interest;
+      margin.interest_reserve.amount = 0;
+   }
+
+   void market_state::charge_yearly_interest( exchange_state::connector& c, margins& marginstable ) {
+      uint32_t now = ::now();
+      auto time_idx = marginstable.get_index<N(interesttime)>();
+      while( true ) {
+         auto it = time_idx.begin();
+         if( it == time_idx.end() || now < it->interest_start_time.utc_seconds + sec_per_year )
+            break;
+         time_idx.modify( it, 0, [&](auto& margin){
+            charge_interest( c, margin, margin.interest_start_time.utc_seconds + sec_per_year );
+            reserve_interest( margin, margin.interest_start_time.utc_seconds + sec_per_year );
+         });
+      }
    }
 
    void market_state::market_order( account_name seller, extended_asset sell, extended_symbol receive_symbol ) {
@@ -77,20 +112,17 @@ namespace eosio {
          up_margins = &base_margins;
       }
 
+      charge_yearly_interest( *up, *up_margins );
+
       auto temp = this->exstate;
-      auto converted_interest = temp.convert( up->peer_margin.collected_interest, up->peer_margin.total_lendable.get_extended_symbol(), true );
       auto output = temp.convert( sell, receive_symbol );
 
       while( temp.requires_margin_call(*up, down->balance.get_extended_symbol()) ) {
          this->margin_call( *up, *up_margins );
          temp = this->exstate;
-         converted_interest = temp.convert( up->peer_margin.collected_interest, up->peer_margin.total_lendable.get_extended_symbol(), true );
          output = temp.convert( sell, receive_symbol );
       }
       this->exstate = temp;
-
-      up->peer_margin.collected_interest.amount = 0;
-      up->peer_margin.total_lendable += converted_interest;
 
       print( name{seller}, "   ", sell, "  =>  ", output, "\n" );
 
@@ -140,6 +172,7 @@ namespace eosio {
 
 
    void market_state::adjust_lend_shares( account_name lender, loans& l, double delta ) {
+      // todo: charge_yearly_interest
       auto existing = l.find( lender );
       if( existing == l.end() ) {
          l.emplace( lender, [&]( auto& obj ) {
@@ -211,7 +244,7 @@ namespace eosio {
       }
    }
 
-   void market_state::update_margin( account_name borrower, const extended_asset& delta_debt, const extended_asset& delta_col )
+   void market_state::update_margin( account_name borrower, const extended_asset& delta_debt, extended_asset& delta_col )
    {
       if( delta_debt.get_extended_symbol() == exstate.base.balance.get_extended_symbol() ) {
          adjust_margin( borrower, base_margins, exstate.base, delta_debt, delta_col );
@@ -223,9 +256,9 @@ namespace eosio {
    }
 
    void market_state::adjust_margin( account_name borrower, margins& m, exchange_state::connector& c,
-                                     const extended_asset& delta_debt, const extended_asset& delta_col )
+                                     const extended_asset& delta_debt, extended_asset& delta_col )
    {
-      // todo: interest
+      auto now = ::now();
       auto existing = m.find( borrower );
       if( existing == m.end() ) {
          eosio_assert( delta_debt.amount > 0, "cannot borrow neg" );
@@ -235,12 +268,16 @@ namespace eosio {
             obj.owner      = borrower;
             obj.borrowed   = delta_debt;
             obj.collateral = delta_col;
+            reserve_interest( obj, now );            
             obj.call_price = double(obj.collateral.amount) / obj.borrowed.amount;
          });
       } else {
          if( existing->borrowed.amount == -delta_debt.amount ) {
-            eosio_assert( existing->collateral.amount == -delta_col.amount, "user failed to claim all collateral" );
+            auto obj = *existing;
+            charge_interest( c, obj, now );
+            delta_col = -obj.collateral;
             m.erase( existing );
+
             auto price_idx = m.get_index<N(callprice)>();
             auto least = price_idx.begin();
             if( least != price_idx.end() )
@@ -249,8 +286,10 @@ namespace eosio {
                existing = m.end();
          } else {
             m.modify( existing, 0, [&]( auto& obj ) {
+               charge_interest( c, obj, now );
                obj.borrowed   += delta_debt;
                obj.collateral += delta_col;
+               reserve_interest( obj, now );            
                obj.call_price = double(obj.collateral.amount) / obj.borrowed.amount;
             });
          }
