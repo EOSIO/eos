@@ -319,7 +319,9 @@ namespace eosio { namespace testing {
          vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
          vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
          vcfg.state_size = 1024*1024*8;
+         vcfg.state_guard_size = 0;
          vcfg.reversible_cache_size = 1024*1024*8;
+         vcfg.reversible_guard_size = 0;
          vcfg.contracts_console = false;
 
          vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
