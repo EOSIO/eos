@@ -240,9 +240,13 @@ namespace eosio {
       } else {
          if( existing->borrowed.amount == -delta_debt.amount ) {
             eosio_assert( existing->collateral.amount == -delta_col.amount, "user failed to claim all collateral" );
-
             m.erase( existing );
-            existing = m.begin();
+            auto price_idx = m.get_index<N(callprice)>();
+            auto least = price_idx.begin();
+            if( least != price_idx.end() )
+               existing = m.iterator_to( *least );
+            else
+               existing = m.end();
          } else {
             m.modify( existing, 0, [&]( auto& obj ) {
                obj.borrowed   += delta_debt;
