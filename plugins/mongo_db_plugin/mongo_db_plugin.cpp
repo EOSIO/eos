@@ -807,6 +807,10 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    using namespace bsoncxx::types;
    using namespace bsoncxx::builder;
    using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   mongocxx::options::update update_opts{};
+   update_opts.upsert( true );
 
    auto block_num = bs->block_num;
    const auto block_id = bs->id;
@@ -843,7 +847,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    block_state_doc.append(kvp( "createdAt", b_date{now} ));
 
    try {
-      if( !block_states.insert_one( block_state_doc.view())) {
+      if( !block_states.update_one( make_document( kvp( "block_id", block_id_str )),
+                                    make_document( kvp( "$set", block_state_doc.view())), update_opts )) {
          EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id));
       }
    } catch(...) {
@@ -875,7 +880,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    block_doc.append(kvp( "createdAt", b_date{now} ));
 
    try {
-      if( !blocks.insert_one( block_doc.view())) {
+      if( !blocks.update_one( make_document( kvp( "block_id", block_id_str )),
+                              make_document( kvp( "$set", block_doc.view())), update_opts )) {
          EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id));
       }
    } catch(...) {
