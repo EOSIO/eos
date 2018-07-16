@@ -233,6 +233,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
          ("import-reversible-blocks", bpo::value<bfs::path>(),
           "replace reversible block database with blocks imported from specified file and then exit")
+         ("export-reversible-blocks", bpo::value<bfs::path>(),
+           "export reversible block database in portable format into specified file and then exit")
          ;
 
 }
@@ -379,6 +381,21 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
 
+      if( options.count("export-reversible-blocks") ) {
+         auto p = options.at( "export-reversible-blocks" ).as<bfs::path>();
+
+         if( p.is_relative()) {
+            p = bfs::current_path() / p;
+         }
+
+         if( export_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name, p ) )
+            ilog( "Saved all blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
+         else
+            ilog( "Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
+
+         EOS_THROW( node_management_success, "exported reversible blocks" );
+      }
+
       if( options.at( "delete-all-blocks" ).as<bool>()) {
          ilog( "Deleting state database and blocks" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
@@ -436,7 +453,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          import_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
                                    my->chain_config->reversible_cache_size, reversible_blocks_file );
 
-         EOS_THROW( fixed_reversible_db_exception, "imported reversible blocks" );
+         EOS_THROW( node_management_success, "imported reversible blocks" );
       }
 
       if( options.count("import-reversible-blocks") ) {
@@ -598,7 +615,7 @@ bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
 }
 
 bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
-                                              optional<fc::path> new_db_dir, uint32_t truncate_at_block )const {
+                                              optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
    try {
       chainbase::database reversible( db_dir, database::read_only); // Test if dirty
       // If it reaches here, then the reversible database is not dirty
@@ -699,7 +716,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
 bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
                                              uint32_t cache_size,
-                                             const fc::path& reversible_blocks_file )const {
+                                             const fc::path& reversible_blocks_file ) {
    std::fstream         reversible_blocks;
    chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
    reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
@@ -738,6 +755,45 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
       return false;
 
    return true;
+}
+
+bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
+                                             const fc::path& reversible_blocks_file ) {
+   chainbase::database  reversible( reversible_dir, database::read_only, 0, true );
+   std::fstream         reversible_blocks;
+   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::out | std::ios::binary | std::ios::app );
+
+   uint32_t num = 0;
+   uint32_t start = 0;
+   uint32_t end = 0;
+   try {
+      reversible.add_index<reversible_block_index>();
+      const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
+      auto itr = ubi.begin();
+      if( itr != ubi.end() ) {
+         start = itr->blocknum;
+         end = start - 1;
+      }
+      for( ; itr != ubi.end(); ++itr ) {
+         if( itr->blocknum != end + 1 )
+            break; // gap in reversible block database
+         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
+         end = itr->blocknum;
+         ++num;
+      }
+   } catch( ... ) {}
+
+   if( num == 0 ) {
+      ilog( "There were no recoverable blocks in the reversible block database" );
+      return false;
+   }
+   else if( num == 1 )
+      ilog( "Exported 1 block from reversible block database: block ${start}", ("start", start) );
+   else
+      ilog( "Exported ${num} blocks from reversible block database: blocks ${start} to ${end}",
+            ("num", num)("start", start)("end", end) );
+
+   return (end >= start) && ((end - start + 1) == num);
 }
 
 controller::config& chain_plugin::chain_config() {

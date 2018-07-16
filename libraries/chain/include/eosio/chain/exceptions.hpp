@@ -158,8 +158,8 @@ namespace eosio { namespace chain {
                                     3030008, "Block is not signed with expected key" )
       FC_DECLARE_DERIVED_EXCEPTION( wrong_producer,              block_validate_exception,
                                     3030009, "Block is not signed by expected producer" )
-                                    
-                                    
+
+
 
 
    FC_DECLARE_DERIVED_EXCEPTION( transaction_exception,             chain_exception,
@@ -228,7 +228,7 @@ namespace eosio { namespace chain {
                                     3060003, "Contract Table Query Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,       database_exception,
                                     3060004, "Contract Query Exception" )
-     
+
    FC_DECLARE_DERIVED_EXCEPTION( wasm_exception, chain_exception,
                                  3070000, "WASM Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( page_memory_error,        wasm_exception,
@@ -285,23 +285,25 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( misc_exception, chain_exception,
                                  3100000, "Miscellaneous exception" )
 
-      FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent, misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent,       misc_exception,
                                     3100001, "Internal state is no longer consistent" )
-      FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,          misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,                misc_exception,
                                     3100002, "Unknown block" )
-      FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,    misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,          misc_exception,
                                     3100003, "Unknown transaction" )
-      FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,    misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,          misc_exception,
                                     3100004, "Corrupted reversible block database was fixed" )
-      FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,    misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,        misc_exception,
                                     3100005, "Extracted genesis state from blocks.log" )
-      FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception,    misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception,  misc_exception,
                                     3100006, "Subjective exception thrown during block production" )
-      FC_DECLARE_DERIVED_EXCEPTION( multiple_voter_info,    misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( multiple_voter_info,                    misc_exception,
                                     3100007, "Multiple voter info detected" )
-      FC_DECLARE_DERIVED_EXCEPTION( unsupported_feature,    misc_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( unsupported_feature,                    misc_exception,
                                     3100008, "Feature is currently unsupported" )
-      
+      FC_DECLARE_DERIVED_EXCEPTION( node_management_success,                misc_exception,
+                                    3100009, "Node management operation successfully executed" )
+
 
 
    FC_DECLARE_DERIVED_EXCEPTION( plugin_exception, chain_exception,
@@ -348,7 +350,7 @@ namespace eosio { namespace chain {
                                     3120011, "Wallet lock timeout is invalid" )
       FC_DECLARE_DERIVED_EXCEPTION( secure_enclave_exception,          wallet_exception,
                                     3120012, "Secure Enclave Exception" )
- 
+
 
    FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
                                  3130000, "Actor or contract whitelist/blacklist exception" )
@@ -373,7 +375,7 @@ namespace eosio { namespace chain {
 
 
    FC_DECLARE_DERIVED_EXCEPTION( abi_exception,                           chain_exception,
-                                 3015000, "ABI exception" ) 
+                                 3015000, "ABI exception" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_not_found_exception,              abi_exception,
                                     3015001, "No ABI found" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_ricardian_clause_exception,   abi_exception,
@@ -395,13 +397,13 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_deadline_exception, abi_exception,
                                     3015010, "ABI serialization time has exceeded the deadline" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_recursion_depth_exception,        abi_exception,
-                                    3015011, "ABI recursive definition has exceeded the max recursion depth" ) 
+                                    3015011, "ABI recursive definition has exceeded the max recursion depth" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_circular_def_exception,           abi_exception,
-                                    3015012, "Circular definition is detected in the ABI" ) 
+                                    3015012, "Circular definition is detected in the ABI" )
       FC_DECLARE_DERIVED_EXCEPTION( unpack_exception,                     abi_exception,
-                                    3015013, "Unpack data exception" ) 
+                                    3015013, "Unpack data exception" )
       FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                     abi_exception,
-                                    3015014, "Pack data exception" ) 
+                                    3015014, "Pack data exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )
@@ -474,7 +476,7 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_limit_exception, chain_exception,
                                  3210000, "Resource limit exception" )
-   
+
    FC_DECLARE_DERIVED_EXCEPTION( mongo_db_exception, chain_exception,
                                  3220000, "Mongo DB exception" )
       FC_DECLARE_DERIVED_EXCEPTION( mongo_db_insert_fail, mongo_db_exception,

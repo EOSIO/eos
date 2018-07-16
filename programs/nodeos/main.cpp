@@ -86,7 +86,8 @@ enum return_codes {
    BAD_ALLOC         = 1,
    DATABASE_DIRTY    = 2,
    FIXED_REVERSIBLE  = 3,
-   EXTRACTED_GENESIS = 4
+   EXTRACTED_GENESIS = 4,
+   NODE_MANAGEMENT_SUCCESS = 5
 };
 
 int main(int argc, char** argv)
@@ -109,6 +110,8 @@ int main(int argc, char** argv)
       return EXTRACTED_GENESIS;
    } catch( const fixed_reversible_db_exception& e ) {
       return FIXED_REVERSIBLE;
+   } catch( const node_management_success& e ) {
+      return NODE_MANAGEMENT_SUCCESS;
    } catch( const fc::exception& e ) {
       if( e.code() == fc::std_exception_code ) {
          if( e.top_message().find( "database dirty flag set" ) != std::string::npos ) {
