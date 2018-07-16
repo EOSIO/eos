@@ -26,6 +26,7 @@ namespace eosio { namespace chain {
          void exec();
          void finalize();
          void squash();
+         void undo();
 
          inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
 

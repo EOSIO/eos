@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from WalletMgr import WalletMgr
 from TestHelper import TestHelper
 
 import random
 
-Print=testUtils.Utils.Print
-
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
+Print=Utils.Print
+errorExit=Utils.errorExit
 
 args=TestHelper.parse_args({"-p","-n","-d","-s","--nodes-file","--seed"
                               ,"--dump-error-details","-v","--leave-running","--clean-run"})
@@ -30,12 +29,12 @@ killEosInstances=not dontKill
 if nodesFile is not None:
     killEosInstances=False
 
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 testSuccessful=False
 
 random.seed(seed) # Use a fixed seed for repeatability.
-cluster=testUtils.Cluster(walletd=True)
-walletMgr=testUtils.WalletMgr(True)
+cluster=Cluster(walletd=True)
+walletMgr=WalletMgr(True)
 
 try:
     cluster.setWalletMgr(walletMgr)

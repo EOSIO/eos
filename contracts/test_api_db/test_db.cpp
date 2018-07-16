@@ -544,9 +544,9 @@ void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_
    char* ptr = (char*)(&key);
    ptr += 1;
    // test that store doesn't crash on unaligned data
-   db_idx256_store( N(testapi), N(testtable), N(testapi), 1, (eosio::key256*)(ptr), 2 );
+   db_idx256_store( N(testapi), N(testtable), N(testapi), 1, (uint128_t*)(ptr), 2 );
    // test that find_primary doesn't crash on unaligned data
-   db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (eosio::key256*)(ptr), 2, 0);
+   db_idx256_find_primary( N(testapi), N(testtable), N(testapi), (uint128_t*)(ptr), 2, 0);
 }
 
 #pragma clang diagnostic pop

@@ -29,16 +29,18 @@ using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
+fc::microseconds max_serialization_time = fc::seconds(1); // some test machines are very slow
+
 // verify that round trip conversion, via bytes, reproduces the exact same data
 fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 {
-   auto bytes = abis.variant_to_binary(type, var);
+   auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
 
-   auto var2 = abis.binary_to_variant(type, bytes);
+   auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
 
    std::string r = fc::json::to_string(var2);
 
-   auto bytes2 = abis.variant_to_binary(type, var2);
+   auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
 
    BOOST_TEST( fc::to_hex(bytes) == fc::to_hex(bytes2) );
 
@@ -48,7 +50,7 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
 auto get_resolver(const abi_def& abi = abi_def())
 {
    return [&abi](const account_name &name) -> optional<abi_serializer> {
-      return abi_serializer(eosio_contract_abi(abi));
+      return abi_serializer(eosio_contract_abi(abi), max_serialization_time);
    };
 }
 
@@ -57,18 +59,18 @@ template<typename T>
 fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 { try {
 
-   auto bytes = abis.variant_to_binary(type, var);
+   auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
 
    T obj;
-   abi_serializer::from_variant(var, obj, get_resolver());
+   abi_serializer::from_variant(var, obj, get_resolver(), max_serialization_time);
 
    fc::variant var2;
-   abi_serializer::to_variant(obj, var2, get_resolver());
+   abi_serializer::to_variant(obj, var2, get_resolver(), max_serialization_time);
 
    std::string r = fc::json::to_string(var2);
 
 
-   auto bytes2 = abis.variant_to_binary(type, var2);
+   auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
 
    BOOST_TEST( fc::to_hex(bytes) == fc::to_hex(bytes2) );
 
@@ -499,8 +501,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
    auto abi = fc::json::from_string(currency_abi).as<abi_def>();
 
-   abi_serializer abis(eosio_contract_abi(abi));
-   abis.validate();
+   abi_serializer abis(eosio_contract_abi(abi), max_serialization_time);
 
    const char* test_data = R"=====(
    {
@@ -513,7 +514,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
 
    auto var = fc::json::from_string(test_data);
-   verify_byte_round_trip_conversion(abi_serializer{abi}, "transfer", var);
+   verify_byte_round_trip_conversion(abi_serializer{abi, max_serialization_time}, "transfer", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -557,7 +558,7 @@ struct abi_gen_helper {
     );
     FC_ASSERT(res == true);
 
-    abi_serializer(output).validate();
+    abi_serializer abis(output, max_serialization_time);
 
     auto abi1 = fc::json::from_string(abi).as<abi_def>();
 
@@ -1801,8 +1802,7 @@ BOOST_AUTO_TEST_CASE(general)
 
    auto abi = eosio_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
 
-   abi_serializer abis(abi);
-   abis.validate();
+   abi_serializer abis(abi, max_serialization_time);
 
    const char *my_other = R"=====(
     {
@@ -2001,7 +2001,7 @@ BOOST_AUTO_TEST_CASE(general)
    )=====";
 
    auto var = fc::json::from_string(my_other);
-   verify_byte_round_trip_conversion(abi_serializer{abi}, "A", var);
+   verify_byte_round_trip_conversion(abi_serializer{abi, max_serialization_time}, "A", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2048,21 +2048,21 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 
    auto abi = eosio_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
 
-   auto is_assert_exception = [](fc::assert_exception const & e) -> bool {
+   auto is_assert_exception = [](const auto& e) -> bool {
       wlog(e.to_string()); return true;
    };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_assert_exception );
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), duplicate_abi_type_def_exception, is_assert_exception);
 
    abi = fc::json::from_string(struct_cycle_abi).as<abi_def>();
    abi_serializer abis;
-   BOOST_CHECK_EXCEPTION( abis.set_abi(abi), fc::assert_exception, is_assert_exception );
+   BOOST_CHECK_EXCEPTION( abis.set_abi(abi, max_serialization_time), abi_circular_def_exception, is_assert_exception );
 
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(linkauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2096,7 +2096,7 @@ BOOST_AUTO_TEST_CASE(linkauth_test)
 BOOST_AUTO_TEST_CASE(unlinkauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2127,7 +2127,7 @@ BOOST_AUTO_TEST_CASE(unlinkauth_test)
 BOOST_AUTO_TEST_CASE(updateauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2197,7 +2197,7 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
 BOOST_AUTO_TEST_CASE(deleteauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2225,7 +2225,7 @@ BOOST_AUTO_TEST_CASE(deleteauth_test)
 BOOST_AUTO_TEST_CASE(newaccount_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2335,7 +2335,7 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
 BOOST_AUTO_TEST_CASE(setcode_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()));
+   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
 
    const char* test_data = R"=====(
    {
@@ -2498,7 +2498,7 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 
    auto v = fc::json::from_string(abi_def_abi);
 
-   abi_serializer abis(eosio_contract_abi(v.as<abi_def>()));
+   abi_serializer abis(eosio_contract_abi(v.as<abi_def>()), max_serialization_time);
 
    const char* abi_string = R"=====(
       {
@@ -2819,10 +2819,10 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    }
    )=====";
    fc::variant var;
-   abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()));
+   abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), max_serialization_time);
 
    chain::packed_transaction packed_txn2;
-   abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()));
+   abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()), max_serialization_time);
 
    const auto txn2 = packed_txn2.get_transaction();
 
@@ -2895,8 +2895,8 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
+   auto is_table_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), duplicate_abi_type_def_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_struct_repeat)
@@ -2952,8 +2952,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("structs.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_struct_def_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_action_repeat)
@@ -3012,8 +3011,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("actions.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_action_def_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_table_repeat)
@@ -3075,8 +3073,7 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
    )=====";
 
    auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
-   auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
+   BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_table_def_exception );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_type_def)
@@ -3114,9 +3111,9 @@ BOOST_AUTO_TEST_CASE(abi_type_def)
    }
    )=====";
 
-   abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>());
-   BOOST_CHECK(abis.is_type("name"));
-   BOOST_CHECK(abis.is_type("account_name"));
+   abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time);
+   BOOST_CHECK(abis.is_type("name", max_serialization_time));
+   BOOST_CHECK(abis.is_type("account_name", max_serialization_time));
 
    const char* test_data = R"=====(
    {
@@ -3169,8 +3166,8 @@ BOOST_AUTO_TEST_CASE(abi_type_loop)
    }
    )=====";
 
-   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::assert_exception, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), duplicate_abi_type_def_exception, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3209,8 +3206,8 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine)
    }
    )=====";
 
-   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("invalid type") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::assert_exception, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("invalid type") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), invalid_type_inside_abi, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3230,8 +3227,8 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine_to_name)
    }
    )=====";
 
-   auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::assert_exception, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), duplicate_abi_type_def_exception, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3256,7 +3253,7 @@ BOOST_AUTO_TEST_CASE(abi_type_nested_in_vector)
    }
    )=====";
 
-   BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>()), fc::exception );
+   BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), fc::exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3339,7 +3336,7 @@ BOOST_AUTO_TEST_CASE(abi_is_type_recursion)
       }
       )=====";
 
-      BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>()), fc::exception );
+      BOOST_CHECK_THROW( abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>(), max_serialization_time), fc::exception );
 
    } FC_LOG_AND_RETHROW()
 }
@@ -3395,11 +3392,11 @@ BOOST_AUTO_TEST_CASE(abi_recursive_structs)
         "tables": []
       }
       )=====";
-
-      abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>());
+      
+      abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>(), max_serialization_time);
       string hi_data = "{\"user\":\"eosio\",\"arg2\":{\"user\":\"1\"}}";
-      auto bin = abis.variant_to_binary("hi", fc::json::from_string(hi_data));
-      BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin);, fc::exception );
+      auto bin = abis.variant_to_binary("hi", fc::json::from_string(hi_data), max_serialization_time);
+      BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin, max_serialization_time);, fc::exception );
 
    } FC_LOG_AND_RETHROW()
 }
