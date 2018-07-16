@@ -67,10 +67,10 @@ ecmd get info
 wcmd create -n ignition
 
 # Manual deployers, add a line below this block that looks like:
-#    wcmd import -n ignition $PRODKEY[0]
-#    wcmd import -n ignition $PRODKEY[1]
+#    wcmd import -n ignition --private-key $PRODKEY[0]
+#    wcmd import -n ignition --private-key $PRODKEY[1]
 #    ...
-#    wcmd import -n ignition $PRODKEY[20]
+#    wcmd import -n ignition --private-key $PRODKEY[20]
 # where $BIOSKEY is replaced by the private key for the bios node
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
@@ -82,7 +82,7 @@ ecmd create key
 pubsyskey=`grep "^Public key:" $logfile | tail -1 | sed "s/^Public key://"`
 prisyskey=`grep "^Private key:" $logfile | tail -1 | sed "s/^Private key://"`
 echo eosio.* keys: $prisyskey $pubsyskey >> $logfile
-wcmd import -n ignition $prisyskey
+wcmd import -n ignition --private-key $prisyskey
 ecmd create account eosio eosio.bpay $pubsyskey $pubsyskey
 ecmd create account eosio eosio.msig $pubsyskey $pubsyskey
 ecmd create account eosio eosio.names $pubsyskey $pubsyskey
@@ -92,9 +92,11 @@ ecmd create account eosio eosio.saving $pubsyskey $pubsyskey
 ecmd create account eosio eosio.stake $pubsyskey $pubsyskey
 ecmd create account eosio eosio.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
+ecmd create account eosio eosio.sudo $pubsyskey $pubsyskey
 
 ecmd set contract eosio.token contracts/eosio.token contracts/eosio.token/eosio.token.wast contracts/eosio.token/eosio.token.abi
 ecmd set contract eosio.msig contracts/eosio.msig contracts/eosio.msig/eosio.msig.wast contracts/eosio.msig/eosio.msig.abi
+ecmd set contract eosio.sudo contracts/eosio.sudo contracts/eosio.sudo/eosio.sudo.wast contracts/eosio.sudo/eosio.sudo.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile

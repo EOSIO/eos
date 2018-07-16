@@ -37,7 +37,7 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
    auto now = std::chrono::system_clock::now();
    timeout_time = now + timeout;
-   FC_ASSERT(timeout_time >= now, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+   EOS_ASSERT(timeout_time >= now, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
              ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 
@@ -263,6 +263,11 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
    EOS_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
 }
 
+void wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet) {
+   if(wallets.find(name) != wallets.end())
+      FC_THROW("tried to use wallet name the already existed");
+   wallets.emplace(name, std::move(wallet));
+}
 
 } // namespace wallet
 } // namespace eosio

@@ -24,12 +24,12 @@ namespace eosio { namespace chain {
    {
       trace->id = id;
       executed.reserve( trx.total_actions() );
-      FC_ASSERT( trx.transaction_extensions.size() == 0, "we don't support any extensions yet" );
+      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
    {
-      FC_ASSERT( !is_initialized, "cannot initialize twice" );
+      EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       const auto& cfg = control.get_global_properties().configuration;
@@ -182,7 +182,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::exec() {
-      FC_ASSERT( is_initialized, "must first initialize" );
+      EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
@@ -202,7 +202,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::finalize() {
-      FC_ASSERT( is_initialized, "must first initialize" );
+      EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       if( is_input ) {
@@ -311,7 +311,7 @@ namespace eosio { namespace chain {
                        "but it is possible it could have succeeded if it were allowed to run to completion",
                        ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          }
-         FC_ASSERT( false, "unexpected deadline exception code" );
+         EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
       }
    }
 

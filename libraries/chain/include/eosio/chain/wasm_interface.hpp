@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include "Runtime/Linker.h"
 #include "Runtime/Runtime.h"
 
@@ -31,14 +32,14 @@ namespace eosio { namespace chain {
          //protect access to "private" injected functions; so for now just simply allow "env" since injected functions
          //  are in a different module
          if(validating && mod_name != "env")
-            FC_ASSERT( !"importing from module that is not 'env'", "${module}.${export}", ("module",mod_name)("export",export_name) );
+            EOS_ASSERT( false, wasm_exception, "importing from module that is not 'env': ${module}.${export}", ("module",mod_name)("export",export_name) );
 
          // Try to resolve an intrinsic first.
          if(Runtime::IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
             return true;
          }
 
-         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
+         EOS_ASSERT( false, wasm_exception, "${module}.${export} unresolveable", ("module",mod_name)("export",export_name) );
          return false;
       } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
       };

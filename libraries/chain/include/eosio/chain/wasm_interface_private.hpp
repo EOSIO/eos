@@ -6,6 +6,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include <fc/scoped_exit.hpp>
 
 #include "IR/Module.h"
@@ -28,15 +29,15 @@ namespace eosio { namespace chain {
          else if(vm == wasm_interface::vm_type::binaryen)
             runtime_interface = std::make_unique<webassembly::binaryen::binaryen_runtime>();
          else
-            FC_THROW("wasm_interface_impl fall through");
+            EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
       }
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
 
          for(const DataSegment& data_segment : module.dataSegments) {
-            FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
-            FC_ASSERT(module.memories.defs.size());
+            EOS_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const, wasm_exception, "");
+            EOS_ASSERT(module.memories.defs.size(), wasm_exception, "");
             const U32 base_offset = data_segment.baseOffset.i32;
             const Uptr memory_size = (module.memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
             if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)

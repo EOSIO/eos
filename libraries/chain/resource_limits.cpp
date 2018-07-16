@@ -22,9 +22,9 @@ static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_us
 void elastic_limit_parameters::validate()const {
    // At the very least ensure parameters are not set to values that will cause divide by zero errors later on.
    // Stricter checks for sensible values can be added later.
-   FC_ASSERT( periods > 0, "elastic limit parameter 'periods' cannot be zero" );
-   FC_ASSERT( contract_rate.denominator > 0, "elastic limit parameter 'contract_rate' is not a well-defined ratio" );
-   FC_ASSERT( expand_rate.denominator > 0,   "elastic limit parameter 'expand_rate' is not a well-defined ratio" );
+   EOS_ASSERT( periods > 0, resource_limit_exception, "elastic limit parameter 'periods' cannot be zero" );
+   EOS_ASSERT( contract_rate.denominator > 0, resource_limit_exception, "elastic limit parameter 'contract_rate' is not a well-defined ratio" );
+   EOS_ASSERT( expand_rate.denominator > 0, resource_limit_exception, "elastic limit parameter 'expand_rate' is not a well-defined ratio" );
 }
 
 

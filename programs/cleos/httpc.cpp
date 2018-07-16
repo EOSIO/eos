@@ -24,6 +24,7 @@
 #include "httpc.hpp"
 
 using boost::asio::ip::tcp;
+using namespace eosio::chain;
 namespace eosio { namespace client { namespace http {
 
    namespace detail {
@@ -69,7 +70,7 @@ namespace eosio { namespace client { namespace http {
       response_stream >> status_code;
       std::string status_message;
       std::getline(response_stream, status_message);
-      FC_ASSERT( !(!response_stream || http_version.substr(0, 5) != "HTTP/"), "Invalid Response" );
+      EOS_ASSERT( !(!response_stream || http_version.substr(0, 5) != "HTTP/"), invalid_http_response, "Invalid Response" );
 
       // Read the response headers, which are terminated by a blank line.
       boost::asio::read_until(socket, response, "\r\n\r\n");
@@ -83,7 +84,7 @@ namespace eosio { namespace client { namespace http {
          if(std::regex_search(header, match, clregex))
             response_content_length = std::stoi(match[1]);
       }
-      FC_ASSERT(response_content_length >= 0, "Invalid content-length response");
+      EOS_ASSERT(response_content_length >= 0, invalid_http_response, "Invalid content-length response");
 
       std::stringstream re;
       // Write whatever content we already have to output.
@@ -111,9 +112,9 @@ namespace eosio { namespace client { namespace http {
          res.path = match[7];
       }
       if(res.scheme != "http" && res.scheme != "https")
-         FC_THROW("Unrecognized URL scheme (${s}) in URL \"${u}\"", ("s", res.scheme)("u", server_url));
+         EOS_THROW(fail_to_resolve_host, "Unrecognized URL scheme (${s}) in URL \"${u}\"", ("s", res.scheme)("u", server_url));
       if(res.server.empty())
-         FC_THROW("No server parsed from URL \"${u}\"", ("u", server_url));
+         EOS_THROW(fail_to_resolve_host, "No server parsed from URL \"${u}\"", ("u", server_url));
       if(res.port.empty())
          res.port = res.scheme == "http" ? "80" : "443";
       boost::trim_right_if(res.path, boost::is_any_of("/"));
@@ -125,7 +126,7 @@ namespace eosio { namespace client { namespace http {
       boost::system::error_code ec;
       auto result = resolver.resolve(tcp::v4(), url.server, url.port, ec);
       if (ec) {
-         FC_THROW("Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
+         EOS_THROW(fail_to_resolve_host, "Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
       }
 
       // non error results are guaranteed to return a non-empty range
@@ -142,13 +143,25 @@ namespace eosio { namespace client { namespace http {
          is_loopback = is_loopback && addr.is_loopback();
 
          if (resolved_port) {
-            FC_ASSERT(*resolved_port == port, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port",url.port));
+            EOS_ASSERT(*resolved_port == port, resolved_to_multiple_ports, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port",url.port));
          } else {
             resolved_port = port;
          }
       }
 
       return resolved_url(url, std::move(resolved_addresses), *resolved_port, is_loopback);
+   }
+
+   string format_host_header(const resolved_url& url) {
+      // common practice is to only make the port explicit when it is the non-default port
+      if (
+         (url.scheme == "https" && url.resolved_port == 443) ||
+         (url.scheme == "http" && url.resolved_port == 80)
+      ) {
+         return url.server;
+      } else {
+         return url.server + ":" + url.port;
+      }
    }
 
    fc::variant do_http_call( const connection_param& cp,
@@ -164,8 +177,9 @@ namespace eosio { namespace client { namespace http {
 
    boost::asio::streambuf request;
    std::ostream request_stream(&request);
+   auto host_header_value = format_host_header(url);
    request_stream << "POST " << url.path << " HTTP/1.0\r\n";
-   request_stream << "Host: " << url.server << "\r\n";
+   request_stream << "Host: " << host_header_value << "\r\n";
    request_stream << "content-length: " << postjson.size() << "\r\n";
    request_stream << "Accept: */*\r\n";
    request_stream << "Connection: close\r\n";
@@ -200,7 +214,7 @@ namespace eosio { namespace client { namespace http {
       //TODO: this is undocumented/not supported; fix with keychain based approach
       ssl_context.load_verify_file("/private/etc/ssl/cert.pem");
 #elif defined( _WIN32 )
-      FC_THROW("HTTPS on Windows not supported");
+      EOS_THROW(http_exception, "HTTPS on Windows not supported");
 #else
       ssl_context.set_default_verify_paths();
 #endif
@@ -251,7 +265,7 @@ namespace eosio { namespace client { namespace http {
       throw fc::exception(logs, error_info.code, error_info.name, error_info.what);
    }
 
-   FC_ASSERT( status_code == 200, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
+   EOS_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
    return response_result;
    }
 }}}

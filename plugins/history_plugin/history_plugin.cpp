@@ -346,7 +346,7 @@ namespace eosio {
            if( start > pos ) start = 0;
            end   = pos;
         }
-        FC_ASSERT( end >= start );
+        EOS_ASSERT( end >= start, chain::plugin_exception, "end position is earlier than start position" );
 
         idump((start)(end));
 
@@ -393,7 +393,7 @@ namespace eosio {
          bool in_history = (itr != idx.end() && fc::variant(itr->trx_id).as_string().substr(0,8) == short_id );
 
          if( !in_history && !p.block_num_hint ) {
-            FC_THROW("Transaction ${id} not found in history and no block hint was given", ("id",p.id));
+            EOS_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
          }
 
          get_transaction_result result;
@@ -481,7 +481,7 @@ namespace eosio {
             }
 
             if (!found) {
-               FC_THROW("Transaction ${id} not found in history or in block number ${n}", ("id",p.id)("n", *p.block_num_hint));
+               EOS_THROW(tx_not_found, "Transaction ${id} not found in history or in block number ${n}", ("id",p.id)("n", *p.block_num_hint));
             }
          }
 

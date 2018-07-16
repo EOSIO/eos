@@ -202,6 +202,33 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                }
             }
          } ) );
+
+         // since the watermark has to be set before a block is created, we are looking into the future to
+         // determine the new schedule to identify producers that have become active
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         const auto hbn = bsp->block_num;
+         auto new_block_header = bsp->header;
+         new_block_header.timestamp = new_block_header.timestamp.next();
+         new_block_header.previous = bsp->id;
+         auto new_bs = bsp->generate_next(new_block_header.timestamp);
+
+         // for newly installed producers we can set their watermarks to the block they became active
+         if (new_bs.maybe_promote_pending() && bsp->active_schedule.version != new_bs.active_schedule.version) {
+            flat_set<account_name> new_producers;
+            new_producers.reserve(new_bs.active_schedule.producers.size());
+            for( const auto& p: new_bs.active_schedule.producers) {
+               if (_producers.count(p.producer_name) > 0)
+                  new_producers.insert(p.producer_name);
+            }
+
+            for( const auto& p: bsp->active_schedule.producers) {
+               new_producers.erase(p.producer_name);
+            }
+
+            for (const auto& new_producer: new_producers) {
+               _producer_watermarks[new_producer] = hbn;
+            }
+         }
       }
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
@@ -250,7 +277,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_incoming_block(const signed_block_ptr& block) {
          fc_dlog(_log, "received incoming block ${id}", ("id", block->id()));
 
-         FC_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds(7)), "received a block from the future, ignoring it" );
+         EOS_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds(7)), block_from_the_future, "received a block from the future, ignoring it" );
 
 
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
@@ -285,8 +312,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return;
          }
 
-         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
+         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() ) {
             _production_enabled = true;
+         }
 
 
          if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
@@ -301,6 +329,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         if (!chain.pending_block_state()) {
+            _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+            return;
+         }
+
          auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
 
          auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
@@ -370,6 +403,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       enum class start_block_result {
          succeeded,
          failed,
+         waiting,
          exhausted
       };
 
@@ -457,7 +491,7 @@ chain::signature_type producer_plugin::sign_compact(const chain::public_key_type
 {
   if(key != chain::public_key_type()) {
     auto private_key_itr = my->_signature_providers.find(key);
-    FC_ASSERT(private_key_itr != my->_signature_providers.end(), "Local producer has no private key in config.ini corresponding to public key ${key}", ("key", key));
+    EOS_ASSERT(private_key_itr != my->_signature_providers.end(), producer_priv_key_not_found, "Local producer has no private key in config.ini corresponding to public key ${key}", ("key", key));
 
     return private_key_itr->second(digest);
   }
@@ -528,12 +562,12 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       for (const auto& key_spec_pair : key_spec_pairs) {
          try {
             auto delim = key_spec_pair.find("=");
-            FC_ASSERT(delim != std::string::npos);
+            EOS_ASSERT(delim != std::string::npos, plugin_config_exception, "Missing \"=\" in the key spec pair");
             auto pub_key_str = key_spec_pair.substr(0, delim);
             auto spec_str = key_spec_pair.substr(delim + 1);
 
             auto spec_delim = spec_str.find(":");
-            FC_ASSERT(spec_delim != std::string::npos);
+            EOS_ASSERT(spec_delim != std::string::npos, plugin_config_exception, "Missing \":\" in the key spec pair");
             auto spec_type_str = spec_str.substr(0, spec_delim);
             auto spec_data = spec_str.substr(spec_delim + 1);
 
@@ -601,7 +635,7 @@ void producer_plugin::plugin_startup()
    ilog("producer plugin:  plugin_startup() begin");
 
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   FC_ASSERT( my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE,
+   EOS_ASSERT( my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE, plugin_config_exception,
               "node cannot have any producer-name configured because block production is impossible when read_mode is not \"speculative\"" );
 
    my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
@@ -837,6 +871,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       }
    }
 
+   if (_pending_block_mode == pending_block_mode::speculating && !_production_enabled) {
+      return start_block_result::waiting;
+   }
+
    try {
       uint16_t blocks_to_confirm = 0;
 
@@ -1014,6 +1052,9 @@ void producer_plugin_impl::schedule_production_loop() {
             self->schedule_production_loop();
          }
       });
+   } else if (result == start_block_result::waiting) {
+      // nothing to do until more blocks arrive
+
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
       // we succeeded but block may be exhausted
@@ -1105,15 +1146,14 @@ static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_t
 
 void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
-   FC_ASSERT(_pending_block_mode == pending_block_mode::producing, "called produce_block while not actually producing");
-
+   EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
    const auto& pbs = chain.pending_block_state();
    const auto& hbs = chain.head_block_state();
-   FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
+   EOS_ASSERT(pbs, missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
    auto signature_provider_itr = _signature_providers.find( pbs->block_signing_key );
 
-   FC_ASSERT(signature_provider_itr != _signature_providers.end(), "Attempting to produce a block for which we don't have the private key");
+   EOS_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block();
@@ -1127,23 +1167,6 @@ void producer_plugin_impl::produce_block() {
    //idump((fc::time_point::now() - hbt));
 
    block_state_ptr new_bs = chain.head_block_state();
-   // for newly installed producers we can set their watermarks to the block they became
-   if (hbs->active_schedule.version != new_bs->active_schedule.version) {
-      flat_set<account_name> new_producers;
-      new_producers.reserve(new_bs->active_schedule.producers.size());
-      for( const auto& p: new_bs->active_schedule.producers) {
-         if (_producers.count(p.producer_name) > 0)
-            new_producers.insert(p.producer_name);
-      }
-
-      for( const auto& p: hbs->active_schedule.producers) {
-         new_producers.erase(p.producer_name);
-      }
-
-      for (const auto& new_producer: new_producers) {
-         _producer_watermarks[new_producer] = chain.head_block_num();
-      }
-   }
    _producer_watermarks[new_bs->header.producer] = chain.head_block_num();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
