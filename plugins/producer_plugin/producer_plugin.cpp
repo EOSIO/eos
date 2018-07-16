@@ -469,6 +469,8 @@ void producer_plugin::set_program_options(
           "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
          ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a keosd provider for signing")
+         ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+          "account that can not access to extended CPU/NET virtual resources")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of non last block producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
@@ -613,6 +615,15 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 
+   if (options.count("greylist-account")) {
+      std::vector<std::string> greylist = options["greylist-account"].as<std::vector<std::string>>();
+      greylist_params param;
+      for (auto &a : greylist) {
+         param.accounts.push_back(account_name(a));
+      }
+      add_greylist_accounts(param);
+   }
+
 } FC_LOG_AND_RETHROW() }
 
 void producer_plugin::plugin_startup()
@@ -710,6 +721,11 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
       chain.abort_block();
       my->schedule_production_loop();
    }
+
+   if (options.subjective_cpu_leeway_us) {
+      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      chain.set_subjective_cpu_leeway(fc::microseconds(*options.subjective_cpu_leeway_us));
+   }
 }
 
 producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
@@ -721,7 +737,30 @@ producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
    };
 }
 
+void producer_plugin::add_greylist_accounts(const greylist_params& params) {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   for (auto &acc : params.accounts) {
+      chain.add_resource_greylist(acc);
+   }
+}
 
+void producer_plugin::remove_greylist_accounts(const greylist_params& params) {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   for (auto &acc : params.accounts) {
+      chain.remove_resource_greylist(acc);
+   }
+}
+
+producer_plugin::greylist_params producer_plugin::get_greylist() const {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   greylist_params result;
+   const auto& list = chain.get_resource_greylist();
+   result.accounts.reserve(list.size());
+   for (auto &acc: list) {
+      result.accounts.push_back(acc);
+   }
+   return result;
+}
 
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
