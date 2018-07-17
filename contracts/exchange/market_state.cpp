@@ -170,11 +170,7 @@ namespace eosio {
       else eosio_assert( false, "unable to lend to this market" );
    }
 
-
-
    void market_state::adjust_lend_shares( account_name lender, loans& l, double delta ) {
-      // todo: charge_yearly_interest
-      // todo: erase row
       auto existing = l.find( lender );
       if( existing == l.end() ) {
          l.emplace( lender, [&]( auto& obj ) {
@@ -183,10 +179,14 @@ namespace eosio {
             eosio_assert( delta >= 0, "underflow" );
          });
       } else {
-         l.modify( existing, 0, [&]( auto& obj ) {
-            obj.interest_shares += delta;
-            eosio_assert( obj.interest_shares >= 0, "underflow" );
-         });
+         if( std::equal_to<>{}(existing->interest_shares, -delta) ) {
+            l.erase( existing );
+         } else {
+            l.modify( existing, 0, [&]( auto& obj ) {
+               obj.interest_shares += delta;
+               eosio_assert( obj.interest_shares >= 0, "underflow" );
+            });
+         }
       }
    }
 

@@ -153,10 +153,11 @@ class exchange_tester : public TESTER {
                fc::raw::unpack( ds, own );
                fc::raw::unpack( ds, interest_shares);
 
+               FC_ASSERT( interest_shares > 0, "interest_shares not positive" );
                return interest_shares;
             }
          }
-         FC_ASSERT( false, "unable to find loan balance" );
+         return 0;
       }
 
       void deploy_token( account_name ac ) {
