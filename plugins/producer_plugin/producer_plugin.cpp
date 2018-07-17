@@ -876,8 +876,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       }
    }
 
-   if (_pending_block_mode == pending_block_mode::speculating && !_production_enabled) {
-      return start_block_result::waiting;
+   if (_pending_block_mode == pending_block_mode::speculating) {
+      auto head_block_age = now - chain.head_block_time();
+      if (head_block_age > fc::seconds(5))
+         return start_block_result::waiting;
    }
 
    try {
