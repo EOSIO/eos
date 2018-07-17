@@ -27,7 +27,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
    }
 
-   void transaction_context::init(uint64_t initial_net_usage )
+   void transaction_context::init(uint64_t initial_net_usage)
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
@@ -88,10 +88,11 @@ namespace eosio { namespace chain {
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
       for( const auto& a : bill_to_accounts ) {
-         auto net_limit = rl.get_account_net_limit(a);
+         bool elastic = !(control.is_producing_block() && control.is_resource_greylisted(a));
+         auto net_limit = rl.get_account_net_limit(a, elastic);
          if( net_limit >= 0 )
             account_net_limit = std::min( account_net_limit, net_limit );
-         auto cpu_limit = rl.get_account_cpu_limit(a);
+         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 )
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
       }
@@ -134,12 +135,12 @@ namespace eosio { namespace chain {
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
       published = control.pending_block_time();
-      init( initial_net_usage );
+      init( initial_net_usage);
    }
 
    void transaction_context::init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                                  uint64_t packed_trx_prunable_size,
-                                                 uint32_t num_signatures              )
+                                                 uint32_t num_signatures)
    {
       const auto& cfg = control.get_global_properties().configuration;
 
@@ -168,7 +169,7 @@ namespace eosio { namespace chain {
       control.validate_expiration( trx );
       control.validate_tapos( trx );
       control.validate_referenced_accounts( trx );
-      init( initial_net_usage );
+      init( initial_net_usage);
       record_transaction( id, trx.expiration ); /// checks for dupes
    }
 
@@ -222,10 +223,13 @@ namespace eosio { namespace chain {
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
       for( const auto& a : bill_to_accounts ) {
-         auto net_limit = rl.get_account_net_limit(a);
-         if( net_limit >= 0 )
+         bool elastic = !(control.is_producing_block() && control.is_resource_greylisted(a));
+         auto net_limit = rl.get_account_net_limit(a, elastic);
+         if( net_limit >= 0 ) {
             account_net_limit = std::min( account_net_limit, net_limit );
-         auto cpu_limit = rl.get_account_cpu_limit(a);
+            if (!elastic) net_limit_due_to_greylist = true;
+         }
+         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 )
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
       }
@@ -271,9 +275,13 @@ namespace eosio { namespace chain {
 
    void transaction_context::check_net_usage()const {
       if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
-         if( net_limit_due_to_block ) {
+         if ( net_limit_due_to_block ) {
             EOS_THROW( block_net_usage_exceeded,
                        "not enough space left in block: ${net_usage} > ${net_limit}",
+                       ("net_usage", net_usage)("net_limit", eager_net_limit) );
+         }  else if (net_limit_due_to_greylist) {
+            EOS_THROW( greylist_net_usage_exceeded,
+                       "net usage of transaction is too high: ${net_usage} > ${net_limit}",
                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
          } else {
             EOS_THROW( tx_net_usage_exceeded,

@@ -76,6 +76,12 @@ void producer_api_plugin::plugin_startup() {
             INVOKE_R_V(producer, get_runtime_options), 201),
        CALL(producer, producer, update_runtime_options,
             INVOKE_V_R(producer, update_runtime_options, producer_plugin::runtime_options), 201),
+       CALL(producer, producer, add_greylist_accounts,
+            INVOKE_V_R(producer, add_greylist_accounts, producer_plugin::greylist_params), 201),
+       CALL(producer, producer, remove_greylist_accounts,
+            INVOKE_V_R(producer, remove_greylist_accounts, producer_plugin::greylist_params), 201), 
+       CALL(producer, producer, get_greylist,
+            INVOKE_R_V(producer, get_greylist), 201),                 
    });
 }
 
