@@ -171,6 +171,13 @@ struct controller_impl {
 
       db.commit( s->block_num );
 
+      if ( read_mode == db_read_mode::IRREVERSIBLE && 1 < s->block_num ) {
+         apply_block( s->block, controller::block_status::complete );
+         fork_db.mark_in_current_chain( s, true );
+         fork_db.set_validity( s, true );
+         head = s;
+      }
+
       if( s->block_num <= lh_block_num ) {
 //         edump((s->block_num)("double call to on_irr"));
 //         edump((s->block_num)(s->block->previous)(log_head->id()));
@@ -188,12 +195,6 @@ struct controller_impl {
          objitr = ubi.begin();
       }
 
-      if ( read_mode == db_read_mode::IRREVERSIBLE ) {
-         apply_block( s->block, controller::block_status::complete );
-         fork_db.mark_in_current_chain( s, true );
-         fork_db.set_validity( s, true );
-         head = s;
-      }
       emit( self.irreversible_block, s );
    }
 
@@ -214,7 +215,7 @@ struct controller_impl {
             ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
 
             auto start = fc::time_point::now();
-            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+            while( auto next = blog.read_block_by_num( fork_db.head()->block_num + 1 ) ) {
                self.push_block( next, controller::block_status::irreversible );
                if( next->block_num() % 100 == 0 ) {
                   std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
@@ -249,7 +250,7 @@ struct controller_impl {
                     ("head",head->block_num)("unconfimed", objitr->blocknum)         );
       } else {
          auto end = blog.read_head();
-         EOS_ASSERT( end && end->block_num() == head->block_num, fork_database_exception,
+         EOS_ASSERT( end && end->block_num() == fork_db.head()->block_num, fork_database_exception,
                     "fork database exists but reversible block database does not, replay blockchain",
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
