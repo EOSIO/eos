@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+  nodeosd:
+    image: eosio/eos:latest
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888
+    hostname: nodeosd
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - nodeos-data-volume:/opt/eosio/bin/data-dir
+
+  keosd:
+    image: eosio/eos:latest
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd:8900 --http-alias=localhost:8900
+    hostname: keosd
+    links:
+      - nodeosd
+    volumes:
+      - keosd-data-volume:/opt/eosio/bin/data-dir
+
+volumes:
+ nodeos-data-volume:
+   external: true
+ keosd-data-volume:
+   external: true
