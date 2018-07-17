@@ -154,15 +154,15 @@ namespace eosio {
 
    void market_state::unlend( account_name lender, double ishares, const extended_symbol& sym ) {
       eosio_assert( ishares > 0, "cannot unlend negative balance" );
-      adjust_lend_shares( lender, base_loans, -ishares );
-
       print( "sym: ", sym );
 
       if( sym == exstate.base.balance.get_extended_symbol() ) {
+         adjust_lend_shares( lender, base_loans, -ishares );
          extended_asset unlent  = exstate.base.peer_margin.unlend( ishares );
          _accounts.adjust_balance( lender, unlent, "unlend" );
       }
       else if( sym == exstate.quote.balance.get_extended_symbol() ) {
+         adjust_lend_shares( lender, quote_loans, -ishares );
          extended_asset unlent  = exstate.quote.peer_margin.unlend( ishares );
          _accounts.adjust_balance( lender, unlent, "unlend" );
       }
@@ -173,6 +173,7 @@ namespace eosio {
 
    void market_state::adjust_lend_shares( account_name lender, loans& l, double delta ) {
       // todo: charge_yearly_interest
+      // todo: erase row
       auto existing = l.find( lender );
       if( existing == l.end() ) {
          l.emplace( lender, [&]( auto& obj ) {

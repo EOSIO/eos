@@ -466,10 +466,14 @@ BOOST_AUTO_TEST_CASE( exchange_lend2 ) try {
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(40.00 USD));
 
-   // lender3: trigger a margin call by issuing a market order
+   // lender3: trigger a margin call by issuing a market order, then unlend everything
    t.marketorder( N(exchange), N(lender3), symbol(2,"EXC"), extended_asset{ A(100.00 USD), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(42.82 USD));
+   auto lentshares3_usd = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender3), true );
+   auto lentshares3_btc = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender3), false );
+   t.unlend( N(exchange), N(lender3), lentshares3_usd, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"EXC") );
+   t.unlend( N(exchange), N(lender3), lentshares3_btc, extended_symbol{ symbol(2,"BTC"), N(exchange)}, symbol(2,"EXC") );
 } FC_LOG_AND_RETHROW() /// exchange_lend2
 
 BOOST_AUTO_TEST_CASE( exchange_fees ) try {
