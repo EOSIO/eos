@@ -68,6 +68,9 @@ namespace eosio { namespace client { namespace http {
       std::string http_version;
       response_stream >> http_version;
       response_stream >> status_code;
+
+      EOS_ASSERT( status_code != 400, invalid_http_request, "The server has rejected the request as invalid!");
+
       std::string status_message;
       std::getline(response_stream, status_message);
       EOS_ASSERT( !(!response_stream || http_version.substr(0, 5) != "HTTP/"), invalid_http_response, "Invalid Response" );
@@ -203,32 +206,38 @@ namespace eosio { namespace client { namespace http {
    unsigned int status_code;
    std::string re;
 
-   if(url.scheme == "http") {
-      tcp::socket socket(cp.context->ios);
-      do_connect(socket, url);
-      re = do_txrx(socket, request, status_code);
-   }
-   else { //https
-      boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
+   try {
+      if(url.scheme == "http") {
+         tcp::socket socket(cp.context->ios);
+         do_connect(socket, url);
+         re = do_txrx(socket, request, status_code);
+      }
+      else { //https
+         boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
 #if defined( __APPLE__ )
-      //TODO: this is undocumented/not supported; fix with keychain based approach
-      ssl_context.load_verify_file("/private/etc/ssl/cert.pem");
+         //TODO: this is undocumented/not supported; fix with keychain based approach
+         ssl_context.load_verify_file("/private/etc/ssl/cert.pem");
 #elif defined( _WIN32 )
-      EOS_THROW(http_exception, "HTTPS on Windows not supported");
+         EOS_THROW(http_exception, "HTTPS on Windows not supported");
 #else
-      ssl_context.set_default_verify_paths();
+         ssl_context.set_default_verify_paths();
 #endif
 
-      boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
-      SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
-      if(cp.verify_cert)
-         socket.set_verify_mode(boost::asio::ssl::verify_peer);
+         boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
+         SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
+         if(cp.verify_cert)
+            socket.set_verify_mode(boost::asio::ssl::verify_peer);
 
-      do_connect(socket.next_layer(), url);
-      socket.handshake(boost::asio::ssl::stream_base::client);
-      re = do_txrx(socket, request, status_code);
-      //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
-      try {socket.shutdown();} catch(...) {}
+         do_connect(socket.next_layer(), url);
+         socket.handshake(boost::asio::ssl::stream_base::client);
+         re = do_txrx(socket, request, status_code);
+         //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
+         try {socket.shutdown();} catch(...) {}
+      }
+   } catch ( invalid_http_request& e ) {
+      e.append_log( FC_LOG_MESSAGE( info, "Please verify this url is valid: ${url}", ("url", url.scheme + "://" + url.server + ":" + url.port + url.path) ) );
+      e.append_log( FC_LOG_MESSAGE( info, "If the condition persists, please contact the RPC server administrator for ${server}!", ("server", url.server) ) );
+      throw;
    }
 
    const auto response_result = fc::json::from_string(re);
