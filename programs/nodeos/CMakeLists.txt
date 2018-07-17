@@ -59,6 +59,26 @@ target_link_libraries( nodeos
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
+## load in pkg-config support
+find_package(PkgConfig)
+## use pkg-config to get hints for 0mq locations
+pkg_check_modules(PC_ZeroMQ QUIET zmq)
+
+## use the hint from above to find where 'zmq.hpp' is located
+find_path(ZeroMQ_INCLUDE_DIR
+        NAMES zmq.hpp
+        PATHS ${PC_ZeroMQ_INCLUDE_DIRS}
+        )
+
+## use the hint from about to find the location of libzmq
+find_library(ZeroMQ_LIBRARY
+        NAMES zmq
+        PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
+        )
+
+target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} ${ZeroMQ_LIBRARY} -Wl,${no_whole_archive_flag} )
+target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} zmq_plugin -Wl,${no_whole_archive_flag} )
+      
 if(TARGET sql_db_plugin)
   target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} sql_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
