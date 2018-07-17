@@ -29,28 +29,29 @@ namespace eosio {
    }
 
    void market_state::margin_call( exchange_state::connector& c, margins& marginstable ) {
-      // todo: interest
       auto price_idx = marginstable.get_index<N(callprice)>();
       auto pos = price_idx.begin();
       if( pos == price_idx.end() )
          return;
 
-      auto receipt = exstate.convert( pos->collateral, pos->borrowed.get_extended_symbol() );
-      eosio_assert( receipt.amount >= pos->borrowed.amount, "programmer error: insufficient collateral to cover" );/// VERY BAD, SHOULD NOT HAPPEN
-      auto change_debt = receipt - pos->borrowed;
+      auto obj = *pos;
+      charge_interest( c, obj, now() );
+      auto receipt = exstate.convert( obj.collateral, obj.borrowed.get_extended_symbol() );
+      eosio_assert( receipt.amount >= obj.borrowed.amount, "programmer error: insufficient collateral to cover" );/// VERY BAD, SHOULD NOT HAPPEN
+      auto change_debt = receipt - obj.borrowed;
 
-      auto change_collat = exstate.convert( change_debt, pos->collateral.get_extended_symbol() );
+      auto change_collat = exstate.convert( change_debt, obj.collateral.get_extended_symbol() );
 
-      _accounts.adjust_balance( pos->owner, change_collat, "margin_call" );
+      _accounts.adjust_balance( obj.owner, change_collat, "margin_call" );
 
-      c.peer_margin.total_lent.amount -= pos->borrowed.amount;
+      c.peer_margin.total_lent.amount -= obj.borrowed.amount;
       price_idx.erase(pos);
 
       pos = price_idx.begin();
       if( pos != price_idx.end() )
          c.peer_margin.least_collateralized = pos->call_price;
       else
-         c.peer_margin.least_collateralized = double(uint64_t(-1));
+         c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
    }
 
    const exchange_state& market_state::initial_state()const {
