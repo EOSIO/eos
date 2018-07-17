@@ -62,6 +62,7 @@ namespace eosio {
      market.save();
    }
 
+   /* todo: fix or remove. See comment on market_state::cover_margin
    void exchange::on( const covermargin& c ) {
       require_auth( c.borrower );
       eosio_assert( c.cover_amount.is_valid(), "invalid cover amount" );
@@ -73,6 +74,7 @@ namespace eosio {
 
       market.save();
    }
+   */
 
    void exchange::createx( account_name    creator,
                  asset           initial_supply,
@@ -198,9 +200,9 @@ namespace eosio {
          case N(upmargin):
             on( unpack_action_data<upmargin>() );
             return;
-         case N(covermargin):
-            on( unpack_action_data<covermargin>() );
-            return;
+         // case N(covermargin):
+         //    on( unpack_action_data<covermargin>() );
+         //    return;
          default:
             _excurrencies.apply( contract, act ); 
             return;

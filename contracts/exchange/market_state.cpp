@@ -209,6 +209,8 @@ namespace eosio {
                                     const extended_asset& cover_amount )
    {
       // todo: interest
+      // todo: fix or remove this function. It will always fail the "unable to cover debt" check
+      //       when there are trading fees and often fail even without fees.
       auto existing = m.find( borrower );
       eosio_assert( existing != m.end(), "no known margin position" );
       eosio_assert( existing->borrowed.amount >= cover_amount.amount, "attempt to cover more than user has" );
