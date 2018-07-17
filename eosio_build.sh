@@ -202,8 +202,8 @@
 
 	if [ "$ARCH" == "Darwin" ]; then
 		FILE="${PWD}/scripts/eosio_build_darwin.sh"
-		CXX_COMPILER=c++
-		C_COMPILER=cc
+		CXX_COMPILER=clang++
+		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 	fi
