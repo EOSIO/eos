@@ -38,6 +38,8 @@ namespace eosio {
    using std::regex;
    using boost::optional;
    using boost::asio::ip::tcp;
+   using boost::asio::ip::address_v4;
+   using boost::asio::ip::address_v6;
    using std::shared_ptr;
    using websocketpp::connection_hdl;
 
@@ -106,11 +108,11 @@ namespace eosio {
          bool                     validate_host;
          set<string>              valid_hosts;
 
-         bool host_port_is_valid( const std::string& host_port ) {
-            return !validate_host || valid_hosts.find(host_port) != valid_hosts.end();
+         bool host_port_is_valid( const std::string& header_host_port, const string& endpoint_local_host_port ) {
+            return !validate_host || header_host_port == endpoint_local_host_port || valid_hosts.find(header_host_port) != valid_hosts.end();
          }
 
-         bool host_is_valid( const std::string& host, bool secure) {
+         bool host_is_valid( const std::string& host, const string& endpoint_local_host_port, bool secure) {
             if (!validate_host) {
                return true;
             }
@@ -118,10 +120,10 @@ namespace eosio {
             // normalise the incoming host so that it always has the explicit port
             static auto has_port_expr = regex("[^:]:[0-9]+$"); /// ends in :<number> without a preceeding colon which implies ipv6
             if (std::regex_search(host, has_port_expr)) {
-               return host_port_is_valid( host );
+               return host_port_is_valid( host, endpoint_local_host_port );
             } else {
                // according to RFC 2732 ipv6 addresses should always be enclosed with brackets so we shouldn't need to special case here
-               return host_port_is_valid( host + ":" + std::to_string(secure ? websocketpp::uri_default_secure_port : websocketpp::uri_default_port ));
+               return host_port_is_valid( host + ":" + std::to_string(secure ? websocketpp::uri_default_secure_port : websocketpp::uri_default_port ), endpoint_local_host_port);
             }
          }
 
@@ -195,9 +197,13 @@ namespace eosio {
          template<class T>
          void handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
             try {
+               bool is_secure = con->get_uri()->get_secure();
+               const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
+               auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+
                auto& req = con->get_request();
                const auto& host_str = req.get_header("Host");
-               if (host_str.empty() || !host_is_valid(host_str, con->get_uri()->get_secure())) {
+               if (host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
                   con->set_status(websocketpp::http::status_code::bad_request);
                   return;
                }
@@ -261,6 +267,12 @@ namespace eosio {
             } catch (...) {
                elog("error thrown from http io service");
             }
+         }
+
+         void add_aliases_for_endpoint( const tcp::endpoint& ep, string host, string port ) {
+            auto resolved_port_str = std::to_string(ep.port());
+            valid_hosts.emplace(host + ":" + port);
+            valid_hosts.emplace(host + ":" + resolved_port_str);
          }
 
    };
@@ -335,7 +347,10 @@ namespace eosio {
                      ("h", host)( "p", port )( "m", ec.what()));
             }
 
-            my->valid_hosts.emplace(lipstr);
+            // add in resolved hosts and ports as well
+            if (my->listen_endpoint) {
+               my->add_aliases_for_endpoint(*my->listen_endpoint, host, port);
+            }
          }
 
          if( options.count( "https-server-address" ) && options.at( "https-server-address" ).as<string>().length()) {
@@ -365,7 +380,10 @@ namespace eosio {
                      ("h", host)( "p", port )( "m", ec.what()));
             }
 
-            my->valid_hosts.emplace(lipstr);
+            // add in resolved hosts and ports as well
+            if (my->https_listen_endpoint) {
+               my->add_aliases_for_endpoint(*my->https_listen_endpoint, host, port);
+            }
          }
 
          my->max_body_size = options.at( "max-body-size" ).as<uint32_t>();

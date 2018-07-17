@@ -14,6 +14,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -1077,6 +1078,80 @@ struct resolver_factory {
 template<typename Api>
 auto make_resolver(const Api* api, const fc::microseconds& max_serialization_time) {
    return resolver_factory<Api>::make(api, max_serialization_time);
+}
+
+
+read_only::get_scheduled_transactions_result
+read_only::get_scheduled_transactions( const read_only::get_scheduled_transactions_params& p ) const {
+   const auto& d = db.db();
+
+   const auto& idx_by_delay = d.get_index<generated_transaction_multi_index,by_delay>();
+   auto itr = ([&](){
+      if (!p.lower_bound.empty()) {
+         try {
+            auto when = time_point::from_iso_string( p.lower_bound );
+            return idx_by_delay.lower_bound(boost::make_tuple(when));
+         } catch (...) {
+            try {
+               auto txid = transaction_id_type(p.lower_bound);
+               const auto& by_txid = d.get_index<generated_transaction_multi_index,by_trx_id>();
+               auto itr = by_txid.find( txid );
+               if (itr == by_txid.end()) {
+                  EOS_THROW(transaction_exception, "Unknown Transaction ID: ${txid}", ("txid", txid));
+               }
+
+               return d.get_index<generated_transaction_multi_index>().indices().project<by_delay>(itr);
+
+            } catch (...) {
+               return idx_by_delay.end();
+            }
+         }
+      } else {
+         return idx_by_delay.begin();
+      }
+   })();
+
+   read_only::get_scheduled_transactions_result result;
+
+   auto resolver = make_resolver(this, abi_serializer_max_time);
+
+   uint32_t remaining = p.limit;
+   auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::time_point::now()) {
+      auto row = fc::mutable_variant_object()
+              ("trx_id", itr->trx_id)
+              ("sender", itr->sender)
+              ("sender_id", itr->sender_id)
+              ("payer", itr->payer)
+              ("delay_until", itr->delay_until)
+              ("expiration", itr->expiration)
+              ("published", itr->published)
+      ;
+
+      if (p.json) {
+         fc::variant pretty_transaction;
+
+         transaction trx;
+         fc::datastream<const char*> ds( itr->packed_trx.data(), itr->packed_trx.size() );
+         fc::raw::unpack(ds,trx);
+
+         abi_serializer::to_variant(trx, pretty_transaction, resolver, abi_serializer_max_time);
+         row("transaction", pretty_transaction);
+      } else {
+         auto packed_transaction = bytes(itr->packed_trx.begin(), itr->packed_trx.end());
+         row("transaction", packed_transaction);
+      }
+
+      result.transactions.emplace_back(std::move(row));
+      ++itr;
+      remaining--;
+   }
+
+   if (itr != idx_by_delay.end()) {
+      result.more = string(itr->trx_id);
+   }
+
+   return result;
 }
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {

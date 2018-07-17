@@ -115,7 +115,7 @@ class Cluster(object):
 
         producerFlag=""
         if totalProducers:
-            assert(isinstance(totalProducers, str))
+            assert(isinstance(totalProducers, (str,int)))
             producerFlag="--producers %s" % (totalProducers)
 
         if not Cluster.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
@@ -134,6 +134,8 @@ class Cluster(object):
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
             nodeosArgs += " --plugin eosio::mongo_db_plugin --mongodb-wipe --delete-all-blocks --mongodb-uri %s" % self.mongoUri
+        if Utils.Debug:
+            nodeosArgs += " --contracts-console"
 
         if nodeosArgs:
             cmdArr.append("--nodeos")
@@ -631,6 +633,25 @@ class Cluster(object):
             producerKeys[m]=keys
 
         return producerKeys
+
+    @staticmethod
+    def parseProducers(nodeNum):
+        """Parse node config file for producers."""
+
+        node="node_%02d" % (nodeNum)
+        configFile="etc/eosio/%s/config.ini" % (node)
+        if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
+        configStr=None
+        with open(configFile, 'r') as f:
+            configStr=f.read()
+
+        pattern=r"^\s*producer-name\s*=\W*(\w+)\W*$"
+        producerMatches=re.findall(pattern, configStr, re.MULTILINE)
+        if producerMatches is None:
+            if Utils.Debug: Utils.Print("Failed to find producers.")
+            return None
+
+        return producerMatches
 
     @staticmethod
     def parseClusterKeys(totalNodes):

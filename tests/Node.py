@@ -1,5 +1,6 @@
 import decimal
 import subprocess
+import time
 import os
 import re
 import datetime
@@ -301,7 +302,8 @@ class Node(object):
         assert(transId)
         assert(isinstance(transId, str))
         trans=self.getTransaction(transId)
-        assert(trans)
+        if trans is None:
+            return None
 
         refBlockNum=None
         key=""
@@ -364,7 +366,7 @@ class Node(object):
     def isTransInAnyBlock(self, transId):
         """Check if transaction (transId) is in a block."""
         assert(transId)
-        assert(isinstance(transId, str))
+        assert(isinstance(transId, (str,int)))
         # if not self.enableMongo:
         blockId=self.getBlockIdByTransId(transId)
         # else:
@@ -382,12 +384,12 @@ class Node(object):
         assert(isinstance(blockId, int))
         return self.isBlockFinalized(blockId)
 
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
-        """Create & initialize account and return creation transactions. Return transaction json object"""
-        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "100 %s" --stake-cpu "100 %s" --buy-ram "100 %s"' % (
+    # Create & initialize account and return creation transactions. Return transaction json object
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=100):
+        cmd='%s %s system newaccount -j %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
             Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
             account.ownerPublicKey, account.activePublicKey,
-            CORE_SYMBOL, CORE_SYMBOL, CORE_SYMBOL)
+            stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
 
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
@@ -548,6 +550,7 @@ class Node(object):
 
     def waitForTransInBlock(self, transId, timeout=None):
         """Wait for trans id to be finalized."""
+        assert(isinstance(transId, str))
         lam = lambda: self.isTransInAnyBlock(transId)
         ret=Utils.waitForBool(lam, timeout)
         return ret
@@ -562,6 +565,16 @@ class Node(object):
     def waitForNextBlock(self, timeout=None):
         num=self.getHeadBlockNum()
         lam = lambda: self.getHeadBlockNum() > num
+        ret=Utils.waitForBool(lam, timeout)
+        return ret
+
+    def waitForBlock(self, blockNum, timeout=None):
+        lam = lambda: self.getHeadBlockNum() > blockNum
+        ret=Utils.waitForBool(lam, timeout)
+        return ret
+
+    def waitForIrreversibleBlock(self, blockNum, timeout=None):
+        lam = lambda: self.getIrreversibleBlockNum() >= blockNum
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
@@ -851,6 +864,43 @@ class Node(object):
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during set permission. %s" % (msg))
+            return None
+
+        transId=Node.getTransId(trans)
+        if waitForTransBlock and not self.waitForTransInBlock(transId):
+            return None
+        return trans
+
+    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False):
+        if toAccount is None:
+            toAccount=fromAccount
+
+        specificCmd="system delegatebw"
+        transferStr="--transfer" if transferTo else "" 
+        cmd="%s %s %s -j %s %s \"%s %s\" \"%s %s\" %s" % (
+            Utils.EosClientPath, self.endpointArgs, specificCmd, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
+        return self.processCmd(cmd, specificCmd, waitForTransBlock)
+
+    def regproducer(self, producer, url, location, waitForTransBlock=False):
+        specificCmd="system regproducer"
+        cmd="%s %s %s -j %s %s %s %s" % (
+            Utils.EosClientPath, self.endpointArgs, specificCmd, producer.name, producer.activePublicKey, url, location)
+        return self.processCmd(cmd, specificCmd, waitForTransBlock)
+
+    def vote(self, account, producers, waitForTransBlock=False):
+        specificCmd = "system voteproducer prods"
+        cmd="%s %s %s -j %s %s" % (
+            Utils.EosClientPath, self.endpointArgs, specificCmd, account.name, " ".join(producers))
+        return self.processCmd(cmd, specificCmd, waitForTransBlock)
+
+    def processCmd(self, cmd, cmdDesc, waitForTransBlock):
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        trans=None
+        try:
+            trans=Utils.runCmdReturnJson(cmd)
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during %s. %s" % (cmdDesc, msg))
             return None
 
         transId=Node.getTransId(trans)

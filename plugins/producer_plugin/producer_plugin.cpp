@@ -202,6 +202,33 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                }
             }
          } ) );
+
+         // since the watermark has to be set before a block is created, we are looking into the future to
+         // determine the new schedule to identify producers that have become active
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         const auto hbn = bsp->block_num;
+         auto new_block_header = bsp->header;
+         new_block_header.timestamp = new_block_header.timestamp.next();
+         new_block_header.previous = bsp->id;
+         auto new_bs = bsp->generate_next(new_block_header.timestamp);
+
+         // for newly installed producers we can set their watermarks to the block they became active
+         if (new_bs.maybe_promote_pending() && bsp->active_schedule.version != new_bs.active_schedule.version) {
+            flat_set<account_name> new_producers;
+            new_producers.reserve(new_bs.active_schedule.producers.size());
+            for( const auto& p: new_bs.active_schedule.producers) {
+               if (_producers.count(p.producer_name) > 0)
+                  new_producers.insert(p.producer_name);
+            }
+
+            for( const auto& p: bsp->active_schedule.producers) {
+               new_producers.erase(p.producer_name);
+            }
+
+            for (const auto& new_producer: new_producers) {
+               _producer_watermarks[new_producer] = hbn;
+            }
+         }
       }
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
@@ -285,8 +312,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return;
          }
 
-         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() )
+         if( chain.head_block_state()->header.timestamp.next().to_time_point() >= fc::time_point::now() ) {
             _production_enabled = true;
+         }
 
 
          if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
@@ -301,6 +329,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         if (!chain.pending_block_state()) {
+            _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+            return;
+         }
+
          auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
 
          auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
@@ -370,6 +403,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       enum class start_block_result {
          succeeded,
          failed,
+         waiting,
          exhausted
       };
 
@@ -798,6 +832,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       }
    }
 
+   if (_pending_block_mode == pending_block_mode::speculating && !_production_enabled) {
+      return start_block_result::waiting;
+   }
+
    try {
       uint16_t blocks_to_confirm = 0;
 
@@ -975,6 +1013,9 @@ void producer_plugin_impl::schedule_production_loop() {
             self->schedule_production_loop();
          }
       });
+   } else if (result == start_block_result::waiting) {
+      // nothing to do until more blocks arrive
+
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
       // we succeeded but block may be exhausted
@@ -1087,23 +1128,6 @@ void producer_plugin_impl::produce_block() {
    //idump((fc::time_point::now() - hbt));
 
    block_state_ptr new_bs = chain.head_block_state();
-   // for newly installed producers we can set their watermarks to the block they became
-   if (hbs->active_schedule.version != new_bs->active_schedule.version) {
-      flat_set<account_name> new_producers;
-      new_producers.reserve(new_bs->active_schedule.producers.size());
-      for( const auto& p: new_bs->active_schedule.producers) {
-         if (_producers.count(p.producer_name) > 0)
-            new_producers.insert(p.producer_name);
-      }
-
-      for( const auto& p: hbs->active_schedule.producers) {
-         new_producers.erase(p.producer_name);
-      }
-
-      for (const auto& new_producer: new_producers) {
-         _producer_watermarks[new_producer] = chain.head_block_num();
-      }
-   }
    _producer_watermarks[new_bs->header.producer] = chain.head_block_num();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
