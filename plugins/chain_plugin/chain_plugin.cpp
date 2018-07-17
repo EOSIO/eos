@@ -198,10 +198,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
          ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
-          "Database read mode (\"speculative\", \"head\" or \"irreversible\").\n"
+          "Database read mode (\"speculative\" or \"head\").\n"// or \"irreversible\").\n"
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
-          "In \"head\" mode database contains changes done up to the current head block.\n"
-          "In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
+          "In \"head\" mode database contains changes done up to the current head block.\n")
+          //"In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
          ;
 
 // TODO: rate limiting
@@ -510,6 +510,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
+         EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
       }
 
       my->chain.emplace( *my->chain_config );
