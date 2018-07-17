@@ -504,17 +504,21 @@ public:
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
-   bool recover_reversible_blocks( const fc::path& db_dir,
-                                   uint32_t cache_size,
-                                   optional<fc::path> new_db_dir = optional<fc::path>(),
-                                   uint32_t truncate_at_block = 0
-                                 )const;
+   static bool recover_reversible_blocks( const fc::path& db_dir,
+                                          uint32_t cache_size,
+                                          optional<fc::path> new_db_dir = optional<fc::path>(),
+                                          uint32_t truncate_at_block = 0
+                                        );
 
-   bool import_reversible_blocks( const fc::path& reversible_dir,
-                                  uint32_t cache_size,
-                                  const fc::path& reversible_blocks_file
-                                )const;
-                                             
+   static bool import_reversible_blocks( const fc::path& reversible_dir,
+                                         uint32_t cache_size,
+                                         const fc::path& reversible_blocks_file
+                                       );
+
+   static bool export_reversible_blocks( const fc::path& reversible_dir,
+                                        const fc::path& reversible_blocks_file
+                                       );
+
    // Only call this in plugin_initialize() to modify controller constructor configuration
    controller::config& chain_config();
    // Only call this after plugin_startup()!
