@@ -179,8 +179,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
-         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MB) of the chain state database")
-         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MB) of the reversible blocks database")
+         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
+         ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
+         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
+         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -343,9 +345,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "chain-state-db-size-mb" ))
          my->chain_config->state_size = options.at( "chain-state-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
+      if( options.count( "chain-state-db-guard-size-mb" ))
+         my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
+
       if( options.count( "reversible-blocks-db-size-mb" ))
          my->chain_config->reversible_cache_size =
                options.at( "reversible-blocks-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
+
+      if( options.count( "reversible-blocks-db-guard-size-mb" ))
+         my->chain_config->reversible_guard_size = options.at( "reversible-blocks-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
       if( my->wasm_runtime )
          my->chain_config->wasm_runtime = *my->wasm_runtime;
@@ -574,7 +582,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 { try {
-   my->chain->startup();
+   try {
+      my->chain->startup();
+   } catch (const database_guard_exception& e) {
+      log_guard_exception(e);
+      // make sure to properly close the db
+      my->chain.reset();
+      throw;
+   }
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
@@ -831,6 +846,24 @@ fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_ms;
 }
 
+void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
+   if (e.code() == chain::database_guard_exception::code_value) {
+      elog("Database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
+           "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
+   } else if (e.code() == chain::reversible_guard_exception::code_value) {
+      elog("Reversible block database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
+           "Please increase the value set for \"reversible-blocks-db-size-mb\" and restart the process!");
+   }
+
+   dlog("Details: ${details}", ("details", e.to_detail_string()));
+}
+
+void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const {
+   log_guard_exception(e);
+
+   // quit the app
+   app().quit();
+}
 
 namespace chain_apis {
 

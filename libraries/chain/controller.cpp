@@ -1260,10 +1260,12 @@ fork_database& controller::fork_db()const { return my->fork_db; }
 
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
+   validate_db_available_size();
    my->start_block(when, confirm_block_count, block_status::incomplete );
 }
 
 void controller::finalize_block() {
+   validate_db_available_size();
    my->finalize_block();
 }
 
@@ -1272,6 +1274,8 @@ void controller::sign_block( const std::function<signature_type( const digest_ty
 }
 
 void controller::commit_block() {
+   validate_db_available_size();
+   validate_reversible_available_size();
    my->commit_block(true);
 }
 
@@ -1280,19 +1284,24 @@ void controller::abort_block() {
 }
 
 void controller::push_block( const signed_block_ptr& b, block_status s ) {
+   validate_db_available_size();
+   validate_reversible_available_size();
    my->push_block( b, s );
 }
 
 void controller::push_confirmation( const header_confirmation& c ) {
+   validate_db_available_size();
    my->push_confirmation( c );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+   validate_db_available_size();
    return my->push_transaction(trx, deadline, false, billed_cpu_time_us);
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
 {
+   validate_db_available_size();
    return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us );
 }
 
@@ -1607,6 +1616,18 @@ void controller::validate_tapos( const transaction& trx )const { try {
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 } FC_CAPTURE_AND_RETHROW() }
+
+void controller::validate_db_available_size() const {
+   const auto free = db().get_segment_manager()->get_free_memory();
+   const auto guard = my->conf.state_guard_size;
+   EOS_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+}
+
+void controller::validate_reversible_available_size() const {
+   const auto free = my->reversible_blocks.get_segment_manager()->get_free_memory();
+   const auto guard = my->conf.reversible_guard_size;
+   EOS_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+}
 
 bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
    return db().find<transaction_object, by_trx_id>(id);

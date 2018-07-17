@@ -529,7 +529,10 @@ public:
    chain::chain_id_type get_chain_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
 
+   void handle_guard_exception(const chain::guard_exception& e) const;
 private:
+   void log_guard_exception(const chain::guard_exception& e) const;
+
    unique_ptr<class chain_plugin_impl> my;
 };
 
