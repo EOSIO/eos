@@ -1117,30 +1117,21 @@ struct delegate_bandwidth_subcommand {
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("receiver", receiver_str)
+                  ("stake_net_quantity", to_asset(stake_net_amount))
+                  ("stake_cpu_quantity", to_asset(stake_cpu_amount))
+                  ("transfer", transfer);
+         std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)};
          if (buy_ram_amount.length()) {
-            fc::variant act_payload = fc::mutable_variant_object()
-                     ("from", from_str)
-                     ("receiver", receiver_str)
-                     ("stake_net_quantity", to_asset(stake_net_amount))
-                     ("stake_cpu_quantity", to_asset(stake_cpu_amount))
-                     ("transfer", transfer);
             fc::variant act_payload2 = fc::mutable_variant_object()
                ("payer", from_str)
                ("receiver", receiver_str)
                ("quant", to_asset(buy_ram_amount));
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload),
-               create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload2)});
-         } else {
-            fc::variant act_payload = fc::mutable_variant_object()
-                     ("from", from_str)
-                     ("receiver", receiver_str)
-                     ("stake_net_quantity", to_asset(stake_net_amount))
-                     ("stake_cpu_quantity", to_asset(stake_cpu_amount))
-                     ("transfer", transfer)
-                     ;
-                     wdump((act_payload));
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
+            acts.push_back(create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload2));
          }
+         send_actions(std::move(acts));
       });
    }
 };
