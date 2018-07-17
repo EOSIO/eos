@@ -202,14 +202,15 @@
 
 	if [ "$ARCH" == "Darwin" ]; then
 		FILE="${PWD}/scripts/eosio_build_darwin.sh"
-		CXX_COMPILER=clang++
-		C_COMPILER=clang
+		CXX_COMPILER=c++
+		C_COMPILER=cc
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 	fi
    
    ${PWD}/scripts/clean_old_install.sh
    if [ $? -ne 0 ]; then
+      printf "\n\tError occurred while trying to remove old installation!\n\n"
       exit -1
    fi
 
