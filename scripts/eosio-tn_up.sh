@@ -74,6 +74,6 @@ if [ "$EOSIO_LEVEL" == replay ]; then
     fi
 fi
 if [ "$EOSIO_LEVEL" == resync ]; then
-    echo starting wih delete-all-blocks
+    echo starting with delete-all-blocks
     relaunch $* --delete-all-blocks
 fi
