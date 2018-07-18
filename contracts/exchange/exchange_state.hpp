@@ -46,6 +46,7 @@ namespace eosio {
          // todo: call margins? zero interest_shares on underflow?
          eosio_assert( interest_shares >= 0, "underflow" );
          eosio_assert( total_lendable.amount >= 0, "underflow" );
+         eosio_assert( total_lendable >= total_lent, "funds are in margins" );
 
          return result;
       }

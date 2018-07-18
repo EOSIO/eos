@@ -570,8 +570,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.deposit( N(exchange), N(lender2), extended_asset{ A(50.00 BTC), N(exchange) } );
    t.check_balance(N(exchange), N(lender2), A(0.00 USD) );
    t.check_balance(N(exchange), N(lender2), A(0.00 BTC) );
-   t.lend( N(exchange), N(lender2), extended_asset{ A(50.00 USD), N(exchange) }, symbol(2,"EXC") );
-   t.lend( N(exchange), N(lender2), extended_asset{ A(50.00 BTC), N(exchange) }, symbol(2,"EXC") );
+   t.lend( N(exchange), N(lender2), extended_asset{ A(50.00 USD), N(exchange) }, symbol(2,"HIINT") );
+   t.lend( N(exchange), N(lender2), extended_asset{ A(50.00 BTC), N(exchange) }, symbol(2,"HIINT") );
    t.check_exchange_balance(N(exchange), N(exchange), N(lender2), A(0.00 USD) );
    t.check_exchange_balance(N(exchange), N(exchange), N(lender2), A(0.00 BTC) );
 
@@ -589,6 +589,27 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.upmargin( N(exchange), N(borrower1), symbol(2,"HIINT"), extended_asset{ A(-50.00 BTC), N(exchange) }, extended_asset{ A(0.00 USD), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(0.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(92.64 USD)); // 7.36 USD interest
+
+   // borrower2: borrow 50.00 USD
+   t.create_account( N(borrower2) );
+   t.issue( N(exchange), N(exchange), N(borrower2), A(100.00 BTC) );
+   t.deposit( N(exchange), N(borrower2), extended_asset{ A(100.00 BTC), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(0.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(100.00 BTC));
+   t.upmargin( N(exchange), N(borrower2), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(70.00 BTC), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(50.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(30.00 BTC));
+
+   // lender2: can't unlend funds in margins
+   auto lentshares2_usd = t.get_lent_shares( N(exchange), symbol(2,"HIINT"), N(lender2), true );
+   BOOST_CHECK_THROW( t.unlend( N(exchange), N(lender2), lentshares2_usd, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"HIINT") ), eosio_assert_message_exception );
+
+   // borrower2: remove margin after .5 year
+   t.produce_block();
+   t.produce_block( fc::milliseconds(msec_per_year / 2) );
+   t.upmargin( N(exchange), N(borrower2), symbol(2,"HIINT"), extended_asset{ A(-50.00 USD), N(exchange) }, extended_asset{ A(0.00 BTC), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(0.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(92.64 BTC)); // 7.36 BTC interest
 } FC_LOG_AND_RETHROW() /// interest
 
 BOOST_AUTO_TEST_SUITE_END()

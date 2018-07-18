@@ -272,7 +272,7 @@ namespace eosio {
             obj.owner      = borrower;
             obj.borrowed   = delta_debt;
             obj.collateral = delta_col;
-            reserve_interest( obj, now );            
+            reserve_interest( obj, now );
             obj.call_price = double(obj.collateral.amount) / obj.borrowed.amount;
          });
       } else {
