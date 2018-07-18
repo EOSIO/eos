@@ -2,6 +2,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 #include <chainbase/chainbase.hpp>
+#include <set>
 
 namespace eosio { namespace chain { namespace resource_limits {
    namespace impl {
@@ -65,11 +66,11 @@ namespace eosio { namespace chain { namespace resource_limits {
          uint64_t get_block_cpu_limit() const;
          uint64_t get_block_net_limit() const;
 
-         int64_t get_account_cpu_limit( const account_name& name ) const;
-         int64_t get_account_net_limit( const account_name& name ) const;
+         int64_t get_account_cpu_limit( const account_name& name, bool elastic = true) const;
+         int64_t get_account_net_limit( const account_name& name, bool elastic = true) const;
 
-         account_resource_limit get_account_cpu_limit_ex( const account_name& name ) const;
-         account_resource_limit get_account_net_limit_ex( const account_name& name ) const;
+         account_resource_limit get_account_cpu_limit_ex( const account_name& name, bool elastic = true) const;
+         account_resource_limit get_account_net_limit_ex( const account_name& name, bool elastic = true) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
 
