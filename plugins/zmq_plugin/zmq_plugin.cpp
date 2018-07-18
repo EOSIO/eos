@@ -24,11 +24,10 @@ namespace eosio {
   static appbase::abstract_plugin& _zmq_plugin = app().register_plugin<zmq_plugin>();
 
   struct zmq_action_object {
-    const action_trace   atrace;
-    uint32_t             block_num;
-    block_timestamp_type block_time;
-
-    zmq_action_object(const action_trace& at) : atrace(at) {};
+    uint64_t                     global_action_seq;
+    uint32_t                     block_num;
+    chain::block_timestamp_type  block_time;
+    fc::variant                  action_trace;
   };
 
   class zmq_plugin_impl {
@@ -58,18 +57,25 @@ namespace eosio {
     {
       auto& chain = chain_plug->chain();
       
-      zmq_action_object zao(at);
+      zmq_action_object zao;
+      zao.global_action_seq = at.receipt.global_sequence;
       zao.block_num = chain.pending_block_state()->block_num;
       zao.block_time = chain.pending_block_time();
+      zao.action_trace = chain.to_variant_with_abi(at);
       
       string zao_json = fc::json::to_string(zao);
-      idump((zao_json));
+      //idump((zao_json));
 
-      int64_t msgtype = 0;
+      int32_t msgtype = 0;
+      int32_t msgopts = 0;
       
-      zmq::message_t message(zao_json.length()+sizeof(msgtype));
-      memcpy(message.data(), &msgtype, sizeof(msgtype));
-      memcpy((unsigned char*)message.data()+sizeof(msgtype), zao_json.c_str(), zao_json.length());
+      zmq::message_t message(zao_json.length()+sizeof(msgtype)+sizeof(msgopts));
+      unsigned char* ptr = (unsigned char*) message.data();
+      memcpy(ptr, &msgtype, sizeof(msgtype));
+      ptr += sizeof(msgtype);
+      memcpy(ptr, &msgopts, sizeof(msgopts));
+      ptr += sizeof(msgopts);
+      memcpy(ptr, zao_json.c_str(), zao_json.length());
       sender_socket.send(message);
     }
   };
@@ -115,5 +121,5 @@ namespace eosio {
 
 
 FC_REFLECT( eosio::zmq_action_object, 
-            (atrace)(block_num)(block_time) )
+            (global_action_seq)(block_num)(block_time)(action_trace) )
 
