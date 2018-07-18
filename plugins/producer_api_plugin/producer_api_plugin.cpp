@@ -76,23 +76,30 @@ void producer_api_plugin::plugin_startup() {
             INVOKE_R_V(producer, get_runtime_options), 201),
        CALL(producer, producer, update_runtime_options,
             INVOKE_V_R(producer, update_runtime_options, producer_plugin::runtime_options), 201),
+       CALL(producer, producer, add_greylist_accounts,
+            INVOKE_V_R(producer, add_greylist_accounts, producer_plugin::greylist_params), 201),
+       CALL(producer, producer, remove_greylist_accounts,
+            INVOKE_V_R(producer, remove_greylist_accounts, producer_plugin::greylist_params), 201), 
+       CALL(producer, producer, get_greylist,
+            INVOKE_R_V(producer, get_greylist), 201),                 
    });
 }
 
 void producer_api_plugin::plugin_initialize(const variables_map& options) {
-   const auto& _http_plugin = app().get_plugin<http_plugin>();
-   if (!_http_plugin.is_on_loopback()) {
-      wlog("\n"
-           "**********SECURITY WARNING**********\n"
-           "*                                  *\n"
-           "* --        Producer API        -- *\n"
-           "* - EXPOSED to the LOCAL NETWORK - *\n"
-           "* - USE ONLY ON SECURE NETWORKS! - *\n"
-           "*                                  *\n"
-           "************************************\n");
+   try {
+      const auto& _http_plugin = app().get_plugin<http_plugin>();
+      if( !_http_plugin.is_on_loopback()) {
+         wlog( "\n"
+               "**********SECURITY WARNING**********\n"
+               "*                                  *\n"
+               "* --        Producer API        -- *\n"
+               "* - EXPOSED to the LOCAL NETWORK - *\n"
+               "* - USE ONLY ON SECURE NETWORKS! - *\n"
+               "*                                  *\n"
+               "************************************\n" );
 
-   }
-
+      }
+   } FC_LOG_AND_RETHROW()
 }
 
 

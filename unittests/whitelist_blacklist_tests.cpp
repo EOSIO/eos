@@ -32,7 +32,9 @@ class whitelist_blacklist_tester {
          cfg.blocks_dir = p / config::default_blocks_dir_name;
          cfg.state_dir  = p / config::default_state_dir_name;
          cfg.state_size = 1024*1024*8;
+         cfg.state_guard_size = 0;
          cfg.reversible_cache_size = 1024*1024*8;
+         cfg.reversible_guard_size = 0;
          cfg.contracts_console = true;
 
          cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");

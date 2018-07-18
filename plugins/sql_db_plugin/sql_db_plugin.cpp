@@ -40,37 +40,42 @@ void sql_db_plugin::set_program_options(options_description& cli, options_descri
 void sql_db_plugin::plugin_initialize(const variables_map& options)
 {
     ilog("initialize");
-
-    std::string uri_str = options.at(SQL_DB_URI_OPTION).as<std::string>();
-    if (uri_str.empty())
-    {
-        wlog("db URI not specified => eosio::sql_db_plugin disabled.");
-        return;
-    }
-    ilog("connecting to ${u}", ("u", uri_str));
-    uint32_t block_num_start = options.at(BLOCK_START_OPTION).as<uint32_t>();
-    auto db = std::make_unique<database>(uri_str, block_num_start);
-
-    if (options.at(HARD_REPLAY_OPTION).as<bool>() ||
-         options.at(REPLAY_OPTION).as<bool>() ||
-         options.at(RESYNC_OPTION).as<bool>() ||
-        !db->is_started())
-    {
-        if (block_num_start == 0) {
-            ilog("Resync requested: wiping database");
-            db->wipe();
+    try {
+        std::string uri_str = options.at(SQL_DB_URI_OPTION).as<std::string>();
+        if (uri_str.empty())
+        {
+            wlog("db URI not specified => eosio::sql_db_plugin disabled.");
+            return;
         }
-    }
+        ilog("connecting to ${u}", ("u", uri_str));
+        uint32_t block_num_start = options.at(BLOCK_START_OPTION).as<uint32_t>();
+        auto db = std::make_unique<database>(uri_str, block_num_start);
 
-    m_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::move(db));
-    m_irreversible_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::move(db));
+        if (options.at(HARD_REPLAY_OPTION).as<bool>() ||
+                options.at(REPLAY_OPTION).as<bool>() ||
+                options.at(RESYNC_OPTION).as<bool>() ||
+                !db->is_started())
+        {
+            if (block_num_start == 0) {
+                ilog("Resync requested: wiping database");
+                if( options.at( RESYNC_OPTION ).as<bool>() ||
+                        options.at( REPLAY_OPTION ).as<bool>()) {
+                    ilog( "Resync requested: wiping database" );
+                    db->wipe();
+                }
+            }
+        }
 
-    chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-    FC_ASSERT(chain_plug);
-    auto& chain = chain_plug->chain();
-    // TODO: irreversible to different queue to just find block & update flag
-    //m_irreversible_block_connection.emplace(chain.irreversible_block.connect([=](const chain::block_state_ptr& b) {m_irreversible_block_consumer->push(b);}));
-    m_block_connection.emplace(chain.accepted_block.connect([=](const chain::block_state_ptr& b) {m_block_consumer->push(b);}));
+        m_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::move(db));
+        m_irreversible_block_consumer = std::make_unique<consumer<chain::block_state_ptr>>(std::move(db));
+
+        chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
+        FC_ASSERT(chain_plug);
+        auto& chain = chain_plug->chain();
+        // TODO: irreversible to different queue to just find block & update flag
+        //m_irreversible_block_connection.emplace(chain.irreversible_block.connect([=](const chain::block_state_ptr& b) {m_irreversible_block_consumer->push(b);}));
+        m_block_connection.emplace(chain.accepted_block.connect([=](const chain::block_state_ptr& b) {m_block_consumer->push(b);}));
+    } FC_LOG_AND_RETHROW()
 }
 
 void sql_db_plugin::plugin_startup()

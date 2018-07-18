@@ -528,10 +528,7 @@ namespace eosio {
                  _block_header_notices.insert(s->id);
               }
            }
-        }
 
-        void on_accepted_block( const block_state_ptr& s ) {
-           verify_strand_in_this_thread(_strand, __func__, __LINE__);
            //idump((_block_status.size())(_transaction_status.size()));
            auto id = s->id;
            //ilog( "accepted block ${n}", ("n",s->block_num) );
@@ -573,7 +570,7 @@ namespace eosio {
            _app_ios.post( [self = shared_from_this(),callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
               auto lib = control.last_irreversible_block_num();
-              auto head = control.head_block_id();
+              auto head = control.fork_db_head_block_id();
               auto head_num = block_header::num_from_id(head);
 
 
@@ -1003,7 +1000,7 @@ namespace eosio {
            peer_ilog(this, "received signed_block_ptr");
            if (!b) {
               peer_elog(this, "bad signed_block_ptr : null pointer");
-              FC_THROW("bad block" );
+              EOS_THROW(block_validate_exception, "bad block" );
            }
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
@@ -1048,7 +1045,7 @@ namespace eosio {
            peer_ilog(this, "received packed_transaction_ptr");
            if (!p) {
               peer_elog(this, "bad packed_transaction_ptr : null pointer");
-              FC_THROW("bad transaction");
+              EOS_THROW(transaction_exception, "bad transaction");
            }
 
            auto id = p->id();
@@ -1130,7 +1127,7 @@ namespace eosio {
         }
 
         void run() {
-           FC_ASSERT( _acceptor.is_open(), "unable top open listen socket" );
+           EOS_ASSERT( _acceptor.is_open(), plugin_exception, "unable top open listen socket" );
            do_accept();
         }
 
@@ -1212,18 +1209,6 @@ namespace eosio {
           */
          void on_irreversible_block( block_state_ptr s ) {
             for_each_session( [s]( auto ses ){ ses->on_new_lib( s ); } );
-         }
-
-         /**
-          * Notify all active connections of the new accepted block so
-          * they can relay it. This method also pre-packages the block
-          * as a packed bnet_message so the connections can simply relay
-          * it on.
-          */
-         void on_accepted_block( block_state_ptr s ) {
-            _ioc->post( [s,this] { /// post this to the thread pool because packing can be intensive
-               for_each_session( [s]( auto ses ){ ses->on_accepted_block( s ); } );
-            });
          }
 
          void on_accepted_block_header( block_state_ptr s ) {
@@ -1334,32 +1319,35 @@ namespace eosio {
    void bnet_plugin::plugin_initialize(const variables_map& options) {
       ilog( "Initialize bnet plugin" );
 
-      peer_log_format = options.at("bnet-peer-log-format").as<string>();
+      try {
+         peer_log_format = options.at( "bnet-peer-log-format" ).as<string>();
 
-      if( options.count( "bnet-endpoint" ) ) {
-         auto ip_port = options.at("bnet-endpoint").as< string >();
+         if( options.count( "bnet-endpoint" )) {
+            auto ip_port = options.at( "bnet-endpoint" ).as<string>();
 
-        //auto host = boost::asio::ip::host_name(ip_port);
-        auto port = ip_port.substr( ip_port.find(':')+1, ip_port.size() );
-        auto host = ip_port.substr( 0, ip_port.find(':') );
-        my->_bnet_endpoint_address = host;
-        my->_bnet_endpoint_port = std::stoi( port );
-        idump((ip_port)(host)(port)(my->_follow_irreversible));
-      }
-      if ( options.count( "bnet-follow-irreversible" )) {
-         my->_follow_irreversible = options.at("bnet-follow-irreversible").as< bool >();
-      }
+            //auto host = boost::asio::ip::host_name(ip_port);
+            auto port = ip_port.substr( ip_port.find( ':' ) + 1, ip_port.size());
+            auto host = ip_port.substr( 0, ip_port.find( ':' ));
+            my->_bnet_endpoint_address = host;
+            my->_bnet_endpoint_port = std::stoi( port );
+            idump((ip_port)( host )( port )( my->_follow_irreversible ));
+         }
+         if( options.count( "bnet-follow-irreversible" )) {
+            my->_follow_irreversible = options.at( "bnet-follow-irreversible" ).as<bool>();
+         }
 
 
-      if( options.count( "bnet-connect" ) ) {
-         my->_connect_to_peers = options.at( "bnet-connect" ).as<vector<string>>();
-      }
-      if( options.count( "bnet-threads" ) ) {
-         my->_num_threads = options.at("bnet-threads").as<uint32_t>();
-         if( my->_num_threads > 8 )
-            my->_num_threads = 8;
-      }
-      my->_request_trx = !options.at( "bnet-no-trx" ).as<bool>();
+         if( options.count( "bnet-connect" )) {
+            my->_connect_to_peers = options.at( "bnet-connect" ).as<vector<string>>();
+         }
+         if( options.count( "bnet-threads" )) {
+            my->_num_threads = options.at( "bnet-threads" ).as<uint32_t>();
+            if( my->_num_threads > 8 )
+               my->_num_threads = 8;
+         }
+         my->_request_trx = !options.at( "bnet-no-trx" ).as<bool>();
+
+      } FC_LOG_AND_RETHROW()
    }
 
    void bnet_plugin::plugin_startup() {
@@ -1377,11 +1365,6 @@ namespace eosio {
                                 .subscribe( [this]( block_state_ptr s ){
                                        my->on_irreversible_block(s);
                                 });
-
-      my->_on_accepted_block_handle = app().get_channel<channels::accepted_block>()
-                                         .subscribe( [this]( block_state_ptr s ){
-                                                my->on_accepted_block(s);
-                                         });
 
       my->_on_accepted_block_header_handle = app().get_channel<channels::accepted_block_header>()
                                          .subscribe( [this]( block_state_ptr s ){
@@ -1445,7 +1428,7 @@ namespace eosio {
       wlog( "done joining threads" );
 
       my->for_each_session([](auto ses){
-         FC_ASSERT( false, "session ${ses} still active", ("ses", ses->_session_num) );
+         EOS_ASSERT( false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num) );
       });
 
       // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl

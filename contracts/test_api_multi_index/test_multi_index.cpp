@@ -120,6 +120,12 @@ namespace _test_multi_index {
 
          ++itr;
          eosio_assert(itr == table.end(), "idx64_general - increment primary iterator to end");
+         
+         itr = table.require_find(976);
+         eosio_assert(itr != table.end() && itr->sec == N(emily), "idx64_general - table.require_find() of existing primary key");
+         
+         ++itr;
+         eosio_assert(itr == table.end(), "idx64_general - increment primary iterator to end");
       }
 
       // iterate forward starting with charlie
@@ -170,6 +176,16 @@ namespace _test_multi_index {
          eosio_assert( pk_itr == pks.end(), "idx64_general - did not iterate backwards through secondary index properly" );
       }
 
+      // require_find secondary key
+      {
+         auto itr = secondary_index.require_find(N(bob));
+         eosio_assert(itr != secondary_index.end(), "idx64_general - require_find must never return end iterator");
+         eosio_assert(itr->id == 540, "idx64_general - require_find test");
+         
+         ++itr;
+         eosio_assert(itr->id == 781, "idx64_general - require_find secondary key test");
+      }
+
       // modify and erase
       {
          const uint64_t ssn = 421;
@@ -189,6 +205,80 @@ namespace _test_multi_index {
          auto itr2 = table.find(ssn);
          eosio_assert( itr2 == table.end(), "idx64_general - table.erase()");
       }
+   }
+
+   template<uint64_t TableName>
+   void idx64_require_find_fail(uint64_t receiver)
+   {
+      using namespace eosio;
+      typedef record_idx64 record;
+
+      // Load table using multi_index
+      multi_index<TableName, record> table( receiver, receiver );
+      
+      // make sure we're looking at the right table
+      auto itr = table.require_find(781, "table not loaded");
+      eosio_assert(itr != table.end(), "table not loaded");
+
+      // require_find by primary key
+      // should fail
+      itr = table.require_find(999);
+   }
+
+   template<uint64_t TableName>
+   void idx64_require_find_fail_with_msg(uint64_t receiver)
+   {
+      using namespace eosio;
+      typedef record_idx64 record;
+
+      // Load table using multi_index
+      multi_index<TableName, record> table( receiver, receiver );
+
+      // make sure we're looking at the right table
+      auto itr = table.require_find(234, "table not loaded");
+      eosio_assert(itr != table.end(), "table not loaded");
+
+      // require_find by primary key
+      // should fail
+      itr = table.require_find(335, "unable to find primary key in require_find");
+   }
+
+   template<uint64_t TableName>
+   void idx64_require_find_sk_fail(uint64_t receiver)
+   {
+      using namespace eosio;
+      typedef record_idx64 record;
+
+      // Load table using multi_index
+      multi_index<TableName, record, indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary>>> table( receiver, receiver );
+      auto sec_index = table.template get_index<N(bysecondary)>();
+      
+      // make sure we're looking at the right table
+      auto itr = sec_index.require_find(N(charlie), "table not loaded");
+      eosio_assert(itr != sec_index.end(), "table not loaded");
+
+      // require_find by secondary key
+      // should fail
+      itr = sec_index.require_find(N(bill));
+   }
+
+   template<uint64_t TableName>
+   void idx64_require_find_sk_fail_with_msg(uint64_t receiver)
+   {
+      using namespace eosio;
+      typedef record_idx64 record;
+
+      // Load table using multi_index
+      multi_index<TableName, record, indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary>>> table( receiver, receiver );
+      auto sec_index = table.template get_index<N(bysecondary)>();
+      
+      // make sure we're looking at the right table
+      auto itr = sec_index.require_find(N(emily), "table not loaded");
+      eosio_assert(itr != sec_index.end(), "table not loaded");
+
+      // require_find by secondary key
+      // should fail
+      itr = sec_index.require_find(N(frank), "unable to find sec key");
    }
 
    template<uint64_t TableName>
@@ -297,6 +387,30 @@ void test_multi_index::idx128_general(uint64_t receiver, uint64_t code, uint64_t
 {
    _test_multi_index::idx128_store_only<N(indextable4)>(receiver);
    _test_multi_index::idx128_check_without_storing<N(indextable4)>(receiver);
+}
+
+void test_multi_index::idx64_require_find_fail(uint64_t receiver, uint64_t code, uint64_t action)
+{
+   _test_multi_index::idx64_store_only<N(indextable5)>(receiver);
+   _test_multi_index::idx64_require_find_fail<N(indextable5)>(receiver);
+}
+
+void test_multi_index::idx64_require_find_fail_with_msg(uint64_t receiver, uint64_t code, uint64_t action)
+{
+   _test_multi_index::idx64_store_only<N(indextable6)>(receiver);
+   _test_multi_index::idx64_require_find_fail_with_msg<N(indextable6)>(receiver);
+}
+
+void test_multi_index::idx64_require_find_sk_fail(uint64_t receiver, uint64_t code, uint64_t action)
+{
+   _test_multi_index::idx64_store_only<N(indextable7)>(receiver);
+   _test_multi_index::idx64_require_find_sk_fail<N(indextable7)>(receiver);
+}
+
+void test_multi_index::idx64_require_find_sk_fail_with_msg(uint64_t receiver, uint64_t code, uint64_t action)
+{
+   _test_multi_index::idx64_store_only<N(indextable8)>(receiver);
+   _test_multi_index::idx64_require_find_sk_fail_with_msg<N(indextable8)>(receiver);
 }
 
 void test_multi_index::idx128_autoincrement_test(uint64_t receiver, uint64_t code, uint64_t action)
@@ -728,7 +842,6 @@ void test_multi_index::idx64_pass_pk_end_itr_to_modify(uint64_t receiver, uint64
    // Should fail
    table.modify(end_itr, payer, [](auto&){});
 }
-
 
 void test_multi_index::idx64_pass_pk_end_itr_to_erase(uint64_t receiver, uint64_t code, uint64_t action)
 {

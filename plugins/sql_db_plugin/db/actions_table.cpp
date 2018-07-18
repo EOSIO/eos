@@ -88,9 +88,10 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
         return; // no ABI no party. Should we still store it?
     }
 
-    abis.set_abi(abi);
+    static const fc::microseconds abi_serializer_max_time;
+    abis.set_abi(abi, abi_serializer_max_time);
 
-    auto abi_data = abis.binary_to_variant(abis.get_action_type(action.name), action.data);
+    auto abi_data = abis.binary_to_variant(abis.get_action_type(action.name), action.data, abi_serializer_max_time);
     string json = fc::json::to_string(abi_data);
 
     boost::uuids::random_generator gen;

@@ -149,8 +149,8 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
     FC_MULTILINE_MACRO_END \
   )
 
-string url = "http://localhost:8888/";
-string wallet_url = "http://localhost:8900/";
+string url = "http://127.0.0.1:8888/";
+string wallet_url = "http://127.0.0.1:8900/";
 bool no_verify = false;
 vector<string> headers;
 
@@ -248,6 +248,15 @@ chain::action generate_nonce_action() {
    return chain::action( {}, config::null_account_name, "nonce", fc::raw::pack(fc::time_point::now().time_since_epoch().count()));
 }
 
+void prompt_for_wallet_password(string& pw, const string& name) {
+   if(pw.size() == 0 && name != "SecureEnclave") {
+      std::cout << localized("password: ");
+      fc::set_console_echo(false);
+      std::getline( std::cin, pw, '\n' );
+      fc::set_console_echo(true);
+   }
+}
+
 fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    //wdump((trx));
@@ -284,7 +293,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       trx.context_free_actions.emplace_back( generate_nonce_action() );
    }
 
-   trx.max_cpu_usage_ms = tx_max_net_usage;
+   trx.max_cpu_usage_ms = tx_max_cpu_usage;
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
@@ -577,7 +586,7 @@ asset to_asset( const string& code, const string& s ) {
          auto p = cache.insert(make_pair( sym, result.max_supply.get_symbol() ));
          it = p.first;
       } else {
-         FC_THROW("Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
+         EOS_THROW(symbol_type_exception, "Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
       }
    }
    auto expected_symbol = it->second;
@@ -586,7 +595,7 @@ asset to_asset( const string& code, const string& s ) {
       auto a_old = a;
       a = asset( a.get_amount() * factor, expected_symbol );
    } else if ( a.decimals() > expected_symbol.decimals() ) {
-      FC_THROW("Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
+      EOS_THROW(symbol_type_exception, "Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
    } // else precision matches
    return a;
 }
@@ -951,7 +960,7 @@ struct approve_producer_subcommand {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
-            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
             vector<eosio::name> prods;
             for ( auto& x : prod_vars ) {
@@ -997,7 +1006,7 @@ struct unapprove_producer_subcommand {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
-            FC_ASSERT( 1 == res.rows.size(), "More than one voter_info for account" );
+            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
             vector<eosio::name> prods;
             for ( auto& x : prod_vars ) {
@@ -1056,12 +1065,45 @@ struct list_producers_subcommand {
    }
 };
 
+struct get_schedule_subcommand {
+   bool print_json = false;
+
+   void print(const char* name, const fc::variant& schedule) {
+      if (schedule.is_null()) {
+         printf("%s schedule empty\n\n", name);
+         return;
+      }
+      printf("%s schedule version %s\n", name, schedule["version"].as_string().c_str());
+      printf("    %-13s %s\n", "Producer", "Producer key");
+      printf("    %-13s %s\n", "=============", "==================");
+      for (auto& row: schedule["producers"].get_array())
+         printf("    %-13s %s\n", row["producer_name"].as_string().c_str(), row["block_signing_key"].as_string().c_str());
+      printf("\n");
+   }
+
+   get_schedule_subcommand(CLI::App* actionRoot) {
+      auto get_schedule = actionRoot->add_subcommand("schedule", localized("Retrieve the producer schedule"));
+      get_schedule->add_flag("--json,-j", print_json, localized("Output in JSON format"));
+      get_schedule->set_callback([this] {
+         auto result = call(get_schedule_func, fc::mutable_variant_object());
+         if ( print_json ) {
+            std::cout << fc::json::to_pretty_string(result) << std::endl;
+            return;
+         }
+         print("active", result["active"]);
+         print("pending", result["pending"]);
+         print("proposed", result["proposed"]);
+      });
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
    string stake_net_amount;
    string stake_cpu_amount;
    string stake_storage_amount;
+   string buy_ram_amount;
    bool transfer = false;
 
    delegate_bandwidth_subcommand(CLI::App* actionRoot) {
@@ -1070,6 +1112,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
+      delegate_bandwidth->add_option("--buyram", buy_ram_amount, localized("The amount of EOS to buyram"));
       delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake EOS to receiver"));
       add_standard_transaction_options(delegate_bandwidth);
 
@@ -1079,10 +1122,16 @@ struct delegate_bandwidth_subcommand {
                   ("receiver", receiver_str)
                   ("stake_net_quantity", to_asset(stake_net_amount))
                   ("stake_cpu_quantity", to_asset(stake_cpu_amount))
-                  ("transfer", transfer)
-                  ;
-                  wdump((act_payload));
-         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
+                  ("transfer", transfer);
+         std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)};
+         if (buy_ram_amount.length()) {
+            fc::variant act_payload2 = fc::mutable_variant_object()
+               ("payer", from_str)
+               ("receiver", receiver_str)
+               ("quant", to_asset(buy_ram_amount));
+            acts.push_back(create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload2));
+         }
+         send_actions(std::move(acts));
       });
    }
 };
@@ -1207,20 +1256,30 @@ struct buyram_subcommand {
    string from_str;
    string receiver_str;
    string amount;
+   bool kbytes = false;
 
    buyram_subcommand(CLI::App* actionRoot) {
       auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
       buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
       buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
-      buyram->add_option("tokens", amount, localized("The amount of EOS to pay for RAM"))->required();
+      buyram->add_option("amount", amount, localized("The amount of EOS to pay for RAM, or number of kbytes of RAM if --kbytes is set"))->required();
+      buyram->add_flag("--kbytes,-k", kbytes, localized("buyram in number of kbytes"));
       add_standard_transaction_options(buyram);
       buyram->set_callback([this] {
+         if (kbytes) {
+            fc::variant act_payload = fc::mutable_variant_object()
+                  ("payer", from_str)
+                  ("receiver", receiver_str)
+                  ("bytes", fc::to_uint64(amount) * 1024ull);
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyrambytes), act_payload)});            
+         } else {
             fc::variant act_payload = fc::mutable_variant_object()
                ("payer", from_str)
                ("receiver", receiver_str)
                ("quant", to_asset(amount));
             send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
-         });
+         }
+      });
    }
 };
 
@@ -1408,16 +1467,19 @@ void get_account( const string& accountName, bool json_format ) {
 
       std::cout << "net bandwidth: " << std::endl;
       if ( res.total_resources.is_object() ) {
+         auto net_total = to_asset(res.total_resources.get_object()["net_weight"].as_string());
+
+         if( net_total.get_symbol() != unstaking.get_symbol() ) {
+            // Core symbol of nodeos responding to the request is different than core symbol built into cleos
+            unstaking = asset( 0, net_total.get_symbol() ); // Correct core symbol for unstaking asset.
+            staked = asset( 0, net_total.get_symbol() ); // Correct core symbol for staked asset.
+         }
+
          if( res.self_delegated_bandwidth.is_object() ) {
             asset net_own =  asset::from_string( res.self_delegated_bandwidth.get_object()["net_weight"].as_string() );
             staked = net_own;
 
-            if( staked.get_symbol() != unstaking.get_symbol() ) {
-               // Core symbol of nodeos responding to the request is different than core symbol built into cleos
-               unstaking = asset( 0, staked.get_symbol() ); // Correct core symbol for unstaking asset.
-            }
-
-            auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string()) - net_own;
+            auto net_others = net_total - net_own;
 
             std::cout << indent << "staked:" << std::setw(20) << net_own
                       << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
@@ -1425,7 +1487,7 @@ void get_account( const string& accountName, bool json_format ) {
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          }
          else {
-            auto net_others = to_asset(res.total_resources.get_object()["net_weight"].as_string());
+            auto net_others = net_total;
             std::cout << indent << "delegated:" << std::setw(17) << net_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          }
@@ -1475,18 +1537,20 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << "cpu bandwidth:" << std::endl;
 
       if ( res.total_resources.is_object() ) {
+         auto cpu_total = to_asset(res.total_resources.get_object()["cpu_weight"].as_string());
+
          if( res.self_delegated_bandwidth.is_object() ) {
             asset cpu_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cpu_weight"].as_string() );
             staked += cpu_own;
 
-            auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string()) - cpu_own;
+            auto cpu_others = cpu_total - cpu_own;
 
             std::cout << indent << "staked:" << std::setw(20) << cpu_own
                       << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
                       << indent << "delegated:" << std::setw(17) << cpu_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          } else {
-            auto cpu_others = to_asset(res.total_resources.get_object()["cpu_weight"].as_string());
+            auto cpu_others = cpu_total;
             std::cout << indent << "delegated:" << std::setw(17) << cpu_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          }
@@ -1504,23 +1568,24 @@ void get_account( const string& accountName, bool json_format ) {
          auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
          fc::time_point refund_time = request_time + fc::days(3);
          auto now = res.head_block_time;
-         std::cout << std::fixed << setprecision(3);
-         std::cout << "unstaking tokens:" << std::endl;
-         std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);
-         if( now >= refund_time ) {
-            std::cout << " (available to claim now with 'eosio::refund' action)\n";
-         } else {
-            std::cout << " (funds will be available in " << to_pretty_time( (refund_time - now).count(), 0 ) << ")\n";
+         asset net = asset::from_string( obj["net_amount"].as_string() );
+         asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
+         unstaking = net + cpu;
 
-            asset net = asset::from_string( obj["net_amount"].as_string() );
-            asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
-            unstaking = net + cpu;
-
+         if( unstaking > asset( 0, unstaking.get_symbol() ) ) {
+            std::cout << std::fixed << setprecision(3);
+            std::cout << "unstaking tokens:" << std::endl;
+            std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);
+            if( now >= refund_time ) {
+               std::cout << " (available to claim now with 'eosio::refund' action)\n";
+            } else {
+               std::cout << " (funds will be available in " << to_pretty_time( (refund_time - now).count(), 0 ) << ")\n";
+            }
             std::cout << indent << std::left << std::setw(25) << "from net bandwidth:" << std::right << std::setw(18) << net << std::endl;
             std::cout << indent << std::left << std::setw(25) << "from cpu bandwidth:" << std::right << std::setw(18) << cpu << std::endl;
             std::cout << indent << std::left << std::setw(25) << "total:" << std::right << std::setw(18) << unstaking << std::endl;
+            std::cout << std::endl;
          }
-         std::cout << std::endl;
       }
 
       if( res.core_liquid_balance.valid() ) {
@@ -1578,7 +1643,7 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
 
-   abi_serializer::set_max_serialization_time(fc::seconds(1)); // No risk to client side serialization taking a long time
+   fc::microseconds abi_serializer_max_time = fc::seconds(1); // No risk to client side serialization taking a long time
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
@@ -1674,26 +1739,51 @@ int main( int argc, char** argv ) {
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
+      string code_hash, wasm, wast, abi;
+      try {
+         const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
+         const std::vector<char> wasm_v = result["wasm"].as_blob().data;
+         const std::vector<char> abi_v = result["abi"].as_blob().data;
 
-      std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
+         fc::sha256 hash;
+         if(wasm_v.size())
+            hash = fc::sha256::hash(wasm_v.data(), wasm_v.size());
+         code_hash = (string)hash;
+
+         wasm = string(wasm_v.begin(), wasm_v.end());
+         if(!code_as_wasm && wasm_v.size())
+            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false);
+
+         abi_def abi_d;
+         if(abi_serializer::to_abi(abi_v, abi_d))
+            abi = fc::json::to_pretty_string(abi_d);
+      }
+      catch(chain::missing_chain_api_plugin_exception&) {
+         //see if this is an old nodeos that doesn't support get_raw_code_and_abi
+         const auto old_result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
+         code_hash = old_result["code_hash"].as_string();
+         if(code_as_wasm) {
+            wasm = old_result["wasm"].as_string();
+            std::cout << localized("Warning: communicating to older nodeos which returns malformed binary wasm") << std::endl;
+         }
+         else
+            wast = old_result["wast"].as_string();
+         abi = fc::json::to_pretty_string(old_result["abi"]);
+      }
+
+      std::cout << localized("code hash: ${code_hash}", ("code_hash", code_hash)) << std::endl;
 
       if( codeFilename.size() ){
          std::cout << localized("saving ${type} to ${codeFilename}", ("type", (code_as_wasm ? "wasm" : "wast"))("codeFilename", codeFilename)) << std::endl;
-         string code;
-
-         if(code_as_wasm) {
-            code = result["wasm"].as_string();
-         } else {
-            code = result["wast"].as_string();
-         }
 
          std::ofstream out( codeFilename.c_str() );
-         out << code;
+         if(code_as_wasm)
+            out << wasm;
+         else
+            out << wast;
       }
       if( abiFilename.size() ) {
          std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
-         auto abi  = fc::json::to_pretty_string( result["abi"] );
          std::ofstream abiout( abiFilename.c_str() );
          abiout << abi;
       }
@@ -1724,27 +1814,37 @@ int main( int argc, char** argv ) {
    string lower;
    string upper;
    string table_key;
+   string key_type;
    bool binary = false;
    uint32_t limit = 10;
+   string index_position;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
    getTable->add_option( "contract", code, localized("The contract who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
-   getTable->add_option( "-k,--key", table_key, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
+   getTable->add_option( "-k,--key", table_key, localized("Deprecated") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
+   getTable->add_option( "--index", index_position,
+                         localized("Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc.\n"
+                                   "\t\t\t\tNumber or name of index can be specified, e.g. 'secondary' or '2'."));
+   getTable->add_option( "--key-type", key_type,
+                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128).\n"
+                                   "\t\t\t\tSpecial type 'name' indicates an account name."));
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
                          ("code",code)
                          ("scope",scope)
                          ("table",table)
-                         ("table_key",table_key)
+                         ("table_key",table_key) // not used
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)
+                         ("key_type",key_type)
+                         ("index_position", index_position)
                          );
 
       std::cout << fc::json::to_pretty_string(result)
@@ -1812,8 +1912,10 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transaction_id_str;
+   uint32_t block_num_hint = 0;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
+   getTransaction->add_option( "-b,--block-hint", block_num_hint, localized("the block number this transaction may be in") );
    getTransaction->set_callback([&] {
       transaction_id_type transaction_id;
       try {
@@ -1821,6 +1923,9 @@ int main( int argc, char** argv ) {
          transaction_id = transaction_id_type(transaction_id_str);
       } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
       auto arg= fc::mutable_variant_object( "id", transaction_id);
+      if ( block_num_hint > 0 ) {
+         arg = arg("block_num_hint", block_num_hint);
+      }
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
@@ -1918,6 +2023,7 @@ int main( int argc, char** argv ) {
       }
    });
 
+   auto getSchedule = get_schedule_subcommand{get};
 
    /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
@@ -2018,7 +2124,7 @@ int main( int argc, char** argv ) {
 
       std::cerr << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
-      FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
+      EOS_ASSERT( !wast.empty(), wast_file_not_found, "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
@@ -2046,7 +2152,7 @@ int main( int argc, char** argv ) {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
 
-      FC_ASSERT( fc::exists( abiPath ), "no abi file found ${f}", ("f", abiPath)  );
+      EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
 
       try {
          actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
@@ -2184,12 +2290,7 @@ int main( int argc, char** argv ) {
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       call(wallet_url, wallet_unlock, vs);
@@ -2200,13 +2301,20 @@ int main( int argc, char** argv ) {
    string wallet_key_str;
    auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
-   importWallet->add_option("key", wallet_key_str, localized("Private key in WIF format to import"))->required();
+   importWallet->add_option("--private-key", wallet_key_str, localized("Private key in WIF format to import"));
    importWallet->set_callback([&wallet_name, &wallet_key_str] {
+      if( wallet_key_str.size() == 0 ) {
+         std::cout << localized("private key: ");
+         fc::set_console_echo(false);
+         std::getline( std::cin, wallet_key_str, '\n' );
+         fc::set_console_echo(true);
+      }
+
       private_key_type wallet_key;
       try {
          wallet_key = private_key_type( wallet_key_str );
       } catch (...) {
-          EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+         EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
       }
       public_key_type pubkey = wallet_key.get_public_key();
 
@@ -2222,12 +2330,7 @@ int main( int argc, char** argv ) {
    removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
    removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    removeKeyWallet->set_callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       public_key_type pubkey;
       try {
          pubkey = public_key_type( wallet_rm_key_str );
@@ -2271,12 +2374,7 @@ int main( int argc, char** argv ) {
    listPrivKeys->add_option("-n,--name", wallet_name, localized("The name of the wallet to list keys from"), true);
    listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    listPrivKeys->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
+      prompt_for_wallet_password(wallet_pw, wallet_name);
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
       const auto& v = call(wallet_url, wallet_list_keys, vs);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -2430,7 +2528,7 @@ int main( int argc, char** argv ) {
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
-   propose_action->add_option("contract", proposed_contract, localized("contract to wich deferred transaction should be delivered"))->required();
+   propose_action->add_option("contract", proposed_contract, localized("contract to which deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
    propose_action->add_option("proposer", proposer, localized("Account proposing the transaction"));
@@ -2508,11 +2606,11 @@ int main( int argc, char** argv ) {
    });
 
    //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-   auto resolver = [](const name& code) -> optional<abi_serializer> {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", code.to_string()));
+   auto resolver = [abi_serializer_max_time](const name& code) -> optional<abi_serializer> {
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", code.to_string()));
       if (result["abi"].is_object()) {
          //std::cout << "ABI: " << fc::json::to_pretty_string(result) << std::endl;
-         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>()));
+         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>(), abi_serializer_max_time));
       } else {
          std::cerr << "ABI for contract " << code.to_string() << " not found. Action data will be shown in hex only." << std::endl;
          return optional<abi_serializer>();
@@ -2598,7 +2696,7 @@ int main( int argc, char** argv ) {
 
       fc::variant trx_var;
       abi_serializer abi;
-      abi.to_variant(trx, trx_var, resolver);
+      abi.to_variant(trx, trx_var, resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;
@@ -2704,6 +2802,40 @@ int main( int argc, char** argv ) {
       send_actions({chain::action{accountPermissions, "eosio.msig", "exec", result.get_object()["binargs"].as<bytes>()}});
       }
    );
+
+   // sudo subcommand
+   auto sudo = app.add_subcommand("sudo", localized("Sudo contract commands"), false);
+   sudo->require_subcommand();
+
+   // sudo exec
+   executer = "";
+   string trx_to_exec;
+   auto sudo_exec = sudo->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
+   add_standard_transaction_options(sudo_exec);
+   sudo_exec->add_option("executer", executer, localized("Account executing the transaction and paying for the deferred transaction RAM"))->required();
+   sudo_exec->add_option("transaction", trx_to_exec, localized("The JSON string or filename defining the transaction to execute"))->required();
+
+   sudo_exec->set_callback([&] {
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(trx_to_exec);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_exec))
+
+      auto accountPermissions = get_account_permissions(tx_permission);
+      if( accountPermissions.empty() ) {
+         accountPermissions = vector<permission_level>{{executer, config::active_name}, {"eosio.sudo", config::active_name}};
+      }
+
+      auto arg = fc::mutable_variant_object()
+         ("code", "eosio.sudo")
+         ("action", "exec")
+         ("args", fc::mutable_variant_object()
+            ("executer", executer )
+            ("trx", trx_var)
+         );
+      auto result = call(json_to_bin_func, arg);
+      send_actions({chain::action{accountPermissions, "eosio.sudo", "exec", result.get_object()["binargs"].as<bytes>()}});
+   });
 
    // system subcommand
    auto system = app.add_subcommand("system", localized("Send eosio.system contract action to the blockchain."), false);
