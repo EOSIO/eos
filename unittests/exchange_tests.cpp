@@ -29,6 +29,8 @@ using namespace eosio::chain;
 using namespace eosio::testing;
 using namespace fc;
 
+static const auto msec_per_year = 60 * 60 * 24 * 365 * 1000ull;
+
 #define A(X) asset::from_string( #X )
 
 struct margin_state {
@@ -531,5 +533,62 @@ BOOST_AUTO_TEST_CASE( exchange_fees ) try {
    t.marketorder( N(exchange), N(holder1), symbol(2,"HIFEE"), extended_asset{ A(4.43 HIFEE), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(holder1), A(10.94 USD));
 } FC_LOG_AND_RETHROW() /// exchange_fees
+
+BOOST_AUTO_TEST_CASE( interest ) try {
+   exchange_tester t;
+
+   // HIINT: USD/BTC, 20% interest
+   t.create_account( N(maker) );
+   t.issue( N(exchange), N(exchange), N(maker), A(1000.00 USD) );
+   t.issue( N(exchange), N(exchange), N(maker), A(1000.00 BTC) );
+   t.deposit( N(exchange), N(maker), extended_asset{ A(1000.00 USD), N(exchange) } );
+   t.deposit( N(exchange), N(maker), extended_asset{ A(1000.00 BTC), N(exchange) } );
+   t.create_exchange(
+      N(exchange),
+      N(maker),
+      extended_asset{ A(1000.00 USD), N(exchange) },
+      extended_asset{ A(1000.00 BTC), N(exchange) },
+      A(1000.00 HIINT),
+      0, 0.20);
+
+   // lender1: lend 100 BTC
+   t.create_account( N(lender1) );
+   t.issue( N(exchange), N(exchange), N(lender1), A(100.00 BTC) );
+   t.check_balance(N(exchange), N(lender1), A(100.00 BTC) );
+   t.deposit( N(exchange), N(lender1), extended_asset{ A(100.00 BTC), N(exchange) } );
+   t.check_balance(N(exchange), N(lender1), A(0.00 BTC) );
+   t.lend( N(exchange), N(lender1), extended_asset{ A(100.00 BTC), N(exchange) }, symbol(2,"HIINT") );
+   t.check_exchange_balance(N(exchange), N(exchange), N(lender1), A(0.00 BTC) );
+
+   // lender2: lend 50 USD and 50 BTC
+   t.create_account( N(lender2) );
+   t.issue( N(exchange), N(exchange), N(lender2), A(50.00 USD) );
+   t.issue( N(exchange), N(exchange), N(lender2), A(50.00 BTC) );
+   t.check_balance(N(exchange), N(lender2), A(50.00 USD) );
+   t.check_balance(N(exchange), N(lender2), A(50.00 BTC) );
+   t.deposit( N(exchange), N(lender2), extended_asset{ A(50.00 USD), N(exchange) } );
+   t.deposit( N(exchange), N(lender2), extended_asset{ A(50.00 BTC), N(exchange) } );
+   t.check_balance(N(exchange), N(lender2), A(0.00 USD) );
+   t.check_balance(N(exchange), N(lender2), A(0.00 BTC) );
+   t.lend( N(exchange), N(lender2), extended_asset{ A(50.00 USD), N(exchange) }, symbol(2,"EXC") );
+   t.lend( N(exchange), N(lender2), extended_asset{ A(50.00 BTC), N(exchange) }, symbol(2,"EXC") );
+   t.check_exchange_balance(N(exchange), N(exchange), N(lender2), A(0.00 USD) );
+   t.check_exchange_balance(N(exchange), N(exchange), N(lender2), A(0.00 BTC) );
+
+   // borrower1: borrow 50.00 BTC for .5 year
+   t.create_account( N(borrower1) );
+   t.issue( N(exchange), N(exchange), N(borrower1), A(100.00 USD) );
+   t.deposit( N(exchange), N(borrower1), extended_asset{ A(100.00 USD), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(0.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(100.00 USD));
+   t.upmargin( N(exchange), N(borrower1), symbol(2,"HIINT"), extended_asset{ A(50.00 BTC), N(exchange) }, extended_asset{ A(70.00 USD), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(30.00 USD));
+   t.produce_block();
+   t.produce_block( fc::milliseconds(msec_per_year / 2) );
+   t.upmargin( N(exchange), N(borrower1), symbol(2,"HIINT"), extended_asset{ A(-50.00 BTC), N(exchange) }, extended_asset{ A(0.00 USD), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(0.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(92.64 USD)); // 7.36 USD interest
+} FC_LOG_AND_RETHROW() /// interest
 
 BOOST_AUTO_TEST_SUITE_END()
