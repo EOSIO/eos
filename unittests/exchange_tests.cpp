@@ -610,6 +610,26 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.upmargin( N(exchange), N(borrower2), symbol(2,"HIINT"), extended_asset{ A(-50.00 USD), N(exchange) }, extended_asset{ A(0.00 BTC), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(0.00 USD));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(92.64 BTC)); // 7.36 BTC interest
+
+   // borrower3: borrow 50.00 USD
+   t.create_account( N(borrower3) );
+   t.issue( N(exchange), N(exchange), N(borrower3), A(100.00 BTC) );
+   t.deposit( N(exchange), N(borrower3), extended_asset{ A(100.00 BTC), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(0.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(100.00 BTC));
+   t.upmargin( N(exchange), N(borrower3), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(70.00 BTC), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(50.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(30.00 BTC));
+
+   // trader1: trigger margin call after .5 year
+   t.produce_block();
+   t.produce_block( fc::milliseconds(msec_per_year / 2) );
+   t.create_account( N(trader1) );
+   t.issue( N(exchange), N(exchange), N(trader1), A(100.00 BTC) );
+   t.deposit( N(exchange), N(trader1), extended_asset{ A(100.00 BTC), N(exchange) } );
+   t.marketorder( N(exchange), N(trader1), symbol(2,"HIINT"), extended_asset{ A(100.00 BTC), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(50.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(39.91 BTC));
 } FC_LOG_AND_RETHROW() /// interest
 
 BOOST_AUTO_TEST_SUITE_END()
