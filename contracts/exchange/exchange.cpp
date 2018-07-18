@@ -10,12 +10,6 @@
 
 namespace eosio {
 
-   void exchange::deposit( account_name from, extended_asset quantity ) {
-      eosio_assert( quantity.is_valid(), "invalid quantity" );
-      currency::inline_transfer( from, _this_contract, quantity, "deposit" );
-      _accounts.adjust_balance( from, quantity, "deposit" );
-   }
-
    void exchange::withdraw( account_name from, extended_asset quantity ) {
       require_auth( from );
       eosio_assert( quantity.is_valid(), "invalid quantity" );
@@ -193,7 +187,7 @@ namespace eosio {
 
       auto& thiscontract = *this;
       switch( act ) {
-         EOSIO_API( exchange, (createx)(deposit)(withdraw)(marketorder)(lend)(unlend) )
+         EOSIO_API( exchange, (createx)(withdraw)(marketorder)(lend)(unlend) )
       };
 
       switch( act ) {

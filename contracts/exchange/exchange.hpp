@@ -46,7 +46,6 @@ namespace eosio {
                        extended_asset  quote_deposit
                      );
 
-         void deposit( account_name from, extended_asset quantity );
          void withdraw( account_name  from, extended_asset quantity );
          void lend( account_name lender, symbol_type market, extended_asset quantity );
 
