@@ -77,10 +77,11 @@ namespace eosio { namespace testing {
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
+         static const fc::microseconds abi_serializer_max_time;
 
          virtual ~base_tester() {};
 
-         void              init(bool push_genesis = true);
+         void              init(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config);
 
          void              close();
@@ -201,7 +202,7 @@ namespace eosio { namespace testing {
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
-         vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
+         vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) const;
 
          map<account_name, block_id_type> get_last_produced_block_map()const { return last_produced_block; };
          void set_last_produced_block_map( const map<account_name, block_id_type>& lpb ) { last_produced_block = lpb; }
@@ -228,7 +229,7 @@ namespace eosio { namespace testing {
                   const auto& accnt = control->db().get<account_object, by_name>( name );
                   abi_def abi;
                   if( abi_serializer::to_abi( accnt.abi, abi )) {
-                     return abi_serializer( abi );
+                     return abi_serializer( abi, abi_serializer_max_time );
                   }
                   return optional<abi_serializer>();
                } FC_RETHROW_EXCEPTIONS( error, "Failed to find or parse ABI for ${name}", ("name", name))
@@ -281,11 +282,8 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(bool push_genesis) {
-         init(push_genesis);
-      }
-      tester() {
-         init(true);
+      tester(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
+         init(push_genesis, read_mode);
       }
 
       tester(controller::config config) {
@@ -321,7 +319,9 @@ namespace eosio { namespace testing {
          vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
          vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
          vcfg.state_size = 1024*1024*8;
+         vcfg.state_guard_size = 0;
          vcfg.reversible_cache_size = 1024*1024*8;
+         vcfg.reversible_guard_size = 0;
          vcfg.contracts_console = false;
 
          vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");

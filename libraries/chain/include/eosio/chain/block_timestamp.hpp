@@ -6,6 +6,7 @@
 #include <fc/variant.hpp>
 #include <fc/string.hpp>
 #include <fc/optional.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace eosio { namespace chain {
 
@@ -31,7 +32,7 @@ namespace eosio { namespace chain {
          static block_timestamp min() { return block_timestamp(0); }
 
          block_timestamp next() const {
-            FC_ASSERT( std::numeric_limits<uint32_t>::max() - slot >= 1, "block timestamp overflow" );
+            EOS_ASSERT( std::numeric_limits<uint32_t>::max() - slot >= 1, fc::overflow_exception, "block timestamp overflow" );
             auto result = block_timestamp(*this);
             result.slot += 1;
             return result;

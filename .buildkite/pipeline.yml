@@ -91,12 +91,12 @@ steps:
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest --output-on-failure
+        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -LE long_running_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -111,12 +111,12 @@ steps:
     
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest --output-on-failure
+        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -135,12 +135,12 @@ steps:
   
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest --output-on-failure
+        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -159,12 +159,12 @@ steps:
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest --output-on-failure
+        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -183,12 +183,12 @@ steps:
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest --output-on-failure
+        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -207,12 +207,12 @@ steps:
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: Build" &&
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest --output-on-failure
+        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
     retry:
       automatic:
         limit: 1

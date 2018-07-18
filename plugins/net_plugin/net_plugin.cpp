@@ -878,7 +878,7 @@ namespace eosio {
 
    void connection::blk_send_branch() {
       controller &cc = my_impl->chain_plug->chain();
-      uint32_t head_num = cc.head_block_num ();
+      uint32_t head_num = cc.fork_db_head_block_num ();
       notice_message note;
       note.known_blocks.mode = normal;
       note.known_blocks.pending = 0;
@@ -893,7 +893,7 @@ namespace eosio {
       try {
          lib_num = cc.last_irreversible_block_num();
          lib_id = cc.last_irreversible_block_id();
-         head_id = cc.head_block_id();
+         head_id = cc.fork_db_head_block_id();
       }
       catch (const assert_exception &ex) {
          elog( "unable to retrieve block info: ${n} for ${p}",("n",ex.to_string())("p",peer_name()));
@@ -946,16 +946,8 @@ namespace eosio {
          try {
             signed_block_ptr b = cc.fetch_block_by_id(blkid);
             if(b) {
-               uint32_t bnum = b->block_num();
-               bool send_whole = bnum <= cc.last_irreversible_block_num();
-               fc_dlog(logger,"found block for id at num ${n}",("n",bnum));
-               if (send_whole) {
-                  enqueue(net_message(*b));
-               }
-               else {
-                  //signed_block_summary &sbs = *b;
-                  enqueue(net_message(*b));
-               }
+               fc_dlog(logger,"found block for id at num ${n}",("n",b->block_num()));
+               enqueue(net_message(*b));
             }
             else {
                ilog("fetch block by id returned null, id ${id} on block ${c} of ${s} for ${p}",
@@ -1315,7 +1307,7 @@ namespace eosio {
          bool fhset = c->fork_head != block_id_type();
          fc_dlog(logger, "fork_head_num = ${fn} fork_head set = ${s}",
                  ("fn", c->fork_head_num)("s", fhset));
-            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().head_block_num();
+            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().fork_db_head_block_num();
       }
       return state != in_sync;
    }
@@ -1336,14 +1328,14 @@ namespace eosio {
 
    bool sync_manager::sync_required( ) {
       fc_dlog(logger, "last req = ${req}, last recv = ${recv} known = ${known} our head = ${head}",
-              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).head_block_num( )));
+              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).fork_db_head_block_num( )));
 
       return( sync_last_requested_num < sync_known_lib_num ||
-              chain_plug->chain( ).head_block_num( ) < sync_last_requested_num );
+              chain_plug->chain( ).fork_db_head_block_num( ) < sync_last_requested_num );
    }
 
    void sync_manager::request_next_chunk( connection_ptr conn ) {
-      uint32_t head_block = chain_plug->chain().head_block_num();
+      uint32_t head_block = chain_plug->chain().fork_db_head_block_num();
 
       if (head_block < sync_last_requested_num && source && source->current()) {
          fc_ilog (logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
@@ -1444,7 +1436,7 @@ namespace eosio {
 
       if (!sync_required()) {
          uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
-         uint32_t hnum = chain_plug->chain().head_block_num();
+         uint32_t hnum = chain_plug->chain().fork_db_head_block_num();
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b",bnum)("h",hnum)("t",target));
          return;
@@ -1491,8 +1483,8 @@ namespace eosio {
       //
       //-----------------------------
 
-      uint32_t head = cc.head_block_num( );
-      block_id_type head_id = cc.head_block_id();
+      uint32_t head = cc.fork_db_head_block_num( );
+      block_id_type head_id = cc.fork_db_head_block_id();
       if (head_id == msg.head_id) {
          fc_dlog(logger, "sync check state 0");
          // notify peer of our pending transactions
@@ -2144,7 +2136,7 @@ namespace eosio {
                         elog("async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
                              ("bt",bytes_transferred)("btw",conn->pending_message_buffer.bytes_to_write()));
                      }
-                     FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
+                     EOS_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
                      conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
                      while (conn->pending_message_buffer.bytes_to_read() > 0) {
                         uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
@@ -2543,9 +2535,10 @@ namespace eosio {
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
             auto e_ptr = result.get<fc::exception_ptr>();
-            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value) {
                elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
                peer_elog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
+            }
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
@@ -2878,7 +2871,7 @@ namespace eosio {
       controller& cc = my_impl->chain_plug->chain();
       hello.head_id = fc::sha256();
       hello.last_irreversible_block_id = fc::sha256();
-      hello.head_num = cc.head_block_num();
+      hello.head_num = cc.fork_db_head_block_num();
       hello.last_irreversible_block_num = cc.last_irreversible_block_num();
       if( hello.last_irreversible_block_num ) {
          try {
@@ -2946,105 +2939,105 @@ namespace eosio {
 
    void net_plugin::plugin_initialize( const variables_map& options ) {
       ilog("Initialize net plugin");
-      peer_log_format = options.at("peer-log-format").as<string>();
+      try {
+         peer_log_format = options.at( "peer-log-format" ).as<string>();
 
-      my->network_version_match = options.at("network-version-match").as<bool>();
+         my->network_version_match = options.at( "network-version-match" ).as<bool>();
 
-      my->sync_master.reset( new sync_manager(options.at("sync-fetch-span").as<uint32_t>() ) );
-      my->dispatcher.reset( new dispatch_manager );
+         my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
+         my->dispatcher.reset( new dispatch_manager );
 
-      my->connector_period = std::chrono::seconds(options.at("connection-cleanup-period").as<int>());
-      my->txn_exp_period = def_txn_expire_wait;
-      my->resp_expected_period = def_resp_expected_wait;
-      my->dispatcher->just_send_it_max = options.at("max-implicit-request").as<uint32_t>();
-      my->max_client_count = options.at("max-clients").as<int>();
-      my->max_nodes_per_host = options.at("p2p-max-nodes-per-host").as<int>();
-      my->num_clients = 0;
-      my->started_sessions = 0;
+         my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
+         my->txn_exp_period = def_txn_expire_wait;
+         my->resp_expected_period = def_resp_expected_wait;
+         my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
+         my->max_client_count = options.at( "max-clients" ).as<int>();
+         my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
+         my->num_clients = 0;
+         my->started_sessions = 0;
 
-      my->use_socket_read_watermark = options.at("use-socket-read-watermark").as<bool>();
+         my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
 
-      my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
-      if(options.count("p2p-listen-endpoint")) {
-         my->p2p_address = options.at("p2p-listen-endpoint").as< string >();
-         auto host = my->p2p_address.substr( 0, my->p2p_address.find(':') );
-         auto port = my->p2p_address.substr( host.size()+1, my->p2p_address.size() );
-         idump((host)(port));
-         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-         // Note: need to add support for IPv6 too?
+         my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+         if( options.count( "p2p-listen-endpoint" )) {
+            my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
+            auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
+            auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
+            idump((host)( port ));
+            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+            // Note: need to add support for IPv6 too?
 
-         my->listen_endpoint = *my->resolver->resolve( query);
+            my->listen_endpoint = *my->resolver->resolve( query );
 
-         my->acceptor.reset( new tcp::acceptor( app().get_io_service() ) );
-      }
-      if(options.count("p2p-server-address")) {
-         my->p2p_address = options.at("p2p-server-address").as< string >();
-      }
-      else {
-         if(my->listen_endpoint.address().to_v4() == address_v4::any()) {
-            boost::system::error_code ec;
-            auto host = host_name(ec);
-            if( ec.value() != boost::system::errc::success) {
-
-               FC_THROW_EXCEPTION( fc::invalid_arg_exception,
-                                   "Unable to retrieve host_name. ${msg}",( "msg",ec.message()));
-
-            }
-            auto port = my->p2p_address.substr( my->p2p_address.find(':'), my->p2p_address.size());
-            my->p2p_address = host + port;
+            my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
          }
-      }
+         if( options.count( "p2p-server-address" )) {
+            my->p2p_address = options.at( "p2p-server-address" ).as<string>();
+         } else {
+            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+               boost::system::error_code ec;
+               auto host = host_name( ec );
+               if( ec.value() != boost::system::errc::success ) {
 
-      if(options.count("p2p-peer-address")) {
-         my->supplied_peers = options.at("p2p-peer-address").as<vector<string> >();
-      }
-      if(options.count("agent-name")) {
-         my->user_agent_name = options.at("agent-name").as<string>();
-      }
+                  FC_THROW_EXCEPTION( fc::invalid_arg_exception,
+                                      "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
 
-      if(options.count("allowed-connection")) {
-         const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
-         for(const std::string& allowed_remote : allowed_remotes)
-            {
-               if(allowed_remote == "any")
+               }
+               auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
+               my->p2p_address = host + port;
+            }
+         }
+
+         if( options.count( "p2p-peer-address" )) {
+            my->supplied_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
+         }
+         if( options.count( "agent-name" )) {
+            my->user_agent_name = options.at( "agent-name" ).as<string>();
+         }
+
+         if( options.count( "allowed-connection" )) {
+            const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
+            for( const std::string& allowed_remote : allowed_remotes ) {
+               if( allowed_remote == "any" )
                   my->allowed_connections |= net_plugin_impl::Any;
-               else if(allowed_remote == "producers")
+               else if( allowed_remote == "producers" )
                   my->allowed_connections |= net_plugin_impl::Producers;
-               else if(allowed_remote == "specified")
+               else if( allowed_remote == "specified" )
                   my->allowed_connections |= net_plugin_impl::Specified;
-               else if(allowed_remote == "none")
+               else if( allowed_remote == "none" )
                   my->allowed_connections = net_plugin_impl::None;
             }
-      }
-
-      if(my->allowed_connections & net_plugin_impl::Specified)
-         FC_ASSERT(options.count("peer-key"), "At least one peer-key must accompany 'allowed-connection=specified'");
-
-      if(options.count("peer-key")) {
-         const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
-         for(const std::string& key_string : key_strings)
-            {
-               my->allowed_peers.push_back(dejsonify<chain::public_key_type>(key_string));
-            }
-      }
-
-      if(options.count("peer-private-key"))
-         {
-            const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
-            for(const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
-               {
-                  auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
-                  my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key(key_id_to_wif_pair.second);
-               }
          }
 
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
-      fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
-      ilog("my node_id is ${id}",("id",my->node_id));
+         if( my->allowed_connections & net_plugin_impl::Specified )
+            EOS_ASSERT( options.count( "peer-key" ),
+                        plugin_config_exception,
+                       "At least one peer-key must accompany 'allowed-connection=specified'" );
 
-      my->keepalive_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
-      my->ticker();
+         if( options.count( "peer-key" )) {
+            const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
+            for( const std::string& key_string : key_strings ) {
+               my->allowed_peers.push_back( dejsonify<chain::public_key_type>( key_string ));
+            }
+         }
+
+         if( options.count( "peer-private-key" )) {
+            const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+            for( const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings ) {
+               auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(
+                     key_id_to_wif_pair_string );
+               my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key( key_id_to_wif_pair.second );
+            }
+         }
+
+         my->chain_plug = app().find_plugin<chain_plugin>();
+         my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
+         fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
+         ilog( "my node_id is ${id}", ("id", my->node_id));
+
+         my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
+         my->ticker();
+      } FC_LOG_AND_RETHROW()
    }
 
    void net_plugin::plugin_startup() {

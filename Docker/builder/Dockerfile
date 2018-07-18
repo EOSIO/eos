@@ -34,11 +34,14 @@ RUN wget https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.
        --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=clang link=static install \
     && cd .. && rm -rf boost_1_67_0
 
-RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
-    && cd mongo-c-driver-1.9.3 \
-    && ./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local \
-    && make -j$(nproc) install \
-    && cd .. && rm -rf mongo-c-driver-1.9.3
+RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/mongo-c-driver-1.10.2.tar.gz -O - | tar -xz \
+    && cd mongo-c-driver-1.10.2 \
+    && mkdir cmake-build && cd cmake-build \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON \
+		-DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd ../../ && rm -rf mongo-c-driver-1.10.2
 
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git \
     && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git llvm/tools/clang \
@@ -60,11 +63,12 @@ RUN git clone --depth 1 https://github.com/cryptonomex/secp256k1-zkp \
     && make -j$(nproc) install \
     && cd .. && rm -rf secp256k1-zkp
 
-RUN git clone --depth 1 -b releases/stable https://github.com/mongodb/mongo-cxx-driver \
-    && cd mongo-cxx-driver \
-    && cmake -H. -Bbuild -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
-    && cmake --build build --target install \
-    && cd .. && rm -rf mongo-cxx-driver
+RUN git clone --depth 1 -b releases/v3.3 https://github.com/mongodb/mongo-cxx-driver \
+    && cd mongo-cxx-driver/build \
+    && cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd ../../ && rm -rf mongo-cxx-driver
 
 RUN git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git \
     && cd berkeley-softfloat-3/build/Linux-x86_64-GCC \

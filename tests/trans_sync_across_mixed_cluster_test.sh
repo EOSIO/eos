@@ -157,13 +157,13 @@ PASSWORD_INITA="$(echo "$PASSWORD_INITA" | awk '/PW/ {print $1}')"
 # remove leading/trailing quotes
 PASSWORD_INITA=${PASSWORD_INITA#\"}
 PASSWORD_INITA=${PASSWORD_INITA%\"}
-programs/cleos/cleos wallet import --name inita $INITA_PRV_KEY
+programs/cleos/cleos wallet import --name inita --private-key $INITA_PRV_KEY
 verifyErrorCode "cleos wallet import"
-programs/cleos/cleos wallet import --name inita $PRV_KEY1
+programs/cleos/cleos wallet import --name inita --private-key $PRV_KEY1
 verifyErrorCode "cleos wallet import"
-programs/cleos/cleos wallet import --name inita $PRV_KEY2
+programs/cleos/cleos wallet import --name inita --private-key $PRV_KEY2
 verifyErrorCode "cleos wallet import"
-programs/cleos/cleos wallet import --name inita $PRV_KEY3
+programs/cleos/cleos wallet import --name inita --private-key $PRV_KEY3
 verifyErrorCode "cleos wallet import"
 
 #

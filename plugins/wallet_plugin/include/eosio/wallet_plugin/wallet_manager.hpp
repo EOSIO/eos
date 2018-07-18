@@ -19,7 +19,7 @@ namespace wallet {
 /// No const methods because timeout may cause lock_all() to be called.
 class wallet_manager {
 public:
-   wallet_manager() = default;
+   wallet_manager();
    wallet_manager(const wallet_manager&) = delete;
    wallet_manager(wallet_manager&&) = delete;
    wallet_manager& operator=(const wallet_manager&) = delete;
@@ -120,6 +120,9 @@ public:
    /// @throws fc::exception if wallet not found or locked, or if the wallet cannot create said type of key
    /// @return The public key of the created key
    string create_key(const std::string& name, const std::string& key_type);
+
+   /// Takes ownership of a wallet to use
+   void own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet);
 
 private:
    /// Verify timeout has not occurred and reset timeout if not.

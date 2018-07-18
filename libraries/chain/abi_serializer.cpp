@@ -8,6 +8,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/asset.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/varint.hpp>
@@ -17,7 +18,6 @@ using namespace boost;
 namespace eosio { namespace chain {
 
    const size_t abi_serializer::max_recursion_depth;
-   fc::microseconds abi_serializer::max_serialization_time = fc::microseconds(15*1000); // 15 ms
 
    using boost::algorithm::ends_with;
    using std::string;
@@ -50,9 +50,9 @@ namespace eosio { namespace chain {
       );
    }
 
-   abi_serializer::abi_serializer( const abi_def& abi ) {
+   abi_serializer::abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time ) {
       configure_built_in_types();
-      set_abi(abi);
+      set_abi(abi, max_serialization_time);
    }
 
    void abi_serializer::configure_built_in_types() {
@@ -98,7 +98,8 @@ namespace eosio { namespace chain {
       built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
    }
 
-   void abi_serializer::set_abi(const abi_def& abi) {
+   void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {
+      const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
       typedefs.clear();
       structs.clear();
       actions.clear();
@@ -109,8 +110,8 @@ namespace eosio { namespace chain {
          structs[st.name] = st;
 
       for( const auto& td : abi.types ) {
-         FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
-         FC_ASSERT(!is_type(td.new_type_name), "type already exists", ("new_type_name",td.new_type_name));
+         EOS_ASSERT(_is_type(td.type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "invalid type", ("type",td.type));
+         EOS_ASSERT(!_is_type(td.new_type_name, 0, deadline, max_serialization_time), duplicate_abi_type_def_exception, "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
 
@@ -127,13 +128,13 @@ namespace eosio { namespace chain {
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
        */
-      FC_ASSERT( typedefs.size() == abi.types.size() );
-      FC_ASSERT( structs.size() == abi.structs.size() );
-      FC_ASSERT( actions.size() == abi.actions.size() );
-      FC_ASSERT( tables.size() == abi.tables.size() );
-      FC_ASSERT( error_messages.size() == abi.error_messages.size() );
+      EOS_ASSERT( typedefs.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected" );
+      EOS_ASSERT( structs.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected" );
+      EOS_ASSERT( actions.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected" );
+      EOS_ASSERT( tables.size() == abi.tables.size(), duplicate_abi_table_def_exception, "duplicate table definition detected" );
+      EOS_ASSERT( error_messages.size() == abi.error_messages.size(), duplicate_abi_err_msg_def_exception, "duplicate error message definition detected" );
 
-      validate();
+      validate(deadline, max_serialization_time);
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
@@ -147,7 +148,7 @@ namespace eosio { namespace chain {
 
    int abi_serializer::get_integer_size(const type_name& type) const {
       string stype = type;
-      FC_ASSERT( is_integer(type), "${stype} is not an integer type", ("stype",stype));
+      EOS_ASSERT( is_integer(type), invalid_type_inside_abi, "${stype} is not an integer type", ("stype",stype));
       if( boost::starts_with(stype, "uint") ) {
          return boost::lexical_cast<int>(stype.substr(4));
       } else {
@@ -177,62 +178,61 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth, const fc::time_point& deadline)const {
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+   bool abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const {
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       if( ++recursion_depth > max_recursion_depth) return false;
       auto type = fundamental_type(rtype);
       if( built_in_types.find(type) != built_in_types.end() ) return true;
-      if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth, deadline);
+      if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth, deadline, max_serialization_time);
       if( structs.find(type) != structs.end() ) return true;
       return false;
    }
 
    const struct_def& abi_serializer::get_struct(const type_name& type)const {
       auto itr = structs.find(resolve_type(type) );
-      FC_ASSERT( itr != structs.end(), "Unknown struct ${type}", ("type",type) );
+      EOS_ASSERT( itr != structs.end(), invalid_type_inside_abi, "Unknown struct ${type}", ("type",type) );
       return itr->second;
    }
 
-   void abi_serializer::validate()const {
-      const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
+   void abi_serializer::validate(const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const {
       for( const auto& t : typedefs ) { try {
          vector<type_name> types_seen{t.first, t.second};
          auto itr = typedefs.find(t.second);
          while( itr != typedefs.end() ) {
-            FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-            FC_ASSERT( find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), "Circular reference in type ${type}", ("type",t.first) );
+            EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+            EOS_ASSERT( find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), abi_circular_def_exception, "Circular reference in type ${type}", ("type",t.first) );
             types_seen.emplace_back(itr->second);
             itr = typedefs.find(itr->second);
          }
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& t : typedefs ) { try {
-         FC_ASSERT(is_type(t.second), "", ("type",t.second) );
+         EOS_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
          if( s.second.base != type_name() ) {
             struct_def current = s.second;
             vector<type_name> types_seen{current.name};
             while( current.base != type_name() ) {
-               FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+               EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
                const auto& base = get_struct(current.base); //<-- force struct to inherit from another struct
-               FC_ASSERT( find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), "Circular reference in struct ${type}", ("type",s.second.name) );
+               EOS_ASSERT( find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), abi_circular_def_exception, "Circular reference in struct ${type}", ("type",s.second.name) );
                types_seen.emplace_back(base.name);
                current = base;
             }
          }
          for( const auto& field : s.second.fields ) { try {
-            FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-            FC_ASSERT(is_type(field.type) );
+            EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+            EOS_ASSERT(_is_type(field.type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",field.type) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
-        FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        FC_ASSERT(is_type(a.second), "", ("type",a.second) );
+        EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+        EOS_ASSERT(_is_type(a.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
 
       for( const auto& t : tables ) { try {
-        FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        FC_ASSERT(is_type(t.second), "", ("type",t.second) );
+        EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+        EOS_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
@@ -250,24 +250,24 @@ namespace eosio { namespace chain {
 
    void abi_serializer::_binary_to_variant( const type_name& type, fc::datastream<const char *>& stream,
                                             fc::mutable_variant_object& obj, size_t recursion_depth,
-                                            const fc::time_point& deadline )const
+                                            const fc::time_point& deadline, const fc::microseconds& max_serialization_time )const
    {
-      FC_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       const auto& st = get_struct(type);
       if( st.base != type_name() ) {
-         _binary_to_variant(resolve_type(st.base), stream, obj, recursion_depth, deadline);
+         _binary_to_variant(resolve_type(st.base), stream, obj, recursion_depth, deadline, max_serialization_time);
       }
       for( const auto& field : st.fields ) {
-         obj( field.name, _binary_to_variant(resolve_type(field.type), stream, recursion_depth, deadline) );
+         obj( field.name, _binary_to_variant(resolve_type(field.type), stream, recursion_depth, deadline, max_serialization_time) );
       }
    }
 
    fc::variant abi_serializer::_binary_to_variant( const type_name& type, fc::datastream<const char *>& stream,
-                                                   size_t recursion_depth, const fc::time_point& deadline )const
+                                                   size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )const
    {
-      FC_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       type_name rtype = resolve_type(type);
       auto ftype = fundamental_type(rtype);
       auto btype = built_in_types.find(ftype );
@@ -279,40 +279,41 @@ namespace eosio { namespace chain {
         fc::raw::unpack(stream, size);
         vector<fc::variant> vars;
         for( decltype(size.value) i = 0; i < size; ++i ) {
-           auto v = _binary_to_variant(ftype, stream, recursion_depth, deadline);
-           FC_ASSERT( !v.is_null(), "Invalid packed array" );
+           auto v = _binary_to_variant(ftype, stream, recursion_depth, deadline, max_serialization_time);
+           EOS_ASSERT( !v.is_null(), unpack_exception, "Invalid packed array" );
            vars.emplace_back(std::move(v));
         }
-        FC_ASSERT( vars.size() == size.value,
-                   "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
-                   ("p", size)("a", vars.size()) );
+        EOS_ASSERT( vars.size() == size.value,
+                    unpack_exception, 
+                    "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
+                    ("p", size)("a", vars.size()) );
         return fc::variant( std::move(vars) );
       } else if ( is_optional(rtype) ) {
         char flag;
         fc::raw::unpack(stream, flag);
-        return flag ? _binary_to_variant(ftype, stream, recursion_depth, deadline) : fc::variant();
+        return flag ? _binary_to_variant(ftype, stream, recursion_depth, deadline, max_serialization_time) : fc::variant();
       }
 
       fc::mutable_variant_object mvo;
-      _binary_to_variant(rtype, stream, mvo, recursion_depth, deadline);
-      FC_ASSERT( mvo.size() > 0, "Unable to unpack stream ${type}", ("type", type) );
+      _binary_to_variant(rtype, stream, mvo, recursion_depth, deadline, max_serialization_time);
+      EOS_ASSERT( mvo.size() > 0, unpack_exception, "Unable to unpack stream ${type}", ("type", type) );
       return fc::variant( std::move(mvo) );
    }
 
    fc::variant abi_serializer::_binary_to_variant( const type_name& type, const bytes& binary,
-                                                   size_t recursion_depth, const fc::time_point& deadline )const
+                                                   size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )const
    {
-      FC_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       fc::datastream<const char*> ds( binary.data(), binary.size() );
-      return _binary_to_variant(type, ds, recursion_depth, deadline);
+      return _binary_to_variant(type, ds, recursion_depth, deadline, max_serialization_time);
    }
 
    void abi_serializer::_variant_to_binary( const type_name& type, const fc::variant& var, fc::datastream<char *>& ds,
-                                            size_t recursion_depth, const fc::time_point& deadline )const
+                                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )const
    { try {
-      FC_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       auto rtype = resolve_type(type);
 
       auto btype = built_in_types.find(fundamental_type(rtype));
@@ -322,7 +323,7 @@ namespace eosio { namespace chain {
          vector<fc::variant> vars = var.get_array();
          fc::raw::pack(ds, (fc::unsigned_int)vars.size());
          for (const auto& var : vars) {
-           _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth, deadline);
+           _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth, deadline, max_serialization_time);
          }
       } else {
          const auto& st = get_struct(rtype);
@@ -331,33 +332,28 @@ namespace eosio { namespace chain {
             const auto& vo = var.get_object();
 
             if( st.base != type_name() ) {
-               _variant_to_binary(resolve_type(st.base), var, ds, recursion_depth, deadline);
+               _variant_to_binary(resolve_type(st.base), var, ds, recursion_depth, deadline, max_serialization_time);
             }
             for( const auto& field : st.fields ) {
                if( vo.contains( string(field.name).c_str() ) ) {
-                  _variant_to_binary(field.type, vo[field.name], ds, recursion_depth, deadline);
+                  _variant_to_binary(field.type, vo[field.name], ds, recursion_depth, deadline, max_serialization_time);
                }
                else {
-                  _variant_to_binary(field.type, fc::variant(), ds, recursion_depth, deadline);
+                  _variant_to_binary(field.type, fc::variant(), ds, recursion_depth, deadline, max_serialization_time);
                   /// TODO: default construct field and write it out
-                  FC_THROW( "Missing '${f}' in variant object", ("f",field.name) );
+                  EOS_THROW( pack_exception, "Missing '${f}' in variant object", ("f",field.name) );
                }
             }
          } else if( var.is_array() ) {
             const auto& va = var.get_array();
-
-            FC_ASSERT( st.base == type_name(), "support for base class as array not yet implemented" );
-            /*if( st.base != type_name() ) {
-               _variant_to_binary(resolve_type(st.base), var, ds, recursive_depth);
-            }
-            */
+            EOS_ASSERT( st.base == type_name(), invalid_type_inside_abi, "support for base class as array not yet implemented" );
             uint32_t i = 0;
             if (va.size() > 0) {
                for( const auto& field : st.fields ) {
                   if( va.size() > i )
-                     _variant_to_binary(field.type, va[i], ds, recursion_depth, deadline);
+                     _variant_to_binary(field.type, va[i], ds, recursion_depth, deadline, max_serialization_time);
                   else
-                     _variant_to_binary(field.type, fc::variant(), ds, recursion_depth, deadline);
+                     _variant_to_binary(field.type, fc::variant(), ds, recursion_depth, deadline, max_serialization_time);
                   ++i;
                }
             }
@@ -366,17 +362,17 @@ namespace eosio { namespace chain {
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
    bytes abi_serializer::_variant_to_binary( const type_name& type, const fc::variant& var,
-                                             size_t recursion_depth, const fc::time_point& deadline )const
+                                             size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )const
    { try {
-      FC_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
-      FC_ASSERT( fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-      if( !is_type(type) ) {
+      EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
+      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      if( !_is_type(type, recursion_depth, deadline, max_serialization_time) ) {
          return var.as<bytes>();
       }
 
       bytes temp( 1024*1024 );
       fc::datastream<char*> ds(temp.data(), temp.size() );
-      _variant_to_binary(type, var, ds, recursion_depth, deadline);
+      _variant_to_binary(type, var, ds, recursion_depth, deadline, max_serialization_time);
       temp.resize(ds.tellp());
       return temp;
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
