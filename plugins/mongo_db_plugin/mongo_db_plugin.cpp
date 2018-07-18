@@ -78,6 +78,7 @@ public:
 
    void purge_abi_cache();
 
+   void add_data(bsoncxx::builder::basic::document& act_doc, const chain::action& act);
    void update_account(const chain::action& act);
 
    void init();
@@ -318,23 +319,23 @@ void mongo_db_plugin_impl::consume_blocks() {
 
 namespace {
 
-   auto find_account(mongocxx::collection& accounts, const account_name& name) {
-      using bsoncxx::builder::basic::make_document;
-      using bsoncxx::builder::basic::kvp;
-      return accounts.find_one( make_document( kvp( "name", name.to_string())));
-   }
+auto find_account( mongocxx::collection& accounts, const account_name& name ) {
+   using bsoncxx::builder::basic::make_document;
+   using bsoncxx::builder::basic::kvp;
+   return accounts.find_one( make_document( kvp( "name", name.to_string())));
+}
 
-   auto find_transaction(mongocxx::collection& trans, const string& id) {
-      using bsoncxx::builder::basic::make_document;
-      using bsoncxx::builder::basic::kvp;
-      return trans.find_one( make_document( kvp( "trx_id", id )));
-   }
+auto find_transaction( mongocxx::collection& trans, const string& id ) {
+   using bsoncxx::builder::basic::make_document;
+   using bsoncxx::builder::basic::kvp;
+   return trans.find_one( make_document( kvp( "trx_id", id )));
+}
 
-   auto find_block(mongocxx::collection& blocks, const string& id) {
-      using bsoncxx::builder::basic::make_document;
-      using bsoncxx::builder::basic::kvp;
-      return blocks.find_one( make_document( kvp( "block_id", id )));
-   }
+auto find_block( mongocxx::collection& blocks, const string& id ) {
+   using bsoncxx::builder::basic::make_document;
+   using bsoncxx::builder::basic::kvp;
+   return blocks.find_one( make_document( kvp( "block_id", id )));
+}
 
 void handle_mongo_exception( const std::string& desc, int line_num ) {
    bool shutdown = true;
@@ -376,71 +377,6 @@ void handle_mongo_exception( const std::string& desc, int line_num ) {
       // shutdown if mongo failed to provide opportunity to fix issue and restart
       app().quit();
    }
-}
-
-void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act, const fc::microseconds& abi_serializer_max_time ) {
-   using bsoncxx::builder::basic::kvp;
-   using bsoncxx::builder::basic::make_document;
-   try {
-      if( act.account == chain::config::system_account_name ) {
-         if( act.name == mongo_db_plugin_impl::setabi ) {
-            auto setabi = act.data_as<chain::setabi>();
-            try {
-               const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
-               const string json_str = fc::json::to_string( abi_def );
-
-               act_doc.append(
-                     kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
-                                                 kvp( "abi_def", bsoncxx::from_json( json_str )))));
-               return;
-            } catch( bsoncxx::exception& ) {
-               // better error handling below
-            } catch( fc::exception& e ) {
-               ilog( "Unable to convert action abi_def to json for ${n}", ("n", setabi.account.to_string()));
-            }
-         }
-      }
-      auto account = find_account( accounts, act.account );
-      if( account ) {
-         auto from_account = *account;
-         abi_def abi;
-         if( from_account.view().find( "abi" ) != from_account.view().end()) {
-            try {
-               abi = fc::json::from_string( bsoncxx::to_json( from_account.view()["abi"].get_document())).as<abi_def>();
-            } catch( ... ) {
-               ilog( "Unable to convert account abi to abi_def for ${s}::${n}", ("s", act.account)( "n", act.name ));
-            }
-         }
-         string json;
-         try {
-            abi_serializer abis;
-            abis.set_abi( abi, abi_serializer_max_time );
-            auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data, abi_serializer_max_time );
-            json = fc::json::to_string( v );
-
-            const auto& value = bsoncxx::from_json( json );
-            act_doc.append( kvp( "data", value ));
-            return;
-         } catch( bsoncxx::exception& e ) {
-            ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
-            ilog( "  EOS JSON: ${j}", ("j", json));
-            ilog( "  Storing data has hex." );
-         }
-      }
-   } catch( std::exception& e ) {
-      ilog( "Unable to convert action.data to ABI: ${s}::${n}, std what: ${e}",
-            ("s", act.account)( "n", act.name )( "e", e.what()));
-   } catch (fc::exception& e) {
-      if (act.name != "onblock") { // eosio::onblock not in original eosio.system abi
-         ilog( "Unable to convert action.data to ABI: ${s}::${n}, fc exception: ${e}",
-               ("s", act.account)( "n", act.name )( "e", e.to_detail_string()));
-      }
-   } catch( ... ) {
-      ilog( "Unable to convert action.data to ABI: ${s}::${n}, unknown exception",
-            ("s", act.account)( "n", act.name ));
-   }
-   // if anything went wrong just store raw hex_data
-   act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
 }
 
 } // anonymous namespace
@@ -615,7 +551,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
       }
       if( start_block_reached ) {
-         add_data( act_doc, accounts, act, abi_serializer_max_time );
+         add_data( act_doc, act );
          act_array.append( act_doc );
          mongocxx::model::insert_one insert_op{act_doc.view()};
          bulk_actions.append( insert_op );
@@ -958,6 +894,61 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          handle_mongo_exception("bulk transaction insert", __LINE__);
       }
    }
+}
+
+void mongo_db_plugin_impl::add_data( bsoncxx::builder::basic::document& act_doc, const chain::action& act )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+   try {
+      if( act.account == chain::config::system_account_name ) {
+         if( act.name == mongo_db_plugin_impl::setabi ) {
+            auto setabi = act.data_as<chain::setabi>();
+            try {
+               const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
+               const string json_str = fc::json::to_string( abi_def );
+
+               act_doc.append(
+                     kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
+                                                 kvp( "abi_def", bsoncxx::from_json( json_str )))));
+               return;
+            } catch( bsoncxx::exception& ) {
+               // better error handling below
+            } catch( fc::exception& e ) {
+               ilog( "Unable to convert action abi_def to json for ${n}", ("n", setabi.account.to_string()));
+            }
+         }
+      }
+      auto serializer = get_abi_serializer( act.account );
+      if( serializer.valid() ) {
+         string json;
+         try {
+            auto v = serializer->binary_to_variant( serializer->get_action_type( act.name ), act.data, abi_serializer_max_time );
+            json = fc::json::to_string( v );
+
+            const auto& value = bsoncxx::from_json( json );
+            act_doc.append( kvp( "data", value ));
+            return;
+         } catch( bsoncxx::exception& e ) {
+            ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
+            ilog( "  EOS JSON: ${j}", ("j", json));
+            ilog( "  Storing data has hex." );
+         }
+      }
+   } catch( std::exception& e ) {
+      ilog( "Unable to convert action.data to ABI: ${s}::${n}, std what: ${e}",
+            ("s", act.account)( "n", act.name )( "e", e.what()));
+   } catch (fc::exception& e) {
+      if (act.name != "onblock") { // eosio::onblock not in original eosio.system abi
+         ilog( "Unable to convert action.data to ABI: ${s}::${n}, fc exception: ${e}",
+               ("s", act.account)( "n", act.name )( "e", e.to_detail_string()));
+      }
+   } catch( ... ) {
+      ilog( "Unable to convert action.data to ABI: ${s}::${n}, unknown exception",
+            ("s", act.account)( "n", act.name ));
+   }
+   // if anything went wrong just store raw hex_data
+   act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
 }
 
 void mongo_db_plugin_impl::update_account(const chain::action& act)
