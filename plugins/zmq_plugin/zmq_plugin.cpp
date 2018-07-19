@@ -20,7 +20,7 @@ namespace {
 namespace eosio {
   using namespace chain;
   using boost::signals2::scoped_connection;
-  
+
   static appbase::abstract_plugin& _zmq_plugin = app().register_plugin<zmq_plugin>();
 
   struct resource_balance {
@@ -30,12 +30,13 @@ namespace eosio {
     int64_t                    net_weight = 0;
     int64_t                    cpu_weight = 0;
   };
-  
+
   struct currency_balance {
     name                       account_name;
+    name                       issuer;
     asset                      balance;
   };
-  
+
   struct zmq_action_object {
     uint64_t                     global_action_seq;
     uint32_t                     block_num;
@@ -51,16 +52,17 @@ namespace eosio {
     zmq::socket_t sender_socket;
     chain_plugin*          chain_plug = nullptr;
     fc::microseconds       abi_serializer_max_time;
-    
+    std::map<name,int>     system_accounts;
+
     fc::optional<scoped_connection> applied_transaction_connection;
-    
+
     zmq_plugin_impl():
       context(1),
       sender_socket(context, ZMQ_PUSH)
     {
     }
-  
-    
+
+
     void on_applied_transaction( const transaction_trace_ptr& trace )
     {
       for( const auto& atrace : trace->action_traces )
@@ -68,28 +70,36 @@ namespace eosio {
           on_action_trace( atrace );
         }
     }
-    
+
     void on_action_trace( const action_trace& at )
     {
       auto& chain = chain_plug->chain();
-      
+
       zmq_action_object zao;
       zao.global_action_seq = at.receipt.global_sequence;
       zao.block_num = chain.pending_block_state()->block_num;
       zao.block_time = chain.pending_block_time();
       zao.action_trace = chain.to_variant_with_abi(at, abi_serializer_max_time);
 
-      add_acc_resources_and_systoken_bal(zao, at.act.account );
-      if( at.receipt.receiver != at.act.account ) {
-        add_acc_resources_and_systoken_bal(zao, at.receipt.receiver );
+      std::map<name,int> accounts;
+      std::map<name,int> token_contracts;
+
+      find_accounts_and_tokens(at, accounts, token_contracts);
+
+      for (auto it = accounts.begin(); it != accounts.end(); ++it) {
+        name account_name = it->first;
+        add_account_resource( zao, account_name );
+        for (auto it2 = token_contracts.begin(); it2 != token_contracts.end(); ++it2) {
+          add_currency_balances( zao, account_name, it2->first );
+        }
       }
-      
+
       string zao_json = fc::json::to_string(zao);
       //idump((zao_json));
 
       int32_t msgtype = 0;
       int32_t msgopts = 0;
-      
+
       zmq::message_t message(zao_json.length()+sizeof(msgtype)+sizeof(msgopts));
       unsigned char* ptr = (unsigned char*) message.data();
       memcpy(ptr, &msgtype, sizeof(msgtype));
@@ -100,20 +110,37 @@ namespace eosio {
       sender_socket.send(message);
     }
 
-    void add_acc_resources_and_systoken_bal(zmq_action_object& zao, name account_name )
+    void find_accounts_and_tokens(const action_trace& at,
+                                  std::map<name,int>& accounts,
+                                  std::map<name,int>& token_contracts)
     {
-      if( account_name == chain::config::system_account_name ) {
-        return;
-      }
-      
-      if( account_name == N(eosio.token) ) {
-        return;
+      if( is_account_of_interest(at.act.account) ) {
+        accounts.emplace(std::make_pair(at.act.account, 1));
       }
 
-      add_account_resource( zao, account_name );
-      add_currency_balances( zao, account_name, N(eosio.token) );
-    }          
-    
+      if( at.receipt.receiver != at.act.account &&
+          is_account_of_interest(at.receipt.receiver) ) {
+        accounts.emplace(std::make_pair(at.receipt.receiver, 1));
+      }
+
+      if( at.act.name == N(issue) || at.act.name == N(transfer) ) {
+        token_contracts.emplace(std::make_pair(at.act.account, 1));
+      }
+
+      for( const auto& iline : at.inline_traces ) {
+        find_accounts_and_tokens( iline, accounts, token_contracts );
+      }
+    }
+
+    bool is_account_of_interest(name account_name)
+    {
+      auto search = system_accounts.find(account_name);
+      if(search != system_accounts.end()) {
+        return false;
+      }
+      return true;
+    }
+
     void add_account_resource( zmq_action_object& zao, name account_name )
     {
       resource_balance bal;
@@ -127,9 +154,10 @@ namespace eosio {
       zao.resource_balances.emplace_back(bal);
     }
 
-    void add_currency_balances( zmq_action_object& zao, name account_name, name token_code )
+    void add_currency_balances( zmq_action_object& zao,
+                                name account_name, name token_code )
     {
-      auto& chain = chain_plug->chain();
+      const auto& chain = chain_plug->chain();
       const auto& db = chain.db();
 
       const auto* t_id = db.find<chain::table_id_object, chain::by_code_scope_table>
@@ -139,22 +167,22 @@ namespace eosio {
           decltype(t_id->id) next_tid(t_id->id._id + 1);
           auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
           auto upper = idx.lower_bound(boost::make_tuple(next_tid));
-          
+
           for (auto obj = lower; obj != upper; ++obj) {
             if( obj->value.size() >= sizeof(asset) ) {
               asset bal;
               fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
               fc::raw::unpack(ds, bal);
               if( bal.get_symbol().valid() ) {
-                zao.currency_balances.emplace_back(currency_balance{account_name, bal});
+                zao.currency_balances.emplace_back(currency_balance{account_name, token_code, bal});
               }
             }
           }
       }
     }
   };
-    
-  
+
+
   zmq_plugin::zmq_plugin():my(new zmq_plugin_impl()){}
   zmq_plugin::~zmq_plugin(){}
 
@@ -165,7 +193,7 @@ namespace eosio {
        "ZMQ Sender Socket binding")
       ;
   }
-  
+
   void zmq_plugin::plugin_initialize(const variables_map& options)
   {
     string bind_str = options.at(SENDER_BIND).as<string>();
@@ -179,7 +207,17 @@ namespace eosio {
 
     my->chain_plug = app().find_plugin<chain_plugin>();
     my->abi_serializer_max_time = my->chain_plug->get_abi_serializer_max_time();
-    
+
+    std::vector<eosio::name> sys_acc_names = {
+      chain::config::system_account_name,
+      N(eosio.msig),  N(eosio.token),  N(eosio.ram), N(eosio.ramfee),
+      N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving)
+    };
+
+    for(eosio::name n : sys_acc_names) {
+      my->system_accounts.emplace(std::make_pair(n, 1));
+    }
+
     auto& chain = my->chain_plug->chain();
 
     my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
@@ -188,7 +226,7 @@ namespace eosio {
   }
 
   void zmq_plugin::plugin_startup() {
-    
+
   }
 
   void zmq_plugin::plugin_shutdown() {
@@ -200,9 +238,9 @@ FC_REFLECT( eosio::resource_balance,
             (account_name)(ram_quota)(ram_usage)(net_weight)(cpu_weight) )
 
 FC_REFLECT( eosio::currency_balance,
-            (account_name)(balance))
-            
-FC_REFLECT( eosio::zmq_action_object, 
+            (account_name)(issuer)(balance))
+
+FC_REFLECT( eosio::zmq_action_object,
             (global_action_seq)(block_num)(block_time)(action_trace)
             (resource_balances)(currency_balances) )
 
