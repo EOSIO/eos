@@ -81,6 +81,14 @@ public:
    void add_data(bsoncxx::builder::basic::document& act_doc, const chain::action& act);
    void update_account(const chain::action& act);
 
+   void add_pub_keys( const vector<chain::key_weight>& keys, const account_name& name,
+                      const permission_name& permission, const std::chrono::milliseconds& now );
+   void remove_pub_keys( const account_name& name, const permission_name& permission );
+   void add_account_control( const vector<chain::permission_level_weight>& controlling_accounts,
+                             const account_name& name, const permission_name& permission,
+                             const std::chrono::milliseconds& now );
+   void remove_account_control( const account_name& name, const permission_name& permission );
+
    void init();
    void wipe_database();
 
@@ -130,8 +138,12 @@ public:
 
    abi_cache_index_t abi_cache_index;
 
-   static const account_name newaccount;
-   static const account_name setabi;
+   static const action_name newaccount;
+   static const action_name setabi;
+   static const action_name updateauth;
+   static const action_name deleteauth;
+   static const permission_name owner;
+   static const permission_name active;
 
    static const std::string block_states_col;
    static const std::string blocks_col;
@@ -139,10 +151,16 @@ public:
    static const std::string trans_traces_col;
    static const std::string actions_col;
    static const std::string accounts_col;
+   static const std::string pub_keys_col;
+   static const std::string account_controls_col;
 };
 
-const account_name mongo_db_plugin_impl::newaccount = "newaccount";
-const account_name mongo_db_plugin_impl::setabi = "setabi";
+const action_name mongo_db_plugin_impl::newaccount = N(newaccount);
+const action_name mongo_db_plugin_impl::setabi = N(setabi);
+const action_name mongo_db_plugin_impl::updateauth = N(updateauth);
+const action_name mongo_db_plugin_impl::deleteauth = N(deleteauth);
+const permission_name mongo_db_plugin_impl::owner = N(owner);
+const permission_name mongo_db_plugin_impl::active = N(active);
 
 const std::string mongo_db_plugin_impl::block_states_col = "block_states";
 const std::string mongo_db_plugin_impl::blocks_col = "blocks";
@@ -150,6 +168,8 @@ const std::string mongo_db_plugin_impl::trans_col = "transactions";
 const std::string mongo_db_plugin_impl::trans_traces_col = "transaction_traces";
 const std::string mongo_db_plugin_impl::actions_col = "actions";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
+const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
+const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
 
 namespace {
 
@@ -826,8 +846,8 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    using bsoncxx::builder::basic::make_document;
    using bsoncxx::builder::basic::kvp;
 
-   auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
-   auto trans = mongo_conn[db_name][trans_col]; // Transactions
+   auto blocks = mongo_conn[db_name][blocks_col];
+   auto trans = mongo_conn[db_name][trans_col];
 
    const auto block_id = bs->block->id();
    const auto block_id_str = block_id.str();
@@ -951,6 +971,118 @@ void mongo_db_plugin_impl::add_data( bsoncxx::builder::basic::document& act_doc,
    act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
 }
 
+
+void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, const account_name& name,
+                                         const permission_name& permission, const std::chrono::milliseconds& now )
+{
+   using bsoncxx::builder::basic::kvp;
+   using namespace bsoncxx::types;
+
+   if( keys.empty()) return;
+
+   auto pub_keys = mongo_conn[db_name][pub_keys_col];
+
+   mongocxx::bulk_write bulk_pub_keys = pub_keys.create_bulk_write();
+
+   for( const auto& pub_key_weight : keys ) {
+      auto doc = bsoncxx::builder::basic::document();
+
+      doc.append( kvp( "account", name.to_string()),
+                  kvp( "public_key", pub_key_weight.key.operator string()),
+                  kvp( "permission", permission.to_string()),
+                  kvp( "createdAt", b_date{now} ));
+
+      mongocxx::model::insert_one insert_op{doc.view()};
+      bulk_pub_keys.append( insert_op );
+   }
+
+   try {
+      if( !bulk_pub_keys.execute()) {
+         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+                     "Bulk pub_keys insert failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "pub_keys insert", __LINE__ );
+   }
+}
+
+void mongo_db_plugin_impl::remove_pub_keys( const account_name& name, const permission_name& permission )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   auto pub_keys = mongo_conn[db_name][pub_keys_col];
+
+   try {
+      auto result = pub_keys.delete_many( make_document( kvp( "account", name.to_string()),
+                                                         kvp( "permission", permission.to_string())));
+      if( !result ) {
+         EOS_ASSERT( false, chain::mongo_db_update_fail,
+                     "pub_keys delete failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "pub_keys delete", __LINE__ );
+   }
+}
+
+void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_level_weight>& controlling_accounts,
+                                                const account_name& name, const permission_name& permission,
+                                                const std::chrono::milliseconds& now )
+{
+   using bsoncxx::builder::basic::kvp;
+   using namespace bsoncxx::types;
+
+   if( controlling_accounts.empty()) return;
+
+   auto account_controls = mongo_conn[db_name][account_controls_col];
+
+   mongocxx::bulk_write bulk = account_controls.create_bulk_write();
+
+   for( const auto& controlling_account : controlling_accounts ) {
+      auto doc = bsoncxx::builder::basic::document();
+
+      doc.append( kvp( "controlled_account", name.to_string()),
+                  kvp( "controlled_permission", permission.to_string()),
+                  kvp( "controlling_account", controlling_account.permission.actor.to_string()),
+                  kvp( "createdAt", b_date{now} ));
+
+      mongocxx::model::insert_one insert_op{doc.view()};
+      bulk.append( insert_op );
+   }
+
+   try {
+      if( !bulk.execute()) {
+         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+                     "Bulk account_controls insert failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "account_controls insert", __LINE__ );
+   }
+}
+
+void mongo_db_plugin_impl::remove_account_control( const account_name& name, const permission_name& permission )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   auto account_controls = mongo_conn[db_name][account_controls_col];
+
+   try {
+      auto result = account_controls.delete_many( make_document( kvp( "controlled_account", name.to_string()),
+                                                                 kvp( "controlled_permission", permission.to_string())));
+      if( !result ) {
+         EOS_ASSERT( false, chain::mongo_db_update_fail,
+                     "account_controls delete failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "account_controls delete", __LINE__ );
+   }
+}
+
 void mongo_db_plugin_impl::update_account(const chain::action& act)
 {
    using bsoncxx::builder::basic::kvp;
@@ -961,18 +1093,38 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
       return;
 
    try {
-      if( act.name == mongo_db_plugin_impl::newaccount ) {
-         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+
+      if( act.name == newaccount ) {
+         std::chrono::milliseconds now = std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
-         auto newaccount = act.data_as<chain::newaccount>();
+         auto newacc = act.data_as<chain::newaccount>();
 
          // create new account
-         if( !accounts.insert_one( make_document( kvp( "name", newaccount.name.to_string()),
+         if( !accounts.insert_one( make_document( kvp( "name", newacc.name.to_string()),
                                                   kvp( "createdAt", b_date{now} )))) {
-            elog( "Failed to insert account ${n}", ("n", newaccount.name));
+            elog( "Failed to insert account ${n}", ("n", newacc.name));
          }
 
-      } else if( act.name == mongo_db_plugin_impl::setabi ) {
+         add_pub_keys( newacc.owner.keys, newacc.name, owner, now );
+         add_account_control( newacc.owner.accounts, newacc.name, owner, now );
+         add_pub_keys( newacc.active.keys, newacc.name, active, now );
+         add_account_control( newacc.active.accounts, newacc.name, active, now );
+
+      } else if( act.name == updateauth ) {
+         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+         const auto update = act.data_as<chain::updateauth>();
+         remove_pub_keys(update.account, update.permission);
+         remove_account_control(update.account, update.permission);
+         add_pub_keys(update.auth.keys, update.account, update.permission, now);
+         add_account_control(update.auth.accounts, update.account, update.permission, now);
+
+      } else if( act.name == deleteauth ) {
+         const auto del = act.data_as<chain::deleteauth>();
+         remove_pub_keys( del.account, del.permission );
+         remove_account_control(del.account, del.permission);
+
+      } else if( act.name == setabi ) {
          auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
          auto setabi = act.data_as<chain::setabi>();
@@ -1044,6 +1196,8 @@ void mongo_db_plugin_impl::wipe_database() {
    auto trans_traces = mongo_conn[db_name][trans_traces_col];
    auto actions = mongo_conn[db_name][actions_col];
    accounts = mongo_conn[db_name][accounts_col];
+   auto pub_keys = mongo_conn[db_name][pub_keys_col];
+   auto account_controls = mongo_conn[db_name][account_controls_col];
 
    block_states.drop();
    blocks.drop();
@@ -1051,6 +1205,8 @@ void mongo_db_plugin_impl::wipe_database() {
    trans_traces.drop();
    actions.drop();
    accounts.drop();
+   pub_keys.drop();
+   account_controls.drop();
 }
 
 void mongo_db_plugin_impl::init() {
@@ -1079,7 +1235,7 @@ void mongo_db_plugin_impl::init() {
 
       try {
          // blocks indexes
-         auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
+         auto blocks = mongo_conn[db_name][blocks_col];
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
 
@@ -1091,11 +1247,26 @@ void mongo_db_plugin_impl::init() {
          accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
 
          // transactions indexes
-         auto trans = mongo_conn[db_name][trans_col]; // Transactions
+         auto trans = mongo_conn[db_name][trans_col];
          trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
 
+         auto trans_trace = mongo_conn[db_name][trans_traces_col];
+         trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
+
+         // actions indexes
          auto actions = mongo_conn[db_name][actions_col];
          actions.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+
+         // pub_keys indexes
+         auto pub_keys = mongo_conn[db_name][pub_keys_col];
+         pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1 })xxx" ));
+         pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1 })xxx" ));
+
+         // account_controls indexes
+         auto account_controls = mongo_conn[db_name][account_controls_col];
+         account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
+         account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
+
       } catch(...) {
          handle_mongo_exception("create indexes", __LINE__);
       }
