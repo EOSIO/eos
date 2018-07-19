@@ -33,6 +33,15 @@ static const auto msec_per_year = 60 * 60 * 24 * 365 * 1000ull;
 
 #define A(X) asset::from_string( #X )
 
+#define CHECK_ASSERT(S, M)                                                                                  \
+   try {                                                                                                    \
+      S;                                                                                                    \
+      BOOST_ERROR("exception eosio_assert_message_exception is expected");                                  \
+   } catch(eosio_assert_message_exception& e) {                                                             \
+      if(e.top_message() != "assertion failure with message: " M)                                           \
+         BOOST_ERROR("expected \"assertion failure with message: " M "\" got \"" + e.top_message() + "\""); \
+   }
+
 struct margin_state {
    extended_asset total_lendable;
    extended_asset total_lent;
@@ -247,6 +256,12 @@ class exchange_tester : public TESTER {
          );
       }
 
+      auto deferred( name contract, name signer, const symbol& market ) {
+         return push_action( contract, signer, N(deferred), mutable_variant_object()
+            ("market", market)
+         );
+      }
+
       auto create_exchange( name contract, name signer,
                             extended_asset base_deposit,
                             extended_asset quote_deposit,
@@ -405,8 +420,8 @@ BOOST_AUTO_TEST_CASE( withdraw ) try {
    t.check_balance(N(exchange), N(loki), A(50.00 BTC));
    t.deposit( N(exchange), N(loki), extended_asset( A(500.00 BTC), N(loki.token) ) );
    t.deposit( N(exchange), N(loki), extended_asset( A(50.00 BTC), N(exchange) ) );
-   BOOST_CHECK_THROW( t.withdraw( N(exchange), N(loki), extended_asset( A(501.00 BTC), N(loki.token) ) ), eosio_assert_message_exception );
-   BOOST_CHECK_THROW( t.withdraw( N(exchange), N(loki), extended_asset( A(51.00 BTC), N(exchange) ) ), eosio_assert_message_exception );
+   CHECK_ASSERT( t.withdraw( N(exchange), N(loki), extended_asset( A(501.00 BTC), N(loki.token) ) ), "overdrawn balance 2" );
+   CHECK_ASSERT( t.withdraw( N(exchange), N(loki), extended_asset( A(51.00 BTC), N(exchange) ) ), "overdrawn balance 2" );
    t.withdraw( N(exchange), N(loki), extended_asset( A(500.00 BTC), N(loki.token) ) );
    t.withdraw( N(exchange), N(loki), extended_asset( A(50.00 BTC), N(exchange) ) );
    t.check_balance(N(loki.token), N(loki), A(500.00 BTC));
@@ -431,7 +446,7 @@ BOOST_AUTO_TEST_CASE( exchange_lend2 ) try {
    t.deposit( N(exchange), N(lender2), extended_asset{ lender2_amount, N(exchange) } );
 
    // lend max amount. Make sure no more is possible
-   BOOST_CHECK_THROW( t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount + asset{ 1, symbol(2,"USD") }, N(exchange) }, symbol(2,"EXC") ), eosio_assert_message_exception );
+   CHECK_ASSERT( t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount + asset{ 1, symbol(2,"USD") }, N(exchange) }, symbol(2,"EXC") ), "overdrawn balance 2" );
    t.lend( N(exchange), N(lender2), extended_asset{ lender2_amount, N(exchange) }, symbol(2,"EXC") );
 
    // lender1: unlend everything
@@ -465,7 +480,7 @@ BOOST_AUTO_TEST_CASE( exchange_lend2 ) try {
    t.deposit( N(exchange), N(borrower1), extended_asset{ A(100.00 USD), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(0.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(100.00 USD));
-   BOOST_CHECK_THROW( t.upmargin( N(exchange), N(borrower1), symbol(2,"EXC"), extended_asset{ A(50.00 BTC), N(exchange) }, extended_asset{ A(50.00 USD), N(exchange) } ), eosio_assert_message_exception );
+   CHECK_ASSERT( t.upmargin( N(exchange), N(borrower1), symbol(2,"EXC"), extended_asset{ A(50.00 BTC), N(exchange) }, extended_asset{ A(50.00 USD), N(exchange) } ), "this update would trigger a margin call" );
    t.upmargin( N(exchange), N(borrower1), symbol(2,"EXC"), extended_asset{ A(50.00 BTC), N(exchange) }, extended_asset{ A(60.00 USD), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(40.00 USD));
@@ -624,7 +639,7 @@ BOOST_AUTO_TEST_CASE( interest ) try {
 
    // lender2: can't unlend funds in margins
    auto lentshares2_usd = t.get_lent_shares( N(exchange), symbol(2,"HIINT"), N(lender2), true );
-   BOOST_CHECK_THROW( t.unlend( N(exchange), N(lender2), lentshares2_usd, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"HIINT") ), eosio_assert_message_exception );
+   CHECK_ASSERT( t.unlend( N(exchange), N(lender2), lentshares2_usd, extended_symbol{ symbol(2,"USD"), N(exchange)}, symbol(2,"HIINT") ), "funds are in margins" );
 
    // borrower2: remove margin after .5 year
    t.produce_block();
@@ -670,6 +685,9 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
    BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
+   // borrower3: try to borrow while market busy
+   CHECK_ASSERT( t.upmargin( N(exchange), N(borrower3), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(70.00 BTC), N(exchange) } ), "market is busy" );
+
    // collect interest (deferred transaction)
    BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
    BOOST_REQUIRE_EQUAL(A(7.36 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
@@ -681,11 +699,31 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    BOOST_REQUIRE_EQUAL(A(157.26 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
    BOOST_REQUIRE_EQUAL(A(62.83 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
 
+   // borrower4: borrow 50.00 USD
+   t.create_account( N(borrower4) );
+   t.issue( N(exchange), N(exchange), N(borrower4), A(100.00 BTC) );
+   t.deposit( N(exchange), N(borrower4), extended_asset{ A(100.00 BTC), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(0.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(100.00 BTC));
+   t.upmargin( N(exchange), N(borrower4), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(92.00 BTC), N(exchange) } );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(50.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(8.00 BTC));
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
+
+   // borrower4: yearly interest triggers margin call
+   t.produce_block();
+   t.produce_block( fc::milliseconds(msec_per_year) );
+   t.produce_block();
+   t.deferred( N(exchange), N(trader1), symbol(2,"HIINT") );
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(50.00 USD));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(8.11 BTC));
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
+
    // todo: charge interest during margin update
-   // todo: yearly -> call margin
    // todo: lender1 interest
    // todo: lender2 interest
-   // todo: market busy check
 } FC_LOG_AND_RETHROW() /// interest
 
 BOOST_AUTO_TEST_SUITE_END()

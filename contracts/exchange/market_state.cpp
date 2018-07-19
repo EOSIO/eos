@@ -339,6 +339,8 @@ namespace eosio {
    }
 
    void market_state::deferred() {
+      charge_yearly_interest( exstate.base, base_margins );
+      charge_yearly_interest( exstate.quote, quote_margins );
       if( exstate.base.peer_margin.collected_interest.amount > 0 ) {
          exstate.base.peer_margin.total_lendable += market_state::market_order(
             exstate.base.peer_margin.collected_interest, 
