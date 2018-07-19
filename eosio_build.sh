@@ -264,12 +264,12 @@
 		exit -1
 	fi
 
-    CLEOS_AUTOCOMPLETE="source ${PWD}/externals/cleos-auto-completion/cleos.bash"
-    CLEOS_SOURCE_COUNT=$(grep -hnr "^${CLEOS_AUTOCOMPLETE}$" ${HOME}/${SHELL_PROFILE} | wc -l)
+    CLEOS_AUTOCOMPLETE="${PWD}/externals/cleos-auto-completion/cleos.bash"
+    CLEOS_SOURCE_COUNT=$(grep -hnr "^source ${CLEOS_AUTOCOMPLETE}$" ${HOME}/${SHELL_PROFILE} | wc -l)
 
     if [ ${CLEOS_SOURCE_COUNT} -eq 0 ]; then
-        echo "${CLEOS_AUTOCOMPLETE}" >> ${HOME}/${SHELL_PROFILE}
-        source ${HOME}/${SHELL_PROFILE}
+        echo "source ${CLEOS_AUTOCOMPLETE}" >> ${HOME}/${SHELL_PROFILE}
+		. "$CLEOS_AUTOCOMPLETE"
     fi
 	
 	TIME_END=$(( $(date -u +%s) - ${TIME_BEGIN} ))
