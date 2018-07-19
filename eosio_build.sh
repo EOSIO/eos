@@ -265,11 +265,11 @@
 	fi
 
     CLEOS_AUTOCOMPLETE="source ${PWD}/externals/cleos-auto-completion/cleos.bash"
-    CLEOS_SET_COUNT=$(grep -hnr "^${CLEOS_AUTOCOMPLETE}$" ${HOME}/${SHELL_PROFILE} | wc -l)
+    CLEOS_SOURCE_COUNT=$(grep -hnr "^${CLEOS_AUTOCOMPLETE}$" ${HOME}/${SHELL_PROFILE} | wc -l)
 
-    if [ ${CLEOS_SET_COUNT} -eq 0 ]; then
+    if [ ${CLEOS_SOURCE_COUNT} -eq 0 ]; then
         echo "${CLEOS_AUTOCOMPLETE}" >> ${HOME}/${SHELL_PROFILE}
-        ${CLEOS_AUTOCOMPLETE}
+        source ${HOME}/${SHELL_PROFILE}
     fi
 	
 	TIME_END=$(( $(date -u +%s) - ${TIME_BEGIN} ))
