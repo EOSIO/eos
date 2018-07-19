@@ -79,7 +79,9 @@ namespace eosio {
       zao.action_trace = chain.to_variant_with_abi(at);
 
       add_acc_resources_and_systoken_bal(zao, at.act.account );
-      add_acc_resources_and_systoken_bal(zao, at.receipt.receiver );
+      if( at.receipt.receiver != at.act.account ) {
+        add_acc_resources_and_systoken_bal(zao, at.receipt.receiver );
+      }
       
       string zao_json = fc::json::to_string(zao);
       //idump((zao_json));
