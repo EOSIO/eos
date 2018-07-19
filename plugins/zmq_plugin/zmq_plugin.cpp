@@ -50,6 +50,7 @@ namespace eosio {
     zmq::context_t context;
     zmq::socket_t sender_socket;
     chain_plugin*          chain_plug = nullptr;
+    fc::microseconds       abi_serializer_max_time;
     
     fc::optional<scoped_connection> applied_transaction_connection;
     
@@ -76,7 +77,7 @@ namespace eosio {
       zao.global_action_seq = at.receipt.global_sequence;
       zao.block_num = chain.pending_block_state()->block_num;
       zao.block_time = chain.pending_block_time();
-      zao.action_trace = chain.to_variant_with_abi(at);
+      zao.action_trace = chain.to_variant_with_abi(at, abi_serializer_max_time);
 
       add_acc_resources_and_systoken_bal(zao, at.act.account );
       if( at.receipt.receiver != at.act.account ) {
@@ -177,6 +178,8 @@ namespace eosio {
     my->sender_socket.bind(bind_str);
 
     my->chain_plug = app().find_plugin<chain_plugin>();
+    my->abi_serializer_max_time = my->chain_plug->get_abi_serializer_max_time();
+    
     auto& chain = my->chain_plug->chain();
 
     my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
