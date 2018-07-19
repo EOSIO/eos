@@ -56,6 +56,7 @@
 	TEMP_DIR="/tmp"
 	TIME_BEGIN=$( date -u +%s )
 	VERSION=1.2
+    SHELL_PROFILE=".bashrc"
 
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
@@ -143,6 +144,7 @@
 		fi
 	
 		OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
+        SHELL_PROFILE=".bashrc"
 	
 		case "$OS_NAME" in
 			"Amazon Linux AMI")
@@ -213,6 +215,7 @@
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+        SHELL_PROFILE=".bash_profile"
 	fi
    
    ${PWD}/scripts/clean_old_install.sh
@@ -260,6 +263,14 @@
 		printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\\n\\n"
 		exit -1
 	fi
+
+    CLEOS_AUTOCOMPLETE="source ${PWD}/externals/cleos-auto-completion/cleos.bash"
+    CLEOS_SET_COUNT=$(grep -hnr "^${CLEOS_AUTOCOMPLETE}$" ${HOME}/${SHELL_PROFILE} | wc -l)
+
+    if [ ${CLEOS_SET_COUNT} -eq 0 ]; then
+        echo "${CLEOS_AUTOCOMPLETE}" >> ${HOME}/${SHELL_PROFILE}
+        ${CLEOS_AUTOCOMPLETE}
+    fi
 	
 	TIME_END=$(( $(date -u +%s) - ${TIME_BEGIN} ))
 
