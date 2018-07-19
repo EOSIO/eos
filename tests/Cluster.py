@@ -722,8 +722,8 @@ class Cluster(object):
 
             contract="eosio.bios"
             contractDir="contracts/%s" % (contract)
-            wastFile="contracts/%s/%s.wast" % (contract, contract)
-            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            wastFile="%s.wast" % (contract)
+            abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
             trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
             if trans is None:
@@ -846,8 +846,8 @@ class Cluster(object):
 
             contract="eosio.token"
             contractDir="contracts/%s" % (contract)
-            wastFile="contracts/%s/%s.wast" % (contract, contract)
-            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            wastFile="%s.wast" % (contract)
+            abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
             trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
             if trans is None:
@@ -901,8 +901,8 @@ class Cluster(object):
 
             contract="eosio.system"
             contractDir="contracts/%s" % (contract)
-            wastFile="contracts/%s/%s.wast" % (contract, contract)
-            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            wastFile="%s.wast" % (contract)
+            abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
             trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
             if trans is None:
