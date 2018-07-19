@@ -21,6 +21,13 @@ public_key_type  get_public_key( name keyname, string role ){
    return get_private_key( keyname, role ).get_public_key();
 }
 
+void push_blocks( tester& from, tester& to ) {
+   while( to.control->fork_db_head_block_num() < from.control->fork_db_head_block_num() ) {
+      auto fb = from.control->fetch_block_by_number( to.control->fork_db_head_block_num()+1 );
+      to.push_block( fb );
+   }
+}
+
 BOOST_AUTO_TEST_SUITE(forked_tests)
 
 BOOST_AUTO_TEST_CASE( irrblock ) try {
@@ -59,10 +66,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
 
    // sync remote node
    tester remote;
-   while( remote.control->head_block_num() < bios.control->head_block_num() ) {
-      auto fb = bios.control->fetch_block_by_number( remote.control->head_block_num()+1 );
-      remote.push_block( fb );
-   }
+   push_blocks(bios, remote);
 
    // produce 6 blocks on bios
    for (int i = 0; i < 6; i ++) {
@@ -177,10 +181,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    tester c2;
    wlog( "push c1 blocks to c2" );
-   while( c2.control->head_block_num() < c.control->head_block_num() ) {
-      auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
-      c2.push_block( fb );
-   }
+   push_blocks(c, c2);
    wlog( "end push c1 blocks to c2" );
 
    wlog( "c1 blocks:" );
@@ -202,10 +203,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    // Sync second chain with first chain.
    wlog( "push c1 blocks to c2" );
-   while( c2.control->head_block_num() < c.control->head_block_num() ) {
-      auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
-      c2.push_block( fb );
-   }
+   push_blocks(c, c2);
    wlog( "end push c1 blocks to c2" );
 
    // Now sam and pam go on their own fork while dan is producing blocks by himself.
@@ -249,10 +247,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    c.produce_blocks(10);
 
    wlog( "push c1 blocks to c2" );
-   while( c2.control->head_block_num() < c.control->head_block_num() ) {
-      auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
-      c2.push_block( fb );
-   }
+   push_blocks(c, c2);
    wlog( "end push c1 blocks to c2" );
 
    // Now with four block producers active and two identical chains (for now),
@@ -306,10 +301,7 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
 
    tester c2;
    wlog( "push c1 blocks to c2" );
-   while( c2.control->head_block_num() < c.control->head_block_num() ) {
-      auto fb = c.control->fetch_block_by_number( c2.control->head_block_num()+1 );
-      c2.push_block( fb );
-   }
+   push_blocks(c, c2);
 
    // fork happen after block 61
    BOOST_REQUIRE_EQUAL(61, c.control->head_block_num());
@@ -443,6 +435,28 @@ BOOST_AUTO_TEST_CASE(confirmation) try {
 
    block_state_ptr blk81 = c.control->fork_db().get_block_in_current_chain_by_num(81);
    BOOST_REQUIRE_EQUAL(55, blk81->bft_irreversible_blocknum); // bft irreversible number will propagate into new blocks
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( read_modes ) try {
+   tester c;
+   c.produce_block();
+   c.produce_block();
+   auto r = c.create_accounts( {N(dan),N(sam),N(pam)} );
+   c.produce_block();
+   auto res = c.set_producers( {N(dan),N(sam),N(pam)} );
+   c.produce_blocks(200);
+   auto head_block_num = c.control->head_block_num();
+
+   tester head(true, db_read_mode::HEAD);
+   push_blocks(c, head);
+   BOOST_REQUIRE_EQUAL(head_block_num, head.control->fork_db_head_block_num());
+   BOOST_REQUIRE_EQUAL(head_block_num, head.control->head_block_num());
+
+   tester irreversible(true, db_read_mode::IRREVERSIBLE);
+   push_blocks(c, irreversible);
+   BOOST_REQUIRE_EQUAL(head_block_num, irreversible.control->fork_db_head_block_num());
+   BOOST_REQUIRE_EQUAL(head_block_num - 49, irreversible.control->head_block_num());
 
 } FC_LOG_AND_RETHROW()
 

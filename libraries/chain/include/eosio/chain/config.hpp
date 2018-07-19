@@ -15,10 +15,12 @@ typedef __uint128_t uint128_t;
 const static auto default_blocks_dir_name    = "blocks";
 const static auto reversible_blocks_dir_name = "reversible";
 const static auto default_reversible_cache_size = 340*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
+const static auto default_reversible_guard_size = 2*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
 
 const static auto default_state_dir_name     = "state";
 const static auto forkdb_filename            = "forkdb.dat";
 const static auto default_state_size            = 1*1024*1024*1024ll;
+const static auto default_state_guard_size      = 128*1024*1024ll;
 
 
 const static uint64_t system_account_name    = N(eosio);
@@ -92,6 +94,7 @@ const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multip
 const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call checktime from hashing intrinsic once per this number of bytes
 
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::binaryen;
+const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< default deadline for abi serialization methods
 
 /**
  *  The number of sequential blocks produced by a single producer

@@ -158,7 +158,7 @@ class binaryen_runtime : public eosio::chain::wasm_runtime_interface {
 template<typename T>
 inline array_ptr<T> array_ptr_impl (interpreter_interface* interface, uint32_t ptr, uint32_t length)
 {
-   FC_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), "length will overflow" );
+   EOS_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), binaryen_exception, "length will overflow" );
    return array_ptr<T>((T*)(interface->get_validated_pointer(ptr, length * (uint32_t)sizeof(T))));
 }
 
@@ -586,7 +586,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at((uint32_t)offset).geti32();
-      FC_ASSERT(ptr != 0);
+      EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(interface, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned const reference" );
@@ -602,7 +602,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at((uint32_t)offset).geti32();
-      FC_ASSERT(ptr != 0);
+      EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(interface, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned reference" );
