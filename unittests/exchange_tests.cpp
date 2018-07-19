@@ -550,6 +550,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
       extended_asset{ A(1000.00 BTC), N(exchange) },
       A(1000.00 HIINT),
       0, 0.20);
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
 
    // lender1: lend 100 BTC
    t.create_account( N(lender1) );
@@ -574,6 +576,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.lend( N(exchange), N(lender2), extended_asset{ A(50.00 BTC), N(exchange) }, symbol(2,"HIINT") );
    t.check_exchange_balance(N(exchange), N(exchange), N(lender2), A(0.00 USD) );
    t.check_exchange_balance(N(exchange), N(exchange), N(lender2), A(0.00 BTC) );
+   BOOST_REQUIRE_EQUAL(A(150.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
 
    // borrower1: borrow 50.00 BTC for .5 year
    t.create_account( N(borrower1) );
@@ -582,6 +586,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(0.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(100.00 USD));
    t.upmargin( N(exchange), N(borrower1), symbol(2,"HIINT"), extended_asset{ A(50.00 BTC), N(exchange) }, extended_asset{ A(70.00 USD), N(exchange) } );
+   BOOST_REQUIRE_EQUAL(A(50.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(50.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(30.00 USD));
    t.produce_block();
@@ -589,6 +595,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.upmargin( N(exchange), N(borrower1), symbol(2,"HIINT"), extended_asset{ A(-50.00 BTC), N(exchange) }, extended_asset{ A(0.00 USD), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(0.00 BTC));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower1), A(92.64 USD)); // 7.36 USD interest
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
    // borrower2: borrow 50.00 USD
    t.create_account( N(borrower2) );
@@ -599,6 +607,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.upmargin( N(exchange), N(borrower2), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(70.00 BTC), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(50.00 USD));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(30.00 BTC));
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
    // lender2: can't unlend funds in margins
    auto lentshares2_usd = t.get_lent_shares( N(exchange), symbol(2,"HIINT"), N(lender2), true );
@@ -610,6 +620,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.upmargin( N(exchange), N(borrower2), symbol(2,"HIINT"), extended_asset{ A(-50.00 USD), N(exchange) }, extended_asset{ A(0.00 BTC), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(0.00 USD));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower2), A(92.64 BTC)); // 7.36 BTC interest
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
    // borrower3: borrow 50.00 USD
    t.create_account( N(borrower3) );
@@ -620,6 +632,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.upmargin( N(exchange), N(borrower3), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(70.00 BTC), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(50.00 USD));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(30.00 BTC));
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
    // trader1: trigger margin call after .5 year
    t.produce_block();
@@ -630,6 +644,8 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.marketorder( N(exchange), N(trader1), symbol(2,"HIINT"), extended_asset{ A(100.00 BTC), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(50.00 USD));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(39.91 BTC));
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 } FC_LOG_AND_RETHROW() /// interest
 
 BOOST_AUTO_TEST_SUITE_END()
