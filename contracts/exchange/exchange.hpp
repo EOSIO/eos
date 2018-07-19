@@ -103,6 +103,8 @@ namespace eosio {
                            block_timestamp_type  expiration ///< time at which this order is no longer valid 
                        );
 
+         void deferred( symbol_type market_symbol );
+
          void on( const upmargin& b );
          void on( const covermargin& b );
          void on( const currency::transfer& t, account_name code );

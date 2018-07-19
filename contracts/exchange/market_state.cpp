@@ -1,12 +1,14 @@
 #include <exchange/market_state.hpp>
+#include <eosiolib/transaction.hpp>
 #include <boost/math/special_functions/relative_difference.hpp>
 
 static const uint32_t sec_per_year = 60 * 60 * 24 * 365;
 
 namespace eosio {
 
-   market_state::market_state( account_name this_contract, symbol_type market_symbol, exchange_accounts& acnts, currency& excur  )
-   :marketid( market_symbol.name() ),
+   market_state::market_state( account_name this_contract, symbol_type sym, exchange_accounts& acnts, currency& excur  )
+   :market_symbol( sym ),
+    marketid( market_symbol.name() ),
     market_table( this_contract, marketid ),
     base_margins( this_contract,  (marketid<<4) + 1),
     quote_margins( this_contract, (marketid<<4) + 2),
@@ -92,12 +94,10 @@ namespace eosio {
       }
    }
 
-   void market_state::market_order( account_name seller, extended_asset sell, extended_symbol receive_symbol ) {
+   extended_asset market_state::market_order( extended_asset sell, extended_symbol receive_symbol ) {
       eosio_assert( sell.is_valid(), "invalid sell amount" );
       eosio_assert( sell.amount > 0, "sell amount must be positive" );
       eosio_assert( sell.get_extended_symbol() != receive_symbol, "invalid conversion" );
-
-      _accounts.adjust_balance( seller, -sell, "sold" );
 
       exchange_state::connector* down; // value is going down
       exchange_state::connector* up;   // value is going up
@@ -125,10 +125,6 @@ namespace eosio {
       }
       this->exstate = temp;
 
-      print( name{seller}, "   ", sell, "  =>  ", output, "\n" );
-
-      _accounts.adjust_balance( seller, output, "received" );
-
       if( this->exstate.supply.amount != this->initial_state().supply.amount ) {
          auto delta = this->exstate.supply - this->initial_state().supply;
 
@@ -136,6 +132,16 @@ namespace eosio {
                                         .quantity = delta,
                                         .memo = string("") } );
       }
+
+      return output;
+   }
+
+   void market_state::market_order( account_name seller, extended_asset sell, extended_symbol receive_symbol ) {
+      auto output = market_order( sell, receive_symbol );
+      print( name{seller}, "   ", sell, "  =>  ", output, "\n" );
+      _accounts.adjust_balance( seller, -sell, "sold" );
+      _accounts.adjust_balance( seller, output, "received" );
+      schedule_deferred();
    }
 
    void market_state::lend( account_name lender, const extended_asset& quantity ) {
@@ -246,6 +252,7 @@ namespace eosio {
       } else {
          c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
       }
+      schedule_deferred();
    }
 
    void market_state::update_margin( account_name borrower, const extended_asset& delta_debt, extended_asset& delta_col )
@@ -262,6 +269,8 @@ namespace eosio {
    void market_state::adjust_margin( account_name borrower, margins& m, exchange_state::connector& c,
                                      const extended_asset& delta_debt, extended_asset& delta_col )
    {
+      charge_yearly_interest( c, m );
+
       auto now = ::now();
       auto existing = m.find( borrower );
       if( existing == m.end() ) {
@@ -310,7 +319,39 @@ namespace eosio {
       } else {
          c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
       }
+      schedule_deferred();
+   }
 
+   void market_state::schedule_deferred() {
+      if( exstate.base.peer_margin.collected_interest.amount > 0 || exstate.quote.peer_margin.collected_interest.amount > 0 ) {
+         exstate.need_deferred = true;
+         transaction t;
+         t.ref_block_num = (uint16_t)tapos_block_num();
+         t.ref_block_prefix = (uint32_t)tapos_block_prefix();
+         t.actions.push_back(
+            eosio::action{
+               eosio::permission_level{_this_contract, N(active)},
+               _this_contract, N(deferred), std::make_tuple(market_symbol)});
+         t.send(marketid, _this_contract, true);
+      } else {
+         exstate.need_deferred = false;
+      }
+   }
+
+   void market_state::deferred() {
+      if( exstate.base.peer_margin.collected_interest.amount > 0 ) {
+         exstate.base.peer_margin.total_lendable += market_state::market_order(
+            exstate.base.peer_margin.collected_interest, 
+            {exstate.base.peer_margin.total_lendable.symbol, exstate.base.peer_margin.total_lendable.contract} );
+         exstate.base.peer_margin.collected_interest.amount = 0;
+      }
+      if( exstate.quote.peer_margin.collected_interest.amount > 0 ) {
+         exstate.quote.peer_margin.total_lendable += market_state::market_order(
+            exstate.quote.peer_margin.collected_interest, 
+            {exstate.quote.peer_margin.total_lendable.symbol, exstate.quote.peer_margin.total_lendable.contract} );
+         exstate.quote.peer_margin.collected_interest.amount = 0;
+      }
+      schedule_deferred();
    }
 
    void market_state::save() {

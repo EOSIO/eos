@@ -64,6 +64,7 @@ namespace eosio {
       extended_asset    supply;
       double            fee = 0;
       double            interest_rate = 0;
+      bool              need_deferred = false;
 
       struct connector {
          extended_asset balance;
@@ -86,7 +87,7 @@ namespace eosio {
       bool requires_margin_call( const exchange_state::connector& con, const extended_symbol& collateral_symbol )const;
       bool requires_margin_call()const;
 
-      EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(interest_rate)(base)(quote) )
+      EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(interest_rate)(need_deferred)(base)(quote) )
    };
 
    typedef eosio::multi_index<N(markets), exchange_state> markets;

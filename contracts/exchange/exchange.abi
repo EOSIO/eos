@@ -132,6 +132,12 @@
         {"name":"currency", "type":"uint64"},
         {"name":"supply", "type":"uint64"}
       ]
+    },{
+     "name": "deferred",
+     "base": "",
+     "fields": [
+        {"name":"market", "type":"symbol"}
+     ]
     }
   ],
   "actions": [
@@ -145,6 +151,7 @@
     { "name": "upmargin", "type": "upmargin", "ricardian_contract": "" },
     { "name": "covermargin", "type": "covermargin", "ricardian_contract": "" },
     { "name": "create", "type": "create", "ricardian_contract": "" }
+    { "name": "deferred", "type": "deferred", "ricardian_contract": "" }
   ],
   "tables": [{
       "name": "account",

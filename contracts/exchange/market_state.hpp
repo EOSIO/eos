@@ -53,6 +53,7 @@ namespace eosio {
       void reserve_interest( margin_position& margin, uint32_t at_time );
       void charge_interest( exchange_state::connector& c, margin_position& margin, uint32_t at_time );
       void charge_yearly_interest( exchange_state::connector& c, margins& marginstable );
+      extended_asset market_order( extended_asset sell, extended_symbol receive );
       void market_order( account_name seller, extended_asset sell, extended_symbol receive );
       void margin_call( extended_symbol debt_type );
       void lend( account_name lender, const extended_asset& debt );
@@ -61,8 +62,12 @@ namespace eosio {
                                                  extended_asset& delta_collateral );
       void cover_margin( account_name borrower, const extended_asset& cover_amount );
 
+      void schedule_deferred();
+      void deferred();
+
       void save();
 
+      symbol_type      market_symbol;
       symbol_name      marketid;
       exchange_state   exstate;
 

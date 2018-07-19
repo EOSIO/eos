@@ -47,6 +47,7 @@ struct exchange_state {
    extended_asset    supply;
    double            fee = 0;
    double            interest_rate = 0;
+   bool              need_deferred = false;
 
    struct connector {
       extended_asset balance;
@@ -59,7 +60,7 @@ struct exchange_state {
 };
 
 FC_REFLECT( exchange_state::connector, (balance)(weight)(peer_margin) );
-FC_REFLECT( exchange_state, (manager)(supply)(fee)(interest_rate)(base)(quote) );
+FC_REFLECT( exchange_state, (manager)(supply)(fee)(interest_rate)(need_deferred)(base)(quote) );
 
 class exchange_tester : public TESTER {
    public:
@@ -598,6 +599,17 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
    BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
+   // collect interest (deferred transaction)
+   BOOST_REQUIRE_EQUAL(A(7.36 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(150.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
+   t.produce_block();
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(157.26 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
+
    // borrower2: borrow 50.00 USD
    t.create_account( N(borrower2) );
    t.issue( N(exchange), N(exchange), N(borrower2), A(100.00 BTC) );
@@ -623,6 +635,17 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
    BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
+   // collect interest (deferred transaction)
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(7.36 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(157.26 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
+   t.produce_block();
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(157.26 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(57.37 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
+
    // borrower3: borrow 50.00 USD
    t.create_account( N(borrower3) );
    t.issue( N(exchange), N(exchange), N(borrower3), A(100.00 BTC) );
@@ -643,9 +666,26 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.deposit( N(exchange), N(trader1), extended_asset{ A(100.00 BTC), N(exchange) } );
    t.marketorder( N(exchange), N(trader1), symbol(2,"HIINT"), extended_asset{ A(100.00 BTC), N(exchange) }, extended_symbol{ symbol(2,"USD"), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(50.00 USD));
-   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(39.91 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower3), A(39.89 BTC));
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
    BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
+
+   // collect interest (deferred transaction)
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(7.36 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(157.26 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(57.37 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
+   t.produce_block();
+   BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.collected_interest.quantity);
+   BOOST_REQUIRE_EQUAL(A(157.26 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(62.83 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lendable.quantity);
+
+   // todo: charge interest during margin update
+   // todo: yearly -> call margin
+   // todo: lender1 interest
+   // todo: lender2 interest
+   // todo: market busy check
 } FC_LOG_AND_RETHROW() /// interest
 
 BOOST_AUTO_TEST_SUITE_END()
