@@ -27,3 +27,6 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/EOSIO/fc
+[submodule "externals/cleos-auto-completion"]
+	path = externals/cleos-auto-completion
+	url = https://github.com/Hexlant/cleos-auto-completion.git
