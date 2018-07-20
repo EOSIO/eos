@@ -45,7 +45,7 @@ namespace eosio {
     vector<resource_balance>     resource_balances;
     vector<currency_balance>     currency_balances;
   };
-
+  
   class zmq_plugin_impl {
   public:
     zmq::context_t context;
@@ -53,6 +53,7 @@ namespace eosio {
     chain_plugin*          chain_plug = nullptr;
     fc::microseconds       abi_serializer_max_time;
     std::map<name,int>     system_accounts;
+    std::map<name,std::map<name,int>>  blacklist_actions;
 
     fc::optional<scoped_connection> applied_transaction_connection;
 
@@ -60,6 +61,19 @@ namespace eosio {
       context(1),
       sender_socket(context, ZMQ_PUSH)
     {
+      std::vector<name> sys_acc_names = {
+        chain::config::system_account_name,
+        N(eosio.msig),  N(eosio.token),  N(eosio.ram), N(eosio.ramfee),
+        N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving)
+      };
+
+      for(name n : sys_acc_names) {
+        system_accounts.emplace(std::make_pair(n, 1));
+      }
+      
+      blacklist_actions.emplace
+        (std::make_pair(chain::config::system_account_name,
+                        std::map<name,int>{ std::make_pair(N(onblock), 1) }));
     }
 
 
@@ -73,6 +87,15 @@ namespace eosio {
 
     void on_action_trace( const action_trace& at )
     {
+      // check the action against the blacklist
+      auto search_acc = blacklist_actions.find(at.act.account);
+      if(search_acc != blacklist_actions.end()) {
+        auto search_act = search_acc->second.find(at.act.name);
+        if( search_act != search_acc->second.end() ) {
+          return;
+        }
+      }
+      
       auto& chain = chain_plug->chain();
 
       zmq_action_object zao;
@@ -207,19 +230,8 @@ namespace eosio {
 
     my->chain_plug = app().find_plugin<chain_plugin>();
     my->abi_serializer_max_time = my->chain_plug->get_abi_serializer_max_time();
-
-    std::vector<eosio::name> sys_acc_names = {
-      chain::config::system_account_name,
-      N(eosio.msig),  N(eosio.token),  N(eosio.ram), N(eosio.ramfee),
-      N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving)
-    };
-
-    for(eosio::name n : sys_acc_names) {
-      my->system_accounts.emplace(std::make_pair(n, 1));
-    }
-
+    
     auto& chain = my->chain_plug->chain();
-
     my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
           my->on_applied_transaction(p);
         }));
