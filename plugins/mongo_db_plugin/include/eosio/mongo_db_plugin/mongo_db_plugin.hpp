@@ -20,6 +20,8 @@ using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
  * blocks
  * transaction_traces
  * transactions
+ * pub_keys
+ * account_controls
  *
  *   See data dictionary (DB Schema Definition - EOS API) for description of MongoDB schema.
  *
