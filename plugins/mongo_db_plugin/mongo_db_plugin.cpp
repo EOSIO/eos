@@ -245,6 +245,7 @@ void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
 void mongo_db_plugin_impl::consume_blocks() {
    try {
       while (true) {
+         ilog( "consume_blocks" );
          boost::mutex::scoped_lock lock(mtx);
          while ( transaction_metadata_queue.empty() &&
                  transaction_trace_queue.empty() &&
@@ -283,31 +284,51 @@ void mongo_db_plugin_impl::consume_blocks() {
          }
 
          // process transactions
+         auto start_time = fc::time_point::now();
+         auto size = transaction_metadata_process_queue.size();
          while (!transaction_metadata_process_queue.empty()) {
             const auto& t = transaction_metadata_process_queue.front();
             process_accepted_transaction(t);
             transaction_metadata_process_queue.pop_front();
          }
+         auto time = fc::time_point::now() - start_time;
+         auto per = size > 0 ? time.count()/size : 0;
+         ilog( "process_accepted_transaction, time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
+         start_time = fc::time_point::now();
+         size = transaction_trace_process_queue.size();
          while (!transaction_trace_process_queue.empty()) {
             const auto& t = transaction_trace_process_queue.front();
             process_applied_transaction(t);
             transaction_trace_process_queue.pop_front();
          }
+         time = fc::time_point::now() - start_time;
+         per = size > 0 ? time.count()/size : 0;
+         ilog( "process_applied_transaction,  time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          // process blocks
+         start_time = fc::time_point::now();
+         size = block_state_process_queue.size();
          while (!block_state_process_queue.empty()) {
             const auto& bs = block_state_process_queue.front();
             process_accepted_block( bs );
             block_state_process_queue.pop_front();
          }
+         time = fc::time_point::now() - start_time;
+         per = size > 0 ? time.count()/size : 0;
+         ilog( "process_accepted_block,       time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          // process irreversible blocks
+         start_time = fc::time_point::now();
+         size = irreversible_block_state_process_queue.size();
          while (!irreversible_block_state_process_queue.empty()) {
             const auto& bs = irreversible_block_state_process_queue.front();
             process_irreversible_block(bs);
             irreversible_block_state_process_queue.pop_front();
          }
+         time = fc::time_point::now() - start_time;
+         per = size > 0 ? time.count()/size : 0;
+         ilog( "process_irreversible_block,   time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          if( transaction_metadata_size == 0 &&
              transaction_trace_size == 0 &&
