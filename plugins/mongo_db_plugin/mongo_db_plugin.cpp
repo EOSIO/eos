@@ -558,7 +558,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       try {
          update_account( act );
       } catch (...) {
-         ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
+         handle_mongo_exception( "update_account", __LINE__ );
       }
       if( start_block_reached ) {
          add_data( act_doc, act );
@@ -977,16 +977,13 @@ void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, 
 
    for( const auto& pub_key_weight : keys ) {
       auto find_doc = bsoncxx::builder::basic::document();
-      auto update_doc = bsoncxx::builder::basic::document();
 
       find_doc.append( kvp( "account", name.to_string()),
                        kvp( "public_key", pub_key_weight.key.operator string()),
                        kvp( "permission", permission.to_string()) );
 
-      update_doc.append( bsoncxx::builder::concatenate_doc{find_doc.view()} );
-      update_doc.append( kvp( "createdAt", b_date{now} ));
-
-      auto update = make_document( kvp( "$set", update_doc.view() ) );
+      auto update_doc = make_document( kvp( "$set", make_document( bsoncxx::builder::concatenate_doc{find_doc.view()},
+                                                                   kvp( "createdAt", b_date{now} ))));
 
       mongocxx::model::update_one insert_op{find_doc.view(), update_doc.view()};
       insert_op.upsert(true);
@@ -1040,15 +1037,14 @@ void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_l
 
    for( const auto& controlling_account : controlling_accounts ) {
       auto find_doc = bsoncxx::builder::basic::document();
-      auto update_doc = bsoncxx::builder::basic::document();
 
       find_doc.append( kvp( "controlled_account", name.to_string()),
                        kvp( "controlled_permission", permission.to_string()),
                        kvp( "controlling_account", controlling_account.permission.actor.to_string()) );
-      update_doc.append( bsoncxx::builder::concatenate_doc{find_doc.view()} );
-      update_doc.append( kvp( "createdAt", b_date{now} ));
 
-      auto update = make_document( kvp( "$set", update_doc.view() ) );
+      auto update_doc = make_document( kvp( "$set", make_document( bsoncxx::builder::concatenate_doc{find_doc.view()},
+                                                                   kvp( "createdAt", b_date{now} ))));
+
 
       mongocxx::model::update_one insert_op{find_doc.view(), update_doc.view()};
       insert_op.upsert(true);
