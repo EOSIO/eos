@@ -18,8 +18,11 @@ add_subdirectory(db_size_api_plugin)
 #add_subdirectory(faucet_testnet_plugin)
 add_subdirectory(mongo_db_plugin)
 #add_subdirectory(sql_db_plugin)
-add_subdirectory(zmq_plugin)
 add_subdirectory(login_plugin)
+
+if(BUILD_ZMQ_PLUGIN)
+  add_subdirectory(zmq_plugin)
+endif()
 
 # Forward variables to top level so packaging picks them up
 set(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS} PARENT_SCOPE)
