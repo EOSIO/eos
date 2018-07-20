@@ -705,9 +705,9 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.deposit( N(exchange), N(borrower4), extended_asset{ A(100.00 BTC), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(0.00 USD));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(100.00 BTC));
-   t.upmargin( N(exchange), N(borrower4), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(92.00 BTC), N(exchange) } );
+   t.upmargin( N(exchange), N(borrower4), symbol(2,"HIINT"), extended_asset{ A(50.00 USD), N(exchange) }, extended_asset{ A(93.00 BTC), N(exchange) } );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(50.00 USD));
-   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(8.00 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(7.00 BTC));
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
    BOOST_REQUIRE_EQUAL(A(50.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
@@ -717,7 +717,7 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.produce_block();
    t.deferred( N(exchange), N(trader1), symbol(2,"HIINT") );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(50.00 USD));
-   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(8.12 BTC));
+   t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(7.91 BTC));
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);
    BOOST_REQUIRE_EQUAL(A(0.00 USD), t.get_market_state(N(exchange), symbol(2,"HIINT")).base.peer_margin.total_lent.quantity);
 
@@ -755,26 +755,26 @@ BOOST_AUTO_TEST_CASE( cascade_loss ) try {
 
    // many weak margins
    auto borrower = N(borrower1111);
-   for ( int i = 0; i < 192; ++i ) {
+   for ( int i = 0; i < 189; ++i ) {
       // printf("\n\n<<<<<< %d\n\n", i);
       t.create_account( borrower );
       t.issue( N(exchange), N(exchange), borrower, A(100.00 USD) );
       t.deposit( N(exchange), borrower, extended_asset{ A(100.00 USD), N(exchange) } );
-      t.upmargin( N(exchange), borrower, symbol(2,"HIALL"), extended_asset{ A(1.00 BTC), N(exchange) }, extended_asset{ A(1.58 USD), N(exchange) } );
+      t.upmargin( N(exchange), borrower, symbol(2,"HIALL"), extended_asset{ A(1.00 BTC), N(exchange) }, extended_asset{ A(1.60 USD), N(exchange) } );
       borrower += 16;
       if (!(i & 8))
          t.produce_block();
    }
    t.produce_block();
 
-   // trader1: trigger margin call on entire set. Some margins aren't covered because of rounding.
+   // trader1: trigger margin call on entire set
    t.create_account( N(trader1) );
    t.issue( N(exchange), N(exchange), N(trader1), A(0.90 USD) );
    t.deposit( N(exchange), N(trader1), extended_asset{ A(0.90 USD), N(exchange) } );
    t.marketorder( N(exchange), N(trader1), symbol(2,"HIALL"), extended_asset{ A(0.90 USD), N(exchange) }, extended_symbol{ symbol(2,"BTC"), N(exchange) } );
 
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIALL")).quote.peer_margin.total_lent.quantity);
-   BOOST_REQUIRE_EQUAL(A(999.94 BTC), t.get_market_state(N(exchange), symbol(2,"HIALL")).quote.peer_margin.total_lendable.quantity);
+   BOOST_REQUIRE_EQUAL(A(1000.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIALL")).quote.peer_margin.total_lendable.quantity);
 } FC_LOG_AND_RETHROW() /// cascade_loss
 
 BOOST_AUTO_TEST_SUITE_END()

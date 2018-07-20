@@ -89,7 +89,7 @@ namespace eosio {
          auto tmp = *this;
          auto base_total_col = int64_t(con.peer_margin.total_lent.amount * con.peer_margin.least_collateralized);
          auto covered = tmp.convert( extended_asset( base_total_col, collateral_symbol ), con.peer_margin.total_lent.get_extended_symbol() );
-         if( covered.amount <= con.peer_margin.total_lent.amount ) 
+         if( covered.amount <= con.peer_margin.total_lent.amount * 1.01 ) 
            return true;
       }
       return false;
